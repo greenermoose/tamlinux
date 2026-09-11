@@ -2,6 +2,8 @@
 
 An Omarchy shell bar widget and workspace switcher supporting synchronized dual-monitor desktop pairs, per-monitor independent switching, rich window tooltips, and automatic display geometry detection.
 
+![Workspaces with Desktop Mode](assets/screenshot.png)
+
 ---
 
 ## Overview
