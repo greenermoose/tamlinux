@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Multi-monitor workspace engine for Omarchy.
+# Supports:
+#   - Omarchy mode: standard 1-5 workspace presentation on all displays.
+#   - Mac mode: per-monitor independent workspaces (odd on left, even on right).
+#   - Windows mode: synchronized workspace pairs switched together across displays.
+
+# Auto-detect Hyprland instance signature if not present in environment
+if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+  for sock in /run/user/"$(id -u)"/hypr/*/.socket.sock; do
+    if [[ -S "$sock" ]]; then
+      export HYPRLAND_INSTANCE_SIGNATURE="$(basename "$(dirname "$sock")")"
+      break
+    fi
+  done
+fi
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+state_file="$state_dir/desktop-mode"
+current_desktop_file="$state_dir/desktop-current"
+monitors_file="$state_dir/desktop-monitors"
+config_file="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/desktop-mode.conf"
+
+mkdir -p "$state_dir"
+
+left_monitor=""
+right_monitor=""
+monitor_count=0
+
+resolve_monitors() {
+  if [[ -r "$config_file" ]]; then
+    # shellcheck source=/dev/null
+    source "$config_file"
+  fi
+
+  left_monitor="${OMARCHY_DESKTOP_LEFT_MONITOR:-${left_monitor:-}}"
+  right_monitor="${OMARCHY_DESKTOP_RIGHT_MONITOR:-${right_monitor:-}}"
+
+  local mon_count=0
+  if [[ -z "$left_monitor" || -z "$right_monitor" ]]; then
+    local monitors_json
+    if monitors_json="$(hyprctl monitors -j 2>/dev/null)" && [[ -n "$monitors_json" ]]; then
+      mon_count="$(jq 'length' <<<"$monitors_json" 2>/dev/null || echo 0)"
+      if (( mon_count >= 2 )); then
+        read -r auto_left auto_right < <(
+          jq -r 'sort_by(.x) | [.[0].name, .[1].name] | @tsv' <<<"$monitors_json"
+        )
+      elif (( mon_count == 1 )); then
+        auto_left="$(jq -r '.[0].name' <<<"$monitors_json")"
+        auto_right="$auto_left"
+      else
+        auto_left=""
+        auto_right=""
+      fi
+      left_monitor="${left_monitor:-$auto_left}"
+      right_monitor="${right_monitor:-$auto_right}"
+    fi
+  fi
+
+  if [[ -n "$left_monitor" && -n "$right_monitor" ]]; then
+    if [[ "$left_monitor" == "$right_monitor" ]]; then
+      monitor_count=1
+    elif (( mon_count == 0 )); then
+      monitor_count=2
+    else
+      monitor_count="$mon_count"
+    fi
+    printf '{"left":"%s","right":"%s","count":%d}\n' \
+      "$left_monitor" "$right_monitor" "$monitor_count" > "$monitors_file" 2>/dev/null || true
+  else
+    # Default fallback to 2 if cannot detect
+    monitor_count=2
+  fi
+}
+
+resolve_monitors
+
+current_mode() {
+  local mode="mac"
+  if [[ -r "$state_file" ]]; then
+    read -r mode < "$state_file" || true
+  fi
+  case "$mode" in
+    omarchy|mac|windows) printf '%s\n' "$mode" ;;
+    *) printf 'mac\n' ;;
+  esac
+}
+
+notify_mode() {
+  local mode="$1"
+  local label detail
+  case "$mode" in
+    omarchy)
+      label="Omarchy Desktop mode"
+      detail="Both bars show 1–5; odd workspaces open left and even workspaces open right."
+      ;;
+    mac)
+      label="Mac Desktop mode"
+      detail="Number keys switch one monitor; odd workspaces on left, even on right."
+      ;;
+    windows)
+      label="Windows Desktop mode"
+      detail="Number keys switch both monitors as a pair."
+      ;;
+  esac
+  notify-send --app-name="Desktop Mode" --icon=video-display \
+    "$label" "$detail" >/dev/null 2>&1 || true
+}
+
+set_mode() {
+  local mode="$1"
+  case "$mode" in
+    omarchy|mac|windows) ;;
+    *)
+      printf 'Usage: %s {toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}\n' "${0##*/}" >&2
+      exit 2
+      ;;
+  esac
+  printf '%s\n' "$mode" > "$state_file"
+  if [[ "$mode" == "windows" ]]; then
+    local workspace desktop
+    workspace="$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // 1' 2>/dev/null || printf '1')"
+    [[ "$workspace" =~ ^[0-9]+$ ]] || workspace=1
+    desktop=$(((workspace + 1) / 2))
+    printf '%s\n' "$desktop" > "$current_desktop_file"
+  fi
+  notify_mode "$mode"
+}
+
+monitor_exists() {
+  [[ -n "$1" ]] || return 1
+  hyprctl monitors -j 2>/dev/null | jq -e --arg monitor "$1" \
+    'any(.[]; .name == $monitor)' >/dev/null 2>&1
+}
+
+focused_monitor() {
+  hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | .name' | head -n 1
+}
+
+normalize_number() {
+  local number="$1"
+  [[ "$number" == "0" ]] && number=10
+  [[ "$number" =~ ^([1-9]|10)$ ]] || return 1
+  printf '%s\n' "$number"
+}
+
+dispatch_focus_monitor() {
+  local monitor="$1"
+  local res
+  res="$(hyprctl dispatch "hl.dsp.focus({ monitor = \"$monitor\" })" 2>&1 || true)"
+  if [[ "$res" =~ ^error ]]; then
+    hyprctl dispatch focusmonitor "$monitor" >/dev/null 2>&1 || true
+  fi
+}
+
+dispatch_focus_workspace() {
+  local workspace="$1"
+  local res
+  res="$(hyprctl dispatch "hl.dsp.focus({ workspace = \"$workspace\" })" 2>&1 || true)"
+  if [[ "$res" =~ ^error ]]; then
+    hyprctl dispatch workspace "$workspace" >/dev/null 2>&1 || true
+  fi
+}
+
+dispatch_move_window() {
+  local workspace="$1" follow="$2"
+  local res
+  res="$(hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", follow = $follow })" 2>&1 || true)"
+  if [[ "$res" =~ ^error ]]; then
+    if [[ "$follow" == "true" ]]; then
+      hyprctl dispatch movetoworkspace "$workspace" >/dev/null 2>&1 || true
+    else
+      hyprctl dispatch movetoworkspacesilent "$workspace" >/dev/null 2>&1 || true
+    fi
+  fi
+}
+
+place_workspace() {
+  local workspace="$1" monitor="$2"
+  dispatch_focus_workspace "$workspace"
+  local res
+  res="$(hyprctl dispatch "hl.dsp.workspace.move({ monitor = \"$monitor\" })" 2>&1 || true)"
+  if [[ "$res" =~ ^error ]]; then
+    hyprctl dispatch moveworkspacetomonitor "$workspace" "$monitor" >/dev/null 2>&1 || true
+  fi
+}
+
+switch_mac() {
+  local workspace="$1"
+  if (( monitor_count == 1 )) || [[ "$left_monitor" == "$right_monitor" ]] || ! monitor_exists "$left_monitor" || ! monitor_exists "$right_monitor"; then
+    dispatch_focus_workspace "$workspace"
+    return
+  fi
+
+  local monitor="$right_monitor"
+  (( workspace % 2 == 1 )) && monitor="$left_monitor"
+
+  if monitor_exists "$monitor"; then
+    place_workspace "$workspace" "$monitor"
+  fi
+  dispatch_focus_workspace "$workspace"
+}
+
+switch_windows() {
+  local desktop="$1"
+  local left_workspace=$((desktop * 2 - 1))
+  local right_workspace=$((desktop * 2))
+  local original_monitor
+  original_monitor="$(focused_monitor)"
+  printf '%s\n' "$desktop" > "$current_desktop_file"
+
+  if (( monitor_count == 1 )) || [[ "$left_monitor" == "$right_monitor" ]] || ! monitor_exists "$left_monitor" || ! monitor_exists "$right_monitor"; then
+    dispatch_focus_workspace "$desktop"
+    return
+  fi
+
+  place_workspace "$left_workspace" "$left_monitor"
+  dispatch_focus_workspace "$left_workspace"
+  place_workspace "$right_workspace" "$right_monitor"
+  dispatch_focus_workspace "$right_workspace"
+
+  if [[ "$original_monitor" == "$left_monitor" || "$original_monitor" == "$right_monitor" ]]; then
+    dispatch_focus_monitor "$original_monitor"
+  fi
+}
+
+switch_desktop() {
+  local number
+  number="$(normalize_number "$1")" || exit 2
+  if [[ "$(current_mode)" == "windows" ]]; then
+    switch_windows "$number"
+  else
+    switch_mac "$number"
+  fi
+}
+
+move_window() {
+  local number silent="${2:-false}" mode monitor target
+  number="$(normalize_number "$1")" || exit 2
+  mode="$(current_mode)"
+
+  if (( monitor_count == 1 )) || [[ "$left_monitor" == "$right_monitor" ]] || ! monitor_exists "$left_monitor" || ! monitor_exists "$right_monitor"; then
+    dispatch_move_window "$number" false
+    if [[ "$silent" != "true" ]]; then
+      dispatch_focus_workspace "$number"
+    fi
+    return
+  fi
+
+  if [[ "$mode" == "windows" ]]; then
+    monitor="$(focused_monitor)"
+    if [[ "$monitor" == "$right_monitor" ]]; then
+      target=$((number * 2))
+    else
+      target=$((number * 2 - 1))
+    fi
+  else
+    target="$number"
+    monitor="$right_monitor"
+    (( target % 2 == 1 )) && monitor="$left_monitor"
+  fi
+
+  dispatch_move_window "$target" false
+
+  if [[ "$silent" != "true" ]]; then
+    if [[ "$mode" == "windows" ]]; then
+      switch_windows "$number"
+      dispatch_focus_monitor "$monitor"
+    else
+      dispatch_focus_monitor "$monitor"
+      dispatch_focus_workspace "$target"
+    fi
+  fi
+}
+
+command="${1:-status}"
+case "$command" in
+  toggle)
+    case "$(current_mode)" in
+      omarchy) set_mode mac ;;
+      mac) set_mode windows ;;
+      windows) set_mode omarchy ;;
+    esac
+    ;;
+  omarchy|mac|windows) set_mode "$command" ;;
+  status) current_mode ;;
+  indicator)
+    case "$(current_mode)" in
+      omarchy) printf 'O\n' ;;
+      mac) printf 'M\n' ;;
+      windows) printf 'W\n' ;;
+    esac
+    ;;
+  switch) switch_desktop "${2:-}" ;;
+  move) move_window "${2:-}" false ;;
+  move-silent) move_window "${2:-}" true ;;
+  monitors)
+    printf 'Left monitor:  %s\n' "$left_monitor"
+    printf 'Right monitor: %s\n' "$right_monitor"
+    printf 'Monitor count: %d\n' "$monitor_count"
+    ;;
+  -h|--help|help)
+    cat <<EOF
+Usage: ${0##*/} [command]
+
+Commands:
+  status          Print current mode (omarchy, mac, windows)
+  indicator       Print indicator character (O, M, W)
+  toggle          Cycle through desktop modes (omarchy -> mac -> windows)
+  omarchy         Switch to Omarchy mode
+  mac             Switch to Mac mode
+  windows         Switch to Windows mode
+  switch NUM      Switch to workspace / paired desktop NUM (1-10, 0=10)
+  move NUM        Move active window to desktop NUM and follow
+  move-silent NUM Move active window to desktop NUM without following
+  monitors        Print detected monitor assignments
+EOF
+    ;;
+  *)
+    printf 'Usage: %s {toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}\n' "${0##*/}" >&2
+    exit 2
+    ;;
+esac

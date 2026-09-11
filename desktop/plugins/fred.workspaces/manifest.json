@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "fred.workspaces",
+  "name": "Workspaces with Desktop Mode",
+  "version": "1.0.0",
+  "author": "Fred (@greenermoose)",
+  "description": "Workspace numbers with clickable Mac/Windows desktop-mode toggle and multi-monitor sync",
+  "repository": "https://github.com/greenermoose/omarchy-fred-workspaces",
+  "homepage": "https://github.com/greenermoose/omarchy-fred-workspaces",
+  "license": "GPL-3.0-or-later",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Workspaces.qml"
+  },
+  "barWidget": {
+    "displayName": "Workspaces with Desktop Mode",
+    "description": "Workspace numbers and desktop-mode toggle",
+    "category": "Compositor",
+    "defaultSection": "left",
+    "allowMultiple": false
+  }
+}
