@@ -82,10 +82,10 @@ omarchy-desktop-mode monitors          # Print detected left/right monitor names
 
 ## Configuration & Overrides
 
-If you wish to explicitly set monitor assignments instead of using automatic geometry detection, create `~/.config/omarchy/desktop-mode.conf`:
+If you wish to explicitly set monitor assignments instead of using automatic geometry detection, create `~/.config/omarchy/desktop-mode.conf` (parsed strictly as a data-only key=value format):
 
 ```bash
-# Explicit monitor names from `hyprctl monitors`
+# Explicit monitor names from `hyprctl monitors` (data-only values, no shell execution)
 OMARCHY_DESKTOP_LEFT_MONITOR="DP-2"
 OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 ```

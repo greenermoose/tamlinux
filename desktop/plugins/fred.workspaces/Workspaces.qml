@@ -15,9 +15,37 @@ BarWidget {
   property string rightMonitor: ""
   property int monitorCount: 2
 
-  readonly property string modePath: Quickshell.env("HOME") + "/.local/state/omarchy/desktop-mode"
-  readonly property string monitorsPath: Quickshell.env("HOME") + "/.local/state/omarchy/desktop-monitors"
-  readonly property string pluginScriptPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode"
+  readonly property string modePath: {
+    var stateHome = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
+    return stateHome + "/omarchy/desktop-mode"
+  }
+  readonly property string monitorsPath: {
+    var stateHome = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
+    return stateHome + "/omarchy/desktop-monitors"
+  }
+  readonly property string canonicalHelperPath: {
+    var resolved = String(Qt.resolvedUrl("omarchy-desktop-mode"))
+    if (resolved.indexOf("file://") === 0) {
+      return resolved.substring(7)
+    }
+    return Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode"
+  }
+  readonly property var processEnv: {
+    var env = {
+      "PATH": "/usr/bin:/bin",
+      "HOME": Quickshell.env("HOME") || "",
+      "LC_ALL": "C.UTF-8"
+    }
+    var xdgState = Quickshell.env("XDG_STATE_HOME")
+    if (xdgState) env["XDG_STATE_HOME"] = xdgState
+    var xdgConfig = Quickshell.env("XDG_CONFIG_HOME")
+    if (xdgConfig) env["XDG_CONFIG_HOME"] = xdgConfig
+    var xdgRuntime = Quickshell.env("XDG_RUNTIME_DIR")
+    if (xdgRuntime) env["XDG_RUNTIME_DIR"] = xdgRuntime
+    var sig = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")
+    if (sig) env["HYPRLAND_INSTANCE_SIGNATURE"] = sig
+    return env
+  }
 
   readonly property var barMonitor: root.QsWindow && root.QsWindow.window
     ? Hyprland.monitorFor(root.QsWindow.window.screen)
@@ -268,28 +296,84 @@ BarWidget {
     return 1
   }
 
-  function runDesktopCommand(args) {
-    if (!root.bar) return
-    root.bar.run("if command -v omarchy-desktop-mode >/dev/null 2>&1; then omarchy-desktop-mode " + args + "; elif [ -x '" + pluginScriptPath + "' ]; then '" + pluginScriptPath + "' " + args + "; fi")
+  property var pendingActions: []
+
+  Process {
+    id: actionProcess
+    clearEnvironment: true
+    environment: root.processEnv
+
+    stdout: StdioCollector {
+      waitForEnd: true
+      onDataChanged: {
+        if (text.length > 128) {
+          actionProcess.signal(9)
+          actionProcess.running = false
+        }
+      }
+    }
+
+    onStarted: actionWatchdog.restart()
+    onExited: function(exitCode, exitStatus) {
+      actionWatchdog.stop()
+      root.runNextAction()
+    }
+  }
+
+  Timer {
+    id: actionWatchdog
+    interval: 2500
+    repeat: false
+    onTriggered: {
+      if (actionProcess.running) {
+        actionProcess.signal(9)
+        actionProcess.running = false
+        root.runNextAction()
+      }
+    }
+  }
+
+  function runNextAction() {
+    if (pendingActions.length === 0) return
+    var nextCmd = pendingActions.shift()
+    actionProcess.command = nextCmd
+    actionProcess.running = true
+  }
+
+  function runDesktopCommand(argsList) {
+    var cmd = [root.canonicalHelperPath].concat(argsList)
+    if (actionProcess.running) {
+      if (pendingActions.length < 5) {
+        pendingActions.push(cmd)
+      }
+    } else {
+      actionProcess.command = cmd
+      actionProcess.running = true
+    }
   }
 
   function focusWorkspace(id) {
-    runDesktopCommand("switch " + id)
+    var num = parseInt(id, 10)
+    if (!isNaN(num) && num >= 1 && num <= 10) {
+      runDesktopCommand(["switch", String(num)])
+    }
   }
 
   function loadDesktopMode(raw) {
     var mode = String(raw || "").trim()
+    if (mode.length > 16) return
     root.desktopMode = mode === "omarchy" || mode === "windows" ? mode : "mac"
   }
 
   function loadMonitors(raw) {
-    if (!raw) return
+    if (!raw || raw.length > 512) return
     try {
       var data = JSON.parse(raw)
       if (data && typeof data === "object") {
-        if (data.left) root.leftMonitor = data.left
-        if (data.right) root.rightMonitor = data.right
-        if (typeof data.count === "number") root.monitorCount = data.count
+        var monRe = /^[A-Za-z0-9._-]{1,64}$/
+        if (typeof data.left === "string" && monRe.test(data.left)) root.leftMonitor = data.left
+        if (typeof data.right === "string" && monRe.test(data.right)) root.rightMonitor = data.right
+        if (typeof data.count === "number" && data.count >= 1 && data.count <= 16) root.monitorCount = data.count
       }
     } catch (e) {}
   }
@@ -333,16 +417,44 @@ BarWidget {
 
   Process {
     id: modeStatusProcess
-    command: ["sh", "-c", "if command -v omarchy-desktop-mode >/dev/null 2>&1; then exec omarchy-desktop-mode status; elif [ -x \"$HOME/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode\" ]; then exec \"$HOME/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode\" status; fi"]
+    command: [root.canonicalHelperPath, "status"]
+    clearEnvironment: true
+    environment: root.processEnv
+
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: root.loadDesktopMode(text)
+      onDataChanged: {
+        if (text.length > 64) {
+          modeStatusProcess.signal(9)
+          modeStatusProcess.running = false
+        }
+      }
+      onStreamFinished: {
+        if (text.length <= 64) {
+          root.loadDesktopMode(text)
+        }
+      }
+    }
+
+    onStarted: statusWatchdog.restart()
+    onExited: statusWatchdog.stop()
+  }
+
+  Timer {
+    id: statusWatchdog
+    interval: 2000
+    repeat: false
+    onTriggered: {
+      if (modeStatusProcess.running) {
+        modeStatusProcess.signal(9)
+        modeStatusProcess.running = false
+      }
     }
   }
 
   Timer {
     id: modeRefreshTimer
-    interval: 1000
+    interval: 30000
     running: true
     repeat: true
     triggeredOnStart: true
@@ -392,7 +504,7 @@ BarWidget {
       fixedHeight: root.barSize
       onPressed: function() {
         root.desktopMode = root.nextDesktopMode()
-        root.runDesktopCommand("toggle")
+        root.runDesktopCommand(["toggle"])
         modeRefreshTimer.restart()
       }
     }

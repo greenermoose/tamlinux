@@ -1,309 +1,478 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/python3 -I
+"""
+Multi-monitor workspace engine for Omarchy.
+Supports:
+  - Omarchy mode: standard 1-5 workspace presentation on all displays.
+  - Mac mode: per-monitor independent workspaces (odd on left, even on right).
+  - Windows mode: synchronized workspace pairs switched together across displays.
+"""
 
-# Multi-monitor workspace engine for Omarchy.
-# Supports:
-#   - Omarchy mode: standard 1-5 workspace presentation on all displays.
-#   - Mac mode: per-monitor independent workspaces (odd on left, even on right).
-#   - Windows mode: synchronized workspace pairs switched together across displays.
+import json
+import os
+import re
+import secrets
+import stat
+import subprocess
+import sys
 
-# Auto-detect Hyprland instance signature if not present in environment
-if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-  for sock in /run/user/"$(id -u)"/hypr/*/.socket.sock; do
-    if [[ -S "$sock" ]]; then
-      export HYPRLAND_INSTANCE_SIGNATURE="$(basename "$(dirname "$sock")")"
-      break
-    fi
-  done
-fi
+MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+CONFIG_LINE_RE = re.compile(
+    r"^(?:export\s+)?(OMARCHY_DESKTOP_LEFT_MONITOR|OMARCHY_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor)\s*=\s*(.*)$"
+)
+VALID_MODES = ("omarchy", "mac", "windows")
+ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors")
 
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
-state_file="$state_dir/desktop-mode"
-current_desktop_file="$state_dir/desktop-current"
-monitors_file="$state_dir/desktop-monitors"
-config_file="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/desktop-mode.conf"
 
-mkdir -p "$state_dir"
+def get_hyprland_signature() -> str:
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    if sig and MONITOR_RE.match(sig):
+        return sig
+    uid = os.getuid()
+    hypr_dir = f"/run/user/{uid}/hypr"
+    if os.path.isdir(hypr_dir):
+        try:
+            for entry in os.listdir(hypr_dir):
+                sock = os.path.join(hypr_dir, entry, ".socket.sock")
+                if os.path.exists(sock) and stat.S_ISSOCK(os.stat(sock).st_mode):
+                    return entry
+        except OSError:
+            pass
+    return ""
 
-left_monitor=""
-right_monitor=""
-monitor_count=0
 
-resolve_monitors() {
-  if [[ -r "$config_file" ]]; then
-    # shellcheck source=/dev/null
-    source "$config_file"
-  fi
+def get_state_dir_fd() -> int:
+    state_dir = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    target_dir = os.path.join(state_dir, "omarchy")
+    os.makedirs(target_dir, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(target_dir, 0o700)
+    except OSError:
+        pass
+    dir_fd = os.open(target_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    st = os.fstat(dir_fd)
+    if not stat.S_ISDIR(st.st_mode):
+        os.close(dir_fd)
+        raise RuntimeError("State path is not a directory")
+    if st.st_uid != os.getuid():
+        os.close(dir_fd)
+        raise RuntimeError("State directory owner mismatch")
+    if (st.st_mode & 0o077) != 0:
+        try:
+            os.fchmod(dir_fd, 0o700)
+        except OSError:
+            pass
+    return dir_fd
 
-  left_monitor="${OMARCHY_DESKTOP_LEFT_MONITOR:-${left_monitor:-}}"
-  right_monitor="${OMARCHY_DESKTOP_RIGHT_MONITOR:-${right_monitor:-}}"
 
-  local mon_count=0
-  if [[ -z "$left_monitor" || -z "$right_monitor" ]]; then
-    local monitors_json
-    if monitors_json="$(hyprctl monitors -j 2>/dev/null)" && [[ -n "$monitors_json" ]]; then
-      mon_count="$(jq 'length' <<<"$monitors_json" 2>/dev/null || echo 0)"
-      if (( mon_count >= 2 )); then
-        read -r auto_left auto_right < <(
-          jq -r 'sort_by(.x) | [.[0].name, .[1].name] | @tsv' <<<"$monitors_json"
+def atomic_write_state(filename: str, content: str) -> None:
+    if filename not in ALLOWED_STATE_FILES:
+        raise ValueError(f"Disallowed state filename: {filename}")
+    dir_fd = get_state_dir_fd()
+    temp_name = f".{filename}.tmp.{os.getpid()}.{secrets.token_hex(8)}"
+    temp_fd = -1
+    try:
+        temp_fd = os.open(
+            temp_name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=dir_fd,
         )
-      elif (( mon_count == 1 )); then
-        auto_left="$(jq -r '.[0].name' <<<"$monitors_json")"
-        auto_right="$auto_left"
-      else
-        auto_left=""
-        auto_right=""
-      fi
-      left_monitor="${left_monitor:-$auto_left}"
-      right_monitor="${right_monitor:-$auto_right}"
-    fi
-  fi
+        data = content.encode("utf-8")[:4096]
+        os.write(temp_fd, data)
+        os.fsync(temp_fd)
+        os.close(temp_fd)
+        temp_fd = -1
+        os.replace(temp_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+    except Exception:
+        if temp_fd >= 0:
+            try:
+                os.close(temp_fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(temp_name, dir_fd=dir_fd)
+        except OSError:
+            pass
+        raise
+    finally:
+        os.close(dir_fd)
 
-  if [[ -n "$left_monitor" && -n "$right_monitor" ]]; then
-    if [[ "$left_monitor" == "$right_monitor" ]]; then
-      monitor_count=1
-    elif (( mon_count == 0 )); then
-      monitor_count=2
-    else
-      monitor_count="$mon_count"
-    fi
-    printf '{"left":"%s","right":"%s","count":%d}\n' \
-      "$left_monitor" "$right_monitor" "$monitor_count" > "$monitors_file" 2>/dev/null || true
-  else
-    # Default fallback to 2 if cannot detect
-    monitor_count=2
-  fi
-}
 
-resolve_monitors
+def read_state_file(filename: str) -> str:
+    if filename not in ALLOWED_STATE_FILES:
+        return ""
+    dir_fd = -1
+    fd = -1
+    try:
+        dir_fd = get_state_dir_fd()
+        fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 4096:
+            return ""
+        data = os.read(fd, 4096).decode("utf-8", errors="replace").strip()
+        return data
+    except OSError:
+        return ""
+    finally:
+        if fd >= 0:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        if dir_fd >= 0:
+            try:
+                os.close(dir_fd)
+            except OSError:
+                pass
 
-current_mode() {
-  local mode="mac"
-  if [[ -r "$state_file" ]]; then
-    read -r mode < "$state_file" || true
-  fi
-  case "$mode" in
-    omarchy|mac|windows) printf '%s\n' "$mode" ;;
-    *) printf 'mac\n' ;;
-  esac
-}
 
-notify_mode() {
-  local mode="$1"
-  local label detail
-  case "$mode" in
-    omarchy)
-      label="Omarchy Desktop mode"
-      detail="Both bars show 1–5; odd workspaces open left and even workspaces open right."
-      ;;
-    mac)
-      label="Mac Desktop mode"
-      detail="Number keys switch one monitor; odd workspaces on left, even on right."
-      ;;
-    windows)
-      label="Windows Desktop mode"
-      detail="Number keys switch both monitors as a pair."
-      ;;
-  esac
-  notify-send --app-name="Desktop Mode" --icon=video-display \
-    "$label" "$detail" >/dev/null 2>&1 || true
-}
+def load_config_file() -> tuple[str, str]:
+    config_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    config_file = os.path.join(config_dir, "omarchy", "desktop-mode.conf")
+    fd = -1
+    left = ""
+    right = ""
+    try:
+        fd = os.open(config_file, os.O_RDONLY | os.O_NOFOLLOW)
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 16384:
+            return "", ""
+        content = os.read(fd, 16384).decode("utf-8", errors="replace")
+    except OSError:
+        return "", ""
+    finally:
+        if fd >= 0:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
 
-set_mode() {
-  local mode="$1"
-  case "$mode" in
-    omarchy|mac|windows) ;;
-    *)
-      printf 'Usage: %s {toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}\n' "${0##*/}" >&2
-      exit 2
-      ;;
-  esac
-  printf '%s\n' "$mode" > "$state_file"
-  if [[ "$mode" == "windows" ]]; then
-    local workspace desktop
-    workspace="$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // 1' 2>/dev/null || printf '1')"
-    [[ "$workspace" =~ ^[0-9]+$ ]] || workspace=1
-    desktop=$(((workspace + 1) / 2))
-    printf '%s\n' "$desktop" > "$current_desktop_file"
-  fi
-  notify_mode "$mode"
-}
+    lines = content.splitlines()
+    if len(lines) > 200:
+        lines = lines[:200]
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        m = CONFIG_LINE_RE.match(line)
+        if not m:
+            continue
+        key, val = m.group(1), m.group(2).strip()
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            val = val[1:-1].strip()
+        if not MONITOR_RE.match(val):
+            continue
+        if key in ("OMARCHY_DESKTOP_LEFT_MONITOR", "left_monitor"):
+            left = val
+        elif key in ("OMARCHY_DESKTOP_RIGHT_MONITOR", "right_monitor"):
+            right = val
+    return left, right
 
-monitor_exists() {
-  [[ -n "$1" ]] || return 1
-  hyprctl monitors -j 2>/dev/null | jq -e --arg monitor "$1" \
-    'any(.[]; .name == $monitor)' >/dev/null 2>&1
-}
 
-focused_monitor() {
-  hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | .name' | head -n 1
-}
+def run_hyprctl(cmd_args: list[str], timeout: float = 2.0) -> subprocess.CompletedProcess:
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HYPRLAND_INSTANCE_SIGNATURE": get_hyprland_signature(),
+    }
+    if "XDG_RUNTIME_DIR" in os.environ:
+        env["XDG_RUNTIME_DIR"] = os.environ["XDG_RUNTIME_DIR"]
+    return subprocess.run(
+        ["/usr/bin/hyprctl"] + cmd_args,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=timeout,
+    )
 
-normalize_number() {
-  local number="$1"
-  [[ "$number" == "0" ]] && number=10
-  [[ "$number" =~ ^([1-9]|10)$ ]] || return 1
-  printf '%s\n' "$number"
-}
 
-dispatch_focus_monitor() {
-  local monitor="$1"
-  local res
-  res="$(hyprctl dispatch "hl.dsp.focus({ monitor = \"$monitor\" })" 2>&1 || true)"
-  if [[ "$res" =~ ^error ]]; then
-    hyprctl dispatch focusmonitor "$monitor" >/dev/null 2>&1 || true
-  fi
-}
+def resolve_monitors() -> tuple[str, str, int]:
+    cfg_left, cfg_right = load_config_file()
 
-dispatch_focus_workspace() {
-  local workspace="$1"
-  local res
-  res="$(hyprctl dispatch "hl.dsp.focus({ workspace = \"$workspace\" })" 2>&1 || true)"
-  if [[ "$res" =~ ^error ]]; then
-    hyprctl dispatch workspace "$workspace" >/dev/null 2>&1 || true
-  fi
-}
+    env_left = os.environ.get("OMARCHY_DESKTOP_LEFT_MONITOR", "")
+    if env_left and MONITOR_RE.match(env_left):
+        left = env_left
+    else:
+        left = cfg_left
 
-dispatch_move_window() {
-  local workspace="$1" follow="$2"
-  local res
-  res="$(hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", follow = $follow })" 2>&1 || true)"
-  if [[ "$res" =~ ^error ]]; then
-    if [[ "$follow" == "true" ]]; then
-      hyprctl dispatch movetoworkspace "$workspace" >/dev/null 2>&1 || true
-    else
-      hyprctl dispatch movetoworkspacesilent "$workspace" >/dev/null 2>&1 || true
-    fi
-  fi
-}
+    env_right = os.environ.get("OMARCHY_DESKTOP_RIGHT_MONITOR", "")
+    if env_right and MONITOR_RE.match(env_right):
+        right = env_right
+    else:
+        right = cfg_right
 
-place_workspace() {
-  local workspace="$1" monitor="$2"
-  dispatch_focus_workspace "$workspace"
-  local res
-  res="$(hyprctl dispatch "hl.dsp.workspace.move({ monitor = \"$monitor\" })" 2>&1 || true)"
-  if [[ "$res" =~ ^error ]]; then
-    hyprctl dispatch moveworkspacetomonitor "$workspace" "$monitor" >/dev/null 2>&1 || true
-  fi
-}
+    mon_count = 0
+    if not left or not right:
+        try:
+            res = run_hyprctl(["monitors", "-j"])
+            if res.returncode == 0 and res.stdout:
+                monitors = json.loads(res.stdout)
+                valid_mons = [
+                    m for m in monitors
+                    if isinstance(m, dict) and "x" in m and MONITOR_RE.match(str(m.get("name", "")))
+                ]
+                valid_mons.sort(key=lambda m: m["x"])
+                mon_count = len(valid_mons)
+                if mon_count >= 2:
+                    auto_left = str(valid_mons[0]["name"])
+                    auto_right = str(valid_mons[1]["name"])
+                elif mon_count == 1:
+                    auto_left = str(valid_mons[0]["name"])
+                    auto_right = auto_left
+                else:
+                    auto_left = ""
+                    auto_right = ""
+                if not left:
+                    left = auto_left
+                if not right:
+                    right = auto_right
+        except Exception:
+            pass
 
-switch_mac() {
-  local workspace="$1"
-  if (( monitor_count == 1 )) || [[ "$left_monitor" == "$right_monitor" ]] || ! monitor_exists "$left_monitor" || ! monitor_exists "$right_monitor"; then
-    dispatch_focus_workspace "$workspace"
-    return
-  fi
+    if left and right:
+        if left == right:
+            count = 1
+        elif mon_count == 0:
+            count = 2
+        else:
+            count = mon_count
+        try:
+            atomic_write_state("desktop-monitors", json.dumps({"left": left, "right": right, "count": count}) + "\n")
+        except Exception:
+            pass
+        return left, right, count
+    return "", "", 2
 
-  local monitor="$right_monitor"
-  (( workspace % 2 == 1 )) && monitor="$left_monitor"
 
-  if monitor_exists "$monitor"; then
-    place_workspace "$workspace" "$monitor"
-  fi
-  dispatch_focus_workspace "$workspace"
-}
+def current_mode() -> str:
+    raw = read_state_file("desktop-mode")
+    if raw in VALID_MODES:
+        return raw
+    return "mac"
 
-switch_windows() {
-  local desktop="$1"
-  local left_workspace=$((desktop * 2 - 1))
-  local right_workspace=$((desktop * 2))
-  local original_monitor
-  original_monitor="$(focused_monitor)"
-  printf '%s\n' "$desktop" > "$current_desktop_file"
 
-  if (( monitor_count == 1 )) || [[ "$left_monitor" == "$right_monitor" ]] || ! monitor_exists "$left_monitor" || ! monitor_exists "$right_monitor"; then
-    dispatch_focus_workspace "$desktop"
-    return
-  fi
+def notify_mode(mode: str) -> None:
+    labels = {
+        "omarchy": ("Omarchy Desktop mode", "Both bars show 1–5; odd workspaces open left and even workspaces open right."),
+        "mac": ("Mac Desktop mode", "Number keys switch one monitor; odd workspaces on left, even on right."),
+        "windows": ("Windows Desktop mode", "Number keys switch both monitors as a pair."),
+    }
+    label, detail = labels.get(mode, ("", ""))
+    if not label:
+        return
+    try:
+        env = {
+            "PATH": "/usr/bin:/bin",
+            "HOME": os.environ.get("HOME", ""),
+        }
+        for k in ("DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"):
+            if k in os.environ:
+                env[k] = os.environ[k]
+        subprocess.run(
+            ["/usr/bin/notify-send", "--app-name=Desktop Mode", "--icon=video-display", label, detail],
+            capture_output=True,
+            env=env,
+            timeout=2.0,
+        )
+    except Exception:
+        pass
 
-  place_workspace "$left_workspace" "$left_monitor"
-  dispatch_focus_workspace "$left_workspace"
-  place_workspace "$right_workspace" "$right_monitor"
-  dispatch_focus_workspace "$right_workspace"
 
-  if [[ "$original_monitor" == "$left_monitor" || "$original_monitor" == "$right_monitor" ]]; then
-    dispatch_focus_monitor "$original_monitor"
-  fi
-}
+def set_mode(mode: str) -> None:
+    if mode not in VALID_MODES:
+        prog = os.path.basename(sys.argv[0])
+        sys.stderr.write(
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}}\n"
+        )
+        sys.exit(2)
+    atomic_write_state("desktop-mode", mode + "\n")
+    if mode == "windows":
+        workspace = 1
+        try:
+            res = run_hyprctl(["activeworkspace", "-j"])
+            if res.returncode == 0 and res.stdout:
+                data = json.loads(res.stdout)
+                ws = int(data.get("id", 1))
+                if ws > 0:
+                    workspace = ws
+        except Exception:
+            pass
+        desktop = (workspace + 1) // 2
+        atomic_write_state("desktop-current", str(desktop) + "\n")
+    notify_mode(mode)
 
-switch_desktop() {
-  local number
-  number="$(normalize_number "$1")" || exit 2
-  if [[ "$(current_mode)" == "windows" ]]; then
-    switch_windows "$number"
-  else
-    switch_mac "$number"
-  fi
-}
 
-move_window() {
-  local number silent="${2:-false}" mode monitor target
-  number="$(normalize_number "$1")" || exit 2
-  mode="$(current_mode)"
+def monitor_exists(name: str) -> bool:
+    if not name or not MONITOR_RE.match(name):
+        return False
+    try:
+        res = run_hyprctl(["monitors", "-j"])
+        if res.returncode == 0 and res.stdout:
+            monitors = json.loads(res.stdout)
+            return any(m.get("name") == name for m in monitors if isinstance(m, dict))
+    except Exception:
+        pass
+    return False
 
-  if (( monitor_count == 1 )) || [[ "$left_monitor" == "$right_monitor" ]] || ! monitor_exists "$left_monitor" || ! monitor_exists "$right_monitor"; then
-    dispatch_move_window "$number" false
-    if [[ "$silent" != "true" ]]; then
-      dispatch_focus_workspace "$number"
-    fi
-    return
-  fi
 
-  if [[ "$mode" == "windows" ]]; then
-    monitor="$(focused_monitor)"
-    if [[ "$monitor" == "$right_monitor" ]]; then
-      target=$((number * 2))
-    else
-      target=$((number * 2 - 1))
-    fi
-  else
-    target="$number"
-    monitor="$right_monitor"
-    (( target % 2 == 1 )) && monitor="$left_monitor"
-  fi
+def focused_monitor() -> str:
+    try:
+        res = run_hyprctl(["monitors", "-j"])
+        if res.returncode == 0 and res.stdout:
+            monitors = json.loads(res.stdout)
+            for m in monitors:
+                if isinstance(m, dict) and m.get("focused"):
+                    name = str(m.get("name", ""))
+                    if MONITOR_RE.match(name):
+                        return name
+    except Exception:
+        pass
+    return ""
 
-  dispatch_move_window "$target" false
 
-  if [[ "$silent" != "true" ]]; then
-    if [[ "$mode" == "windows" ]]; then
-      switch_windows "$number"
-      dispatch_focus_monitor "$monitor"
-    else
-      dispatch_focus_monitor "$monitor"
-      dispatch_focus_workspace "$target"
-    fi
-  fi
-}
+def normalize_number(raw: str) -> int:
+    try:
+        num = int(raw)
+    except (ValueError, TypeError):
+        sys.exit(2)
+    if num == 0:
+        num = 10
+    if 1 <= num <= 10:
+        return num
+    sys.exit(2)
 
-command="${1:-status}"
-case "$command" in
-  toggle)
-    case "$(current_mode)" in
-      omarchy) set_mode mac ;;
-      mac) set_mode windows ;;
-      windows) set_mode omarchy ;;
-    esac
-    ;;
-  omarchy|mac|windows) set_mode "$command" ;;
-  status) current_mode ;;
-  indicator)
-    case "$(current_mode)" in
-      omarchy) printf 'O\n' ;;
-      mac) printf 'M\n' ;;
-      windows) printf 'W\n' ;;
-    esac
-    ;;
-  switch) switch_desktop "${2:-}" ;;
-  move) move_window "${2:-}" false ;;
-  move-silent) move_window "${2:-}" true ;;
-  monitors)
-    printf 'Left monitor:  %s\n' "$left_monitor"
-    printf 'Right monitor: %s\n' "$right_monitor"
-    printf 'Monitor count: %d\n' "$monitor_count"
-    ;;
-  -h|--help|help)
-    cat <<EOF
-Usage: ${0##*/} [command]
+
+def dispatch_focus_monitor(monitor: str) -> None:
+    if not MONITOR_RE.match(monitor):
+        return
+    res = run_hyprctl(["dispatch", f'hl.dsp.focus({{ monitor = "{monitor}" }})'])
+    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
+        run_hyprctl(["dispatch", "focusmonitor", monitor])
+
+
+def dispatch_focus_workspace(workspace: int) -> None:
+    res = run_hyprctl(["dispatch", f'hl.dsp.focus({{ workspace = "{workspace}" }})'])
+    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
+        run_hyprctl(["dispatch", "workspace", str(workspace)])
+
+
+def dispatch_move_window(workspace: int, follow: bool) -> None:
+    follow_str = "true" if follow else "false"
+    res = run_hyprctl(["dispatch", f'hl.dsp.window.move({{ workspace = "{workspace}", follow = {follow_str} }})'])
+    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
+        subcmd = "movetoworkspace" if follow else "movetoworkspacesilent"
+        run_hyprctl(["dispatch", subcmd, str(workspace)])
+
+
+def place_workspace(workspace: int, monitor: str) -> None:
+    if not MONITOR_RE.match(monitor):
+        return
+    dispatch_focus_workspace(workspace)
+    res = run_hyprctl(["dispatch", f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})'])
+    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
+        run_hyprctl(["dispatch", "moveworkspacetomonitor", str(workspace), monitor])
+
+
+def switch_mac(workspace: int, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
+    if monitor_count == 1 or left_monitor == right_monitor or not monitor_exists(left_monitor) or not monitor_exists(right_monitor):
+        dispatch_focus_workspace(workspace)
+        return
+
+    monitor = left_monitor if (workspace % 2 == 1) else right_monitor
+    if monitor_exists(monitor):
+        place_workspace(workspace, monitor)
+    dispatch_focus_workspace(workspace)
+
+
+def switch_windows(desktop: int, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
+    left_workspace = desktop * 2 - 1
+    right_workspace = desktop * 2
+    original_monitor = focused_monitor()
+    atomic_write_state("desktop-current", str(desktop) + "\n")
+
+    if monitor_count == 1 or left_monitor == right_monitor or not monitor_exists(left_monitor) or not monitor_exists(right_monitor):
+        dispatch_focus_workspace(desktop)
+        return
+
+    place_workspace(left_workspace, left_monitor)
+    dispatch_focus_workspace(left_workspace)
+    place_workspace(right_workspace, right_monitor)
+    dispatch_focus_workspace(right_workspace)
+
+    if original_monitor in (left_monitor, right_monitor):
+        dispatch_focus_monitor(original_monitor)
+
+
+def switch_desktop(num_str: str, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
+    number = normalize_number(num_str)
+    if current_mode() == "windows":
+        switch_windows(number, left_monitor, right_monitor, monitor_count)
+    else:
+        switch_mac(number, left_monitor, right_monitor, monitor_count)
+
+
+def move_window(num_str: str, silent: bool, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
+    number = normalize_number(num_str)
+    mode = current_mode()
+
+    if monitor_count == 1 or left_monitor == right_monitor or not monitor_exists(left_monitor) or not monitor_exists(right_monitor):
+        dispatch_move_window(number, False)
+        if not silent:
+            dispatch_focus_workspace(number)
+        return
+
+    if mode == "windows":
+        monitor = focused_monitor()
+        target = (number * 2) if (monitor == right_monitor) else (number * 2 - 1)
+    else:
+        target = number
+        monitor = left_monitor if (target % 2 == 1) else right_monitor
+
+    dispatch_move_window(target, False)
+
+    if not silent:
+        if mode == "windows":
+            switch_windows(number, left_monitor, right_monitor, monitor_count)
+            dispatch_focus_monitor(monitor)
+        else:
+            dispatch_focus_monitor(monitor)
+            dispatch_focus_workspace(target)
+
+
+def main() -> None:
+    left_monitor, right_monitor, monitor_count = resolve_monitors()
+
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+
+    if cmd == "toggle":
+        curr = current_mode()
+        next_mode = "mac" if curr == "omarchy" else ("windows" if curr == "mac" else "omarchy")
+        set_mode(next_mode)
+    elif cmd in ("omarchy", "mac", "windows"):
+        set_mode(cmd)
+    elif cmd == "status":
+        sys.stdout.write(current_mode() + "\n")
+    elif cmd == "indicator":
+        ind = {"omarchy": "O", "mac": "M", "windows": "W"}.get(current_mode(), "M")
+        sys.stdout.write(ind + "\n")
+    elif cmd == "switch":
+        if len(sys.argv) < 3:
+            sys.exit(2)
+        switch_desktop(sys.argv[2], left_monitor, right_monitor, monitor_count)
+    elif cmd == "move":
+        if len(sys.argv) < 3:
+            sys.exit(2)
+        move_window(sys.argv[2], False, left_monitor, right_monitor, monitor_count)
+    elif cmd == "move-silent":
+        if len(sys.argv) < 3:
+            sys.exit(2)
+        move_window(sys.argv[2], True, left_monitor, right_monitor, monitor_count)
+    elif cmd == "monitors":
+        sys.stdout.write(f"Left monitor:  {left_monitor}\n")
+        sys.stdout.write(f"Right monitor: {right_monitor}\n")
+        sys.stdout.write(f"Monitor count: {monitor_count}\n")
+    elif cmd in ("-h", "--help", "help"):
+        prog = os.path.basename(sys.argv[0])
+        sys.stdout.write(f"""Usage: {prog} [command]
 
 Commands:
   status          Print current mode (omarchy, mac, windows)
@@ -316,10 +485,14 @@ Commands:
   move NUM        Move active window to desktop NUM and follow
   move-silent NUM Move active window to desktop NUM without following
   monitors        Print detected monitor assignments
-EOF
-    ;;
-  *)
-    printf 'Usage: %s {toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}\n' "${0##*/}" >&2
-    exit 2
-    ;;
-esac
+""")
+    else:
+        prog = os.path.basename(sys.argv[0])
+        sys.stderr.write(
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}}\n"
+        )
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
