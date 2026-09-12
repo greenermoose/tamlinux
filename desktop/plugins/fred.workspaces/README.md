@@ -1,6 +1,6 @@
 # Workspaces with Desktop Mode (`fred.workspaces`)
 
-An Omarchy shell bar widget and workspace switcher supporting synchronized dual-monitor desktop pairs, per-monitor independent switching, rich window tooltips, and automatic display geometry detection.
+Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, supporting synchronized dual-monitor desktop pairs, per-monitor independent switching, rich window tooltips, and automatic display geometry detection.
 
 ![Workspaces with Desktop Mode](assets/screenshot.png)
 
