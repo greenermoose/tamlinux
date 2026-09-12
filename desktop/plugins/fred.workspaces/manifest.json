@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.workspaces",
   "name": "Workspaces with Desktop Mode",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Fred (@greenermoose)",
   "description": "Workspace numbers with clickable Mac/Windows desktop-mode toggle and multi-monitor sync",
   "repository": "https://github.com/greenermoose/omarchy-fred-workspaces",
