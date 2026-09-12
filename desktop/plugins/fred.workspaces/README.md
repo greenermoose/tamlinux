@@ -8,7 +8,7 @@ Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, s
 
 ## Overview
 
-`fred.workspaces` replaces the standard workspace bar widget in Omarchy with a desktop mode switcher tailored for multi-monitor and single-monitor workflows:
+`fred.workspaces` replaces the stock `omarchy.workspaces` bar widget in-place using Omarchy's `clonedFrom` routing, adding a desktop mode switcher tailored for multi-monitor and single-monitor workflows:
 
 | Mode | Indicator | Description |
 | :--- | :---: | :--- |
@@ -33,8 +33,10 @@ Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, s
 Install directly with Omarchy's plugin manager:
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-workspaces.git --enable
+omarchy plugin add https://github.com/greenermoose/omarchy-fred-workspaces.git --enable --yes
 ```
+
+Because this plugin declares `clonedFrom: "omarchy.workspaces"`, enabling it replaces the stock Omarchy workspace widget in-place in your bar layout.
 
 ---
 
@@ -91,9 +93,9 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 ---
 
 ## Uninstallation
-
-To remove the plugin:
-
+ 
+To remove the plugin and automatically restore the stock Omarchy workspace widget:
+ 
 ```bash
 omarchy plugin remove fred.workspaces
 ```
