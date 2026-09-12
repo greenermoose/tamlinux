@@ -100,6 +100,10 @@ To remove the plugin and automatically restore the stock Omarchy workspace widge
 omarchy plugin remove fred.workspaces
 ```
 
+## Acknowledgments
+
+Developed with the assistance of [Antigravity](https://antigravity.google) (Google DeepMind), which contributed to the multi-monitor geometry detection, Mac/Windows desktop switching modes, and plugin architecture.
+
 ---
 
 ## License
