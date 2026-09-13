@@ -26,7 +26,7 @@ BarWidget {
   readonly property string canonicalHelperPath: {
     var resolved = String(Qt.resolvedUrl("omarchy-desktop-mode"))
     if (resolved.indexOf("file://") === 0) {
-      return resolved.substring(7)
+      return decodeURIComponent(resolved.substring(7))
     }
     return Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode"
   }
@@ -304,7 +304,7 @@ BarWidget {
     environment: root.processEnv
 
     stdout: StdioCollector {
-      waitForEnd: true
+      waitForEnd: false
       onDataChanged: {
         if (text.length > 128) {
           actionProcess.signal(9)
@@ -322,13 +322,12 @@ BarWidget {
 
   Timer {
     id: actionWatchdog
-    interval: 2500
+    interval: 5000
     repeat: false
     onTriggered: {
       if (actionProcess.running) {
         actionProcess.signal(9)
         actionProcess.running = false
-        root.runNextAction()
       }
     }
   }
@@ -422,7 +421,7 @@ BarWidget {
     environment: root.processEnv
 
     stdout: StdioCollector {
-      waitForEnd: true
+      waitForEnd: false
       onDataChanged: {
         if (text.length > 64) {
           modeStatusProcess.signal(9)

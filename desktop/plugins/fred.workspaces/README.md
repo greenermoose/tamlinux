@@ -28,6 +28,13 @@ Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, s
 
 ---
 
+## Requirements
+
+- Omarchy Linux (or Arch Linux with Hyprland and Quickshell)
+- Python 3 (`python3`, standard library only — executed with `python3 -I` isolated mode)
+
+---
+
 ## Installation
 
 Install directly with Omarchy's plugin manager:
@@ -82,13 +89,19 @@ omarchy-desktop-mode monitors          # Print detected left/right monitor names
 
 ## Configuration & Overrides
 
-If you wish to explicitly set monitor assignments instead of using automatic geometry detection, create `~/.config/omarchy/desktop-mode.conf` (parsed strictly as a data-only key=value format):
+If you wish to explicitly set monitor assignments instead of using automatic geometry detection, create `~/.config/omarchy/desktop-mode.conf`:
 
 ```bash
-# Explicit monitor names from `hyprctl monitors` (data-only values, no shell execution)
+# Explicit monitor names from `hyprctl monitors`
 OMARCHY_DESKTOP_LEFT_MONITOR="DP-2"
 OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 ```
+
+> **Security & Format Notes**:
+> - Parsed strictly as a **data-only** configuration file without shell execution (`source` is not used).
+> - Values may optionally be enclosed in single or double quotes.
+> - Monitor names must be alphanumeric identifiers matching `^[A-Za-z0-9._-]{1,64}$`.
+> - Inline comments after values (e.g. `KEY=VAL # comment`) are rejected to avoid parsing ambiguities.
 
 ---
 

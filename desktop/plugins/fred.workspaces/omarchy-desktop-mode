@@ -44,10 +44,6 @@ def get_state_dir_fd() -> int:
     state_dir = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
     target_dir = os.path.join(state_dir, "omarchy")
     os.makedirs(target_dir, mode=0o700, exist_ok=True)
-    try:
-        os.chmod(target_dir, 0o700)
-    except OSError:
-        pass
     dir_fd = os.open(target_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     st = os.fstat(dir_fd)
     if not stat.S_ISDIR(st.st_mode):
@@ -236,7 +232,10 @@ def resolve_monitors() -> tuple[str, str, int]:
         else:
             count = mon_count
         try:
-            atomic_write_state("desktop-monitors", json.dumps({"left": left, "right": right, "count": count}) + "\n")
+            payload = json.dumps({"left": left, "right": right, "count": count}) + "\n"
+            existing = read_state_file("desktop-monitors")
+            if existing != payload:
+                atomic_write_state("desktop-monitors", payload)
         except Exception:
             pass
         return left, right, count
@@ -495,4 +494,8 @@ Commands:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (RuntimeError, OSError) as err:
+        sys.stderr.write(f"omarchy-desktop-mode: {err}\n")
+        sys.exit(1)
