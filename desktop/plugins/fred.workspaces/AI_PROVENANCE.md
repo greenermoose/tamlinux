@@ -26,5 +26,6 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **In-Place Replacement** | `v1.1.0` | Claude & Antigravity | Stamped `omarchy.clonedFrom: "omarchy.workspaces"` to preserve relative layout anchors (`findRelativeBarLocation`) and enable clean in-place replacement. |
 | **Security Hardening** | `v1.2.0` | Antigravity (Gemini) | Sanitized process execution, eliminated arbitrary code execution in configuration parsing, and implemented atomic JSON state writes. |
 | **Marketplace Verification** | `v1.2.1` | Antigravity (Gemini) | Successfully verified and listed on the official [Omarchy Plugin Marketplace](https://github.com/omacom/omarchy-plugin-marketplace) with an automated security baseline rating of **Passed**. |
+| **Dynamic Monitor Sets** | `v1.3.0` | Codex CLI `0.154.0` (`gpt-5.6-sol`) | Replaced hard-coded monitor pairs with runtime-sized all-monitor Windows sets; added complete-set bar state, verified batch dispatch, and 1/2/3/4-monitor tests. |
 
-Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).
