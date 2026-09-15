@@ -4,7 +4,7 @@ Multi-monitor workspace engine for Omarchy.
 Supports:
   - Omarchy mode: standard 1-5 workspace presentation on all displays.
   - Mac mode: per-monitor independent workspaces (odd on left, even on right).
-  - Windows mode: synchronized workspace pairs switched together across displays.
+  - Windows mode: synchronized workspace sets spanning every active display.
 """
 
 import json
@@ -21,6 +21,9 @@ CONFIG_LINE_RE = re.compile(
 )
 VALID_MODES = ("omarchy", "mac", "windows")
 ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors")
+MAX_MONITORS = 16
+MAX_MONITOR_RECORDS = 64
+MAX_HYPRCTL_OUTPUT = 262144
 
 
 def get_hyprland_signature() -> str:
@@ -181,7 +184,64 @@ def run_hyprctl(cmd_args: list[str], timeout: float = 2.0) -> subprocess.Complet
     )
 
 
-def resolve_monitors() -> tuple[str, str, int]:
+def ordered_monitors(data: object) -> list[str]:
+    """Return active, non-mirrored monitor names in deterministic desk order."""
+    if not isinstance(data, list):
+        return []
+
+    valid: list[tuple[float, float, str]] = []
+    seen: set[str] = set()
+    for monitor in data[:MAX_MONITOR_RECORDS]:
+        if not isinstance(monitor, dict) or monitor.get("disabled") is True:
+            continue
+        mirror_of = monitor.get("mirrorOf")
+        if mirror_of not in (None, "", "none"):
+            continue
+        name = str(monitor.get("name", ""))
+        x = monitor.get("x")
+        y = monitor.get("y", 0)
+        if not MONITOR_RE.fullmatch(name):
+            continue
+        if name in seen:
+            continue
+        if not isinstance(x, (int, float)) or isinstance(x, bool):
+            continue
+        if not isinstance(y, (int, float)) or isinstance(y, bool):
+            continue
+        seen.add(name)
+        valid.append((float(x), float(y), name))
+
+    valid.sort(key=lambda item: (item[0], item[1], item[2]))
+    return [item[2] for item in valid[:MAX_MONITORS]]
+
+
+def workspace_for_monitor(desktop: int, monitor_index: int, set_size: int) -> int:
+    if desktop < 1 or monitor_index < 0 or set_size < 1 or monitor_index >= set_size:
+        raise ValueError("Invalid desktop monitor-set coordinates")
+    return (desktop - 1) * set_size + monitor_index + 1
+
+
+def workspace_ids(desktop: int, set_size: int) -> list[int]:
+    return [workspace_for_monitor(desktop, index, set_size) for index in range(set_size)]
+
+
+def desktop_for_workspace(workspace: int, set_size: int) -> int:
+    if workspace < 1 or set_size < 1:
+        raise ValueError("Workspace and set size must be positive")
+    return ((workspace - 1) // set_size) + 1
+
+
+def discover_monitors() -> list[str]:
+    try:
+        res = run_hyprctl(["monitors", "-j"])
+        if res.returncode != 0 or not res.stdout or len(res.stdout) > MAX_HYPRCTL_OUTPUT:
+            return []
+        return ordered_monitors(json.loads(res.stdout))
+    except (json.JSONDecodeError, OSError, subprocess.SubprocessError, ValueError):
+        return []
+
+
+def resolve_monitors() -> tuple[list[str], str, str]:
     cfg_left, cfg_right = load_config_file()
 
     env_left = os.environ.get("OMARCHY_DESKTOP_LEFT_MONITOR", "")
@@ -196,50 +256,32 @@ def resolve_monitors() -> tuple[str, str, int]:
     else:
         right = cfg_right
 
-    mon_count = 0
-    if not left or not right:
+    monitors = discover_monitors()
+    if monitors:
+        if left not in monitors:
+            left = monitors[0]
+        if right not in monitors:
+            right = monitors[-1]
         try:
-            res = run_hyprctl(["monitors", "-j"])
-            if res.returncode == 0 and res.stdout:
-                monitors = json.loads(res.stdout)
-                valid_mons = [
-                    m for m in monitors
-                    if isinstance(m, dict) and "x" in m and MONITOR_RE.match(str(m.get("name", "")))
-                ]
-                valid_mons.sort(key=lambda m: m["x"])
-                mon_count = len(valid_mons)
-                if mon_count >= 2:
-                    auto_left = str(valid_mons[0]["name"])
-                    auto_right = str(valid_mons[1]["name"])
-                elif mon_count == 1:
-                    auto_left = str(valid_mons[0]["name"])
-                    auto_right = auto_left
-                else:
-                    auto_left = ""
-                    auto_right = ""
-                if not left:
-                    left = auto_left
-                if not right:
-                    right = auto_right
-        except Exception:
-            pass
-
-    if left and right:
-        if left == right:
-            count = 1
-        elif mon_count == 0:
-            count = 2
-        else:
-            count = mon_count
-        try:
-            payload = json.dumps({"left": left, "right": right, "count": count}) + "\n"
+            payload = json.dumps(
+                {
+                    "version": 2,
+                    "monitors": monitors,
+                    "left": left,
+                    "right": right,
+                    "count": len(monitors),
+                },
+                separators=(",", ":"),
+            ) + "\n"
             existing = read_state_file("desktop-monitors")
-            if existing != payload:
+            if existing != payload.strip():
                 atomic_write_state("desktop-monitors", payload)
         except Exception:
             pass
-        return left, right, count
-    return "", "", 2
+        return monitors, left, right
+
+    # A failed live query must not dispatch a stale multi-monitor layout.
+    return [], "", ""
 
 
 def current_mode() -> str:
@@ -249,11 +291,14 @@ def current_mode() -> str:
     return "mac"
 
 
-def notify_mode(mode: str) -> None:
+def notify_mode(mode: str, monitor_count: int) -> None:
     labels = {
         "omarchy": ("Omarchy Desktop mode", "Both bars show 1–5; odd workspaces open left and even workspaces open right."),
         "mac": ("Mac Desktop mode", "Number keys switch one monitor; odd workspaces on left, even on right."),
-        "windows": ("Windows Desktop mode", "Number keys switch both monitors as a pair."),
+        "windows": (
+            "Windows Desktop mode",
+            f"Number keys switch all {max(1, monitor_count)} active monitor(s) as one set.",
+        ),
     }
     label, detail = labels.get(mode, ("", ""))
     if not label:
@@ -276,7 +321,7 @@ def notify_mode(mode: str) -> None:
         pass
 
 
-def set_mode(mode: str) -> None:
+def set_mode(mode: str, monitors: list[str]) -> None:
     if mode not in VALID_MODES:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
@@ -295,37 +340,39 @@ def set_mode(mode: str) -> None:
                     workspace = ws
         except Exception:
             pass
-        desktop = (workspace + 1) // 2
+        desktop = desktop_for_workspace(workspace, max(1, len(monitors)))
         atomic_write_state("desktop-current", str(desktop) + "\n")
-    notify_mode(mode)
+    notify_mode(mode, len(monitors))
 
 
-def monitor_exists(name: str) -> bool:
-    if not name or not MONITOR_RE.match(name):
-        return False
+def monitor_snapshot() -> tuple[dict[str, int], str]:
+    active: dict[str, int] = {}
+    focused = ""
     try:
         res = run_hyprctl(["monitors", "-j"])
-        if res.returncode == 0 and res.stdout:
+        if res.returncode == 0 and res.stdout and len(res.stdout) <= MAX_HYPRCTL_OUTPUT:
             monitors = json.loads(res.stdout)
-            return any(m.get("name") == name for m in monitors if isinstance(m, dict))
+            if not isinstance(monitors, list):
+                return {}, ""
+            for m in monitors[:MAX_MONITOR_RECORDS]:
+                if not isinstance(m, dict):
+                    continue
+                name = str(m.get("name", ""))
+                workspace = m.get("activeWorkspace")
+                if not MONITOR_RE.fullmatch(name) or not isinstance(workspace, dict):
+                    continue
+                workspace_id = workspace.get("id")
+                if isinstance(workspace_id, int) and workspace_id > 0:
+                    active[name] = workspace_id
+                if m.get("focused"):
+                    focused = name
     except Exception:
         pass
-    return False
+    return active, focused
 
 
 def focused_monitor() -> str:
-    try:
-        res = run_hyprctl(["monitors", "-j"])
-        if res.returncode == 0 and res.stdout:
-            monitors = json.loads(res.stdout)
-            for m in monitors:
-                if isinstance(m, dict) and m.get("focused"):
-                    name = str(m.get("name", ""))
-                    if MONITOR_RE.match(name):
-                        return name
-    except Exception:
-        pass
-    return ""
+    return monitor_snapshot()[1]
 
 
 def normalize_number(raw: str) -> int:
@@ -340,114 +387,158 @@ def normalize_number(raw: str) -> int:
     sys.exit(2)
 
 
-def dispatch_focus_monitor(monitor: str) -> None:
-    if not MONITOR_RE.match(monitor):
-        return
+def dispatch_ok(result: subprocess.CompletedProcess) -> bool:
+    output = (result.stdout or "") + "\n" + (result.stderr or "")
+    return result.returncode == 0 and "error" not in output.lower()
+
+
+def dispatch_batch(expressions: list[str]) -> bool:
+    if not expressions:
+        return True
+    command = "; ".join("dispatch " + expression for expression in expressions)
+    return dispatch_ok(run_hyprctl(["--batch", command], timeout=5.0))
+
+
+def dispatch_focus_monitor(monitor: str) -> bool:
+    if not MONITOR_RE.fullmatch(monitor):
+        return False
     res = run_hyprctl(["dispatch", f'hl.dsp.focus({{ monitor = "{monitor}" }})'])
-    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
-        run_hyprctl(["dispatch", "focusmonitor", monitor])
+    if dispatch_ok(res):
+        return True
+    return dispatch_ok(run_hyprctl(["dispatch", "focusmonitor", monitor]))
 
 
-def dispatch_focus_workspace(workspace: int) -> None:
+def dispatch_focus_workspace(workspace: int) -> bool:
     res = run_hyprctl(["dispatch", f'hl.dsp.focus({{ workspace = "{workspace}" }})'])
-    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
-        run_hyprctl(["dispatch", "workspace", str(workspace)])
+    if dispatch_ok(res):
+        return True
+    return dispatch_ok(run_hyprctl(["dispatch", "workspace", str(workspace)]))
 
 
-def dispatch_move_window(workspace: int, follow: bool) -> None:
+def dispatch_move_window(workspace: int, follow: bool) -> bool:
     follow_str = "true" if follow else "false"
     res = run_hyprctl(["dispatch", f'hl.dsp.window.move({{ workspace = "{workspace}", follow = {follow_str} }})'])
-    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
-        subcmd = "movetoworkspace" if follow else "movetoworkspacesilent"
-        run_hyprctl(["dispatch", subcmd, str(workspace)])
+    if dispatch_ok(res):
+        return True
+    subcmd = "movetoworkspace" if follow else "movetoworkspacesilent"
+    return dispatch_ok(run_hyprctl(["dispatch", subcmd, str(workspace)]))
 
 
-def place_workspace(workspace: int, monitor: str) -> None:
-    if not MONITOR_RE.match(monitor):
-        return
-    dispatch_focus_workspace(workspace)
+def place_workspace(workspace: int, monitor: str) -> bool:
+    if not MONITOR_RE.fullmatch(monitor) or not dispatch_focus_workspace(workspace):
+        return False
     res = run_hyprctl(["dispatch", f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})'])
-    if res.returncode != 0 or "error" in res.stdout or "error" in res.stderr:
-        run_hyprctl(["dispatch", "moveworkspacetomonitor", str(workspace), monitor])
+    moved = dispatch_ok(res)
+    if not moved:
+        moved = dispatch_ok(run_hyprctl(["dispatch", "moveworkspacetomonitor", str(workspace), monitor]))
+    return moved
 
 
-def switch_mac(workspace: int, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
-    if monitor_count == 1 or left_monitor == right_monitor or not monitor_exists(left_monitor) or not monitor_exists(right_monitor):
-        dispatch_focus_workspace(workspace)
-        return
+def switch_mac(workspace: int, monitors: list[str], left_monitor: str, right_monitor: str) -> bool:
+    if len(monitors) <= 1 or left_monitor == right_monitor:
+        return dispatch_focus_workspace(workspace)
 
     monitor = left_monitor if (workspace % 2 == 1) else right_monitor
-    if monitor_exists(monitor):
-        place_workspace(workspace, monitor)
-    dispatch_focus_workspace(workspace)
+    if monitor not in monitors:
+        return dispatch_focus_workspace(workspace)
+    return place_workspace(workspace, monitor) and dispatch_focus_workspace(workspace)
 
 
-def switch_windows(desktop: int, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
-    left_workspace = desktop * 2 - 1
-    right_workspace = desktop * 2
+def switch_windows(desktop: int, monitors: list[str]) -> bool:
     original_monitor = focused_monitor()
-    atomic_write_state("desktop-current", str(desktop) + "\n")
+    if not monitors:
+        switched = dispatch_focus_workspace(desktop)
+    else:
+        assignments = list(zip(monitors, workspace_ids(desktop, len(monitors))))
+        expressions: list[str] = []
+        for monitor, workspace in assignments:
+            expressions.extend(
+                [
+                    f'hl.dsp.focus({{ workspace = "{workspace}" }})',
+                    f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})',
+                ]
+            )
+        for monitor, workspace in assignments:
+            expressions.extend(
+                [
+                    f'hl.dsp.focus({{ monitor = "{monitor}" }})',
+                    f'hl.dsp.focus({{ workspace = "{workspace}" }})',
+                ]
+            )
+        if original_monitor in monitors:
+            expressions.append(f'hl.dsp.focus({{ monitor = "{original_monitor}" }})')
 
-    if monitor_count == 1 or left_monitor == right_monitor or not monitor_exists(left_monitor) or not monitor_exists(right_monitor):
-        dispatch_focus_workspace(desktop)
-        return
+        switched = dispatch_batch(expressions)
+        active, focused = monitor_snapshot()
+        switched = switched and all(active.get(monitor) == workspace for monitor, workspace in assignments)
+        if original_monitor in monitors:
+            switched = switched and focused == original_monitor
 
-    place_workspace(left_workspace, left_monitor)
-    dispatch_focus_workspace(left_workspace)
-    place_workspace(right_workspace, right_monitor)
-    dispatch_focus_workspace(right_workspace)
-
-    if original_monitor in (left_monitor, right_monitor):
-        dispatch_focus_monitor(original_monitor)
+    if switched:
+        atomic_write_state("desktop-current", str(desktop) + "\n")
+    return switched
 
 
-def switch_desktop(num_str: str, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
+def switch_desktop(num_str: str, monitors: list[str], left_monitor: str, right_monitor: str) -> None:
     number = normalize_number(num_str)
     if current_mode() == "windows":
-        switch_windows(number, left_monitor, right_monitor, monitor_count)
+        switched = switch_windows(number, monitors)
     else:
-        switch_mac(number, left_monitor, right_monitor, monitor_count)
+        switched = switch_mac(number, monitors, left_monitor, right_monitor)
+    if not switched:
+        raise RuntimeError("desktop switch did not complete")
 
 
-def move_window(num_str: str, silent: bool, left_monitor: str, right_monitor: str, monitor_count: int) -> None:
+def move_window(
+    num_str: str,
+    silent: bool,
+    monitors: list[str],
+    left_monitor: str,
+    right_monitor: str,
+) -> None:
     number = normalize_number(num_str)
     mode = current_mode()
 
-    if monitor_count == 1 or left_monitor == right_monitor or not monitor_exists(left_monitor) or not monitor_exists(right_monitor):
-        dispatch_move_window(number, False)
-        if not silent:
-            dispatch_focus_workspace(number)
-        return
-
     if mode == "windows":
         monitor = focused_monitor()
-        target = (number * 2) if (monitor == right_monitor) else (number * 2 - 1)
+        monitor_index = monitors.index(monitor) if monitor in monitors else 0
+        set_size = max(1, len(monitors))
+        target = workspace_for_monitor(number, monitor_index, set_size)
     else:
         target = number
         monitor = left_monitor if (target % 2 == 1) else right_monitor
 
-    dispatch_move_window(target, False)
+    if not dispatch_move_window(target, False):
+        raise RuntimeError("window move did not complete")
 
-    if not silent:
-        if mode == "windows":
-            switch_windows(number, left_monitor, right_monitor, monitor_count)
-            dispatch_focus_monitor(monitor)
-        else:
-            dispatch_focus_monitor(monitor)
-            dispatch_focus_workspace(target)
+    if silent:
+        return
+
+    if mode == "windows" and monitors:
+        if not switch_windows(number, monitors):
+            raise RuntimeError("destination monitor set did not activate")
+        if monitor in monitors and not dispatch_focus_monitor(monitor):
+            raise RuntimeError("could not restore focused monitor")
+    elif mode != "windows" and len(monitors) > 1 and monitor in monitors:
+        if not dispatch_focus_monitor(monitor) or not dispatch_focus_workspace(target):
+            raise RuntimeError("destination workspace did not activate")
+    else:
+        if not silent:
+            if not dispatch_focus_workspace(target):
+                raise RuntimeError("destination workspace did not activate")
 
 
 def main() -> None:
-    left_monitor, right_monitor, monitor_count = resolve_monitors()
+    monitors, left_monitor, right_monitor = resolve_monitors()
 
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
 
     if cmd == "toggle":
         curr = current_mode()
         next_mode = "mac" if curr == "omarchy" else ("windows" if curr == "mac" else "omarchy")
-        set_mode(next_mode)
+        set_mode(next_mode, monitors)
     elif cmd in ("omarchy", "mac", "windows"):
-        set_mode(cmd)
+        set_mode(cmd, monitors)
     elif cmd == "status":
         sys.stdout.write(current_mode() + "\n")
     elif cmd == "indicator":
@@ -456,19 +547,19 @@ def main() -> None:
     elif cmd == "switch":
         if len(sys.argv) < 3:
             sys.exit(2)
-        switch_desktop(sys.argv[2], left_monitor, right_monitor, monitor_count)
+        switch_desktop(sys.argv[2], monitors, left_monitor, right_monitor)
     elif cmd == "move":
         if len(sys.argv) < 3:
             sys.exit(2)
-        move_window(sys.argv[2], False, left_monitor, right_monitor, monitor_count)
+        move_window(sys.argv[2], False, monitors, left_monitor, right_monitor)
     elif cmd == "move-silent":
         if len(sys.argv) < 3:
             sys.exit(2)
-        move_window(sys.argv[2], True, left_monitor, right_monitor, monitor_count)
+        move_window(sys.argv[2], True, monitors, left_monitor, right_monitor)
     elif cmd == "monitors":
-        sys.stdout.write(f"Left monitor:  {left_monitor}\n")
-        sys.stdout.write(f"Right monitor: {right_monitor}\n")
-        sys.stdout.write(f"Monitor count: {monitor_count}\n")
+        sys.stdout.write(f"Monitor set ({len(monitors)}): {', '.join(monitors) or '(unavailable)'}\n")
+        sys.stdout.write(f"Left endpoint:  {left_monitor or '(unavailable)'}\n")
+        sys.stdout.write(f"Right endpoint: {right_monitor or '(unavailable)'}\n")
     elif cmd in ("-h", "--help", "help"):
         prog = os.path.basename(sys.argv[0])
         sys.stdout.write(f"""Usage: {prog} [command]
@@ -480,7 +571,7 @@ Commands:
   omarchy         Switch to Omarchy mode
   mac             Switch to Mac mode
   windows         Switch to Windows mode
-  switch NUM      Switch to workspace / paired desktop NUM (1-10, 0=10)
+  switch NUM      Switch to workspace / monitor-set desktop NUM (1-10, 0=10)
   move NUM        Move active window to desktop NUM and follow
   move-silent NUM Move active window to desktop NUM without following
   monitors        Print detected monitor assignments
@@ -496,6 +587,6 @@ Commands:
 if __name__ == "__main__":
     try:
         main()
-    except (RuntimeError, OSError) as err:
+    except (RuntimeError, OSError, subprocess.SubprocessError) as err:
         sys.stderr.write(f"omarchy-desktop-mode: {err}\n")
         sys.exit(1)

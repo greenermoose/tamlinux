@@ -1,6 +1,6 @@
 # Workspaces with Desktop Mode (`fred.workspaces`)
 
-Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, supporting synchronized dual-monitor desktop pairs, per-monitor independent switching, rich window tooltips, and automatic display geometry detection.
+Fred's Omarchy workspaces plugin: a shell bar widget with dynamic all-monitor desktop sets, endpoint-based independent switching, rich window tooltips, and automatic display geometry detection.
 
 ![Workspaces with Desktop Mode](assets/screenshot.png)
 
@@ -12,8 +12,8 @@ Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, s
 
 | Mode | Indicator | Description |
 | :--- | :---: | :--- |
-| **Mac Desktop Mode** | `M` | Workspaces switch independently per display. Odd workspaces (`1, 3, 5, 7, 9`) are pinned to the left monitor; even workspaces (`2, 4, 6, 8, 10`) are pinned to the right monitor. |
-| **Windows Desktop Mode** | `W` | Displays switch as synchronized pairs. Desktop `1` activates workspaces `1` (left) and `2` (right); Desktop `2` activates `3` and `4`; Desktop `N` activates `2N-1` and `2N`. |
+| **Mac Desktop Mode** | `M` | Workspaces switch independently between the left and right endpoints. Odd workspaces use the left endpoint and even workspaces use the right endpoint. |
+| **Windows Desktop Mode** | `W` | Every active monitor switches as one set. The set size automatically follows the number of active displays while preserving the original two-monitor behavior. |
 | **Omarchy Stock Mode** | `O` | Traditional Omarchy presentation showing workspaces `1–5` on both bars. |
 
 ---
@@ -21,10 +21,26 @@ Fred's Omarchy workspaces plugin, a shell bar widget for switching workspaces, s
 ## Features
 
 - **Quick Mode Toggle**: Click the mode letter (`M` / `W` / `O`) directly on the bar or press `SUPER + CTRL + M` to cycle modes.
-- **Rich Window Tooltips**: Hover over any workspace button to view active window titles and applications.
-- **Hardware & Geometry Agnostic**: Automatically queries `hyprctl monitors -j` and sorts displays by horizontal coordinate `x` to determine left and right monitors. Single-monitor laptops automatically fallback to standard workspace switching.
-- **Optional Monitor Overrides**: Override detected monitors via `~/.config/omarchy/desktop-mode.conf` or environment variables (`OMARCHY_DESKTOP_LEFT_MONITOR`, `OMARCHY_DESKTOP_RIGHT_MONITOR`).
-- **Self-Contained Execution**: Bundles the `omarchy-desktop-mode` helper directly in the plugin repository, with automatic fallback resolution between `PATH` and plugin directory.
+- **Five Ready-to-Use Sets**: Windows mode always begins with desktop choices `1`–`5`; sets `6`–`10` appear when active or occupied.
+- **Rich Set Tooltips**: Hover over a desktop button to see windows from every member workspace, labeled Left/Center/Right for three displays.
+- **Dynamic Geometry Detection**: Queries `hyprctl monitors -j`, excludes disabled and mirrored outputs, and orders the remaining displays by `(x, y, name)`.
+- **Single-to-Many Monitor Support**: One formula handles laptops, the original two-monitor pair, three-monitor desks, and larger arrangements.
+- **Optional Endpoint Overrides**: `OMARCHY_DESKTOP_LEFT_MONITOR` and `OMARCHY_DESKTOP_RIGHT_MONITOR` customize Mac-mode endpoints without excluding displays from Windows mode.
+- **Self-Contained Execution**: Bundles the standard-library-only `omarchy-desktop-mode` helper and launches it descriptor-relatively from the bar.
+
+### Windows-mode mapping
+
+For desktop `D`, set size `S`, and zero-based monitor position `P`:
+
+```text
+workspace = (D - 1) * S + P + 1
+```
+
+| Active monitors | Desktop 1 | Desktop 2 | Desktop 5 |
+| :-- | :-- | :-- | :-- |
+| 1 | `1` | `2` | `5` |
+| 2 | `1, 2` | `3, 4` | `9, 10` |
+| 3 | `1, 2, 3` | `4, 5, 6` | `13, 14, 15` |
 
 ---
 
@@ -55,12 +71,27 @@ To enable synchronized desktop switching with your keyboard shortcuts, add the f
 -- Desktop mode toggle
 o.bind("SUPER + CTRL + M", "Toggle Mac/Windows desktop mode", "omarchy-desktop-mode toggle")
 
--- Switch and move by desktop number
-for i = 1, 5 do
-  local key = tostring(i)
-  o.bind("SUPER + " .. key, "Switch desktop " .. key, "omarchy-desktop-mode switch " .. key)
-  o.bind("SUPER + SHIFT + " .. key, "Move window to desktop " .. key, "omarchy-desktop-mode move " .. key)
-  o.bind("SUPER + SHIFT + ALT + " .. key, "Move window silently to desktop " .. key, "omarchy-desktop-mode move-silent " .. key)
+-- XKB keycodes (evdev + 8); keypad bindings ignore Num Lock.
+local keypad_codes = {
+  [1] = 87, [2] = 88, [3] = 89, [4] = 83, [5] = 84,
+  [6] = 85, [7] = 79, [8] = 80, [9] = 81, [10] = 90,
+}
+
+for desktop = 1, 10 do
+  local top_row = "code:" .. tostring(desktop + 9)
+  local keypad = "code:" .. tostring(keypad_codes[desktop])
+
+  hl.unbind("SUPER + " .. top_row)
+  hl.unbind("SUPER + SHIFT + " .. top_row)
+  hl.unbind("SUPER + SHIFT + ALT + " .. top_row)
+
+  o.bind("SUPER + " .. top_row, "Switch desktop " .. desktop, "omarchy-desktop-mode switch " .. desktop)
+  o.bind("SUPER + SHIFT + " .. top_row, "Move window to desktop " .. desktop, "omarchy-desktop-mode move " .. desktop)
+  o.bind("SUPER + SHIFT + ALT + " .. top_row, "Move window silently to desktop " .. desktop, "omarchy-desktop-mode move-silent " .. desktop)
+
+  o.bind("SUPER + " .. keypad, "Switch desktop " .. desktop, "omarchy-desktop-mode switch " .. desktop)
+  o.bind("SUPER + SHIFT + " .. keypad, "Move window to desktop " .. desktop, "omarchy-desktop-mode move " .. desktop)
+  o.bind("SUPER + SHIFT + ALT + " .. keypad, "Move window silently to desktop " .. desktop, "omarchy-desktop-mode move-silent " .. desktop)
 end
 ```
 
@@ -82,14 +113,14 @@ omarchy-desktop-mode toggle            # Cycle mode (omarchy -> mac -> windows)
 omarchy-desktop-mode switch <NUMBER>   # Switch to desktop / workspace NUMBER
 omarchy-desktop-mode move <NUMBER>     # Move active window to desktop NUMBER and follow
 omarchy-desktop-mode move-silent <NUM> # Move active window without switching
-omarchy-desktop-mode monitors          # Print detected left/right monitor names
+omarchy-desktop-mode monitors          # Print the ordered monitor set and endpoints
 ```
 
 ---
 
 ## Configuration & Overrides
 
-If you wish to explicitly set monitor assignments instead of using automatic geometry detection, create `~/.config/omarchy/desktop-mode.conf`:
+To override the left/right endpoints used by Mac mode, create `~/.config/omarchy/desktop-mode.conf`:
 
 ```bash
 # Explicit monitor names from `hyprctl monitors`
@@ -102,6 +133,21 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 > - Values may optionally be enclosed in single or double quotes.
 > - Monitor names must be alphanumeric identifiers matching `^[A-Za-z0-9._-]{1,64}$`.
 > - Inline comments after values (e.g. `KEY=VAL # comment`) are rejected to avoid parsing ambiguities.
+> - Windows mode always uses every active, non-mirrored monitor. Endpoint overrides do not remove monitors from its set.
+
+### Upgrading from v1.2.1
+
+Windows mode now interprets workspace IDs using the active set size. On three displays, workspace `3` belongs to desktop 1 instead of desktop 2. Existing windows are not moved or renumbered automatically; selecting a desktop applies the new contiguous mapping.
+
+## Tests
+
+The helper's monitor discovery, mapping, dispatch verification, and window-move behavior use only Python's standard library:
+
+```bash
+python -m unittest discover -s tests -v
+python -m py_compile omarchy-desktop-mode tests/test_desktop_mode.py
+omarchy plugin validate .
+```
 
 ---
 
@@ -115,7 +161,7 @@ omarchy plugin remove fred.workspaces
 
 ## Acknowledgments
 
-Developed with the assistance of [Antigravity](https://antigravity.google) (Google DeepMind), which contributed to the multi-monitor geometry detection, Mac/Windows desktop switching modes, and plugin architecture.
+Developed with the assistance of [Antigravity](https://antigravity.google) (Google DeepMind), which contributed to the original multi-monitor modes and plugin architecture. The v1.3.0 monitor-set plan and implementation were produced with Codex CLI `0.154.0` using `gpt-5.6-sol`; see [AI provenance](AI_PROVENANCE.md) and the [public implementation plan](docs/plans/monitor-set-windows-mode.md).
 
 ---
 

@@ -13,7 +13,8 @@ BarWidget {
   property string desktopMode: "mac"
   property string leftMonitor: ""
   property string rightMonitor: ""
-  property int monitorCount: 2
+  property var monitorNames: []
+  property int monitorCount: 1
 
   readonly property string modePath: {
     var stateHome = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
@@ -59,6 +60,62 @@ BarWidget {
     return null
   }
 
+  function quickshellMonitorNames() {
+    var records = []
+    var monitors = Hyprland.monitors.values
+    for (var i = 0; i < monitors.length && records.length < 16; i++) {
+      var monitor = monitors[i]
+      var name = monitor && monitor.name ? String(monitor.name) : ""
+      if (!/^[A-Za-z0-9._-]{1,64}$/.test(name)) continue
+      var geometry = monitor.screen && monitor.screen.geometry ? monitor.screen.geometry : null
+      records.push({
+        "name": name,
+        "x": geometry ? geometry.x : 0,
+        "y": geometry ? geometry.y : 0
+      })
+    }
+    records.sort(function(a, b) {
+      if (a.x !== b.x) return a.x - b.x
+      if (a.y !== b.y) return a.y - b.y
+      return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)
+    })
+    var names = []
+    for (var j = 0; j < records.length; j++) names.push(records[j].name)
+    return names
+  }
+
+  function effectiveMonitorNames() {
+    if (monitorNames && monitorNames.length > 0) return monitorNames
+    return quickshellMonitorNames()
+  }
+
+  function effectiveSetSize() {
+    return Math.max(1, effectiveMonitorNames().length)
+  }
+
+  function windowsWorkspaceId(displayId, monitorIndex) {
+    return (displayId - 1) * effectiveSetSize() + monitorIndex + 1
+  }
+
+  function windowsDisplayId(workspaceId) {
+    return Math.floor((workspaceId - 1) / effectiveSetSize()) + 1
+  }
+
+  function monitorByName(name) {
+    var monitors = Hyprland.monitors.values
+    for (var i = 0; i < monitors.length; i++) {
+      if (monitors[i].name === name) return monitors[i]
+    }
+    return null
+  }
+
+  function monitorRole(index, count, name) {
+    if (count === 1) return "Display"
+    if (count === 2) return index === 0 ? "Left" : "Right"
+    if (count === 3) return index === 0 ? "Left" : (index === 1 ? "Center" : "Right")
+    return name || ("Display " + String(index + 1))
+  }
+
   function isLeftMonitor() {
     if (barMonitor === null) return true
     if (leftMonitor !== "") return barMonitor.name === leftMonitor
@@ -80,7 +137,7 @@ BarWidget {
 
   function workspaceIds() {
     if (desktopMode === "mac" && barMonitor !== null) {
-      if (monitorCount === 1) {
+      if (effectiveSetSize() === 1) {
         return [1, 2, 3, 4, 5]
       }
       return isLeftMonitor()
@@ -94,7 +151,7 @@ BarWidget {
     var values = Hyprland.workspaces.values
     for (var i = 0; i < values.length; i++) {
       var id = values[i].id
-      var displayId = desktopMode === "windows" ? Math.ceil(id / 2) : id
+      var displayId = desktopMode === "windows" ? windowsDisplayId(id) : id
       var maximum = 10
       if (displayId > 0 && displayId <= maximum && ids.indexOf(displayId) === -1) ids.push(displayId)
     }
@@ -182,31 +239,27 @@ BarWidget {
       var headerSuffix = isFocused ? " (Current)" : ""
 
       if (desktopMode === "windows") {
-        var leftWsId = displayId * 2 - 1
-        var rightWsId = displayId * 2
-        var leftWindows = workspaceWindowSummaries(leftWsId)
-        var rightWindows = workspaceWindowSummaries(rightWsId)
-
-        if (leftWindows.length === 0 && rightWindows.length === 0) {
-          return "Desktop " + displayId + headerSuffix + "\n(Empty)"
-        }
-
+        var names = effectiveMonitorNames()
+        var setSize = Math.max(1, names.length)
         var lines = ["Desktop " + displayId + headerSuffix]
-        if (leftWindows.length > 0) {
-          for (var l = 0; l < Math.min(leftWindows.length, 4); l++) {
-            lines.push("[Left] " + leftWindows[l])
+        var totalWindows = 0
+        var maxLines = 24
+
+        for (var position = 0; position < setSize && lines.length < maxLines; position++) {
+          var wsId = windowsWorkspaceId(displayId, position)
+          var windows = workspaceWindowSummaries(wsId)
+          totalWindows += windows.length
+          var role = monitorRole(position, setSize, names[position] || "")
+          for (var w = 0; w < Math.min(windows.length, 3) && lines.length < maxLines; w++) {
+            lines.push("[" + role + "] " + windows[w])
           }
-          if (leftWindows.length > 4) {
-            lines.push("[Left] +" + (leftWindows.length - 4) + " more")
+          if (windows.length > 3 && lines.length < maxLines) {
+            lines.push("[" + role + "] +" + (windows.length - 3) + " more")
           }
         }
-        if (rightWindows.length > 0) {
-          for (var r = 0; r < Math.min(rightWindows.length, 4); r++) {
-            lines.push("[Right] " + rightWindows[r])
-          }
-          if (rightWindows.length > 4) {
-            lines.push("[Right] +" + (rightWindows.length - 4) + " more")
-          }
+
+        if (totalWindows === 0) {
+          return "Desktop " + displayId + headerSuffix + "\n(Empty)"
         }
         return lines.join("\n")
       }
@@ -215,7 +268,7 @@ BarWidget {
         var leftName = leftMonitor || "Left"
         var rightName = rightMonitor || "Right"
         var monitorName = (displayId % 2 === 1) ? leftName : rightName
-        if (monitorCount === 1 || leftName === rightName) {
+        if (effectiveSetSize() === 1 || leftName === rightName) {
           monitorName = leftName
         }
 
@@ -258,42 +311,34 @@ BarWidget {
       return workspace !== null && workspace.toplevels.values.length > 0
     }
 
-    var leftWorkspace = workspaceById(displayId * 2 - 1)
-    var rightWorkspace = workspaceById(displayId * 2)
-    return (leftWorkspace !== null && leftWorkspace.toplevels.values.length > 0)
-      || (rightWorkspace !== null && rightWorkspace.toplevels.values.length > 0)
+    var setSize = effectiveSetSize()
+    for (var position = 0; position < setSize; position++) {
+      var workspace = workspaceById(windowsWorkspaceId(displayId, position))
+      if (workspace !== null && workspace.toplevels.values.length > 0) return true
+    }
+    return false
   }
 
   function workspaceFocused(displayId) {
     var _rev = root.windowsRevision
-    if (desktopMode === "windows") return windowsDesktopFromLeftMonitor() === displayId
+    if (desktopMode === "windows") {
+      var names = effectiveMonitorNames()
+      if (names.length === 0) {
+        return Hyprland.focusedWorkspace !== null
+          && windowsDisplayId(Hyprland.focusedWorkspace.id) === displayId
+      }
+      for (var position = 0; position < names.length; position++) {
+        var monitor = monitorByName(names[position])
+        if (monitor === null || monitor.activeWorkspace === null
+            || monitor.activeWorkspace.id !== windowsWorkspaceId(displayId, position)) return false
+      }
+      return true
+    }
     if (desktopMode === "mac") {
       return barMonitor !== null && barMonitor.activeWorkspace !== null
         && barMonitor.activeWorkspace.id === displayId
     }
     return Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === displayId
-  }
-
-  function windowsDesktopFromLeftMonitor() {
-    var monitors = Hyprland.monitors.values
-    var targetName = leftMonitor
-    if (!targetName && monitors.length > 0) {
-      targetName = monitors[0].name
-      var minX = monitors[0].screen && monitors[0].screen.geometry ? monitors[0].screen.geometry.x : 0
-      for (var j = 1; j < monitors.length; j++) {
-        var gx = monitors[j].screen && monitors[j].screen.geometry ? monitors[j].screen.geometry.x : 0
-        if (gx < minX) {
-          minX = gx
-          targetName = monitors[j].name
-        }
-      }
-    }
-    for (var i = 0; i < monitors.length; i++) {
-      var monitor = monitors[i]
-      if (monitor.name === targetName && monitor.activeWorkspace !== null)
-        return Math.ceil(monitor.activeWorkspace.id / 2)
-    }
-    return 1
   }
 
   property var pendingActions: []
@@ -365,14 +410,32 @@ BarWidget {
   }
 
   function loadMonitors(raw) {
-    if (!raw || raw.length > 512) return
+    if (!raw || raw.length > 4096) return
     try {
       var data = JSON.parse(raw)
       if (data && typeof data === "object") {
         var monRe = /^[A-Za-z0-9._-]{1,64}$/
-        if (typeof data.left === "string" && monRe.test(data.left)) root.leftMonitor = data.left
-        if (typeof data.right === "string" && monRe.test(data.right)) root.rightMonitor = data.right
-        if (typeof data.count === "number" && data.count >= 1 && data.count <= 16) root.monitorCount = data.count
+        var names = []
+        if (data.version === 2 && Array.isArray(data.monitors) && data.monitors.length <= 16) {
+          for (var i = 0; i < data.monitors.length; i++) {
+            var name = data.monitors[i]
+            if (typeof name !== "string" || !monRe.test(name) || names.indexOf(name) !== -1) {
+              names = []
+              break
+            }
+            names.push(name)
+          }
+        }
+        root.monitorNames = names
+        root.leftMonitor = typeof data.left === "string" && monRe.test(data.left)
+          ? data.left
+          : (names.length > 0 ? names[0] : "")
+        root.rightMonitor = typeof data.right === "string" && monRe.test(data.right)
+          ? data.right
+          : (names.length > 0 ? names[names.length - 1] : "")
+        root.monitorCount = names.length > 0
+          ? names.length
+          : (typeof data.count === "number" && data.count >= 1 && data.count <= 16 ? data.count : 1)
       }
     } catch (e) {}
   }
