@@ -14,6 +14,10 @@ BarWidget {
   property string leftMonitor: ""
   property string rightMonitor: ""
   property var monitorNames: []
+  property var topologyMonitors: []
+  property int topologySize: 3
+  property var monitorSlots: ({})
+  property bool degradedMode: false
   property int monitorCount: 1
 
   readonly property string modePath: {
@@ -92,11 +96,22 @@ BarWidget {
   }
 
   function effectiveSetSize() {
-    return Math.max(1, effectiveMonitorNames().length)
+    return Math.max(1, root.topologySize)
   }
 
-  function windowsWorkspaceId(displayId, monitorIndex) {
-    return (displayId - 1) * effectiveSetSize() + monitorIndex + 1
+  function slotForMonitor(name, index) {
+    if (root.monitorSlots && typeof root.monitorSlots[name] === "number") {
+      return root.monitorSlots[name]
+    }
+    if (root.topologyMonitors && root.topologyMonitors.length > 0) {
+      var idx = root.topologyMonitors.indexOf(name)
+      if (idx !== -1) return idx
+    }
+    return index
+  }
+
+  function windowsWorkspaceId(displayId, slot) {
+    return (displayId - 1) * effectiveSetSize() + slot + 1
   }
 
   function windowsDisplayId(workspaceId) {
@@ -168,6 +183,18 @@ BarWidget {
     target: Hyprland
     function onRawEvent(event) {
       root.windowsRevision++
+      if (event && (event.indexOf("monitoradded") === 0 || event.indexOf("monitorremoved") === 0)) {
+        reconcileDebounce.restart()
+      }
+    }
+  }
+
+  Timer {
+    id: reconcileDebounce
+    interval: 350
+    repeat: false
+    onTriggered: {
+      root.runDesktopCommand(["reconcile"])
     }
   }
 
@@ -243,21 +270,41 @@ BarWidget {
 
       if (desktopMode === "windows") {
         var names = effectiveMonitorNames()
-        var setSize = Math.max(1, names.length)
+        var setSize = effectiveSetSize()
         var lines = ["Desktop " + displayId + headerSuffix]
         var totalWindows = 0
         var maxLines = 24
 
-        for (var position = 0; position < setSize && lines.length < maxLines; position++) {
-          var wsId = windowsWorkspaceId(displayId, position)
+        for (var position = 0; position < names.length && lines.length < maxLines; position++) {
+          var monName = names[position]
+          var slot = slotForMonitor(monName, position)
+          var wsId = windowsWorkspaceId(displayId, slot)
           var windows = workspaceWindowSummaries(wsId)
           totalWindows += windows.length
-          var role = monitorRole(position, setSize, names[position] || "")
+          var role = monitorRole(slot, setSize, monName || "")
           for (var w = 0; w < Math.min(windows.length, 3) && lines.length < maxLines; w++) {
             lines.push("[" + role + "] " + windows[w])
           }
           if (windows.length > 3 && lines.length < maxLines) {
             lines.push("[" + role + "] +" + (windows.length - 3) + " more")
+          }
+        }
+
+        for (var s = 0; s < setSize && lines.length < maxLines; s++) {
+          var topoName = (root.topologyMonitors && root.topologyMonitors[s]) || ""
+          if (topoName && names.indexOf(topoName) === -1) {
+            var parkedWsId = windowsWorkspaceId(displayId, s)
+            var parkedWindows = workspaceWindowSummaries(parkedWsId)
+            if (parkedWindows.length > 0) {
+              totalWindows += parkedWindows.length
+              var pRole = monitorRole(s, setSize, topoName) + " (Offline)"
+              for (var pw = 0; pw < Math.min(parkedWindows.length, 3) && lines.length < maxLines; pw++) {
+                lines.push("[" + pRole + "] " + parkedWindows[pw])
+              }
+              if (parkedWindows.length > 3 && lines.length < maxLines) {
+                lines.push("[" + pRole + "] +" + (parkedWindows.length - 3) + " more")
+              }
+            }
           }
         }
 
@@ -315,8 +362,8 @@ BarWidget {
     }
 
     var setSize = effectiveSetSize()
-    for (var position = 0; position < setSize; position++) {
-      var workspace = workspaceById(windowsWorkspaceId(displayId, position))
+    for (var slot = 0; slot < setSize; slot++) {
+      var workspace = workspaceById(windowsWorkspaceId(displayId, slot))
       if (workspace !== null && workspace.toplevels.values.length > 0) return true
     }
     return false
@@ -330,10 +377,12 @@ BarWidget {
         return Hyprland.focusedWorkspace !== null
           && windowsDisplayId(Hyprland.focusedWorkspace.id) === displayId
       }
-      for (var position = 0; position < names.length; position++) {
-        var monitor = monitorByName(names[position])
+      for (var i = 0; i < names.length; i++) {
+        var monitor = monitorByName(names[i])
+        var slot = slotForMonitor(names[i], i)
+        var expectedWs = windowsWorkspaceId(displayId, slot)
         if (monitor === null || monitor.activeWorkspace === null
-            || monitor.activeWorkspace.id !== windowsWorkspaceId(displayId, position)) return false
+            || monitor.activeWorkspace.id !== expectedWs) return false
       }
       return true
     }
@@ -413,13 +462,13 @@ BarWidget {
   }
 
   function loadMonitors(raw) {
-    if (!raw || raw.length > 4096) return
+    if (!raw || raw.length > 8192) return
     try {
       var data = JSON.parse(raw)
       if (data && typeof data === "object") {
         var monRe = /^[A-Za-z0-9._-]{1,64}$/
         var names = []
-        if (data.version === 2 && Array.isArray(data.monitors) && data.monitors.length <= 16) {
+        if (data.version >= 2 && Array.isArray(data.monitors) && data.monitors.length <= 16) {
           for (var i = 0; i < data.monitors.length; i++) {
             var name = data.monitors[i]
             if (typeof name !== "string" || !monRe.test(name) || names.indexOf(name) !== -1) {
@@ -439,6 +488,23 @@ BarWidget {
         root.monitorCount = names.length > 0
           ? names.length
           : (typeof data.count === "number" && data.count >= 1 && data.count <= 16 ? data.count : 1)
+
+        if (typeof data.topology_size === "number" && data.topology_size >= 1) {
+          root.topologySize = data.topology_size
+        }
+        if (Array.isArray(data.topology)) {
+          var topo = []
+          for (var t = 0; t < data.topology.length; t++) {
+            if (typeof data.topology[t] === "string" && monRe.test(data.topology[t])) {
+              topo.push(data.topology[t])
+            }
+          }
+          root.topologyMonitors = topo
+        }
+        if (data.slots && typeof data.slots === "object") {
+          root.monitorSlots = data.slots
+        }
+        root.degradedMode = !!data.degraded
       }
     } catch (e) {}
   }
@@ -561,11 +627,17 @@ BarWidget {
     WidgetButton {
       bar: root.bar
       text: root.desktopModeLetter()
-      tooltipText: root.desktopMode === "omarchy"
-        ? "Omarchy Desktop mode — click for Mac mode"
-        : (root.desktopMode === "mac"
-          ? "Mac Desktop mode — click for Windows mode"
-          : "Windows Desktop mode — click for Omarchy mode")
+      tooltipText: {
+        var base = root.desktopMode === "omarchy"
+          ? "Omarchy Desktop mode — click for Mac mode"
+          : (root.desktopMode === "mac"
+            ? "Mac Desktop mode — click for Windows mode"
+            : "Windows Desktop mode — click for Omarchy mode")
+        if (root.degradedMode && root.desktopMode === "windows") {
+          base += " [" + root.effectiveMonitorNames().length + "/" + root.topologySize + " Displays Active]"
+        }
+        return base
+      }
       horizontalMargin: 6
       verticalPadding: 6
       fixedWidth: root.vertical ? root.barSize : Style.space(20)

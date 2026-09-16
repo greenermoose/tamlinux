@@ -4,7 +4,7 @@ Multi-monitor workspace engine for Omarchy.
 Supports:
   - Omarchy mode: standard 1-5 workspace presentation on all displays.
   - Mac mode: per-monitor independent workspaces (odd on left, even on right).
-  - Windows mode: synchronized workspace sets spanning every active display.
+  - Windows mode: synchronized workspace sets anchored to fixed topology slots.
 """
 
 import json
@@ -17,13 +17,14 @@ import sys
 
 MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 CONFIG_LINE_RE = re.compile(
-    r"^(?:export\s+)?(OMARCHY_DESKTOP_LEFT_MONITOR|OMARCHY_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor)\s*=\s*(.*)$"
+    r"^(?:export\s+)?(OMARCHY_DESKTOP_LEFT_MONITOR|OMARCHY_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor|topology|topology_size|OMARCHY_DESKTOP_TOPOLOGY)\s*=\s*(.*)$"
 )
 VALID_MODES = ("omarchy", "mac", "windows")
 ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors")
 MAX_MONITORS = 16
 MAX_MONITOR_RECORDS = 64
 MAX_HYPRCTL_OUTPUT = 262144
+DEFAULT_TOPOLOGY_SIZE = 3
 
 
 def get_hyprland_signature() -> str:
@@ -76,7 +77,7 @@ def atomic_write_state(filename: str, content: str) -> None:
             0o600,
             dir_fd=dir_fd,
         )
-        data = content.encode("utf-8")[:4096]
+        data = content.encode("utf-8")[:8192]
         os.write(temp_fd, data)
         os.fsync(temp_fd)
         os.close(temp_fd)
@@ -106,9 +107,9 @@ def read_state_file(filename: str) -> str:
         dir_fd = get_state_dir_fd()
         fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
         st = os.fstat(fd)
-        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 4096:
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 8192:
             return ""
-        data = os.read(fd, 4096).decode("utf-8", errors="replace").strip()
+        data = os.read(fd, 8192).decode("utf-8", errors="replace").strip()
         return data
     except OSError:
         return ""
@@ -126,19 +127,26 @@ def read_state_file(filename: str) -> str:
 
 
 def load_config_file() -> tuple[str, str]:
+    left, right, _, _ = load_full_config()
+    return left, right
+
+
+def load_full_config() -> tuple[str, str, int, str]:
     config_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
     config_file = os.path.join(config_dir, "omarchy", "desktop-mode.conf")
     fd = -1
     left = ""
     right = ""
+    topology_size = 0
+    topology_str = ""
     try:
         fd = os.open(config_file, os.O_RDONLY | os.O_NOFOLLOW)
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 16384:
-            return "", ""
+            return "", "", 0, ""
         content = os.read(fd, 16384).decode("utf-8", errors="replace")
     except OSError:
-        return "", ""
+        return "", "", 0, ""
     finally:
         if fd >= 0:
             try:
@@ -159,13 +167,113 @@ def load_config_file() -> tuple[str, str]:
         key, val = m.group(1), m.group(2).strip()
         if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
             val = val[1:-1].strip()
-        if not MONITOR_RE.match(val):
-            continue
-        if key in ("OMARCHY_DESKTOP_LEFT_MONITOR", "left_monitor"):
+        if key in ("OMARCHY_DESKTOP_LEFT_MONITOR", "left_monitor") and MONITOR_RE.match(val):
             left = val
-        elif key in ("OMARCHY_DESKTOP_RIGHT_MONITOR", "right_monitor"):
+        elif key in ("OMARCHY_DESKTOP_RIGHT_MONITOR", "right_monitor") and MONITOR_RE.match(val):
             right = val
-    return left, right
+        elif key in ("topology", "OMARCHY_DESKTOP_TOPOLOGY"):
+            topology_str = val
+        elif key == "topology_size":
+            try:
+                size_num = int(val)
+                if 1 <= size_num <= MAX_MONITORS:
+                    topology_size = size_num
+            except ValueError:
+                pass
+    return left, right, topology_size, topology_str
+
+
+def load_monitors_lua() -> list[dict]:
+    config_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    lua_file = os.path.join(config_dir, "hypr", "monitors.lua")
+    fd = -1
+    try:
+        fd = os.open(lua_file, os.O_RDONLY | os.O_NOFOLLOW)
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 32768:
+            return []
+        content = os.read(fd, 32768).decode("utf-8", errors="replace")
+    except OSError:
+        return []
+    finally:
+        if fd >= 0:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+    lines = [l for l in content.splitlines() if not l.strip().startswith("--")]
+    clean_content = "\n".join(lines)
+    monitors: list[dict] = []
+    seen: set[str] = set()
+    for block in re.findall(r"hl\.monitor\s*\(\s*\{([^}]+)\}\s*\)", clean_content):
+        out = re.search(r'output\s*=\s*"([^"]+)"', block)
+        mode = re.search(r'mode\s*=\s*"([^"]+)"', block)
+        pos = re.search(r'position\s*=\s*"([^"]+)"', block)
+        scale = re.search(r'scale\s*=\s*([0-9.]+|"[^"]+")', block)
+        if out and out.group(1):
+            name = out.group(1).strip()
+            if not MONITOR_RE.fullmatch(name) or name in seen:
+                continue
+            seen.add(name)
+            scale_val = 1.0
+            if scale:
+                s_str = scale.group(1).strip('"\'')
+                try:
+                    scale_val = float(s_str)
+                except ValueError:
+                    scale_val = 1.0
+            pos_str = pos.group(1).strip() if pos else "0x0"
+            x, y = 0, 0
+            m_pos = re.match(r"^(\d+)x(\d+)$", pos_str)
+            if m_pos:
+                x, y = int(m_pos.group(1)), int(m_pos.group(2))
+            mode_str = mode.group(1).strip() if mode else "preferred"
+            monitors.append({
+                "output": name,
+                "mode": mode_str,
+                "position": pos_str,
+                "scale": scale_val,
+                "x": x,
+                "y": y,
+            })
+    return monitors
+
+
+def load_canonical_topology() -> list[dict]:
+    lua_monitors = load_monitors_lua()
+    if lua_monitors:
+        lua_monitors.sort(key=lambda m: (m["x"], m["y"], m["output"]))
+        return lua_monitors
+
+    env_topo = os.environ.get("OMARCHY_DESKTOP_TOPOLOGY", "")
+    topo_str = env_topo
+    if not topo_str:
+        _, _, _, cfg_topo = load_full_config()
+        topo_str = cfg_topo
+    if topo_str:
+        names = [n.strip() for n in topo_str.split(",") if MONITOR_RE.match(n.strip())]
+        if names:
+            return [
+                {"output": name, "mode": "preferred", "position": f"{idx * 1920}x0", "scale": 1.0, "x": idx * 1920, "y": 0}
+                for idx, name in enumerate(names)
+            ]
+
+    try:
+        raw = read_state_file("desktop-monitors")
+        if raw:
+            data = json.loads(raw)
+            if isinstance(data, dict) and isinstance(data.get("topology"), list):
+                names = [n for n in data["topology"] if isinstance(n, str) and MONITOR_RE.match(n)]
+                if names:
+                    return [
+                        {"output": name, "mode": "preferred", "position": f"{idx * 1920}x0", "scale": 1.0, "x": idx * 1920, "y": 0}
+                        for idx, name in enumerate(names)
+                    ]
+    except Exception:
+        pass
+
+    return []
 
 
 def run_hyprctl(cmd_args: list[str], timeout: float = 2.0) -> subprocess.CompletedProcess:
@@ -215,14 +323,19 @@ def ordered_monitors(data: object) -> list[str]:
     return [item[2] for item in valid[:MAX_MONITORS]]
 
 
-def workspace_for_monitor(desktop: int, monitor_index: int, set_size: int) -> int:
-    if desktop < 1 or monitor_index < 0 or set_size < 1 or monitor_index >= set_size:
+def workspace_for_slot(desktop: int, slot: int, topology_size: int) -> int:
+    if desktop < 1 or slot < 0 or topology_size < 1 or slot >= topology_size:
         raise ValueError("Invalid desktop monitor-set coordinates")
-    return (desktop - 1) * set_size + monitor_index + 1
+    return (desktop - 1) * topology_size + slot + 1
+
+
+def workspace_for_monitor(desktop: int, monitor_index: int, set_size: int) -> int:
+    """Legacy compatibility alias."""
+    return workspace_for_slot(desktop, monitor_index, set_size)
 
 
 def workspace_ids(desktop: int, set_size: int) -> list[int]:
-    return [workspace_for_monitor(desktop, index, set_size) for index in range(set_size)]
+    return [workspace_for_slot(desktop, index, set_size) for index in range(set_size)]
 
 
 def desktop_for_workspace(workspace: int, set_size: int) -> int:
@@ -241,47 +354,168 @@ def discover_monitors() -> list[str]:
         return []
 
 
-def resolve_monitors() -> tuple[list[str], str, str]:
-    cfg_left, cfg_right = load_config_file()
+def write_desktop_monitors_state(
+    active_monitors: list[str],
+    left: str,
+    right: str,
+    active_slots: dict[str, int],
+    topology_size: int,
+    canonical_names: list[str],
+) -> None:
+    try:
+        degraded = len(active_monitors) < topology_size
+        payload = json.dumps(
+            {
+                "version": 2,
+                "monitors": active_monitors,
+                "topology": canonical_names,
+                "topology_size": topology_size,
+                "slots": active_slots,
+                "left": left,
+                "right": right,
+                "count": len(active_monitors),
+                "degraded": degraded,
+            },
+            separators=(",", ":"),
+        ) + "\n"
+        existing = read_state_file("desktop-monitors")
+        if existing != payload.strip():
+            atomic_write_state("desktop-monitors", payload)
+    except Exception:
+        pass
+
+
+def resolve_topology() -> tuple[list[str], str, str, dict[str, int], int, list[str]]:
+    cfg_tuple = load_config_file()
+    cfg_left = cfg_tuple[0] if len(cfg_tuple) > 0 else ""
+    cfg_right = cfg_tuple[1] if len(cfg_tuple) > 1 else ""
+    cfg_size = cfg_tuple[2] if len(cfg_tuple) > 2 else 0
 
     env_left = os.environ.get("OMARCHY_DESKTOP_LEFT_MONITOR", "")
-    if env_left and MONITOR_RE.match(env_left):
-        left = env_left
-    else:
-        left = cfg_left
+    left = env_left if env_left and MONITOR_RE.match(env_left) else cfg_left
 
     env_right = os.environ.get("OMARCHY_DESKTOP_RIGHT_MONITOR", "")
-    if env_right and MONITOR_RE.match(env_right):
-        right = env_right
-    else:
-        right = cfg_right
+    right = env_right if env_right and MONITOR_RE.match(env_right) else cfg_right
 
-    monitors = discover_monitors()
-    if monitors:
-        if left not in monitors:
-            left = monitors[0]
-        if right not in monitors:
-            right = monitors[-1]
-        try:
-            payload = json.dumps(
-                {
-                    "version": 2,
-                    "monitors": monitors,
-                    "left": left,
-                    "right": right,
-                    "count": len(monitors),
-                },
-                separators=(",", ":"),
-            ) + "\n"
-            existing = read_state_file("desktop-monitors")
-            if existing != payload.strip():
-                atomic_write_state("desktop-monitors", payload)
-        except Exception:
-            pass
-        return monitors, left, right
+    canonical = load_canonical_topology()
+    canonical_names = [m["output"] for m in canonical]
 
-    # A failed live query must not dispatch a stale multi-monitor layout.
-    return [], "", ""
+    active_monitors = discover_monitors()
+    if not active_monitors:
+        topo_len = max(len(canonical_names), cfg_size or DEFAULT_TOPOLOGY_SIZE)
+        return [], "", "", {}, topo_len, canonical_names
+
+    if left not in active_monitors:
+        left = active_monitors[0]
+    if right not in active_monitors:
+        right = active_monitors[-1]
+
+    topology_size = max(len(canonical_names), cfg_size or 0)
+    if topology_size == 0:
+        topology_size = max(len(active_monitors), DEFAULT_TOPOLOGY_SIZE)
+
+    active_slots: dict[str, int] = {}
+    for mon in active_monitors:
+        if mon in canonical_names:
+            active_slots[mon] = canonical_names.index(mon)
+
+    used_slots = set(active_slots.values())
+    for mon in active_monitors:
+        if mon not in active_slots:
+            for s in range(max(topology_size, len(active_monitors))):
+                if s not in used_slots:
+                    active_slots[mon] = s
+                    used_slots.add(s)
+                    break
+
+    if used_slots:
+        topology_size = max(topology_size, max(used_slots) + 1)
+
+    if not canonical_names:
+        canonical_names = list(active_monitors)
+
+    write_desktop_monitors_state(
+        active_monitors, left, right, active_slots, topology_size, canonical_names
+    )
+    return active_monitors, left, right, active_slots, topology_size, canonical_names
+
+
+def resolve_monitors() -> tuple[list[str], str, str]:
+    monitors, left, right, _, _, _ = resolve_topology()
+    return monitors, left, right
+
+
+def ensure_contiguous_layout(active_monitors: list[str], canonical_info: list[dict] | None = None) -> None:
+    if len(active_monitors) <= 1:
+        return
+    if canonical_info is None:
+        canonical_info = load_canonical_topology()
+
+    canonical_map = {m["output"]: m for m in canonical_info}
+    live_details: dict[str, dict] = {}
+    try:
+        res = run_hyprctl(["monitors", "-j"])
+        if res.returncode == 0 and res.stdout:
+            data = json.loads(res.stdout)
+            if isinstance(data, list):
+                for m in data:
+                    name = str(m.get("name", ""))
+                    if MONITOR_RE.fullmatch(name) and not m.get("disabled"):
+                        live_details[name] = m
+    except Exception:
+        return
+
+    # If all canonical monitors are present, verify and restore canonical positions
+    if len(active_monitors) >= len(canonical_info) and canonical_map and all(m in live_details for m in canonical_map):
+        for name, c in canonical_map.items():
+            live = live_details.get(name)
+            if not live:
+                continue
+            cur_x = live.get("x", 0)
+            cur_y = live.get("y", 0)
+            c_pos = c.get("position", "")
+            m_pos = re.match(r"^(\d+)x(\d+)$", c_pos)
+            if m_pos:
+                can_x, can_y = int(m_pos.group(1)), int(m_pos.group(2))
+                if cur_x != can_x or cur_y != can_y:
+                    mode = c.get("mode", f"{live.get('width', 1920)}x{live.get('height', 1080)}@{round(live.get('refreshRate', 60))}")
+                    scale = c.get("scale", live.get("scale", 1.0))
+                    run_hyprctl(["eval", f'hl.monitor({{ output = "{name}", mode = "{mode}", position = "{c_pos}", scale = {scale} }})'])
+        return
+
+    # Intermediate monitors missing: compress gaps
+    active_sorted = [m for m in canonical_info if m["output"] in active_monitors]
+    for mon in active_monitors:
+        if mon not in canonical_map and mon not in [m["output"] for m in active_sorted]:
+            active_sorted.append({"output": mon, "mode": "preferred", "position": "auto", "scale": 1.0, "x": 9999, "y": 0})
+
+    if len(active_sorted) <= 1:
+        return
+
+    current_x = 0
+    for idx, c in enumerate(active_sorted):
+        name = c["output"]
+        live = live_details.get(name)
+        if not live:
+            continue
+        width = live.get("width", 1920)
+        height = live.get("height", 1080)
+        scale = live.get("scale", 1.0) or 1.0
+        refresh = round(live.get("refreshRate", 60.0))
+        cur_x = live.get("x", 0)
+        cur_y = live.get("y", 0)
+        logical_w = int(round(width / scale))
+
+        if idx == 0:
+            current_x = cur_x + logical_w
+        else:
+            if cur_x > current_x:
+                new_pos = f"{current_x}x{cur_y}"
+                mode = c.get("mode") or f"{width}x{height}@{refresh}"
+                run_hyprctl(["eval", f'hl.monitor({{ output = "{name}", mode = "{mode}", position = "{new_pos}", scale = {scale} }})'])
+                current_x += logical_w
+            else:
+                current_x = max(current_x, cur_x + logical_w)
 
 
 def current_mode() -> str:
@@ -321,11 +555,11 @@ def notify_mode(mode: str, monitor_count: int) -> None:
         pass
 
 
-def set_mode(mode: str, monitors: list[str]) -> None:
+def set_mode(mode: str, monitors: list[str], topology_size: int = DEFAULT_TOPOLOGY_SIZE) -> None:
     if mode not in VALID_MODES:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors|reconcile}}\n"
         )
         sys.exit(2)
     atomic_write_state("desktop-mode", mode + "\n")
@@ -340,7 +574,7 @@ def set_mode(mode: str, monitors: list[str]) -> None:
                     workspace = ws
         except Exception:
             pass
-        desktop = desktop_for_workspace(workspace, max(1, len(monitors)))
+        desktop = desktop_for_workspace(workspace, max(1, topology_size))
         atomic_write_state("desktop-current", str(desktop) + "\n")
     notify_mode(mode, len(monitors))
 
@@ -444,49 +678,105 @@ def switch_mac(workspace: int, monitors: list[str], left_monitor: str, right_mon
     return place_workspace(workspace, monitor) and dispatch_focus_workspace(workspace)
 
 
-def switch_windows(desktop: int, monitors: list[str]) -> bool:
+def switch_windows(
+    desktop: int,
+    monitors: list[str],
+    slots: dict[str, int] | None = None,
+    topology_size: int | None = None,
+) -> bool:
     original_monitor = focused_monitor()
     if not monitors:
         switched = dispatch_focus_workspace(desktop)
-    else:
-        assignments = list(zip(monitors, workspace_ids(desktop, len(monitors))))
-        expressions: list[str] = []
-        for monitor, workspace in assignments:
-            expressions.extend(
-                [
-                    f'hl.dsp.focus({{ workspace = "{workspace}" }})',
-                    f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})',
-                ]
-            )
-        for monitor, workspace in assignments:
-            expressions.extend(
-                [
-                    f'hl.dsp.focus({{ monitor = "{monitor}" }})',
-                    f'hl.dsp.focus({{ workspace = "{workspace}" }})',
-                ]
-            )
-        if original_monitor in monitors:
-            expressions.append(f'hl.dsp.focus({{ monitor = "{original_monitor}" }})')
+        if switched:
+            atomic_write_state("desktop-current", str(desktop) + "\n")
+        return switched
 
-        switched = dispatch_batch(expressions)
+    if slots is None or topology_size is None:
+        canonical = load_canonical_topology()
+        canonical_names = [m["output"] for m in canonical]
+        # If monitors match canonical topology, anchor to canonical slots
+        if canonical_names and any(m in canonical_names for m in monitors):
+            topology_size = max(len(canonical_names), DEFAULT_TOPOLOGY_SIZE)
+            slots = {m: canonical_names.index(m) for m in monitors if m in canonical_names}
+            # Unmapped monitors get remaining slots
+            used = set(slots.values())
+            for m in monitors:
+                if m not in slots:
+                    for s in range(topology_size):
+                        if s not in used:
+                            slots[m] = s
+                            used.add(s)
+                            break
+        else:
+            topology_size = max(1, len(monitors))
+            slots = {m: idx for idx, m in enumerate(monitors)}
+
+    assignments = []
+    for mon in monitors:
+        slot = slots.get(mon, 0)
+        ws = workspace_for_slot(desktop, slot, topology_size)
+        assignments.append((mon, ws))
+
+    expressions: list[str] = []
+    for monitor, workspace in assignments:
+        expressions.extend(
+            [
+                f'hl.dsp.focus({{ workspace = "{workspace}" }})',
+                f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})',
+            ]
+        )
+    for monitor, workspace in assignments:
+        expressions.extend(
+            [
+                f'hl.dsp.focus({{ monitor = "{monitor}" }})',
+                f'hl.dsp.focus({{ workspace = "{workspace}" }})',
+            ]
+        )
+    if original_monitor in monitors:
+        expressions.append(f'hl.dsp.focus({{ monitor = "{original_monitor}" }})')
+
+    switched = dispatch_batch(expressions)
+    if not switched:
+        return False
+
+    active, focused = monitor_snapshot()
+    unmatched = [mon for mon, ws in assignments if active.get(mon) != ws]
+    if unmatched:
+        for mon, ws in assignments:
+            if mon in unmatched:
+                place_workspace(ws, mon)
         active, focused = monitor_snapshot()
-        switched = switched and all(active.get(monitor) == workspace for monitor, workspace in assignments)
-        if original_monitor in monitors:
-            switched = switched and focused == original_monitor
+        unmatched = [mon for mon, ws in assignments if active.get(mon) != ws]
+
+    switched = len(unmatched) == 0
+    if original_monitor in monitors:
+        switched = switched and focused == original_monitor
 
     if switched:
         atomic_write_state("desktop-current", str(desktop) + "\n")
     return switched
 
 
-def switch_desktop(num_str: str, monitors: list[str], left_monitor: str, right_monitor: str) -> None:
+def switch_desktop(
+    num_str: str,
+    monitors: list[str],
+    left_monitor: str,
+    right_monitor: str,
+    slots: dict[str, int] | None = None,
+    topology_size: int | None = None,
+) -> None:
     number = normalize_number(num_str)
-    if current_mode() == "windows":
-        switched = switch_windows(number, monitors)
-    else:
+    mode = current_mode()
+    if mode == "windows":
+        switched = switch_windows(number, monitors, slots, topology_size)
+    elif mode == "mac":
         switched = switch_mac(number, monitors, left_monitor, right_monitor)
+    else:
+        switched = dispatch_focus_workspace(number)
+        if switched:
+            atomic_write_state("desktop-current", str(number) + "\n")
     if not switched:
-        raise RuntimeError("desktop switch did not complete")
+        sys.stderr.write(f"omarchy-desktop-mode: warning: desktop switch {number} incomplete\n")
 
 
 def move_window(
@@ -495,15 +785,22 @@ def move_window(
     monitors: list[str],
     left_monitor: str,
     right_monitor: str,
+    slots: dict[str, int] | None = None,
+    topology_size: int | None = None,
 ) -> None:
     number = normalize_number(num_str)
     mode = current_mode()
 
     if mode == "windows":
         monitor = focused_monitor()
-        monitor_index = monitors.index(monitor) if monitor in monitors else 0
-        set_size = max(1, len(monitors))
-        target = workspace_for_monitor(number, monitor_index, set_size)
+        if slots and monitor in slots:
+            slot = slots[monitor]
+        elif monitor in monitors:
+            slot = monitors.index(monitor)
+        else:
+            slot = 0
+        k = topology_size or max(1, len(monitors))
+        target = workspace_for_slot(number, slot, k)
     else:
         target = number
         monitor = left_monitor if (target % 2 == 1) else right_monitor
@@ -516,9 +813,9 @@ def move_window(
 
     if mode == "windows" and monitors:
         if not switch_windows(number, monitors):
-            raise RuntimeError("destination monitor set did not activate")
+            sys.stderr.write("omarchy-desktop-mode: warning: destination monitor set switch incomplete\n")
         if monitor in monitors and not dispatch_focus_monitor(monitor):
-            raise RuntimeError("could not restore focused monitor")
+            sys.stderr.write("omarchy-desktop-mode: warning: could not restore focused monitor\n")
     elif mode != "windows" and len(monitors) > 1 and monitor in monitors:
         if not dispatch_focus_monitor(monitor) or not dispatch_focus_workspace(target):
             raise RuntimeError("destination workspace did not activate")
@@ -528,17 +825,32 @@ def move_window(
                 raise RuntimeError("destination workspace did not activate")
 
 
+def reconcile() -> None:
+    monitors, left, right, slots, topology_size, canonical_names = resolve_topology()
+    canonical_info = load_canonical_topology()
+    ensure_contiguous_layout(monitors, canonical_info)
+    mode = current_mode()
+    if mode == "windows" and monitors:
+        curr = read_state_file("desktop-current")
+        try:
+            desktop = int(curr) if curr else 1
+        except ValueError:
+            desktop = 1
+        switch_windows(desktop, monitors, slots, topology_size)
+    write_desktop_monitors_state(monitors, left, right, slots, topology_size, canonical_names)
+
+
 def main() -> None:
-    monitors, left_monitor, right_monitor = resolve_monitors()
+    monitors, left_monitor, right_monitor, slots, topology_size, _ = resolve_topology()
 
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
 
     if cmd == "toggle":
         curr = current_mode()
         next_mode = "mac" if curr == "omarchy" else ("windows" if curr == "mac" else "omarchy")
-        set_mode(next_mode, monitors)
+        set_mode(next_mode, monitors, topology_size)
     elif cmd in ("omarchy", "mac", "windows"):
-        set_mode(cmd, monitors)
+        set_mode(cmd, monitors, topology_size)
     elif cmd == "status":
         sys.stdout.write(current_mode() + "\n")
     elif cmd == "indicator":
@@ -547,17 +859,22 @@ def main() -> None:
     elif cmd == "switch":
         if len(sys.argv) < 3:
             sys.exit(2)
-        switch_desktop(sys.argv[2], monitors, left_monitor, right_monitor)
+        switch_desktop(sys.argv[2], monitors, left_monitor, right_monitor, slots, topology_size)
     elif cmd == "move":
         if len(sys.argv) < 3:
             sys.exit(2)
-        move_window(sys.argv[2], False, monitors, left_monitor, right_monitor)
+        move_window(sys.argv[2], False, monitors, left_monitor, right_monitor, slots, topology_size)
     elif cmd == "move-silent":
         if len(sys.argv) < 3:
             sys.exit(2)
-        move_window(sys.argv[2], True, monitors, left_monitor, right_monitor)
+        move_window(sys.argv[2], True, monitors, left_monitor, right_monitor, slots, topology_size)
+    elif cmd == "reconcile":
+        reconcile()
+        sys.stdout.write("reconciled\n")
     elif cmd == "monitors":
         sys.stdout.write(f"Monitor set ({len(monitors)}): {', '.join(monitors) or '(unavailable)'}\n")
+        sys.stdout.write(f"Topology size: {topology_size}\n")
+        sys.stdout.write(f"Slots: {json.dumps(slots)}\n")
         sys.stdout.write(f"Left endpoint:  {left_monitor or '(unavailable)'}\n")
         sys.stdout.write(f"Right endpoint: {right_monitor or '(unavailable)'}\n")
     elif cmd in ("-h", "--help", "help"):
@@ -574,12 +891,13 @@ Commands:
   switch NUM      Switch to workspace / monitor-set desktop NUM (1-10, 0=10)
   move NUM        Move active window to desktop NUM and follow
   move-silent NUM Move active window to desktop NUM without following
+  reconcile       Re-anchor displays, compress layout gaps, and sync desktop
   monitors        Print detected monitor assignments
 """)
     else:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors|reconcile}}\n"
         )
         sys.exit(2)
 

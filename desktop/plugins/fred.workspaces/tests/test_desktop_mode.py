@@ -248,5 +248,134 @@ class DispatchTests(unittest.TestCase):
         )
 
 
+class ResilienceTests(unittest.TestCase):
+    CANONICAL_TOPO = [
+        {"output": "DP-2", "mode": "1920x1080@60", "position": "0x720", "scale": 1.5, "x": 0, "y": 720},
+        {"output": "DP-1", "mode": "2560x1440@60", "position": "1280x0", "scale": 1.0, "x": 1280, "y": 0},
+        {"output": "HDMI-A-1", "mode": "1920x1080@60", "position": "3840x360", "scale": 1.0, "x": 3840, "y": 360},
+    ]
+
+    def test_topology_anchored_workspace_mapping_normal(self):
+        with (
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "discover_monitors", return_value=["DP-2", "DP-1", "HDMI-A-1"]),
+            patch.object(desktop_mode, "atomic_write_state"),
+        ):
+            monitors, left, right, slots, topo_size, _ = desktop_mode.resolve_topology()
+            self.assertEqual(topo_size, 3)
+            self.assertEqual(slots, {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2})
+
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["DP-2"], topo_size), 1)
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["DP-1"], topo_size), 2)
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["HDMI-A-1"], topo_size), 3)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-2"], topo_size), 4)
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-1"], topo_size), 5)
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["HDMI-A-1"], topo_size), 6)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-2"], topo_size), 13)
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-1"], topo_size), 14)
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["HDMI-A-1"], topo_size), 15)
+
+    def test_slot_stability_when_center_monitor_drops(self):
+        with (
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "discover_monitors", return_value=["DP-2", "HDMI-A-1"]),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            monitors, left, right, slots, topo_size, _ = desktop_mode.resolve_topology()
+            self.assertEqual(topo_size, 3)
+            self.assertEqual(slots, {"DP-2": 0, "HDMI-A-1": 2})
+
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["DP-2"], topo_size), 1)
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["HDMI-A-1"], topo_size), 3)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-2"], topo_size), 4)
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["HDMI-A-1"], topo_size), 6)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-2"], topo_size), 13)
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["HDMI-A-1"], topo_size), 15)
+            self.assertEqual(desktop_mode.desktop_for_workspace(14, topo_size), 5)
+
+            payload = json.loads(write_state.call_args.args[1])
+            self.assertTrue(payload["degraded"])
+            self.assertEqual(payload["count"], 2)
+            self.assertEqual(payload["topology_size"], 3)
+
+    def test_geometric_gap_compression_when_center_drops(self):
+        live_monitors = [
+            {"name": "DP-2", "x": 0, "y": 720, "width": 1920, "height": 1080, "scale": 1.5, "refreshRate": 60.0},
+            {"name": "HDMI-A-1", "x": 3840, "y": 360, "width": 1920, "height": 1080, "scale": 1.0, "refreshRate": 60.0},
+        ]
+        with (
+            patch.object(desktop_mode, "run_hyprctl", side_effect=[
+                completed(stdout=json.dumps(live_monitors)),
+                completed(stdout="ok"),
+            ]) as run_ctl,
+        ):
+            desktop_mode.ensure_contiguous_layout(["DP-2", "HDMI-A-1"], self.CANONICAL_TOPO)
+
+            self.assertEqual(run_ctl.call_count, 2)
+            eval_arg = run_ctl.call_args_list[1].args[0]
+            self.assertEqual(eval_arg[0], "eval")
+            self.assertIn('output = "HDMI-A-1"', eval_arg[1])
+            self.assertIn('position = "1280x360"', eval_arg[1])
+
+    def test_geometric_layout_restoration_when_all_monitors_present(self):
+        live_monitors = [
+            {"name": "DP-2", "x": 0, "y": 720, "width": 1920, "height": 1080, "scale": 1.5, "refreshRate": 60.0},
+            {"name": "DP-1", "x": 1280, "y": 0, "width": 2560, "height": 1440, "scale": 1.0, "refreshRate": 60.0},
+            {"name": "HDMI-A-1", "x": 1280, "y": 360, "width": 1920, "height": 1080, "scale": 1.0, "refreshRate": 60.0},
+        ]
+        with (
+            patch.object(desktop_mode, "run_hyprctl", side_effect=[
+                completed(stdout=json.dumps(live_monitors)),
+                completed(stdout="ok"),
+            ]) as run_ctl,
+        ):
+            desktop_mode.ensure_contiguous_layout(["DP-2", "DP-1", "HDMI-A-1"], self.CANONICAL_TOPO)
+
+            self.assertEqual(run_ctl.call_count, 2)
+            eval_arg = run_ctl.call_args_list[1].args[0]
+            self.assertIn('output = "HDMI-A-1"', eval_arg[1])
+            self.assertIn('position = "3840x360"', eval_arg[1])
+
+    def test_switch_windows_degraded_two_monitors_preserves_slots(self):
+        with (
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-2"),
+            patch.object(desktop_mode, "dispatch_batch", return_value=True) as batch,
+            patch.object(
+                desktop_mode,
+                "monitor_snapshot",
+                return_value=({"DP-2": 4, "HDMI-A-1": 6}, "DP-2"),
+            ),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            self.assertTrue(desktop_mode.switch_windows(2, ["DP-2", "HDMI-A-1"]))
+
+        expressions = batch.call_args.args[0]
+        self.assertIn('hl.dsp.focus({ workspace = "4" })', expressions)
+        self.assertIn('hl.dsp.focus({ workspace = "6" })', expressions)
+        self.assertNotIn('hl.dsp.focus({ workspace = "5" })', expressions)
+        write_state.assert_called_once_with("desktop-current", "2\n")
+
+    def test_reconcile_syncs_current_desktop_on_returned_display(self):
+        with (
+            patch.object(desktop_mode, "resolve_topology", return_value=(
+                ["DP-2", "DP-1", "HDMI-A-1"], "DP-2", "HDMI-A-1",
+                {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}, 3, ["DP-2", "DP-1", "HDMI-A-1"]
+            )),
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "ensure_contiguous_layout"),
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "read_state_file", return_value="2"),
+            patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
+            patch.object(desktop_mode, "write_desktop_monitors_state"),
+        ):
+            desktop_mode.reconcile()
+            switch.assert_called_once_with(2, ["DP-2", "DP-1", "HDMI-A-1"], {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

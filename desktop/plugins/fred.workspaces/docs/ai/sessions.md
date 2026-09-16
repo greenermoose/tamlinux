@@ -126,3 +126,30 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - `omarchy plugin validate` passed.
   - Deployed live via `home-manager switch`; screenshot and `debugBarGeometry` confirmed all 3 monitors show width 127 with the dot over desktop 1.
 
+---
+
+## Session: 2026-09-16 — Hardware Resilience, Topology Anchoring & Gap Compression (v1.4.0)
+
+- **CLI Tool**: Antigravity CLI (`agy`) `1.2.3`
+- **Model**: `Gemini 3.8 Flash (High)`
+- **Conversation ID**: `f6fed9ce-46a1-4443-bdb0-104e729808ca`
+- **Prompt**:
+  > Work on the fred.workspaces resilience plan. The goal is to make fred.workspaces robust to hardware issues that sometimes take down monitors. The system should still be usable on the remaining monitors. The current situation is that fred.workspaces seems to be working okay on the MSI and hp monitors, but the dell monitor is in a weird state. This has happened before: both the left and right monitors show me five desktop choices and indicate desktop 1 is active, but the center monitor (my dell) shows seven desktop choices, none active. All three workspaces widgets are in W mode.
+- **Root Cause & Diagnosis**:
+  - Momentary hardware drop on the center monitor (Dell DP-1) caused `fred.workspaces` to dynamically drop its runtime set size from 3 to 2.
+  - With $N=2$, windows on Desktop 5 (WS 14) were recomputed as $\lfloor(14-1)/2\rfloor + 1 = 7$, spawning phantom Desktops 6 and 7.
+  - When the Dell reconnected, its newly spawned bar instance evaluated against stale cache while the active workspaces were running the 3-monitor set (WS 1, 2, 3), failing the all-monitors matching check and leaving all desktop choices unhighlighted.
+  - Concurrently, physical disconnection created a 2,560px gap between MSI ($x=0..1280$) and HP ($x=3840$), physically trapping the mouse pointer due to Wayland coordinate geometry.
+- **Key Decisions & Implementation Notes**:
+  - **R1: Topology-Anchored Workspace Grid ($K=3$)**: Decoupled workspace calculations from momentary hardware state; workspaces are anchored to canonical physical slots (Slot 0 = Left/MSI, Slot 1 = Center/Dell, Slot 2 = Right/HP). Workspace IDs never re-index when displays drop.
+  - **R2: Graceful Parking**: When a display drops, unmapped slots are parked cleanly; their windows remain undisturbed in Hyprland without being forcibly shifted.
+  - **R3: Automatic Geometric Gap Compression**: Added `ensure_contiguous_layout()` to detect gaps ($X_i > X_{i-1} + W_{i-1}$) when intermediate monitors disconnect and dynamically reposition downstream displays (e.g. HP moved from $x=3840$ to $x=1280$). Canonical positions are restored automatically upon display return.
+  - **R4: Resilient Two-Stage Switching**: Replaced fatal assertions with two-stage verification and individual fallback placements, ensuring `desktop-current` is always recorded.
+  - **R5: Hotplug Reclaim**: Hooked `monitoradded` / `monitorremoved` events in `Workspaces.qml` with a 350ms debounce triggering `omarchy-desktop-mode reconcile` to re-attach returned displays to their slot's current desktop.
+  - **R6: Degraded State Bar UI**: Updated `Workspaces.qml` to evaluate under fixed `topologySize` ($K=3$) and added degraded mode status indicators (`[X/Y Displays Active]`).
+- **Verification**:
+  - 23 unit tests (including 6 new resilience tests) passed in `0.028s`.
+  - `omarchy plugin validate` passed with zero warnings or errors.
+  - Live verification on workstation confirmed all 3 monitors display buttons 1–5, Desktop 1 active, and seamless desktop switching.
+
+
