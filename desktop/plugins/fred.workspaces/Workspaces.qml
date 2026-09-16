@@ -68,10 +68,12 @@ BarWidget {
       var name = monitor && monitor.name ? String(monitor.name) : ""
       if (!/^[A-Za-z0-9._-]{1,64}$/.test(name)) continue
       var geometry = monitor.screen && monitor.screen.geometry ? monitor.screen.geometry : null
+      var xVal = geometry ? geometry.x : (typeof monitor.x === "number" ? monitor.x : 0)
+      var yVal = geometry ? geometry.y : (typeof monitor.y === "number" ? monitor.y : 0)
       records.push({
         "name": name,
-        "x": geometry ? geometry.x : 0,
-        "y": geometry ? geometry.y : 0
+        "x": xVal,
+        "y": yVal
       })
     }
     records.sort(function(a, b) {
@@ -126,8 +128,8 @@ BarWidget {
       var firstMon = monitors[0]
       for (var i = 1; i < monitors.length; i++) {
         var m = monitors[i]
-        var mX = (m.screen && m.screen.geometry) ? m.screen.geometry.x : 0
-        var firstX = (firstMon.screen && firstMon.screen.geometry) ? firstMon.screen.geometry.x : 0
+        var mX = (m.screen && m.screen.geometry) ? m.screen.geometry.x : (typeof m.x === "number" ? m.x : 0)
+        var firstX = (firstMon.screen && firstMon.screen.geometry) ? firstMon.screen.geometry.x : (typeof firstMon.x === "number" ? firstMon.x : 0)
         if (mX < firstX) firstMon = m
       }
       return barMonitor.name === firstMon.name
@@ -136,6 +138,7 @@ BarWidget {
   }
 
   function workspaceIds() {
+    var _rev = root.windowsRevision
     if (desktopMode === "mac" && barMonitor !== null) {
       if (effectiveSetSize() === 1) {
         return [1, 2, 3, 4, 5]
@@ -461,6 +464,7 @@ BarWidget {
     id: modeFile
     path: root.modePath
     watchChanges: true
+    atomicWrites: true
     printErrors: false
     onLoaded: root.loadDesktopMode(text())
     onLoadFailed: root.loadDesktopMode("mac")
@@ -471,6 +475,7 @@ BarWidget {
     id: monitorsFile
     path: root.monitorsPath
     watchChanges: true
+    atomicWrites: true
     printErrors: false
     onLoaded: root.loadMonitors(text())
     onLoadFailed: {}
@@ -495,6 +500,7 @@ BarWidget {
         if (text.length <= 64) {
           root.loadDesktopMode(text)
         }
+        root.loadMonitors(monitorsFile.text())
       }
     }
 

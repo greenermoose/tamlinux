@@ -103,3 +103,26 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - 17 Python standard-library tests passed for mapping, discovery, dispatch failures, verification, and window moves.
   - `omarchy plugin validate` and `git diff --check` passed.
   - Live three-monitor tests produced `DP-2/DP-1/HDMI-A-1 = 1/2/3`, `4/5/6`, and `13/14/15`; focus restoration and empty Hyprland config errors were confirmed.
+
+---
+
+## Session: 2026-09-15 — Center Monitor Indicator Desync & Atomic File Watch (v1.3.1)
+
+- **CLI Tool**: Antigravity CLI (`agy`) `1.2.3`
+- **Model**: `Gemini 3.8 Flash (High)`
+- **Prompt**:
+  > fred.workspaces is not showing the active desktop on the center monitor. The left and right monitors have a dot over 1 but the center one does not. Figure out why and fix.
+- **Root Cause**:
+  - `omarchy-desktop-mode` writes state files atomically via `os.replace()`.
+  - In `Workspaces.qml`, `monitorsFile` had default `atomicWrites: false`. During a post-resume flapping event where DP-2 momentarily disconnected, the file was rewritten. When DP-2 reconnected, the file was replaced again. While DP-2 and HDMI-A-1's bars reloaded, DP-1's bar remained running on the orphaned inode and was never notified of the update.
+  - With stale `monitorCount == 2` on DP-1, workspace 2 on DP-1 did not match the expected workspace 1 at position 0, preventing the focused dot indicator from appearing. Furthermore, existing workspaces 11 and 14 mapped to sets 6 and 7, showing buttons 1–7 instead of 1–5.
+- **Implementation Notes**:
+  - Set `atomicWrites: true` on both `modeFile` and `monitorsFile` in `Workspaces.qml`.
+  - Added proactive `loadMonitors(monitorsFile.text())` call to `modeStatusProcess.onStreamFinished`.
+  - Fixed monitor coordinate extraction in `quickshellMonitorNames()` and `isLeftMonitor()` to read `monitor.x` / `monitor.y` (`typeof monitor.x === "number"`).
+  - Bound `workspaceIds()` to `root.windowsRevision` for reactive workspace rendering.
+- **Verification**:
+  - 17 unit tests passed cleanly.
+  - `omarchy plugin validate` passed.
+  - Deployed live via `home-manager switch`; screenshot and `debugBarGeometry` confirmed all 3 monitors show width 127 with the dot over desktop 1.
+
