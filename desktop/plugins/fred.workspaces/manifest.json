@@ -21,19 +21,15 @@
     "defaultSection": "left",
     "allowMultiple": false,
     "defaults": {
-      "splitSet": "partial"
+      "splitSet": true
     },
     "schema": [
       {
         "key": "splitSet",
-        "type": "enum",
-        "label": "Split monitor set (Windows mode)",
-        "options": [
-          "partial",
-          "follow"
-        ],
-        "defaultValue": "partial",
-        "description": "What to do when the monitors stop showing one desktop as a set. partial: only the monitor that followed the focus moves; it shows a hollow indicator and an F mode letter until clicked back or the set is moved by a bar click or SUPER+number. follow: realign every monitor to the focused monitor's desktop automatically."
+        "type": "boolean",
+        "label": "Allow a window focus to split the set (Windows mode)",
+        "defaultValue": true,
+        "description": "Windows mode only. When a window focus lands on a hidden workspace, Hyprland moves just that monitor. true: the set splits — that monitor shows a hollow marker and an F mode letter until clicked back or the set is moved by a bar click or SUPER+number. false: the whole set follows to the focused monitor's desktop."
       }
     ]
   },

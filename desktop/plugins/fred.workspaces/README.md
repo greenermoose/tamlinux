@@ -138,15 +138,15 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 
 ### Split monitor sets (Windows mode)
 
-Anything that focuses a window on a hidden workspace — an app that opens on a stale workspace, a window switcher, a single-monitor Hyprland dispatch — moves one monitor and leaves the set split. The `splitSet` widget setting decides what happens:
+Anything that focuses a window on a hidden workspace — an app that opens on a stale workspace, a window switcher, a single-monitor Hyprland dispatch — makes Hyprland move just that monitor. The `splitSet` widget setting decides whether that is allowed to split the set. It only applies to Windows mode; Omarchy and Mac modes treat each monitor individually.
 
 ```bash
-omarchy bar set fred.workspaces splitSet partial   # default
-omarchy bar set fred.workspaces splitSet follow
+omarchy bar set fred.workspaces splitSet true    # default
+omarchy bar set fred.workspaces splitSet false
 ```
 
-- `partial`: shown per monitor. The monitor that left the set's desktop shows a hollow marker on its own desktop and **F** (it followed a window focus) as its mode letter; hover **F** to see where it is versus the set, click **F** to bring just that monitor back. Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop, or `SUPER + number` (top row or keypad), moves the whole set.
-- `follow`: every monitor is realigned to the focused monitor's desktop automatically.
+- `true`: the set splits, shown per monitor. The monitor that left the set's desktop shows a hollow marker on its own desktop and **F** (it followed a window focus) as its mode letter; hover **F** to see where it is versus the set, click **F** to bring just that monitor back. Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop, or `SUPER + number` (top row or keypad), moves the whole set.
+- `false`: the set never splits — every monitor follows to the focused monitor's desktop automatically.
 
 ### Upgrading from v1.2.1
 

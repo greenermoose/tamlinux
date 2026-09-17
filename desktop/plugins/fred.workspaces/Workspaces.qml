@@ -179,16 +179,21 @@ BarWidget {
 
   property int windowsRevision: 0
 
-  // Windows mode: what to do when the monitors stop showing one desktop as a
-  // set (an app landing on a hidden workspace, a window switcher, a
-  // single-monitor dispatch). "partial" lets that one monitor follow the
-  // focus, marking it with a hollow indicator and an F mode letter until it
-  // is returned (click F) or the set is moved (desktop click, SUPER+N);
-  // "follow" realigns the whole set to the focused monitor's desktop.
-  //   omarchy bar set fred.workspaces splitSet follow|partial
-  readonly property string splitSetMode: {
-    var raw = String(root.setting("splitSet", "partial") || "").toLowerCase()
-    return raw === "follow" ? "follow" : "partial"
+  // Windows mode only (Omarchy and Mac modes treat each monitor on its own):
+  // may a window focus split the set? When a focus lands on a hidden
+  // workspace (an app opening on a stale workspace, a window switcher, a
+  // single-monitor dispatch) Hyprland moves just that monitor.
+  //   true  (default) - the set splits: that monitor shows a hollow marker
+  //                     and F until it is returned (click F) or the set is
+  //                     moved (desktop click, SUPER+N)
+  //   false           - the whole set follows to the focused monitor's desktop
+  //   omarchy bar set fred.workspaces splitSet true|false
+  readonly property bool splitSetAllowed: {
+    var raw = root.setting("splitSet", true)
+    if (typeof raw === "boolean") return raw
+    var text = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase()
+    if (text === "false" || text === "0" || text === "no" || text === "off") return false
+    return true
   }
 
   // Last desktop the whole set showed together; where a deviated monitor
@@ -255,7 +260,7 @@ BarWidget {
     return ws >= 1 ? windowsDisplayId(ws) : 0
   }
 
-  readonly property bool splitSet: setState().split
+  readonly property bool setIsSplit: setState().split
   // This bar's monitor has left the set's desktop.
   readonly property bool barDeviated: {
     var state = setState()
@@ -275,7 +280,7 @@ BarWidget {
   }
 
   function displayPartial(displayId) {
-    return splitSet && barDeviated && displayId === barDesktop()
+    return setIsSplit && barDeviated && displayId === barDesktop()
   }
 
   // Bring this bar's monitor back to the set's desktop.
@@ -315,7 +320,8 @@ BarWidget {
     }
   }
 
-  // Follow-focus realignment. Only the bar on the focused monitor acts, so
+  // splitSet=false: realign the set to the focused monitor's desktop. Only
+  // the bar on the focused monitor acts, so
   // three bars do not launch three concurrent switches; the debounce lets a
   // helper-driven batch switch settle before the set is judged split.
   Timer {
@@ -323,7 +329,7 @@ BarWidget {
     interval: 300
     repeat: false
     onTriggered: {
-      if (root.splitSetMode !== "follow" || root.desktopMode !== "windows") return
+      if (root.splitSetAllowed || root.desktopMode !== "windows") return
       if (barMonitor === null || Hyprland.focusedMonitor === null
           || barMonitor.name !== Hyprland.focusedMonitor.name) return
       var state = root.setState()

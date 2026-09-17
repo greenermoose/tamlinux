@@ -7,9 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] (v1.4.2)
 
 ### Added
-- **Split-set handling in Windows mode** (`splitSet` widget setting, `omarchy bar set fred.workspaces splitSet partial|follow`). When something focuses a window on a hidden workspace (an app landing on a stale workspace, a window switcher, a single-monitor dispatch), one monitor changes desktop and the set no longer matches:
-  - `partial` (default): the split is shown per monitor. A monitor that left the set's desktop shows a hollow marker on its own desktop and **F** (followed a focus) as the mode letter; hovering F says where it is versus the set, and clicking F returns just that monitor (new helper command `realign MONITOR DESKTOP`). Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop or pressing `SUPER + number` (top row or keypad) moves the whole set.
-  - `follow`: the set is realigned to the focused monitor's desktop automatically (300 ms debounce; only the bar on the focused monitor acts).
+- **Split-set handling in Windows mode** (`splitSet` widget setting, `omarchy bar set fred.workspaces splitSet true|false`; Windows mode only — Omarchy and Mac modes treat each monitor individually). When something focuses a window on a hidden workspace (an app landing on a stale workspace, a window switcher, a single-monitor dispatch), Hyprland moves just that monitor:
+  - `true` (default): the set splits, shown per monitor. A monitor that left the set's desktop shows a hollow marker on its own desktop and **F** (followed a focus) as the mode letter; hovering F says where it is versus the set, and clicking F returns just that monitor (new helper command `realign MONITOR DESKTOP`). Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop or pressing `SUPER + number` (top row or keypad) moves the whole set.
+  - `false`: the set does not split — every monitor follows to the focused monitor's desktop (300 ms debounce; only the bar on the focused monitor acts).
 
 ## [Unreleased] (v1.4.1)
 
