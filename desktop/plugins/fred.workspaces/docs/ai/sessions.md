@@ -224,7 +224,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 
 ## Session: 2026-09-17 — Per-Monitor Idle Blanking of Unused Monitors (v1.5.0)
 
-- **CLI Tool**: Antigravity CLI (`agy`) `1.2.3`
+- **CLI Tool**: Antigravity CLI (`agy`) `1.2.5`
 - **Model**: `gemini-3.8-flash-high`
 - **Conversation ID**: `b406cca2-7398-4b2f-ad9d-0901cd85cbb8`
 - **Prompts**:
