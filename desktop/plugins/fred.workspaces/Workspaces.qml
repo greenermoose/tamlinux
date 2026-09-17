@@ -181,9 +181,10 @@ BarWidget {
 
   // Windows mode: what to do when the monitors stop showing one desktop as a
   // set (an app landing on a hidden workspace, a window switcher, a
-  // single-monitor dispatch). "partial" marks the focused monitor's desktop
-  // with a hollow indicator until a bar click or SUPER+N realigns the set;
-  // "follow" realigns the set to the focused monitor's desktop automatically.
+  // single-monitor dispatch). "partial" lets that one monitor follow the
+  // focus, marking it with a hollow indicator and an F mode letter until it
+  // is returned (click F) or the set is moved (desktop click, SUPER+N);
+  // "follow" realigns the whole set to the focused monitor's desktop.
   //   omarchy bar set fred.workspaces splitSet follow|partial
   readonly property string splitSetMode: {
     var raw = String(root.setting("splitSet", "partial") || "").toLowerCase()
@@ -780,11 +781,12 @@ BarWidget {
 
     WidgetButton {
       bar: root.bar
-      text: root.barDeviated ? "P" : root.desktopModeLetter()
+      // F: this display followed a window focus off the set's desktop.
+      text: root.barDeviated ? "F" : root.desktopModeLetter()
       tooltipText: {
         if (root.barDeviated) {
           var state = root.setState()
-          return "Partial: this display is on desktop " + root.barDesktop()
+          return "Followed focus: this display moved to desktop " + root.barDesktop()
             + " while the set is on desktop " + state.setDesktop
             + " (" + root.splitDetail() + ").\nClick to return this display to desktop "
             + state.setDesktop + ", or pick a desktop from the bar / SUPER+number to move the whole set."

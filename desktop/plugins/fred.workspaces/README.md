@@ -145,7 +145,7 @@ omarchy bar set fred.workspaces splitSet partial   # default
 omarchy bar set fred.workspaces splitSet follow
 ```
 
-- `partial`: shown per monitor. The monitor that left the set's desktop shows a hollow marker on its own desktop and **P** as its mode letter; hover **P** to see where it is versus the set, click **P** to bring just that monitor back. Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop, or `SUPER + number` (top row or keypad), moves the whole set.
+- `partial`: shown per monitor. The monitor that left the set's desktop shows a hollow marker on its own desktop and **F** (it followed a window focus) as its mode letter; hover **F** to see where it is versus the set, click **F** to bring just that monitor back. Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop, or `SUPER + number` (top row or keypad), moves the whole set.
 - `follow`: every monitor is realigned to the focused monitor's desktop automatically.
 
 ### Upgrading from v1.2.1

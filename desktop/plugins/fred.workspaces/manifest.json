@@ -33,7 +33,7 @@
           "follow"
         ],
         "defaultValue": "partial",
-        "description": "What to do when the monitors stop showing one desktop as a set. partial: mark the focused monitor's desktop with a hollow indicator until a bar click or SUPER+number realigns the set. follow: realign every monitor to the focused monitor's desktop automatically."
+        "description": "What to do when the monitors stop showing one desktop as a set. partial: only the monitor that followed the focus moves; it shows a hollow indicator and an F mode letter until clicked back or the set is moved by a bar click or SUPER+number. follow: realign every monitor to the focused monitor's desktop automatically."
       }
     ]
   },
