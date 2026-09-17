@@ -378,6 +378,23 @@ class ResilienceTests(unittest.TestCase):
         self.assertNotIn('hl.dsp.focus({ workspace = "5" })', expressions)
         write_state.assert_called_once_with("desktop-current", "2\n")
 
+    def test_realign_moves_only_the_deviated_monitor(self):
+        slots = {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}
+        with (
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-1"),
+            patch.object(desktop_mode, "place_workspace", return_value=True) as place,
+            patch.object(desktop_mode, "dispatch_focus_monitor", return_value=True) as refocus,
+            patch.object(desktop_mode, "monitor_snapshot", return_value=({"DP-2": 1, "DP-1": 2, "HDMI-A-1": 3}, "DP-1")),
+        ):
+            self.assertTrue(desktop_mode.realign_monitor("DP-2", 1, list(slots), slots, 3))
+        place.assert_called_once_with(1, "DP-2")
+        refocus.assert_called_once_with("DP-1")
+
+    def test_realign_refuses_outside_windows_mode(self):
+        with patch.object(desktop_mode, "current_mode", return_value="mac"):
+            self.assertFalse(desktop_mode.realign_monitor("DP-2", 1, ["DP-2", "DP-1"], {"DP-2": 0, "DP-1": 1}, 3))
+
     def test_reconcile_syncs_current_desktop_on_returned_display(self):
         with (
             patch.object(desktop_mode, "resolve_topology", return_value=(

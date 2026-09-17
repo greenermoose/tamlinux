@@ -556,7 +556,7 @@ def set_mode(mode: str, monitors: list[str], topology_size: int = DEFAULT_TOPOLO
     if mode not in VALID_MODES:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors|reconcile}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|reconcile}}\n"
         )
         sys.exit(2)
     atomic_write_state("desktop-mode", mode + "\n")
@@ -754,6 +754,35 @@ def switch_windows(
     return switched
 
 
+def realign_monitor(
+    monitor: str,
+    desktop: int,
+    monitors: list[str],
+    slots: dict[str, int] | None,
+    topology_size: int | None,
+) -> bool:
+    """Bring one monitor back to its slot's workspace for DESKTOP, leaving the
+    rest of the set untouched (Windows mode only)."""
+    if current_mode() != "windows" or monitor not in monitors:
+        return False
+    if slots is None or topology_size is None or monitor not in slots:
+        slot = monitors.index(monitor)
+        size = max(1, len(monitors))
+    else:
+        slot = slots[monitor]
+        size = max(1, topology_size)
+    try:
+        workspace = workspace_for_slot(desktop, slot, size)
+    except ValueError:
+        return False
+    original_monitor = focused_monitor()
+    placed = place_workspace(workspace, monitor)
+    if original_monitor and original_monitor != monitor:
+        dispatch_focus_monitor(original_monitor)
+    active, _ = monitor_snapshot()
+    return placed and active.get(monitor) == workspace
+
+
 def switch_desktop(
     num_str: str,
     monitors: list[str],
@@ -865,6 +894,11 @@ def main() -> None:
         if len(sys.argv) < 3:
             sys.exit(2)
         move_window(sys.argv[2], True, monitors, left_monitor, right_monitor, slots, topology_size)
+    elif cmd == "realign":
+        if len(sys.argv) < 4 or not MONITOR_RE.fullmatch(sys.argv[2]):
+            sys.exit(2)
+        if not realign_monitor(sys.argv[2], normalize_number(sys.argv[3]), monitors, slots, topology_size):
+            sys.stderr.write(f"omarchy-desktop-mode: warning: realign of {sys.argv[2]} incomplete\n")
     elif cmd == "reconcile":
         reconcile()
         sys.stdout.write("reconciled\n")
@@ -888,13 +922,14 @@ Commands:
   switch NUM      Switch to workspace / monitor-set desktop NUM (1-10, 0=10)
   move NUM        Move active window to desktop NUM and follow
   move-silent NUM Move active window to desktop NUM without following
+  realign MON NUM Bring one monitor back to desktop NUM without moving the rest of the set
   reconcile       Re-anchor displays, compress layout gaps, and sync desktop
   monitors        Print detected monitor assignments
 """)
     else:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|monitors|reconcile}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|reconcile}}\n"
         )
         sys.exit(2)
 

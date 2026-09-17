@@ -113,6 +113,7 @@ omarchy-desktop-mode toggle            # Cycle mode (omarchy -> mac -> windows)
 omarchy-desktop-mode switch <NUMBER>   # Switch to desktop / workspace NUMBER
 omarchy-desktop-mode move <NUMBER>     # Move active window to desktop NUMBER and follow
 omarchy-desktop-mode move-silent <NUM> # Move active window without switching
+omarchy-desktop-mode realign <MON> <N> # Bring one monitor back to desktop N, leaving the rest of the set
 omarchy-desktop-mode monitors          # Print the ordered monitor set and endpoints
 ```
 
@@ -144,7 +145,7 @@ omarchy bar set fred.workspaces splitSet partial   # default
 omarchy bar set fred.workspaces splitSet follow
 ```
 
-- `partial`: the focused monitor's desktop shows a hollow marker and the mode letter turns to **P**. Hover **P** to see where each monitor is; click **P** to return the set to the desktop it showed before the split. Clicking any desktop, or `SUPER + number` (top row or keypad), also realigns.
+- `partial`: shown per monitor. The monitor that left the set's desktop shows a hollow marker on its own desktop and **P** as its mode letter; hover **P** to see where it is versus the set, click **P** to bring just that monitor back. Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop, or `SUPER + number` (top row or keypad), moves the whole set.
 - `follow`: every monitor is realigned to the focused monitor's desktop automatically.
 
 ### Upgrading from v1.2.1

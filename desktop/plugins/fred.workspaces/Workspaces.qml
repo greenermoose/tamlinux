@@ -190,26 +190,32 @@ BarWidget {
     return raw === "follow" ? "follow" : "partial"
   }
 
-  // Last desktop the whole set showed together; where a click on "P" returns.
+  // Last desktop the whole set showed together; where a deviated monitor
+  // returns to.
   property int lastAlignedDesktop: 0
 
   function trackAlignment() {
     var state = setState()
-    if (state.aligned > 0) root.lastAlignedDesktop = state.aligned
+    if (!state.split && state.setDesktop > 0) root.lastAlignedDesktop = state.setDesktop
   }
 
-  // Windows-mode set state: { split, focused, aligned }.
-  //   split   - monitors are not showing one desktop as a set
-  //   focused - desktop on the focused monitor (0 if unknown)
-  //   aligned - the common desktop when not split, else 0
+  // Windows-mode set state.
+  //   split      - monitors are not showing one desktop as a set
+  //   desktops   - { monitorName: desktop it shows }
+  //   setDesktop - the desktop the set is on: the common desktop when aligned;
+  //                when split, the desktop it showed before the split (falling
+  //                back to the desktop most monitors still show)
+  //   focused    - desktop on the focused monitor (0 if unknown)
   function setState() {
     var _rev = root.windowsRevision
-    var none = { "split": false, "focused": 0, "aligned": 0 }
+    var none = { "split": false, "desktops": ({}), "setDesktop": 0, "focused": 0 }
     if (desktopMode !== "windows") return none
     var names = effectiveMonitorNames()
     if (names.length < 2) return none
     var focusedName = Hyprland.focusedMonitor && Hyprland.focusedMonitor.name
       ? String(Hyprland.focusedMonitor.name) : ""
+    var desktops = {}
+    var counts = {}
     var focusedDesktop = 0
     var common = 0
     var split = false
@@ -220,28 +226,62 @@ BarWidget {
       if (ws < 1) continue
       var desktop = windowsDisplayId(ws)
       if (ws !== windowsWorkspaceId(desktop, slotForMonitor(names[i], i))) split = true
+      desktops[names[i]] = desktop
+      counts[desktop] = (counts[desktop] || 0) + 1
       if (common === 0) common = desktop
       else if (desktop !== common) split = true
       if (names[i] === focusedName) focusedDesktop = desktop
     }
-    return { "split": split, "focused": focusedDesktop, "aligned": split ? 0 : common }
+    var setDesktop = common
+    if (split) {
+      if (root.lastAlignedDesktop > 0 && counts[root.lastAlignedDesktop]) {
+        setDesktop = root.lastAlignedDesktop
+      } else {
+        var best = 0
+        for (var d in counts) {
+          if (counts[d] > best) { best = counts[d]; setDesktop = parseInt(d, 10) }
+        }
+      }
+    }
+    return { "split": split, "desktops": desktops, "setDesktop": setDesktop, "focused": focusedDesktop }
   }
 
-  // Desktop shown on the focused monitor when the set is split, else 0.
-  function splitDesktop() {
+  // Desktop this bar's own monitor shows (0 if unknown).
+  function barDesktop() {
+    var _rev = root.windowsRevision
+    if (barMonitor === null || barMonitor.activeWorkspace === null) return 0
+    var ws = barMonitor.activeWorkspace.id
+    return ws >= 1 ? windowsDisplayId(ws) : 0
+  }
+
+  readonly property bool splitSet: setState().split
+  // This bar's monitor has left the set's desktop.
+  readonly property bool barDeviated: {
     var state = setState()
-    if (!state.split) return 0
-    return state.focused > 0 ? state.focused : 1
+    if (!state.split || barMonitor === null) return false
+    var mine = state.desktops[barMonitor.name]
+    return typeof mine === "number" && mine !== state.setDesktop
   }
-
-  readonly property bool splitSet: splitDesktop() !== 0
 
   Component.onCompleted: Qt.callLater(root.trackAlignment)
 
-  // Return the set to the desktop it showed before the split.
-  function realignSet() {
-    var target = root.lastAlignedDesktop > 0 ? root.lastAlignedDesktop : splitDesktop()
-    if (target >= 1 && target <= 10) runDesktopCommand(["switch", String(target)])
+  // Per-bar button state. Monitors still on the set's desktop keep the solid
+  // marker; a deviated monitor shows a hollow marker on its own desktop.
+  function displayFocused(displayId) {
+    var state = setState()
+    if (!state.split) return workspaceFocused(displayId)
+    return !barDeviated && displayId === state.setDesktop
+  }
+
+  function displayPartial(displayId) {
+    return splitSet && barDeviated && displayId === barDesktop()
+  }
+
+  // Bring this bar's monitor back to the set's desktop.
+  function realignBarMonitor() {
+    var state = setState()
+    if (barMonitor === null || state.setDesktop < 1 || state.setDesktop > 10) return
+    runDesktopCommand(["realign", String(barMonitor.name), String(state.setDesktop)])
   }
 
   function splitDetail() {
@@ -285,7 +325,9 @@ BarWidget {
       if (root.splitSetMode !== "follow" || root.desktopMode !== "windows") return
       if (barMonitor === null || Hyprland.focusedMonitor === null
           || barMonitor.name !== Hyprland.focusedMonitor.name) return
-      var desktop = root.splitDesktop()
+      var state = root.setState()
+      if (!state.split) return
+      var desktop = state.focused > 0 ? state.focused : state.setDesktop
       if (desktop >= 1 && desktop <= 10) root.runDesktopCommand(["switch", String(desktop)])
     }
   }
@@ -366,10 +408,11 @@ BarWidget {
   function workspaceTooltip(displayId) {
     try {
       var _rev = root.windowsRevision
-      var isFocused = workspaceFocused(displayId)
+      var isFocused = desktopMode === "windows" ? displayFocused(displayId) : workspaceFocused(displayId)
       var headerSuffix = isFocused ? " (Current)" : ""
-      if (!isFocused && desktopMode === "windows" && splitDesktop() === displayId) {
-        headerSuffix = " (Partial — focused monitor only; click to bring the set here)"
+      if (desktopMode === "windows" && displayPartial(displayId)) {
+        headerSuffix = " (This display only — the set is on desktop " + setState().setDesktop
+          + "; click to bring the set here)"
       }
 
       if (desktopMode === "windows") {
@@ -716,8 +759,9 @@ BarWidget {
         required property int modelData
 
         readonly property bool occupied: root.workspaceOccupied(modelData)
-        readonly property bool focused: root.workspaceFocused(modelData)
-        readonly property bool partial: !focused && root.splitDesktop() === modelData
+        readonly property bool focused: root.desktopMode === "windows"
+          ? root.displayFocused(modelData) : root.workspaceFocused(modelData)
+        readonly property bool partial: root.displayPartial(modelData)
 
         bar: root.bar
         // Filled rounded square = the set shows this desktop; the outline twin
@@ -736,13 +780,14 @@ BarWidget {
 
     WidgetButton {
       bar: root.bar
-      text: root.splitSet ? "P" : root.desktopModeLetter()
+      text: root.barDeviated ? "P" : root.desktopModeLetter()
       tooltipText: {
-        if (root.splitSet) {
-          var back = root.lastAlignedDesktop > 0 ? root.lastAlignedDesktop : root.splitDesktop()
-          return "Partial desktop set: " + root.splitDetail()
-            + "\nClick to return to desktop " + back
-            + ", or pick a desktop from the bar / SUPER+number."
+        if (root.barDeviated) {
+          var state = root.setState()
+          return "Partial: this display is on desktop " + root.barDesktop()
+            + " while the set is on desktop " + state.setDesktop
+            + " (" + root.splitDetail() + ").\nClick to return this display to desktop "
+            + state.setDesktop + ", or pick a desktop from the bar / SUPER+number to move the whole set."
         }
         var base = root.desktopMode === "omarchy"
           ? "Omarchy Desktop mode — click for Mac mode"
@@ -759,8 +804,8 @@ BarWidget {
       fixedWidth: root.vertical ? root.barSize : Style.space(20)
       fixedHeight: root.barSize
       onPressed: function() {
-        if (root.splitSet) {
-          root.realignSet()
+        if (root.barDeviated) {
+          root.realignBarMonitor()
           return
         }
         root.desktopMode = root.nextDesktopMode()
