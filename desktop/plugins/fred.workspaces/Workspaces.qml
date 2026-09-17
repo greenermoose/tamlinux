@@ -179,16 +179,114 @@ BarWidget {
 
   property int windowsRevision: 0
 
+  // Windows mode: what to do when the monitors stop showing one desktop as a
+  // set (an app landing on a hidden workspace, a window switcher, a
+  // single-monitor dispatch). "partial" marks the focused monitor's desktop
+  // with a hollow indicator until a bar click or SUPER+N realigns the set;
+  // "follow" realigns the set to the focused monitor's desktop automatically.
+  //   omarchy bar set fred.workspaces splitSet follow|partial
+  readonly property string splitSetMode: {
+    var raw = String(root.setting("splitSet", "partial") || "").toLowerCase()
+    return raw === "follow" ? "follow" : "partial"
+  }
+
+  // Last desktop the whole set showed together; where a click on "P" returns.
+  property int lastAlignedDesktop: 0
+
+  function trackAlignment() {
+    var state = setState()
+    if (state.aligned > 0) root.lastAlignedDesktop = state.aligned
+  }
+
+  // Windows-mode set state: { split, focused, aligned }.
+  //   split   - monitors are not showing one desktop as a set
+  //   focused - desktop on the focused monitor (0 if unknown)
+  //   aligned - the common desktop when not split, else 0
+  function setState() {
+    var _rev = root.windowsRevision
+    var none = { "split": false, "focused": 0, "aligned": 0 }
+    if (desktopMode !== "windows") return none
+    var names = effectiveMonitorNames()
+    if (names.length < 2) return none
+    var focusedName = Hyprland.focusedMonitor && Hyprland.focusedMonitor.name
+      ? String(Hyprland.focusedMonitor.name) : ""
+    var focusedDesktop = 0
+    var common = 0
+    var split = false
+    for (var i = 0; i < names.length; i++) {
+      var monitor = monitorByName(names[i])
+      if (monitor === null || monitor.activeWorkspace === null) continue
+      var ws = monitor.activeWorkspace.id
+      if (ws < 1) continue
+      var desktop = windowsDisplayId(ws)
+      if (ws !== windowsWorkspaceId(desktop, slotForMonitor(names[i], i))) split = true
+      if (common === 0) common = desktop
+      else if (desktop !== common) split = true
+      if (names[i] === focusedName) focusedDesktop = desktop
+    }
+    return { "split": split, "focused": focusedDesktop, "aligned": split ? 0 : common }
+  }
+
+  // Desktop shown on the focused monitor when the set is split, else 0.
+  function splitDesktop() {
+    var state = setState()
+    if (!state.split) return 0
+    return state.focused > 0 ? state.focused : 1
+  }
+
+  readonly property bool splitSet: splitDesktop() !== 0
+
+  Component.onCompleted: Qt.callLater(root.trackAlignment)
+
+  // Return the set to the desktop it showed before the split.
+  function realignSet() {
+    var target = root.lastAlignedDesktop > 0 ? root.lastAlignedDesktop : splitDesktop()
+    if (target >= 1 && target <= 10) runDesktopCommand(["switch", String(target)])
+  }
+
+  function splitDetail() {
+    var names = effectiveMonitorNames()
+    var parts = []
+    for (var i = 0; i < names.length; i++) {
+      var monitor = monitorByName(names[i])
+      if (monitor === null || monitor.activeWorkspace === null) continue
+      var slot = slotForMonitor(names[i], i)
+      parts.push(monitorRole(slot, effectiveSetSize(), names[i]) + " on desktop "
+        + windowsDisplayId(monitor.activeWorkspace.id))
+    }
+    return parts.join(", ")
+  }
+
   Connections {
     target: Hyprland
     // rawEvent carries a HyprlandIpcEvent (name + data), not the raw line.
     function onRawEvent(event) {
       root.windowsRevision++
+      Qt.callLater(root.trackAlignment)
       var name = event && event.name ? String(event.name) : ""
       if (name === "monitoradded" || name === "monitorremoved"
           || name === "monitoraddedv2" || name === "monitorremovedv2") {
         reconcileDebounce.restart()
+      } else if (name === "workspace" || name === "workspacev2" || name === "focusedmon"
+          || name === "focusedmonv2") {
+        followDebounce.restart()
       }
+    }
+  }
+
+  // Follow-focus realignment. Only the bar on the focused monitor acts, so
+  // three bars do not launch three concurrent switches; the debounce lets a
+  // helper-driven batch switch settle before the set is judged split.
+  Timer {
+    id: followDebounce
+    interval: 300
+    repeat: false
+    onTriggered: {
+      if (root.splitSetMode !== "follow" || root.desktopMode !== "windows") return
+      if (barMonitor === null || Hyprland.focusedMonitor === null
+          || barMonitor.name !== Hyprland.focusedMonitor.name) return
+      var desktop = root.splitDesktop()
+      if (desktop >= 1 && desktop <= 10) root.runDesktopCommand(["switch", String(desktop)])
     }
   }
 
@@ -270,6 +368,9 @@ BarWidget {
       var _rev = root.windowsRevision
       var isFocused = workspaceFocused(displayId)
       var headerSuffix = isFocused ? " (Current)" : ""
+      if (!isFocused && desktopMode === "windows" && splitDesktop() === displayId) {
+        headerSuffix = " (Partial — focused monitor only; click to bring the set here)"
+      }
 
       if (desktopMode === "windows") {
         var names = effectiveMonitorNames()
@@ -616,11 +717,15 @@ BarWidget {
 
         readonly property bool occupied: root.workspaceOccupied(modelData)
         readonly property bool focused: root.workspaceFocused(modelData)
+        readonly property bool partial: !focused && root.splitDesktop() === modelData
 
         bar: root.bar
-        text: focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData))
+        // Filled rounded square = the set shows this desktop; the outline twin
+        // = only the focused monitor does (split set).
+        text: focused ? "\uDB85\uDCFB"
+          : (partial ? "\uDB85\uDCFC" : (modelData === 10 ? "0" : String(modelData)))
         tooltipText: root.workspaceTooltip(modelData)
-        opacity: occupied || focused ? 1 : 0.5
+        opacity: occupied || focused || partial ? 1 : 0.5
         horizontalMargin: 6
         verticalPadding: 6
         fixedWidth: root.vertical ? root.barSize : Style.space(20)
@@ -631,8 +736,14 @@ BarWidget {
 
     WidgetButton {
       bar: root.bar
-      text: root.desktopModeLetter()
+      text: root.splitSet ? "P" : root.desktopModeLetter()
       tooltipText: {
+        if (root.splitSet) {
+          var back = root.lastAlignedDesktop > 0 ? root.lastAlignedDesktop : root.splitDesktop()
+          return "Partial desktop set: " + root.splitDetail()
+            + "\nClick to return to desktop " + back
+            + ", or pick a desktop from the bar / SUPER+number."
+        }
         var base = root.desktopMode === "omarchy"
           ? "Omarchy Desktop mode — click for Mac mode"
           : (root.desktopMode === "mac"
@@ -648,6 +759,10 @@ BarWidget {
       fixedWidth: root.vertical ? root.barSize : Style.space(20)
       fixedHeight: root.barSize
       onPressed: function() {
+        if (root.splitSet) {
+          root.realignSet()
+          return
+        }
         root.desktopMode = root.nextDesktopMode()
         root.runDesktopCommand(["toggle"])
         modeRefreshTimer.restart()

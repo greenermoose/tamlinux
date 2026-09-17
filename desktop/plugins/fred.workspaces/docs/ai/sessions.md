@@ -177,3 +177,26 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - 24 unit tests pass (new `test_configured_topology_size_widens_the_grid`); `omarchy plugin validate` clean.
   - Mode flipped from a terminal shows on all three bars within 1 s (previously only on the 30 s poll).
   - Simulated Fault E (`hl.monitor({ output = "DP-1", disabled = true/false })`): degraded state written, HP compressed to x=1280, bars stay `[1..5]` with desktop 1 focused; on return the layout is restored and the rebuilt center bar matches left/right. `switch 2` from `PATH` places DP-2/DP-1/HDMI-A-1 on 4/5/6.
+
+---
+
+## Session: 2026-09-16 — Split Monitor Sets: Partial State & Follow Focus (v1.4.2)
+
+- **CLI Tool**: Claude Code (`claude`) `2.1.273`
+- **Model**: `Claude Opus 5` (`claude-opus-5`)
+- **Conversation ID**: `348c2c39-df3c-4b6f-aea0-e47c001361fb` (continuation of the v1.4.1 session)
+- **Prompts**:
+  > fred.workspaces is currently broken. No desktop is showing as selected.
+  > Allow both modes as a setting. By default, show partial state. But user can change setting so anything that focuses a window on a hidden workspace switches everything as a set in W mode. With the setting that allows partial state, you get out of partial state by clicking a desktop from the top bar or SUPER + number on keypad.
+  > Have mode letter change to P if in partial state. Hover over P shows partial state message. Clicking on P returns to the mode you were in before the partial state happened due to window focus.
+- **Diagnosis**:
+  - Monitors were on workspaces 4/2/3: Nautilus sat on workspace 4 and focusing it made Hyprland switch only DP-2. Windows mode marks a desktop only when every slot matches, so nothing was highlighted — an honest report of a split set, not stale state.
+- **Key Decisions & Implementation Notes**:
+  - Setting lives in the widget's `shell.json` layout entry (`omarchy bar set fred.workspaces splitSet partial|follow`), read through `BarWidget.setting()`; declared in `manifest.json` `barWidget.defaults`/`schema` (enum) for future settings UI.
+  - `setState()` evaluates the set from `Hyprland.monitors` (split if desktops differ or a workspace is off its slot); `lastAlignedDesktop` is tracked on every Hyprland event via `Qt.callLater` so the model has caught up.
+  - Partial: outline twin of the focused glyph (`U+F14FC`) on the focused monitor's desktop; mode button shows **P**, tooltip lists each monitor's desktop, click runs `switch <lastAlignedDesktop>`.
+  - Follow: `workspace`/`focusedmon` events restart a 300 ms debounce; only the bar whose `barMonitor` is `Hyprland.focusedMonitor` issues the `switch`, avoiding three concurrent helpers.
+- **Verification**:
+  - `omarchy plugin validate` clean; no QML warnings after `omarchy-qmlcache-purge && omarchy-restart-shell`.
+  - Partial: `focuswindow` on Nautilus (ws 4) → all bars show `1 ▢ 3 4 5 P`; `switch 1` realigns.
+  - Follow: `omarchy bar set … splitSet follow` picked up live; the same focus moved the set to 4/5/6 with focus kept on DP-2 and `desktop-current` = 2.

@@ -135,6 +135,18 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 > - Inline comments after values (e.g. `KEY=VAL # comment`) are rejected to avoid parsing ambiguities.
 > - Windows mode always uses every active, non-mirrored monitor. Endpoint overrides do not remove monitors from its set.
 
+### Split monitor sets (Windows mode)
+
+Anything that focuses a window on a hidden workspace — an app that opens on a stale workspace, a window switcher, a single-monitor Hyprland dispatch — moves one monitor and leaves the set split. The `splitSet` widget setting decides what happens:
+
+```bash
+omarchy bar set fred.workspaces splitSet partial   # default
+omarchy bar set fred.workspaces splitSet follow
+```
+
+- `partial`: the focused monitor's desktop shows a hollow marker and the mode letter turns to **P**. Hover **P** to see where each monitor is; click **P** to return the set to the desktop it showed before the split. Clicking any desktop, or `SUPER + number` (top row or keypad), also realigns.
+- `follow`: every monitor is realigned to the focused monitor's desktop automatically.
+
 ### Upgrading from v1.2.1
 
 Windows mode now interprets workspace IDs using the active set size. On three displays, workspace `3` belongs to desktop 1 instead of desktop 2. Existing windows are not moved or renumbered automatically; selecting a desktop applies the new contiguous mapping.

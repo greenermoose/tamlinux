@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.workspaces",
   "name": "Workspaces with Desktop Mode",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "author": "Fred (@greenermoose)",
   "description": "Workspace numbers with clickable desktop modes and dynamic all-monitor Windows sets",
   "repository": "https://github.com/greenermoose/omarchy-fred-workspaces",
@@ -19,7 +19,23 @@
     "description": "Workspace numbers and desktop-mode toggle",
     "category": "Compositor",
     "defaultSection": "left",
-    "allowMultiple": false
+    "allowMultiple": false,
+    "defaults": {
+      "splitSet": "partial"
+    },
+    "schema": [
+      {
+        "key": "splitSet",
+        "type": "enum",
+        "label": "Split monitor set (Windows mode)",
+        "options": [
+          "partial",
+          "follow"
+        ],
+        "defaultValue": "partial",
+        "description": "What to do when the monitors stop showing one desktop as a set. partial: mark the focused monitor's desktop with a hollow indicator until a bar click or SUPER+number realigns the set. follow: realign every monitor to the focused monitor's desktop automatically."
+      }
+    ]
   },
   "omarchy": {
     "clonedFrom": "omarchy.workspaces"
