@@ -203,3 +203,19 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - `omarchy plugin validate` clean; no QML warnings after `omarchy-qmlcache-purge && omarchy-restart-shell`.
   - Partial: `focuswindow` on Nautilus (ws 4) → left bar `1 ▢ 3 4 5 F`, center/right `● 2 3 4 5 W`; `realign DP-2 1` (the F click) returns only DP-2, left bar back to `● 2 3 4 5 W`. 26 unit tests pass.
   - `splitSet false`: `omarchy bar set … splitSet false` picked up live; the same focus moved the set to 4/5/6 with focus kept on DP-2 and `desktop-current` = 2.
+
+---
+
+## Session: 2026-09-17 — ECOSYSTEM.md: patched Hyprland dependencies (v1.4.3)
+
+- **CLI Tool**: Claude Code (`claude`) `2.1.274`
+- **Model**: `Claude Opus 5` (`claude-opus-5`)
+- **Conversation ID**: `d6c65ea2-7efb-41ed-bae1-86bc3f78d651`
+- **Commit**: `74437e9`
+- **Prompts**:
+  > We provided PRs for some packages we had to patch to fix bugs on this system. See these replies from those package maintainers. Create a plan for how we will keep our own fork and note the patches required for our system to work well. […] In the repos of our own software that requires patched versions of third-party software we will keep track of that. I'm thinking of something like an ecosystem folder or the like.
+- **Key Decisions & Implementation Notes**:
+  - Fred chose a single `ECOSYSTEM.md` at the repo root (not a folder) for repos that depend on a patched package; the full matrix lives in the new public registry `greenermoose/omarchy-fred-ecosystem`.
+  - Documentation-only bump to 1.4.3. The deployed workstation copy carries a separate in-progress 1.4.3 (hardware resilience, Antigravity), noted in the changelog.
+- **Verification**:
+  - Links resolve (fork branches `patch/idle-notify-inhibit-unchanged-noop`, `patch/monitor-inherit-dpms-on-connect`; registry entry; compare view).
