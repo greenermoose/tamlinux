@@ -408,9 +408,118 @@ class ResilienceTests(unittest.TestCase):
             patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
             patch.object(desktop_mode, "write_desktop_monitors_state"),
         ):
-            desktop_mode.reconcile()
+            self.assertEqual(desktop_mode.reconcile(), "reconciled")
             switch.assert_called_once_with(2, ["DP-2", "DP-1", "HDMI-A-1"], {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}, 3)
+
+    DARK_TOPOLOGY = (
+        ["DP-2", "DP-1"], "DP-2", "DP-1",
+        {"DP-2": 0, "DP-1": 1}, 3, ["DP-2", "DP-1", "HDMI-A-1"],
+    )
+
+    def _reconcile_with_live_monitors(self, live_monitors):
+        with (
+            patch.object(desktop_mode, "resolve_topology", return_value=self.DARK_TOPOLOGY),
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "ensure_contiguous_layout"),
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "read_state_file", return_value="2"),
+            patch.object(desktop_mode, "run_hyprctl", return_value=completed(stdout=json.dumps(live_monitors))),
+            patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
+            patch.object(desktop_mode, "write_desktop_monitors_state") as write_state,
+        ):
+            outcome = desktop_mode.reconcile()
+        return outcome, switch, write_state
+
+    def test_reconcile_defers_when_all_monitors_dpms_off(self):
+        # The HP (HDMI-A-1) has dropped HPD ~7 s after DPMS-off; the survivors are dark.
+        outcome, switch, write_state = self._reconcile_with_live_monitors([
+            {"name": "DP-2", "disabled": False, "dpmsStatus": False},
+            {"name": "DP-1", "disabled": False, "dpmsStatus": False},
+        ])
+        self.assertEqual(outcome, "deferred: dpms off")
+        switch.assert_not_called()
+        write_state.assert_called_once()
+
+    def test_reconcile_runs_when_any_monitor_lit(self):
+        outcome, switch, write_state = self._reconcile_with_live_monitors([
+            {"name": "DP-2", "disabled": False, "dpmsStatus": False},
+            {"name": "DP-1", "disabled": False, "dpmsStatus": True},
+        ])
+        self.assertEqual(outcome, "reconciled")
+        switch.assert_called_once_with(2, ["DP-2", "DP-1"], {"DP-2": 0, "DP-1": 1}, 3)
+        write_state.assert_called_once()
+
+    def test_all_dpms_off_ignores_disabled_monitors_and_bad_input(self):
+        self.assertTrue(desktop_mode.all_dpms_off([
+            {"name": "DP-1", "disabled": False, "dpmsStatus": False},
+            {"name": "HDMI-A-1", "disabled": True, "dpmsStatus": True},
+        ]))
+        self.assertFalse(desktop_mode.all_dpms_off([{"name": "DP-1", "disabled": False}]))
+        self.assertFalse(desktop_mode.all_dpms_off([]))
+        self.assertFalse(desktop_mode.all_dpms_off({"name": "DP-1"}))
+        self.assertFalse(desktop_mode.all_dpms_off("garbage"))
+
+
+class IdleBlankingTests(unittest.TestCase):
+    def test_load_unused_monitor_timeout_default(self):
+        with patch.dict(desktop_mode.os.environ, {}, clear=True), patch("os.open", side_effect=OSError):
+            self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
+
+    def test_load_unused_monitor_timeout_from_env(self):
+        with patch.dict(desktop_mode.os.environ, {"OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT": "120"}):
+            self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 120)
+
+    def test_load_unused_monitor_timeout_env_invalid_falls_back(self):
+        with patch.dict(desktop_mode.os.environ, {"OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT": "invalid"}), patch("os.open", side_effect=OSError):
+            self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
+
+    def test_dpms_off_valid_monitor(self):
+        with patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run:
+            self.assertTrue(desktop_mode.dpms_off("DP-1"))
+        run.assert_called_once_with(["dispatch", 'hl.dsp.dpms({ action = "off", monitor = "DP-1" })'])
+
+    def test_dpms_off_fallback_when_lua_dispatch_fails(self):
+        results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
+        with patch.object(desktop_mode, "run_hyprctl", side_effect=results) as run:
+            self.assertTrue(desktop_mode.dpms_off("DP-1"))
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[1], call(["dispatch", "dpms", "off", "DP-1"]))
+
+    def test_dpms_off_rejects_invalid_monitor_name(self):
+        with patch.object(desktop_mode, "run_hyprctl") as run:
+            self.assertFalse(desktop_mode.dpms_off("DP-1; rm -rf /"))
+        run.assert_not_called()
+
+    def test_dpms_on_valid_monitor_not_dp2(self):
+        with patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run, patch("subprocess.Popen") as popen:
+            self.assertTrue(desktop_mode.dpms_on("DP-1"))
+        run.assert_called_once_with(["dispatch", 'hl.dsp.dpms({ action = "on", monitor = "DP-1" })'])
+        popen.assert_not_called()
+
+    def test_dpms_on_dp2_invokes_msi_workaround(self):
+        with (
+            patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run,
+            patch("os.path.isfile", return_value=True),
+            patch("os.access", return_value=True),
+            patch("subprocess.Popen") as popen,
+        ):
+            self.assertTrue(desktop_mode.dpms_on("DP-2"))
+        run.assert_called_once_with(["dispatch", 'hl.dsp.dpms({ action = "on", monitor = "DP-2" })'])
+        popen.assert_called_once_with([desktop_mode.os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround"), "--once"])
+
+    def test_dpms_on_fallback_when_lua_dispatch_fails(self):
+        results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
+        with patch.object(desktop_mode, "run_hyprctl", side_effect=results) as run:
+            self.assertTrue(desktop_mode.dpms_on("DP-1"))
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[1], call(["dispatch", "dpms", "on", "DP-1"]))
+
+    def test_dpms_on_rejects_invalid_monitor_name(self):
+        with patch.object(desktop_mode, "run_hyprctl") as run:
+            self.assertFalse(desktop_mode.dpms_on("invalid$(name)"))
+        run.assert_not_called()
 
 
 if __name__ == "__main__":
     unittest.main()
+

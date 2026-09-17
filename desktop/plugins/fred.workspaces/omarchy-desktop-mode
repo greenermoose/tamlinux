@@ -17,7 +17,7 @@ import sys
 
 MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 CONFIG_LINE_RE = re.compile(
-    r"^(?:export\s+)?(OMARCHY_DESKTOP_LEFT_MONITOR|OMARCHY_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor|topology|topology_size|OMARCHY_DESKTOP_TOPOLOGY)\s*=\s*(.*)$"
+    r"^(?:export\s+)?(OMARCHY_DESKTOP_LEFT_MONITOR|OMARCHY_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor|topology|topology_size|OMARCHY_DESKTOP_TOPOLOGY|unused_monitor_timeout|OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT)\s*=\s*(.*)$"
 )
 VALID_MODES = ("omarchy", "mac", "windows")
 ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors")
@@ -140,7 +140,7 @@ def load_full_config() -> tuple[str, str, int, str]:
     topology_size = 0
     topology_str = ""
     try:
-        fd = os.open(config_file, os.O_RDONLY | os.O_NOFOLLOW)
+        fd = os.open(config_file, os.O_RDONLY)
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_size > 16384:
             return "", "", 0, ""
@@ -181,6 +181,36 @@ def load_full_config() -> tuple[str, str, int, str]:
             except ValueError:
                 pass
     return left, right, topology_size, topology_str
+
+
+def load_unused_monitor_timeout() -> int:
+    env_timeout = os.environ.get("OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT")
+    if env_timeout:
+        try:
+            return max(0, int(env_timeout))
+        except ValueError:
+            pass
+    config_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    config_file = os.path.join(config_dir, "omarchy", "desktop-mode.conf")
+    try:
+        fd = os.open(config_file, os.O_RDONLY)
+        try:
+            st = os.fstat(fd)
+            if stat.S_ISREG(st.st_mode) and st.st_uid == os.getuid() and st.st_size <= 16384:
+                content = os.read(fd, 16384).decode("utf-8", errors="replace")
+                for line in content.splitlines()[:200]:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    m = CONFIG_LINE_RE.match(line)
+                    if m and m.group(1) in ("unused_monitor_timeout", "OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT"):
+                        val = m.group(2).strip().strip("'\"")
+                        return max(0, int(val))
+        finally:
+            os.close(fd)
+    except (OSError, ValueError):
+        pass
+    return 300
 
 
 def load_monitors_lua() -> list[dict]:
@@ -851,19 +881,80 @@ def move_window(
                 raise RuntimeError("destination workspace did not activate")
 
 
-def reconcile() -> None:
+def all_dpms_off(monitors_json: object) -> bool:
+    """True when every enabled monitor reports dpmsStatus false (the desktop is dark).
+
+    An empty or malformed list is *not* "all off": when in doubt, reconcile.
+    """
+    if not isinstance(monitors_json, list):
+        return False
+    enabled = [
+        m for m in monitors_json[:MAX_MONITOR_RECORDS]
+        if isinstance(m, dict) and MONITOR_RE.fullmatch(str(m.get("name", ""))) and not m.get("disabled")
+    ]
+    return bool(enabled) and all(m.get("dpmsStatus") is False for m in enabled)
+
+
+def desktop_is_dark() -> bool:
+    try:
+        res = run_hyprctl(["monitors", "-j"])
+        if res.returncode != 0 or not res.stdout or len(res.stdout) > MAX_HYPRCTL_OUTPUT:
+            return False
+        return all_dpms_off(json.loads(res.stdout))
+    except (json.JSONDecodeError, OSError, subprocess.SubprocessError, ValueError):
+        return False
+
+
+def dpms_off(monitor: str) -> bool:
+    if not MONITOR_RE.fullmatch(monitor):
+        return False
+    res = run_hyprctl(["dispatch", f'hl.dsp.dpms({{ action = "off", monitor = "{monitor}" }})'])
+    if dispatch_ok(res):
+        return True
+    return dispatch_ok(run_hyprctl(["dispatch", "dpms", "off", monitor]))
+
+
+def dpms_on(monitor: str) -> bool:
+    if not MONITOR_RE.fullmatch(monitor):
+        return False
+    res = run_hyprctl(["dispatch", f'hl.dsp.dpms({{ action = "on", monitor = "{monitor}" }})'])
+    ok = dispatch_ok(res)
+    if not ok:
+        ok = dispatch_ok(run_hyprctl(["dispatch", "dpms", "on", monitor]))
+    if ok and monitor == "DP-2":
+        workaround = os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround")
+        if os.path.isfile(workaround) and os.access(workaround, os.X_OK):
+            try:
+                subprocess.Popen([workaround, "--once"])
+            except OSError:
+                pass
+    return ok
+
+
+def reconcile() -> str:
     monitors, left, right, slots, topology_size, canonical_names = resolve_topology()
     canonical_info = load_canonical_topology()
     ensure_contiguous_layout(monitors, canonical_info)
     mode = current_mode()
+    outcome = "reconciled"
     if mode == "windows" and monitors:
-        curr = read_state_file("desktop-current")
-        try:
-            desktop = int(curr) if curr else 1
-        except ValueError:
-            desktop = 1
-        switch_windows(desktop, monitors, slots, topology_size)
+        # A panel dropping HPD while the desktop is dark (the HP does this ~7 s
+        # after every DPMS-off) is panel behaviour, not a topology change.
+        # Re-anchoring focus then makes Hyprland reset every ext-idle-notify
+        # timer, so hypridle never reaches its suspend rule (2026-09-17
+        # incident). Record the state, skip the dispatch batch; Hyprland's own
+        # remembered-workspace logic restores the panel's workspace on return.
+        if desktop_is_dark():
+            outcome = "deferred: dpms off"
+        else:
+            curr = read_state_file("desktop-current")
+            try:
+                desktop = int(curr) if curr else 1
+            except ValueError:
+                desktop = 1
+            switch_windows(desktop, monitors, slots, topology_size)
     write_desktop_monitors_state(monitors, left, right, slots, topology_size, canonical_names)
+    return outcome
 
 
 def main() -> None:
@@ -900,8 +991,19 @@ def main() -> None:
         if not realign_monitor(sys.argv[2], normalize_number(sys.argv[3]), monitors, slots, topology_size):
             sys.stderr.write(f"omarchy-desktop-mode: warning: realign of {sys.argv[2]} incomplete\n")
     elif cmd == "reconcile":
-        reconcile()
-        sys.stdout.write("reconciled\n")
+        sys.stdout.write(reconcile() + "\n")
+    elif cmd == "dpms-off":
+        if len(sys.argv) < 3 or not MONITOR_RE.fullmatch(sys.argv[2]):
+            sys.exit(2)
+        if not dpms_off(sys.argv[2]):
+            sys.stderr.write(f"omarchy-desktop-mode: warning: dpms-off of {sys.argv[2]} failed\n")
+            sys.exit(1)
+    elif cmd == "dpms-on":
+        if len(sys.argv) < 3 or not MONITOR_RE.fullmatch(sys.argv[2]):
+            sys.exit(2)
+        if not dpms_on(sys.argv[2]):
+            sys.stderr.write(f"omarchy-desktop-mode: warning: dpms-on of {sys.argv[2]} failed\n")
+            sys.exit(1)
     elif cmd == "monitors":
         sys.stdout.write(f"Monitor set ({len(monitors)}): {', '.join(monitors) or '(unavailable)'}\n")
         sys.stdout.write(f"Topology size: {topology_size}\n")
@@ -925,11 +1027,13 @@ Commands:
   realign MON NUM Bring one monitor back to desktop NUM without moving the rest of the set
   reconcile       Re-anchor displays, compress layout gaps, and sync desktop
   monitors        Print detected monitor assignments
+  dpms-off MON    Power down (DPMS off) single monitor MON
+  dpms-on MON     Power up (DPMS on) single monitor MON
 """)
     else:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|reconcile}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|reconcile|dpms-off MONITOR|dpms-on MONITOR}}\n"
         )
         sys.exit(2)
 

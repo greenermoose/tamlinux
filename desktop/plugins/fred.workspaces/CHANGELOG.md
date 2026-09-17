@@ -4,13 +4,22 @@ All notable changes to `fred.workspaces` (`omarchy-fred-workspaces`) will be doc
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] (v1.4.3)
+## [1.5.0] - 2026-09-17
 
 ### Added
-- `ECOSYSTEM.md`: the two Hyprland patches this plugin's hotplug `reconcile` relies on (idle-inhibit no-op, DPMS-aware reconnect), what stock Hyprland does instead, and where the patches live in context — [omarchy-fred-ecosystem](https://github.com/greenermoose/omarchy-fred-ecosystem).
+- **Per-Monitor Idle Blanking of Unused Monitors** (Plan 08):
+  - Strictly event-driven monitor idle tracking embedded in `fred.workspaces` BarWidget; zero background polling preserving deep CPU C-states.
+  - Monitors showing no application windows and without cursor focus power down individually via DPMS off after `unusedMonitorTimeout` (default 300 s, configurable via `omarchy bar set fred.workspaces unusedMonitorTimeout <seconds>`, 0 to disable).
+  - Actively used monitors stay lit while unused companion monitors power down.
+  - Immediate wake on cursor entrance (`focusedmon`), workspace change, or window activity (`openwindow`, `closewindow`, `movewindow`, `activewindow`).
+  - Full Fault C protection: cold DPMS wake of `DP-2` (MSI MP161) triggers the verified modeset workaround (`msi-mp161-resume-workaround --once`) in background to retrain the link without blocking the shell.
+  - Safe DPMS off/on dispatching via `omarchy-desktop-mode dpms-off <MON>` and `dpms-on <MON>` using `hl.dsp.dpms({ action = "...", monitor = "..." })` Lua table syntax.
+  - `IpcHandler` for `fred.workspaces` exposing `resetIdle` across all bars via `omarchy-shell -q fred.workspaces resetIdle`, integrated with `msi-mp161-resume-workaround` to re-arm monitor idle countdowns upon global resume.
 
-### Notes
-- Documentation-only release. The workstation's deployed copy also carries an in-progress hardware-resilience build labelled 1.4.3 (Antigravity); that work will be published under its own later version.
+## [1.4.3] - 2026-09-17
+
+### Fixed
+- **Hotplug reconcile while DPMS is off reset the idle timer** (2026-09-17 incident, `omarchy-config/agent/docs/incidents/2026-09-17-idle-loop-no-suspend.md`). The HP 22cwa drops HPD ~7 s after every DPMS-off blank and reconnects ~1 s later; since 1.4.1 that `monitorremoved` ran `reconcile`, whose `switch_windows()` focus dispatches made Hyprland re-evaluate idle inhibitors and — an upstream bug in `CIdleNotifyProtocol::setInhibit()` — reset every ext-idle-notify timer as if the user had touched the mouse. hypridle got `Resumed` 7–8 s after every blank, the screens came back on, and the 30-minute suspend rule never fired (85 cycles overnight). `reconcile` now reads `hyprctl monitors -j` first; when every enabled monitor reports `dpmsStatus == false` it still records the monitor set but skips the dispatch batch and prints `deferred: dpms off` (new `all_dpms_off()` helper, unit-tested). A dark desktop losing a panel is panel behaviour, not a topology change; Hyprland's own remembered-workspace logic restores the panel's workspace when it returns, and the first lit reconcile (Fault E: the Dell returning after resume, with DPMS already on) runs as before. The compositor side is fixed by the local Hyprland patch `0.56.2-3.2`; this guard makes the plugin correct on a stock Hyprland too.
 
 ## [Unreleased] (v1.4.2)
 

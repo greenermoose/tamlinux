@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "fred.workspaces",
   "name": "Workspaces with Desktop Mode",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "author": "Fred (@greenermoose)",
-  "description": "Workspace numbers with clickable desktop modes and dynamic all-monitor Windows sets",
+  "description": "Workspace numbers with clickable desktop modes, dynamic Windows sets, and unused monitor idle blanking",
   "repository": "https://github.com/greenermoose/omarchy-fred-workspaces",
   "homepage": "https://github.com/greenermoose/omarchy-fred-workspaces",
   "license": "GPL-3.0-or-later",
@@ -16,12 +16,13 @@
   },
   "barWidget": {
     "displayName": "Workspaces with Desktop Mode",
-    "description": "Workspace numbers and desktop-mode toggle",
+    "description": "Workspace numbers, desktop-mode toggle, and unused monitor idle blanking",
     "category": "Compositor",
     "defaultSection": "left",
     "allowMultiple": false,
     "defaults": {
-      "splitSet": true
+      "splitSet": true,
+      "unusedMonitorTimeout": 300
     },
     "schema": [
       {
@@ -30,6 +31,13 @@
         "label": "Allow a window focus to split the set (Windows mode)",
         "defaultValue": true,
         "description": "Windows mode only. When a window focus lands on a hidden workspace, Hyprland moves just that monitor. true: the set splits — that monitor shows a hollow marker and an F mode letter until clicked back or the set is moved by a bar click or SUPER+number. false: the whole set follows to the focused monitor's desktop."
+      },
+      {
+        "key": "unusedMonitorTimeout",
+        "type": "integer",
+        "label": "Unused monitor idle blank timeout (seconds)",
+        "defaultValue": 300,
+        "description": "Seconds of inactivity before powering down an unused monitor (no visible windows and no cursor focus). Set to 0 to disable per-monitor idle blanking."
       }
     ]
   },

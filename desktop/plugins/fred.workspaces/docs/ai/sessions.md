@@ -219,3 +219,25 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - Documentation-only bump to 1.4.3. The deployed workstation copy carries a separate in-progress 1.4.3 (hardware resilience, Antigravity), noted in the changelog.
 - **Verification**:
   - Links resolve (fork branches `patch/idle-notify-inhibit-unchanged-noop`, `patch/monitor-inherit-dpms-on-connect`; registry entry; compare view).
+
+---
+
+## Session: 2026-09-17 — Per-Monitor Idle Blanking of Unused Monitors (v1.5.0)
+
+- **CLI Tool**: Antigravity CLI (`agy`) `1.2.3`
+- **Model**: `gemini-3.8-flash-high`
+- **Conversation ID**: `b406cca2-7398-4b2f-ad9d-0901cd85cbb8`
+- **Prompts**:
+  > Let's tackle #4 first. I choose Part A option 1, strictly event-driven (socket2), and Part B option 1 Quickshell service plugin. Is this a separate plugin or should it be wrapped up to be part of fred.workspaces? It does seem related to the concern of fred.workspaces, which is managing what my monitors are showing at any given moment.
+  > A key priority is energy efficient. Remember that: any solution that involves using more energy or power I will reject unless it is unavoidable.
+- **Key Decisions & Implementation Notes**:
+  - Strictly event-driven architecture: zero background polling loops while idle, avoiding CPU wakeups and preserving deep C-states.
+  - Wrapped directly into `fred.workspaces` BarWidget (`Workspaces.qml`). Each bar widget monitors its own display's activity (`barMonitor`).
+  - Screen is "in use" when it has focus or its visible workspace is displaying windows (`toplevels.values.length > 0`). An empty workspace with focus elsewhere starts the one-shot `idleBlankTimer` (default 300 s, configurable via `unusedMonitorTimeout`, 0 to disable).
+  - DPMS power down dispatched via `omarchy-desktop-mode dpms-off <MON>` with Lua table syntax `hl.dsp.dpms({ action = "off", monitor = "<MON>" })`.
+  - Immediate wake on cursor entrance, workspace change, or window creation/movement via `omarchy-desktop-mode dpms-on <MON>`.
+  - Fault C protection: cold wake of `DP-2` automatically triggers `/home/fred/.local/bin/msi-mp161-resume-workaround --once` in background via `subprocess.Popen`, retraining the link without blocking the shell.
+  - Added `IpcHandler` with `resetIdle` method to re-arm monitor idle countdowns upon whole-system S3/DPMS resume.
+- **Verification**:
+  - 39/39 unit tests pass in `tests/test_desktop_mode.py`.
+

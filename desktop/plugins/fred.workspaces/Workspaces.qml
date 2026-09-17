@@ -20,6 +20,19 @@ BarWidget {
   property bool degradedMode: false
   property int monitorCount: 1
 
+  // Per-monitor idle blanking of unused monitors (Plan 08)
+  // Timeout in seconds. 0 disables per-monitor blanking.
+  readonly property int unusedMonitorTimeout: {
+    var raw = root.setting("unusedMonitorTimeout", 300)
+    if (typeof raw === "number") return Math.max(0, raw)
+    var num = parseInt(raw, 10)
+    return isNaN(num) ? 300 : Math.max(0, num)
+  }
+  property bool isMonitorDark: false
+
+  onBarMonitorChanged: Qt.callLater(root.trackMonitorIdle)
+  onUnusedMonitorTimeoutChanged: Qt.callLater(root.trackMonitorIdle)
+
   readonly property string modePath: {
     var stateHome = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
     return stateHome + "/omarchy/desktop-mode"
@@ -269,7 +282,102 @@ BarWidget {
     return typeof mine === "number" && mine !== state.setDesktop
   }
 
-  Component.onCompleted: Qt.callLater(root.trackAlignment)
+  Component.onCompleted: {
+    Qt.callLater(root.trackAlignment)
+    Qt.callLater(root.trackMonitorIdle)
+  }
+
+  function monitorHasWindows() {
+    if (!barMonitor) return false
+    if (barMonitor.activeSpecialWorkspace && barMonitor.activeSpecialWorkspace.id !== 0) return true
+    if (!barMonitor.activeWorkspace) return false
+    var ws = workspaceById(barMonitor.activeWorkspace.id)
+    return ws !== null && ws.toplevels && ws.toplevels.values && ws.toplevels.values.length > 0
+  }
+
+  function monitorIsFocused() {
+    return barMonitor !== null && Hyprland.focusedMonitor !== null
+      && barMonitor.name === Hyprland.focusedMonitor.name
+  }
+
+  function monitorInUse() {
+    if (effectiveMonitorNames().length <= 1) return true
+    if (monitorIsFocused()) return true
+    if (monitorHasWindows()) return true
+    return false
+  }
+
+  function trackMonitorIdle() {
+    if (unusedMonitorTimeout <= 0 || effectiveMonitorNames().length <= 1) {
+      if (idleBlankTimer.running) idleBlankTimer.stop()
+      if (root.isMonitorDark) {
+        root.wakeMonitor()
+      }
+      return
+    }
+
+    if (monitorInUse()) {
+      if (idleBlankTimer.running) idleBlankTimer.stop()
+      if (root.isMonitorDark) {
+        root.wakeMonitor()
+      }
+    } else {
+      if (!root.isMonitorDark && !idleBlankTimer.running) {
+        idleBlankTimer.interval = root.unusedMonitorTimeout * 1000
+        idleBlankTimer.restart()
+      }
+    }
+  }
+
+  function wakeMonitor() {
+    if (!barMonitor) return
+    root.isMonitorDark = false
+    root.runDesktopCommand(["dpms-on", String(barMonitor.name)])
+  }
+
+  function blankMonitor() {
+    if (!barMonitor || monitorInUse() || root.isMonitorDark) return
+    root.isMonitorDark = true
+    root.runDesktopCommand(["dpms-off", String(barMonitor.name)])
+  }
+
+  function resetIdle() {
+    root.isMonitorDark = false
+    Qt.callLater(root.trackMonitorIdle)
+  }
+
+  function broadcastWorkspaces(method) {
+    var fn = bar ? (bar.moduleWidgets || bar._moduleWidgets) : null
+    var candidates = [root.moduleName, "fred.workspaces", "omarchy.workspaces"]
+    var items = []
+    for (var c = 0; c < candidates.length; c++) {
+      if (typeof fn === "function") {
+        var found = fn(candidates[c])
+        if (found && found.length > 0) {
+          items = found
+          break
+        }
+      }
+    }
+    if (items.length > 0) {
+      for (var i = 0; i < items.length; i++) {
+        if (items[i] && typeof items[i][method] === "function") {
+          items[i][method]()
+        }
+      }
+    } else {
+      if (typeof root[method] === "function") root[method]()
+    }
+  }
+
+  Timer {
+    id: idleBlankTimer
+    interval: root.unusedMonitorTimeout * 1000
+    repeat: false
+    onTriggered: {
+      root.blankMonitor()
+    }
+  }
 
   // Per-bar button state. Monitors still on the set's desktop keep the solid
   // marker; a deviated monitor shows a hollow marker on its own desktop.
@@ -309,6 +417,7 @@ BarWidget {
     function onRawEvent(event) {
       root.windowsRevision++
       Qt.callLater(root.trackAlignment)
+      Qt.callLater(root.trackMonitorIdle)
       var name = event && event.name ? String(event.name) : ""
       if (name === "monitoradded" || name === "monitorremoved"
           || name === "monitoraddedv2" || name === "monitorremovedv2") {
@@ -822,4 +931,17 @@ BarWidget {
       }
     }
   }
+
+  IpcHandler {
+    target: "fred.workspaces"
+
+    function resetIdle(): void { root.broadcastWorkspaces("resetIdle") }
+  }
+
+  IpcHandler {
+    target: "omarchy.workspaces"
+
+    function resetIdle(): void { root.broadcastWorkspaces("resetIdle") }
+  }
 }
+
