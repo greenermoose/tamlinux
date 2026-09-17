@@ -153,3 +153,27 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - Live verification on workstation confirmed all 3 monitors display buttons 1–5, Desktop 1 active, and seamless desktop switching.
 
 
+
+---
+
+## Session: 2026-09-16 — Stale Bar State, Cached Plugin Code & Duplicate Helper (v1.4.1)
+
+- **CLI Tool**: Claude Code (`claude`) `2.1.273`
+- **Model**: `Claude Opus 5` (`claude-opus-5`)
+- **Conversation ID**: `348c2c39-df3c-4b6f-aea0-e47c001361fb`
+- **Prompt**:
+  > fred.workspaces is still broken on resume after suspend. Left and right monitors show 1 to 5 desktops with 1 selected. Center monitor shows 1 to 7 desktops with none selected. I have agy looking at issue. I want you to look, too. Find root cause and propose a fix.
+- **Root Cause & Diagnosis**:
+  - Live Hyprland workspaces `{1,2,3,5,8,14}` map to `[1,2,3,4,5,7]` with no focus only for a set size of **2**, which v1.4.0 cannot produce — so the center bar was not running v1.4.0 code.
+  - **Cached plugin code**: the shell process predated the v1.3.1 and v1.4.0 deploys. Quickshell 0.3.1 has no `Qt.clearComponentCache`, so the Omarchy shell's local-plugin "reload" only refreshes manifests. Worse, Qt's on-disk cache (`~/.cache/quickshell/qmlcache/<sha1(path)>.qmlc`) is validated by source mtime alone, and Nix store files are all stamped 1970-01-01, so even `omarchy-restart-shell` kept loading the Sep 15 compile of v1.3.0 (verified: the cache entry had no `topology*` identifiers and `sourceTimeStamp = 1000 ms`).
+  - **Stale state per bar**: `onFileChanged: root.loadMonitors(text())` parses FileView's cached text — the file is never reloaded. A bar rebuilt while the Dell was absent (Fault E, `dp-link-recover` window 20:38:31–34) read the 2-monitor snapshot and never saw the 3-monitor rewrite made 1 s later by its own `status` run. `atomicWrites: true` (v1.3.1) only affects the FileView's own writes.
+  - **Hotplug hook never fired**: `Hyprland.rawEvent` delivers a `HyprlandIpcEvent`; calling `indexOf` on it threw a `TypeError` on every event (359 in the log), so the R5 `reconcile` path had never run.
+  - **Two helpers**: `~/.local/bin/omarchy-desktop-mode` (Super+N bindings, Home Manager copy from `omarchy-config/bin/`) was a pre-1.4.0 build sizing sets by active monitor count and rewriting the state file without topology keys, fighting the plugin's 1.4.0 helper every 30 s.
+- **Key Decisions & Implementation Notes**:
+  - `Workspaces.qml`: `onFileChanged: reload()` on both watchers (stock-shell idiom); status run calls `monitorsFile.reload()`; `rawEvent` handler keys on `event.name` (`monitoradded|monitorremoved|…v2`); `monitorSlots` reset when a payload has no `slots`.
+  - `omarchy-desktop-mode`: `resolve_topology()` now reads `load_full_config()` so a configured `topology_size` is honored (it was silently dropped via the 2-tuple `load_config_file()`).
+  - Workstation (`omarchy-config` 1.0.1): `home.nix` installs the plugin's helper into `~/.local/bin`; new `omarchy-qmlcache-purge` runs from a Home Manager activation hook and from `omarchy-fred-plugin dev|update` before `omarchy-restart-shell`. The plugins plan no longer claims QML hot-reload.
+- **Verification**:
+  - 24 unit tests pass (new `test_configured_topology_size_widens_the_grid`); `omarchy plugin validate` clean.
+  - Mode flipped from a terminal shows on all three bars within 1 s (previously only on the 30 s poll).
+  - Simulated Fault E (`hl.monitor({ output = "DP-1", disabled = true/false })`): degraded state written, HP compressed to x=1280, bars stay `[1..5]` with desktop 1 focused; on return the layout is restored and the rebuilt center bar matches left/right. `switch 2` from `PATH` places DP-2/DP-1/HDMI-A-1 on 4/5/6.

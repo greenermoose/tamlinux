@@ -4,6 +4,17 @@ All notable changes to `fred.workspaces` (`omarchy-fred-workspaces`) will be doc
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] (v1.4.1)
+
+### Fixed
+- **Bar state never refreshed after creation**: `Workspaces.qml` parsed the FileView's cached `text()` inside `onFileChanged`, which Quickshell does not reload. Every bar instance kept the `desktop-monitors`/`desktop-mode` snapshot it was born with, so a bar rebuilt while a display was missing (Fault E on resume) stayed on a 2-monitor set size forever and showed phantom desktop 7 with no selection. Both watchers now `reload()` and the `status` run re-reads the file instead of the stale text.
+- **`topology_size` config key was ignored**: `resolve_topology()` read a 2-tuple from `load_config_file()`, so the configured size never reached the grid. Now uses `load_full_config()`; covered by `test_configured_topology_size_widens_the_grid`.
+- **Display hotplug reconcile never ran**: `Hyprland.rawEvent` hands the widget a `HyprlandIpcEvent` object, and the 1.4.0 handler called `indexOf` on it, throwing a `TypeError` on every event. The `monitoradded`/`monitorremoved` → `reconcile` path (R5) is now driven by `event.name`.
+- **Two workspace engines**: the Home Manager copy of `omarchy-desktop-mode` behind the `SUPER + N` bindings was a pre-1.4.0 build (set size = active monitor count, no topology keys) and fought the bar's 1.4.0 helper over the state file. `home.nix` now installs the plugin's helper into `~/.local/bin`.
+
+### Notes
+- The Omarchy shell does not hot-reload plugin QML on Quickshell 0.3.1 (`Qt.clearComponentCache` is undefined, so the component cache is never cleared), and Qt's on-disk QML cache (`~/.cache/quickshell/qmlcache`) validates by source mtime only, which is a constant 1970 for Nix-store-deployed files. 1.3.1 and 1.4.0 were therefore never loaded — even across shell restarts — until the cache entry was purged. Deploy = purge + restart (`omarchy-qmlcache-purge && omarchy-restart-shell`).
+
 ## [Unreleased] (v1.4.0)
 
 ### Added

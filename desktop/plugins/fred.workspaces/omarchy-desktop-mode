@@ -386,10 +386,7 @@ def write_desktop_monitors_state(
 
 
 def resolve_topology() -> tuple[list[str], str, str, dict[str, int], int, list[str]]:
-    cfg_tuple = load_config_file()
-    cfg_left = cfg_tuple[0] if len(cfg_tuple) > 0 else ""
-    cfg_right = cfg_tuple[1] if len(cfg_tuple) > 1 else ""
-    cfg_size = cfg_tuple[2] if len(cfg_tuple) > 2 else 0
+    cfg_left, cfg_right, cfg_size, _ = load_full_config()
 
     env_left = os.environ.get("OMARCHY_DESKTOP_LEFT_MONITOR", "")
     left = env_left if env_left and MONITOR_RE.match(env_left) else cfg_left

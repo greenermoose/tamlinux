@@ -89,7 +89,7 @@ class MonitorDiscoveryTests(unittest.TestCase):
     def test_resolve_writes_versioned_monitor_set_and_outer_endpoints(self):
         monitors = ["DP-2", "DP-1", "HDMI-A-1"]
         with (
-            patch.object(desktop_mode, "load_config_file", return_value=("", "")),
+            patch.object(desktop_mode, "load_full_config", return_value=("", "", 0, "")),
             patch.object(desktop_mode, "discover_monitors", return_value=monitors),
             patch.object(desktop_mode, "read_state_file", return_value=""),
             patch.object(desktop_mode, "atomic_write_state") as write_state,
@@ -108,7 +108,7 @@ class MonitorDiscoveryTests(unittest.TestCase):
 
     def test_failed_discovery_does_not_reuse_configured_endpoints(self):
         with (
-            patch.object(desktop_mode, "load_config_file", return_value=("DP-2", "HDMI-A-1")),
+            patch.object(desktop_mode, "load_full_config", return_value=("DP-2", "HDMI-A-1", 0, "")),
             patch.object(desktop_mode, "discover_monitors", return_value=[]),
             patch.object(desktop_mode, "atomic_write_state") as write_state,
             patch.dict(desktop_mode.os.environ, {}, clear=True),
@@ -276,6 +276,24 @@ class ResilienceTests(unittest.TestCase):
             self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-2"], topo_size), 13)
             self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-1"], topo_size), 14)
             self.assertEqual(desktop_mode.workspace_for_slot(5, slots["HDMI-A-1"], topo_size), 15)
+
+    def test_configured_topology_size_widens_the_grid(self):
+        # A configured topology_size larger than the canonical monitor list
+        # must reach resolve_topology (it used to be dropped on the way).
+        with (
+            patch.object(desktop_mode, "load_full_config", return_value=("", "", 4, "")),
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "discover_monitors", return_value=["DP-2", "DP-1", "HDMI-A-1"]),
+            patch.object(desktop_mode, "read_state_file", return_value=""),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+            patch.dict(desktop_mode.os.environ, {}, clear=True),
+        ):
+            _, _, _, slots, topo_size, _ = desktop_mode.resolve_topology()
+            self.assertEqual(topo_size, 4)
+            self.assertEqual(slots, {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2})
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-1"], topo_size), 6)
+        payload = json.loads(write_state.call_args.args[1])
+        self.assertEqual(payload["topology_size"], 4)
 
     def test_slot_stability_when_center_monitor_drops(self):
         with (

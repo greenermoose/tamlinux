@@ -181,9 +181,12 @@ BarWidget {
 
   Connections {
     target: Hyprland
+    // rawEvent carries a HyprlandIpcEvent (name + data), not the raw line.
     function onRawEvent(event) {
       root.windowsRevision++
-      if (event && (event.indexOf("monitoradded") === 0 || event.indexOf("monitorremoved") === 0)) {
+      var name = event && event.name ? String(event.name) : ""
+      if (name === "monitoradded" || name === "monitorremoved"
+          || name === "monitoraddedv2" || name === "monitorremovedv2") {
         reconcileDebounce.restart()
       }
     }
@@ -501,9 +504,7 @@ BarWidget {
           }
           root.topologyMonitors = topo
         }
-        if (data.slots && typeof data.slots === "object") {
-          root.monitorSlots = data.slots
-        }
+        root.monitorSlots = data.slots && typeof data.slots === "object" ? data.slots : ({})
         root.degradedMode = !!data.degraded
       }
     } catch (e) {}
@@ -526,26 +527,27 @@ BarWidget {
   implicitWidth: grid.implicitWidth + trailingGap
   implicitHeight: grid.implicitHeight
 
+  // FileView does not reload on its own: text() inside fileChanged is still
+  // the previously loaded content. Route every change through reload() so
+  // onLoaded always parses fresh bytes (same idiom as the stock shell).
   FileView {
     id: modeFile
     path: root.modePath
     watchChanges: true
-    atomicWrites: true
     printErrors: false
     onLoaded: root.loadDesktopMode(text())
     onLoadFailed: root.loadDesktopMode("mac")
-    onFileChanged: root.loadDesktopMode(text())
+    onFileChanged: reload()
   }
 
   FileView {
     id: monitorsFile
     path: root.monitorsPath
     watchChanges: true
-    atomicWrites: true
     printErrors: false
     onLoaded: root.loadMonitors(text())
     onLoadFailed: {}
-    onFileChanged: root.loadMonitors(text())
+    onFileChanged: reload()
   }
 
   Process {
@@ -566,7 +568,10 @@ BarWidget {
         if (text.length <= 64) {
           root.loadDesktopMode(text)
         }
-        root.loadMonitors(monitorsFile.text())
+        // The status run may have just rewritten desktop-monitors (a bar
+        // built while a display was missing reads the degraded snapshot
+        // first); re-read the file rather than the cached text.
+        monitorsFile.reload()
       }
     }
 
