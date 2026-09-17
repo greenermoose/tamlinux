@@ -4,6 +4,14 @@ All notable changes to `fred.workspaces` (`omarchy-fred-workspaces`) will be doc
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] (v1.4.3)
+
+### Added
+- `ECOSYSTEM.md`: the two Hyprland patches this plugin's hotplug `reconcile` relies on (idle-inhibit no-op, DPMS-aware reconnect), what stock Hyprland does instead, and where the patches live in context — [omarchy-fred-ecosystem](https://github.com/greenermoose/omarchy-fred-ecosystem).
+
+### Notes
+- Documentation-only release. The workstation's deployed copy also carries an in-progress hardware-resilience build labelled 1.4.3 (Antigravity); that work will be published under its own later version.
+
 ## [Unreleased] (v1.4.2)
 
 ### Added
