@@ -1,0 +1,156 @@
+#!/bin/bash
+set -eu
+
+# fred-monitor-reset <output-name>
+# Output-agnostic DisplayPort/HDMI link retrain and reset helper.
+# 1. Validates output name against ^[A-Za-z0-9._-]+$
+# 2. Ensures output is DPMS-on (waits up to 20 s)
+# 3. Identifies current mode and nearest other refresh rate in availableModes
+# 4. Modesets to retrain mode, verifies via hyprctl rollinglog
+# 5. Dwells 1 s, restores native mode with original position and scale, verifies again
+# 6. Exits 0 on two verified modesets (or clean DPMS cycle fallback)
+
+output="${1:-}"
+if [[ -z "$output" || ! "$output" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "Error: Invalid output name '${output}'" >&2
+  exit 1
+fi
+
+monitors_json=$(hyprctl monitors all -j 2>/dev/null || echo "[]")
+monitor_data=$(printf '%s\n' "$monitors_json" | jq -r --arg o "$output" '
+  .[] | select(.name == $o) | {
+    name,
+    width,
+    height,
+    refreshRate,
+    x,
+    y,
+    scale,
+    dpmsStatus,
+    disabled,
+    availableModes
+  }
+')
+
+if [[ -z "$monitor_data" || "$monitor_data" == "null" ]]; then
+  echo "Error: Monitor '${output}' is not connected" >&2
+  exit 1
+fi
+
+# Ensure output is enabled and DPMS-on
+dpms_status=$(printf '%s\n' "$monitor_data" | jq -r '.dpmsStatus // false')
+disabled=$(printf '%s\n' "$monitor_data" | jq -r '.disabled // false')
+
+if [[ "$disabled" == "true" ]]; then
+  echo "Error: Monitor '${output}' is disabled. Enable it before resetting." >&2
+  exit 1
+fi
+
+if [[ "$dpms_status" != "true" ]]; then
+  echo "Asserting DPMS on for ${output}..."
+  hyprctl dispatch "hl.dsp.dpms({ action = \"on\", monitor = \"${output}\" })" >/dev/null 2>&1 || true
+  deadline=$((SECONDS + 20))
+  while (( SECONDS < deadline )); do
+    live_dpms=$(hyprctl monitors -j 2>/dev/null | jq -r --arg o "$output" '[.[] | select(.name == $o)][0].dpmsStatus // false')
+    if [[ "$live_dpms" == "true" ]]; then
+      break
+    fi
+    sleep 0.5
+  done
+fi
+
+# Read geometry
+width=$(printf '%s\n' "$monitor_data" | jq -r '.width // 1920')
+height=$(printf '%s\n' "$monitor_data" | jq -r '.height // 1080')
+cur_hz=$(printf '%s\n' "$monitor_data" | jq -r '.refreshRate // 60')
+x=$(printf '%s\n' "$monitor_data" | jq -r '.x // 0')
+y=$(printf '%s\n' "$monitor_data" | jq -r '.y // 0')
+scale=$(printf '%s\n' "$monitor_data" | jq -r '.scale // 1')
+pos="${x}x${y}"
+
+# Target original mode: the mode the display was currently running
+orig_hz_fmt=$(printf '%.2f' "$cur_hz")
+orig_mode="${width}x${height}@${orig_hz_fmt}"
+
+# Find candidate retrain mode (same resolution, different Hz)
+retrain_info=$(printf '%s\n' "$monitor_data" | jq -r '
+  . as $m |
+  ($m.width | tostring) + "x" + ($m.height | tostring) as $res |
+  [
+    $m.availableModes[]?
+    | capture("(?<mode>" + $res + "@(?<hz>[0-9.]+)Hz)")
+    | {
+        mode: .mode,
+        hz: (.hz | tonumber),
+        diff: (((.hz | tonumber) - $m.refreshRate) | length)
+      }
+    | select(.diff > 0.01)
+  ]
+  | sort_by(.diff)
+  | first // empty
+')
+
+count_modesets() {
+  local mon="$1"
+  local hz_pattern="$2"
+  hyprctl rollinglog 2>/dev/null | grep -c "Modesetting ${mon} with .*@${hz_pattern}Hz" || true
+}
+
+modeset_and_verify() {
+  local mon="$1"
+  local mode="$2"
+  local hz_search="$3" # pattern for rollinglog check
+  local before after deadline attempt
+
+  for (( attempt = 1; attempt <= 3; attempt++ )); do
+    before=$(count_modesets "$mon" "$hz_search")
+    if ! hyprctl eval "hl.monitor({ output = \"${mon}\", mode = \"${mode}\", position = \"${pos}\", scale = ${scale} })" >/dev/null 2>&1; then
+      sleep 0.5
+      continue
+    fi
+    deadline=$((SECONDS + 4))
+    while (( SECONDS < deadline )); do
+      after=$(count_modesets "$mon" "$hz_search")
+      if (( after > before )); then
+        echo "Modeset ${mon} -> ${mode} verified via DRM commit"
+        return 0
+      fi
+      sleep 0.2
+    done
+  done
+
+  echo "Warning: Modeset ${mon} -> ${mode} did not confirm in rollinglog" >&2
+  return 1
+}
+
+if [[ -n "$retrain_info" && "$retrain_info" != "null" ]]; then
+  retrain_hz=$(printf '%s\n' "$retrain_info" | jq -r '.hz')
+  retrain_hz_fmt=$(printf '%.2f' "$retrain_hz")
+  retrain_mode="${width}x${height}@${retrain_hz_fmt}"
+  
+  echo "Retraining ${output}: modesetting to ${retrain_mode}..."
+  if ! modeset_and_verify "$output" "$retrain_mode" "${retrain_hz_fmt}"; then
+    echo "Failed to apply retrain mode on ${output}" >&2
+    exit 1
+  fi
+
+  sleep 1
+
+  echo "Restoring ${output}: modesetting back to ${orig_mode}..."
+  if ! modeset_and_verify "$output" "$orig_mode" "${orig_hz_fmt}"; then
+    echo "Failed to restore original mode on ${output}" >&2
+    exit 1
+  fi
+
+  echo "Retrained ${output} successfully"
+  exit 0
+else
+  # Single mode fallback: DPMS off/on cycle
+  echo "Single mode detected: cycling DPMS on ${output}..."
+  hyprctl dispatch "hl.dsp.dpms({ action = \"off\", monitor = \"${output}\" })" >/dev/null 2>&1 || true
+  sleep 1
+  hyprctl dispatch "hl.dsp.dpms({ action = \"on\", monitor = \"${output}\" })" >/dev/null 2>&1 || true
+  sleep 1
+  echo "DPMS cycle completed on ${output}"
+  exit 0
+fi

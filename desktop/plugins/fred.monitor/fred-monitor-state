@@ -37,6 +37,9 @@ printf '%s\n' "$focused_scale"
 printf '%s\n' "$monitors_json" | jq -c '
   [.[] | {
     name,
+    description: (.description // ""),
+    make: (.make // ""),
+    model: (.model // ""),
     enabled: (.disabled != true),
     focused: (.focused == true),
     width: (.width // 1920),

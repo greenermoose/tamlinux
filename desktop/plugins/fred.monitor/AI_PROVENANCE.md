@@ -23,3 +23,4 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :--- | :--- | :--- | :--- |
 | **Initial Clone & Hardening Baseline** | `v0.1.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Cloned stock `omarchy.monitor` into `fred.monitor`. Integrated supervised `Launch.qml` with closed environment allowlist and deadline watchdog; added running version indicators in hover tooltip and panel footer; established provenance and GPL-3.0 licensing. |
+| **Stock Defect Fixes & Link Reset (A3 & A4)** | `v0.1.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Fixed stock display toggle syntax via `hyprctl eval hl.monitor` and scale positioning clobber; implemented `fred-monitor-reset` retrain helper with rollinglog DRM verification; added position labeling (Left/Center/Right), dual-column cursor navigation, `r` shortcut, and IPC `reset(name)`. |

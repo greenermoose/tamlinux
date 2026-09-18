@@ -145,6 +145,28 @@ function helperPath(name) {
   return decodeURIComponent(url)
 }
 
+function positionLabel(displayName, displays) {
+  if (!Array.isArray(displays)) return ""
+  var enabled = []
+  for (var i = 0; i < displays.length; i++) {
+    if (displays[i] && displays[i].enabled) enabled.push(displays[i])
+  }
+  if (enabled.length <= 1) return ""
+  enabled.sort(function(a, b) { return (a.x || 0) - (b.x || 0) })
+  var idx = -1
+  for (var j = 0; j < enabled.length; j++) {
+    if (enabled[j].name === displayName) { idx = j; break }
+  }
+  if (idx < 0) return ""
+  if (enabled.length === 2) return idx === 0 ? "Left" : "Right"
+  if (enabled.length === 3) {
+    if (idx === 0) return "Left"
+    if (idx === 1) return "Center"
+    return "Right"
+  }
+  return "L" + (idx + 1)
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     clampBrightness: clampBrightness,
@@ -156,6 +178,7 @@ if (typeof module !== "undefined") {
     parseDisplays: parseDisplays,
     isValidOutputName: isValidOutputName,
     pickEnv: pickEnv,
-    helperPath: helperPath
+    helperPath: helperPath,
+    positionLabel: positionLabel
   }
 }

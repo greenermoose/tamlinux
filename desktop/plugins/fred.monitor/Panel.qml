@@ -30,6 +30,10 @@ Panel {
   property var displays: []
   property int enabledDisplayCount: 0
   property var displayCache: ({})
+  property string resetRunningMonitor: ""
+  property var resetStatus: ({})
+  property string lastResetOutput: ""
+  property int monitorColumn: 0
 
   // Carry sub-notch touchpad deltas between wheel events.
   property real wheelAccumulator: 0
@@ -110,6 +114,7 @@ Panel {
     if (sIdx < 0) {
       focusSection = sections[0]
       selectedIndex = sectionFirstIndex(focusSection)
+      root.monitorColumn = 0
       return
     }
     var inSingleRow = sectionIsSingleRow(focusSection)
@@ -120,6 +125,7 @@ Panel {
       if (sIdx < sections.length - 1) {
         focusSection = sections[sIdx + 1]
         selectedIndex = sectionFirstIndex(focusSection)
+        root.monitorColumn = 0
       }
     } else {
       if (!inSingleRow && selectedIndex > 0) { selectedIndex = selectedIndex - 1; return }
@@ -129,6 +135,7 @@ Panel {
         // Coming up from below — land on the last navigable row of the prev
         // section, or its sentinel for single-row sections.
         selectedIndex = sectionIsSingleRow(prev) ? sectionFirstIndex(prev) : sectionCount(prev) - 1
+        root.monitorColumn = 0
       }
     }
   }
@@ -144,6 +151,12 @@ Panel {
     selectedIndex = next
   }
 
+  function moveMonitorH(delta) {
+    if (focusSection !== "monitors") return
+    if (delta > 0) root.monitorColumn = 1
+    else if (delta < 0) root.monitorColumn = 0
+  }
+
   function adjustBrightness(delta) {
     if (focusSection !== "brightness") return
     if (!brightnessAvailable) return
@@ -157,7 +170,14 @@ Panel {
     }
     if (focusSection === "monitors" && selectedIndex >= 0 && selectedIndex < displays.length) {
       var d = displays[selectedIndex]
-      if (d) toggleDisplay(d.name, d.enabled)
+      if (d) {
+        if (root.monitorColumn === 1) {
+          root.resetDisplay(d.name)
+        } else {
+          toggleDisplay(d.name, d.enabled)
+        }
+      }
+      return
     }
     // brightness: no separate action; the slider value is the action.
   }
@@ -168,7 +188,11 @@ Panel {
     if (sections.indexOf(focusSection) < 0) {
       focusSection = sections[0]
       selectedIndex = sectionFirstIndex(focusSection)
+      root.monitorColumn = 0
       return
+    }
+    if (focusSection !== "monitors") {
+      root.monitorColumn = 0
     }
     var count = sectionCount(focusSection)
     if (sectionIsSingleRow(focusSection)) {
@@ -181,6 +205,7 @@ Panel {
       var sIdx = sections.indexOf(focusSection)
       focusSection = sIdx > 0 ? sections[sIdx - 1] : sections[0]
       selectedIndex = sectionFirstIndex(focusSection)
+      root.monitorColumn = 0
       return
     }
     if (selectedIndex > count - 1) selectedIndex = count - 1
@@ -217,7 +242,9 @@ Panel {
       brightnessAvailable: root.brightnessAvailable,
       focusedMonitor: root.focusedMonitor,
       scale: root.monitorScale,
-      displays: root.displays
+      displays: root.displays,
+      resetRunning: root.resetRunningMonitor,
+      resetStatus: root.resetStatus
     })
   }
 
@@ -226,6 +253,7 @@ Panel {
 
     function brightness(percent: string): string { return root.brightnessIpc(percent) }
     function state(): string { return root.stateIpc() }
+    function reset(name: string): string { return root.resetDisplay(name) }
     function open() { root.open() }
     function close() { root.close() }
     function toggle() { root.toggle() }
@@ -360,6 +388,30 @@ Panel {
     actionProc.exe = "/usr/bin/hyprctl"
     actionProc.args = ["eval", lua]
     actionProc.launch()
+  }
+
+  function resetDisplay(name) {
+    if (!name || !Model.isValidOutputName(name)) return "invalid output name"
+    if (resetProc.running) return "reset already running"
+
+    var d = findDisplay(name)
+    if (!d) return "output not found"
+
+    root.resetRunningMonitor = name
+    root.lastResetOutput = ""
+    var copy = Object.assign({}, root.resetStatus)
+    copy[name] = { status: "running", message: "Retraining…" }
+    root.resetStatus = copy
+
+    resetProc.exe = "/usr/bin/bash"
+    resetProc.args = [Model.helperPath("fred-monitor-reset"), name]
+    resetProc.launch()
+    return "resetting " + name
+  }
+
+  function resetHighlighted() {
+    var d = getTargetDisplay()
+    if (d && d.name) root.resetDisplay(d.name)
   }
 
   function setScale(scale) {
@@ -514,6 +566,47 @@ Panel {
     onRunningChanged: if (!running) root.refresh()
   }
 
+  Launch {
+    id: resetProc
+    envKeys: root.monitorEnv
+    deadlineMs: 35000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var lines = String(text || "").trim().split("\n")
+        if (lines.length > 0) root.lastResetOutput = lines[lines.length - 1]
+      }
+    }
+  }
+
+  Connections {
+    target: resetProc
+    function onExited(exitCode) {
+      var mon = root.resetRunningMonitor
+      if (mon !== "") {
+        var copy = Object.assign({}, root.resetStatus)
+        if (exitCode === 0) {
+          copy[mon] = { status: "success", message: "Retrained" }
+        } else {
+          copy[mon] = { status: "error", message: "Failed — press again" }
+        }
+        root.resetStatus = copy
+        resetClearTimer.restart()
+        root.resetRunningMonitor = ""
+      }
+      root.refresh()
+    }
+  }
+
+  Timer {
+    id: resetClearTimer
+    interval: 4000
+    repeat: false
+    onTriggered: {
+      root.resetStatus = ({})
+    }
+  }
+
   // Applies text size via the CLI, which rewrites the shell override file;
   // Style picks the new base-size up through its own file watch, so there's
   // nothing to refresh here.
@@ -587,11 +680,15 @@ Panel {
           if (root.focusSection === "brightness") root.adjustBrightness(dx * 5)
           else if (root.focusSection === "textsize") root.adjustTextSize(dx)
           else if (root.focusSection === "scale") root.moveCursorH(dx)
+          else if (root.focusSection === "monitors") root.moveMonitorH(dx)
         }
       }
       onActivateRequested: if (root.cursorActive) root.activateCursor()
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
+      onTextKey: function(t) {
+        if (t === "r" || t === "R") root.resetHighlighted()
+      }
 
       ScrollView {
         id: scrollArea
@@ -964,24 +1061,28 @@ Panel {
 
     readonly property bool isFocused: display && display.focused
     readonly property bool canToggle: display && (!display.enabled || root.enabledDisplayCount > 1)
+    readonly property var rowResetInfo: root.resetStatus[monitorRow.display.name]
+    readonly property bool isResetting: root.resetRunningMonitor === monitorRow.display.name || (rowResetInfo && rowResetInfo.status === "running")
+    readonly property string resetMsg: rowResetInfo ? rowResetInfo.message : ""
+    readonly property string posLabel: Model.positionLabel(monitorRow.display.name, root.displays)
 
-    hasCursor: root.cursorActive && root.focusSection === "monitors" && root.selectedIndex === rowIndex
+    hasCursor: root.cursorActive && root.focusSection === "monitors" && root.selectedIndex === rowIndex && root.monitorColumn === 0
     onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(monitorRow)
     current: isFocused
     foreground: root.bar.foreground
     fill: Style.hoverFillFor(root.bar.foreground, Color.accent)
     currentFill: Style.selectedFillFor(root.bar.foreground, Color.accent)
-    implicitHeight: monitorInner.implicitHeight + Style.spacing.xl
-    opacity: canToggle ? 1.0 : 0.45
+    implicitHeight: Math.max(monitorInner.implicitHeight, resetBtn.implicitHeight) + Style.spacing.md
 
     Row {
       id: monitorInner
       anchors.left: parent.left
-      anchors.right: parent.right
+      anchors.right: resetBtn.left
+      anchors.rightMargin: Style.space(6)
       anchors.verticalCenter: parent.verticalCenter
       anchors.leftMargin: Style.space(6)
-      anchors.rightMargin: Style.space(6)
       spacing: Style.space(8)
+      opacity: monitorRow.canToggle ? 1.0 : 0.5
 
       Text {
         text: "󰍹"
@@ -995,12 +1096,31 @@ Panel {
 
       Text {
         textFormat: Text.PlainText
-        text: monitorRow.display.name + (monitorRow.display.focused ? " · focused" : "")
+        text: {
+          var label = monitorRow.display.name
+          if (monitorRow.display.model) label += "  " + monitorRow.display.model
+          if (monitorRow.display.focused) label += " · focused"
+          return label
+        }
         color: root.bar.foreground
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body
         elide: Text.ElideRight
-        width: parent.width - Style.space(22) - Style.space(14) - Style.space(16)
+        width: Math.max(Style.space(60), monitorInner.width - Style.space(22) - Style.space(8) - (posText.visible ? posText.width + Style.space(8) : 0) - Style.space(14) - Style.space(8))
+        anchors.verticalCenter: parent.verticalCenter
+      }
+
+      Text {
+        id: posText
+        visible: monitorRow.posLabel !== ""
+        textFormat: Text.PlainText
+        text: monitorRow.posLabel
+        color: Qt.darker(root.bar.foreground, 1.4)
+        font.family: root.bar.fontFamily
+        font.pixelSize: Style.font.caption
+        font.bold: true
+        width: Style.space(48)
+        horizontalAlignment: Text.AlignRight
         anchors.verticalCenter: parent.verticalCenter
       }
 
@@ -1017,15 +1137,53 @@ Panel {
     }
 
     MouseArea {
-      anchors.fill: parent
+      anchors.left: parent.left
+      anchors.right: resetBtn.left
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
       hoverEnabled: true
       cursorShape: monitorRow.canToggle ? Qt.PointingHandCursor : Qt.ArrowCursor
       onContainsMouseChanged: if (containsMouse && !root.reflowingText) {
         root.cursorActive = true
         root.focusSection = "monitors"
         root.selectedIndex = monitorRow.rowIndex
+        root.monitorColumn = 0
       }
       onClicked: if (monitorRow.canToggle) root.toggleDisplay(monitorRow.display.name, monitorRow.display.enabled)
+    }
+
+    Button {
+      id: resetBtn
+      anchors.right: parent.right
+      anchors.rightMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      bordered: true
+      horizontalPadding: Style.spacing.xs
+      verticalPadding: Style.spacing.controlPaddingY
+      fontSize: Style.font.caption
+      foreground: root.bar.foreground
+      fontFamily: root.bar.fontFamily
+      hasCursor: root.cursorActive && root.focusSection === "monitors" && root.selectedIndex === monitorRow.rowIndex && root.monitorColumn === 1
+      onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(monitorRow)
+
+      iconSpinning: monitorRow.isResetting
+      iconText: monitorRow.isResetting ? "󰑐" : (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "success" ? "󰄬" : (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "error" ? "󰅚" : ""))
+      text: {
+        if (monitorRow.isResetting) return "Retraining…"
+        if (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "success") return "Retrained"
+        if (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "error") return "Failed"
+        return "Reset"
+      }
+      tooltipText: monitorRow.resetMsg !== "" ? monitorRow.resetMsg : "Retrain display link"
+
+      onClicked: root.resetDisplay(monitorRow.display.name)
+      onHovered: function(isHovered) {
+        if (!isHovered || root.reflowingText) return
+        root.cursorActive = true
+        root.focusSection = "monitors"
+        root.selectedIndex = monitorRow.rowIndex
+        root.monitorColumn = 1
+      }
     }
   }
 }
