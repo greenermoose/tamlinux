@@ -211,7 +211,33 @@ def resolve_root_disk_model():
 
     # Clean up model
     clean_model = " ".join(model.split()).strip() if model else "System Drive"
+    if "KINGSTON OM3PGP4" in clean_model.upper():
+        clean_model = "Kingston OM3PGP4 (1TB NVMe)"
     return clean_model
+
+
+def clean_pci_name(cls, vendor, device):
+    desc = device if vendor.lower() in device.lower() else f"{vendor} {device}".strip()
+    desc = re.sub(r"Semiconductor Co\.,? Ltd\.?", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"Corporation", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"Advanced Micro Devices,? Inc\.? \[AMD(/ATI)?\]", "AMD", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"Advanced Micro Devices,? Inc\.?", "AMD", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"Intel\(R\)", "Intel", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"\(802\.11ax\)", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"\[Typhoon Peak\]", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"2x2", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"Controller", "", desc, flags=re.IGNORECASE)
+    desc = " ".join(desc.split()).strip()
+
+    if "RTL8125" in desc:
+        return "Realtek RTL8125 2.5GbE"
+    if "AX210" in desc:
+        return "Intel Wi-Fi 6E AX210"
+    if "Lucienne" in desc:
+        return "AMD Radeon Vega (Lucienne)"
+    if "HDMI/DP Audio" in desc or "HD Audio" in desc:
+        return "AMD HD Audio"
+    return desc
 
 
 def get_pci_devices_static():
@@ -229,16 +255,15 @@ def get_pci_devices_static():
                 parts = shlex.split(line)
                 if len(parts) >= 4:
                     cls, vendor, device = parts[1], parts[2], parts[3]
-                    desc = device if vendor.lower() in device.lower() else f"{vendor} {device}".strip()
-                    desc = " ".join(desc.split())
+                    cleaned = clean_pci_name(cls, vendor, device)
                     if "Ethernet" in cls:
-                        devs["ethernet"].append(desc)
+                        devs["ethernet"].append(cleaned)
                     elif "Network controller" in cls or "Wireless" in cls:
-                        devs["wifi"].append(desc)
+                        devs["wifi"].append(cleaned)
                     elif "VGA" in cls or "3D" in cls or "Display" in cls:
-                        devs["gpu"].append(desc)
+                        devs["gpu"].append(cleaned)
                     elif "Audio" in cls:
-                        devs["audio"].append(desc)
+                        devs["audio"].append(cleaned)
         except Exception:
             pass
 

@@ -3,14 +3,16 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.Ui
 import qs.Commons
+import "SysinfoStore.js" as SysinfoStore
 
 Panel {
   id: root
   moduleName: "fred.sysinfo"
   ipcTarget: "fred.sysinfo"
-  manageIpc: true
+  manageIpc: false
 
   property var stats: ({})
   property int phraseIndex: 0
@@ -90,8 +92,51 @@ Panel {
     }
   }
 
+  readonly property var myWindow: root.QsWindow ? root.QsWindow.window : null
+  readonly property string screenName: (myWindow && myWindow.screen) ? String(myWindow.screen.name || "") : ""
+  onScreenNameChanged: {
+    if (screenName) SysinfoStore.register(screenName, root)
+  }
+
   Component.onCompleted: {
     refresh()
+    Qt.callLater(function() {
+      if (root.screenName) SysinfoStore.register(root.screenName, root)
+    })
+  }
+
+  Component.onDestruction: {
+    if (root.screenName) SysinfoStore.unregister(root.screenName, root)
+  }
+
+  IpcHandler {
+    target: "fred.sysinfo"
+    function toggleMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      SysinfoStore.toggle(monitor, cur)
+    }
+    function openMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      SysinfoStore.open(monitor, cur)
+    }
+    function closeMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      SysinfoStore.close(monitor, cur)
+    }
+    function open(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      SysinfoStore.open("", cur)
+    }
+    function close(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      SysinfoStore.close("", cur)
+    }
+    function show(): void { open() }
+    function hide(): void { close() }
+    function toggle(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      SysinfoStore.toggle("", cur)
+    }
   }
 
   Process {
@@ -196,15 +241,15 @@ Panel {
     onPressed: function(b) { root.toggle() }
   }
 
-  KeyboardPanel {
+  SysinfoPanel {
     id: panel
     anchorItem: button
     owner: root
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(520))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(640))
+    contentWidth: panel.fittedContentWidth(Style.space(580))
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -240,7 +285,7 @@ Panel {
         Column {
           id: panelColumn
           width: panelFlick.width - (panelFlick.interactive ? Style.space(10) : 0)
-          spacing: Style.space(12)
+          spacing: Style.space(6)
 
           // ---------- Hero: Chip Icon · Title / Status · Pill ----------
           Item {
@@ -266,7 +311,7 @@ Panel {
               anchors.right: heroBadge.left
               anchors.rightMargin: Style.space(8)
               anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(2)
+              spacing: Style.space(1)
 
               Text {
                 text: (root.stats.system && root.stats.system.product) ? (root.stats.system.vendor + " " + root.stats.system.product) : "System Hardware"
@@ -327,27 +372,23 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair { label: "Model"; value: root.stats.cpu ? root.stats.cpu.model : "--" }
               InfoPair { label: "Topology"; value: root.stats.cpu ? root.stats.cpu.topology : "--" }
               InfoPair {
-                label: "Current Freq";
+                label: "Frequency";
                 value: root.stats.cpu && root.stats.cpu.avg_freq_mhz ? (root.stats.cpu.avg_freq_mhz / 1000).toFixed(2) + " GHz" : "--"
               }
               InfoPair {
-                label: "Freq Range";
-                value: root.stats.cpu && root.stats.cpu.min_freq_mhz ? ((root.stats.cpu.min_freq_mhz / 1000).toFixed(2) + " – " + (root.stats.cpu.max_freq_mhz / 1000).toFixed(2) + " GHz") : "--"
-              }
-              InfoPair {
-                label: "Min / Max Limits";
-                value: root.stats.cpu && root.stats.cpu.min_limit_mhz ? ((root.stats.cpu.min_limit_mhz / 1000).toFixed(2) + " / " + (root.stats.cpu.max_limit_mhz / 1000).toFixed(2) + " GHz") : "--"
+                label: "Freq Limits";
+                value: root.stats.cpu && root.stats.cpu.min_limit_mhz ? ((root.stats.cpu.min_limit_mhz / 1000).toFixed(2) + " – " + (root.stats.cpu.max_limit_mhz / 1000).toFixed(2) + " GHz") : "--"
               }
             }
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair {
                 label: "CPU Usage";
@@ -355,9 +396,8 @@ Panel {
                 valueColor: root.stats.cpu && root.stats.cpu.usage_percent > 85 ? root.bar.urgent : root.bar.foreground
               }
               InfoPair { label: "Load Avg"; value: root.stats.cpu ? root.stats.cpu.load_avg : "--" }
-              InfoPair { label: "Architecture"; value: root.stats.cpu ? root.stats.cpu.architecture : "--" }
-              InfoPair { label: "Cache Hierarchy"; value: root.stats.cpu ? root.stats.cpu.cache : "--" }
               InfoPair { label: "Governor"; value: root.stats.cpu ? root.stats.cpu.governor : "--" }
+              InfoPair { label: "Cache"; value: root.stats.cpu ? root.stats.cpu.cache : "--" }
             }
           }
 
@@ -383,7 +423,7 @@ Panel {
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY + Style.space(2)
+                verticalPadding: Style.space(4)
                 bordered: true
                 active: root.activeProfile === modelData
                 onClicked: root.setProfile(modelData)
@@ -406,7 +446,7 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair {
                 label: "CPU Temp";
@@ -429,7 +469,7 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair {
                 label: "GPU Temp";
@@ -465,22 +505,22 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
-              InfoPair { label: "Vendor"; value: root.stats.system ? root.stats.system.vendor : "--" }
-              InfoPair { label: "Product"; value: root.stats.system ? root.stats.system.product : "--" }
               InfoPair { label: "Motherboard"; value: root.stats.system ? root.stats.system.board : "--" }
               InfoPair { label: "Chassis"; value: root.stats.system ? root.stats.system.chassis : "--" }
+              InfoPair { label: "Kernel"; value: root.stats.system ? root.stats.system.kernel : "--" }
             }
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
-              InfoPair { label: "BIOS Version"; value: root.stats.system ? root.stats.system.bios_version : "--" }
-              InfoPair { label: "BIOS Date"; value: root.stats.system ? root.stats.system.bios_date : "--" }
+              InfoPair {
+                label: "BIOS";
+                value: root.stats.system ? (root.stats.system.bios_version + (root.stats.system.bios_date ? " (" + root.stats.system.bios_date + ")" : "")) : "--"
+              }
               InfoPair { label: "EC Firmware"; value: root.stats.system ? root.stats.system.ec_version : "--" }
-              InfoPair { label: "Kernel"; value: root.stats.system ? root.stats.system.kernel : "--" }
               InfoPair { label: "System Uptime"; value: root.stats.system ? root.stats.system.uptime : "--" }
             }
           }
@@ -500,28 +540,31 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
-              InfoPair { label: "RAM Total"; value: root.stats.memory ? (root.stats.memory.total_gb + " GB") : "--" }
               InfoPair {
                 label: "RAM In-Use";
-                value: root.stats.memory ? (root.stats.memory.used_gb + " GB (" + Math.round(root.stats.memory.used_percent) + "%)") : "--"
+                value: root.stats.memory ? (root.stats.memory.used_gb + " / " + root.stats.memory.total_gb + " GB (" + Math.round(root.stats.memory.used_percent) + "%)") : "--"
               }
-              InfoPair { label: "RAM Available"; value: root.stats.memory ? (root.stats.memory.avail_gb + " GB") : "--" }
+              InfoPair { label: "RAM Avail"; value: root.stats.memory ? (root.stats.memory.avail_gb + " GB") : "--" }
+              InfoPair { label: "Drive Model"; value: root.stats.storage ? root.stats.storage.model : "--" }
             }
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair {
                 label: "ZRAM / Swap";
                 value: root.stats.memory ? (root.stats.memory.swap_used_gb + " / " + root.stats.memory.swap_total_gb + " GB") : "--"
               }
-              InfoPair { label: "Drive Model"; value: root.stats.storage ? root.stats.storage.model : "--" }
               InfoPair {
                 label: "Root (/)";
                 value: root.stats.storage ? (root.stats.storage.used_gb + " / " + root.stats.storage.total_gb + " GB (" + Math.round(root.stats.storage.used_percent) + "%)") : "--"
+              }
+              InfoPair {
+                label: "Free Disk";
+                value: root.stats.storage ? (root.stats.storage.free_gb + " GB free") : "--"
               }
             }
           }
@@ -541,7 +584,7 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair { label: "Ethernet"; value: root.stats.io ? root.stats.io.ethernet : "--" }
               InfoPair { label: "Wireless"; value: root.stats.io ? root.stats.io.wifi : "--" }
@@ -549,44 +592,34 @@ Panel {
 
             Column {
               width: (parent.width - parent.spacing) / 2
-              spacing: Style.spacing.labelGap
+              spacing: Style.space(3)
 
               InfoPair { label: "Graphics"; value: root.stats.io ? root.stats.io.graphics : "--" }
               InfoPair { label: "HD Audio"; value: root.stats.io ? root.stats.io.audio : "--" }
             }
           }
 
-          Column {
+          Row {
             width: parent.width
-            spacing: Style.space(4)
-            visible: root.stats.io && root.stats.io.usb_peripherals && root.stats.io.usb_peripherals.length > 0
+            spacing: Style.space(8)
+            visible: !!(root.stats.io && root.stats.io.usb_peripherals && root.stats.io.usb_peripherals.length > 0)
 
             InfoLabel {
-              text: "Connected USB Peripherals"
-              opacity: 0.5
+              text: "Connected USB"
+              anchors.verticalCenter: parent.verticalCenter
             }
-
-            Repeater {
-              model: root.stats.io && root.stats.io.usb_peripherals ? root.stats.io.usb_peripherals : []
-              Row {
-                width: parent.width
-                spacing: Style.space(8)
-                Text {
-                  text: "󰌠"
-                  color: root.bar.foreground
-                  opacity: 0.7
-                  font.family: root.bar.fontFamily
-                  font.pixelSize: Style.font.caption
-                  anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                  text: modelData
-                  color: root.bar.foreground
-                  font.family: root.bar.fontFamily
-                  font.pixelSize: Style.font.caption
-                  anchors.verticalCenter: parent.verticalCenter
-                }
-              }
+            Item {
+              width: Math.max(0, parent.width - parent.children[0].implicitWidth - usbVal.implicitWidth - parent.spacing * 2)
+              height: 1
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            DetailValue {
+              id: usbVal
+              text: root.stats.io && root.stats.io.usb_peripherals ? root.stats.io.usb_peripherals.join(", ") : "--"
+              width: Math.min(implicitWidth, Math.max(Style.space(40), parent.width - parent.children[0].implicitWidth - parent.spacing * 2))
+              elide: Text.ElideRight
+              anchors.verticalCenter: parent.verticalCenter
+              tooltipText: root.stats.io && root.stats.io.usb_peripherals ? root.stats.io.usb_peripherals.join("\n") : ""
             }
           }
 
@@ -602,7 +635,7 @@ Panel {
             foreground: root.bar.foreground
             fontFamily: root.bar.fontFamily
             horizontalPadding: Style.spacing.controlPaddingX
-            verticalPadding: Style.spacing.controlPaddingY + Style.space(3)
+            verticalPadding: Style.space(5)
             bordered: true
             onClicked: {
               root.launchSystemMonitor()
@@ -615,6 +648,7 @@ Panel {
   }
 
   component InfoPair: Row {
+    id: pairRow
     property string label: ""
     property string value: ""
     property color valueColor: root.bar.foreground
@@ -624,18 +658,22 @@ Panel {
     spacing: Style.space(8)
 
     InfoLabel {
-      text: label
+      id: pairLabel
+      text: pairRow.label
       anchors.verticalCenter: parent.verticalCenter
     }
     Item {
-      width: Math.max(0, parent.width - parent.children[0].implicitWidth - parent.children[2].implicitWidth - parent.spacing * 2)
+      width: Math.max(0, pairRow.width - pairLabel.implicitWidth - pairValue.implicitWidth - pairRow.spacing * 2)
       height: 1
       anchors.verticalCenter: parent.verticalCenter
     }
     DetailValue {
-      text: value
-      color: valueColor
-      copyable: parent.copyable
+      id: pairValue
+      text: pairRow.value
+      color: pairRow.valueColor
+      copyable: pairRow.copyable
+      width: Math.min(implicitWidth, Math.max(Style.space(40), pairRow.width - pairLabel.implicitWidth - pairRow.spacing * 2))
+      elide: Text.ElideRight
       anchors.verticalCenter: parent.verticalCenter
     }
   }
