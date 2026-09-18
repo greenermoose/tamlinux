@@ -97,15 +97,14 @@ Column {
 
           Item {
             // Spacer
-            width: parent.width - 100 - 30 - 140 - 70 - 110 - (parent.spacing * 5)
+            width: Math.max(0, parent.width - Style.space(100 + 30 + 140 + 70) - tempRow.implicitWidth - (parent.spacing * 5))
             height: 1
           }
 
           // 5. High / Low Temperature
           Row {
-            width: Style.space(110)
+            id: tempRow
             anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignRight
             spacing: Style.space(6)
 
             Text {

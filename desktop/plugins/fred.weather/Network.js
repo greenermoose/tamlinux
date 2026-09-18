@@ -17,11 +17,14 @@ function curlCommand(url, timeoutSeconds, maxBytes) {
     "--connect-timeout", "5", "--max-filesize", String(maxBytes), url]
 }
 
-function responseText(text, exitCode, exitStatus, maxBytes) {
-  if (exitStatus !== 0 || exitCode !== 0)
-    throw new Error("Request failed with exit code " + exitCode)
+function responseText(text, arg2, arg3, arg4) {
+  var maxBytes = typeof arg4 === "number" ? arg4 : (typeof arg2 === "number" ? arg2 : 1024 * 1024)
+  var hasExitInfo = typeof arg2 === "number" && typeof arg3 === "number" && typeof arg4 === "number"
+  if (hasExitInfo && (arg2 !== 0 || arg3 !== 0))
+    throw new Error("Request failed with exit code " + arg2)
 
-  var raw = String(text || "")
+  var raw = String(text || "").trim()
+  if (!raw) throw new Error("Empty response")
   if (raw.length > maxBytes) throw new Error("Response exceeds " + maxBytes + " bytes")
 
   var bytes = 0
@@ -38,8 +41,6 @@ function responseText(text, exitCode, exitStatus, maxBytes) {
     if (bytes > maxBytes) throw new Error("Response exceeds " + maxBytes + " bytes")
   }
 
-  raw = raw.trim()
-  if (!raw) throw new Error("Empty response")
   return raw
 }
 

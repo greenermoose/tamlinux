@@ -104,3 +104,64 @@ test("Network curlCommand enforces deadlines, security flags and max bytes", () 
     "--max-filesize", String(128 * 1024), "https://api.open-meteo.com/test"
   ]);
 });
+
+test("Network responseText validates byte bounds, exit codes, and utf-8 counting", () => {
+  assert.equal(Network.responseText("  hello world  ", 100), "hello world");
+  assert.equal(Network.responseText("{\"temp\":20}", 0, 0, 1024), "{\"temp\":20}");
+
+  assert.throws(() => Network.responseText("", 100), /Empty response/);
+  assert.throws(() => Network.responseText("  \n\t  ", 100), /Empty response/);
+  assert.throws(() => Network.responseText("abcde", 3), /Response exceeds 3 bytes/);
+  assert.throws(() => Network.responseText("hello", 1, 0, 100), /Request failed with exit code 1/);
+
+  // Multibyte UTF-8: '€' is 3 bytes, '😀' is 4 bytes
+  assert.equal(Network.responseText("€", 3), "€");
+  assert.throws(() => Network.responseText("€", 2), /Response exceeds 2 bytes/);
+  assert.equal(Network.responseText("😀", 4), "😀");
+  assert.throws(() => Network.responseText("😀", 3), /Response exceeds 3 bytes/);
+});
+
+test("WeatherStore registers panels and resolves monitors by name and make/model", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+
+  const code = fs.readFileSync(path.join(__dirname, "../WeatherStore.js"), "utf8")
+    .replace(/^\.pragma library\s*/m, "");
+  const mod = { exports: {} };
+  vm.runInNewContext(code, { module: mod, exports: mod.exports, console });
+  const WeatherStore = mod.exports;
+
+  const panelHP = { id: "hp-panel", opened: false, open: () => { panelHP.opened = true; } };
+  const panelDell = { id: "dell-panel", opened: false, open: () => { panelDell.opened = true; } };
+  const panelMSI = { id: "msi-panel", opened: false, open: () => { panelMSI.opened = true; } };
+
+  WeatherStore.register("HDMI-A-1", panelHP);
+  assert.equal(WeatherStore.getPanel("HDMI-A-1"), panelHP);
+  WeatherStore.register("DP-1", panelDell);
+  WeatherStore.register("DP-2", panelMSI);
+
+  const hyprlandMonitors = [
+    { name: "HDMI-A-1", description: "Hewlett Packard HP 22cwa", model: "HP 22cwa" },
+    { name: "DP-1", description: "Dell Inc. DELL S2725DSM", model: "DELL S2725DSM" },
+    { name: "DP-2", description: "Microstep MSI MP161", model: "MSI MP161" }
+  ];
+
+  // Direct monitor name match
+  assert.equal(WeatherStore.resolveTargetPanel("HDMI-A-1", "DP-1", hyprlandMonitors), panelHP);
+  assert.equal(WeatherStore.resolveTargetPanel("dp-2", "DP-1", hyprlandMonitors), panelMSI);
+
+  // Hyprland description / model match (e.g. "hp", "dell", "msi")
+  assert.equal(WeatherStore.resolveTargetPanel("hp", "DP-1", hyprlandMonitors), panelHP);
+  assert.equal(WeatherStore.resolveTargetPanel("dell", "HDMI-A-1", hyprlandMonitors), panelDell);
+  assert.equal(WeatherStore.resolveTargetPanel("msi", "DP-1", hyprlandMonitors), panelMSI);
+
+  // Fallback to focused monitor
+  assert.equal(WeatherStore.resolveTargetPanel("", "DP-1", hyprlandMonitors), panelDell);
+
+  // Clean unregister
+  WeatherStore.unregister("HDMI-A-1", panelHP);
+  assert.equal(WeatherStore.getPanel("HDMI-A-1"), null);
+});
+
+

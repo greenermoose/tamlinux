@@ -1,10 +1,12 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 import "Network.js" as Network
+import "WeatherStore.js" as WeatherStore
 
 Panel {
   id: root
@@ -20,6 +22,98 @@ Panel {
 
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
+
+  readonly property string screenName: {
+    if (panel && panel.screen && panel.screen.name) return String(panel.screen.name)
+    if (anchorItem && anchorItem.QsWindow && anchorItem.QsWindow.window && anchorItem.QsWindow.window.screen)
+      return String(anchorItem.QsWindow.window.screen.name || "")
+    if (root.bar && root.bar.screen && root.bar.screen.name) return String(root.bar.screen.name)
+    return ""
+  }
+
+  onScreenNameChanged: {
+    if (screenName) WeatherStore.register(screenName, root)
+  }
+
+  IpcHandler {
+    target: "fred.weather"
+
+    function open(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.open("", cur, Hyprland.monitors)
+    }
+    function close(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.close("", cur, Hyprland.monitors)
+    }
+    function show(): void { open() }
+    function hide(): void { close() }
+    function toggle(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.toggle("", cur, Hyprland.monitors)
+    }
+    function openMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.open(monitor, cur, Hyprland.monitors)
+    }
+    function closeMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.close(monitor, cur, Hyprland.monitors)
+    }
+    function toggleMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.toggle(monitor, cur, Hyprland.monitors)
+    }
+    function refresh(): void { root.refresh() }
+    function edit(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      var p = WeatherStore.resolveTargetPanel("", cur, Hyprland.monitors)
+      if (p) {
+        p.open()
+        p.startEditingLocation()
+      }
+    }
+  }
+
+  IpcHandler {
+    target: "omarchy.weather"
+
+    function open(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.open("", cur, Hyprland.monitors)
+    }
+    function close(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.close("", cur, Hyprland.monitors)
+    }
+    function show(): void { open() }
+    function hide(): void { close() }
+    function toggle(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.toggle("", cur, Hyprland.monitors)
+    }
+    function openMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.open(monitor, cur, Hyprland.monitors)
+    }
+    function closeMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.close(monitor, cur, Hyprland.monitors)
+    }
+    function toggleMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.toggle(monitor, cur, Hyprland.monitors)
+    }
+    function refresh(): void { root.refresh() }
+    function edit(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      var p = WeatherStore.resolveTargetPanel("", cur, Hyprland.monitors)
+      if (p) {
+        p.open()
+        p.startEditingLocation()
+      }
+    }
+  }
 
   function open() {
     openedFromHotkey = false
@@ -112,6 +206,7 @@ Panel {
       label = Model.currentIcon(openMeteoCurrent, "\uf185")
     }
     weatherReady = true
+    Qt.callLater(root.refresh)
   }
 
   function scheduleCacheWrite() {
@@ -274,14 +369,11 @@ Panel {
     savingLocation = true
     savingLocationQueryStarted = false
     locationError = ""
-    var args = ["set"]
+    var cmd = ["omarchy-weather-location", "--set", name]
     if (latitude !== null && longitude !== null && !isNaN(Number(latitude)) && !isNaN(Number(longitude))) {
-      args.push(String(latitude) + "," + String(longitude))
-      if (name) args.push(name)
-    } else if (name) {
-      args.push(name)
+      cmd.push(String(latitude) + "," + String(longitude))
     }
-    locationSaveProc.command = ["omarchy-weather-location"].concat(args)
+    locationSaveProc.command = cmd
     locationSaveProc.running = true
   }
 
@@ -289,7 +381,7 @@ Panel {
     savingLocation = true
     savingLocationQueryStarted = false
     locationError = ""
-    locationClearProc.command = ["omarchy-weather-location", "clear"]
+    locationClearProc.command = ["omarchy-weather-location", "--clear"]
     locationClearProc.running = true
   }
 
@@ -321,6 +413,7 @@ Panel {
     interval: root.refreshMinutes * 60000
     running: true
     repeat: true
+    triggeredOnStart: true
     onTriggered: root.refresh()
   }
 
@@ -342,10 +435,10 @@ Panel {
 
   FileView {
     id: locationFile
-    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/weather.json"
-    blockLoading: false
-    blockWrites: true
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+    watchChanges: true
     printErrors: false
+    onFileChanged: reload()
     onLoaded: {
       var parsed = Model.parseLocationFile(text())
       root.configuredLocationState = parsed
@@ -363,6 +456,12 @@ Panel {
     }
   }
 
+  Timer {
+    interval: 1500
+    running: true
+    onTriggered: locationFile.reload()
+  }
+
   FileView {
     id: weatherCacheFile
     path: root.weatherCachePath
@@ -373,7 +472,9 @@ Panel {
     onLoaded: {
       if (root.cacheReady) return
       try {
-        root.weatherCache = Model.parseWeatherCache(Network.responseText(text(), 0, 0, 512 * 1024))
+        var raw = String(text() || "").trim()
+        if (raw.length > 0)
+          root.weatherCache = Model.parseWeatherCache(Network.responseText(raw, 512 * 1024))
       } catch (e) {
         console.warn("Weather cache load failed: " + e)
       }
@@ -397,17 +498,29 @@ Panel {
   // --- Network Processes ---------------------------------------------------
 
   Process {
+    id: ensureCacheDir
+    command: ["mkdir", "-p", root.weatherCacheDir]
+    environment: Network.closedEnv
+  }
+
+  Process {
     id: dailyForecastProc
     property string requestQuery: ""
     property var requestCoordinates: null
     environment: Network.closedEnv
     stdout: StdioCollector {
+      id: dailyForecastStdout
+      waitForEnd: true
       onStreamFinished: {
-        var text = value
         dailyForecastProc.running = false
+        var raw = String(dailyForecastStdout.text || "").trim()
+        if (!raw) {
+          root.scheduleDailyForecastRetry()
+          return
+        }
         if (dailyForecastProc.requestQuery !== root.locationQuery) return
         try {
-          var payload = JSON.parse(Network.responseText(text, dailyForecastProc.exitCode, dailyForecastProc.exitStatus, Network.responseLimits.dailyForecast))
+          var payload = JSON.parse(Network.responseText(raw, Network.responseLimits.dailyForecast))
           if (payload.error) throw new Error(payload.reason || "Open-Meteo returned an error")
           root.dailyForecastReport = payload
           root.hourlyUpdatedAt = Date.now()
@@ -434,15 +547,24 @@ Panel {
   Process {
     id: forecastProc
     property string requestQuery: ""
-    command: Network.curlCommand("https://wttr.in/" + requestQuery + "?format=j1", 10, Network.responseLimits.forecast)
+    command: Network.curlCommand("https://wttr.in/" + root.locationQuery + "?format=j1", 10, Network.responseLimits.forecast)
     environment: Network.closedEnv
     stdout: StdioCollector {
+      id: forecastStdout
+      waitForEnd: true
       onStreamFinished: {
-        var text = value
         forecastProc.running = false
+        var raw = String(forecastStdout.text || "").trim()
+        if (!raw) {
+          if (root.forecastRetries < 3) {
+            forecastRetryTimer.start()
+            root.forecastRetries++
+          }
+          return
+        }
         if (forecastProc.requestQuery !== root.locationQuery) return
         try {
-          var payload = JSON.parse(Network.responseText(text, forecastProc.exitCode, forecastProc.exitStatus, Network.responseLimits.forecast))
+          var payload = JSON.parse(Network.responseText(raw, Network.responseLimits.forecast))
           root.report = payload
           root.reportUpdatedAt = Date.now()
           root.reportLocationQuery = forecastProc.requestQuery
@@ -470,11 +592,13 @@ Panel {
     command: ["omarchy-weather-location"]
     environment: Network.closedEnv
     stdout: StdioCollector {
+      id: locationStdout
+      waitForEnd: true
       onStreamFinished: {
-        var text = value
         locationProc.running = false
-        if (locationProc.exitCode === 0 && text.trim().length > 0)
-          root.wttrLocation = text.trim()
+        var raw = String(locationStdout.text || "").trim()
+        if (locationProc.exitCode === 0 && raw.length > 0)
+          root.wttrLocation = raw
       }
     }
   }
@@ -506,12 +630,14 @@ Panel {
     property string query: ""
     environment: Network.closedEnv
     stdout: StdioCollector {
+      id: locationSearchStdout
+      waitForEnd: true
       onStreamFinished: {
-        var text = value
         locationSearchProc.running = false
-        if (locationSearchProc.exitCode !== 0) return
+        var raw = String(locationSearchStdout.text || "").trim()
+        if (!raw) return
         try {
-          root.locationSuggestions = Model.parseLocationSearch(text, locationSearchProc.query)
+          root.locationSuggestions = Model.parseLocationSearch(raw, locationSearchProc.query)
           root.suggestionIndex = 0
         } catch (e) {
           root.locationSuggestions = []
@@ -604,7 +730,7 @@ Panel {
             radius: Style.cornerRadius
             color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
             border.width: 1
-            border.color: Color.tint(root.foreground, 0.15)
+            border.color: Util.alpha(root.foreground, 0.15)
 
             MouseArea {
               id: locMouse
@@ -762,17 +888,52 @@ Panel {
               }
             }
 
-            PanelActionButton {
+            Rectangle {
               id: btnClearLoc
-              text: "IP Auto"
-              tooltipText: "Return to auto IP detection"
-              onClicked: root.clearLocationPreference()
+              width: Style.space(64)
+              height: Style.space(28)
+              radius: Style.cornerRadius
+              color: clearLocMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+              border.width: 1
+              border.color: Util.alpha(root.foreground, 0.2)
+              Text {
+                anchors.centerIn: parent
+                text: "IP Auto"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+              MouseArea {
+                id: clearLocMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.clearLocationPreference()
+              }
             }
 
-            PanelActionButton {
+            Rectangle {
               id: btnCancelLoc
-              text: "Cancel"
-              onClicked: root.cancelEditingLocation()
+              width: Style.space(64)
+              height: Style.space(28)
+              radius: Style.cornerRadius
+              color: cancelLocMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.urgent) : "transparent"
+              border.width: 1
+              border.color: Util.alpha(root.foreground, 0.2)
+              Text {
+                anchors.centerIn: parent
+                text: "Cancel"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+              MouseArea {
+                id: cancelLocMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.cancelEditingLocation()
+              }
             }
           }
 
@@ -821,9 +982,9 @@ Panel {
           width: parent.width
           height: Style.space(110)
           radius: Style.cornerRadius
-          color: Color.tint(root.foreground, 0.04)
+          color: Util.alpha(root.foreground, 0.04)
           border.width: 1
-          border.color: Color.tint(root.foreground, 0.12)
+          border.color: Util.alpha(root.foreground, 0.12)
 
           Row {
             anchors.fill: parent
@@ -950,7 +1111,7 @@ Panel {
         Rectangle {
           width: parent.width
           height: 1
-          color: Color.tint(root.foreground, 0.12)
+          color: Util.alpha(root.foreground, 0.12)
         }
 
         // 5. Section: 10-Day Daily Outlook
@@ -978,5 +1139,16 @@ Panel {
         }
       }
     }
+  }
+
+  Component.onCompleted: {
+    ensureCacheDir.running = true
+    Qt.callLater(function() {
+      if (root.screenName) WeatherStore.register(root.screenName, root)
+    })
+  }
+
+  Component.onDestruction: {
+    if (root.screenName) WeatherStore.unregister(root.screenName, root)
   }
 }
