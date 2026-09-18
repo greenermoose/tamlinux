@@ -3,7 +3,7 @@
 This plugin began life as a clone of the stock Omarchy display panel widget (`omarchy.monitor`).
 
 - **Upstream Project:** [Omarchy](https://omarchy.org/)
-- **Upstream Version:** Omarchy 4.0.4-1 (`/usr/share/omarchy/version`: 4.0.0.alpha)
+- **Upstream Version:** 4.0.4-1
 - **Upstream Path:** `/usr/share/omarchy/shell/plugins/panels/monitor/`
 - **Clone Date:** 2026-09-18
 - **Upstream License:** MIT
