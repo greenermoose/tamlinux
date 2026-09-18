@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "fred.monitor",
+  "name": "Display",
+  "version": "0.1.0",
+  "author": "Fred (@greenermoose)",
+  "description": "Display information, per-display control, and link reset",
+  "repository": "https://github.com/greenermoose/omarchy-fred-monitor",
+  "homepage": "https://github.com/greenermoose/omarchy-fred-monitor",
+  "license": "GPL-3.0-or-later",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Display",
+    "description": "Display information, per-display control, and link reset",
+    "category": "System",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.monitor"
+  }
+}
