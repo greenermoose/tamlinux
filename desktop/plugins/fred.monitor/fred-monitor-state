@@ -1,0 +1,49 @@
+#!/bin/bash
+set -eu
+
+# Output format for fred.monitor state:
+# Line 0: focused brightness
+# Line 1: internal monitor name (if any)
+# Line 2: external monitor name (if any)
+# Line 3: internal monitor enabled
+# Line 4: mirror monitor name (if any)
+# Line 5: focused monitor name
+# Line 6: focused monitor scale
+# Line 7: JSON array of displays with {name, enabled, focused, width, height, refreshRate, x, y, scale}
+
+monitors_json=$(hyprctl monitors all -j)
+focused_monitor=$(printf '%s\n' "$monitors_json" | jq -r '[.[] | select(.focused == true)][0].name // ""')
+
+# Focused brightness
+{ omarchy-brightness-display --monitor "$focused_monitor" 2>/dev/null || true; echo; } | head -n 1 || true
+
+# Monitor classifications
+printf '%s\n' "$monitors_json" | jq -r '
+  def internal: test("^(eDP|LVDS|DSI)-");
+  ([.[] | select(.name | internal)][0].name // ""),
+  ([.[] | select((.name | internal) | not)][0].name // ""),
+  ([.[] | select((.name | internal) and .disabled != true)][0].name // ""),
+  ([.[] | select(.mirrorOf != "none") | if (.name | internal) then .mirrorOf else .name end][0] // "")
+'
+
+# Focused monitor name
+printf '%s\n' "$focused_monitor"
+
+# Focused monitor scale
+focused_scale=$(printf '%s\n' "$monitors_json" | jq -r '[.[] | select(.focused == true)][0].scale // ""')
+printf '%s\n' "$focused_scale"
+
+# Enriched displays JSON
+printf '%s\n' "$monitors_json" | jq -c '
+  [.[] | {
+    name,
+    enabled: (.disabled != true),
+    focused: (.focused == true),
+    width: (.width // 1920),
+    height: (.height // 1080),
+    refreshRate: (.refreshRate // 60),
+    x: (.x // 0),
+    y: (.y // 0),
+    scale: (.scale // 1)
+  }]
+'

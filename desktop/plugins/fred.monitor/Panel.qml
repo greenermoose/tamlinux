@@ -29,6 +29,7 @@ Panel {
   property string monitorScale: ""
   property var displays: []
   property int enabledDisplayCount: 0
+  property var displayCache: ({})
 
   // Carry sub-notch touchpad deltas between wheel events.
   property real wheelAccumulator: 0
@@ -298,22 +299,83 @@ Panel {
     var parsed = Model.parseDisplays(displaysJson)
     root.displays = parsed.displays
     root.enabledDisplayCount = parsed.enabledDisplayCount
+    for (var i = 0; i < root.displays.length; i++) {
+      var d = root.displays[i]
+      if (d && d.name && d.enabled) {
+        root.displayCache[d.name] = {
+          name: d.name,
+          width: d.width,
+          height: d.height,
+          refreshRate: d.refreshRate,
+          x: d.x,
+          y: d.y,
+          scale: d.scale
+        }
+      }
+    }
+  }
+
+  function findDisplay(name) {
+    for (var i = 0; i < displays.length; i++) {
+      if (displays[i] && displays[i].name === name) return displays[i]
+    }
+    return null
+  }
+
+  function getTargetDisplay() {
+    if (focusSection === "scale" || focusSection === "brightness") {
+      var focused = findDisplay(root.focusedMonitor)
+      if (focused) return focused
+    }
+    if (focusSection === "monitors" && selectedIndex >= 0 && selectedIndex < displays.length) {
+      return displays[selectedIndex]
+    }
+    return findDisplay(root.focusedMonitor) || (displays.length > 0 ? displays[0] : null)
   }
 
   function toggleDisplay(name, enabled) {
     if (!name || !Model.isValidOutputName(name)) return
     if (enabled && root.enabledDisplayCount <= 1) return
 
+    var lua = ""
+    if (enabled) {
+      // Disabling: hl.monitor({ output = "<name>", disabled = true })
+      lua = 'hl.monitor({ output = "' + name + '", disabled = true })'
+    } else {
+      // Re-enabling: must include mode, position, scale, and disabled = false
+      var d = root.findDisplay(name)
+      var cached = root.displayCache[name] || {}
+      var width = (d && d.width) ? d.width : (cached.width || 1920)
+      var height = (d && d.height) ? d.height : (cached.height || 1080)
+      var rate = (d && d.refreshRate) ? Math.round(d.refreshRate) : (cached.refreshRate ? Math.round(cached.refreshRate) : 60)
+      var x = (d && d.x !== undefined) ? d.x : (cached.x !== undefined ? cached.x : 0)
+      var y = (d && d.y !== undefined) ? d.y : (cached.y !== undefined ? cached.y : 0)
+      var scale = (d && d.scale) ? d.scale : (cached.scale || 1)
+
+      var mode = width + "x" + height + "@" + rate
+      var pos = x + "x" + y
+      lua = 'hl.monitor({ output = "' + name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + scale + ', disabled = false })'
+    }
+
     actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["keyword", "monitor", name + (enabled ? ",disable" : ",preferred,auto,auto")]
+    actionProc.args = ["eval", lua]
     actionProc.launch()
   }
 
   function setScale(scale) {
-    var s = Model.normalizeScale(scale)
-    if (s === "") return
-    actionProc.exe = "/usr/share/omarchy/bin/omarchy-hyprland-monitor-scaling"
-    actionProc.args = [s]
+    var d = getTargetDisplay()
+    if (!d || !Model.isValidOutputName(d.name)) return
+    var clean = Model.cleanScale(scale, d.width, d.height)
+    if (clean === "") clean = Model.normalizeScale(scale)
+    if (clean === "") return
+
+    var rate = d.refreshRate ? Math.round(d.refreshRate) : 60
+    var mode = d.width + "x" + d.height + "@" + rate
+    var pos = (d.x !== undefined ? d.x : 0) + "x" + (d.y !== undefined ? d.y : 0)
+    var lua = 'hl.monitor({ output = "' + d.name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + clean + ' })'
+
+    actionProc.exe = "/usr/bin/hyprctl"
+    actionProc.args = ["eval", lua]
     actionProc.launch()
   }
 
@@ -394,7 +456,8 @@ Panel {
 
   Launch {
     id: stateProc
-    exe: "/usr/share/omarchy/bin/omarchy-monitor-state"
+    exe: "/usr/bin/bash"
+    args: [Model.helperPath("fred-monitor-state")]
     envKeys: root.monitorEnv
     deadlineMs: 5000
     stdout: StdioCollector {
