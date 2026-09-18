@@ -10,6 +10,8 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
+  readonly property string pluginVersion: "1.5.1"
+
   property string desktopMode: "mac"
   property string leftMonitor: ""
   property string rightMonitor: ""
@@ -29,8 +31,14 @@ BarWidget {
     return isNaN(num) ? 300 : Math.max(0, num)
   }
   property bool isMonitorDark: false
+  // True while this bar's helper process runs; siblings read it through
+  // anyHelperRunning() before acting on a wake.
+  readonly property bool helperRunning: actionProcess.running
 
-  onBarMonitorChanged: Qt.callLater(root.trackMonitorIdle)
+  onBarMonitorChanged: {
+    Qt.callLater(root.probeDpmsState)
+    Qt.callLater(root.trackMonitorIdle)
+  }
   onUnusedMonitorTimeoutChanged: Qt.callLater(root.trackMonitorIdle)
 
   readonly property string modePath: {
@@ -284,7 +292,12 @@ BarWidget {
 
   Component.onCompleted: {
     Qt.callLater(root.trackAlignment)
+    Qt.callLater(root.probeDpmsState)
     Qt.callLater(root.trackMonitorIdle)
+    Qt.callLater(function() {
+      root.idleLog("bar created; timeout=" + root.unusedMonitorTimeout
+        + " s, monitors=" + JSON.stringify(root.effectiveMonitorNames()))
+    })
   }
 
   function monitorHasWindows() {
@@ -300,65 +313,183 @@ BarWidget {
       && barMonitor.name === Hyprland.focusedMonitor.name
   }
 
+  function idleLog(message) {
+    console.log("fred.workspaces idle " + (barMonitor ? String(barMonitor.name) : "?") + ": " + message)
+  }
+
+  // Why the monitor counts as in use, or "" when it does not.
+  function inUseReason() {
+    if (effectiveMonitorNames().length <= 1) return "single-monitor"
+    if (monitorIsFocused()) return "focused"
+    if (monitorHasWindows()) return "windows"
+    return ""
+  }
+
   function monitorInUse() {
-    if (effectiveMonitorNames().length <= 1) return true
-    if (monitorIsFocused()) return true
-    if (monitorHasWindows()) return true
-    return false
+    return inUseReason() !== ""
   }
 
   function trackMonitorIdle() {
     if (unusedMonitorTimeout <= 0 || effectiveMonitorNames().length <= 1) {
       if (idleBlankTimer.running) idleBlankTimer.stop()
+      if (useSettle.running) useSettle.stop()
       if (root.isMonitorDark) {
-        root.wakeMonitor()
+        root.wakeMonitor(unusedMonitorTimeout <= 0 ? "blanking-disabled" : "single-monitor")
       }
       return
     }
 
-    if (monitorInUse()) {
-      if (idleBlankTimer.running) idleBlankTimer.stop()
-      if (root.isMonitorDark) {
-        root.wakeMonitor()
+    var reason = inUseReason()
+    if (reason !== "") {
+      // Nothing changes until the sighting has settled (useSettle).
+      if (!useSettle.running) {
+        root.pendingUseReason = reason
+        useSettle.restart()
       }
     } else {
+      if (useSettle.running) {
+        useSettle.stop()
+        if (root.isMonitorDark || idleBlankTimer.running) {
+          root.idleLog("ignored transient " + root.pendingUseReason)
+        }
+      }
       if (!root.isMonitorDark && !idleBlankTimer.running) {
         idleBlankTimer.interval = root.unusedMonitorTimeout * 1000
         idleBlankTimer.restart()
+        root.idleLog("blank timer armed (" + root.unusedMonitorTimeout + " s)")
       }
     }
   }
 
-  function wakeMonitor() {
+  // A monitor is not treated as in use on the first event that makes it look
+  // so. The helper's own set operations (switch, realign, reconcile) focus
+  // every monitor in turn and move workspaces between them, and Quickshell's
+  // monitor/workspace model is inconsistent until that batch has settled, so
+  // an unused monitor reads as focused or populated for a few milliseconds
+  // (seconds while the GPU is stalled). Acting on that re-lit the blanked HP
+  // on 2026-09-18 with only the centre monitor in use, and reset its blank
+  // countdown on every desktop switch. Decide instead on settled state: 400 ms
+  // after the first sighting, once every bar's helper has exited. Cursor
+  // entry still wakes the monitor, ~0.4 s later.
+  property string pendingUseReason: ""
+
+  Timer {
+    id: useSettle
+    interval: 400
+    repeat: false
+    onTriggered: {
+      if (root.anyHelperRunning()) {
+        useSettle.restart()
+        return
+      }
+      var reason = root.inUseReason()
+      if (reason === "") {
+        if (root.isMonitorDark || idleBlankTimer.running) {
+          root.idleLog("ignored transient " + root.pendingUseReason)
+        }
+        return
+      }
+      if (idleBlankTimer.running) {
+        idleBlankTimer.stop()
+        root.idleLog("in use (" + reason + "); blank timer stopped")
+      }
+      if (root.isMonitorDark) root.wakeMonitor(reason)
+    }
+  }
+
+  function anyHelperRunning() {
+    if (actionProcess.running) return true
+    var items = siblingWidgets()
+    for (var i = 0; i < items.length; i++) {
+      if (items[i] && items[i].helperRunning === true) return true
+    }
+    return false
+  }
+
+  function wakeMonitor(reason) {
     if (!barMonitor) return
     root.isMonitorDark = false
+    root.idleLog("wake (" + reason + ")")
     root.runDesktopCommand(["dpms-on", String(barMonitor.name)])
   }
 
   function blankMonitor() {
-    if (!barMonitor || monitorInUse() || root.isMonitorDark) return
+    if (!barMonitor || root.isMonitorDark) return
+    var reason = inUseReason()
+    if (reason !== "") {
+      root.idleLog("blank skipped: " + reason)
+      return
+    }
     root.isMonitorDark = true
+    root.idleLog("blank after " + root.unusedMonitorTimeout + " s unused")
     root.runDesktopCommand(["dpms-off", String(barMonitor.name)])
   }
 
   function resetIdle() {
+    if (useSettle.running) useSettle.stop()
+    if (root.isMonitorDark) root.idleLog("dark state reset (resetIdle)")
     root.isMonitorDark = false
     Qt.callLater(root.trackMonitorIdle)
   }
 
-  function broadcastWorkspaces(method) {
+  // A bar created while its monitor is already dark (shell restart, output
+  // re-added after an HPD drop) has to know it, or cursor entry can never
+  // wake that monitor; and one that believes its monitor dark while it is
+  // lit would never blank it again. Hyprland has no IPC event for DPMS, so
+  // ask once per bar lifetime.
+  Process {
+    id: dpmsProbe
+    clearEnvironment: true
+    environment: root.processEnv
+    command: ["/usr/bin/hyprctl", "-j", "monitors"]
+
+    stdout: StdioCollector {
+      onStreamFinished: root.loadDpmsState(text)
+    }
+  }
+
+  function probeDpmsState() {
+    if (!barMonitor || dpmsProbe.running) return
+    dpmsProbe.running = true
+  }
+
+  function loadDpmsState(raw) {
+    if (!barMonitor || !raw || raw.length > 65536) return
+    var monitors
+    try {
+      monitors = JSON.parse(raw)
+    } catch (err) {
+      return
+    }
+    if (!Array.isArray(monitors)) return
+    for (var i = 0; i < monitors.length; i++) {
+      var m = monitors[i]
+      if (!m || m.name !== barMonitor.name) continue
+      var dark = m.dpmsStatus === false
+      if (dark !== root.isMonitorDark) {
+        root.idleLog(dark ? "monitor already dark; adopting it" : "monitor is lit; dropping stale dark state")
+        root.isMonitorDark = dark
+        if (dark && idleBlankTimer.running) idleBlankTimer.stop()
+        Qt.callLater(root.trackMonitorIdle)
+      }
+      return
+    }
+  }
+
+  function siblingWidgets() {
     var fn = bar ? (bar.moduleWidgets || bar._moduleWidgets) : null
     var candidates = [root.moduleName, "fred.workspaces", "omarchy.workspaces"]
-    var items = []
     for (var c = 0; c < candidates.length; c++) {
       if (typeof fn === "function") {
         var found = fn(candidates[c])
-        if (found && found.length > 0) {
-          items = found
-          break
-        }
+        if (found && found.length > 0) return found
       }
     }
+    return []
+  }
+
+  function broadcastWorkspaces(method) {
+    var items = siblingWidgets()
     if (items.length > 0) {
       for (var i = 0; i < items.length; i++) {
         if (items[i] && typeof items[i][method] === "function") {
@@ -522,6 +653,7 @@ BarWidget {
   }
 
   function workspaceTooltip(displayId) {
+    var tip = ""
     try {
       var _rev = root.windowsRevision
       var isFocused = desktopMode === "windows" ? displayFocused(displayId) : workspaceFocused(displayId)
@@ -572,12 +704,11 @@ BarWidget {
         }
 
         if (totalWindows === 0) {
-          return "Desktop " + displayId + headerSuffix + "\n(Empty)"
+          tip = "Desktop " + displayId + headerSuffix + "\n(Empty)"
+        } else {
+          tip = lines.join("\n")
         }
-        return lines.join("\n")
-      }
-
-      if (desktopMode === "mac") {
+      } else if (desktopMode === "mac") {
         var leftName = leftMonitor || "Left"
         var rightName = rightMonitor || "Right"
         var monitorName = (displayId % 2 === 1) ? leftName : rightName
@@ -587,34 +718,37 @@ BarWidget {
 
         var macWindows = workspaceWindowSummaries(displayId)
         if (macWindows.length === 0) {
-          return "Workspace " + displayId + " (" + monitorName + ")" + headerSuffix + "\n(Empty)"
+          tip = "Workspace " + displayId + " (" + monitorName + ")" + headerSuffix + "\n(Empty)"
+        } else {
+          var macLines = ["Workspace " + displayId + " (" + monitorName + ")" + headerSuffix]
+          for (var m = 0; m < Math.min(macWindows.length, 6); m++) {
+            macLines.push(macWindows[m])
+          }
+          if (macWindows.length > 6) {
+            macLines.push("+" + (macWindows.length - 6) + " more")
+          }
+          tip = macLines.join("\n")
         }
-        var macLines = ["Workspace " + displayId + " (" + monitorName + ")" + headerSuffix]
-        for (var m = 0; m < Math.min(macWindows.length, 6); m++) {
-          macLines.push(macWindows[m])
+      } else {
+        var omarchyWindows = workspaceWindowSummaries(displayId)
+        if (omarchyWindows.length === 0) {
+          tip = "Workspace " + displayId + headerSuffix + "\n(Empty)"
+        } else {
+          var oLines = ["Workspace " + displayId + headerSuffix]
+          for (var o = 0; o < Math.min(omarchyWindows.length, 6); o++) {
+            oLines.push(omarchyWindows[o])
+          }
+          if (omarchyWindows.length > 6) {
+            oLines.push("+" + (omarchyWindows.length - 6) + " more")
+          }
+          tip = oLines.join("\n")
         }
-        if (macWindows.length > 6) {
-          macLines.push("+" + (macWindows.length - 6) + " more")
-        }
-        return macLines.join("\n")
       }
-
-      var omarchyWindows = workspaceWindowSummaries(displayId)
-      if (omarchyWindows.length === 0) {
-        return "Workspace " + displayId + headerSuffix + "\n(Empty)"
-      }
-      var oLines = ["Workspace " + displayId + headerSuffix]
-      for (var o = 0; o < Math.min(omarchyWindows.length, 6); o++) {
-        oLines.push(omarchyWindows[o])
-      }
-      if (omarchyWindows.length > 6) {
-        oLines.push("+" + (omarchyWindows.length - 6) + " more")
-      }
-      return oLines.join("\n")
     } catch (err) {
       console.log("[DEBUG] Error in workspaceTooltip: " + err)
-      return "Desktop " + displayId
+      tip = "Desktop " + displayId
     }
+    return tip + "\n\nfred.workspaces v" + root.pluginVersion
   }
 
   function workspaceOccupied(displayId) {
@@ -899,22 +1033,25 @@ BarWidget {
       // F: this display followed a window focus off the set's desktop.
       text: root.barDeviated ? "F" : root.desktopModeLetter()
       tooltipText: {
+        var tip = ""
         if (root.barDeviated) {
           var state = root.setState()
-          return "Followed focus: this display moved to desktop " + root.barDesktop()
+          tip = "Followed focus: this display moved to desktop " + root.barDesktop()
             + " while the set is on desktop " + state.setDesktop
             + " (" + root.splitDetail() + ").\nClick to return this display to desktop "
             + state.setDesktop + ", or pick a desktop from the bar / SUPER+number to move the whole set."
+        } else {
+          var base = root.desktopMode === "omarchy"
+            ? "Omarchy Desktop mode — click for Mac mode"
+            : (root.desktopMode === "mac"
+              ? "Mac Desktop mode — click for Windows mode"
+              : "Windows Desktop mode — click for Omarchy mode")
+          if (root.degradedMode && root.desktopMode === "windows") {
+            base += " [" + root.effectiveMonitorNames().length + "/" + root.topologySize + " Displays Active]"
+          }
+          tip = base
         }
-        var base = root.desktopMode === "omarchy"
-          ? "Omarchy Desktop mode — click for Mac mode"
-          : (root.desktopMode === "mac"
-            ? "Mac Desktop mode — click for Windows mode"
-            : "Windows Desktop mode — click for Omarchy mode")
-        if (root.degradedMode && root.desktopMode === "windows") {
-          base += " [" + root.effectiveMonitorNames().length + "/" + root.topologySize + " Displays Active]"
-        }
-        return base
+        return tip + "\n\nfred.workspaces v" + root.pluginVersion
       }
       horizontalMargin: 6
       verticalPadding: 6

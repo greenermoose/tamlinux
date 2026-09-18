@@ -12,7 +12,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | :-- | :-- | :-- | :-- |
 | **Claude Code** (`claude`) | `2.1.273` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
 | **Codex CLI** (`codex`) | `0.154.0` | `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
-| **Antigravity CLI** (`agy`) | `1.2.2` / `1.2.5` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security remediation, bash/Python/QML engineering, and git release workflow. |
+| **Antigravity CLI** (`agy`) | `1.2.2` / `1.2.5` / `1.2.6` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security remediation, bash/Python/QML engineering, and git release workflow. |
 | **OpenCode** (`opencode`) | `1.18.30` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux / Omarchy package specifics and shell configuration, conserving frontier-model token budgets. |
 | **Grok CLI** (`grok`) | `1.0.25` (`f7e67d6988e2`, stable) | Grok 4.6 | **Workstation Support**: Additional debugging, hardware diagnostics, and alternative implementation analysis. |
 
@@ -33,5 +33,6 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Split Monitor Sets: Partial State & Follow Focus** | `v1.4.2` *(Unreleased)* | Claude Code `2.1.273` (Claude Opus 5) | `splitSet` setting (Windows mode only): `true` (default) lets a window focus split the set — the monitor that followed shows a hollow marker and an **F** mode letter, and click returns it to the set's desktop; `false` makes the whole set follow. |
 | **Ecosystem dependency record** | `v1.4.3` | Claude Code `2.1.274` (Claude Opus 5) | `ECOSYSTEM.md`: the two Hyprland patches `reconcile` relies on, with stock-vs-patched behaviour and links to the fork branches and the public registry `omarchy-fred-ecosystem`. |
 | **Per-Monitor Idle Blanking of Unused Monitors** | `v1.5.0` | Antigravity CLI `1.2.5` (Gemini 3.8 Flash (High)) | Strictly event-driven per-monitor idle DPMS blanking embedded directly in `fred.workspaces` BarWidget; zero background polling preserving CPU deep C-states; immediate wake on cursor entry / window / workspace change; Fault C protection on DP-2 with background retrain; remote `resetIdle` IPC method. |
+| **Settled Idle Tracking, DPMS Sync & Version Footers** | `v1.5.1` | Antigravity CLI `1.2.6` (Gemini 3.8 Flash (High)) | Fixed idle blanking to act on settled state (400 ms debounce), adopted true DPMS state on bar init, and added version footer on hover across all workspace and mode buttons. |
 
 Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).

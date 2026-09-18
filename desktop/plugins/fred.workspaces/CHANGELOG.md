@@ -4,6 +4,29 @@ All notable changes to `fred.workspaces` (`omarchy-fred-workspaces`) will be doc
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.1] - 2026-09-18
+
+### Fixed
+- **Unused-monitor tracking acts on settled state, not on the first event.** The helper's own set
+  operations (`switch`, `realign`, `reconcile`) focus every monitor in turn and move workspaces
+  between them; until that batch settles, an unused monitor reads as focused or populated for a
+  few milliseconds (seconds while the GPU is stalled, Fault F). `trackMonitorIdle()` acted on
+  that at once: it re-lit a blanked monitor with nobody using it (HDMI-A-1, 2026-09-18 08:04) and
+  reset the blank countdown on every desktop switch, so the monitor rarely blanked at all. An
+  in-use sighting now settles for 400 ms and until every bar's helper process has exited, then
+  `inUseReason()` is re-checked; transient sightings are ignored. Cursor entry still wakes the
+  monitor, ~0.4 s later.
+- **Bars adopt the monitor's real DPMS state.** A bar created while its monitor was already dark
+  (shell restart, output re-added after an HPD drop) believed it lit and so could never wake it on
+  cursor entry; the reverse left a lit monitor never blanked. Each bar now asks `hyprctl -j
+  monitors` once at creation and on monitor change.
+
+### Added
+- **Version Footers**: Embedded running version in bar hover tooltips (`Workspaces.qml`) across all workspace buttons and desktop mode indicator.
+- Blank and wake decisions are logged (`journalctl --user -t omarchy-shell | grep 'fred.workspaces
+  idle'`) with the reason (`focused`, `windows`, `single-monitor`, `blanking-disabled`), including
+  ignored transient sightings, timer arming, and stale-state corrections.
+
 ## [1.5.0] - 2026-09-17
 
 ### Added

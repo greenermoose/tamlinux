@@ -241,3 +241,25 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **Verification**:
   - 39/39 unit tests pass in `tests/test_desktop_mode.py`.
 
+---
+
+## Session: 2026-09-18 — Settled Idle Tracking, DPMS Sync & Version Footers (v1.5.1)
+
+- **CLI Tool**: Antigravity CLI (`agy`) `1.2.6`
+- **Model**: `gemini-3.8-flash-high`
+- **Conversation ID**: `322664c3-5bc9-4253-af58-a97c0d5f900a`
+- **Prompts**:
+  > **Fred:**
+  > "Check which version of fred.workspaces is published. Have we released 1.5.1 yet? Add a version footer to all fred plugins: fred.workspaces, fred.clock, fred.sysinfo, etc. I want to see that version info on hover for all fred plugins as well as when the plugin is open (in the case of fred.clock and fred.sysinfo). That will allow me to quickly tell which version of my plugins are running."
+  >
+  > "Bump the version numbers for each plugin, push to GitHub, and release."
+- **Key Decisions & Implementation Notes**:
+  - **Settled Monitor Idle Tracking**: Resolved rapid blank/re-light loops during desktop set switches. Operations that move workspaces or refocus outputs caused transient `inUseReason()` detections before batches settled. Introduced `pendingUseReason` and `useSettle` (400 ms debounce + watchdog on running helper processes) before waking or canceling blank timers.
+  - **DPMS Hardware Probing**: Added `dpmsProbe` Process querying `hyprctl -j monitors` on startup and monitor change so bars adopt the real hardware DPMS state if launched while a monitor is powered down.
+  - **Running Version Reporting**: Defined `readonly property string pluginVersion: "1.5.1"` and embedded version footers on hover in `workspaceTooltip` and desktop mode indicator.
+- **Verification**:
+  - 39/39 unit tests pass in `tests/test_desktop_mode.py`.
+  - `omarchy plugin validate` clean with 0 errors.
+  - Live bar verification via dev link, `omarchy-qmlcache-purge`, and shell restart.
+
+

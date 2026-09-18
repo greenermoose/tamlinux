@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.workspaces",
   "name": "Workspaces with Desktop Mode",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "author": "Fred (@greenermoose)",
   "description": "Workspace numbers with clickable desktop modes, dynamic Windows sets, and unused monitor idle blanking",
   "repository": "https://github.com/greenermoose/omarchy-fred-workspaces",
