@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "fred.weather",
+  "name": "Weather",
+  "version": "1.0.0",
+  "author": "Fred (@greenermoose)",
+  "license": "GPL-3.0-or-later",
+  "repository": "https://github.com/greenermoose/omarchy-fred-weather",
+  "homepage": "https://github.com/greenermoose/omarchy-fred-weather",
+  "description": "Multi-monitor weather widget with current conditions, 48-hour timeline, and 10-day forecast",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Weather",
+    "description": "Current conditions, 48-hour timeline, and 10-day forecast",
+    "category": "Info",
+    "allowMultiple": false,
+    "settingsForm": "weatherSettings"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.weather"
+  }
+}
