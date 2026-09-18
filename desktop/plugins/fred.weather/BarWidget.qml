@@ -6,7 +6,7 @@ BarWidget {
   id: root
   moduleName: "fred.weather"
 
-  readonly property string pluginVersion: "1.0.0"
+  readonly property string pluginVersion: "1.0.1"
 
   function injectPanel() {
     var target = panelLoader.item

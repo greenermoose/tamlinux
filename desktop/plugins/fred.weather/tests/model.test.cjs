@@ -85,16 +85,52 @@ test("hourlyForecast includes 48 entries and chronological sunrise/sunset", () =
   assert.ok(entries.every((e, idx) => idx === 0 || entries[idx - 1].time <= e.time));
 });
 
-test("buildBarHoverTooltip generates multi-line summary with name and version", () => {
+test("formatLocationDisplay resolves city and state/province accurately", () => {
+  // Configured city without region gets region from areaInfo
+  assert.equal(
+    Model.formatLocationDisplay("Brunswick", { areaName: [{ value: "Brunswick" }], region: [{ value: "Maine" }] }, "Brunswick"),
+    "Brunswick, Maine"
+  );
+
+  // Configured city already containing state/province keeps exact specification
+  assert.equal(
+    Model.formatLocationDisplay("Brunswick, Maine", { areaName: [{ value: "Brunswick" }], region: [{ value: "Maine" }] }, "Brunswick"),
+    "Brunswick, Maine"
+  );
+
+  // ZIP code search format with state abbreviation gets stripped zip
+  assert.equal(
+    Model.formatLocationDisplay("Brunswick, ME 04011", null, "Brunswick"),
+    "Brunswick, ME"
+  );
+
+  // Empty configured location falls back to areaInfo city + region
+  assert.equal(
+    Model.formatLocationDisplay("", { areaName: [{ value: "Toronto" }], region: [{ value: "Ontario" }] }, "Toronto"),
+    "Toronto, Ontario"
+  );
+
+  // City-state where region equals city name does not repeat
+  assert.equal(
+    Model.formatLocationDisplay("Singapore", { areaName: [{ value: "Singapore" }], region: [{ value: "Singapore" }] }, "Singapore"),
+    "Singapore"
+  );
+});
+
+test("buildBarHoverTooltip generates multi-line summary with location header and version at bottom", () => {
   const payload = sampleOpenMeteoPayload();
   const cond = Model.openMeteoCurrentCondition(payload);
   const days = Model.openMeteoForecastDays(payload, "2030-01-10", 10);
-  const tooltip = Model.buildBarHoverTooltip("1.0.0", cond, days, true, "New York, NY");
-  assert.ok(tooltip.includes("fred.weather v1.0.0"));
-  assert.ok(tooltip.includes("New York, NY"));
+  const tooltip = Model.buildBarHoverTooltip("1.0.1", cond, days, true, "Brunswick, Maine");
+  assert.ok(tooltip.startsWith("Weather report for Brunswick, Maine\n"));
+  assert.ok(tooltip.endsWith("\n\nfred.weather v1.0.1"));
   assert.ok(tooltip.includes("Clear Sky · 72°F"));
   assert.ok(tooltip.includes("Wind: 7 mph NW"));
   assert.ok(tooltip.includes("Tomorrow:"));
+
+  // Verify empty condition fallback still produces header and version separated by blank line
+  const emptyTooltip = Model.buildBarHoverTooltip("1.0.1", null, [], true, "Brunswick, Maine");
+  assert.equal(emptyTooltip, "Weather report for Brunswick, Maine\n\nfred.weather v1.0.1");
 });
 
 test("Network curlCommand enforces deadlines, security flags and max bytes", () => {

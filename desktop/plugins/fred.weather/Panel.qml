@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.0"
+  property string pluginVersion: "1.0.1"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -257,7 +257,7 @@ Panel {
   readonly property bool useImperial: Model.shouldUseImperial(setting("unit", ""), Qt.locale().name, reportCountry)
   readonly property int refreshMinutes: Math.max(1, parseInt(setting("refreshMinutes", 15), 10) || 15)
 
-  readonly property string reportLocation: configuredLocation || wttrLocation || (areaInfo && areaInfo.areaName && areaInfo.areaName[0] ? areaInfo.areaName[0].value : "")
+  readonly property string reportLocation: Model.formatLocationDisplay(configuredLocation, areaInfo, wttrLocation)
   readonly property string reportTempNum: current ? String(useImperial ? current.temp_F : current.temp_C) : ""
   readonly property string tempUnit: "°" + (useImperial ? "F" : "C")
   readonly property string reportFeels: current ? (useImperial ? current.FeelsLikeF + tempUnit : current.FeelsLikeC + tempUnit) : ""

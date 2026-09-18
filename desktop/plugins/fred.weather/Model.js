@@ -114,6 +114,20 @@ function locationMapUrl(latitude, longitude) {
     + "#map=15/" + latitude + "/" + longitude
 }
 
+function formatLocationDisplay(configuredLocation, areaInfo, wttrLocation) {
+  var config = String(configuredLocation || "").trim().replace(/\s+\d{5}(?:-\d{4})?$/, "")
+  var area = areaInfo && areaInfo.areaName && areaInfo.areaName[0] ? String(areaInfo.areaName[0].value || "").trim() : ""
+  var region = areaInfo && areaInfo.region && areaInfo.region[0] ? String(areaInfo.region[0].value || "").trim() : ""
+  var wttr = String(wttrLocation || "").trim()
+
+  if (config.indexOf(",") !== -1) return config
+  var baseCity = config || area || wttr
+  if (baseCity && region && region.toLowerCase() !== baseCity.toLowerCase()) {
+    return baseCity + ", " + region
+  }
+  return baseCity
+}
+
 function isFutureForecastDate(dateString, todayString) {
   if (!dateString) return false
   return String(dateString).slice(0, 10) > String(todayString || "")
@@ -517,8 +531,11 @@ function hourlyPrecipitation(mm, useImperial) {
 
 // Generates the rich multi-line bar hover tooltip
 function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays, useImperial, locationName) {
-  var header = "fred.weather v" + (pluginVersion || "1.0.0")
-  if (!currentCondition) return header
+  var loc = locationName && locationName.trim() ? locationName.trim() : ""
+  var title = loc ? ("Weather report for " + loc) : "Weather report"
+  var versionLine = "fred.weather v" + (pluginVersion || "1.0.1")
+
+  if (!currentCondition) return title + "\n\n" + versionLine
 
   var temp = useImperial ? currentCondition.temp_F : currentCondition.temp_C
   var unit = useImperial ? "°F" : "°C"
@@ -530,15 +547,14 @@ function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays
   var wind = (useImperial ? currentCondition.windspeedMiles + " mph" : currentCondition.windspeedKmph + " km/h")
   if (currentCondition.windDirectionCardinal) wind += " " + currentCondition.windDirectionCardinal
 
-  var lines = [header]
-  if (locationName && locationName.trim()) lines.push(locationName.trim())
+  var lines = [title]
 
-  var line3 = desc + " · " + temp + unit
-  if (hi && lo) line3 += " (H: " + hi + "° / L: " + lo + "°)"
+  var line2 = desc + " · " + temp + unit
+  if (hi && lo) line2 += " (H: " + hi + "° / L: " + lo + "°)"
+  lines.push(line2)
+
+  var line3 = "Feels like: " + feels + unit + " · Humidity: " + currentCondition.humidity + "% · Wind: " + wind
   lines.push(line3)
-
-  var line4 = "Feels like: " + feels + unit + " · Humidity: " + currentCondition.humidity + "% · Wind: " + wind
-  lines.push(line4)
 
   if (currentCondition.todayPrecipProbability !== null && currentCondition.todayPrecipProbability !== undefined) {
     lines.push("Precipitation chance today: " + currentCondition.todayPrecipProbability + "%")
@@ -554,6 +570,10 @@ function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays
       (tomorrow.precipitationProbability !== null ? " (" + tomorrow.precipitationProbability + "% rain)" : ""))
   }
 
+  // Blank line separator above the bottom version line
+  lines.push("")
+  lines.push(versionLine)
+
   return lines.join("\n")
 }
 
@@ -565,6 +585,7 @@ if (typeof module !== "undefined") {
     locationCommit: locationCommit,
     validCoordinates: validCoordinates,
     coordinateLocation: coordinateLocation,
+    formatLocationDisplay: formatLocationDisplay,
     locationSearchUrl: locationSearchUrl,
     parseLocationSearch: parseLocationSearch,
     locationMapUrl: locationMapUrl,
