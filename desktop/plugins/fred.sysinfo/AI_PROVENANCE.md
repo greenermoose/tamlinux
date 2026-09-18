@@ -24,5 +24,6 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | :-- | :-- | :-- | :-- |
 | **Universal Linux Telemetry Engine & Popout Panel** | `v1.0.0` | Antigravity CLI (`agy 1.2.2`, `Gemini 3.8 Flash (High)`) | Designed pure-Python telemetry probe querying sysfs, procfs, hwmon, and PCI; built responsive Quickshell QML bar widget and popout panel with power profile switching and btop integration. |
 | **Multi-Monitor Focus Isolation & Per-Monitor Dismissal** | `v1.1.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Implemented per-monitor focus isolation via custom `SysinfoPanel.qml` and `SysinfoStore.js`; eliminated cross-monitor dismiss twins and focus-stealing so background terminals/conversations retain focus; captured tightly cropped MSI monitor screenshot. |
+| **Version Footers & Visual Status** | `v1.1.1` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Embedded running version in bar icon hover tooltip and as a centered, styled footer at the bottom of the open telemetry panel (`Panel.qml`). |
 
 Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).

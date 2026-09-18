@@ -14,6 +14,8 @@ Panel {
   ipcTarget: "fred.sysinfo"
   manageIpc: false
 
+  readonly property string pluginVersion: "1.1.1"
+
   property var stats: ({})
   property int phraseIndex: 0
   property string activeProfile: "performance"
@@ -236,7 +238,9 @@ Panel {
       var parts = [prod]
       if (temp) parts.push(temp)
       if (freq) parts.push(freq)
-      return parts.join(" · ")
+      var base = parts.join(" · ")
+      var ver = "fred.sysinfo v" + root.pluginVersion
+      return base !== "" ? (base + "\n\n" + ver) : ver
     }
     onPressed: function(b) { root.toggle() }
   }
@@ -640,6 +644,22 @@ Panel {
             onClicked: {
               root.launchSystemMonitor()
               root.close()
+            }
+          }
+
+          // ---------- Section 7: Version Footer ----------
+          Item {
+            width: parent.width
+            height: Style.space(22)
+
+            Text {
+              anchors.centerIn: parent
+              textFormat: Text.PlainText
+              text: "fred.sysinfo v" + root.pluginVersion
+              color: root.bar.foreground
+              opacity: 0.45
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
             }
           }
         }

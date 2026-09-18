@@ -59,3 +59,24 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - Opened `fred.sysinfo` on MSI monitor (`DP-2`) while typing in foot terminal on center monitor (`DP-1`); verified zero loss of terminal focus and zero blocking overlays on `DP-1`.
   - Verified outside clicks on `DP-2` cleanly dismiss the panel while clicks on `DP-1` interact directly with windows.
   - Validated plugin schema and manifest conformance with `omarchy plugin validate`.
+
+---
+
+## Session: 2026-09-18 — Version Footers & Running Status Display (v1.1.1)
+
+- **Date**: 2026-09-18
+- **Primary AI Agent**: Antigravity CLI (`agy 1.2.6`)
+- **Primary Model**: Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`)
+- **Conversation ID**: `322664c3-5bc9-4253-af58-a97c0d5f900a`
+- **Prompts**:
+  > "Check which version of fred.workspaces is published. Have we released 1.5.1 yet? Add a version footer to all fred plugins: fred.workspaces, fred.clock, fred.sysinfo, etc. I want to see that version info on hover for all fred plugins as well as when the plugin is open (in the case of fred.clock and fred.sysinfo). That will allow me to quickly tell which version of my plugins are running."
+  >
+  > "Bump the version numbers for each plugin, push to GitHub, and release."
+- **Key Decisions & Implementation Notes**:
+  - **Running Version Reporting**: Embedded `readonly property string pluginVersion: "1.1.1"` in `Panel.qml`.
+  - **Bar Icon Hover Tooltip**: Updated `BarIconButton.tooltipText` to display `fred.sysinfo v1.1.1` in the bar button tooltip below hardware telemetry.
+  - **Open Panel Footer**: Added centered version footer `fred.sysinfo v1.1.1` at the bottom of the open telemetry card directly below the task monitor button.
+- **Verification**:
+  - `omarchy plugin validate` clean with 0 errors.
+  - Live bar verification via dev link, `omarchy-qmlcache-purge`, and shell restart.
+
