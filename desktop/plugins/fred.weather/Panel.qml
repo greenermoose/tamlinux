@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.2"
+  property string pluginVersion: "1.0.3"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -80,7 +80,7 @@ Panel {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       WeatherStore.hideHover(monitor, cur, Hyprland.monitors)
     }
-    function refresh(): void { root.refresh() }
+    function refresh(): void { WeatherStore.refreshAll(root) }
     function edit(): void {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       var p = WeatherStore.resolveTargetPanel("", cur, Hyprland.monitors)
@@ -128,7 +128,7 @@ Panel {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       WeatherStore.hideHover(monitor, cur, Hyprland.monitors)
     }
-    function refresh(): void { root.refresh() }
+    function refresh(): void { WeatherStore.refreshAll(root) }
     function edit(): void {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       var p = WeatherStore.resolveTargetPanel("", cur, Hyprland.monitors)
@@ -315,6 +315,29 @@ Panel {
     refreshDailyForecast(null)
   }
 
+  function applyDailyForecast(payload, updatedAt, query) {
+    if (!payload || query !== root.locationQuery) return
+    root.dailyForecastReport = payload
+    root.hourlyUpdatedAt = updatedAt
+    root.hourlyLocationQuery = query
+    root.hourlyFetchFailed = false
+    root.forecastClock = updatedAt
+    root.dailyForecastRetries = 0
+    root.label = Model.currentIcon(root.openMeteoCurrent, "\uf185")
+    root.weatherCache = Model.updatedWeatherCache(root.weatherCache, root.locationQuery, "dailyForecast", payload, root.hourlyUpdatedAt)
+  }
+
+  function applyReport(payload, updatedAt, query) {
+    if (!payload || query !== root.locationQuery) return
+    root.report = payload
+    root.reportUpdatedAt = updatedAt
+    root.reportLocationQuery = query
+    root.reportIsLive = true
+    root.forecastRetries = 0
+    root.label = Model.currentIcon(root.openMeteoCurrent, Model.currentIcon(root.current, "\uf185"))
+    root.weatherCache = Model.updatedWeatherCache(root.weatherCache, root.locationQuery, "report", payload, root.reportUpdatedAt)
+  }
+
   function refreshForecast() {
     if (forecastProc.running) return
     forecastProc.requestQuery = locationQuery
@@ -464,6 +487,14 @@ Panel {
     onTriggered: root.refreshDailyForecast(null)
   }
 
+  function scheduleDailyForecastRetry() {
+    root.hourlyFetchFailed = true
+    if (root.dailyForecastRetries < 3) {
+      dailyForecastRetryTimer.start()
+      root.dailyForecastRetries++
+    }
+  }
+
   FileView {
     id: locationFile
     path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
@@ -562,14 +593,11 @@ Panel {
           root.label = Model.currentIcon(root.openMeteoCurrent, "\uf185")
           root.weatherCache = Model.updatedWeatherCache(root.weatherCache, root.locationQuery, "dailyForecast", payload, root.hourlyUpdatedAt)
           root.scheduleCacheWrite()
+          WeatherStore.broadcastDailyForecast(root.screenName, payload, root.hourlyUpdatedAt, dailyForecastProc.requestQuery)
           if (root.savingLocation && Model.weatherResponseCompletesSave(root.hasConfiguredCoordinates, "open-meteo"))
             root.editingLocation = false
         } catch (e) {
-          root.hourlyFetchFailed = true
-          if (root.dailyForecastRetries < 3) {
-            dailyForecastRetryTimer.start()
-            root.dailyForecastRetries++
-          }
+          root.scheduleDailyForecastRetry()
         }
       }
     }
@@ -604,6 +632,7 @@ Panel {
           root.label = Model.currentIcon(root.openMeteoCurrent, Model.currentIcon(root.current, "\uf185"))
           root.weatherCache = Model.updatedWeatherCache(root.weatherCache, root.locationQuery, "report", payload, root.reportUpdatedAt)
           root.scheduleCacheWrite()
+          WeatherStore.broadcastReport(root.screenName, payload, root.reportUpdatedAt, forecastProc.requestQuery)
           if (!root.hasConfiguredCoordinates && !dailyForecastProc.running)
             root.refreshDailyForecast(payload)
           if (root.savingLocation && Model.weatherResponseCompletesSave(root.hasConfiguredCoordinates, "wttr"))

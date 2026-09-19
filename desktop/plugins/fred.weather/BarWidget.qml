@@ -7,7 +7,7 @@ BarWidget {
   id: root
   moduleName: "fred.weather"
 
-  readonly property string pluginVersion: "1.0.2"
+  readonly property string pluginVersion: "1.0.3"
   property bool hoverOpen: false
 
   function injectPanel() {

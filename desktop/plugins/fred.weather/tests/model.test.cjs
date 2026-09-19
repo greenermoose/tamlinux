@@ -211,6 +211,57 @@ test("WeatherStore registers panels and resolves monitors by name and make/model
   // Clean unregister
   WeatherStore.unregister("HDMI-A-1", panelHP);
   assert.equal(WeatherStore.getPanel("HDMI-A-1"), null);
+  WeatherStore.unregister("DP-1", panelDell);
+  WeatherStore.unregister("DP-2", panelMSI);
 });
+
+test("WeatherStore multi-monitor refreshAll and payload broadcast", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+
+  const code = fs.readFileSync(path.join(__dirname, "../WeatherStore.js"), "utf8")
+    .replace(/^\.pragma library\s*/m, "");
+  const mod = { exports: {} };
+  vm.runInNewContext(code, { module: mod, exports: mod.exports, console });
+  const WeatherStore = mod.exports;
+
+  let refreshedDell = 0;
+  let refreshedMSI = 0;
+  let receivedForecast = null;
+  let receivedReport = null;
+
+  const pDell = {
+    refresh: () => { refreshedDell++; },
+    applyDailyForecast: (payload) => { receivedForecast = payload; },
+    applyReport: (payload) => { receivedReport = payload; }
+  };
+  const pMSI = {
+    refresh: () => { refreshedMSI++; }
+  };
+
+  WeatherStore.register("DP-1", pDell);
+  WeatherStore.register("DP-2", pMSI);
+
+  // Test refreshAll
+  const count = WeatherStore.refreshAll();
+  assert.equal(count, 2);
+  assert.equal(refreshedDell, 1);
+  assert.equal(refreshedMSI, 1);
+
+  // Test broadcastDailyForecast
+  const forecastCount = WeatherStore.broadcastDailyForecast("DP-2", { test: 123 }, Date.now(), "Brunswick");
+  assert.equal(forecastCount, 1);
+  assert.deepEqual(receivedForecast, { test: 123 });
+
+  // Test broadcastReport
+  const reportCount = WeatherStore.broadcastReport("DP-2", { report: 456 }, Date.now(), "Brunswick");
+  assert.equal(reportCount, 1);
+  assert.deepEqual(receivedReport, { report: 456 });
+
+  WeatherStore.unregister("DP-1", pDell);
+  WeatherStore.unregister("DP-2", pMSI);
+});
+
 
 

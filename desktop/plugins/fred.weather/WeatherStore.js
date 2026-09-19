@@ -107,6 +107,44 @@ function hideHover(monitorName, fallbackScreenName, hyprlandMonitors) {
   if (p && typeof p.hideHover === "function") p.hideHover()
 }
 
+function refreshAll(sourcePanel) {
+  var called = 0
+  for (var key in panels) {
+    var p = panels[key]
+    if (p && typeof p.refresh === "function") {
+      p.refresh()
+      called++
+    }
+  }
+  if (called === 0 && sourcePanel && typeof sourcePanel.refresh === "function") {
+    sourcePanel.refresh()
+    called++
+  }
+  return called
+}
+
+function broadcastDailyForecast(sourceScreen, payload, updatedAt, query) {
+  var count = 0
+  for (var key in panels) {
+    if (key !== sourceScreen && panels[key] && typeof panels[key].applyDailyForecast === "function") {
+      panels[key].applyDailyForecast(payload, updatedAt, query)
+      count++
+    }
+  }
+  return count
+}
+
+function broadcastReport(sourceScreen, payload, updatedAt, query) {
+  var count = 0
+  for (var key in panels) {
+    if (key !== sourceScreen && panels[key] && typeof panels[key].applyReport === "function") {
+      panels[key].applyReport(payload, updatedAt, query)
+      count++
+    }
+  }
+  return count
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     panels: panels,
@@ -118,6 +156,10 @@ if (typeof module !== "undefined") {
     open: open,
     close: close,
     showHover: showHover,
-    hideHover: hideHover
+    hideHover: hideHover,
+    refreshAll: refreshAll,
+    broadcastDailyForecast: broadcastDailyForecast,
+    broadcastReport: broadcastReport
   }
 }
+

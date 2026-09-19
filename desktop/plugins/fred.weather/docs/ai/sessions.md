@@ -62,3 +62,27 @@ This document records the exact prompts, tools, and models used during the devel
 - Captured high-resolution screenshots on the HP monitor (`HDMI-A-1`) showing the bar widget, active hover popup, and expanded focus-isolated weather panel, composited cleanly into `assets/screenshot.png` and `preview.png`.
 - Bumped version to `1.0.2` across `manifest.json`, `BarWidget.qml`, `Panel.qml`, `Model.js`, `README.md`, and unit tests (`tests/model.test.cjs`).
 
+---
+
+## Session 2026-09-18: Multi-Monitor Broadcast, Retry Hardening & Resume Sync (Version 1.0.3)
+
+- **Primary Tool:** Antigravity CLI (`agy 1.2.6`)
+- **Model:** Gemini 3.8 Flash (High)
+- **Role:** Bug diagnosis, multi-monitor broadcast architecture, retry error handling, and system resume integration.
+
+### Guiding Prompts
+> "Why is my MSI monitor still showing sun when my dell and hp are showing night time? It is after dark. Is there a failure to update certain monitors?"
+>
+> "Permanent fixes 1 and 3 sound good to me. Tell me more about fix #2. What does scheduleDailyForecastRetry() do and what calls and when?"
+>
+> "Great, let's do all 3 permanent fixes. Ready? Go!"
+
+### Key Technical Outputs
+- Diagnosed post-suspend timer freeze on non-hotplugging USB-C display (`DP-2`, MSI MP161) vs. recreated bars on hotplugging displays (`DP-1`, `HDMI-A-1`).
+- Implemented `refreshAll(sourcePanel)`, `broadcastDailyForecast()`, and `broadcastReport()` in `WeatherStore.js` to synchronize weather state across all monitor panels immediately when any panel updates.
+- Defined `scheduleDailyForecastRetry()` with exponential backoff (`dailyForecastRetryTimer`) in `Panel.qml` to handle early-wake network offline errors gracefully.
+- Wired `omarchy-shell -q fred.weather refresh &` into `run_once()` in `msi-mp161-resume-workaround`.
+- Added unit tests for `refreshAll` and payload broadcasting in `tests/model.test.cjs`.
+- Bumped version to `1.0.3` across `manifest.json`, `BarWidget.qml`, and `Panel.qml`.
+
+
