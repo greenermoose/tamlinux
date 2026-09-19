@@ -4,7 +4,7 @@ var M_TO_FT = 3.280839895
 
 // Parse location JSON (compatible with omarchy weather.json & tides.json)
 function parseLocationFile(raw) {
-  var unset = { name: "", latitude: null, longitude: null, unit: "m" }
+  var unset = { name: "", latitude: null, longitude: null, unit: "m", region: "" }
   try {
     var data = JSON.parse(String(raw || ""))
     if (!data || typeof data !== "object") return unset
@@ -13,12 +13,14 @@ function parseLocationFile(raw) {
     var longitude = parseFloat(data.longitude)
     var hasCoordinates = !isNaN(latitude) && !isNaN(longitude)
     var unit = (data.unit === "ft" || data.unit === "feet" || data.unit === "imperial") ? "ft" : "m"
+    var region = typeof data.region === "string" ? data.region.trim() : ""
 
     return {
       name: typeof data.name === "string" ? data.name.replace(/^\s+|\s+$/g, "") : "",
       latitude: hasCoordinates ? latitude : null,
       longitude: hasCoordinates ? longitude : null,
-      unit: unit
+      unit: unit,
+      region: region
     }
   } catch (e) {
     return unset
@@ -29,7 +31,12 @@ function formatLocationDisplay(name, region) {
   var n = String(name || "").trim()
   if (!n) return "Brunswick, Maine"
   if (n.indexOf(",") !== -1) return n
-  if (region && String(region).trim()) return n + ", " + String(region).trim()
+  if (region && String(region).trim()) {
+    var reg = String(region).trim()
+    if (reg.toLowerCase() !== n.toLowerCase()) {
+      return n + ", " + reg
+    }
+  }
   if (n.toLowerCase() === "brunswick") return "Brunswick, Maine"
   return n
 }
@@ -39,14 +46,16 @@ function formatTidesTitle(locationDisplay) {
   return loc ? "Tides for " + loc : "Tides"
 }
 
-function locationFileContents(name, latitude, longitude, unit) {
+function locationFileContents(name, latitude, longitude, unit, region) {
   var u = unit === "ft" ? "ft" : "m"
-  return JSON.stringify({
+  var obj = {
     name: name || "",
     latitude: latitude,
     longitude: longitude,
     unit: u
-  }, null, 2) + "\n"
+  }
+  if (region) obj.region = region
+  return JSON.stringify(obj, null, 2) + "\n"
 }
 
 // Convert height from meters (base internal unit) to user-configured unit
@@ -59,15 +68,19 @@ function formatHeight(meters, unit) {
   if (meters === null || meters === undefined || isNaN(meters)) return ""
   var u = unit === "ft" ? "ft" : "m"
   var val = convertHeight(meters, unit)
-  var sign = val >= 0 ? "+" : ""
-  return sign + val.toFixed(1) + u
+  var absVal = Math.abs(val)
+  if (absVal < 0.05) {
+    return "0.0" + u
+  }
+  var sign = val > 0 ? "+" : "-"
+  return sign + absVal.toFixed(1) + u
 }
 
 function formatRange(meters, unit) {
   if (meters === null || meters === undefined || isNaN(meters)) return ""
   var u = unit === "ft" ? "ft" : "m"
   var val = convertHeight(meters, unit)
-  return val.toFixed(1) + u
+  return Math.abs(val).toFixed(1) + u
 }
 
 function pad2(n) {
@@ -219,6 +232,59 @@ function dayTides(events, now) {
   return { label: "TODAY", events: today }
 }
 
+// Exactly 4 tides (two highs, two lows) matching the 24h curve display
+function fourTides(events, now) {
+  if (!Array.isArray(events) || events.length === 0 || !now) return []
+  var dt = dayTides(events, now)
+  var list = dt.events.slice()
+  if (list.length < 4) {
+    var lastTime = list.length > 0 ? list[list.length - 1].time.getTime() : now.getTime()
+    for (var i = 0; i < events.length && list.length < 4; i++) {
+      if (events[i].time.getTime() > lastTime) {
+        list.push(events[i])
+      }
+    }
+  }
+  return list.slice(0, 4)
+}
+
+// Highest high tide and lowest low tide in the 24-hour chart window
+function chartExtrema(events, report, startMs, endMs) {
+  var highs = []
+  var lows = []
+  var s = (startMs || 0) - 30 * 60 * 1000
+  var e = (endMs || 0) + 30 * 60 * 1000
+  if (Array.isArray(events)) {
+    for (var i = 0; i < events.length; i++) {
+      var t = events[i].time.getTime()
+      if (t >= s && t <= e) {
+        if (events[i].high) highs.push(events[i].height)
+        else lows.push(events[i].height)
+      }
+    }
+  }
+  var maxHigh = highs.length > 0 ? Math.max.apply(null, highs) : null
+  var minLow = lows.length > 0 ? Math.min.apply(null, lows) : null
+
+  // Fallback to sampling curve if extrema events are not directly found
+  if (maxHigh === null || minLow === null) {
+    if (report && report.hourly && report.hourly.time) {
+      for (var tm = startMs; tm <= endMs; tm += 15 * 60 * 1000) {
+        var v = smoothHeightAt(report, tm)
+        if (v !== null) {
+          if (maxHigh === null || v > maxHigh) maxHigh = v
+          if (minLow === null || v < minLow) minLow = v
+        }
+      }
+    }
+  }
+
+  return {
+    high: maxHigh !== null ? maxHigh : 0,
+    low: minLow !== null ? minLow : 0
+  }
+}
+
 function parseGeocodingResults(raw) {
   try {
     var data = JSON.parse(String(raw || "{}"))
@@ -233,6 +299,8 @@ function parseGeocodingResults(raw) {
       out.push({
         name: String(r.name),
         description: region,
+        admin1: String(r.admin1 || ""),
+        country: String(r.country || ""),
         latitude: r.latitude,
         longitude: r.longitude
       })
@@ -294,7 +362,7 @@ var Providers = {
 // Cache serialisation & parsing
 function serializeCache(report, location, updatedAt) {
   return JSON.stringify({
-    version: "1.0.0",
+    version: "1.0.1",
     updatedAt: (updatedAt || new Date()).toISOString(),
     location: location || null,
     report: report || null
@@ -332,6 +400,8 @@ if (typeof module !== "undefined") {
     todayRangeMeters: todayRangeMeters,
     todayRange: todayRange,
     dayTides: dayTides,
+    fourTides: fourTides,
+    chartExtrema: chartExtrema,
     parseGeocodingResults: parseGeocodingResults,
     Providers: Providers,
     serializeCache: serializeCache,

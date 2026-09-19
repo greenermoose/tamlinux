@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.tides",
   "name": "Tides",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Fred (@greenermoose)",
   "license": "GPL-3.0-or-later",
   "repository": "https://github.com/greenermoose/omarchy-fred-tides",

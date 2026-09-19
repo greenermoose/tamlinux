@@ -7,7 +7,7 @@ BarWidget {
   id: root
   moduleName: "fred.tides"
 
-  readonly property string pluginVersion: "1.0.0"
+  readonly property string pluginVersion: "1.0.1"
   property bool hoverOpen: false
 
   function injectPanel() {

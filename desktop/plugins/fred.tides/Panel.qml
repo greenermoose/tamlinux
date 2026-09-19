@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.0"
+  property string pluginVersion: "1.0.1"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -265,7 +265,8 @@ Panel {
   function pickSuggestion(suggestion) {
     if (!suggestion) return
     savingLocation = true
-    persistLocation(suggestion.name, suggestion.latitude, suggestion.longitude, root.activeUnit)
+    var reg = suggestion.admin1 || suggestion.country || ""
+    persistLocation(suggestion.name, suggestion.latitude, suggestion.longitude, root.activeUnit, reg)
   }
 
   function clearLocation() {
@@ -276,13 +277,13 @@ Panel {
 
   function toggleUnit() {
     var nextUnit = root.activeUnit === "m" ? "ft" : "m"
-    persistLocation(root.configuredLocationState.name, root.configuredLocationState.latitude, root.configuredLocationState.longitude, nextUnit)
+    persistLocation(root.configuredLocationState.name, root.configuredLocationState.latitude, root.configuredLocationState.longitude, nextUnit, root.activeRegion)
   }
 
-  function persistLocation(name, latitude, longitude, unit) {
+  function persistLocation(name, latitude, longitude, unit, region) {
     locationSaveProc.command = ["bash", "-c",
       "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "_",
-      root.tidesLocationPath, Model.locationFileContents(name, latitude, longitude, unit)]
+      root.tidesLocationPath, Model.locationFileContents(name, latitude, longitude, unit, region)]
     locationSaveProc.running = true
   }
 
@@ -349,34 +350,37 @@ Panel {
   readonly property string waveIcon: "\udb81\udf8d" // nf-md-waves
   readonly property string label: nextEvent ? waveIcon : ""
 
-  readonly property string displayLocation: Model.formatLocationDisplay(configuredLocationState.name, weatherRegion)
+  readonly property string activeRegion: hasOwnLocation ? (tidesLocationState.region || "") : weatherRegion
+  readonly property string displayLocation: Model.formatLocationDisplay(configuredLocationState.name, activeRegion)
   readonly property string hoverTitle: Model.formatTidesTitle(displayLocation)
+  readonly property var fourTides: Model.fourTides(events, now)
 
   readonly property var hoverLines: {
     var lines = [root.hoverTitle]
     if (currentHeight !== null && currentTrend !== "") {
-      lines.push("Sea Level: " + currentHeightFormatted + " (" + currentTrend + ")")
+      lines.push("Sea Level " + currentHeightFormatted + " (" + currentTrend + ")")
     }
-    if (nextEvent) {
-      var nextType = nextEvent.high ? "High Tide" : "Low Tide"
-      var nextH = Model.formatHeight(nextEvent.height, activeUnit)
-      var until = Model.untilText(now, nextEvent.time)
-      lines.push("Next: " + nextType + " " + nextH + " in " + until)
-    }
-    if (todayRangeFormatted !== "") {
-      lines.push("Today's Range: " + todayRangeFormatted)
+    var nextCount = Math.min(2, upcoming.length)
+    for (var i = 0; i < nextCount; i++) {
+      var ev = upcoming[i]
+      var nextType = ev.high ? "Next High Tide" : "Next Low Tide"
+      var nextH = Model.formatHeight(ev.height, activeUnit)
+      var nextTime = Model.formatTime(ev.time)
+      lines.push(nextType + " " + nextH + " at " + nextTime)
     }
     return lines
   }
 
   readonly property string statusSummary: {
     var parts = [root.hoverTitle]
-    if (currentHeightFormatted) parts.push("Sea Level: " + currentHeightFormatted + " (" + currentTrend + ")")
-    if (nextEvent) {
-      var nType = nextEvent.high ? "High Tide" : "Low Tide"
-      var nH = Model.formatHeight(nextEvent.height, activeUnit)
-      var u = Model.untilText(now, nextEvent.time)
-      parts.push("Next: " + nType + " " + nH + " (" + u + ")")
+    if (currentHeightFormatted) parts.push("Sea Level " + currentHeightFormatted + " (" + currentTrend + ")")
+    var nextCount = Math.min(2, upcoming.length)
+    for (var i = 0; i < nextCount; i++) {
+      var ev = upcoming[i]
+      var nType = ev.high ? "Next High Tide" : "Next Low Tide"
+      var nH = Model.formatHeight(ev.height, activeUnit)
+      var nT = Model.formatTime(ev.time)
+      parts.push(nType + " " + nH + " at " + nT)
     }
     return parts.join("\n")
   }
@@ -505,78 +509,118 @@ Panel {
 
           // ---- Header Row ----------------------------------------------------
           Item {
+            id: headerRowItem
             width: parent.width
             height: Math.max(Style.space(36), Math.max(heroLeft.implicitHeight, heroRight.implicitHeight))
 
-          Row {
-            id: heroLeft
-            anchors.left: parent.left
-            anchors.leftMargin: Style.space(16)
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(10)
-
-            Text {
+            Row {
+              id: heroLeft
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(16)
               anchors.verticalCenter: parent.verticalCenter
-              text: root.waveIcon
-              color: root.bar ? root.bar.foreground : Color.popups.text
-              font.family: root.fontFamily
-              font.pixelSize: Style.space(28)
-            }
-
-            Item {
-              anchors.verticalCenter: parent.verticalCenter
-              visible: !root.editingLocation
-              width: locationLabel.implicitWidth
-              height: locationLabel.implicitHeight
+              spacing: Style.space(8)
 
               Text {
-                id: locationLabel
-                text: root.configuredLocationState.name !== ""
-                  ? root.configuredLocationState.name.toUpperCase()
-                  : (root.hasCoordinates ? "COASTAL TIDES" : "SET LOCATION")
-                color: locationHover.hovered ? (root.bar ? root.bar.foreground : Color.popups.text) : Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.4)
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-                font.letterSpacing: 1
-              }
-
-              TapHandler {
-                onTapped: root.startEditingLocation()
-              }
-              HoverHandler {
-                id: locationHover
-                cursorShape: Qt.PointingHandCursor
-              }
-            }
-
-            // Unit toggle button
-            Rectangle {
-              anchors.verticalCenter: parent.verticalCenter
-              visible: !root.editingLocation && root.hasCoordinates
-              width: Style.space(26)
-              height: Style.space(20)
-              radius: Math.min(4, Style.cornerRadius)
-              color: unitHover.hovered ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : "transparent"
-              border.color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.8)
-              border.width: 1
-
-              Text {
-                anchors.centerIn: parent
-                text: root.activeUnit.toUpperCase()
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
+                id: waveIconText
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.waveIcon
                 color: root.bar ? root.bar.foreground : Color.popups.text
-                opacity: 0.8
+                font.family: root.fontFamily
+                font.pixelSize: Style.space(28)
               }
 
-              TapHandler {
-                onTapped: root.toggleUnit()
+              // Location Box (Click to edit, styled the same way fred.weather does)
+              Rectangle {
+                id: locationBox
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !root.editingLocation
+                height: Style.space(30)
+                clip: true
+
+                readonly property real availableWidth: headerRowItem.width
+                  - (heroRight.visible ? heroRight.width + Style.space(14) : 0)
+                  - Style.space(32)
+                  - waveIconText.implicitWidth
+                  - (unitBtn.visible ? unitBtn.width : 0)
+                  - heroLeft.spacing * 2
+
+                readonly property real naturalWidth: pinIcon.implicitWidth + locationText.implicitWidth + Style.space(6) + Style.space(16)
+                width: Math.max(Style.space(60), Math.min(availableWidth, naturalWidth))
+                radius: Style.cornerRadius
+                color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+                border.width: 1
+                border.color: Util.alpha(root.foreground, 0.15)
+
+                MouseArea {
+                  id: locMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.startEditingLocation()
+                }
+
+                Row {
+                  id: locationTextRow
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(8)
+                  anchors.right: parent.right
+                  anchors.rightMargin: Style.space(8)
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: Style.space(6)
+
+                  Text {
+                    id: pinIcon
+                    text: "\uf041" // map pin icon
+                    color: Color.accent
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+
+                  Text {
+                    id: locationText
+                    width: Math.max(0, locationTextRow.width - pinIcon.width - locationTextRow.spacing)
+                    text: root.displayLocation || (root.hasCoordinates ? "Coastal Tides" : "Set Location...")
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                    elide: Text.ElideRight
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                }
               }
-              HoverHandler {
-                id: unitHover
-                cursorShape: Qt.PointingHandCursor
+
+              // Unit toggle button
+              Rectangle {
+                id: unitBtn
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !root.editingLocation && root.hasCoordinates
+                width: Style.space(26)
+                height: Style.space(30)
+                radius: Style.cornerRadius
+                color: unitHover.hovered ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+                border.color: Util.alpha(root.foreground, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.activeUnit.toUpperCase()
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  color: root.foreground
+                  opacity: 0.85
+                }
+
+                TapHandler {
+                  onTapped: root.toggleUnit()
+                }
+                HoverHandler {
+                  id: unitHover
+                  cursorShape: Qt.PointingHandCursor
+                }
               }
-            }
 
             // Search textfield
             Row {
@@ -649,14 +693,14 @@ Panel {
             id: heroRight
             width: tideStats.implicitWidth
             anchors.right: parent.right
-            anchors.rightMargin: Style.space(20)
+            anchors.rightMargin: Style.space(16)
             anchors.verticalCenter: parent.verticalCenter
             spacing: Style.space(12)
 
             Row {
               id: tideStats
               visible: !!root.nextEvent
-              spacing: Style.space(24)
+              spacing: Style.space(16)
 
               Column {
                 spacing: Style.space(3)
@@ -781,9 +825,12 @@ Panel {
 
           Canvas {
             id: tideCurve
-            anchors.fill: parent
+            anchors.left: parent.left
             anchors.leftMargin: Style.space(16)
-            anchors.rightMargin: Style.space(20)
+            anchors.right: rangeBarContainer.left
+            anchors.rightMargin: Style.space(10)
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
 
             onWidthChanged: requestPaint()
             onHeightChanged: requestPaint()
@@ -946,11 +993,96 @@ Panel {
               }
             }
           }
+
+          // ---- Range Bar (Highest High to Lowest Low) -----------------------
+          Item {
+            id: rangeBarContainer
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(16)
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: Style.space(46)
+
+            readonly property var extrema: Model.chartExtrema(root.events, root.marineReport, tideCurve.windowStartMs, tideCurve.windowStartMs + tideCurve.windowMs)
+            readonly property string highLabel: Model.formatHeight(extrema.high, root.activeUnit)
+            readonly property string lowLabel: Model.formatHeight(extrema.low, root.activeUnit)
+
+            readonly property real currentFrac: {
+              if (root.currentHeight === null || extrema.high <= extrema.low) return 0.5
+              var val = root.scrubbing && root.scrubTime ? (Model.smoothHeightAt(root.marineReport, root.cursorTime.getTime()) || root.currentHeight) : root.currentHeight
+              var frac = (val - extrema.low) / (extrema.high - extrema.low)
+              return Math.max(0, Math.min(1, frac))
+            }
+
+            Column {
+              anchors.centerIn: parent
+              spacing: Style.space(4)
+              width: parent.width
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: rangeBarContainer.highLabel
+                color: Color.accent || root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+              }
+
+              Item {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Style.space(16)
+                height: Style.space(60)
+
+                // Background Track
+                Rectangle {
+                  anchors.centerIn: parent
+                  width: Style.space(5)
+                  height: parent.height
+                  radius: width / 2
+                  color: Util.alpha(root.foreground, 0.15)
+                }
+
+                // Range fill gradient
+                Rectangle {
+                  anchors.centerIn: parent
+                  width: Style.space(5)
+                  height: parent.height
+                  radius: width / 2
+                  gradient: Gradient {
+                    GradientStop { position: 0.0; color: Color.accent || root.foreground }
+                    GradientStop { position: 1.0; color: Qt.darker(Color.accent || root.foreground, 1.8) }
+                  }
+                }
+
+                // Current / scrubbed water level indicator dot
+                Rectangle {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  y: (1 - rangeBarContainer.currentFrac) * (parent.height - height)
+                  width: Style.space(9)
+                  height: Style.space(9)
+                  radius: width / 2
+                  color: root.foreground
+                  border.color: Color.popups.background
+                  border.width: 1.5
+                }
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: rangeBarContainer.lowLabel
+                color: Qt.darker(root.foreground, 1.3)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+              }
+            }
+          }
         }
 
-        // ---- Chronological Daily Tides Cards --------------------------------
+        // ---- Chronological Daily Tides Cards (4 Cards) --------------------
         Row {
-          visible: !!root.nextEvent && root.dayTides.events.length > 0
+          id: cardsRow
+          visible: !!root.nextEvent && root.fourTides.length > 0
           width: parent.width
           spacing: Style.space(8)
 
@@ -960,18 +1092,20 @@ Panel {
           }
 
           Repeater {
-            model: root.dayTides.events
+            model: root.fourTides
 
             Rectangle {
+              id: tideCard
               required property var modelData
               required property int index
-              width: Style.space(100)
+              readonly property int cardCount: Math.max(1, root.fourTides.length)
+              width: (parent.width - Style.space(32) - Style.space(8) * (cardCount - 1)) / cardCount
               height: Style.space(52)
               radius: Style.cornerRadius
               color: modelData.time.getTime() > root.now.getTime()
-                ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent)
+                ? Style.hoverFillFor(root.foreground, Color.accent)
                 : "transparent"
-              border.color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.8)
+              border.color: Qt.darker(root.foreground, 1.8)
               border.width: 1
               opacity: modelData.time.getTime() > root.now.getTime() ? 1.0 : 0.45
 
@@ -985,7 +1119,7 @@ Panel {
 
                   Text {
                     text: modelData.high ? "HIGH" : "LOW"
-                    color: modelData.high ? (Color.accent || (root.bar ? root.bar.foreground : Color.popups.text)) : Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.3)
+                    color: modelData.high ? (Color.accent || root.foreground) : Qt.darker(root.foreground, 1.3)
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.caption
                     font.bold: true
@@ -993,7 +1127,7 @@ Panel {
 
                   Text {
                     text: Model.formatTime(modelData.time)
-                    color: root.bar ? root.bar.foreground : Color.popups.text
+                    color: root.foreground
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.caption
                   }
@@ -1002,7 +1136,7 @@ Panel {
                 Text {
                   anchors.horizontalCenter: parent.horizontalCenter
                   text: Model.formatHeight(modelData.height, root.activeUnit)
-                  color: root.bar ? root.bar.foreground : Color.popups.text
+                  color: root.foreground
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.bodySmall
                   font.bold: true
