@@ -5,8 +5,8 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 | Attribute | Detail |
 | :-- | :-- |
 | **Plugin ID** | `fred.tides` |
-| **Version** | `1.0.2` |
-| **Version Tags** | [`v1.0.2`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.2), [`v1.0.1`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.1), [`v1.0.0`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.0) |
+| **Version** | `1.0.3` |
+| **Version Tags** | [`v1.0.3`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.3), [`v1.0.2`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.2), [`v1.0.1`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.1), [`v1.0.0`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.0) |
 | **Cloned From** | `io.github.woogy7.tides` |
 | **License** | GPL-3.0-or-later |
 | **Inspiration** | [`Woogy7/omarchy-tides`](https://github.com/Woogy7/omarchy-tides) & [`ashuttl/linecast`](https://github.com/ashuttl/linecast) |
@@ -20,7 +20,7 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 - **Multi-Monitor Focus Isolation (Non-Modal Popout):**
   Unlike stock panels that create blocking overlay twins across all screens and demand layer-shell focus, `fred.tides` binds its layer-shell surface strictly to the host monitor and requests keyboard focus on demand only when its screen has Hyprland focus (`WlrLayershell.keyboardFocus: OnDemand`). You can keep full 24-hour tidal charts open on a secondary monitor while typing or working on your primary screen uninterrupted.
 - **Glanceable Bar Hover Tooltip:**
-  Hovering over the bar icon displays rich telemetry without expanding the panel: location name, current water height, rising/falling trend, upcoming highs and lows with exact times, and widget version (`fred.tides v1.0.2`).
+  Hovering over the bar icon displays rich telemetry without expanding the panel: location name, current water height, rising/falling trend, upcoming highs and lows with exact times, and widget version (`fred.tides v1.0.3`).
 - **Interactive 24-Hour Scrubbable Curve & Visual Range Bar:**
   Canvas-drawn Catmull-Rom cubic spline spanning 6 hours past to 18 hours future with an adjacent visual range bar showing highest high tide and lowest low tide with a real-time water level indicator. Hover or drag along the curve to inspect water levels at any moment, with gentle snapping to peaks, troughs, and "now".
 - **Chronological Daily Highs & Lows (4 Cards):**
@@ -85,7 +85,7 @@ Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy
 | **Bar Icon (Right Click)** | Send desktop notification with tide status |
 | **Bar Icon (Hover)** | Display glanceable summary tooltip |
 | **Location Name** | Click to search new beach / harbor |
-| **Unit Button (`M` / `FT`)** | Toggle between meters and feet |
+| **Unit Button (`meters` / `feet`)** | Toggle between meters and feet |
 | **Curve Canvas** | Hover or drag horizontally to scrub time |
 | **Escape Key** | Close the panel |
 
@@ -95,7 +95,8 @@ Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy
 
 | Version | Status | Highlights |
 | :--- | :--- | :--- |
-| **`v1.0.2`** | Available (`main`) | Panel widened to 680px for unconstrained location names; Tide stat placed before Now; redundant Range column removed; unit toggle integrated into boxed indicator next to Now with full name (`meters`/`feet`); monitor-targeted IPC handlers (`openMonitor`, `closeMonitor`, `toggleMonitor`). |
+| **`v1.0.3`** | Available (`main`) | Switched default font family to `Liberation Mono` so numerals render without a slashed 0, preventing misreading 10 as 18 at small font sizes on cards and timeline timestamps while preserving monospaced tabular alignment. |
+| **`v1.0.2`** | Available (Tagged) | Panel widened to 680px for unconstrained location names; Tide stat placed before Now; redundant Range column removed; unit toggle integrated into boxed indicator next to Now with full name (`meters`/`feet`); monitor-targeted IPC handlers (`openMonitor`, `closeMonitor`, `toggleMonitor`). |
 | **`v1.0.1`** | Available (Tagged) | Visual range bar on tide curve with extrema markers and real-time water level indicator; dynamic 4-card daily tides grid; styled location pill matching `fred.weather`; refined glanceable hover tooltip. |
 | **`v1.0.0`** | Available (Tagged) | Initial multi-monitor focus-isolated tide widget (`WlrLayershell.keyboardFocus: OnDemand`); 24-hour Catmull-Rom tide curve; Open-Meteo Marine API integration; persistent atomic disk caching; closed subshell security baseline. |
 

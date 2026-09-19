@@ -7,7 +7,10 @@ BarWidget {
   id: root
   moduleName: "fred.tides"
 
-  readonly property string pluginVersion: "1.0.2"
+  readonly property string pluginVersion: "1.0.3"
+  property string fontFamily: (root.settings && root.settings.fontFamily)
+    ? root.settings.fontFamily
+    : "Liberation Mono"
   property bool hoverOpen: false
 
   function injectPanel() {
@@ -18,6 +21,7 @@ BarWidget {
     if ("anchorItem" in target) target.anchorItem = button
     if ("hostWidget" in target) target.hostWidget = root
     if ("pluginVersion" in target) target.pluginVersion = root.pluginVersion
+    if ("fontFamily" in target) target.fontFamily = root.fontFamily
   }
 
   function refresh() {
@@ -152,7 +156,7 @@ BarWidget {
             textFormat: Text.PlainText
             text: modelData
             color: Color.tooltip.text
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.family: root.fontFamily
             font.pixelSize: Style.font.body
             horizontalAlignment: Text.AlignHCenter
           }
@@ -169,7 +173,7 @@ BarWidget {
           text: "fred.tides v" + root.pluginVersion
           color: Color.tooltip.text
           opacity: 0.45
-          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           horizontalAlignment: Text.AlignHCenter
         }

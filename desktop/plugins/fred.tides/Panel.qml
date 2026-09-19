@@ -16,9 +16,11 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.2"
+  property string pluginVersion: "1.0.3"
   readonly property color foreground: Color.popups.text
-  readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+  property string fontFamily: (root.settings && root.settings.fontFamily)
+    ? root.settings.fontFamily
+    : "Liberation Mono"
 
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
