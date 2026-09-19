@@ -373,7 +373,7 @@ var Providers = {
 // Cache serialisation & parsing
 function serializeCache(report, location, updatedAt) {
   return JSON.stringify({
-    version: "1.0.1",
+    version: "1.0.2",
     updatedAt: (updatedAt || new Date()).toISOString(),
     location: location || null,
     report: report || null

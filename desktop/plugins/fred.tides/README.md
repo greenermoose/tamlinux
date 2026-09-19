@@ -5,6 +5,8 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 | Attribute | Detail |
 | :-- | :-- |
 | **Plugin ID** | `fred.tides` |
+| **Version** | `1.0.2` |
+| **Version Tags** | [`v1.0.2`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.2), [`v1.0.1`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.1), [`v1.0.0`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.0) |
 | **Cloned From** | `io.github.woogy7.tides` |
 | **License** | GPL-3.0-or-later |
 | **Inspiration** | [`Woogy7/omarchy-tides`](https://github.com/Woogy7/omarchy-tides) & [`ashuttl/linecast`](https://github.com/ashuttl/linecast) |
@@ -86,6 +88,16 @@ Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy
 | **Unit Button (`M` / `FT`)** | Toggle between meters and feet |
 | **Curve Canvas** | Hover or drag horizontally to scrub time |
 | **Escape Key** | Close the panel |
+
+---
+
+## Versions & Release History
+
+| Version | Status | Highlights |
+| :--- | :--- | :--- |
+| **`v1.0.2`** | Available (`main`) | Panel widened to 680px for unconstrained location names; Tide stat placed before Now; redundant Range column removed; unit toggle integrated into boxed indicator next to Now with full name (`meters`/`feet`); monitor-targeted IPC handlers (`openMonitor`, `closeMonitor`, `toggleMonitor`). |
+| **`v1.0.1`** | Available (Tagged) | Visual range bar on tide curve with extrema markers and real-time water level indicator; dynamic 4-card daily tides grid; styled location pill matching `fred.weather`; refined glanceable hover tooltip. |
+| **`v1.0.0`** | Available (Tagged) | Initial multi-monitor focus-isolated tide widget (`WlrLayershell.keyboardFocus: OnDemand`); 24-hour Catmull-Rom tide curve; Open-Meteo Marine API integration; persistent atomic disk caching; closed subshell security baseline. |
 
 ---
 
