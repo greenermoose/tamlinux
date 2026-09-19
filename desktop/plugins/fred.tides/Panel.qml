@@ -498,7 +498,7 @@ Panel {
     bar: root.bar
     owner: root
     open: root.opened
-    contentWidth: panel.fittedContentWidth(Style.space(520))
+    contentWidth: panel.fittedContentWidth(Style.space(680))
     contentHeight: panel.fittedContentHeight(Math.max(Style.space(260), tidesColumn.implicitHeight), Style.space(480))
     focusTarget: panelKeyCatcher
 
@@ -554,6 +554,16 @@ Panel {
                 font.pixelSize: Style.space(28)
               }
 
+              // Hidden measure text for accurate, unclipped width calculation
+              Text {
+                id: locationMeasureText
+                visible: false
+                text: root.displayLocation || (root.hasCoordinates ? "Coastal Tides" : "Set Location...")
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                font.bold: true
+              }
+
               // Location Box (Click to edit, styled the same way fred.weather does)
               Rectangle {
                 id: locationBox
@@ -562,15 +572,14 @@ Panel {
                 height: Style.space(30)
                 clip: true
 
-                readonly property real availableWidth: headerRowItem.width
-                  - (heroRight.visible ? heroRight.width + Style.space(14) : 0)
+                readonly property real maxAvailableWidth: headerRowItem.width
+                  - (heroRight.visible ? heroRight.width + Style.space(16) : 0)
                   - Style.space(32)
                   - waveIconText.implicitWidth
-                  - (unitBtn.visible ? unitBtn.width : 0)
                   - heroLeft.spacing * 2
 
-                readonly property real naturalWidth: pinIcon.implicitWidth + locationText.implicitWidth + Style.space(6) + Style.space(16)
-                width: Math.max(Style.space(60), Math.min(availableWidth, naturalWidth))
+                readonly property real naturalWidth: pinIcon.implicitWidth + locationMeasureText.implicitWidth + locationTextRow.spacing + Style.space(16)
+                width: Math.min(maxAvailableWidth, naturalWidth)
                 radius: Style.cornerRadius
                 color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
                 border.width: 1
@@ -588,8 +597,6 @@ Panel {
                   id: locationTextRow
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(8)
-                  anchors.right: parent.right
-                  anchors.rightMargin: Style.space(8)
                   anchors.verticalCenter: parent.verticalCenter
                   spacing: Style.space(6)
 
@@ -604,7 +611,7 @@ Panel {
 
                   Text {
                     id: locationText
-                    width: Math.max(0, locationTextRow.width - pinIcon.width - locationTextRow.spacing)
+                    width: Math.min(locationMeasureText.implicitWidth, Math.max(0, locationBox.width - pinIcon.implicitWidth - locationTextRow.spacing - Style.space(16)))
                     text: root.displayLocation || (root.hasCoordinates ? "Coastal Tides" : "Set Location...")
                     color: root.foreground
                     font.family: root.fontFamily
@@ -624,7 +631,7 @@ Panel {
 
               TextField {
                 id: locationField
-                width: Style.space(190)
+                width: Style.space(260)
                 enabled: !root.savingLocation
                 placeholderText: "Search beach or harbor"
                 foreground: root.bar ? root.bar.foreground : Color.popups.text
