@@ -188,6 +188,26 @@ function degreesToCardinal(deg) {
   return arr[(val % 16)] || ""
 }
 
+function localDateString(date) {
+  var d = date instanceof Date ? date : (typeof date === "number" ? new Date(date) : new Date())
+  var year = d.getFullYear()
+  var month = d.getMonth() + 1
+  var day = d.getDate()
+  return year + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day
+}
+
+function forecastTodayString(report, nowMs) {
+  var ms = typeof nowMs === "number" && isFinite(nowMs) ? nowMs : Date.now()
+  var offset = report && typeof report.utc_offset_seconds === "number" && isFinite(report.utc_offset_seconds)
+    ? report.utc_offset_seconds
+    : null
+  if (offset !== null) {
+    var locMs = ms + offset * 1000
+    return new Date(locMs).toISOString().slice(0, 10)
+  }
+  return localDateString(new Date(ms))
+}
+
 function dayName(dateString, formatter) {
   if (!dateString) return ""
   var d = new Date(dateString + "T12:00:00")
@@ -246,10 +266,13 @@ function openMeteoForecastDays(dailyForecastReport, todayString, maxDays) {
   var daily = dailyForecastReport && dailyForecastReport.daily ? dailyForecastReport.daily : null
   if (!daily || !daily.time) return []
 
+  var today = todayString || forecastTodayString(dailyForecastReport)
   var limit = maxDays || 10
   var result = []
   for (var i = 0; i < daily.time.length && result.length < limit; ++i) {
     var date = daily.time[i]
+    if (today && date.slice(0, 10) < today.slice(0, 10)) continue
+
     var maxC = daily.temperature_2m_max ? daily.temperature_2m_max[i] : ""
     var minC = daily.temperature_2m_min ? daily.temperature_2m_min[i] : ""
     var code = daily.weather_code ? daily.weather_code[i] : null
@@ -258,8 +281,8 @@ function openMeteoForecastDays(dailyForecastReport, todayString, maxDays) {
 
     result.push({
       date: date,
-      isToday: todayString ? date.slice(0, 10) === todayString.slice(0, 10) : i === 0,
-      dayLabel: shortDayName(date, todayString),
+      isToday: today ? date.slice(0, 10) === today.slice(0, 10) : i === 0,
+      dayLabel: shortDayName(date, today),
       dayName: dayName(date),
       maxtempC: roundedTemp(maxC),
       mintempC: roundedTemp(minC),
@@ -277,14 +300,20 @@ function openMeteoForecastDays(dailyForecastReport, todayString, maxDays) {
   return result
 }
 
-function openMeteoCurrentCondition(dailyForecastReport) {
+function openMeteoCurrentCondition(dailyForecastReport, todayString) {
   var current = dailyForecastReport && dailyForecastReport.current ? dailyForecastReport.current : null
   if (!current || current.temperature_2m === undefined || current.temperature_2m === null) return null
 
   var daily = dailyForecastReport.daily || {}
-  var todayMaxC = daily.temperature_2m_max && daily.temperature_2m_max[0] !== undefined ? daily.temperature_2m_max[0] : null
-  var todayMinC = daily.temperature_2m_min && daily.temperature_2m_min[0] !== undefined ? daily.temperature_2m_min[0] : null
-  var todayPrecipProb = daily.precipitation_probability_max && daily.precipitation_probability_max[0] !== undefined ? daily.precipitation_probability_max[0] : null
+  var today = todayString || forecastTodayString(dailyForecastReport)
+  var todayIdx = 0
+  if (today && Array.isArray(daily.time)) {
+    var foundIdx = daily.time.indexOf(today.slice(0, 10))
+    if (foundIdx >= 0) todayIdx = foundIdx
+  }
+  var todayMaxC = daily.temperature_2m_max && daily.temperature_2m_max[todayIdx] !== undefined ? daily.temperature_2m_max[todayIdx] : null
+  var todayMinC = daily.temperature_2m_min && daily.temperature_2m_min[todayIdx] !== undefined ? daily.temperature_2m_min[todayIdx] : null
+  var todayPrecipProb = daily.precipitation_probability_max && daily.precipitation_probability_max[todayIdx] !== undefined ? daily.precipitation_probability_max[todayIdx] : null
 
   var windDeg = current.wind_direction_10m !== undefined ? current.wind_direction_10m : null
 
@@ -306,8 +335,8 @@ function openMeteoCurrentCondition(dailyForecastReport) {
     todayMaxF: roundedTemp(celsiusToFahrenheit(todayMaxC)),
     todayMinF: roundedTemp(celsiusToFahrenheit(todayMinC)),
     todayPrecipProbability: todayPrecipProb !== null && isFinite(todayPrecipProb) ? Math.round(todayPrecipProb) : null,
-    sunrise: daily.sunrise ? daily.sunrise[0] : null,
-    sunset: daily.sunset ? daily.sunset[0] : null
+    sunrise: daily.sunrise ? daily.sunrise[todayIdx] : null,
+    sunset: daily.sunset ? daily.sunset[todayIdx] : null
   }
 }
 
@@ -574,7 +603,7 @@ function buildBarHoverLines(currentCondition, dailyForecastDays, useImperial, lo
 // Generates the rich multi-line bar hover tooltip
 function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays, useImperial, locationName) {
   var lines = buildBarHoverLines(currentCondition, dailyForecastDays, useImperial, locationName)
-  var versionLine = "fred.weather v" + (pluginVersion || "1.0.2")
+  var versionLine = "fred.weather v" + (pluginVersion || "1.0.4")
 
   // Blank line separator above the bottom version line
   lines.push("")
@@ -585,6 +614,8 @@ function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays
 
 if (typeof module !== "undefined") {
   module.exports = {
+    localDateString: localDateString,
+    forecastTodayString: forecastTodayString,
     parseLocationFile: parseLocationFile,
     wttrLocationQuery: wttrLocationQuery,
     parseGeocodingResults: parseGeocodingResults,

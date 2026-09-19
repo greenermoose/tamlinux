@@ -263,5 +263,67 @@ test("WeatherStore multi-monitor refreshAll and payload broadcast", () => {
   WeatherStore.unregister("DP-2", pMSI);
 });
 
+test("forecastTodayString handles negative and positive timezone offsets accurately", () => {
+  // 2026-09-18 at 22:40 EDT is 2026-09-19 at 02:40 UTC
+  const lateEveningUtcMs = Date.parse("2026-09-19T02:40:00Z");
+
+  // In America/New_York (EDT, UTC-4 = -14400s), local date is still 2026-09-18
+  const reportEdt = { utc_offset_seconds: -14400 };
+  assert.equal(Model.forecastTodayString(reportEdt, lateEveningUtcMs), "2026-09-18");
+
+  // In Asia/Tokyo (JST, UTC+9 = +32400s), local date is 2026-09-19 (11:40 AM)
+  const reportJst = { utc_offset_seconds: 32400 };
+  assert.equal(Model.forecastTodayString(reportJst, lateEveningUtcMs), "2026-09-19");
+
+  // Fallback to local machine date when report is null or lacks offset
+  const localDate = Model.forecastTodayString(null, lateEveningUtcMs);
+  assert.match(localDate, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("openMeteoForecastDays aligns Today label with local timezone date rather than UTC", () => {
+  const payload = sampleOpenMeteoPayload();
+  // Payload has utc_offset_seconds: -18000 (-5h EST)
+  // At 2030-01-11 02:30:00Z (UTC is Jan 11), in EST (-5h) it is 2030-01-10 21:30:00 (Jan 10)
+  const eveningUtcMs = Date.parse("2030-01-11T02:30:00Z");
+  const localToday = Model.forecastTodayString(payload, eveningUtcMs);
+  assert.equal(localToday, "2030-01-10");
+
+  const days = Model.openMeteoForecastDays(payload, localToday, 10);
+  assert.equal(days[0].date, "2030-01-10");
+  assert.equal(days[0].isToday, true);
+  assert.equal(days[0].dayLabel, "Today");
+  assert.equal(days[1].date, "2030-01-11");
+  assert.equal(days[1].isToday, false);
+  assert.equal(days[1].dayLabel, "Fri Jan 11");
+});
+
+test("openMeteoForecastDays skips past days when reading cached data across midnight", () => {
+  const payload = sampleOpenMeteoPayload();
+  // If cache starts at 2030-01-10, but current local date has rolled over to 2030-01-11
+  const days = Model.openMeteoForecastDays(payload, "2030-01-11", 10);
+  assert.equal(days[0].date, "2030-01-11");
+  assert.equal(days[0].isToday, true);
+  assert.equal(days[0].dayLabel, "Today");
+  assert.equal(days[1].date, "2030-01-12");
+  assert.equal(days[1].isToday, false);
+  assert.equal(days[1].dayLabel, "Sat Jan 12");
+});
+
+test("openMeteoCurrentCondition indexes into daily arrays matching todayString", () => {
+  const payload = sampleOpenMeteoPayload();
+  // Index 0 (Jan 10) has max 24, min 14, precip 10
+  const cond0 = Model.openMeteoCurrentCondition(payload, "2030-01-10");
+  assert.equal(cond0.todayMaxC, "24");
+  assert.equal(cond0.todayMinC, "14");
+  assert.equal(cond0.todayPrecipProbability, 10);
+
+  // Index 1 (Jan 11) has max 25, min 15, precip 20
+  const cond1 = Model.openMeteoCurrentCondition(payload, "2030-01-11");
+  assert.equal(cond1.todayMaxC, "25");
+  assert.equal(cond1.todayMinC, "15");
+  assert.equal(cond1.todayPrecipProbability, 20);
+});
+
+
 
 

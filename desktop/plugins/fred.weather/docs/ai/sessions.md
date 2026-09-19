@@ -85,4 +85,25 @@ This document records the exact prompts, tools, and models used during the devel
 - Added unit tests for `refreshAll` and payload broadcasting in `tests/model.test.cjs`.
 - Bumped version to `1.0.3` across `manifest.json`, `BarWidget.qml`, and `Panel.qml`.
 
+---
+
+## Session 2026-09-18: Daily Forecast Local Timezone Alignment (Version 1.0.4)
+
+- **Primary Tool:** Antigravity CLI (`agy 1.2.6`)
+- **Model:** Gemini 3.8 Flash (High)
+- **Role:** Root-cause analysis of timezone off-by-one bug, local/location date normalization, cache rollover defense, and unit test expansion.
+
+### Guiding Prompts
+> "Figure out why on Fri Sep 18 the ten day outlook thinks it's Saturday Sep 19. I'm guessing timezones are not being handled properly. Fidn the root cause and fix in fred.weather. Bump the version of fred.weather when you do and push to GitHub. Then let me test on this system before we make a release."
+
+### Key Technical Outputs
+- Identified root cause: `Panel.qml` calculated `todayString` via `new Date().toISOString().slice(0, 10)`. Because `.toISOString()` converts to zero-offset UTC time, any local time after 20:00 EDT (UTC-4) rolled over to the next day's UTC date (`2026-09-19`), causing the 10-day outlook to mark Saturday Sep 19 as "Today" and render Friday Sep 18 as a preceding day.
+- Implemented `localDateString(date)` and `forecastTodayString(report, nowMs)` in `Model.js` to compute the calendar date in the target location's timezone using Open-Meteo's `utc_offset_seconds`, falling back safely to local machine time.
+- Updated `openMeteoForecastDays()` to filter out dates strictly before `todayString`, preventing stale cached daily entries from appearing above "Today".
+- Updated `openMeteoCurrentCondition()` to dynamically locate today's index in `daily.time` via `todayString`, ensuring current condition hi/lo and rain probability match the active day.
+- Bound `todayString` in `Panel.qml` to `Model.forecastTodayString(dailyForecastReport, forecastClock)`.
+- Added unit tests in `tests/model.test.cjs` covering negative and positive timezone offsets, late-evening rollover scenarios, cached data rollover across midnight, and dynamic today index resolution.
+- Bumped version to `1.0.4` across `manifest.json`, `BarWidget.qml`, `Panel.qml`, and `Model.js`.
+
+
 

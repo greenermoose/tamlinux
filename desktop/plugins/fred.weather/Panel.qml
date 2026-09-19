@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.3"
+  property string pluginVersion: "1.0.4"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -269,12 +269,12 @@ Panel {
   }
 
   readonly property bool hasConfiguredCoordinates: !isNaN(parseFloat(String(configuredLocationState.latitude))) && !isNaN(parseFloat(String(configuredLocationState.longitude)))
-  readonly property var openMeteoCurrent: Model.openMeteoCurrentCondition(dailyForecastReport)
+  readonly property string todayString: Model.forecastTodayString(dailyForecastReport, forecastClock)
+  readonly property var openMeteoCurrent: Model.openMeteoCurrentCondition(dailyForecastReport, todayString)
   readonly property var current: (hasConfiguredCoordinates && openMeteoCurrent) ? openMeteoCurrent : ((report && report.current_condition && report.current_condition[0]) ? report.current_condition[0] : openMeteoCurrent)
   readonly property double currentUpdatedAt: current === openMeteoCurrent ? hourlyUpdatedAt : reportUpdatedAt
   readonly property var areaInfo: report && report.nearest_area && report.nearest_area[0] ? report.nearest_area[0] : null
 
-  readonly property string todayString: new Date().toISOString().slice(0, 10)
   readonly property var forecastDays: Model.openMeteoForecastDays(dailyForecastReport, todayString, 10)
 
   readonly property string reportCountry: areaInfo && areaInfo.country && areaInfo.country[0] ? areaInfo.country[0].value : ""
