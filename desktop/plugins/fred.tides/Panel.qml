@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.1"
+  property string pluginVersion: "1.0.2"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -113,6 +113,18 @@ Panel {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       TidesStore.toggle("", cur, Hyprland.monitors)
     }
+    function openMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.open(monitor, cur, Hyprland.monitors)
+    }
+    function closeMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.close(monitor, cur, Hyprland.monitors)
+    }
+    function toggleMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.toggle(monitor, cur, Hyprland.monitors)
+    }
     function refresh(): void { TidesStore.refreshAll(root) }
   }
 
@@ -130,6 +142,18 @@ Panel {
     function toggle(): void {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       TidesStore.toggle("", cur, Hyprland.monitors)
+    }
+    function openMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.open(monitor, cur, Hyprland.monitors)
+    }
+    function closeMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.close(monitor, cur, Hyprland.monitors)
+    }
+    function toggleMonitor(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.toggle(monitor, cur, Hyprland.monitors)
     }
     function refresh(): void { TidesStore.refreshAll(root) }
   }
@@ -344,6 +368,7 @@ Panel {
   readonly property var dayTides: Model.dayTides(events, now)
   readonly property var currentHeight: Model.heightAt(marineReport, now)
   readonly property string currentHeightFormatted: Model.formatHeight(currentHeight, activeUnit)
+  readonly property string currentHeightValueFormatted: Model.formatHeightValue(currentHeight, activeUnit)
   readonly property string currentTrend: nextEvent ? (nextEvent.high ? "Rising" : "Falling") : ""
   readonly property string todayRangeFormatted: Model.todayRange(events, now, activeUnit)
 
@@ -591,37 +616,6 @@ Panel {
                 }
               }
 
-              // Unit toggle button
-              Rectangle {
-                id: unitBtn
-                anchors.verticalCenter: parent.verticalCenter
-                visible: !root.editingLocation && root.hasCoordinates
-                width: Style.space(26)
-                height: Style.space(30)
-                radius: Style.cornerRadius
-                color: unitHover.hovered ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
-                border.color: Util.alpha(root.foreground, 0.15)
-                border.width: 1
-
-                Text {
-                  anchors.centerIn: parent
-                  text: root.activeUnit.toUpperCase()
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  color: root.foreground
-                  opacity: 0.85
-                }
-
-                TapHandler {
-                  onTapped: root.toggleUnit()
-                }
-                HoverHandler {
-                  id: unitHover
-                  cursorShape: Qt.PointingHandCursor
-                }
-              }
-
             // Search textfield
             Row {
               visible: root.editingLocation
@@ -700,24 +694,7 @@ Panel {
             Row {
               id: tideStats
               visible: !!root.nextEvent
-              spacing: Style.space(16)
-
-              Column {
-                spacing: Style.space(3)
-                Text {
-                  text: "NOW"
-                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.letterSpacing: 1
-                }
-                Text {
-                  text: root.currentHeightFormatted
-                  color: root.bar ? root.bar.foreground : Color.popups.text
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.title
-                }
-              }
+              spacing: Style.space(20)
 
               Column {
                 spacing: Style.space(3)
@@ -739,17 +716,54 @@ Panel {
               Column {
                 spacing: Style.space(3)
                 Text {
-                  text: "RANGE"
+                  text: "NOW"
                   color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
                   font.letterSpacing: 1
                 }
-                Text {
-                  text: root.todayRangeFormatted
-                  color: root.bar ? root.bar.foreground : Color.popups.text
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.title
+                Row {
+                  spacing: Style.space(6)
+
+                  Text {
+                    id: nowValueText
+                    text: root.currentHeightValueFormatted
+                    color: root.bar ? root.bar.foreground : Color.popups.text
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.title
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+
+                  Rectangle {
+                    id: unitBox
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitWidth: unitBoxText.implicitWidth + Style.space(12)
+                    implicitHeight: Style.space(22)
+                    radius: Math.min(4, Style.cornerRadius)
+                    color: unitBoxHover.hovered ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+                    border.width: 1
+                    border.color: Util.alpha(root.foreground, 0.2)
+
+                    Text {
+                      id: unitBoxText
+                      anchors.centerIn: parent
+                      text: root.activeUnit === "ft" ? "feet" : "meters"
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      font.bold: true
+                      color: root.foreground
+                      opacity: 0.9
+                    }
+
+                    TapHandler {
+                      onTapped: root.toggleUnit()
+                    }
+
+                    HoverHandler {
+                      id: unitBoxHover
+                      cursorShape: Qt.PointingHandCursor
+                    }
+                  }
                 }
               }
             }

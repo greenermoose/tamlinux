@@ -76,6 +76,17 @@ function formatHeight(meters, unit) {
   return sign + absVal.toFixed(1) + u
 }
 
+function formatHeightValue(meters, unit) {
+  if (meters === null || meters === undefined || isNaN(meters)) return ""
+  var val = convertHeight(meters, unit)
+  var absVal = Math.abs(val)
+  if (absVal < 0.05) {
+    return "0.0"
+  }
+  var sign = val > 0 ? "+" : "-"
+  return sign + absVal.toFixed(1)
+}
+
 function formatRange(meters, unit) {
   if (meters === null || meters === undefined || isNaN(meters)) return ""
   var u = unit === "ft" ? "ft" : "m"

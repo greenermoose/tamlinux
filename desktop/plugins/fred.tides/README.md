@@ -18,13 +18,13 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 - **Multi-Monitor Focus Isolation (Non-Modal Popout):**
   Unlike stock panels that create blocking overlay twins across all screens and demand layer-shell focus, `fred.tides` binds its layer-shell surface strictly to the host monitor and requests keyboard focus on demand only when its screen has Hyprland focus (`WlrLayershell.keyboardFocus: OnDemand`). You can keep full 24-hour tidal charts open on a secondary monitor while typing or working on your primary screen uninterrupted.
 - **Glanceable Bar Hover Tooltip:**
-  Hovering over the bar icon displays rich telemetry without expanding the panel: location name, current water height, rising/falling trend, upcoming highs and lows with exact times, and widget version (`fred.tides v1.0.1`).
+  Hovering over the bar icon displays rich telemetry without expanding the panel: location name, current water height, rising/falling trend, upcoming highs and lows with exact times, and widget version (`fred.tides v1.0.2`).
 - **Interactive 24-Hour Scrubbable Curve & Visual Range Bar:**
   Canvas-drawn Catmull-Rom cubic spline spanning 6 hours past to 18 hours future with an adjacent visual range bar showing highest high tide and lowest low tide with a real-time water level indicator. Hover or drag along the curve to inspect water levels at any moment, with gentle snapping to peaks, troughs, and "now".
 - **Chronological Daily Highs & Lows (4 Cards):**
   Displays four high and low tide cards with precise timestamps and heights. Past tides dim; after today's final tide, the cards roll forward to tomorrow.
 - **Configurable Units (Metric / Imperial):**
-  Seamlessly toggle between meters (`m`) and feet (`ft`) with a single click.
+  Seamlessly toggle between meters (`meters`) and feet (`feet`) with a single click on the boxed unit indicator next to current sea level.
 - **Smart Location Sync & Independent Override:**
   Follows the active weather location in `~/.local/state/omarchy/settings/weather.json` out of the box so weather and tides match. Click the location name to search for a specific beach or harbor (saved in `~/.local/state/omarchy/settings/tides.json`).
 - **Persistent Atomic Disk Caching:**
