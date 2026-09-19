@@ -18,9 +18,10 @@ Panel {
   property bool openedFromHotkey: false
   property string pluginVersion: "1.0.3"
   readonly property color foreground: Color.popups.text
-  property string fontFamily: (root.settings && root.settings.fontFamily)
-    ? root.settings.fontFamily
-    : "Liberation Mono"
+  readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+  property string numberFontFamily: (root.settings && root.settings.numberFontFamily)
+    ? root.settings.numberFontFamily
+    : "Liberation Sans"
 
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
@@ -738,7 +739,7 @@ Panel {
                     id: nowValueText
                     text: root.currentHeightValueFormatted
                     color: root.bar ? root.bar.foreground : Color.popups.text
-                    font.family: root.fontFamily
+                    font.family: root.numberFontFamily
                     font.pixelSize: Style.font.title
                     anchors.verticalCenter: parent.verticalCenter
                   }
@@ -966,7 +967,7 @@ Panel {
               ctx.strokeStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.12)
               ctx.lineWidth = 1.0
               ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.5)
-              ctx.font = captionPx + "px " + root.fontFamily
+              ctx.font = captionPx + "px " + root.numberFontFamily
               ctx.textAlign = "center"
 
               for (var gt = firstGrid; gt <= endMs; gt += hourStep) {
@@ -1009,7 +1010,7 @@ Panel {
                   var label = Model.formatTime(root.cursorTime) + "  " + Model.formatHeight(cv, root.activeUnit)
                   if (!root.scrubbing) label = "NOW  " + label
                   ctx.fillStyle = root.scrubbing ? baseColor : fg
-                  ctx.font = "bold " + captionPx + "px " + root.fontFamily
+                  ctx.font = "bold " + captionPx + "px " + root.numberFontFamily
                   ctx.textAlign = cx > w * 0.75 ? "right" : (cx < w * 0.25 ? "left" : "center")
                   ctx.fillText(label, cx, padTop - 2)
                 }
@@ -1046,7 +1047,7 @@ Panel {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: rangeBarContainer.highLabel
                 color: Color.accent || root.foreground
-                font.family: root.fontFamily
+                font.family: root.numberFontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
               }
@@ -1094,7 +1095,7 @@ Panel {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: rangeBarContainer.lowLabel
                 color: Qt.darker(root.foreground, 1.3)
-                font.family: root.fontFamily
+                font.family: root.numberFontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
               }
@@ -1151,7 +1152,7 @@ Panel {
                   Text {
                     text: Model.formatTime(modelData.time)
                     color: root.foreground
-                    font.family: root.fontFamily
+                    font.family: root.numberFontFamily
                     font.pixelSize: Style.font.caption
                   }
                 }
@@ -1160,7 +1161,7 @@ Panel {
                   anchors.horizontalCenter: parent.horizontalCenter
                   text: Model.formatHeight(modelData.height, root.activeUnit)
                   color: root.foreground
-                  font.family: root.fontFamily
+                  font.family: root.numberFontFamily
                   font.pixelSize: Style.font.bodySmall
                   font.bold: true
                 }
