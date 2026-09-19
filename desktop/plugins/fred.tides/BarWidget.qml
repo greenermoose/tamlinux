@@ -70,7 +70,7 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: panelLoader.item && panelLoader.item.label ? panelLoader.item.label : "\udb83\ude08"
+    text: panelLoader.item && panelLoader.item.label ? panelLoader.item.label : "\udb81\udf8d"
     slotSize: Style.bar.statusSlot
     tooltipText: ""
 

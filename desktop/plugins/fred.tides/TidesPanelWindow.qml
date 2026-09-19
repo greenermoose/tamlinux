@@ -270,8 +270,7 @@ PanelWindow {
     MouseArea {
       anchors.fill: parent
       acceptedButtons: Qt.AllButtons
-      onPressed: function(mouse) {
-        mouse.accepted = false
+      onPressed: {
         if (root.focusTarget) root.focusTarget.forceActiveFocus()
       }
     }

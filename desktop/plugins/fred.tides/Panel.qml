@@ -35,12 +35,25 @@ Panel {
     if (screenName) TidesStore.register(screenName, root)
   }
 
+  onOpenedChanged: {
+    if (opened) {
+      cacheFile.reload()
+      weatherLocationFile.reload()
+      tidesLocationFile.reload()
+      weatherCacheFile.reload()
+      Qt.callLater(function() {
+        if (tideCurve) tideCurve.requestPaint()
+      })
+    }
+  }
+
   function open() {
     openedFromHotkey = false
     setCenterHoverRevealSuppressed(false)
     root.controller.show()
     weatherLocationFile.reload()
     tidesLocationFile.reload()
+    cacheFile.reload()
     root.refresh()
   }
 
@@ -49,6 +62,7 @@ Panel {
     root.controller.show()
     weatherLocationFile.reload()
     tidesLocationFile.reload()
+    cacheFile.reload()
     root.refresh()
     Qt.callLater(function() {
       if (root.opened) setCenterHoverRevealSuppressed(true)
@@ -175,9 +189,26 @@ Panel {
     printErrors: false
     onLoaded: {
       var cached = Model.parseCache(text())
-      if (cached && cached.report && !root.marineReport) {
+      if (cached && cached.report) {
         root.marineReport = cached.report
       }
+    }
+  }
+
+  property string weatherRegion: ""
+
+  property FileView weatherCacheFile: FileView {
+    path: Quickshell.env("HOME") + "/.cache/fred.weather/weather-cache.json"
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      try {
+        var parsed = JSON.parse(text())
+        var area = parsed && parsed.report && parsed.report.data && parsed.report.data.nearest_area && parsed.report.data.nearest_area[0]
+        if (area && area.region && area.region[0] && area.region[0].value) {
+          root.weatherRegion = String(area.region[0].value).trim()
+        }
+      } catch (e) {}
     }
   }
 
@@ -188,6 +219,7 @@ Panel {
       weatherLocationFile.reload()
       tidesLocationFile.reload()
       cacheFile.reload()
+      weatherCacheFile.reload()
     }
   }
 
@@ -314,12 +346,14 @@ Panel {
   readonly property string currentTrend: nextEvent ? (nextEvent.high ? "Rising" : "Falling") : ""
   readonly property string todayRangeFormatted: Model.todayRange(events, now, activeUnit)
 
-  readonly property string waveIcon: "\udb83\ude08" // nf-md-waves
+  readonly property string waveIcon: "\udb81\udf8d" // nf-md-waves
   readonly property string label: nextEvent ? waveIcon : ""
 
+  readonly property string displayLocation: Model.formatLocationDisplay(configuredLocationState.name, weatherRegion)
+  readonly property string hoverTitle: Model.formatTidesTitle(displayLocation)
+
   readonly property var hoverLines: {
-    var loc = configuredLocationState.name !== "" ? configuredLocationState.name : "Tides"
-    var lines = [loc]
+    var lines = [root.hoverTitle]
     if (currentHeight !== null && currentTrend !== "") {
       lines.push("Sea Level: " + currentHeightFormatted + " (" + currentTrend + ")")
     }
@@ -336,8 +370,7 @@ Panel {
   }
 
   readonly property string statusSummary: {
-    var parts = []
-    if (configuredLocationState.name) parts.push(configuredLocationState.name)
+    var parts = [root.hoverTitle]
     if (currentHeightFormatted) parts.push("Sea Level: " + currentHeightFormatted + " (" + currentTrend + ")")
     if (nextEvent) {
       var nType = nextEvent.high ? "High Tide" : "Low Tide"
@@ -437,37 +470,43 @@ Panel {
     owner: root
     open: root.opened
     contentWidth: panel.fittedContentWidth(Style.space(520))
-    contentHeight: panel.fittedContentHeight(tidesColumn.implicitHeight + Style.space(24), Style.space(480))
+    contentHeight: panel.fittedContentHeight(Math.max(Style.space(260), tidesColumn.implicitHeight), Style.space(480))
     focusTarget: panelKeyCatcher
 
     PanelKeyCatcher {
       id: panelKeyCatcher
-      focus: true
-
-      Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Escape) {
-          if (root.editingLocation) root.cancelEditingLocation()
-          else root.close()
-          event.accepted = true
-        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-          if (!root.editingLocation) root.startEditingLocation()
-          else root.commitLocation()
-          event.accepted = true
-        } else if (event.key === Qt.Key_Tab) {
-          root.switchPanel(event.modifiers & Qt.ShiftModifier ? -1 : 1)
-          event.accepted = true
-        }
+      anchors.fill: parent
+      blocked: root.editingLocation
+      onCloseRequested: {
+        if (root.editingLocation) root.cancelEditingLocation()
+        else root.close()
+      }
+      onReturnRequested: {
+        if (!root.editingLocation) root.startEditingLocation()
+        else root.commitLocation()
+      }
+      onTabRequested: function(direction) {
+        root.switchPanel(direction)
       }
 
-      Column {
-        id: tidesColumn
-        width: parent.width
-        spacing: Style.space(12)
+      Flickable {
+        id: tidesScroll
+        anchors.fill: parent
+        contentWidth: width
+        contentHeight: tidesColumn.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: contentHeight > height
 
-        // ---- Header Row ----------------------------------------------------
-        Item {
-          width: parent.width
-          height: Math.max(heroLeft.height, heroRight.height)
+        Column {
+          id: tidesColumn
+          width: tidesScroll.width
+          spacing: Style.space(12)
+
+          // ---- Header Row ----------------------------------------------------
+          Item {
+            width: parent.width
+            height: Math.max(Style.space(36), Math.max(heroLeft.implicitHeight, heroRight.implicitHeight))
 
           Row {
             id: heroLeft
@@ -746,6 +785,9 @@ Panel {
             anchors.leftMargin: Style.space(16)
             anchors.rightMargin: Style.space(20)
 
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+
             readonly property color fg: root.bar ? root.bar.foreground : Color.popups.text
             onFgChanged: requestPaint()
 
@@ -791,6 +833,7 @@ Panel {
 
               var w = width
               var h = height
+              if (w <= 0 || h <= 0) return
               var captionPx = Style.font.caption
               var padTop = captionPx + 8
               var padBottom = captionPx * 2 + 22
@@ -986,4 +1029,5 @@ Panel {
       }
     }
   }
+}
 }

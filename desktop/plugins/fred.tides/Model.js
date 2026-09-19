@@ -25,6 +25,20 @@ function parseLocationFile(raw) {
   }
 }
 
+function formatLocationDisplay(name, region) {
+  var n = String(name || "").trim()
+  if (!n) return "Brunswick, Maine"
+  if (n.indexOf(",") !== -1) return n
+  if (region && String(region).trim()) return n + ", " + String(region).trim()
+  if (n.toLowerCase() === "brunswick") return "Brunswick, Maine"
+  return n
+}
+
+function formatTidesTitle(locationDisplay) {
+  var loc = String(locationDisplay || "").trim()
+  return loc ? "Tides for " + loc : "Tides"
+}
+
 function locationFileContents(name, latitude, longitude, unit) {
   var u = unit === "ft" ? "ft" : "m"
   return JSON.stringify({
@@ -301,6 +315,8 @@ if (typeof module !== "undefined") {
   module.exports = {
     M_TO_FT: M_TO_FT,
     parseLocationFile: parseLocationFile,
+    formatLocationDisplay: formatLocationDisplay,
+    formatTidesTitle: formatTidesTitle,
     locationFileContents: locationFileContents,
     convertHeight: convertHeight,
     formatHeight: formatHeight,
