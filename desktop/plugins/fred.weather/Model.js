@@ -529,13 +529,11 @@ function hourlyPrecipitation(mm, useImperial) {
   return (n < 0.1 ? "<0.1" : n.toFixed(1)) + " mm"
 }
 
-// Generates the rich multi-line bar hover tooltip
-function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays, useImperial, locationName) {
+// Returns array of lines for the hover tooltip (excluding the trailing version line)
+function buildBarHoverLines(currentCondition, dailyForecastDays, useImperial, locationName) {
   var loc = locationName && locationName.trim() ? locationName.trim() : ""
   var title = loc ? ("Weather report for " + loc) : "Weather report"
-  var versionLine = "fred.weather v" + (pluginVersion || "1.0.1")
-
-  if (!currentCondition) return title + "\n\n" + versionLine
+  if (!currentCondition) return [title]
 
   var temp = useImperial ? currentCondition.temp_F : currentCondition.temp_C
   var unit = useImperial ? "°F" : "°C"
@@ -569,6 +567,14 @@ function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays
     lines.push("Tomorrow: " + tDesc + " · " + tHi + "° / " + tLo + "°" +
       (tomorrow.precipitationProbability !== null ? " (" + tomorrow.precipitationProbability + "% rain)" : ""))
   }
+
+  return lines
+}
+
+// Generates the rich multi-line bar hover tooltip
+function buildBarHoverTooltip(pluginVersion, currentCondition, dailyForecastDays, useImperial, locationName) {
+  var lines = buildBarHoverLines(currentCondition, dailyForecastDays, useImperial, locationName)
+  var versionLine = "fred.weather v" + (pluginVersion || "1.0.2")
 
   // Blank line separator above the bottom version line
   lines.push("")
@@ -619,6 +625,7 @@ if (typeof module !== "undefined") {
     hourLabel: hourLabel,
     hourlyTemperature: hourlyTemperature,
     hourlyPrecipitation: hourlyPrecipitation,
+    buildBarHoverLines: buildBarHoverLines,
     buildBarHoverTooltip: buildBarHoverTooltip
   }
 }

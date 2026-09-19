@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.1"
+  property string pluginVersion: "1.0.2"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -33,6 +33,14 @@ Panel {
 
   onScreenNameChanged: {
     if (screenName) WeatherStore.register(screenName, root)
+  }
+
+  function showHover() {
+    if (hostWidget && "hoverOpen" in hostWidget) hostWidget.hoverOpen = true
+  }
+
+  function hideHover() {
+    if (hostWidget && "hoverOpen" in hostWidget) hostWidget.hoverOpen = false
   }
 
   IpcHandler {
@@ -63,6 +71,14 @@ Panel {
     function toggleMonitor(monitor: string): void {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       WeatherStore.toggle(monitor, cur, Hyprland.monitors)
+    }
+    function showHover(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.showHover(monitor, cur, Hyprland.monitors)
+    }
+    function hideHover(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.hideHover(monitor, cur, Hyprland.monitors)
     }
     function refresh(): void { root.refresh() }
     function edit(): void {
@@ -103,6 +119,14 @@ Panel {
     function toggleMonitor(monitor: string): void {
       var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
       WeatherStore.toggle(monitor, cur, Hyprland.monitors)
+    }
+    function showHover(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.showHover(monitor, cur, Hyprland.monitors)
+    }
+    function hideHover(monitor: string): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      WeatherStore.hideHover(monitor, cur, Hyprland.monitors)
     }
     function refresh(): void { root.refresh() }
     function edit(): void {
@@ -265,6 +289,13 @@ Panel {
   readonly property string reportHumidity: current ? (current.humidity + "%") : ""
 
   property string label: "\uf185"
+
+  readonly property var hoverLines: Model.buildBarHoverLines(
+    root.current,
+    root.forecastDays,
+    root.useImperial,
+    root.reportLocation
+  )
 
   readonly property string barHoverTooltip: Model.buildBarHoverTooltip(
     root.pluginVersion,

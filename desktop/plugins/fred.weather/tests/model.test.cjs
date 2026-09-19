@@ -117,20 +117,33 @@ test("formatLocationDisplay resolves city and state/province accurately", () => 
   );
 });
 
+test("buildBarHoverLines generates array of summary lines without version line", () => {
+  const payload = sampleOpenMeteoPayload();
+  const cond = Model.openMeteoCurrentCondition(payload);
+  const days = Model.openMeteoForecastDays(payload, "2030-01-10", 10);
+  const lines = Model.buildBarHoverLines(cond, days, true, "Brunswick, Maine");
+  assert.equal(lines[0], "Weather report for Brunswick, Maine");
+  assert.equal(lines[1], "Clear Sky · 72°F (H: 75° / L: 57°)");
+  assert.equal(lines[2], "Feels like: 71°F · Humidity: 55% · Wind: 7 mph NW");
+  assert.equal(lines[3], "Precipitation chance today: 10%");
+  assert.ok(lines[4].startsWith("Tomorrow:"));
+  assert.equal(lines.length, 5);
+});
+
 test("buildBarHoverTooltip generates multi-line summary with location header and version at bottom", () => {
   const payload = sampleOpenMeteoPayload();
   const cond = Model.openMeteoCurrentCondition(payload);
   const days = Model.openMeteoForecastDays(payload, "2030-01-10", 10);
-  const tooltip = Model.buildBarHoverTooltip("1.0.1", cond, days, true, "Brunswick, Maine");
+  const tooltip = Model.buildBarHoverTooltip("1.0.2", cond, days, true, "Brunswick, Maine");
   assert.ok(tooltip.startsWith("Weather report for Brunswick, Maine\n"));
-  assert.ok(tooltip.endsWith("\n\nfred.weather v1.0.1"));
+  assert.ok(tooltip.endsWith("\n\nfred.weather v1.0.2"));
   assert.ok(tooltip.includes("Clear Sky · 72°F"));
   assert.ok(tooltip.includes("Wind: 7 mph NW"));
   assert.ok(tooltip.includes("Tomorrow:"));
 
   // Verify empty condition fallback still produces header and version separated by blank line
-  const emptyTooltip = Model.buildBarHoverTooltip("1.0.1", null, [], true, "Brunswick, Maine");
-  assert.equal(emptyTooltip, "Weather report for Brunswick, Maine\n\nfred.weather v1.0.1");
+  const emptyTooltip = Model.buildBarHoverTooltip("1.0.2", null, [], true, "Brunswick, Maine");
+  assert.equal(emptyTooltip, "Weather report for Brunswick, Maine\n\nfred.weather v1.0.2");
 });
 
 test("Network curlCommand enforces deadlines, security flags and max bytes", () => {

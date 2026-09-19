@@ -23,5 +23,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
 | **Initial Implementation & Focus Isolation** | `v1.0.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Designed multi-monitor focus-isolated weather panel with 48h timeline curve, 10-day forecast, Font Awesome Sun glyph (`\uf185`), hover tooltip briefing, and closed-environment security baseline. |
+| **Location Header & Tooltip Reordering** | `v1.0.1` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Added city/state location formatting and reordered tooltip lines with version at bottom separated by blank line. |
+| **Custom Hover Popup, IPC Control & Preview Assets** | `v1.0.2` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Implemented custom `PopupWindow` in `BarWidget.qml` with styled dimmed caption version footer, programmatic `showHover`/`hideHover` IPC methods, and HP monitor preview screenshot composite. |
 
 Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).

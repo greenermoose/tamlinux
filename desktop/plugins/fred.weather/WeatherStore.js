@@ -29,18 +29,37 @@ function resolveTargetPanel(monitorName, fallbackScreenName, hyprlandMonitors) {
       }
     }
 
-    // 2. Match by Hyprland monitor description/model (e.g. "hp", "dell", "msi")
+    // 2. Direct match on registered panel screen properties
+    for (var pKey in panels) {
+      var p = panels[pKey]
+      if (p) {
+        var win = p.anchorItem && p.anchorItem.QsWindow ? p.anchorItem.QsWindow.window : null
+        var scr = (win && win.screen) ? win.screen : (p.bar && p.bar.screen ? p.bar.screen : null)
+        if (scr) {
+          var sModel = String(scr.model || "").toLowerCase()
+          var sName = String(scr.name || "").toLowerCase()
+          var sMake = String(scr.manufacturer || "").toLowerCase()
+          if (sModel.indexOf(mon) !== -1 || sName.indexOf(mon) !== -1 || sMake.indexOf(mon) !== -1) {
+            return p
+          }
+        }
+      }
+    }
+
+    // 3. Match by screen list or Hyprland monitor description/model (e.g. "hp", "dell", "msi")
     if (hyprlandMonitors) {
-      var count = hyprlandMonitors.length || (typeof hyprlandMonitors.count === "number" ? hyprlandMonitors.count : 0)
+      var list = Array.isArray(hyprlandMonitors) ? hyprlandMonitors : (hyprlandMonitors.values || [])
+      var count = list.length || (typeof hyprlandMonitors.count === "number" ? hyprlandMonitors.count : 0)
       for (var i = 0; i < count; i++) {
-        var hm = hyprlandMonitors[i] || (typeof hyprlandMonitors.get === "function" ? hyprlandMonitors.get(i) : null)
+        var hm = list[i] || (typeof hyprlandMonitors.get === "function" ? hyprlandMonitors.get(i) : null)
         if (!hm) continue
         var name = String(hm.name || "").toLowerCase()
         var desc = String(hm.description || "").toLowerCase()
         var model = String(hm.model || "").toLowerCase()
-        if (name.indexOf(mon) !== -1 || desc.indexOf(mon) !== -1 || model.indexOf(mon) !== -1) {
-          for (var pKey in panels) {
-            if (pKey.toLowerCase() === name) return panels[pKey]
+        var mfr = String(hm.manufacturer || "").toLowerCase()
+        if (name.indexOf(mon) !== -1 || desc.indexOf(mon) !== -1 || model.indexOf(mon) !== -1 || mfr.indexOf(mon) !== -1) {
+          for (var pk in panels) {
+            if (pk.toLowerCase() === name) return panels[pk]
           }
         }
       }
@@ -78,6 +97,16 @@ function close(monitorName, fallbackScreenName, hyprlandMonitors) {
   if (p && typeof p.close === "function") p.close()
 }
 
+function showHover(monitorName, fallbackScreenName, hyprlandMonitors) {
+  var p = resolveTargetPanel(monitorName, fallbackScreenName, hyprlandMonitors)
+  if (p && typeof p.showHover === "function") p.showHover()
+}
+
+function hideHover(monitorName, fallbackScreenName, hyprlandMonitors) {
+  var p = resolveTargetPanel(monitorName, fallbackScreenName, hyprlandMonitors)
+  if (p && typeof p.hideHover === "function") p.hideHover()
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     panels: panels,
@@ -87,6 +116,8 @@ if (typeof module !== "undefined") {
     resolveTargetPanel: resolveTargetPanel,
     toggle: toggle,
     open: open,
-    close: close
+    close: close,
+    showHover: showHover,
+    hideHover: hideHover
   }
 }

@@ -39,3 +39,26 @@ This document records the exact prompts, tools, and models used during the devel
 - Bound `reportLocation` in `Panel.qml` to `Model.formatLocationDisplay(configuredLocation, areaInfo, wttrLocation)`.
 - Bumped version to `1.0.1` across `manifest.json`, `BarWidget.qml`, `Panel.qml`, `README.md`, and unit tests.
 
+---
+
+## Session 2026-09-18: Custom Hover Popup Styling, IPC Control & Version 1.0.2
+
+- **Primary Tool:** Antigravity CLI (`agy 1.2.6`)
+- **Model:** Gemini 3.8 Flash (High)
+- **Role:** QML popup engineering, IPC architecture, visual asset capture, and release management.
+
+### Guiding Prompts
+> "Use the hp monitor for screen capture. Add a screen capture of the weather widget for the repo. Show bar, hover, and opened panel. Ask if you have questions."
+>
+> "Can't you programmatically control the plugin to display hover or panel? Do you have to fake moving a cursor over it?"
+>
+> "Keep going."
+
+### Key Technical Outputs
+- Implemented custom `PopupWindow` with `BorderSurface`, `Column`, and `Repeater` in `BarWidget.qml` to display styled hover lines with toned-down caption size and dimmed opacity (`0.45`) version footer separated by blank spacing, matching the design aesthetic of `fred.clock`.
+- Factored `buildBarHoverLines` in `Model.js` to return pure content lines separate from the styled version footer.
+- Added `showHover` and `hideHover` programmatic IPC entry points in `Panel.qml` and `WeatherStore.js` across both `fred.weather` and `omarchy.weather` namespaces.
+- Enhanced monitor matching in `WeatherStore.js` to inspect monitor name, model, make, and descriptions across registered panels and Hyprland monitors.
+- Captured high-resolution screenshots on the HP monitor (`HDMI-A-1`) showing the bar widget, active hover popup, and expanded focus-isolated weather panel, composited cleanly into `assets/screenshot.png` and `preview.png`.
+- Bumped version to `1.0.2` across `manifest.json`, `BarWidget.qml`, `Panel.qml`, `Model.js`, `README.md`, and unit tests (`tests/model.test.cjs`).
+
