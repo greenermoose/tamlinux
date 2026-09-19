@@ -1,0 +1,984 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
+import qs.Commons
+import qs.Ui
+import "Model.js" as Model
+import "Network.js" as Network
+import "TidesStore.js" as TidesStore
+
+Panel {
+  id: root
+  moduleName: "fred.tides"
+  ipcTarget: "fred.tides"
+  manageIpc: false
+
+  property var anchorItem: null
+  property bool openedFromHotkey: false
+  property string pluginVersion: "1.0.0"
+  readonly property color foreground: Color.popups.text
+  readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+
+  property var hostWidget: null
+  readonly property var barIdentity: hostWidget || root
+
+  readonly property string screenName: {
+    if (panel && panel.screen && panel.screen.name) return String(panel.screen.name)
+    if (anchorItem && anchorItem.QsWindow && anchorItem.QsWindow.window && anchorItem.QsWindow.window.screen)
+      return String(anchorItem.QsWindow.window.screen.name || "")
+    if (root.bar && root.bar.screen && root.bar.screen.name) return String(root.bar.screen.name)
+    return ""
+  }
+
+  onScreenNameChanged: {
+    if (screenName) TidesStore.register(screenName, root)
+  }
+
+  function open() {
+    openedFromHotkey = false
+    setCenterHoverRevealSuppressed(false)
+    root.controller.show()
+    weatherLocationFile.reload()
+    tidesLocationFile.reload()
+    root.refresh()
+  }
+
+  function openFromHotkey() {
+    openedFromHotkey = true
+    root.controller.show()
+    weatherLocationFile.reload()
+    tidesLocationFile.reload()
+    root.refresh()
+    Qt.callLater(function() {
+      if (root.opened) setCenterHoverRevealSuppressed(true)
+    })
+  }
+
+  function close() {
+    setCenterHoverRevealSuppressed(false)
+    if (root.editingLocation) root.cancelEditingLocation()
+    root.controller.hide()
+  }
+
+  function toggle() {
+    if (root.opened) root.close()
+    else root.openFromHotkey()
+  }
+
+  function switchPanel(direction) {
+    if (root.bar && typeof root.bar.switchPanelFrom === "function")
+      return root.bar.switchPanelFrom(root.barIdentity, direction)
+    return false
+  }
+
+  function setCenterHoverRevealSuppressed(value) {
+    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
+      root.bar.centerHoverRevealSuppressed = value
+  }
+
+  IpcHandler {
+    target: "fred.tides"
+
+    function open(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.open("", cur, Hyprland.monitors)
+    }
+    function close(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.close("", cur, Hyprland.monitors)
+    }
+    function show(): void { open() }
+    function hide(): void { close() }
+    function toggle(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.toggle("", cur, Hyprland.monitors)
+    }
+    function refresh(): void { TidesStore.refreshAll(root) }
+  }
+
+  IpcHandler {
+    target: "io.github.woogy7.tides"
+
+    function open(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.open("", cur, Hyprland.monitors)
+    }
+    function close(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.close("", cur, Hyprland.monitors)
+    }
+    function toggle(): void {
+      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+      TidesStore.toggle("", cur, Hyprland.monitors)
+    }
+    function refresh(): void { TidesStore.refreshAll(root) }
+  }
+
+  // --- Reports & Time Tracking ---------------------------------------------
+  property var marineReport: null
+  property int marineRetries: 0
+  property var now: new Date()
+
+  Timer {
+    interval: 30 * 1000
+    running: true
+    repeat: true
+    onTriggered: root.now = new Date()
+  }
+
+  // --- Location Management -------------------------------------------------
+  readonly property string tidesLocationPath: Quickshell.env("HOME") + "/.local/state/omarchy/settings/tides.json"
+  readonly property string cacheFilePath: Quickshell.env("HOME") + "/.cache/fred.tides/cache.json"
+
+  property var weatherLocationState: ({ name: "", latitude: null, longitude: null, unit: "m" })
+  property var tidesLocationState: ({ name: "", latitude: null, longitude: null, unit: "m" })
+
+  readonly property bool hasOwnLocation: tidesLocationState.latitude !== null && tidesLocationState.longitude !== null
+  readonly property var configuredLocationState: hasOwnLocation ? tidesLocationState : weatherLocationState
+  readonly property bool hasCoordinates: configuredLocationState.latitude !== null && configuredLocationState.longitude !== null
+  readonly property string activeUnit: configuredLocationState.unit || "m"
+  readonly property string locationKey: hasCoordinates ? configuredLocationState.latitude + "," + configuredLocationState.longitude : ""
+
+  onLocationKeyChanged: {
+    marineRetries = 0
+    marineProc.running = false
+    Qt.callLater(refresh)
+  }
+
+  property FileView weatherLocationFile: FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.weatherLocationState = Model.parseLocationFile(text())
+    onLoadFailed: root.weatherLocationState = Model.parseLocationFile("")
+  }
+
+  property FileView tidesLocationFile: FileView {
+    path: root.tidesLocationPath
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.tidesLocationState = Model.parseLocationFile(text())
+    onLoadFailed: root.tidesLocationState = Model.parseLocationFile("")
+  }
+
+  property FileView cacheFile: FileView {
+    path: root.cacheFilePath
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      var cached = Model.parseCache(text())
+      if (cached && cached.report && !root.marineReport) {
+        root.marineReport = cached.report
+      }
+    }
+  }
+
+  Timer {
+    interval: 1500
+    running: true
+    onTriggered: {
+      weatherLocationFile.reload()
+      tidesLocationFile.reload()
+      cacheFile.reload()
+    }
+  }
+
+  // --- Location Search & Geocoding -----------------------------------------
+  property bool editingLocation: false
+  property bool savingLocation: false
+  property var locationSuggestions: []
+  property int suggestionIndex: 0
+  property string geocodePendingQuery: ""
+  property string geocodeActiveQuery: ""
+
+  function startEditingLocation() {
+    editingLocation = true
+    savingLocation = false
+    locationSuggestions = []
+    suggestionIndex = 0
+    Qt.callLater(function() {
+      locationField.text = root.configuredLocationState.name
+      locationField.selectAll()
+      locationField.forceActiveFocus()
+    })
+  }
+
+  function cancelEditingLocation() {
+    editingLocation = false
+    savingLocation = false
+    locationSuggestions = []
+    geocodeDebounce.stop()
+    Qt.callLater(function() { if (panelKeyCatcher) panelKeyCatcher.forceActiveFocus() })
+  }
+
+  function commitLocation() {
+    var text = locationField.text.trim()
+    if (text === "") {
+      clearLocation()
+      return
+    }
+    var choices = locationSuggestions || []
+    var index = Math.max(0, Math.min(suggestionIndex, choices.length - 1))
+    if (choices[index]) pickSuggestion(choices[index])
+  }
+
+  function pickSuggestion(suggestion) {
+    if (!suggestion) return
+    savingLocation = true
+    persistLocation(suggestion.name, suggestion.latitude, suggestion.longitude, root.activeUnit)
+  }
+
+  function clearLocation() {
+    locationSaveProc.command = ["rm", "-f", root.tidesLocationPath]
+    locationSaveProc.running = true
+    cancelEditingLocation()
+  }
+
+  function toggleUnit() {
+    var nextUnit = root.activeUnit === "m" ? "ft" : "m"
+    persistLocation(root.configuredLocationState.name, root.configuredLocationState.latitude, root.configuredLocationState.longitude, nextUnit)
+  }
+
+  function persistLocation(name, latitude, longitude, unit) {
+    locationSaveProc.command = ["bash", "-c",
+      "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "_",
+      root.tidesLocationPath, Model.locationFileContents(name, latitude, longitude, unit)]
+    locationSaveProc.running = true
+  }
+
+  Process {
+    id: locationSaveProc
+    environment: Network.closedEnv
+    onExited: function(exitCode) {
+      tidesLocationFile.reload()
+      if (root.savingLocation) root.cancelEditingLocation()
+    }
+  }
+
+  function requestGeocode() {
+    var query = locationField.text.trim()
+    if (query.length < 2) {
+      locationSuggestions = []
+      return
+    }
+    geocodePendingQuery = query
+    if (!geocodeProc.running) startGeocode()
+  }
+
+  function startGeocode() {
+    geocodeActiveQuery = geocodePendingQuery
+    var url = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(geocodeActiveQuery) + "&count=5&language=en&format=json"
+    geocodeProc.command = Network.curlCommand(url, 5, Network.responseLimits.geocode)
+    geocodeProc.running = true
+  }
+
+  Process {
+    id: geocodeProc
+    environment: Network.closedEnv
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var validated = Network.responseText(text, 0, 0, Network.responseLimits.geocode)
+          root.locationSuggestions = root.editingLocation ? Model.parseGeocodingResults(validated) : []
+        } catch (e) {
+          root.locationSuggestions = []
+        }
+        root.suggestionIndex = 0
+        if (root.geocodePendingQuery !== root.geocodeActiveQuery) Qt.callLater(root.startGeocode)
+      }
+    }
+  }
+
+  Timer {
+    id: geocodeDebounce
+    interval: 300
+    onTriggered: root.requestGeocode()
+  }
+
+  // --- Derived Tide Calculations -------------------------------------------
+  readonly property var events: Model.tideEvents(marineReport)
+  readonly property var upcoming: Model.upcomingEvents(events, now, 4)
+  readonly property var nextEvent: upcoming.length > 0 ? upcoming[0] : null
+  readonly property var dayTides: Model.dayTides(events, now)
+  readonly property var currentHeight: Model.heightAt(marineReport, now)
+  readonly property string currentHeightFormatted: Model.formatHeight(currentHeight, activeUnit)
+  readonly property string currentTrend: nextEvent ? (nextEvent.high ? "Rising" : "Falling") : ""
+  readonly property string todayRangeFormatted: Model.todayRange(events, now, activeUnit)
+
+  readonly property string waveIcon: "\udb83\ude08" // nf-md-waves
+  readonly property string label: nextEvent ? waveIcon : ""
+
+  readonly property var hoverLines: {
+    var loc = configuredLocationState.name !== "" ? configuredLocationState.name : "Tides"
+    var lines = [loc]
+    if (currentHeight !== null && currentTrend !== "") {
+      lines.push("Sea Level: " + currentHeightFormatted + " (" + currentTrend + ")")
+    }
+    if (nextEvent) {
+      var nextType = nextEvent.high ? "High Tide" : "Low Tide"
+      var nextH = Model.formatHeight(nextEvent.height, activeUnit)
+      var until = Model.untilText(now, nextEvent.time)
+      lines.push("Next: " + nextType + " " + nextH + " in " + until)
+    }
+    if (todayRangeFormatted !== "") {
+      lines.push("Today's Range: " + todayRangeFormatted)
+    }
+    return lines
+  }
+
+  readonly property string statusSummary: {
+    var parts = []
+    if (configuredLocationState.name) parts.push(configuredLocationState.name)
+    if (currentHeightFormatted) parts.push("Sea Level: " + currentHeightFormatted + " (" + currentTrend + ")")
+    if (nextEvent) {
+      var nType = nextEvent.high ? "High Tide" : "Low Tide"
+      var nH = Model.formatHeight(nextEvent.height, activeUnit)
+      var u = Model.untilText(now, nextEvent.time)
+      parts.push("Next: " + nType + " " + nH + " (" + u + ")")
+    }
+    return parts.join("\n")
+  }
+
+  // --- Scrubbing State -----------------------------------------------------
+  property var scrubTime: null
+  readonly property var cursorTime: scrubTime || now
+  readonly property bool scrubbing: scrubTime !== null
+
+  function refresh() {
+    if (!hasCoordinates) return
+    marineRetries = 0
+    startFetch()
+  }
+
+  function startFetch() {
+    if (marineProc.running || !hasCoordinates) return
+    var provider = Model.Providers["open-meteo"]
+    var url = provider.buildQueryUrl(configuredLocationState.latitude, configuredLocationState.longitude)
+    marineProc.command = Network.curlCommand(url, 10, Network.responseLimits.tides)
+    marineProc.running = true
+  }
+
+  function scheduleRetry() {
+    if (marineRetries >= 3) return
+    marineRetries++
+    retryTimer.restart()
+  }
+
+  Timer {
+    id: retryTimer
+    interval: 2500
+    onTriggered: root.startFetch()
+  }
+
+  function saveCache(report) {
+    if (!report) return
+    var json = Model.serializeCache(report, configuredLocationState, new Date())
+    cacheSaveProc.command = ["bash", "-c",
+      "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "_",
+      root.cacheFilePath, json]
+    cacheSaveProc.running = true
+  }
+
+  Process {
+    id: cacheSaveProc
+    environment: Network.closedEnv
+  }
+
+  Process {
+    id: marineProc
+    environment: Network.closedEnv
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var validated = Network.responseText(text, 0, 0, Network.responseLimits.tides)
+          var parsed = Model.Providers["open-meteo"].parseResponse(validated)
+          root.marineReport = parsed
+          root.marineRetries = 0
+          root.saveCache(parsed)
+          TidesStore.broadcastReport(root.screenName, parsed, new Date().toISOString())
+        } catch (e) {
+          root.scheduleRetry()
+        }
+      }
+    }
+  }
+
+  function applyReport(report, updatedAt) {
+    if (report && report.hourly) {
+      root.marineReport = report
+      root.marineRetries = 0
+    }
+  }
+
+  // Refetch every 3 hours
+  Timer {
+    interval: 3 * 60 * 60 * 1000
+    running: true
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: root.refresh()
+  }
+
+  // --- Multi-Monitor Focus-Isolated Window ----------------------------------
+  TidesPanelWindow {
+    id: panel
+    anchorItem: root.anchorItem
+    bar: root.bar
+    owner: root
+    open: root.opened
+    contentWidth: panel.fittedContentWidth(Style.space(520))
+    contentHeight: panel.fittedContentHeight(tidesColumn.implicitHeight + Style.space(24), Style.space(480))
+    focusTarget: panelKeyCatcher
+
+    PanelKeyCatcher {
+      id: panelKeyCatcher
+      focus: true
+
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+          if (root.editingLocation) root.cancelEditingLocation()
+          else root.close()
+          event.accepted = true
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+          if (!root.editingLocation) root.startEditingLocation()
+          else root.commitLocation()
+          event.accepted = true
+        } else if (event.key === Qt.Key_Tab) {
+          root.switchPanel(event.modifiers & Qt.ShiftModifier ? -1 : 1)
+          event.accepted = true
+        }
+      }
+
+      Column {
+        id: tidesColumn
+        width: parent.width
+        spacing: Style.space(12)
+
+        // ---- Header Row ----------------------------------------------------
+        Item {
+          width: parent.width
+          height: Math.max(heroLeft.height, heroRight.height)
+
+          Row {
+            id: heroLeft
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(16)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(10)
+
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.waveIcon
+              color: root.bar ? root.bar.foreground : Color.popups.text
+              font.family: root.fontFamily
+              font.pixelSize: Style.space(28)
+            }
+
+            Item {
+              anchors.verticalCenter: parent.verticalCenter
+              visible: !root.editingLocation
+              width: locationLabel.implicitWidth
+              height: locationLabel.implicitHeight
+
+              Text {
+                id: locationLabel
+                text: root.configuredLocationState.name !== ""
+                  ? root.configuredLocationState.name.toUpperCase()
+                  : (root.hasCoordinates ? "COASTAL TIDES" : "SET LOCATION")
+                color: locationHover.hovered ? (root.bar ? root.bar.foreground : Color.popups.text) : Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.4)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                font.letterSpacing: 1
+              }
+
+              TapHandler {
+                onTapped: root.startEditingLocation()
+              }
+              HoverHandler {
+                id: locationHover
+                cursorShape: Qt.PointingHandCursor
+              }
+            }
+
+            // Unit toggle button
+            Rectangle {
+              anchors.verticalCenter: parent.verticalCenter
+              visible: !root.editingLocation && root.hasCoordinates
+              width: Style.space(26)
+              height: Style.space(20)
+              radius: Math.min(4, Style.cornerRadius)
+              color: unitHover.hovered ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : "transparent"
+              border.color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.8)
+              border.width: 1
+
+              Text {
+                anchors.centerIn: parent
+                text: root.activeUnit.toUpperCase()
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                color: root.bar ? root.bar.foreground : Color.popups.text
+                opacity: 0.8
+              }
+
+              TapHandler {
+                onTapped: root.toggleUnit()
+              }
+              HoverHandler {
+                id: unitHover
+                cursorShape: Qt.PointingHandCursor
+              }
+            }
+
+            // Search textfield
+            Row {
+              visible: root.editingLocation
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(6)
+
+              TextField {
+                id: locationField
+                width: Style.space(190)
+                enabled: !root.savingLocation
+                placeholderText: "Search beach or harbor"
+                foreground: root.bar ? root.bar.foreground : Color.popups.text
+                font.family: root.fontFamily
+
+                onTextChanged: if (root.editingLocation && !root.savingLocation) geocodeDebounce.restart()
+
+                Keys.onPressed: function(event) {
+                  if (event.key === Qt.Key_Escape) {
+                    root.cancelEditingLocation()
+                    event.accepted = true
+                  } else if (event.key === Qt.Key_Down) {
+                    if (root.suggestionIndex < root.locationSuggestions.length - 1) root.suggestionIndex++
+                    event.accepted = true
+                  } else if (event.key === Qt.Key_Up) {
+                    if (root.suggestionIndex > 0) root.suggestionIndex--
+                    event.accepted = true
+                  } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    root.commitLocation()
+                    event.accepted = true
+                  }
+                }
+              }
+
+              Rectangle {
+                width: Style.space(18)
+                height: Style.space(18)
+                anchors.verticalCenter: parent.verticalCenter
+                radius: Math.min(4, Style.cornerRadius)
+                color: !root.savingLocation && clearLocationArea.containsMouse ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : "transparent"
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.savingLocation ? "\udb82\udf96" : "✕"
+                  font.family: root.fontFamily
+                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.4)
+                  font.pixelSize: Style.font.bodySmall
+
+                  RotationAnimator on rotation {
+                    running: root.savingLocation
+                    from: 0; to: 360
+                    duration: 800
+                    loops: Animation.Infinite
+                  }
+                }
+
+                MouseArea {
+                  id: clearLocationArea
+                  anchors.fill: parent
+                  enabled: !root.savingLocation
+                  hoverEnabled: true
+                  cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                  onClicked: root.clearLocation()
+                }
+              }
+            }
+          }
+
+          Column {
+            id: heroRight
+            width: tideStats.implicitWidth
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(20)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(12)
+
+            Row {
+              id: tideStats
+              visible: !!root.nextEvent
+              spacing: Style.space(24)
+
+              Column {
+                spacing: Style.space(3)
+                Text {
+                  text: "NOW"
+                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.letterSpacing: 1
+                }
+                Text {
+                  text: root.currentHeightFormatted
+                  color: root.bar ? root.bar.foreground : Color.popups.text
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.title
+                }
+              }
+
+              Column {
+                spacing: Style.space(3)
+                Text {
+                  text: "TIDE"
+                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.letterSpacing: 1
+                }
+                Text {
+                  text: root.currentTrend
+                  color: root.bar ? root.bar.foreground : Color.popups.text
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.title
+                }
+              }
+
+              Column {
+                spacing: Style.space(3)
+                Text {
+                  text: "RANGE"
+                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.letterSpacing: 1
+                }
+                Text {
+                  text: root.todayRangeFormatted
+                  color: root.bar ? root.bar.foreground : Color.popups.text
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.title
+                }
+              }
+            }
+          }
+        }
+
+        // ---- Geocoding Suggestions -----------------------------------------
+        Column {
+          visible: root.editingLocation && !root.savingLocation && root.locationSuggestions.length > 0
+          width: parent.width
+          spacing: 0
+
+          Repeater {
+            model: root.locationSuggestions
+
+            Rectangle {
+              required property var modelData
+              required property int index
+              width: parent.width
+              height: suggestionRow.implicitHeight + Style.space(10)
+              radius: Style.cornerRadius
+              color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : "transparent"
+
+              Row {
+                id: suggestionRow
+                anchors.left: parent.left
+                anchors.leftMargin: Style.space(16)
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Style.space(8)
+
+                Text {
+                  text: modelData.name
+                  color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : (root.bar ? root.bar.foreground : Color.popups.text)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                }
+                Text {
+                  visible: text !== ""
+                  text: modelData.description
+                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onPositionChanged: root.suggestionIndex = index
+                onClicked: root.pickSuggestion(modelData)
+              }
+            }
+          }
+        }
+
+        Text {
+          visible: !root.nextEvent
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: root.hasCoordinates ? "Fetching tide forecast…" : "Click the location to set one"
+          color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          font.italic: true
+        }
+
+        // ---- Interactive 24-Hour Scrubbable Curve --------------------------
+        Item {
+          visible: !!root.marineReport && !!root.nextEvent
+          width: parent.width
+          height: Style.space(136)
+
+          Canvas {
+            id: tideCurve
+            anchors.fill: parent
+            anchors.leftMargin: Style.space(16)
+            anchors.rightMargin: Style.space(20)
+
+            readonly property color fg: root.bar ? root.bar.foreground : Color.popups.text
+            onFgChanged: requestPaint()
+
+            readonly property real windowStartMs: root.now.getTime() - 6 * 3600 * 1000
+            readonly property real windowMs: 24 * 3600 * 1000
+
+            function timeAtX(px) {
+              var frac = Math.max(0, Math.min(1, px / width))
+              var tm = windowStartMs + frac * windowMs
+
+              var snapMs = 15 * 60 * 1000
+              var best = null
+              var targets = [root.now.getTime()]
+              for (var i = 0; i < root.events.length; i++) targets.push(root.events[i].time.getTime())
+              for (i = 0; i < targets.length; i++) {
+                var d = Math.abs(targets[i] - tm)
+                if (d <= snapMs && (best === null || d < Math.abs(best - tm))) best = targets[i]
+              }
+              return new Date(best !== null ? best : tm)
+            }
+
+            Connections {
+              target: root
+              function onMarineReportChanged() { tideCurve.requestPaint() }
+              function onNowChanged() { tideCurve.requestPaint() }
+              function onScrubTimeChanged() { tideCurve.requestPaint() }
+              function onActiveUnitChanged() { tideCurve.requestPaint() }
+            }
+
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.SizeHorCursor
+              onPositionChanged: function(mouse) { root.scrubTime = tideCurve.timeAtX(mouse.x) }
+              onPressed: function(mouse) { root.scrubTime = tideCurve.timeAtX(mouse.x) }
+              onExited: root.scrubTime = null
+            }
+
+            onPaint: {
+              var ctx = getContext("2d")
+              ctx.reset()
+              if (!root.marineReport) return
+
+              var w = width
+              var h = height
+              var captionPx = Style.font.caption
+              var padTop = captionPx + 8
+              var padBottom = captionPx * 2 + 22
+              var startMs = windowStartMs
+              var endMs = startMs + windowMs
+
+              // Sample the curve every 10 minutes
+              var pts = []
+              var minH = Infinity
+              var maxH = -Infinity
+              for (var t = startMs; t <= endMs; t += 10 * 60 * 1000) {
+                var v = Model.smoothHeightAt(root.marineReport, t)
+                if (v === null) continue
+                pts.push({ t: t, v: v })
+                if (v < minH) minH = v
+                if (v > maxH) maxH = v
+              }
+              if (pts.length < 2) return
+              var span = Math.max(0.5, maxH - minH)
+              minH -= span * 0.08
+              maxH += span * 0.08
+              span = maxH - minH
+
+              function xFor(timeMs) {
+                return ((timeMs - startMs) / windowMs) * w
+              }
+              function yFor(val) {
+                return padTop + (1 - (val - minH) / span) * (h - padTop - padBottom)
+              }
+
+              // Subtle background area fill
+              ctx.beginPath()
+              ctx.moveTo(xFor(pts[0].t), h - padBottom)
+              for (var i = 0; i < pts.length; i++) ctx.lineTo(xFor(pts[i].t), yFor(pts[i].v))
+              ctx.lineTo(xFor(pts[pts.length - 1].t), h - padBottom)
+              ctx.closePath()
+
+              var grad = ctx.createLinearGradient(0, padTop, 0, h - padBottom)
+              var baseColor = Qt.color(Color.accent || fg)
+              grad.addColorStop(0, Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.25))
+              grad.addColorStop(1, Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.02))
+              ctx.fillStyle = grad
+              ctx.fill()
+
+              // Draw tide curve stroke
+              ctx.beginPath()
+              for (i = 0; i < pts.length; i++) {
+                var px = xFor(pts[i].t)
+                var py = yFor(pts[i].v)
+                if (i === 0) ctx.moveTo(px, py)
+                else ctx.lineTo(px, py)
+              }
+              ctx.strokeStyle = baseColor
+              ctx.lineWidth = 2.0
+              ctx.stroke()
+
+              // Grid lines every 6 hours
+              var hourStep = 6 * 3600 * 1000
+              var firstGrid = Math.ceil(startMs / hourStep) * hourStep
+              ctx.strokeStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.12)
+              ctx.lineWidth = 1.0
+              ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.5)
+              ctx.font = captionPx + "px " + root.fontFamily
+              ctx.textAlign = "center"
+
+              for (var gt = firstGrid; gt <= endMs; gt += hourStep) {
+                var gx = xFor(gt)
+                ctx.beginPath()
+                ctx.moveTo(gx, padTop)
+                ctx.lineTo(gx, h - padBottom)
+                ctx.stroke()
+
+                var gd = new Date(gt)
+                ctx.fillText(Model.formatTime(gd), gx, h - padBottom + captionPx + 4)
+              }
+
+              // Cursor indicator
+              var cursorMs = root.cursorTime.getTime()
+              if (cursorMs >= startMs && cursorMs <= endMs) {
+                var cx = xFor(cursorMs)
+                var cv = Model.smoothHeightAt(root.marineReport, cursorMs)
+                if (cv !== null) {
+                  var cy = yFor(cv)
+
+                  // Vertical dashed marker
+                  ctx.strokeStyle = root.scrubbing ? baseColor : Qt.rgba(fg.r, fg.g, fg.b, 0.8)
+                  ctx.lineWidth = 1.5
+                  ctx.beginPath()
+                  ctx.moveTo(cx, padTop)
+                  ctx.lineTo(cx, h - padBottom)
+                  ctx.stroke()
+
+                  // Dot on curve
+                  ctx.beginPath()
+                  ctx.arc(cx, cy, 4.5, 0, Math.PI * 2)
+                  ctx.fillStyle = baseColor
+                  ctx.fill()
+                  ctx.lineWidth = 2.0
+                  ctx.strokeStyle = Color.popups.background
+                  ctx.stroke()
+
+                  // Cursor readout text
+                  var label = Model.formatTime(root.cursorTime) + "  " + Model.formatHeight(cv, root.activeUnit)
+                  if (!root.scrubbing) label = "NOW  " + label
+                  ctx.fillStyle = root.scrubbing ? baseColor : fg
+                  ctx.font = "bold " + captionPx + "px " + root.fontFamily
+                  ctx.textAlign = cx > w * 0.75 ? "right" : (cx < w * 0.25 ? "left" : "center")
+                  ctx.fillText(label, cx, padTop - 2)
+                }
+              }
+            }
+          }
+        }
+
+        // ---- Chronological Daily Tides Cards --------------------------------
+        Row {
+          visible: !!root.nextEvent && root.dayTides.events.length > 0
+          width: parent.width
+          spacing: Style.space(8)
+
+          Item {
+            width: Style.space(16)
+            height: 1
+          }
+
+          Repeater {
+            model: root.dayTides.events
+
+            Rectangle {
+              required property var modelData
+              required property int index
+              width: Style.space(100)
+              height: Style.space(52)
+              radius: Style.cornerRadius
+              color: modelData.time.getTime() > root.now.getTime()
+                ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent)
+                : "transparent"
+              border.color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.8)
+              border.width: 1
+              opacity: modelData.time.getTime() > root.now.getTime() ? 1.0 : 0.45
+
+              Column {
+                anchors.centerIn: parent
+                spacing: Style.space(2)
+
+                Row {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  spacing: Style.space(4)
+
+                  Text {
+                    text: modelData.high ? "HIGH" : "LOW"
+                    color: modelData.high ? (Color.accent || (root.bar ? root.bar.foreground : Color.popups.text)) : Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.3)
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                  }
+
+                  Text {
+                    text: Model.formatTime(modelData.time)
+                    color: root.bar ? root.bar.foreground : Color.popups.text
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                }
+
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: Model.formatHeight(modelData.height, root.activeUnit)
+                  color: root.bar ? root.bar.foreground : Color.popups.text
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  font.bold: true
+                }
+              }
+            }
+          }
+        }
+
+        // ---- Version & Attribution Footer ----------------------------------
+        Item {
+          width: parent.width
+          height: Style.space(18)
+
+          Text {
+            anchors.centerIn: parent
+            text: "fred.tides v" + root.pluginVersion + " • Open-Meteo Marine"
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            color: root.bar ? root.bar.foreground : Color.popups.text
+            opacity: 0.4
+          }
+        }
+      }
+    }
+  }
+}
