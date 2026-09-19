@@ -2,6 +2,8 @@
 
 A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve panel for Omarchy Linux, designed to sit directly adjacent to `fred.weather` on the bar. Displays current sea level height, rising/falling status, today's tidal range, upcoming highs and lows, and a scrubbable Catmull-Rom tidal curve.
 
+![fred.tides — 24-Hour Scrubbable Curve, Range Bar & Daily Tides](assets/screenshot.png)
+
 | Attribute | Detail |
 | :-- | :-- |
 | **Plugin ID** | `fred.tides` |
@@ -95,7 +97,7 @@ Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy
 
 | Version | Status | Highlights |
 | :--- | :--- | :--- |
-| **`v1.0.3`** | Available (`main`) | Switched default font family to `Liberation Mono` so numerals render without a slashed 0, preventing misreading 10 as 18 at small font sizes on cards and timeline timestamps while preserving monospaced tabular alignment. |
+| **`v1.0.3`** | Available (Tagged) | Scoped numeric displays to Liberation Sans tabular font with clean, unslashed open zero to eliminate ambiguity between 0 and 8 or 10 and 18 at small sizes, while preserving system default font for panel and bar widgets. |
 | **`v1.0.2`** | Available (Tagged) | Panel widened to 680px for unconstrained location names; Tide stat placed before Now; redundant Range column removed; unit toggle integrated into boxed indicator next to Now with full name (`meters`/`feet`); monitor-targeted IPC handlers (`openMonitor`, `closeMonitor`, `toggleMonitor`). |
 | **`v1.0.1`** | Available (Tagged) | Visual range bar on tide curve with extrema markers and real-time water level indicator; dynamic 4-card daily tides grid; styled location pill matching `fred.weather`; refined glanceable hover tooltip. |
 | **`v1.0.0`** | Available (Tagged) | Initial multi-monitor focus-isolated tide widget (`WlrLayershell.keyboardFocus: OnDemand`); 24-hour Catmull-Rom tide curve; Open-Meteo Marine API integration; persistent atomic disk caching; closed subshell security baseline. |
