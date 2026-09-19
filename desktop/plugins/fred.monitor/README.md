@@ -2,6 +2,8 @@
 
 Display information, per-display control, multi-monitor alignment, and link reset plugin for [Omarchy Linux](https://omarchy.org) (Hyprland + Quickshell).
 
+![fred.monitor Screenshot](assets/screenshot.png)
+
 ---
 
 ## Overview
