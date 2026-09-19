@@ -91,24 +91,54 @@ function brightnessName(percent) {
   return "Night owl"
 }
 
-function parseDisplays(raw) {
-  var displays = []
+function parseState(raw) {
+  var data = null
   try {
-    displays = raw ? JSON.parse(String(raw)) : []
+    data = raw ? JSON.parse(String(raw)) : null
   } catch (e) {
-    displays = []
+    data = null
   }
-  if (!Array.isArray(displays)) displays = []
-
+  if (!data || typeof data !== "object") {
+    return { focusedMonitor: "", displays: [], enabledDisplayCount: 0 }
+  }
+  var displays = Array.isArray(data.displays) ? data.displays : (Array.isArray(data) ? data : [])
   var count = 0
   for (var i = 0; i < displays.length; i++) {
     if (displays[i] && displays[i].enabled) count++
   }
-
   return {
+    focusedMonitor: data.focusedMonitor || "",
     displays: displays,
     enabledDisplayCount: count
   }
+}
+
+function parseDisplays(raw) {
+  return parseState(raw)
+}
+
+function formatFacts(display) {
+  if (!display) return ""
+  var parts = []
+  if (display.width && display.height) {
+    var rate = display.refreshRate ? Number(display.refreshRate).toFixed(2) : "60.00"
+    parts.push(display.width + "×" + display.height + " @ " + rate + " Hz")
+  }
+  if (display.scale) {
+    var lw = display.logicalWidth || Math.round(display.width / display.scale)
+    var lh = display.logicalHeight || Math.round(display.height / display.scale)
+    parts.push("scale " + display.scale + " → " + lw + "×" + lh + " logical")
+  }
+  parts.push("transform " + (display.transform !== undefined ? display.transform : 0))
+  parts.push("DPMS " + (display.dpmsStatus ? "on" : "off"))
+  parts.push("VRR " + (display.vrr ? "on" : "off"))
+  if (display.workspace) {
+    parts.push("workspace " + display.workspace)
+  }
+  if (display.sizeInches) {
+    parts.push(display.sizeInches)
+  }
+  return parts.join("  ·  ")
 }
 
 function isValidOutputName(name) {
@@ -176,6 +206,8 @@ if (typeof module !== "undefined") {
     availableScales: availableScales,
     brightnessName: brightnessName,
     parseDisplays: parseDisplays,
+    parseState: parseState,
+    formatFacts: formatFacts,
     isValidOutputName: isValidOutputName,
     pickEnv: pickEnv,
     helperPath: helperPath,

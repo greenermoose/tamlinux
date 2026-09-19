@@ -1,52 +1,129 @@
-#!/bin/bash
-set -eu
+#!/usr/bin/env python3
+"""
+fred-monitor-state — Emit enriched monitor facts, geometry, and DDC brightness as JSON.
+Part of fred.monitor (GPL-3.0-or-later).
+Emits a single JSON document: { focusedMonitor: string, displays: [...] }
+"""
 
-# Output format for fred.monitor state:
-# Line 0: focused brightness
-# Line 1: internal monitor name (if any)
-# Line 2: external monitor name (if any)
-# Line 3: internal monitor enabled
-# Line 4: mirror monitor name (if any)
-# Line 5: focused monitor name
-# Line 6: focused monitor scale
-# Line 7: JSON array of displays with {name, enabled, focused, width, height, refreshRate, x, y, scale}
+import json
+import os
+import re
+import subprocess
+import time
 
-monitors_json=$(hyprctl monitors all -j)
-focused_monitor=$(printf '%s\n' "$monitors_json" | jq -r '[.[] | select(.focused == true)][0].name // ""')
+def get_brightness(monitor_name):
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    cache_path = os.path.join(runtime_dir, f"fred-monitor-brightness-{monitor_name}.json")
+    now = time.time()
+    
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r") as f:
+                entry = json.load(f)
+            ttl = 10 if entry.get("available") else 60
+            if now - entry.get("timestamp", 0) < ttl:
+                return entry.get("percent", 0), entry.get("available", False)
+        except Exception:
+            pass
 
-# Focused brightness
-{ omarchy-brightness-display --monitor "$focused_monitor" 2>/dev/null || true; echo; } | head -n 1 || true
+    try:
+        out = subprocess.check_output(
+            ["omarchy-brightness-display", "--monitor", monitor_name],
+            stderr=subprocess.DEVNULL,
+            timeout=2.0
+        ).decode().strip()
+        val = int(out)
+        data = {"percent": val, "available": True, "timestamp": now}
+    except Exception:
+        data = {"percent": 0, "available": False, "timestamp": now}
 
-# Monitor classifications
-printf '%s\n' "$monitors_json" | jq -r '
-  def internal: test("^(eDP|LVDS|DSI)-");
-  ([.[] | select(.name | internal)][0].name // ""),
-  ([.[] | select((.name | internal) | not)][0].name // ""),
-  ([.[] | select((.name | internal) and .disabled != true)][0].name // ""),
-  ([.[] | select(.mirrorOf != "none") | if (.name | internal) then .mirrorOf else .name end][0] // "")
-'
+    try:
+        with open(cache_path, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
 
-# Focused monitor name
-printf '%s\n' "$focused_monitor"
+    return data["percent"], data["available"]
 
-# Focused monitor scale
-focused_scale=$(printf '%s\n' "$monitors_json" | jq -r '[.[] | select(.focused == true)][0].scale // ""')
-printf '%s\n' "$focused_scale"
+def main():
+    try:
+        raw = subprocess.check_output(["hyprctl", "monitors", "all", "-j"]).decode()
+        monitors = json.loads(raw)
+    except Exception:
+        monitors = []
 
-# Enriched displays JSON
-printf '%s\n' "$monitors_json" | jq -c '
-  [.[] | {
-    name,
-    description: (.description // ""),
-    make: (.make // ""),
-    model: (.model // ""),
-    enabled: (.disabled != true),
-    focused: (.focused == true),
-    width: (.width // 1920),
-    height: (.height // 1080),
-    refreshRate: (.refreshRate // 60),
-    x: (.x // 0),
-    y: (.y // 0),
-    scale: (.scale // 1)
-  }]
-'
+    focused_monitor = ""
+    for m in monitors:
+        if m.get("focused"):
+            focused_monitor = m.get("name", "")
+            break
+
+    displays = []
+    for m in monitors:
+        name = m.get("name", "")
+        w = m.get("width", 1920)
+        h = m.get("height", 1080)
+        scale = float(m.get("scale", 1.0))
+        pw = m.get("physicalWidth", 0)
+        ph = m.get("physicalHeight", 0)
+        enabled = not m.get("disabled", False)
+
+        # Extract refresh rates for current resolution
+        rates = []
+        prefix = f"{w}x{h}@"
+        for mode in m.get("availableModes", []):
+            if mode.startswith(prefix):
+                hz_match = re.search(r"@([0-9.]+)Hz", mode)
+                if hz_match:
+                    hz = float(hz_match.group(1))
+                    if not any(abs(hz - r) < 0.02 for r in rates):
+                        rates.append(hz)
+        rates.sort(reverse=True)
+
+        diag = round(((pw / 25.4)**2 + (ph / 25.4)**2)**0.5, 1) if (pw and ph) else 0
+        w_in = round(pw / 25.4, 1) if pw else 0
+        h_in = round(ph / 25.4, 1) if ph else 0
+
+        # Query brightness only if enabled
+        if enabled:
+            brightness, brightness_avail = get_brightness(name)
+        else:
+            brightness, brightness_avail = 0, False
+
+        displays.append({
+            "id": m.get("id", 0),
+            "name": name,
+            "description": m.get("description", ""),
+            "make": m.get("make", ""),
+            "model": m.get("model", ""),
+            "serial": m.get("serial", ""),
+            "enabled": enabled,
+            "focused": bool(m.get("focused", False)),
+            "width": w,
+            "height": h,
+            "physicalWidth": pw,
+            "physicalHeight": ph,
+            "sizeInches": f"{w_in}\"×{h_in}\" ({diag}\" diag)" if diag else "",
+            "refreshRate": m.get("refreshRate", 60.0),
+            "availableRates": rates,
+            "x": m.get("x", 0),
+            "y": m.get("y", 0),
+            "scale": scale,
+            "logicalWidth": int(round(w / scale)) if scale > 0 else w,
+            "logicalHeight": int(round(h / scale)) if scale > 0 else h,
+            "transform": m.get("transform", 0),
+            "dpmsStatus": bool(m.get("dpmsStatus", True)),
+            "vrr": bool(m.get("vrr", False)),
+            "workspace": str(m.get("activeWorkspace", {}).get("name", "")),
+            "brightness": brightness,
+            "brightnessAvailable": brightness_avail
+        })
+
+    out = {
+        "focusedMonitor": focused_monitor,
+        "displays": displays
+    }
+    print(json.dumps(out))
+
+if __name__ == "__main__":
+    main()

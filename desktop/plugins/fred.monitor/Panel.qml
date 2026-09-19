@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.Ui
@@ -12,174 +13,235 @@ Panel {
   ipcTarget: "omarchy.monitor"
   manageIpc: false
 
-  // manageIpc: false so this panel can own the single IpcHandler the target
-  // permits — needed for the brightness + state methods below.
-  readonly property string pluginVersion: "0.1.0"
+  readonly property string pluginVersion: "1.0.0"
   readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME"]
 
   property int brightnessPercent: 0
   property int pendingBrightnessPercent: 0
-  property bool brightnessSetQueued: false
   property bool brightnessAvailable: false
-  property string internalMonitor: ""
-  property string externalMonitor: ""
   property string focusedMonitor: ""
-  property bool internalEnabled: false
-  property bool mirrorEnabled: false
   property string monitorScale: ""
   property var displays: []
   property int enabledDisplayCount: 0
   property var displayCache: ({})
+  property string expandedCard: ""
+
+  // Retraining state
   property string resetRunningMonitor: ""
   property var resetStatus: ({})
   property string lastResetOutput: ""
-  property int monitorColumn: 0
 
-  // Carry sub-notch touchpad deltas between wheel events.
+  // DPMS safety state
+  property string dpmsSafetyMonitor: ""
+  property int dpmsCountdown: 10
+
+  // Touchpad wheel accumulator
   property real wheelAccumulator: 0
 
-  // Cursor model shared by keyboard and mouse. Sections:
-  //   "brightness" - single slider row, selectedIndex = -1 sentinel
-  //                  (mirrors Audio's slider rows). Only present if a
-  //                  controllable backlight was detected.
-  //   "scale"      - 6 Button scale presets; treated as a single
-  //                  horizontal row from j/k's perspective. h/l moves
-  //                  between presets, identical to bluetooth's header.
-  //   "monitors"   - vertical display row list for enabling/disabling displays;
-  //                  j/k walks each row.
-  // Mouse hover on a target updates root state via the components' `hovered`
-  // signal so keyboard cursor and pointer share one highlight.
   readonly property var scalePresets: ["1", "1.25", "1.6", "2", "3", "4"]
-  readonly property var scaleValues: {
-    for (var i = 0; i < displays.length; i++) {
-      var display = displays[i]
-      if (display && display.focused)
-        return Model.availableScales(scalePresets, display.width, display.height)
-    }
-    return scalePresets
-  }
-  property string focusSection: "scale"
-  property int selectedIndex: 0
-  property bool cursorActive: false
 
-  // Text size slider — curated macOS-style notches (px). The panel snaps to
-  // these stops; the CLI (omarchy-display-text-size) accepts any integer in range.
+  // Text size slider — curated macOS-style notches (px)
   readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
-  // While a change is in flight, the chosen stop index overrides the live
-  // base-size so the knob doesn't snap back during the file round-trip. -1 =
-  // no pending change; follow Style.font.baseSize.
   property int textSizePreviewIndex: -1
-
-  // A text-size change reflows the whole panel (both font and spacing scale),
-  // which slides rows under a stationary pointer and fires synthetic hover.
-  // While true, hover is not allowed to hijack the keyboard focus section —
-  // otherwise h/l on the text-size slider can jump focus to another row.
   property bool reflowingText: false
+
   function markReflowing() {
     root.reflowingText = true
     reflowSettle.restart()
   }
 
+  // Focus and keyboard navigation
+  // focusSection: "textsize" or "card_" + display.name
+  property string focusSection: "textsize"
+  property int cardSubRow: 0
+  property int cardSubItem: 0
+  property bool cursorActive: false
+
   readonly property var visibleSections: {
-    var list = []
-    if (brightnessAvailable) list.push("brightness")
-    list.push("textsize")
-    list.push("scale")
-    if (displays.length > 1) list.push("monitors")
+    var list = ["textsize"]
+    for (var i = 0; i < displays.length; i++) {
+      if (displays[i] && displays[i].name) {
+        list.push("card_" + displays[i].name)
+      }
+    }
     return list
   }
 
-  function sectionCount(section) {
-    if (section === "brightness") return 0  // only the slider sentinel at -1
-    if (section === "textsize") return 0    // slider sentinel at -1, like brightness
-    if (section === "scale") return scaleValues.length
-    if (section === "monitors") return displays.length
-    return 0
+  function findDisplay(name) {
+    for (var i = 0; i < displays.length; i++) {
+      if (displays[i] && displays[i].name === name) return displays[i]
+    }
+    return null
   }
 
-  function sectionIsSingleRow(section) {
-    // brightness and text size are lone sliders; scale presets sit horizontally.
-    return section === "brightness" || section === "textsize" || section === "scale"
+  function findDisplayIndex(name) {
+    for (var i = 0; i < displays.length; i++) {
+      if (displays[i] && displays[i].name === name) return i
+    }
+    return -1
   }
 
-  function sectionFirstIndex(section) {
-    if (section === "brightness" || section === "textsize") return -1
-    return 0
+  function getTargetDisplay() {
+    if (focusSection.indexOf("card_") === 0) {
+      var name = focusSection.substring(5)
+      var d = findDisplay(name)
+      if (d) return d
+    }
+    return findDisplay(root.focusedMonitor) || (displays.length > 0 ? displays[0] : null)
+  }
+
+  function cardSubRows(display) {
+    if (!display) return ["header"]
+    var rows = ["header"]
+    if (root.expandedCard === display.name && display.enabled) {
+      if (display.brightnessAvailable) rows.push("brightness")
+      rows.push("scale")
+      if (display.availableRates && display.availableRates.length > 0) rows.push("rate")
+      rows.push("actions")
+    }
+    return rows
   }
 
   function moveCursor(delta) {
-    var sections = visibleSections
-    if (!sections || sections.length === 0) return
-    var sIdx = sections.indexOf(focusSection)
-    if (sIdx < 0) {
-      focusSection = sections[0]
-      selectedIndex = sectionFirstIndex(focusSection)
-      root.monitorColumn = 0
+    if (focusSection === "textsize") {
+      if (delta > 0 && displays.length > 0) {
+        var first = displays[0]
+        focusSection = "card_" + first.name
+        root.expandedCard = first.name
+        cardSubRow = 0
+        cardSubItem = 0
+      }
       return
     }
-    var inSingleRow = sectionIsSingleRow(focusSection)
-    var max = inSingleRow ? 0 : sectionCount(focusSection) - 1
 
-    if (delta > 0) {
-      if (!inSingleRow && selectedIndex < max) { selectedIndex = selectedIndex + 1; return }
-      if (sIdx < sections.length - 1) {
-        focusSection = sections[sIdx + 1]
-        selectedIndex = sectionFirstIndex(focusSection)
-        root.monitorColumn = 0
-      }
-    } else {
-      if (!inSingleRow && selectedIndex > 0) { selectedIndex = selectedIndex - 1; return }
-      if (sIdx > 0) {
-        var prev = sections[sIdx - 1]
-        focusSection = prev
-        // Coming up from below — land on the last navigable row of the prev
-        // section, or its sentinel for single-row sections.
-        selectedIndex = sectionIsSingleRow(prev) ? sectionFirstIndex(prev) : sectionCount(prev) - 1
-        root.monitorColumn = 0
+    if (focusSection.indexOf("card_") === 0) {
+      var name = focusSection.substring(5)
+      var currentDisp = findDisplay(name)
+      var subRows = cardSubRows(currentDisp)
+
+      if (delta > 0) {
+        if (cardSubRow < subRows.length - 1) {
+          cardSubRow = cardSubRow + 1
+          cardSubItem = 0
+        } else {
+          var idx = findDisplayIndex(name)
+          if (idx < displays.length - 1) {
+            var next = displays[idx + 1]
+            focusSection = "card_" + next.name
+            root.expandedCard = next.name
+            cardSubRow = 0
+            cardSubItem = 0
+          }
+        }
+      } else {
+        if (cardSubRow > 0) {
+          cardSubRow = cardSubRow - 1
+          cardSubItem = 0
+        } else {
+          var pIdx = findDisplayIndex(name)
+          if (pIdx > 0) {
+            var prev = displays[pIdx - 1]
+            focusSection = "card_" + prev.name
+            root.expandedCard = prev.name
+            var prevRows = cardSubRows(prev)
+            cardSubRow = prevRows.length - 1
+            cardSubItem = 0
+          } else {
+            focusSection = "textsize"
+            cardSubRow = 0
+            cardSubItem = 0
+          }
+        }
       }
     }
   }
 
-  // h/l: in scale section, walks the preset row; everywhere else, no-op
-  // because adjustBrightness handles horizontal motion on the brightness
-  // slider.
   function moveCursorH(delta) {
-    if (focusSection !== "scale") return
-    var next = selectedIndex + delta
-    if (next < 0) next = 0
-    if (next > scaleValues.length - 1) next = scaleValues.length - 1
-    selectedIndex = next
-  }
+    if (focusSection === "textsize") {
+      adjustTextSize(delta)
+      return
+    }
 
-  function moveMonitorH(delta) {
-    if (focusSection !== "monitors") return
-    if (delta > 0) root.monitorColumn = 1
-    else if (delta < 0) root.monitorColumn = 0
-  }
+    if (focusSection.indexOf("card_") === 0) {
+      var name = focusSection.substring(5)
+      var d = findDisplay(name)
+      if (!d) return
+      var subRows = cardSubRows(d)
+      var rowName = cardSubRow < subRows.length ? subRows[cardSubRow] : "header"
 
-  function adjustBrightness(delta) {
-    if (focusSection !== "brightness") return
-    if (!brightnessAvailable) return
-    setBrightness(root.brightnessPercent + delta)
+      if (rowName === "header") {
+        if (delta > 0) cardSubItem = 1
+        else if (delta < 0) cardSubItem = 0
+      } else if (rowName === "brightness") {
+        var curB = d.brightness !== undefined ? d.brightness : 50
+        setMonitorBrightness(d.name, curB + delta * 5)
+      } else if (rowName === "scale") {
+        var scales = Model.availableScales(scalePresets, d.width, d.height)
+        var sIdx = cardSubItem + delta
+        if (sIdx < 0) sIdx = 0
+        if (sIdx >= scales.length) sIdx = scales.length - 1
+        cardSubItem = sIdx
+      } else if (rowName === "rate") {
+        var rates = d.availableRates || []
+        var rIdx = cardSubItem + delta
+        if (rIdx < 0) rIdx = 0
+        if (rIdx >= rates.length) rIdx = rates.length - 1
+        cardSubItem = rIdx
+      } else if (rowName === "actions") {
+        var aIdx = cardSubItem + delta
+        if (aIdx < 0) aIdx = 0
+        if (aIdx > 1) aIdx = 1
+        cardSubItem = aIdx
+      }
+    }
   }
 
   function activateCursor() {
-    if (focusSection === "scale" && selectedIndex >= 0 && selectedIndex < scaleValues.length) {
-      setScale(scaleValues[selectedIndex])
-      return
-    }
-    if (focusSection === "monitors" && selectedIndex >= 0 && selectedIndex < displays.length) {
-      var d = displays[selectedIndex]
-      if (d) {
-        if (root.monitorColumn === 1) {
-          root.resetDisplay(d.name)
-        } else {
+    if (focusSection.indexOf("card_") === 0) {
+      var name = focusSection.substring(5)
+      var d = findDisplay(name)
+      if (!d) return
+      var subRows = cardSubRows(d)
+      var rowName = cardSubRow < subRows.length ? subRows[cardSubRow] : "header"
+
+      if (rowName === "header") {
+        if (cardSubItem === 1) {
           toggleDisplay(d.name, d.enabled)
+        } else {
+          toggleCardExpanded(d.name)
+        }
+      } else if (rowName === "scale") {
+        var scales = Model.availableScales(scalePresets, d.width, d.height)
+        if (cardSubItem >= 0 && cardSubItem < scales.length) {
+          setMonitorScale(d.name, scales[cardSubItem])
+        }
+      } else if (rowName === "rate") {
+        var rates = d.availableRates || []
+        if (cardSubItem >= 0 && cardSubItem < rates.length) {
+          setMonitorRefreshRate(d.name, rates[cardSubItem])
+        }
+      } else if (rowName === "actions") {
+        if (cardSubItem === 0) {
+          if (root.dpmsSafetyMonitor === d.name) {
+            restoreDpms()
+          } else if (d.dpmsStatus) {
+            setDpmsOffWithSafety(d.name)
+          } else {
+            setDpmsOn(d.name)
+          }
+        } else if (cardSubItem === 1) {
+          resetDisplay(d.name)
         }
       }
-      return
     }
-    // brightness: no separate action; the slider value is the action.
+  }
+
+  function toggleCardExpanded(name) {
+    if (root.expandedCard === name) {
+      root.expandedCard = ""
+    } else {
+      root.expandedCard = name
+    }
   }
 
   function clampCursor() {
@@ -187,34 +249,21 @@ Panel {
     if (!sections || !sections.length) return
     if (sections.indexOf(focusSection) < 0) {
       focusSection = sections[0]
-      selectedIndex = sectionFirstIndex(focusSection)
-      root.monitorColumn = 0
+      cardSubRow = 0
+      cardSubItem = 0
       return
     }
-    if (focusSection !== "monitors") {
-      root.monitorColumn = 0
+    if (focusSection.indexOf("card_") === 0) {
+      var name = focusSection.substring(5)
+      var d = findDisplay(name)
+      var subRows = cardSubRows(d)
+      if (cardSubRow >= subRows.length) {
+        cardSubRow = Math.max(0, subRows.length - 1)
+        cardSubItem = 0
+      }
     }
-    var count = sectionCount(focusSection)
-    if (sectionIsSingleRow(focusSection)) {
-      // brightness/text size use the -1 sentinel; scale clamps into the presets.
-      if (focusSection === "brightness" || focusSection === "textsize") selectedIndex = -1
-      else if (selectedIndex < 0 || selectedIndex >= count) selectedIndex = 0
-      return
-    }
-    if (count === 0) {
-      var sIdx = sections.indexOf(focusSection)
-      focusSection = sIdx > 0 ? sections[sIdx - 1] : sections[0]
-      selectedIndex = sectionFirstIndex(focusSection)
-      root.monitorColumn = 0
-      return
-    }
-    if (selectedIndex > count - 1) selectedIndex = count - 1
-    if (selectedIndex < 0) selectedIndex = 0
   }
 
-  // Keep the keyboard-focused row inside the viewport when the panel grows
-  // taller than its allotted height (lots of displays). Mirrors audio's
-  // ensureCursorVisible helper.
   function ensureCursorVisible(item) {
     if (!item || !scrollArea) return
     var flick = scrollArea.contentItem
@@ -230,103 +279,14 @@ Panel {
       flick.contentY = bottom + margin - flick.height
   }
 
-  function brightnessIpc(percent) {
-    var value = Number(percent)
-    root.setBrightness(value)
-    return "got " + root.pendingBrightnessPercent
-  }
-
-  function stateIpc() {
-    return JSON.stringify({
-      brightness: root.brightnessPercent,
-      brightnessAvailable: root.brightnessAvailable,
-      focusedMonitor: root.focusedMonitor,
-      scale: root.monitorScale,
-      displays: root.displays,
-      resetRunning: root.resetRunningMonitor,
-      resetStatus: root.resetStatus
-    })
-  }
-
-  IpcHandler {
-    target: "omarchy.monitor"
-
-    function brightness(percent: string): string { return root.brightnessIpc(percent) }
-    function state(): string { return root.stateIpc() }
-    function reset(name: string): string { return root.resetDisplay(name) }
-    function open() { root.open() }
-    function close() { root.close() }
-    function toggle() { root.toggle() }
-    function show() { root.open() }
-    function hide() { root.close() }
-  }
-
-  function refresh() {
-    stateProc.launch()
-  }
-
-  function setBrightness(value) {
-    var percent = Model.clampBrightness(value)
-    root.brightnessPercent = percent
-    root.pendingBrightnessPercent = percent
-
-    if (setBrightnessProc.running) {
-      root.brightnessSetQueued = true
-      return
+  function updateState(raw) {
+    var state = Model.parseState(raw)
+    root.displays = state.displays
+    root.enabledDisplayCount = state.enabledDisplayCount
+    if (state.focusedMonitor) {
+      root.focusedMonitor = state.focusedMonitor
     }
 
-    root.brightnessSetQueued = false
-    setBrightnessProc.exe = "/usr/share/omarchy/bin/omarchy-brightness-display"
-    setBrightnessProc.args = ["--no-osd", "--monitor", root.focusedMonitor, percent + "%"]
-    setBrightnessProc.launch()
-  }
-
-  function previewBrightness(value) {
-    root.brightnessPercent = Model.clampBrightness(value)
-    brightnessDebounce.restart()
-  }
-
-  function showBrightnessOsd(percent) {
-    if (!bar || !bar.shell) return
-    bar.shell.summon("omarchy.osd", JSON.stringify({
-      icon: "brightness",
-      value: percent
-    }))
-  }
-
-  function normalizeScale(scale) {
-    return Model.normalizeScale(scale)
-  }
-
-  function activeScaleIndex() {
-    for (var i = 0; i < displays.length; i++) {
-      var display = displays[i]
-      if (display && display.focused)
-        return Model.matchingScaleIndex(scaleValues, monitorScale, display.width, display.height)
-    }
-    return -1
-  }
-
-  function effectiveScale(scale) {
-    for (var i = 0; i < displays.length; i++) {
-      var display = displays[i]
-      if (display && display.focused)
-        return Model.cleanScale(scale, display.width, display.height)
-    }
-    return normalizeScale(scale)
-  }
-
-  // Playful mood-name for a given brightness percent. Bands intentionally
-  // span ~10–20 points so casual tweaks change the label, while small
-  // nudges within one band don't.
-  function brightnessName(percent) {
-    return Model.brightnessName(percent)
-  }
-
-  function updateDisplays(displaysJson) {
-    var parsed = Model.parseDisplays(displaysJson)
-    root.displays = parsed.displays
-    root.enabledDisplayCount = parsed.enabledDisplayCount
     for (var i = 0; i < root.displays.length; i++) {
       var d = root.displays[i]
       if (d && d.name && d.enabled) {
@@ -341,36 +301,45 @@ Panel {
         }
       }
     }
+
+    var focusedDisp = root.findDisplay(root.focusedMonitor)
+    if (focusedDisp) {
+      root.brightnessAvailable = focusedDisp.brightnessAvailable
+      if (focusedDisp.brightnessAvailable && !brightnessDebounce.running) {
+        root.brightnessPercent = focusedDisp.brightness
+      }
+      root.monitorScale = Model.normalizeScale(String(focusedDisp.scale || 1))
+    } else if (root.displays.length > 0) {
+      var first = root.displays[0]
+      root.brightnessAvailable = first.brightnessAvailable
+      if (first.brightnessAvailable && !brightnessDebounce.running) {
+        root.brightnessPercent = first.brightness
+      }
+      root.monitorScale = Model.normalizeScale(String(first.scale || 1))
+    }
+
+    if (root.expandedCard === "" && root.displays.length > 0) {
+      root.expandedCard = root.focusedMonitor || root.displays[0].name
+    }
   }
 
-  function findDisplay(name) {
-    for (var i = 0; i < displays.length; i++) {
-      if (displays[i] && displays[i].name === name) return displays[i]
-    }
-    return null
+  function effectiveScale(scale) {
+    return Model.normalizeScale(scale)
   }
 
-  function getTargetDisplay() {
-    if (focusSection === "scale" || focusSection === "brightness") {
-      var focused = findDisplay(root.focusedMonitor)
-      if (focused) return focused
-    }
-    if (focusSection === "monitors" && selectedIndex >= 0 && selectedIndex < displays.length) {
-      return displays[selectedIndex]
-    }
-    return findDisplay(root.focusedMonitor) || (displays.length > 0 ? displays[0] : null)
+  function brightnessName(percent) {
+    return Model.brightnessName(percent)
   }
 
+  // --- Display Management Actions ---
   function toggleDisplay(name, enabled) {
     if (!name || !Model.isValidOutputName(name)) return
     if (enabled && root.enabledDisplayCount <= 1) return
 
     var lua = ""
     if (enabled) {
-      // Disabling: hl.monitor({ output = "<name>", disabled = true })
       lua = 'hl.monitor({ output = "' + name + '", disabled = true })'
     } else {
-      // Re-enabling: must include mode, position, scale, and disabled = false
       var d = root.findDisplay(name)
       var cached = root.displayCache[name] || {}
       var width = (d && d.width) ? d.width : (cached.width || 1920)
@@ -390,6 +359,144 @@ Panel {
     actionProc.launch()
   }
 
+  function setMonitorScale(name, scale) {
+    if (!name || !Model.isValidOutputName(name)) return
+    var d = findDisplay(name)
+    if (!d) return
+    var clean = Model.cleanScale(scale, d.width, d.height)
+    if (clean === "") clean = Model.normalizeScale(scale)
+    if (clean === "") return
+
+    var rate = d.refreshRate ? Math.round(d.refreshRate) : 60
+    var mode = d.width + "x" + d.height + "@" + rate
+    var pos = (d.x !== undefined ? d.x : 0) + "x" + (d.y !== undefined ? d.y : 0)
+    var lua = 'hl.monitor({ output = "' + d.name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + clean + ' })'
+
+    actionProc.exe = "/usr/bin/hyprctl"
+    actionProc.args = ["eval", lua]
+    actionProc.launch()
+  }
+
+  function setMonitorRefreshRate(name, rate) {
+    if (!name || !Model.isValidOutputName(name)) return
+    var d = findDisplay(name)
+    if (!d) return
+    var rateNum = Number(rate)
+    if (!isFinite(rateNum) || rateNum <= 0) return
+
+    var mode = d.width + "x" + d.height + "@" + rateNum
+    var pos = (d.x !== undefined ? d.x : 0) + "x" + (d.y !== undefined ? d.y : 0)
+    var scale = d.scale || 1
+    var lua = 'hl.monitor({ output = "' + d.name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + scale + ' })'
+
+    actionProc.exe = "/usr/bin/hyprctl"
+    actionProc.args = ["eval", lua]
+    actionProc.launch()
+  }
+
+  function setMonitorBrightness(monitorName, percent) {
+    if (!monitorName || !Model.isValidOutputName(monitorName)) return
+    var p = Model.clampBrightness(percent)
+
+    // Update locally so UI responds immediately
+    var dList = []
+    for (var i = 0; i < root.displays.length; i++) {
+      var item = Object.assign({}, root.displays[i])
+      if (item.name === monitorName) {
+        item.brightness = p
+      }
+      dList.push(item)
+    }
+    root.displays = dList
+
+    if (monitorName === root.focusedMonitor) {
+      root.brightnessPercent = p
+      root.pendingBrightnessPercent = p
+    }
+
+    setBrightnessProc.exe = "/usr/share/omarchy/bin/omarchy-brightness-display"
+    setBrightnessProc.args = ["--no-osd", "--monitor", monitorName, p + "%"]
+    setBrightnessProc.launch()
+  }
+
+  function previewMonitorBrightness(monitorName, percent) {
+    var p = Model.clampBrightness(percent)
+    for (var i = 0; i < root.displays.length; i++) {
+      if (root.displays[i].name === monitorName) {
+        root.displays[i].brightness = p
+        break
+      }
+    }
+    if (monitorName === root.focusedMonitor) {
+      root.brightnessPercent = p
+    }
+    brightnessDebounce.restart()
+  }
+
+  function setBrightness(value) {
+    var target = root.focusedMonitor || (root.displays.length > 0 ? root.displays[0].name : "")
+    if (target) setMonitorBrightness(target, value)
+  }
+
+  function showBrightnessOsd(percent) {
+    if (!bar || !bar.shell) return
+    bar.shell.summon("omarchy.osd", JSON.stringify({
+      icon: "brightness",
+      value: percent
+    }))
+  }
+
+  // --- DPMS Controls & Safety Timer ---
+  function setDpmsOffWithSafety(name) {
+    if (!name || !Model.isValidOutputName(name)) return
+    root.dpmsSafetyMonitor = name
+    root.dpmsCountdown = 10
+    actionProc.exe = "/usr/bin/hyprctl"
+    actionProc.args = ["eval", 'hl.dispatch(hl.dsp.dpms({ action = "disable", monitor = "' + name + '" }))']
+    actionProc.launch()
+  }
+
+  function confirmDpmsOff() {
+    root.dpmsSafetyMonitor = ""
+    dpmsSafetyTimer.stop()
+  }
+
+  function restoreDpms() {
+    var mon = root.dpmsSafetyMonitor
+    root.dpmsSafetyMonitor = ""
+    dpmsSafetyTimer.stop()
+    if (mon) {
+      actionProc.exe = "/usr/bin/hyprctl"
+      actionProc.args = ["eval", 'hl.dispatch(hl.dsp.dpms({ action = "enable", monitor = "' + mon + '" }))']
+      actionProc.launch()
+    }
+  }
+
+  function setDpmsOn(name) {
+    if (!name || !Model.isValidOutputName(name)) return
+    if (root.dpmsSafetyMonitor === name) {
+      root.dpmsSafetyMonitor = ""
+      dpmsSafetyTimer.stop()
+    }
+    actionProc.exe = "/usr/bin/hyprctl"
+    actionProc.args = ["eval", 'hl.dispatch(hl.dsp.dpms({ action = "enable", monitor = "' + name + '" }))']
+    actionProc.launch()
+  }
+
+  Timer {
+    id: dpmsSafetyTimer
+    interval: 1000
+    repeat: true
+    running: root.dpmsSafetyMonitor !== ""
+    onTriggered: {
+      root.dpmsCountdown--
+      if (root.dpmsCountdown <= 0) {
+        root.restoreDpms()
+      }
+    }
+  }
+
+  // --- Display Retraining (Reset) ---
   function resetDisplay(name) {
     if (!name || !Model.isValidOutputName(name)) return "invalid output name"
     if (resetProc.running) return "reset already running"
@@ -414,24 +521,7 @@ Panel {
     if (d && d.name) root.resetDisplay(d.name)
   }
 
-  function setScale(scale) {
-    var d = getTargetDisplay()
-    if (!d || !Model.isValidOutputName(d.name)) return
-    var clean = Model.cleanScale(scale, d.width, d.height)
-    if (clean === "") clean = Model.normalizeScale(scale)
-    if (clean === "") return
-
-    var rate = d.refreshRate ? Math.round(d.refreshRate) : 60
-    var mode = d.width + "x" + d.height + "@" + rate
-    var pos = (d.x !== undefined ? d.x : 0) + "x" + (d.y !== undefined ? d.y : 0)
-    var lua = 'hl.monitor({ output = "' + d.name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + clean + ' })'
-
-    actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["eval", lua]
-    actionProc.launch()
-  }
-
-  // ---- Text size (shell base font + GTK text-scaling, via one CLI) ----
+  // --- Text Size Controls ---
   function nearestTextStop(px) {
     var best = 0
     var bestDist = 1e9
@@ -442,14 +532,10 @@ Panel {
     return best
   }
 
-  // Effective stop index: the pending choice while a change is in flight,
-  // otherwise whatever Style's live base-size rounds to.
   function currentTextIndex() {
     return textSizePreviewIndex >= 0 ? textSizePreviewIndex : nearestTextStop(Style.font.baseSize)
   }
 
-  // px shown in the header: the pending stop if any, else the true base-size
-  // (which may be an off-notch value set from the CLI).
   function displayedTextPx() {
     return textSizePreviewIndex >= 0 ? textSizeStops[textSizePreviewIndex] : Style.font.baseSize
   }
@@ -469,36 +555,73 @@ Panel {
     setTextSize(textSizeStops[idx])
   }
 
+  // --- IPC Methods ---
+  function brightnessIpc(percent) {
+    var value = Number(percent)
+    root.setBrightness(value)
+    return "got " + root.pendingBrightnessPercent
+  }
+
+  function stateIpc() {
+    return JSON.stringify({
+      version: root.pluginVersion,
+      brightness: root.brightnessPercent,
+      brightnessAvailable: root.brightnessAvailable,
+      focusedMonitor: root.focusedMonitor,
+      scale: root.monitorScale,
+      displays: root.displays,
+      resetRunning: root.resetRunningMonitor,
+      resetStatus: root.resetStatus,
+      expandedCard: root.expandedCard,
+      dpmsSafetyMonitor: root.dpmsSafetyMonitor
+    })
+  }
+
+  IpcHandler {
+    target: "omarchy.monitor"
+
+    function brightness(percent: string): string { return root.brightnessIpc(percent) }
+    function state(): string { return root.stateIpc() }
+    function reset(name: string): string { return root.resetDisplay(name) }
+    function open() { root.open() }
+    function close() { root.close() }
+    function toggle() { root.toggle() }
+    function show() { root.open() }
+    function hide() { root.close() }
+  }
+
+  function refresh() {
+    stateProc.launch()
+  }
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
   Component.onCompleted: refresh()
 
-  // KeyboardPanel primes focus at open-time, so SUPER-bound IPC summons land
-  // with j/k ready to navigate. Keep a default landing point, but don't paint
-  // the cursor until hover or the first navigation key.
   onOpenedChanged: {
     if (opened) {
       refresh()
-      if (brightnessAvailable) {
-        focusSection = "brightness"
-        selectedIndex = -1
+      if (displays.length > 0) {
+        var targetName = root.focusedMonitor || displays[0].name
+        root.expandedCard = targetName
+        root.focusSection = "card_" + targetName
+        root.cardSubRow = 0
+        root.cardSubItem = 0
       } else {
-        focusSection = "scale"
-        selectedIndex = 0
+        root.focusSection = "textsize"
       }
       cursorActive = false
+    } else {
+      if (root.dpmsSafetyMonitor !== "") {
+        root.restoreDpms()
+      }
     }
   }
 
-  onBrightnessAvailableChanged: clampCursor()
   onDisplaysChanged: clampCursor()
-  onScaleValuesChanged: clampCursor()
   onVisibleSectionsChanged: clampCursor()
 
-  // Only poll while the panel is open; the bar glyph tracks monitor count via
-  // Quickshell.screens, and open-time refresh + Component.onCompleted cover the
-  // rest. External brightness changes are reflected whenever the panel is open.
   Timer {
     interval: 5000
     running: root.opened
@@ -506,26 +629,18 @@ Panel {
     onTriggered: root.refresh()
   }
 
+  // --- External Processes ---
   Launch {
     id: stateProc
-    exe: "/usr/bin/bash"
+    exe: "/usr/bin/python3"
     args: [Model.helperPath("fred-monitor-state")]
     envKeys: root.monitorEnv
-    deadlineMs: 5000
+    deadlineMs: 6000
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        var lines = String(text || "").split("\n")
-        var brightness = String(lines[0] || "").trim()
-        root.brightnessAvailable = brightness !== "unavailable" && brightness !== ""
-        root.brightnessPercent = root.brightnessAvailable ? Math.max(0, Math.min(100, parseInt(brightness, 10))) : 0
-        root.internalMonitor = String(lines[1] || "").trim()
-        root.externalMonitor = String(lines[2] || "").trim()
-        root.internalEnabled = String(lines[3] || "").trim() !== ""
-        root.mirrorEnabled = String(lines[4] || "").trim() === root.externalMonitor && root.externalMonitor !== ""
-        root.focusedMonitor = String(lines[5] || "").trim()
-        root.monitorScale = root.normalizeScale(String(lines[6] || "").trim())
-        root.updateDisplays(String(lines[7] || "[]").trim())
+        var raw = String(text || "").trim()
+        root.updateState(raw)
       }
     }
   }
@@ -534,7 +649,12 @@ Panel {
     id: brightnessDebounce
     interval: 180
     repeat: false
-    onTriggered: root.setBrightness(root.brightnessPercent)
+    onTriggered: {
+      var d = root.findDisplay(root.focusedMonitor)
+      if (d && d.brightness !== undefined) {
+        root.setMonitorBrightness(d.name, d.brightness)
+      }
+    }
   }
 
   Launch {
@@ -543,19 +663,6 @@ Panel {
     envKeys: root.monitorEnv
     deadlineMs: 5000
     stdout: StdioCollector { waitForEnd: true }
-    // Do NOT call refresh() after a brightness set completes. The local
-    // brightnessPercent we just wrote is authoritative; re-reading via
-    // `omarchy-brightness-display` races the hardware/driver and can
-    // return an empty string, which the parser then coerces to 0 —
-    // visible as a "bounce to zero" after h/l keypresses. External
-    // brightness changes are still picked up by the 5s periodic refresh,
-    // the open-time refresh, and Component.onCompleted.
-    onRunningChanged: {
-      if (running) return
-      if (root.brightnessSetQueued) {
-        root.setBrightness(root.pendingBrightnessPercent)
-      }
-    }
   }
 
   Launch {
@@ -607,9 +714,6 @@ Panel {
     }
   }
 
-  // Applies text size via the CLI, which rewrites the shell override file;
-  // Style picks the new base-size up through its own file watch, so there's
-  // nothing to refresh here.
   Launch {
     id: textScaleProc
     exe: "/usr/share/omarchy/bin/omarchy-display-text-size"
@@ -618,8 +722,6 @@ Panel {
     stdout: StdioCollector { waitForEnd: true }
   }
 
-  // Clears the hover-suppression flag once the reflow triggered by a text-size
-  // change has settled.
   Timer {
     id: reflowSettle
     interval: 300
@@ -627,9 +729,6 @@ Panel {
     onTriggered: root.reflowingText = false
   }
 
-  // Once Style's base-size catches up to the pending choice, drop the preview
-  // so the slider tracks the live value again. The change itself reflows the
-  // panel, so suppress hover for a beat while it lands.
   Connections {
     target: Style
     function onFontBaseSizeChanged() {
@@ -640,15 +739,13 @@ Panel {
     }
   }
 
+  // --- Top Bar Icon ---
   BarIconButton {
     id: button
     anchors.fill: parent
     bar: root.bar
     text: Quickshell.screens.length > 1 ? "󰍺" : "󰍹"
-    tooltipText: {
-      var ver = "fred.monitor v" + root.pluginVersion
-      return "Display\n\n" + ver
-    }
+    tooltipText: "Display\n\nfred.monitor v" + root.pluginVersion
     onPressed: function(b) { root.toggle() }
     onWheelMoved: function(delta) {
       if (!root.brightnessAvailable) return
@@ -660,6 +757,7 @@ Panel {
     }
   }
 
+  // --- Main Panel Window ---
   KeyboardPanel {
     id: panel
     anchorItem: button
@@ -667,8 +765,8 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(560))
+    contentWidth: panel.fittedContentWidth(Style.space(400))
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(620))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -676,12 +774,7 @@ Panel {
       onMoveRequested: function(dx, dy) {
         if (!root.cursorActive) { root.cursorActive = true; return }
         if (dy !== 0) root.moveCursor(dy)
-        else if (dx !== 0) {
-          if (root.focusSection === "brightness") root.adjustBrightness(dx * 5)
-          else if (root.focusSection === "textsize") root.adjustTextSize(dx)
-          else if (root.focusSection === "scale") root.moveCursorH(dx)
-          else if (root.focusSection === "monitors") root.moveMonitorH(dx)
-        }
+        else if (dx !== 0) root.moveCursorH(dx)
       }
       onActivateRequested: if (root.cursorActive) root.activateCursor()
       onCloseRequested: root.close()
@@ -705,7 +798,7 @@ Panel {
         Column {
           id: panelColumn
           width: scrollArea.availableWidth
-          spacing: Style.space(14)
+          spacing: Style.space(12)
 
           // ---------- Hero: display icon · title/status ----------
           Item {
@@ -745,10 +838,11 @@ Panel {
                 id: heroLabel
                 textFormat: Text.PlainText
                 text: {
-                  if (root.brightnessAvailable) {
-                    return root.brightnessName(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent).toUpperCase()
+                  var fd = root.findDisplay(root.focusedMonitor)
+                  if (fd && fd.brightnessAvailable) {
+                    return root.brightnessName(fd.brightness).toUpperCase()
                   }
-                  return "FIXED BRIGHTNESS"
+                  return (root.enabledDisplayCount + " ACTIVE DISPLAYS").toUpperCase()
                 }
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
@@ -757,81 +851,6 @@ Panel {
                 font.letterSpacing: 1.2
                 elide: Text.ElideRight
                 width: parent.width
-              }
-            }
-          }
-
-          // ---------- Brightness ----------
-          PanelSeparator {
-            visible: root.brightnessAvailable
-            foreground: root.bar.foreground
-          }
-
-          Column {
-            visible: root.brightnessAvailable
-            width: parent.width
-            spacing: Style.space(6)
-
-            Item {
-              width: parent.width
-              implicitHeight: Math.max(brightnessHeader.implicitHeight, brightnessPercent.implicitHeight)
-
-              PanelSectionHeader {
-                id: brightnessHeader
-                text: "BRIGHTNESS"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-              }
-
-              Text {
-                id: brightnessPercent
-                textFormat: Text.PlainText
-                text: Math.round(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent) + "%"
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
-                anchors.verticalCenter: parent.verticalCenter
-              }
-            }
-
-            CursorSurface {
-              id: brightnessRow
-              width: parent.width
-              height: brightnessSlider.implicitHeight + Style.spacing.controlGap
-              hasCursor: root.cursorActive && root.focusSection === "brightness" && root.selectedIndex === -1
-              onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(brightnessRow)
-              foreground: root.bar.foreground
-              outline: true
-
-              PanelSlider {
-                id: brightnessSlider
-                bar: root.bar
-                anchors.fill: parent
-                anchors.leftMargin: Style.space(6)
-                anchors.rightMargin: Style.space(6)
-                minimum: 1
-                maximum: 100
-                step: 1
-                value: root.brightnessPercent
-                integer: true
-                onMoved: function(v) { root.previewBrightness(v) }
-                onReleased: function(v) {
-                  brightnessDebounce.stop()
-                  root.setBrightness(v)
-                }
-              }
-
-              HoverHandler {
-                onHoveredChanged: if (hovered && !root.reflowingText) {
-                  root.cursorActive = true
-                  root.focusSection = "brightness"
-                  root.selectedIndex = -1
-                }
               }
             }
           }
@@ -878,7 +897,7 @@ Panel {
               id: textSizeRow
               width: parent.width
               height: textSizeSlider.implicitHeight + Style.spacing.controlGap
-              hasCursor: root.cursorActive && root.focusSection === "textsize" && root.selectedIndex === -1
+              hasCursor: root.cursorActive && root.focusSection === "textsize"
               onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(textSizeRow)
               foreground: root.bar.foreground
               outline: true
@@ -902,13 +921,14 @@ Panel {
                 onHoveredChanged: if (hovered && !root.reflowingText) {
                   root.cursorActive = true
                   root.focusSection = "textsize"
-                  root.selectedIndex = -1
+                  root.cardSubRow = 0
+                  root.cardSubItem = 0
                 }
               }
             }
           }
 
-          // ---------- Scale ----------
+          // ---------- Displays Section ----------
           PanelSeparator {
             foreground: root.bar.foreground
           }
@@ -916,73 +936,6 @@ Panel {
           Column {
             width: parent.width
             spacing: Style.space(10)
-
-            Item {
-              width: parent.width
-              implicitHeight: Math.max(scaleHeader.implicitHeight, scaleMonitor.implicitHeight)
-
-              PanelSectionHeader {
-                id: scaleHeader
-                text: "SCALE"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-              }
-
-              // Name the monitor SCALE targets, since it only applies to the
-              // focused one.
-              Text {
-                id: scaleMonitor
-                textFormat: Text.PlainText
-                text: root.focusedMonitor
-                // Only worth naming when more than one display is in play.
-                visible: root.focusedMonitor !== "" && root.enabledDisplayCount > 1
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
-                anchors.verticalCenter: parent.verticalCenter
-              }
-            }
-
-            Grid {
-              id: scaleRow
-              width: parent.width
-              columns: root.scaleValues.length
-              spacing: Style.spacing.xs
-
-              readonly property real cellWidth: root.scaleValues.length > 0
-                ? (width - spacing * (columns - 1)) / columns
-                : 0
-
-              Repeater {
-                model: root.scaleValues
-
-                ScalePill {
-                  required property string modelData
-                  required property int index
-
-                  scaleValue: modelData
-                  scaleIndex: index
-                  width: scaleRow.cellWidth
-                }
-              }
-            }
-          }
-
-          // ---------- Monitors ----------
-          PanelSeparator {
-            visible: root.displays.length > 1
-            foreground: root.bar.foreground
-          }
-
-          Column {
-            width: parent.width
-            spacing: Style.space(10)
-            visible: root.displays.length > 1
 
             PanelSectionHeader {
               text: "DISPLAYS"
@@ -993,13 +946,12 @@ Panel {
             Repeater {
               model: root.displays
 
-              MonitorRow {
+              DisplayCard {
                 required property var modelData
                 required property int index
 
-                width: panelColumn.width
                 display: modelData
-                rowIndex: index
+                cardIndex: index
               }
             }
           }
@@ -1029,160 +981,460 @@ Panel {
     }
   }
 
-  component ScalePill: Button {
-    id: pill
-    required property string scaleValue
-    required property int scaleIndex
-
-    text: root.effectiveScale(scaleValue) + "x"
-    fontSize: Style.font.caption
-    foreground: root.bar.foreground
-    fontFamily: root.bar.fontFamily
-    horizontalPadding: Style.spacing.sm
-    verticalPadding: Style.spacing.controlPaddingY
-    bordered: true
-
-    active: root.activeScaleIndex() === scaleIndex
-    hasCursor: root.cursorActive && root.focusSection === "scale" && root.selectedIndex === scaleIndex
-
-    onClicked: root.setScale(scaleValue)
-    onHovered: function(isHovered) {
-      if (!isHovered || root.reflowingText) return
-      root.cursorActive = true
-      root.focusSection = "scale"
-      root.selectedIndex = pill.scaleIndex
-    }
-  }
-
-  component MonitorRow: CursorSurface {
-    id: monitorRow
+  // --- Display Card Component ---
+  component DisplayCard: Rectangle {
+    id: card
     required property var display
-    required property int rowIndex
+    required property int cardIndex
 
-    readonly property bool isFocused: display && display.focused
+    readonly property bool isCardFocused: root.focusSection === ("card_" + display.name)
+    readonly property bool isExpanded: root.expandedCard === display.name
+    readonly property var subRows: root.cardSubRows(display)
+    readonly property string currentSubRow: isCardFocused && root.cardSubRow < subRows.length ? subRows[root.cardSubRow] : ""
+    readonly property var cardResetInfo: root.resetStatus[display.name]
+    readonly property bool isResetting: root.resetRunningMonitor === display.name || (cardResetInfo && cardResetInfo.status === "running")
+    readonly property string resetMsg: cardResetInfo ? cardResetInfo.message : ""
+    readonly property string posLabel: Model.positionLabel(display.name, root.displays)
+    readonly property var availableScalesList: Model.availableScales(root.scalePresets, display.width, display.height)
+    readonly property int activeScaleIdx: Model.matchingScaleIndex(availableScalesList, display.scale, display.width, display.height)
     readonly property bool canToggle: display && (!display.enabled || root.enabledDisplayCount > 1)
-    readonly property var rowResetInfo: root.resetStatus[monitorRow.display.name]
-    readonly property bool isResetting: root.resetRunningMonitor === monitorRow.display.name || (rowResetInfo && rowResetInfo.status === "running")
-    readonly property string resetMsg: rowResetInfo ? rowResetInfo.message : ""
-    readonly property string posLabel: Model.positionLabel(monitorRow.display.name, root.displays)
 
-    hasCursor: root.cursorActive && root.focusSection === "monitors" && root.selectedIndex === rowIndex && root.monitorColumn === 0
-    onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(monitorRow)
-    current: isFocused
-    foreground: root.bar.foreground
-    fill: Style.hoverFillFor(root.bar.foreground, Color.accent)
-    currentFill: Style.selectedFillFor(root.bar.foreground, Color.accent)
-    implicitHeight: Math.max(monitorInner.implicitHeight, resetBtn.implicitHeight) + Style.spacing.md
+    width: panelColumn.width
+    radius: Style.radius.md
+    color: isCardFocused
+      ? Style.selectedFillFor(root.bar.foreground, Color.accent)
+      : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.04)
+    border.color: isCardFocused
+      ? Color.accent
+      : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.12)
+    border.width: 1
 
-    Row {
-      id: monitorInner
+    implicitHeight: cardInnerCol.implicitHeight + Style.space(16)
+
+    Column {
+      id: cardInnerCol
       anchors.left: parent.left
-      anchors.right: resetBtn.left
-      anchors.rightMargin: Style.space(6)
-      anchors.verticalCenter: parent.verticalCenter
-      anchors.leftMargin: Style.space(6)
+      anchors.right: parent.right
+      anchors.top: parent.top
+      anchors.margins: Style.space(8)
       spacing: Style.space(8)
-      opacity: monitorRow.canToggle ? 1.0 : 0.5
 
-      Text {
-        text: "󰍹"
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
-        width: Style.space(22)
-        horizontalAlignment: Text.AlignHCenter
-        anchors.verticalCenter: parent.verticalCenter
-      }
+      // Header row
+      Item {
+        width: parent.width
+        implicitHeight: Math.max(headerRow.implicitHeight, headerControls.implicitHeight)
 
-      Text {
-        textFormat: Text.PlainText
-        text: {
-          var label = monitorRow.display.name
-          if (monitorRow.display.model) label += "  " + monitorRow.display.model
-          if (monitorRow.display.focused) label += " · focused"
-          return label
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onEntered: if (!root.reflowingText) {
+            root.cursorActive = true
+            root.focusSection = "card_" + card.display.name
+            root.cardSubRow = 0
+            root.cardSubItem = 0
+          }
+          onClicked: root.toggleCardExpanded(card.display.name)
         }
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.body
-        elide: Text.ElideRight
-        width: Math.max(Style.space(60), monitorInner.width - Style.space(22) - Style.space(8) - (posText.visible ? posText.width + Style.space(8) : 0) - Style.space(14) - Style.space(8))
-        anchors.verticalCenter: parent.verticalCenter
+
+        Row {
+          id: headerRow
+          anchors.left: parent.left
+          anchors.right: headerControls.left
+          anchors.rightMargin: Style.space(8)
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: Style.space(8)
+
+          Text {
+            text: card.display.enabled ? "󰍹" : "󰍺"
+            color: root.bar.foreground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.title
+            width: Style.space(20)
+            horizontalAlignment: Text.AlignHCenter
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            text: card.display.name
+            color: root.bar.foreground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.body
+            font.bold: true
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            visible: card.display.model || card.display.make
+            textFormat: Text.PlainText
+            text: card.display.model || card.display.make || ""
+            color: Qt.darker(root.bar.foreground, 1.3)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
+            width: Math.min(Style.space(100), implicitWidth)
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            visible: card.posLabel !== ""
+            textFormat: Text.PlainText
+            text: card.posLabel
+            color: Qt.darker(root.bar.foreground, 1.4)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Rectangle {
+            visible: card.display.focused
+            radius: Style.radius.sm
+            color: Color.accent
+            implicitWidth: focusedBadgeText.implicitWidth + Style.space(8)
+            implicitHeight: focusedBadgeText.implicitHeight + Style.space(2)
+            anchors.verticalCenter: parent.verticalCenter
+
+            Text {
+              id: focusedBadgeText
+              anchors.centerIn: parent
+              textFormat: Text.PlainText
+              text: "focused"
+              color: Color.accentText || "#ffffff"
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption * 0.9
+              font.bold: true
+            }
+          }
+        }
+
+        Row {
+          id: headerControls
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: Style.space(6)
+
+          Button {
+            bordered: true
+            active: card.display.enabled
+            hasCursor: card.isCardFocused && card.currentSubRow === "header" && root.cardSubItem === 1
+            iconText: card.display.enabled ? "󰄬" : ""
+            text: card.display.enabled ? "" : "Off"
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(6)
+            verticalPadding: Style.space(2)
+            tooltipText: card.display.enabled
+              ? (card.canToggle ? "Disable display" : "Cannot disable only active display")
+              : "Enable display"
+            opacity: (card.display.enabled && !card.canToggle) ? 0.4 : 1.0
+            onClicked: if (card.canToggle) root.toggleDisplay(card.display.name, card.display.enabled)
+            onHovered: function(h) {
+              if (h && !root.reflowingText) {
+                root.cursorActive = true
+                root.focusSection = "card_" + card.display.name
+                root.cardSubRow = 0
+                root.cardSubItem = 1
+              }
+            }
+          }
+
+          Text {
+            text: card.isExpanded ? "󰅀" : "󰅂"
+            color: Qt.darker(root.bar.foreground, 1.4)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.body
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
       }
 
+      // Facts row
       Text {
-        id: posText
-        visible: monitorRow.posLabel !== ""
+        visible: card.isExpanded
+        width: parent.width
         textFormat: Text.PlainText
-        text: monitorRow.posLabel
+        text: Model.formatFacts(card.display)
         color: Qt.darker(root.bar.foreground, 1.4)
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.caption
-        font.bold: true
-        width: Style.space(48)
-        horizontalAlignment: Text.AlignRight
-        anchors.verticalCenter: parent.verticalCenter
+        wrapMode: Text.Wrap
       }
 
-      Text {
-        textFormat: Text.PlainText
-        text: monitorRow.display.enabled ? "󰄬" : ""
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.subtitle
-        width: Style.space(14)
-        horizontalAlignment: Text.AlignRight
-        anchors.verticalCenter: parent.verticalCenter
+      // Divider inside card
+      PanelSeparator {
+        visible: card.isExpanded && card.display.enabled
+        foreground: root.bar.foreground
       }
-    }
 
-    MouseArea {
-      anchors.left: parent.left
-      anchors.right: resetBtn.left
-      anchors.top: parent.top
-      anchors.bottom: parent.bottom
-      hoverEnabled: true
-      cursorShape: monitorRow.canToggle ? Qt.PointingHandCursor : Qt.ArrowCursor
-      onContainsMouseChanged: if (containsMouse && !root.reflowingText) {
-        root.cursorActive = true
-        root.focusSection = "monitors"
-        root.selectedIndex = monitorRow.rowIndex
-        root.monitorColumn = 0
+      // Brightness slider (only if controllable)
+      Column {
+        visible: card.isExpanded && card.display.enabled && card.display.brightnessAvailable
+        width: parent.width
+        spacing: Style.space(4)
+
+        Item {
+          width: parent.width
+          implicitHeight: Math.max(cardBrightnessHeader.implicitHeight, cardBrightnessVal.implicitHeight)
+
+          PanelSectionHeader {
+            id: cardBrightnessHeader
+            text: "BRIGHTNESS"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            id: cardBrightnessVal
+            textFormat: Text.PlainText
+            text: (cardBrightnessSlider.dragging ? Math.round(cardBrightnessSlider.liveValue) : (card.display.brightness || 0)) + "%"
+            color: Qt.darker(root.bar.foreground, 1.4)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+
+        CursorSurface {
+          id: cardBrightnessRow
+          width: parent.width
+          height: cardBrightnessSlider.implicitHeight + Style.spacing.controlGap
+          hasCursor: card.isCardFocused && card.currentSubRow === "brightness"
+          onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(card)
+          foreground: root.bar.foreground
+          outline: true
+
+          PanelSlider {
+            id: cardBrightnessSlider
+            bar: root.bar
+            anchors.fill: parent
+            anchors.leftMargin: Style.space(4)
+            anchors.rightMargin: Style.space(4)
+            minimum: 1
+            maximum: 100
+            step: 1
+            integer: true
+            value: card.display.brightness !== undefined ? card.display.brightness : 50
+            onMoved: function(v) { root.previewMonitorBrightness(card.display.name, v) }
+            onReleased: function(v) { root.setMonitorBrightness(card.display.name, Math.round(v)) }
+          }
+
+          HoverHandler {
+            onHoveredChanged: if (hovered && !root.reflowingText) {
+              root.cursorActive = true
+              root.focusSection = "card_" + card.display.name
+              root.cardSubRow = card.subRows.indexOf("brightness")
+              root.cardSubItem = 0
+            }
+          }
+        }
       }
-      onClicked: if (monitorRow.canToggle) root.toggleDisplay(monitorRow.display.name, monitorRow.display.enabled)
-    }
 
-    Button {
-      id: resetBtn
-      anchors.right: parent.right
-      anchors.rightMargin: Style.space(6)
-      anchors.verticalCenter: parent.verticalCenter
-      bordered: true
-      horizontalPadding: Style.spacing.xs
-      verticalPadding: Style.spacing.controlPaddingY
-      fontSize: Style.font.caption
-      foreground: root.bar.foreground
-      fontFamily: root.bar.fontFamily
-      hasCursor: root.cursorActive && root.focusSection === "monitors" && root.selectedIndex === monitorRow.rowIndex && root.monitorColumn === 1
-      onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(monitorRow)
+      // Scale presets
+      Column {
+        visible: card.isExpanded && card.display.enabled
+        width: parent.width
+        spacing: Style.space(4)
 
-      iconSpinning: monitorRow.isResetting
-      iconText: monitorRow.isResetting ? "󰑐" : (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "success" ? "󰄬" : (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "error" ? "󰅚" : ""))
-      text: {
-        if (monitorRow.isResetting) return "Retraining…"
-        if (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "success") return "Retrained"
-        if (monitorRow.rowResetInfo && monitorRow.rowResetInfo.status === "error") return "Failed"
-        return "Reset"
+        PanelSectionHeader {
+          text: "SCALE"
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+        }
+
+        Grid {
+          id: cardScaleGrid
+          width: parent.width
+          columns: card.availableScalesList.length
+          spacing: Style.spacing.xs
+
+          readonly property real cellWidth: card.availableScalesList.length > 0
+            ? (width - spacing * (columns - 1)) / columns
+            : 0
+
+          Repeater {
+            model: card.availableScalesList
+
+            Button {
+              required property string modelData
+              required property int index
+
+              width: cardScaleGrid.cellWidth
+              text: root.effectiveScale(modelData) + "x"
+              fontSize: Style.font.caption
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
+              horizontalPadding: Style.spacing.xs
+              verticalPadding: Style.spacing.controlPaddingY
+              bordered: true
+              active: card.activeScaleIdx === index
+              hasCursor: card.isCardFocused && card.currentSubRow === "scale" && root.cardSubItem === index
+
+              onClicked: root.setMonitorScale(card.display.name, modelData)
+              onHovered: function(h) {
+                if (h && !root.reflowingText) {
+                  root.cursorActive = true
+                  root.focusSection = "card_" + card.display.name
+                  root.cardSubRow = card.subRows.indexOf("scale")
+                  root.cardSubItem = index
+                }
+              }
+            }
+          }
+        }
       }
-      tooltipText: monitorRow.resetMsg !== "" ? monitorRow.resetMsg : "Retrain display link"
 
-      onClicked: root.resetDisplay(monitorRow.display.name)
-      onHovered: function(isHovered) {
-        if (!isHovered || root.reflowingText) return
-        root.cursorActive = true
-        root.focusSection = "monitors"
-        root.selectedIndex = monitorRow.rowIndex
-        root.monitorColumn = 1
+      // Refresh rate chips
+      Column {
+        visible: card.isExpanded && card.display.enabled && card.display.availableRates && card.display.availableRates.length > 0
+        width: parent.width
+        spacing: Style.space(4)
+
+        PanelSectionHeader {
+          text: "REFRESH RATE"
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+        }
+
+        Flow {
+          width: parent.width
+          spacing: Style.spacing.xs
+
+          Repeater {
+            model: card.display.availableRates || []
+
+            Button {
+              required property real modelData
+              required property int index
+
+              readonly property bool isCurrentRate: Math.abs(modelData - card.display.refreshRate) < 0.05
+              text: (Math.round(modelData) === modelData ? modelData : modelData.toFixed(2)) + " Hz"
+              fontSize: Style.font.caption
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
+              horizontalPadding: Style.spacing.sm
+              verticalPadding: Style.spacing.controlPaddingY
+              bordered: true
+              active: isCurrentRate
+              hasCursor: card.isCardFocused && card.currentSubRow === "rate" && root.cardSubItem === index
+
+              onClicked: root.setMonitorRefreshRate(card.display.name, modelData)
+              onHovered: function(h) {
+                if (h && !root.reflowingText) {
+                  root.cursorActive = true
+                  root.focusSection = "card_" + card.display.name
+                  root.cardSubRow = card.subRows.indexOf("rate")
+                  root.cardSubItem = index
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Action row: DPMS and Reset
+      Row {
+        visible: card.isExpanded && card.display.enabled
+        width: parent.width
+        spacing: Style.space(8)
+
+        // DPMS control
+        Item {
+          implicitWidth: dpmsBtn.implicitWidth
+          implicitHeight: dpmsBtn.implicitHeight
+
+          Button {
+            id: dpmsBtn
+            visible: root.dpmsSafetyMonitor !== card.display.name
+            bordered: true
+            fontSize: Style.font.caption
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            iconText: card.display.dpmsStatus ? "󰶐" : "󰶑"
+            text: card.display.dpmsStatus ? "DPMS Off" : "DPMS On"
+            hasCursor: card.isCardFocused && card.currentSubRow === "actions" && root.cardSubItem === 0
+            tooltipText: card.display.dpmsStatus ? "Turn display off with 10s auto-on safety" : "Turn display on"
+
+            onClicked: {
+              if (card.display.dpmsStatus) {
+                root.setDpmsOffWithSafety(card.display.name)
+              } else {
+                root.setDpmsOn(card.display.name)
+              }
+            }
+            onHovered: function(h) {
+              if (h && !root.reflowingText) {
+                root.cursorActive = true
+                root.focusSection = "card_" + card.display.name
+                root.cardSubRow = card.subRows.indexOf("actions")
+                root.cardSubItem = 0
+              }
+            }
+          }
+
+          Row {
+            visible: root.dpmsSafetyMonitor === card.display.name
+            spacing: Style.space(4)
+
+            Button {
+              bordered: true
+              fontSize: Style.font.caption
+              foreground: Color.accent
+              text: "Restore (" + root.dpmsCountdown + "s)"
+              hasCursor: card.isCardFocused && card.currentSubRow === "actions" && root.cardSubItem === 0
+              onClicked: root.restoreDpms()
+            }
+
+            Button {
+              bordered: true
+              fontSize: Style.font.caption
+              text: "Keep Off"
+              onClicked: root.confirmDpmsOff()
+            }
+          }
+        }
+
+        Item {
+          Layout.fillWidth: true
+          width: Style.space(4)
+        }
+
+        // Reset button
+        Button {
+          id: cardResetBtn
+          bordered: true
+          fontSize: Style.font.caption
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+          horizontalPadding: Style.spacing.xs
+          verticalPadding: Style.spacing.controlPaddingY
+          hasCursor: card.isCardFocused && card.currentSubRow === "actions" && root.cardSubItem === 1
+          onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(card)
+
+          iconSpinning: card.isResetting
+          iconText: card.isResetting ? "󰑐" : (card.cardResetInfo && card.cardResetInfo.status === "success" ? "󰄬" : (card.cardResetInfo && card.cardResetInfo.status === "error" ? "󰅚" : ""))
+          text: {
+            if (card.isResetting) return "Retraining…"
+            if (card.cardResetInfo && card.cardResetInfo.status === "success") return "Retrained"
+            if (card.cardResetInfo && card.cardResetInfo.status === "error") return "Failed"
+            return "Reset"
+          }
+          tooltipText: card.resetMsg !== "" ? card.resetMsg : "Retrain display link"
+
+          onClicked: root.resetDisplay(card.display.name)
+          onHovered: function(h) {
+            if (h && !root.reflowingText) {
+              root.cursorActive = true
+              root.focusSection = "card_" + card.display.name
+              root.cardSubRow = card.subRows.indexOf("actions")
+              root.cardSubItem = 1
+            }
+          }
+        }
       }
     }
   }

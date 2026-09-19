@@ -20,10 +20,17 @@ Display information, per-display control, multi-monitor alignment, and link rese
 
 ## Features
 
-- **Link Reset / Retrain**: Per-display link retraining to recover from DP/HDMI jitter or panel sync faults.
+- **Per-Display Cards**: Collapsed-by-default, highlighted-display-expanded cards showing rich hardware facts: resolution, refresh rate, logical scale, transform, DPMS, VRR, workspace, and physical size in inches.
+- **Per-Display Controls**:
+  - Individual DDC brightness sliders (cached, debounced; hidden when DDC is unavailable).
+  - Clean scale preset pills preserving output coordinates.
+  - Refresh-rate chips dynamically populated from supported modes at the current resolution.
+  - DPMS toggle with a 10-second auto-restore safety countdown.
+- **Link Reset / Retrain**: Per-display link retraining (`fred-monitor-reset`) to recover from DP/HDMI jitter or panel sync faults.
 - **Stock Defect Fixes**:
   - Uses native Hyprland Lua syntax for display toggling (`hl.monitor({ output = ..., disabled = true/false })`).
   - Applies monitor scaling without clobbering existing physical offsets and monitor positions.
+- **Unified Keyboard Navigation**: `j`/`k` walks across card sub-rows and between cards; `h`/`l` adjusts sliders and steps through chips; `r`/`R` retrains link.
 - **Running Version Visibility**: Running version displayed on bar icon hover tooltip and in the popup panel footer.
 - **Hardened Process Execution**:
   - All process execution goes through a supervised `Launch.qml` component.

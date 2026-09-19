@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.monitor",
   "name": "Display",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "Fred (@greenermoose)",
   "description": "Display information, per-display control, and link reset",
   "repository": "https://github.com/greenermoose/omarchy-fred-monitor",
