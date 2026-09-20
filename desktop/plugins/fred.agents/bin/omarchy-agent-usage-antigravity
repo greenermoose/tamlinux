@@ -1,0 +1,305 @@
+#!/usr/bin/python3
+# omarchy:summary=Print the Antigravity usage record as JSON
+# omarchy:args=[--force] [--limits-only]
+# omarchy:hidden=true
+"""Collect Antigravity usage into one display-ready JSON record.
+
+Antigravity is prompt-only: there is no local token ledger and no rate-limit
+RPC, so this collector reports real prompt and session counts and none of the
+token fields. The agents panel only ever reads the JSON this prints.
+
+Prompts come from ~/.gemini/antigravity-cli/history.jsonl, one row per CLI
+invocation: {display, timestamp(ms), workspace, conversationId?, type?}. A
+row whose type is "slash_command" (e.g. /usage, /exit) is a built-in command,
+not a prompt, so it is excluded. Session counts and their days come from
+conversation_summaries.db, one row per conversation: a conversation's day is
+last_user_input_time (fallback last_modified_time); a row whose timestamps
+are all absent still counts as a session, just with no day to bucket.
+"""
+
+import argparse
+import datetime as _dt
+import fcntl
+import hashlib
+import json
+import os
+import sqlite3
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+AGENT_ID = "antigravity"
+AGENT_NAME = "Antigravity"
+AUTH_HELP = ""
+
+# A scan this recent is only reused to dedup concurrent collector runs (the
+# update command backgrounds one per agent while the panel refreshes on its
+# own); every periodic widget refresh lands a real rescan, however low
+# refreshIntervalSec is set. --limits-only promises only fresh limits, so it
+# may reuse a scan for up to 15 minutes. Antigravity has no limits to refresh,
+# but the flag is kept for CLI compatibility with the panel's refreshLimits().
+SCAN_REUSE_SECONDS = 20
+LIMITS_ONLY_REUSE_SECONDS = 900
+
+# Guard against a pathological history file being loaded into memory whole.
+MAX_FILE_BYTES = 128 * 1024 * 1024
+
+# conversation_summaries.db stamps conversations with zeros when the event was
+# never recorded; those rows have no day to bucket into.
+VOID_TS = "0001-01-01"
+
+
+def number(value):
+  try:
+    return int(value or 0)
+  except Exception:
+    return 0
+
+
+def local_day_ms(value):
+  try:
+    ts = number(value)
+    if ts > 10_000_000_000:
+      ts = ts / 1000
+    return datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+  except Exception:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def local_day_iso(value):
+  if not value or not isinstance(value, str) or value.startswith(VOID_TS):
+    return None
+  try:
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is not None:
+      dt = dt.astimezone()
+    return dt.strftime("%Y-%m-%d")
+  except Exception:
+    return None
+
+
+def scan_history(prompts_by_day):
+  """Count prompts from history.jsonl, skipping slash_command rows."""
+  path = Path.home() / ".gemini" / "antigravity-cli" / "history.jsonl"
+  if not path.is_file():
+    return
+  try:
+    if path.stat().st_size > MAX_FILE_BYTES:
+      print("omarchy-agent-usage-antigravity: history.jsonl exceeds size cap; skipping", file=sys.stderr)
+      return
+  except OSError:
+    return
+  for raw in open(path, errors="replace"):
+    try:
+      entry = json.loads(raw)
+    except Exception:
+      continue
+    if not isinstance(entry, dict):
+      continue
+    if entry.get("type") == "slash_command":
+      continue
+    timestamp = entry.get("timestamp")
+    if not isinstance(timestamp, (int, float)):
+      continue
+    day = local_day_ms(timestamp)
+    prompts_by_day[day] = prompts_by_day.get(day, 0) + 1
+
+
+def scan_conversation_summaries(sessions_by_day, all_session_ids):
+  """Distinct conversations from conversation_summaries.db.
+
+  Read-only and WAL-tolerant; any failure only skips this session source and
+  never invalidates the history scan. A conversation whose day cannot be
+  resolved still counts toward the session total.
+  """
+  db = Path.home() / ".gemini" / "antigravity-cli" / "conversation_summaries.db"
+  if not db.is_file():
+    return
+  try:
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
+  except sqlite3.Error as exc:
+    print(f"omarchy-agent-usage-antigravity: could not open conversation_summaries.db ({exc})", file=sys.stderr)
+    return
+  try:
+    conn.execute("PRAGMA query_only = ON")
+    for row in conn.execute("SELECT conversation_id, last_user_input_time, last_modified_time FROM conversation_summaries"):
+      try:
+        conversation_id, last_user, last_modified = row
+        all_session_ids.add(conversation_id)
+        day = local_day_iso(last_user) or local_day_iso(last_modified)
+        if day is not None:
+          sessions_by_day.setdefault(day, set()).add(conversation_id)
+      except Exception:
+        continue
+  except sqlite3.Error as exc:
+    print(f"omarchy-agent-usage-antigravity: conversation_summaries.db scan failed ({exc})", file=sys.stderr)
+    return
+  finally:
+    try:
+      conn.close()
+    except Exception:
+      pass
+
+
+def cache_root():
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "omarchy" / "agent-usage"
+  root.mkdir(parents=True, exist_ok=True)
+  return root
+
+
+def scan_cache_paths():
+  home = Path.home()
+  history = home / ".gemini" / "antigravity-cli" / "history.jsonl"
+  db = home / ".gemini" / "antigravity-cli" / "conversation_summaries.db"
+  digest = hashlib.sha1((str(home) + "\n" + str(history) + "\n" + str(db)).encode("utf-8")).hexdigest()[:16]
+  root = cache_root()
+  return root / f"antigravity-scan-{digest}.json", root / f"antigravity-scan-{digest}.lock"
+
+
+def read_fresh_json(path, max_age_seconds):
+  if max_age_seconds <= 0 or not path.exists():
+    return None
+  try:
+    # A negative age means the mtime is in the future: the clock moved
+    # backwards since the write, so the cache's freshness cannot be trusted.
+    age = time.time() - path.stat().st_mtime
+    if 0 <= age <= max_age_seconds:
+      return json.loads(path.read_text(encoding="utf-8"))
+  except Exception:
+    return None
+  return None
+
+
+def write_json(path, payload):
+  # A temp name unique to this writer, not derived from the target: several
+  # collectors can run at once (the update command backgrounds one per agent,
+  # the panel refreshes on its own), and a shared temp path means the second
+  # replace finds the first one's file already moved away.
+  handle_fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+  tmp = Path(tmp_name)
+  try:
+    with os.fdopen(handle_fd, "w", encoding="utf-8") as handle:
+      handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
+    # mkstemp opens at 0600; nothing in the cache is sensitive, so open it
+    # up to the usual 0644.
+    tmp.chmod(0o644)
+    tmp.replace(path)
+  except BaseException:
+    tmp.unlink(missing_ok=True)
+    raise
+
+
+# The cache payload is a versioned envelope around the local-stats dict, so a
+# corrupted or foreign-shaped file is a cache miss (rescan + rewrite) instead
+# of a crash or a garbage record.
+def read_cached_stats(cache_file, max_age_seconds):
+  cached = read_fresh_json(cache_file, max_age_seconds)
+  if not isinstance(cached, dict) or cached.get("schemaVersion") != 1:
+    return None
+  if cached.get("scanDate") != datetime.now().strftime("%Y-%m-%d"):
+    return None
+  stats = cached.get("stats")
+  if not isinstance(stats, dict):
+    return None
+  for key in ("todayPrompts", "todaySessions", "todayTotalTokens", "recentDays", "totalPrompts", "totalSessions", "activeDays", "activeDates", "modelUsage"):
+    if key not in stats:
+      return None
+  return stats
+
+
+def write_cached_stats(cache_file, stats):
+  try:
+    write_json(cache_file, {"schemaVersion": 1, "scanDate": datetime.now().strftime("%Y-%m-%d"), "stats": stats})
+  except Exception as exc:
+    print(f"omarchy-agent-usage-antigravity: could not write usage cache ({exc})", file=sys.stderr)
+
+
+def local_stats():
+  prompts_by_day = {}
+  scan_history(prompts_by_day)
+  sessions_by_day = {}
+  all_session_ids = set()
+  scan_conversation_summaries(sessions_by_day, all_session_ids)
+
+  now = datetime.now()
+  today = now.strftime("%Y-%m-%d")
+  recent_dates = [(now - _dt.timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(6, -1, -1)]
+  active_dates = set(prompts_by_day.keys()) | set(sessions_by_day.keys())
+  return {
+    "todayPrompts": prompts_by_day.get(today, 0),
+    "todaySessions": len(sessions_by_day.get(today, set())),
+    "todayTotalTokens": 0,
+    "todayTokensByModel": {},
+    "recentDays": [{"date": day, "messageCount": prompts_by_day.get(day, 0)} for day in recent_dates],
+    # Prompt count from the CLI history; session count distinct
+    # conversations. The two can disagree — not every prompt conversation has
+    # a summary row, and not every summary row has a history prompt.
+    "totalPrompts": sum(prompts_by_day.values()),
+    "totalSessions": len(all_session_ids),
+    "activeDays": len(active_dates),
+    "activeDates": sorted(active_dates),
+    "modelUsage": {},
+  }
+
+
+def cached_local_stats(max_age):
+  """Local stats, with the cache as a pure optimization.
+
+  The cache must never take the collector down: any cache-layer failure
+  (unwritable cache root, lock errors, disk full) degrades to a direct scan
+  and a warning on stderr. The JSON record is the contract; the cache is not.
+  """
+  try:
+    return _cached_local_stats(max_age)
+  except Exception as exc:
+    print(f"omarchy-agent-usage-antigravity: cache unavailable ({exc}); scanning directly", file=sys.stderr)
+    return local_stats()
+
+
+def _cached_local_stats(max_age):
+  cache_file, lock_file = scan_cache_paths()
+
+  cached = read_cached_stats(cache_file, max_age)
+  if cached is not None:
+    return cached
+
+  with lock_file.open("w") as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    cached = read_cached_stats(cache_file, max_age)
+    if cached is not None:
+      return cached
+    stats = local_stats()
+    write_cached_stats(cache_file, stats)
+    return stats
+
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--force", action="store_true")
+  parser.add_argument("--limits-only", action="store_true")
+  args = parser.parse_args()
+
+  max_age = 0 if args.force else (LIMITS_ONLY_REUSE_SECONDS if args.limits_only else SCAN_REUSE_SECONDS)
+  stats = cached_local_stats(max_age)
+
+  record = {
+    "schemaVersion": 1,
+    "id": AGENT_ID,
+    "name": AGENT_NAME,
+    "updatedAt": datetime.now(timezone.utc).isoformat(),
+    "ready": True,
+    "hasLocalStats": True,
+    # Antigravity exposes no token ledger; the prompt-mode panel uses this to
+    # show prompt charts where Claude/Codex show token charts.
+    "tokensAvailable": False,
+    "hasPromptStats": True,
+    "scope": "device",
+  }
+  record.update(stats)
+  print(json.dumps(record, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+  main()

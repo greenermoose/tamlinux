@@ -1,0 +1,394 @@
+#!/usr/bin/python3
+# omarchy:summary=Print the Cursor usage record as JSON
+# omarchy:args=[--force] [--limits-only]
+# omarchy:hidden=true
+"""Collect Cursor usage into one display-ready JSON record.
+
+Cursor is prompt-only: there is no local token ledger and no rate-limit RPC,
+so this collector reports real prompt and session counts and none of the
+token fields. The agents panel only ever reads the JSON this prints.
+
+Sessions come from Cursor agent transcripts under
+~/.cursor/projects/*/agent-transcripts/<session>/<session>.jsonl. A subagent
+file in <session>/subagents/ is work delegated by that same chat, so it
+counts into the parent session's prompt totals, never as a session of its
+own. conversation-search.db adds older composer sessions read-only; DB rows
+that are just pointers to a transcript-derived session id are skipped so
+nothing is counted twice.
+
+Prompt = a transcript line with role "user" whose content has a text item.
+Session day = the first <timestamp> parsed from the top-level transcript
+file, else that file's mtime. Cursor writes timestamps as local wall-clock
+dates ("Friday, Sep 4, 2026, 10:19 AM (UTC-4)"), so they are used as local
+calendar days without any timezone conversion.
+"""
+
+import argparse
+import datetime as _dt
+import fcntl
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+AGENT_ID = "cursor"
+AGENT_NAME = "Cursor"
+AUTH_HELP = ""
+
+# A scan this recent is only reused to dedup concurrent collector runs (the
+# update command backgrounds one per agent while the panel refreshes on its
+# own); every periodic widget refresh lands a real rescan, however low
+# refreshIntervalSec is set. --limits-only promises only fresh limits, so it
+# may reuse a scan for up to 15 minutes. Cursor has no limits to refresh, but
+# the flag is kept for CLI compatibility with the panel's refreshLimits().
+SCAN_REUSE_SECONDS = 20
+LIMITS_ONLY_REUSE_SECONDS = 900
+
+# Guard against pathological transcripts: a session jsonl larger than this is
+# skipped whole rather than parsed into memory.
+MAX_FILE_BYTES = 128 * 1024 * 1024
+
+# Pulls the wall-clock calendar date out of Cursor's printed timestamp. The
+# (UTC) suffix is display metadata about the same local time, so it is
+# dropped rather than applied.
+TIMESTAMP_RE = re.compile(r"<timestamp>(.*?)</timestamp>", re.DOTALL)
+TIMESTAMP_FORMATS = (
+    "%A, %b %d, %Y, %I:%M %p",
+    "%A, %B %d, %Y, %I:%M %p",
+    "%A, %d %b %Y, %I:%M %p",
+)
+
+
+def number(value):
+  try:
+    return int(value or 0)
+  except Exception:
+    return 0
+
+
+def local_day_from_ms(value):
+  if isinstance(value, (int, float)):
+    # conversation-search.db updated_at is milliseconds since the epoch.
+    if value > 10_000_000_000:
+      value = value / 1000
+    return datetime.fromtimestamp(value).strftime("%Y-%m-%d")
+  return datetime.now().strftime("%Y-%m-%d")
+
+
+def parse_timestamp(text):
+  if not text:
+    return None
+  match = TIMESTAMP_RE.search(text)
+  if not match:
+    return None
+  body = re.sub(r"\s*\(UTC[^)]*\)\s*", " ", match.group(1)).strip()
+  for fmt in TIMESTAMP_FORMATS:
+    try:
+      return datetime.strptime(body, fmt)
+    except Exception:
+      continue
+  return None
+
+
+def session_day(text, path):
+  """Day for a session: the first <timestamp> from its top-level file, else
+  the file mtime."""
+  dt = parse_timestamp(text)
+  if dt is not None:
+    return dt.strftime("%Y-%m-%d")
+  try:
+    return datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
+  except OSError:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def transcript_prompt_count(path):
+  """Count role==user lines with a text content item."""
+  count = 0
+  try:
+    with path.open(errors="replace") as handle:
+      for raw in handle:
+        try:
+          entry = json.loads(raw)
+        except Exception:
+          continue
+        if entry.get("type") == "turn_ended":
+          continue
+        if entry.get("role") != "user":
+          continue
+        content = entry.get("message", {}).get("content")
+        if not isinstance(content, list):
+          continue
+        for item in content:
+          if isinstance(item, dict) and item.get("type") == "text":
+            count += 1
+            break
+  except OSError:
+    pass
+  return count
+
+
+def file_head(path, limit=1 << 16):
+  try:
+    with path.open(errors="replace") as handle:
+      return handle.read(limit)
+  except OSError:
+    return ""
+
+
+def scan_transcripts():
+  """Aggregate Cursor agent transcripts into day buckets.
+
+  Each session dir contributes exactly one session (its directory name);
+  subagent files add their prompts to the parent. Returns:
+    (prompts_by_day, sessions_by_day) where both map day -> (int, set)."""
+  projects = Path.home() / ".cursor" / "projects"
+  prompts_by_day = {}
+  sessions_by_day = {}
+  if not projects.is_dir():
+    return prompts_by_day, sessions_by_day
+  for transcript_dir in sorted(projects.glob("*/agent-transcripts/*")):
+    if not transcript_dir.is_dir() or transcript_dir.name == "subagents":
+      continue
+    session_key = transcript_dir.name
+    top_files = sorted(transcript_dir.glob("*.jsonl"))
+    if not top_files:
+      continue
+    head_text = "".join(file_head(p) for p in top_files)
+    day = session_day(head_text, top_files[0])
+    prompts = sum(transcript_prompt_count(p) for p in top_files)
+    for path in sorted(transcript_dir.glob("subagents/*.jsonl")):
+      prompts += transcript_prompt_count(path)
+    prompts_by_day[day] = prompts_by_day.get(day, 0) + prompts
+    sessions_by_day.setdefault(day, set()).add(session_key)
+  return prompts_by_day, sessions_by_day
+
+
+def scan_conversation_db(prompts_by_day, sessions_by_day, all_session_ids):
+  """Best-effort older composer sessions from conversation-search.db.
+
+  Read-only and WAL-tolerant; any failure only skips the DB bonus and never
+  blocks or invalidates the transcript scan. DB rows whose id already names a
+  transcript session are skipped (same chat, already counted). Sessions whose
+  branches carry no usable message payload contribute their session count and
+  nothing else.
+  """
+  db = Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "conversation-search.db"
+  if not db.is_file():
+    return
+  try:
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
+  except sqlite3.Error:
+    return
+  try:
+    conn.execute("PRAGMA query_only = ON")
+    for row in conn.execute("SELECT id, branches, updated_at FROM conversations"):
+      try:
+        conversation_id, branches, updated_at = row
+        if conversation_id in all_session_ids:
+          continue
+        day = local_day_from_ms(updated_at)
+        prompts = 0
+        if isinstance(branches, str) and branches.strip():
+          try:
+            payload = json.loads(branches)
+          except Exception:
+            payload = None
+          messages = payload
+          if isinstance(payload, dict):
+            messages = (payload.get("messages") or payload.get("requests")
+                        or payload.get("branches"))
+          if isinstance(messages, list):
+            for message in messages:
+              if not isinstance(message, dict) or message.get("role") != "user":
+                continue
+              content = message.get("content")
+              if isinstance(content, list):
+                for item in content:
+                  if isinstance(item, dict) and item.get("type") == "text":
+                    prompts += 1
+                    break
+              elif isinstance(content, str) and content.strip():
+                prompts += 1
+        prompts_by_day[day] = prompts_by_day.get(day, 0) + prompts
+        sessions_by_day.setdefault(day, set()).add(conversation_id)
+        all_session_ids.add(conversation_id)
+      except Exception:
+        continue
+  except sqlite3.Error:
+    return
+  finally:
+    try:
+      conn.close()
+    except Exception:
+      pass
+
+
+def cache_root():
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "omarchy" / "agent-usage"
+  root.mkdir(parents=True, exist_ok=True)
+  return root
+
+
+def scan_cache_paths():
+  projects = Path.home() / ".cursor" / "projects"
+  db = Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "conversation-search.db"
+  digest = hashlib.sha1((str(Path.home()) + "\n" + str(projects) + "\n" + str(db)).encode("utf-8")).hexdigest()[:16]
+  root = cache_root()
+  return root / f"cursor-scan-{digest}.json", root / f"cursor-scan-{digest}.lock"
+
+
+def read_fresh_json(path, max_age_seconds):
+  if max_age_seconds <= 0 or not path.exists():
+    return None
+  try:
+    # A negative age means the mtime is in the future: the clock moved
+    # backwards since the write, so the cache's freshness cannot be trusted.
+    age = time.time() - path.stat().st_mtime
+    if 0 <= age <= max_age_seconds:
+      return json.loads(path.read_text(encoding="utf-8"))
+  except Exception:
+    return None
+  return None
+
+
+def write_json(path, payload):
+  # A temp name unique to this writer, not derived from the target: several
+  # collectors can run at once (the update command backgrounds one per agent,
+  # the panel refreshes on its own), and a shared temp path means the second
+  # replace finds the first one's file already moved away.
+  handle_fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+  tmp = Path(tmp_name)
+  try:
+    with os.fdopen(handle_fd, "w", encoding="utf-8") as handle:
+      handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
+    # mkstemp opens at 0600; nothing in the cache is sensitive, so open it
+    # up to the usual 0644.
+    tmp.chmod(0o644)
+    tmp.replace(path)
+  except BaseException:
+    tmp.unlink(missing_ok=True)
+    raise
+
+
+# The cache payload is a versioned envelope around the local-stats dict, so a
+# corrupted or foreign-shaped file is a cache miss (rescan + rewrite) instead
+# of a crash or a garbage record.
+def read_cached_stats(cache_file, max_age_seconds):
+  cached = read_fresh_json(cache_file, max_age_seconds)
+  if not isinstance(cached, dict) or cached.get("schemaVersion") != 1:
+    return None
+  # today* fields only mean "today" on the day they were scanned. A cache
+  # from another local date (midnight passed, or the clock moved) is a miss,
+  # not merely old, whatever its mtime says.
+  if cached.get("scanDate") != datetime.now().strftime("%Y-%m-%d"):
+    return None
+  stats = cached.get("stats")
+  if not isinstance(stats, dict):
+    return None
+  for key in ("todayPrompts", "todaySessions", "todayTotalTokens", "recentDays", "totalPrompts", "totalSessions", "activeDays", "activeDates", "modelUsage"):
+    if key not in stats:
+      return None
+  return stats
+
+
+def write_cached_stats(cache_file, stats):
+  try:
+    write_json(cache_file, {"schemaVersion": 1, "scanDate": datetime.now().strftime("%Y-%m-%d"), "stats": stats})
+  except Exception as exc:
+    print(f"omarchy-agent-usage-cursor: could not write usage cache ({exc})", file=sys.stderr)
+
+
+def local_stats():
+  prompts_by_day, sessions_by_day = scan_transcripts()
+  all_session_ids = set()
+  for ids in sessions_by_day.values():
+    all_session_ids.update(ids)
+  scan_conversation_db(prompts_by_day, sessions_by_day, all_session_ids)
+
+  now = datetime.now()
+  today = now.strftime("%Y-%m-%d")
+  recent_dates = [(now - _dt.timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(6, -1, -1)]
+  active_dates = set(sessions_by_day.keys())
+  return {
+    "todayPrompts": prompts_by_day.get(today, 0),
+    "todaySessions": len(sessions_by_day.get(today, set())),
+    "todayTotalTokens": 0,
+    "todayTokensByModel": {},
+    "recentDays": [{"date": day, "messageCount": prompts_by_day.get(day, 0)} for day in recent_dates],
+    "totalPrompts": sum(prompts_by_day.values()),
+    "totalSessions": len(all_session_ids),
+    # Days with any recorded usage, for the all-time "N days" summary. The
+    # dates travel too: merging snapshots from several machines needs their
+    # union, which a count alone cannot give.
+    "activeDays": len(active_dates),
+    "activeDates": sorted(active_dates),
+    "modelUsage": {},
+  }
+
+
+def cached_local_stats(max_age):
+  """Local stats, with the cache as a pure optimization.
+
+  The cache must never take the collector down: any cache-layer failure
+  (unwritable cache root, lock errors, disk full) degrades to a direct scan
+  and a warning on stderr. The JSON record is the contract; the cache is not.
+  """
+  try:
+    return _cached_local_stats(max_age)
+  except Exception as exc:
+    print(f"omarchy-agent-usage-cursor: cache unavailable ({exc}); scanning directly", file=sys.stderr)
+    return local_stats()
+
+
+def _cached_local_stats(max_age):
+  cache_file, lock_file = scan_cache_paths()
+
+  cached = read_cached_stats(cache_file, max_age)
+  if cached is not None:
+    return cached
+
+  with lock_file.open("w") as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    cached = read_cached_stats(cache_file, max_age)
+    if cached is not None:
+      return cached
+    stats = local_stats()
+    write_cached_stats(cache_file, stats)
+    return stats
+
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--force", action="store_true")
+  parser.add_argument("--limits-only", action="store_true")
+  args = parser.parse_args()
+
+  max_age = 0 if args.force else (LIMITS_ONLY_REUSE_SECONDS if args.limits_only else SCAN_REUSE_SECONDS)
+  stats = cached_local_stats(max_age)
+
+  record = {
+    "schemaVersion": 1,
+    "id": AGENT_ID,
+    "name": AGENT_NAME,
+    "updatedAt": datetime.now(timezone.utc).isoformat(),
+    "ready": True,
+    "hasLocalStats": True,
+    # Cursor exposes no token ledger; the prompt-mode panel uses this to show
+    # prompt charts where Claude/Codex show token charts.
+    "tokensAvailable": False,
+    "hasPromptStats": True,
+    "scope": "device",
+  }
+  record.update(stats)
+  print(json.dumps(record, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+  main()
