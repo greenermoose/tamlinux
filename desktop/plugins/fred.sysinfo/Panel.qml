@@ -14,7 +14,7 @@ Panel {
   ipcTarget: "fred.sysinfo"
   manageIpc: false
 
-  readonly property string pluginVersion: "1.1.1"
+  readonly property string pluginVersion: "1.1.2"
 
   property var stats: ({})
   property int phraseIndex: 0
@@ -61,6 +61,11 @@ Panel {
         if (data.cpu && data.cpu.power_profile) {
           root.activeProfile = data.cpu.power_profile
         }
+        Qt.callLater(function() {
+          if (button.tooltipHovered && !root.opened && root.bar) {
+            root.bar.showTooltip(button, button.tooltipText)
+          }
+        })
       }
     } catch (e) {
       console.warn("sysinfo parse error:", e)
@@ -233,14 +238,15 @@ Panel {
     text: "󰍛"
     tooltipText: {
       var prod = (root.stats.system && root.stats.system.product) ? (root.stats.system.vendor + " " + root.stats.system.product) : "System Hardware"
-      var temp = (root.stats.cpu && root.stats.cpu.temp_c) ? (root.stats.cpu.temp_c.toFixed(1) + "°C") : ""
-      var freq = (root.stats.cpu && root.stats.cpu.avg_freq_mhz) ? ((root.stats.cpu.avg_freq_mhz / 1000).toFixed(1) + " GHz") : ""
-      var parts = [prod]
-      if (temp) parts.push(temp)
-      if (freq) parts.push(freq)
-      var base = parts.join(" · ")
+      var cpuUsage = (root.stats.cpu && root.stats.cpu.usage_percent !== undefined && root.stats.cpu.usage_percent !== null) ? root.stats.cpu.usage_percent.toFixed(1) + "%" : "--"
+      var ramAvailable = (root.stats.memory && root.stats.memory.avail_gb !== undefined && root.stats.memory.avail_gb !== null) ? root.stats.memory.avail_gb.toFixed(1) + " GB available" : "--"
+      var diskFree = (root.stats.storage && root.stats.storage.free_gb !== undefined && root.stats.storage.free_gb !== null) ? root.stats.storage.free_gb.toFixed(1) + " GB free" : "--"
+      var resources = "CPU " + cpuUsage + " · RAM " + ramAvailable + " · Disk " + diskFree
       var ver = "fred.sysinfo v" + root.pluginVersion
-      return base !== "" ? (base + "\n\n" + ver) : ver
+      return prod + "\n" + resources + "\n\n" + ver
+    }
+    onTooltipHoveredChanged: {
+      if (tooltipHovered && !root.opened) root.refresh()
     }
     onPressed: function(b) { root.toggle() }
   }

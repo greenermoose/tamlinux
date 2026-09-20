@@ -80,3 +80,31 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - `omarchy plugin validate` clean with 0 errors.
   - Live bar verification via dev link, `omarchy-qmlcache-purge`, and shell restart.
 
+---
+
+## Session: 2026-09-20 — Resource Summary Hover & Public Screenshots (v1.1.2 pre-release)
+
+- **Date**: 2026-09-20
+- **Primary AI Agent**: Codex CLI (`codex 0.155.1`)
+- **Primary Model**: GPT-5.6 Sol (`gpt-5.6-sol`)
+- **Transcript Reference**: `01a0be6a-6329-77b2-9413-b4cd5b7e7971`
+- **Prompts**:
+  > "I don't understand what the temperature value the hover on fred.sysinfo is showing me. Let's replace that with CPU Usage, RAM available, and free disk space. Those are the values I'm usually most interested in. If I want to know temperatures, I can open the panel. Check whether the temperature values are reliable. I'm slightly concerned that we're just making up temperatures since the hover value seems unconnected to any of the other values."
+  >
+  > "Let's develop version 1.1.2 of fred.sysinfo to make this hover change."
+  >
+  > "I just hovered over fred.sysinfo and still see version 1.1.1. Why?"
+  >
+  > "Use the msi monitor to take screenshots of fred.sysinfo so you can update the hover view shown in out public GitHub repos. Make sure to push to both omarchy-fred-sysinfo and omarchy-fred-plugin (especially our plugin showcase HTML page). Ask if you have questions about how or why to do this."
+
+- **Key Decisions & Implementation Notes**:
+  - Replaced temperature and CPU frequency in the bar hover with freshly probed CPU usage, available RAM, and free root-disk space. Temperatures remain available in the full panel.
+  - Confirmed the temperature values come from Linux hwmon: AMD `k10temp` for CPU, AMDGPU edge for GPU, and NVMe composite for storage. The old hover mismatch came from stale tooltip data, not fabricated sensor values.
+  - Refreshes telemetry when the pointer enters the sysinfo icon and updates an already-visible tooltip after the probe returns.
+  - Captured authentic 1.1.2 hover and panel screenshots on the MSI MP161 (`DP-2`), tightly cropped to exclude unrelated desktop content.
+
+- **Verification**:
+  - `omarchy plugin validate` passed.
+  - Live shell loaded `Panel.qml` from the deployed development symlink and reported installed version 1.1.2.
+  - Screenshot text visibly reports `fred.sysinfo v1.1.2` and the new CPU/RAM/disk summary.
+  - Published to public `main` as a pre-release without creating a tag or GitHub Release.

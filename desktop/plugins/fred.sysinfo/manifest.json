@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.sysinfo",
   "name": "System Information",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "Fred (@greenermoose)",
   "description": "Comprehensive hardware monitor and system information panel (CPU, thermals, motherboard, memory, storage, I/O)",
   "repository": "https://github.com/greenermoose/omarchy-fred-sysinfo",

@@ -2,6 +2,8 @@
 
 Comprehensive hardware telemetry, thermal sensors, and system information bar plugin for [Omarchy Linux](https://omarchy.com) (Hyprland + Quickshell).
 
+![Resource summary hover](assets/hover.png)
+
 ![System Information Panel](assets/screenshot.png)
 
 ---
@@ -32,6 +34,7 @@ Comprehensive hardware telemetry, thermal sensors, and system information bar pl
   - Input collectors enforce payload caps to prevent unbounded memory allocation.
   - Safe clipboard copy invokes `wl-copy` without shell string interpolation vulnerabilities.
 - **Interactive Power Management:** Toggle system power profiles directly between Saver, Balanced, and Performance modes via `powerprofilesctl`.
+- **Fresh Resource Summary:** Hover over the bar icon for current CPU usage, available RAM, and free root-disk space without opening the full panel.
 - **System Monitor Integration:** Launch `btop` in your configured terminal with a single click from the panel footer.
 
 ---
