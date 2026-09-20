@@ -1,0 +1,592 @@
+{
+  "schemaVersion": 1,
+  "id": "lenovo-calliope",
+  "name": "Lenovo Calliope (space-saving full-size)",
+  "description": "LiteOn Lenovo Calliope USB keyboard, 6 rows, 104-ish space-saving full-size with tall Delete, Fn key, and no right Super.",
+  "source": "field-observed",
+  "contributor": "greenermoose",
+  "verified": "2026-09-19",
+  "unit": "keycap",
+  "mainBlockWidth": 15,
+  "firmwareLocal": [
+    "FN"
+  ],
+  "declaredButAbsent": [
+    "RIGHTMETA"
+  ],
+  "rows": [
+    [
+      {
+        "id": "ESC",
+        "label": "Esc",
+        "code": 1
+      },
+      {
+        "id": "F1",
+        "label": "F1",
+        "code": 59
+      },
+      {
+        "id": "F2",
+        "label": "F2",
+        "code": 60
+      },
+      {
+        "id": "F3",
+        "label": "F3",
+        "code": 61
+      },
+      {
+        "id": "F4",
+        "label": "F4",
+        "code": 62
+      },
+      {
+        "id": "F5",
+        "label": "F5",
+        "code": 63
+      },
+      {
+        "id": "F6",
+        "label": "F6",
+        "code": 64
+      },
+      {
+        "id": "F7",
+        "label": "F7",
+        "code": 65
+      },
+      {
+        "id": "F8",
+        "label": "F8",
+        "code": 66
+      },
+      {
+        "id": "F9",
+        "label": "F9",
+        "code": 67
+      },
+      {
+        "id": "F10",
+        "label": "F10",
+        "code": 68
+      },
+      {
+        "id": "F11",
+        "label": "F11",
+        "code": 87
+      },
+      {
+        "id": "F12",
+        "label": "F12",
+        "code": 88
+      },
+      {
+        "id": "SCROLLLOCK",
+        "label": "ScrLk",
+        "code": 70
+      },
+      {
+        "id": "SYSRQ",
+        "label": "PrtSc",
+        "code": 99
+      },
+      {
+        "id": "PAUSE",
+        "label": "Pause",
+        "code": 119,
+        "gap": 1
+      },
+      {
+        "id": "INSERT",
+        "label": "Insert",
+        "code": 110
+      },
+      {
+        "id": "LED_CAPS",
+        "label": "Caps",
+        "led": "capslock",
+        "gap": 0.5
+      },
+      {
+        "id": "LED_NUM",
+        "label": "Num",
+        "led": "numlock"
+      }
+    ],
+    [
+      {
+        "id": "GRAVE",
+        "label": "`",
+        "code": 41
+      },
+      {
+        "id": "1",
+        "label": "1",
+        "code": 2
+      },
+      {
+        "id": "2",
+        "label": "2",
+        "code": 3
+      },
+      {
+        "id": "3",
+        "label": "3",
+        "code": 4
+      },
+      {
+        "id": "4",
+        "label": "4",
+        "code": 5
+      },
+      {
+        "id": "5",
+        "label": "5",
+        "code": 6
+      },
+      {
+        "id": "6",
+        "label": "6",
+        "code": 7
+      },
+      {
+        "id": "7",
+        "label": "7",
+        "code": 8
+      },
+      {
+        "id": "8",
+        "label": "8",
+        "code": 9
+      },
+      {
+        "id": "9",
+        "label": "9",
+        "code": 10
+      },
+      {
+        "id": "0",
+        "label": "0",
+        "code": 11
+      },
+      {
+        "id": "MINUS",
+        "label": "-",
+        "code": 12
+      },
+      {
+        "id": "EQUAL",
+        "label": "=",
+        "code": 13
+      },
+      {
+        "id": "BACKSPACE",
+        "label": "Backspace",
+        "code": 14,
+        "w": 2
+      },
+      {
+        "id": "HOME",
+        "label": "Home",
+        "code": 102,
+        "gap": 1
+      },
+      {
+        "id": "END",
+        "label": "End",
+        "code": 107
+      },
+      {
+        "id": "NUMLOCK",
+        "label": "NmLk",
+        "code": 69,
+        "gap": 2
+      },
+      {
+        "id": "KPSLASH",
+        "label": "/",
+        "code": 98
+      },
+      {
+        "id": "KPASTERISK",
+        "label": "*",
+        "code": 55
+      },
+      {
+        "id": "KPMINUS",
+        "label": "-",
+        "code": 74
+      }
+    ],
+    [
+      {
+        "id": "TAB",
+        "label": "Tab",
+        "code": 15,
+        "w": 1.5
+      },
+      {
+        "id": "Q",
+        "label": "Q",
+        "code": 16
+      },
+      {
+        "id": "W",
+        "label": "W",
+        "code": 17
+      },
+      {
+        "id": "E",
+        "label": "E",
+        "code": 18
+      },
+      {
+        "id": "R",
+        "label": "R",
+        "code": 19
+      },
+      {
+        "id": "T",
+        "label": "T",
+        "code": 20
+      },
+      {
+        "id": "Y",
+        "label": "Y",
+        "code": 21
+      },
+      {
+        "id": "U",
+        "label": "U",
+        "code": 22
+      },
+      {
+        "id": "I",
+        "label": "I",
+        "code": 23
+      },
+      {
+        "id": "O",
+        "label": "O",
+        "code": 24
+      },
+      {
+        "id": "P",
+        "label": "P",
+        "code": 25
+      },
+      {
+        "id": "BRACKETLEFT",
+        "label": "[",
+        "code": 26
+      },
+      {
+        "id": "BRACKETRIGHT",
+        "label": "]",
+        "code": 27
+      },
+      {
+        "id": "BACKSLASH",
+        "label": "\\",
+        "code": 43,
+        "w": 1.5
+      },
+      {
+        "id": "DELETE",
+        "label": "Del",
+        "code": 111,
+        "h": 2,
+        "gap": 1
+      },
+      {
+        "id": "PAGEUP",
+        "label": "PgUp",
+        "code": 104
+      },
+      {
+        "id": "KP7",
+        "label": "7",
+        "code": 71,
+        "gap": 2
+      },
+      {
+        "id": "KP8",
+        "label": "8",
+        "code": 72
+      },
+      {
+        "id": "KP9",
+        "label": "9",
+        "code": 73
+      },
+      {
+        "id": "KPPLUS",
+        "label": "+",
+        "code": 78,
+        "h": 2
+      }
+    ],
+    [
+      {
+        "id": "CAPSLOCK",
+        "label": "Caps",
+        "code": 58,
+        "w": 1.75
+      },
+      {
+        "id": "A",
+        "label": "A",
+        "code": 30
+      },
+      {
+        "id": "S",
+        "label": "S",
+        "code": 31
+      },
+      {
+        "id": "D",
+        "label": "D",
+        "code": 32
+      },
+      {
+        "id": "F",
+        "label": "F",
+        "code": 33
+      },
+      {
+        "id": "G",
+        "label": "G",
+        "code": 34
+      },
+      {
+        "id": "H",
+        "label": "H",
+        "code": 35
+      },
+      {
+        "id": "J",
+        "label": "J",
+        "code": 36
+      },
+      {
+        "id": "K",
+        "label": "K",
+        "code": 37
+      },
+      {
+        "id": "L",
+        "label": "L",
+        "code": 38
+      },
+      {
+        "id": "SEMICOLON",
+        "label": ";",
+        "code": 39
+      },
+      {
+        "id": "APOSTROPHE",
+        "label": "'",
+        "code": 40
+      },
+      {
+        "id": "ENTER",
+        "label": "Enter",
+        "code": 28,
+        "w": 2.25
+      },
+      {
+        "id": "PAGEDOWN",
+        "label": "PgDn",
+        "code": 109,
+        "gap": 2
+      },
+      {
+        "id": "KP4",
+        "label": "4",
+        "code": 75,
+        "gap": 2
+      },
+      {
+        "id": "KP5",
+        "label": "5",
+        "code": 76
+      },
+      {
+        "id": "KP6",
+        "label": "6",
+        "code": 77
+      }
+    ],
+    [
+      {
+        "id": "LEFTSHIFT",
+        "label": "Shift",
+        "code": 42,
+        "w": 2.25
+      },
+      {
+        "id": "Z",
+        "label": "Z",
+        "code": 44
+      },
+      {
+        "id": "X",
+        "label": "X",
+        "code": 45
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "code": 46
+      },
+      {
+        "id": "V",
+        "label": "V",
+        "code": 47
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "code": 48
+      },
+      {
+        "id": "N",
+        "label": "N",
+        "code": 49
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "code": 50
+      },
+      {
+        "id": "COMMA",
+        "label": ",",
+        "code": 51
+      },
+      {
+        "id": "PERIOD",
+        "label": ".",
+        "code": 52
+      },
+      {
+        "id": "SLASH",
+        "label": "/",
+        "code": 53
+      },
+      {
+        "id": "RIGHTSHIFT",
+        "label": "Shift",
+        "code": 54,
+        "w": 2.75
+      },
+      {
+        "id": "UP",
+        "label": "Up",
+        "code": 103,
+        "gap": 2
+      },
+      {
+        "id": "KP1",
+        "label": "1",
+        "code": 79,
+        "gap": 2
+      },
+      {
+        "id": "KP2",
+        "label": "2",
+        "code": 80
+      },
+      {
+        "id": "KP3",
+        "label": "3",
+        "code": 81
+      },
+      {
+        "id": "KPENTER",
+        "label": "Enter",
+        "code": 96,
+        "h": 2
+      }
+    ],
+    [
+      {
+        "id": "LEFTCTRL",
+        "label": "Ctrl",
+        "code": 29,
+        "w": 1.25
+      },
+      {
+        "id": "FN",
+        "label": "Fn",
+        "code": null,
+        "w": 1.25
+      },
+      {
+        "id": "LEFTMETA",
+        "label": "Super",
+        "code": 125,
+        "w": 1.25
+      },
+      {
+        "id": "LEFTALT",
+        "label": "Alt",
+        "code": 56,
+        "w": 1.25
+      },
+      {
+        "id": "SPACE",
+        "label": "",
+        "code": 57,
+        "w": 6.25
+      },
+      {
+        "id": "RIGHTALT",
+        "label": "Alt",
+        "code": 100,
+        "w": 1.25
+      },
+      {
+        "id": "COMPOSE",
+        "label": "Menu",
+        "code": 127,
+        "w": 1.25
+      },
+      {
+        "id": "RIGHTCTRL",
+        "label": "Ctrl",
+        "code": 97,
+        "w": 1.25
+      },
+      {
+        "id": "LEFT",
+        "label": "Left",
+        "code": 105,
+        "gap": 1
+      },
+      {
+        "id": "DOWN",
+        "label": "Down",
+        "code": 108
+      },
+      {
+        "id": "RIGHT",
+        "label": "Right",
+        "code": 106
+      },
+      {
+        "id": "KP0",
+        "label": "0",
+        "code": 82,
+        "gap": 1,
+        "w": 2
+      },
+      {
+        "id": "KPDOT",
+        "label": ".",
+        "code": 83
+      }
+    ]
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "description": "Registry of field-observed keyboard layouts maintained in this repository. Consulted before falling back to the OS-supplied XKB geometries. See README.md to contribute one.",
+  "layouts": [
+    {
+      "id": "lenovo-calliope",
+      "file": "lenovo-calliope.json",
+      "name": "Lenovo Calliope (space-saving full-size)",
+      "match": {
+        "vendor": "17ef",
+        "product": "608c",
+        "namePattern": "Calliope"
+      },
+      "source": "field-observed",
+      "contributor": "greenermoose",
+      "verified": "2026-09-19",
+      "notes": "Transcribed from the physical keycaps. Differs from pc104: Insert in the function row, ScrLk before PrtSc, Home/End on the number row, double-height Delete, an Fn key that emits nothing, and no right Super."
+    }
+  ],
+  "osGeometries": {
+    "description": "XKB geometry names available from the OS at /usr/share/X11/xkb/geometry. Used as fallbacks when no field-observed layout matches. Presence is checked at runtime, not assumed.",
+    "preferred": ["pc104", "pc105", "pc104alt", "pc101", "pc102"],
+    "vendorFiles": ["thinkpad", "dell", "hp", "chicony", "keytronic", "microsoft", "sony", "steelseries", "typematrix", "kinesis", "hhk", "teck", "macintosh"],
+    "regional": ["jp106", "kr106", "abnt2"]
+  },
+  "fallback": "pc104"
+}
