@@ -4,7 +4,15 @@ An Omarchy shell plugin that shows your keyboard shortcuts on a model of your
 actual keyboard. Press a key combination to see which command it runs, or
 search for a command to see which keys trigger it.
 
+![fred.keyboard - your actual keyboard, drawn from a field-observed layout](assets/screenshot.png)
+
 Part of Fred's `fred.*` plugin suite. Status: in development (0.1.0).
+
+## Install
+
+```bash
+omarchy plugin add https://github.com/greenermoose/omarchy-fred-keyboard.git --enable
+```
 
 ## What it does
 
