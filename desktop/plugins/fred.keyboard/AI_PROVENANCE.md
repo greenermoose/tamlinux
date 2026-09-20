@@ -8,7 +8,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 
 ## 1. Fred's Multi-Agent AI Toolchain
 
-CLI versions below were captured live on 2026-09-19 (`<tool> --version`) for
+CLI versions below were captured live on 2026-09-19 and re-checked 2026-09-20 (`<tool> --version`) for
 the tools that touched this repository.
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
@@ -28,6 +28,11 @@ the tools that touched this repository.
 | **Layout system** | `0.1.0` | Claude Code (Claude Opus 5) | Two supplies of layouts (OS XKB geometries plus a field-observed library), `LayoutResolver.js` with per-device resolution and exactness reporting, the Calliope transcribed from its keycaps, and a contribution guide. |
 | **First working build** | `0.1.0` | Claude Code (Claude Opus 5) | Bar widget, panel rendering the resolved layout, panel-scoped key highlighting, device detection, and Caps/Num Lock indicators read from sysfs. Fixed three real defects found during the build: a `\uF030C` escape that silently parsed as U+F030 plus a literal "C", 64-bit `KEY=` bitmap words losing precision through `parseInt`, and a missing `implicitWidth` that made the widget load correctly but render at zero width. |
 | **Pre-release publish** | `0.1.0` | Claude Code (Claude Opus 5) | Published to public GitHub `main` as a pre-release: no tags, no GitHub Release, no marketplace submission. Registered in the suite catalog and showcase. |
+| **Capture mode** | `0.1.1` | Claude Code (Claude Opus 5) | `CaptureMode.qml` wraps Quickshell's `ShortcutInhibitor` behind an off-by-default toggle with an accent banner; Escape leaves the mode before it closes the panel, and closing resets it. `Bindings.js` takes over the keycode bridge (native to evdev, modifiers, chord labels) with unit tests, and the panel gains a "Pressed: Super + K" readout. The inhibitor is driven imperatively because Quickshell clears `enabled` itself on a compositor cancel. Fred tested it interactively and confirmed it works. |
+| **Readout fixes** | `0.1.2` | Claude Code (Claude Opus 5) | From Fred's test: the space bar reads "Space Bar" instead of a blank (`Bindings.cellName`), and the Escape that ends capture mode is recorded in the readout before the mode turns off. |
+| **Binding overlay** | `0.2.0` | Claude Code (Claude Opus 5) | `Bindings.js` gains the Hyprland side of the keycode bridge: modmask bits, keysym-to-cell mapping with shifted symbols, `code:N` to evdev, a bounded parser for `hyprctl binds`, index, exact-modmask lookup and labels, all unit-tested. Found that Hyprland 0.56.2's JSON output drops `code:N` binds (77 of 252 here), so the text form is read. Panel tints bound keys, says what a chord runs, and lists orphan binds. |
+| **Mouse capture** | `0.2.1` | Claude Code (Claude Opus 5) | Fred's addition: capture mode records clicks and wheel steps with held modifiers and resolves them against Hyprland's mouse binds. Verified in the local Hyprland source that the inhibitor covers `onMouseEvent`/`onAxisEvent`, so no second mechanism. The card is covered while the mode is on; the banner names Esc as the exit, in Fred's words. |
+| **Panel ergonomics** | `0.2.2` | Claude Code (Claude Opus 5) | Fred's requests after a look: the panel stays open while apps on other monitors are used (`ExplorerPanel.qml`, a clone of the stock `Ui/KeyboardPanel.qml` without its other-output click-catchers; first upstream code in the repo, recorded in `UPSTREAM.md`), and the orphan-bind list becomes a collapsible, aligned section at the bottom (`OrphanBinds.qml`). |
 
 ---
 

@@ -34,9 +34,18 @@ require `input` group membership, and runs no background process.
 
 "Capture mode" is an explicit, off-by-default toggle. While it is on, the
 plugin uses `zwp_keyboard_shortcuts_inhibit_manager_v1` to suspend Hyprland's
-keybind matching, so pressing a bound combination shows what it would do
-instead of doing it. Turn it off with Escape, or click any other window - the
-inhibitor releases as soon as the panel loses focus.
+keybind matching, so pressing a bound combination lights it on the board,
+names the chord and says what it runs instead of running it. Mouse clicks and
+wheel steps are captured the same way. Turn it off with Escape; closing the
+panel always resets it to off, and the inhibitor releases whenever the panel
+loses focus.
+
+## Upstream code
+
+`ExplorerPanel.qml` is cloned from Omarchy's stock `Ui/KeyboardPanel.qml`
+(MIT) with the other-monitor click-catchers removed, so the panel can stay
+open while you work elsewhere. `UPSTREAM.md` records the version, the diff
+recipe and the license notice.
 
 ## Prior art
 

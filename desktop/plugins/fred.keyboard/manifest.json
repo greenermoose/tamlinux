@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.keyboard",
   "name": "Keyboard",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "author": "Fred (@greenermoose)",
   "description": "Keyboard shortcut explorer: which keys run which commands, and which commands need which keys",
   "repository": "https://github.com/greenermoose/omarchy-fred-keyboard",

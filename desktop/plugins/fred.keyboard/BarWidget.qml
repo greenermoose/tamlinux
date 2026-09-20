@@ -6,6 +6,8 @@ import qs.Commons
 import "Model.js" as Model
 import "Device.js" as Device
 import "LayoutResolver.js" as Resolver
+import "KeyboardModel.js" as KM
+import "Bindings.js" as Bindings
 
 // fred.keyboard - keyboard shortcut explorer.
 //
@@ -14,10 +16,10 @@ import "LayoutResolver.js" as Resolver
 //
 // Key capture is panel-scoped: keys are read through QML handlers only while
 // this panel holds keyboard focus. Nothing typed in any other window is
-// visible here, and no /dev/input node is ever opened. Capture mode - which
-// suspends Hyprland's keybind matching so bound combinations can be inspected
-// rather than executed - is a later milestone, so for now bound combinations
-// still run their command instead of reaching this panel.
+// visible here, and no /dev/input node is ever opened. Capture mode
+// (CaptureMode.qml) additionally suspends Hyprland's keybind matching for
+// this window while it is focused, so bound combinations can be inspected
+// rather than executed. It is off by default and switched on in the panel.
 Panel {
   id: root
   moduleName: "fred.keyboard"
@@ -40,7 +42,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "0.1.0"
+  readonly property string pluginVersion: "0.2.2"
 
   // Closed environment: only these names reach a child process.
   readonly property var keyboardEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY",
@@ -52,6 +54,39 @@ Panel {
   property var resolution: null       // how that layout was chosen
   property var registry: null         // layouts/index.json
   property var pressed: ({})          // evdev codes currently down
+  property var lastPressed: ({})      // the set at the most recent key press
+  property string lastMouse: ""       // Hyprland mouse key of the most recent click, or ""
+  readonly property var byCode: KM.byCode(root.layout)
+  readonly property var byId: KM.byId(root.layout)
+  readonly property string lastCombo: root.lastMouse !== ""
+    ? Bindings.mouseLabel(root.lastPressed, root.lastMouse)
+    : Bindings.comboLabel(root.lastPressed, root.byCode)
+
+  // Hyprland binds, joined to the resolved layout.
+  property var binds: []
+  readonly property var bindIndex: Bindings.indexBinds(root.binds, root.byId)
+  readonly property var boundCounts: Bindings.boundCounts(root.bindIndex)
+  readonly property var lastBinds: root.lastMouse !== ""
+    ? Bindings.lookupMouse(root.bindIndex, root.lastPressed, root.lastMouse)
+    : Bindings.lookup(root.bindIndex, root.lastPressed)
+  readonly property bool lastHasKey: {
+    if (root.lastMouse !== "") return true
+    for (var k in root.lastPressed)
+      if (root.lastPressed[k] && !Bindings.isModifier(Number(k))) return true
+    return false
+  }
+  // Binds whose key this keyboard cannot send, as "chord - what it does"
+  // rows sorted by chord. Inherited laptop keys, mostly.
+  readonly property var orphanRows: {
+    var o = root.bindIndex.orphans || []
+    var rows = []
+    for (var i = 0; i < o.length; i++)
+      rows.push({ chord: Bindings.bindLabel(o[i], root.byId, root.byCode),
+                  does: Bindings.describe(o[i]) })
+    rows.sort(function (a, b) { return a.chord < b.chord ? -1 : a.chord > b.chord ? 1 : 0 })
+    return rows
+  }
+  property bool orphansExpanded: false
   property bool capsOn: false         // real hardware LED state
   property bool numOn: false
   readonly property var ledState: ({ capslock: root.capsOn, numlock: root.numOn })
@@ -169,6 +204,20 @@ Panel {
 
   // Plain `ls` with arguments, never a shell: a login shell would source the
   // user's profile and defeat the closed environment above.
+  // The text form, not -j: on Hyprland 0.56.2 the JSON drops the key of every
+  // `code:N` bind. Bindings.parseBinds bounds and validates the input.
+  Launch {
+    id: bindsProc
+    exe: "/usr/bin/hyprctl"
+    args: ["binds"]
+    envKeys: root.keyboardEnv
+    deadlineMs: 4000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.binds = Bindings.parseBinds(String(text || ""))
+    }
+  }
+
   Launch {
     id: geometryProc
     exe: "/usr/bin/ls"
@@ -205,7 +254,9 @@ Panel {
 
   // --- Panel -------------------------------------------------------------
 
-  KeyboardPanel {
+  // A clone of the stock KeyboardPanel that does not close when another
+  // monitor is clicked (UPSTREAM.md).
+  ExplorerPanel {
     id: panel
     anchorItem: button
     owner: root
@@ -213,7 +264,7 @@ Panel {
     open: root.opened
     focusTarget: captureArea
     contentWidth: panel.fittedContentWidth(Style.space(1000))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(560))
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(800))
 
     // Panel-scoped capture. A plain focused Item rather than PanelKeyCatcher:
     // that component takes keys before its descendants for menu navigation,
@@ -223,20 +274,39 @@ Panel {
       anchors.fill: parent
       focus: true
 
+      // Escape is the way out of capture mode first, and out of the panel
+      // second: one press restores the system's shortcuts, the next closes.
+      // While capture is on, Escape is also recorded like any other key, so
+      // the readout shows what ended the mode; with it off the panel is
+      // closing, and there is nothing left to show it on.
       Keys.onPressed: function (event) {
-        if (event.key === Qt.Key_Escape) { root.close(); event.accepted = true; return }
-        var next = Object.assign({}, root.pressed)
-        next[event.nativeScanCode - 8] = true   // X11 keycode -> evdev
-        root.pressed = next
         event.accepted = true
+        var escape = event.key === Qt.Key_Escape
+        if (escape && !capture.wanted) { root.close(); return }
+        var code = Bindings.evdevFromNative(event.nativeScanCode)
+        if (code !== null) {
+          var next = Object.assign({}, root.pressed)
+          next[code] = true
+          root.pressed = next
+          if (!event.isAutoRepeat) { root.lastPressed = next; root.lastMouse = "" }
+        }
+        if (escape) capture.wanted = false
       }
 
       Keys.onReleased: function (event) {
+        var code = Bindings.evdevFromNative(event.nativeScanCode)
         var next = Object.assign({}, root.pressed)
-        delete next[event.nativeScanCode - 8]
+        if (code !== null) delete next[code]
         root.pressed = next
         root.refreshLeds()   // a Caps/Num press changes the lamp on release
         event.accepted = true
+      }
+
+      // Records a mouse action the way the key handler records a chord.
+      function recordMouse(key) {
+        if (!key) return
+        root.lastPressed = Object.assign({}, root.pressed)
+        root.lastMouse = key
       }
 
       Column {
@@ -268,6 +338,7 @@ Panel {
           id: board
           layout: root.layout
           pressed: root.pressed
+          bindings: root.boundCounts
           ledState: root.ledState
           unit: Math.max(Style.space(20),
                          Math.min(Style.space(38),
@@ -277,14 +348,87 @@ Panel {
 
         Text {
           width: parent.width
+          elide: Text.ElideRight
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          color: Color.foreground
+          text: root.lastCombo === "" ? "Press a key or combination."
+                                      : "Pressed: " + root.lastCombo
+        }
+
+        // What the chord does. Only a chord with a non-modifier key can be
+        // bound; modifiers alone say nothing rather than "not bound".
+        Text {
+          width: parent.width
+          visible: root.lastHasKey
+          wrapMode: Text.WordWrap
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          color: root.lastBinds.length > 0 ? Color.accent
+                 : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.65)
+          text: {
+            if (root.binds.length === 0) return "Binds not loaded."
+            if (root.lastBinds.length === 0) return "Not bound in Hyprland."
+            var parts = []
+            for (var i = 0; i < root.lastBinds.length; i++)
+              parts.push(Bindings.describe(root.lastBinds[i]))
+            return "Runs: " + parts.join("; ")
+          }
+        }
+
+        CaptureMode {
+          id: capture
+          width: parent.width
+          window: panel
+          // The toggle row is clicked with the pointer; keep the keys with
+          // the capture area either way so the very next chord is seen.
+          onWantedChanged: captureArea.forceActiveFocus()
+        }
+
+        Text {
+          width: parent.width
           wrapMode: Text.WordWrap
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.55)
-          text: "Press a key to light it up. Bound combinations such as Super+K are " +
-                "still claimed by Hyprland and will not reach this panel yet - capture " +
-                "mode, which suspends that, is the next milestone. A key marked with a " +
-                "small circle (Fn) never reaches the OS at all. Escape closes."
+          text: "Keys light up on the board while this panel has focus; tinted keys " +
+                "have Hyprland binds. With capture mode off, bound combinations run " +
+                "their command and never arrive here; with it on, keys and mouse " +
+                "actions arrive here and do not run. A key marked with a small " +
+                "circle (Fn) never reaches the OS at all. Escape closes."
+        }
+
+        // Binds this keyboard cannot send. Collapsed to one line; the list is
+        // for the occasional audit, not the everyday glance.
+        OrphanBinds {
+          width: parent.width
+          rows: root.orphanRows
+          total: root.binds.length
+          expanded: root.orphansExpanded
+          onToggled: root.orphansExpanded = !root.orphansExpanded
+        }
+      }
+
+      // Mouse capture. While the mode is on this surface covers the whole
+      // card, so every click and wheel step inside the panel is recorded
+      // rather than acted on - including on the toggle, which is why Escape
+      // is the way out. Hyprland's inhibitor already keeps the compositor
+      // from claiming Super+click first (KeybindManager::onMouseEvent goes
+      // through the same inhibited path as keys). Off, the surface is
+      // disabled and invisible to the pointer, and the controls work.
+      MouseArea {
+        anchors.fill: parent
+        enabled: capture.wanted
+        visible: capture.wanted
+        acceptedButtons: Qt.AllButtons
+        preventStealing: true
+        onPressed: function (mouse) {
+          captureArea.recordMouse(Bindings.mouseButtonKey(mouse.button))
+          mouse.accepted = true
+        }
+        onWheel: function (wheel) {
+          captureArea.recordMouse(Bindings.wheelKey(wheel.angleDelta.x, wheel.angleDelta.y))
+          wheel.accepted = true
         }
       }
     }
@@ -294,8 +438,15 @@ Panel {
     if (opened) {
       procDevices.reload()
       hyprctlProc.launch()
+      bindsProc.launch()   // binds change with the config; re-read per open
     } else {
+      // Closing must never leave the inhibitor wanted: the next open would
+      // otherwise silently pause the system's shortcuts again.
+      capture.wanted = false
       root.pressed = ({})
+      root.lastPressed = ({})
+      root.lastMouse = ""
+      root.orphansExpanded = false
     }
   }
 }
