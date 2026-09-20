@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Ui
 import qs.Commons
 import "KeyboardModel.js" as KM
 
@@ -19,6 +20,12 @@ Item {
 
   // evdev code -> short description of what it is bound to, or "" if unbound.
   property var bindings: ({})
+
+  // evdev codes to mark as search results: drawn with the accent outline.
+  property var marked: ({})
+
+  // cell -> hover text, provided by the owner (Bindings.keyTooltip).
+  property var tooltipFor: function (cell) { return "" }
 
   // Real indicator state from sysfs, keyed by the cell's `led` name:
   // { capslock: bool, numlock: bool }
@@ -75,6 +82,8 @@ Item {
               readonly property bool down: view.isDown(cell.code)
               readonly property bool bound: !isDead && !isLed &&
                                             !!view.bindings[cell.code]
+              readonly property bool marked: !isDead && !isLed &&
+                                             !!view.marked[cell.code]
 
               x: view.gutter / 2
               y: view.gutter / 2
@@ -87,13 +96,15 @@ Item {
                                      ? Color.accent
                                      : Qt.rgba(Color.foreground.r, Color.foreground.g,
                                                Color.foreground.b, 0.08))
+                          : marked ? Qt.rgba(Color.accent.r, Color.accent.g,
+                                             Color.accent.b, 0.38)
                           : bound ? Qt.rgba(Color.accent.r, Color.accent.g,
                                             Color.accent.b, 0.16)
                           : Qt.rgba(Color.foreground.r, Color.foreground.g,
                                     Color.foreground.b, 0.06)
 
-              border.width: 1
-              border.color: (down || ledLit)
+              border.width: marked ? 2 : 1
+              border.color: (down || ledLit || marked)
                 ? Color.accent
                 : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b,
                           isDead ? 0.12 : 0.22)
@@ -111,6 +122,21 @@ Item {
                   : isDead ? Qt.rgba(Color.foreground.r, Color.foreground.g,
                                      Color.foreground.b, 0.40)
                            : Color.foreground
+              }
+
+              // Hover shows the key's code and every bind on it. Hover only:
+              // no buttons accepted, so clicks fall through to whatever owns
+              // them (the capture surface, when the mode is on).
+              MouseArea {
+                id: hover
+                anchors.fill: parent
+                hoverEnabled: !isLed
+                acceptedButtons: Qt.NoButton
+              }
+
+              PanelToolTip {
+                visible: hover.containsMouse && text !== ""
+                text: view.tooltipFor(cell)
               }
 
               // A key the OS never sees (firmware-local, e.g. Fn) is marked so

@@ -414,6 +414,108 @@ function bindLabel(bind, byId, byCode) {
   return modmaskNames(bind.modmask).concat([name]).join(" + ")
 }
 
+// --- Reverse lookup ---------------------------------------------------------
+//
+// Feature 3's other direction: from a command to the keys that run it. A
+// query matches when every space-separated term occurs in the bind's
+// description, dispatcher or argument, or when the whole query occurs in
+// the chord label ("super + k"), case-insensitively. The label is matched as
+// a phrase because its single letters would otherwise match everything.
+
+var MAX_RESULTS = 60
+
+function queryTerms(query) {
+  return String(query || "").toLowerCase().split(/\s+/).filter(function (t) { return t !== "" })
+}
+
+// Search the indexed binds. Returns [{ bind, label, does, code, placed }]
+// with placed binds first, each group sorted by label. `code` is the evdev
+// code of the bind's key on this layout (null for orphans and mouse binds).
+function searchBinds(index, byId, byCode, query) {
+  var terms = queryTerms(query)
+  if (terms.length === 0) return []
+  var phrase = terms.join(" ")
+  var placed = [], rest = []
+  function matches(label, bind) {
+    if (label.toLowerCase().indexOf(phrase) >= 0) return true
+    var hay = (describe(bind) + " " + bind.dispatcher + " " + bind.arg + " " + bind.key).toLowerCase()
+    for (var t = 0; t < terms.length; t++) if (hay.indexOf(terms[t]) < 0) return false
+    return true
+  }
+  function consider(bind, code, isPlaced) {
+    var label = bindLabel(bind, byId, byCode)
+    if (!matches(label, bind)) return
+    ;(isPlaced ? placed : rest).push({ bind: bind, label: label, does: describe(bind),
+                                     code: code, placed: isPlaced })
+  }
+  var codes = index && index.byCode ? index.byCode : {}
+  for (var c in codes) if (Object.prototype.hasOwnProperty.call(codes, c))
+    for (var i = 0; i < codes[c].length; i++) consider(codes[c][i], Number(c), true)
+  var mice = index && index.byMouse ? index.byMouse : {}
+  for (var m in mice) if (Object.prototype.hasOwnProperty.call(mice, m))
+    for (var j = 0; j < mice[m].length; j++) consider(mice[m][j], null, true)
+  var orphans = index && index.orphans ? index.orphans : []
+  for (var k = 0; k < orphans.length; k++) consider(orphans[k], null, false)
+  function byLabel(a, b) { return a.label < b.label ? -1 : a.label > b.label ? 1 : 0 }
+  placed.sort(byLabel); rest.sort(byLabel)
+  return placed.concat(rest).slice(0, MAX_RESULTS)
+}
+
+// evdev codes to mark on the board for a result set: each result's key plus
+// the modifiers of its chord (left-hand side, which every layout has).
+var MODIFIER_LEFT_CODES = { Super: 125, Ctrl: 29, Alt: 56, Shift: 42 }
+
+function markedCodes(results) {
+  var out = {}
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i]
+    if (r.code === null || r.code === undefined) continue
+    out[r.code] = true
+    var mods = modmaskNames(r.bind.modmask)
+    for (var m = 0; m < mods.length; m++) out[MODIFIER_LEFT_CODES[mods[m]]] = true
+  }
+  return out
+}
+
+// How many binds hold a given modifier (by its name: "Super", "Ctrl"...).
+// A modifier never carries a bind of its own; it lives in other keys' masks.
+function modifierBindCount(index, name) {
+  var bit = MODMASK[name]
+  if (!bit || !index) return 0
+  var n = 0
+  function tally(list) { for (var i = 0; i < list.length; i++) if (list[i].modmask & bit) n++ }
+  for (var c in index.byCode) if (Object.prototype.hasOwnProperty.call(index.byCode, c)) tally(index.byCode[c])
+  for (var m in index.byMouse) if (Object.prototype.hasOwnProperty.call(index.byMouse, m)) tally(index.byMouse[m])
+  tally(index.orphans || [])
+  return n
+}
+
+// Hover text for one key: its name and evdev code, then every bind on it
+// as "chord - what it does", sorted by chord. A modifier reports how many
+// binds it is held in, since it never has a bind of its own; any other key
+// without binds says so, so hovering any key answers the question.
+function keyTooltip(index, cell, byId, byCode) {
+  if (!cell || cell.led) return ""
+  var name = cellName(cell)
+  if (cell.code === null || cell.code === undefined)
+    return name + " - firmware-local, never reaches the OS"
+  var head = name + "  (evdev " + cell.code + ")"
+  if (isModifier(cell.code)) {
+    var n = modifierBindCount(index, MODIFIERS[cell.code])
+    return head + "\nModifier - held in " + n + " bind" + (n === 1 ? "" : "s") +
+           " with other keys"
+  }
+  var binds = index && index.byCode ? index.byCode[cell.code] || [] : []
+  if (binds.length === 0) return head + "\nNo Hyprland binds"
+  var rows = []
+  for (var i = 0; i < binds.length; i++)
+    rows.push({ label: bindLabel(binds[i], byId, byCode), does: describe(binds[i]) })
+  rows.sort(function (a, b) { return a.label < b.label ? -1 : a.label > b.label ? 1 : 0 })
+  var lines = [head]
+  for (var r = 0; r < rows.length; r++) lines.push(rows[r].label + " - " + rows[r].does)
+  return lines.join("\n")
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     NATIVE_OFFSET: NATIVE_OFFSET,
@@ -440,6 +542,10 @@ if (typeof module !== "undefined" && module.exports) {
     mouseName: mouseName,
     mouseLabel: mouseLabel,
     lookupMouse: lookupMouse,
-    bindLabel: bindLabel
+    bindLabel: bindLabel,
+    searchBinds: searchBinds,
+    markedCodes: markedCodes,
+    modifierBindCount: modifierBindCount,
+    keyTooltip: keyTooltip
   }
 }

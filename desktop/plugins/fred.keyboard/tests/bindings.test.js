@@ -176,6 +176,51 @@ assert.deepEqual(B.lookupMouse(idx, { 125: true, 37: true }, "mouse:272"), [])  
 assert.deepEqual(B.lookupMouse(idx, {}, "mouse:273"), [])
 assert.strictEqual(B.bindLabel(binds[3], byId, layoutByCode), "Super + Left Click")
 
+// Reverse lookup: every term must match; placed binds lead; results carry
+// the code to light and the modifiers of the chord.
+var hits = B.searchBinds(idx, byId, layoutByCode, "window")
+assert.deepEqual(hits.map(function (h) { return h.label }),
+                 ["Super + Alt + 1", "Super + Left Click"])   // group window; move window
+assert.strictEqual(hits[0].code, 2)
+assert.strictEqual(hits[0].placed, true)
+assert.strictEqual(hits[1].code, null)                        // mouse: nothing to light
+assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "MUTE").map(function (h) { return h.placed }),
+                 [false])                                     // orphan, still findable
+assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "group 1").map(function (h) { return h.does }),
+                 ["Switch to group window 1"])
+assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "group 9"), [])
+assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "super + k").map(function (h) { return h.does }),
+                 ["Keybindings"])                              // the chord itself matches
+assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "   "), [])
+assert.deepEqual(B.markedCodes(B.searchBinds(idx, byId, layoutByCode, "group 1")),
+                 { 2: true, 125: true, 56: true })            // "1", left Super, left Alt
+assert.deepEqual(B.markedCodes([]), {})
+
+// Hover text: name and evdev code, then binds sorted by chord; unbound and
+// firmware-local keys explain themselves; LEDs have none.
+assert.strictEqual(B.keyTooltip(idx, byId.K, byId, layoutByCode),
+                   "K  (evdev 37)\nSuper + K - Keybindings")
+assert.strictEqual(B.keyTooltip(idx, byId["1"], byId, layoutByCode),
+                   "1  (evdev 2)\nSuper + Alt + 1 - Switch to group window 1")
+assert.strictEqual(B.keyTooltip(idx, byId.Q, byId, layoutByCode), "Q  (evdev 16)\nNo Hyprland binds")
+
+// Modifiers never carry a bind; they are held in other keys' binds. In the
+// fixture Super is in five (K, code:10, mouse:272, code:201, space), Alt in
+// one, Ctrl in none.
+assert.strictEqual(B.modifierBindCount(idx, "Super"), 5)
+assert.strictEqual(B.modifierBindCount(idx, "Alt"), 1)
+assert.strictEqual(B.modifierBindCount(idx, "Ctrl"), 0)
+assert.strictEqual(B.keyTooltip(idx, byId.LEFTMETA, byId, layoutByCode),
+                   "Super  (evdev 125)\nModifier - held in 5 binds with other keys")
+assert.strictEqual(B.keyTooltip(idx, byId.LEFTALT, byId, layoutByCode),
+                   "Alt  (evdev 56)\nModifier - held in 1 bind with other keys")
+assert.strictEqual(B.keyTooltip(idx, byId.RIGHTSHIFT, byId, layoutByCode),
+                   "Shift  (evdev 54)\nModifier - held in 1 bind with other keys")
+assert.strictEqual(B.keyTooltip(idx, byId.FN, byId, layoutByCode),
+                   "Fn - firmware-local, never reaches the OS")
+assert.strictEqual(B.keyTooltip(idx, byId.LED_CAPS, byId, layoutByCode), "")
+assert.strictEqual(B.keyTooltip(idx, null, byId, layoutByCode), "")
+
 // Keypad keys are named so they cannot be confused with the number row.
 assert.strictEqual(B.cellName(byId.KP1), "Num 1")
 assert.strictEqual(B.codeName(115), "Volume Up")

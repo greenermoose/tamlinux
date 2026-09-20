@@ -1,4 +1,4 @@
-# Session: 2026-09-20 — Capture Mode (v0.1.1 - v0.1.2, in development)
+# Session: 2026-09-20 — From Capture Mode to Release 1.0.0
 
 - **Date**: 2026-09-20 (morning)
 - **Tool**: `claude` (Claude Code `2.1.278`)
@@ -63,3 +63,35 @@ Fred: *"Capture mode works."* Two readout notes followed, shipped as 0.1.2:
 the space bar reads "Space Bar" instead of a blank (`Bindings.cellName`), and
 the Escape that ends capture mode is recorded ("Esc") and lit on the board
 before the mode turns off. With the mode off, Escape still closes the panel.
+
+## 0.2.0 through 0.3.6
+
+The same session continued through the day, each version deployed and
+tested by Fred before the next:
+
+- **0.2.0** binding overlay from `hyprctl binds` (text form: the JSON form
+  drops `code:N` binds on Hyprland 0.56.2), bound keys tinted, "Runs: ..."
+  readout, orphan binds. **0.2.1** mouse clicks and wheel in capture mode
+  (the inhibitor covers Hyprland's mouse binds too). **0.2.2** panel stays
+  open while other monitors are used (`ExplorerPanel.qml`, a clone of the
+  stock panel window, recorded in `UPSTREAM.md`); orphan list collapsible.
+  0.2.2 was published as the public pre-release.
+- **0.3.0** reverse lookup (`SearchView.qml`). **0.3.1** per-key hover with
+  evdev code and binds, legend on the Layout line, version footer.
+  **0.3.2** footer centred and clickable (closed-environment `xdg-open`).
+  **0.3.3** modifier keys report how many binds hold them. **0.3.4** capture
+  mode as one box with its notice inside; Esc hint top right. **0.3.5**
+  two-column bind lists with a scroll indicator. **0.3.6** the expanded
+  orphan list kept inside the card.
+
+## Release 1.0.0
+
+Fred: *"Release version 1.0.0 of fred.keyboard."* 0.3.6 renumbered with no
+code change. README rewritten, then edited by Fred (title, intro, section
+names) with a Requirements section added; `UPSTREAM.md` extended to credit
+all eight prior-art plugins with what each contributed; CHANGELOG
+consolidated into a first-release section. Five screenshots: Fred set up
+each state on the MSI monitor and the agent captured with a delayed `grim`,
+never moving the cursor or opening the panel itself. Released under SOP 3
+in the order Fred asked for: repository first, then the Show & Tell thread
+after his review, then the marketplace submission after his review.

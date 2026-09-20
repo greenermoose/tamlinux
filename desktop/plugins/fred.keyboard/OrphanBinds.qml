@@ -16,6 +16,17 @@ Item {
   property bool expanded: false
   signal toggled()
 
+  // Room the list may take. The owner computes it from what else is in the
+  // panel, so the expanded list never pushes the panel past its card.
+  property real maxListHeight: Style.space(260)
+
+  // Height of everything here except the list: the header row and, when
+  // expanded, a line reserved for the scroll hint whether or not it shows
+  // (reading `list.overflowing` here would loop back through the list's
+  // own height). Lets the owner size `maxListHeight`.
+  readonly property real fixedHeight: headerRow.height + column.spacing +
+                                      (expanded ? scrollHint.implicitHeight + column.spacing : 0)
+
   readonly property real dim: 0.55
   readonly property color muted: Qt.rgba(Color.foreground.r, Color.foreground.g,
                                          Color.foreground.b, dim)
@@ -31,6 +42,7 @@ Item {
     // Header row: chevron + summary. Clickable when capture mode is off
     // (with it on, the capture surface above records the click instead).
     Item {
+      id: headerRow
       width: parent.width
       height: headerText.implicitHeight + Style.spacing.xs * 2
 
@@ -62,78 +74,27 @@ Item {
       }
     }
 
-    // The list. Two columns so chords line up; the widest chord sets the
-    // column. Scrolls if the panel cannot fit it.
-    Flickable {
+    BindList {
+      id: list
       visible: root.expanded
       width: parent.width
-      height: Math.min(list.implicitHeight, Style.space(220))
-      contentHeight: list.implicitHeight
-      clip: true
-      boundsBehavior: Flickable.StopAtBounds
-
-      Column {
-        id: list
-        width: parent.width
-        spacing: 0
-
-        readonly property real chordColumn: {
-          var w = 0
-          for (var i = 0; i < chordMeter.count; i++) {
-            var it = chordMeter.itemAt(i)
-            if (it) w = Math.max(w, it.implicitWidth)
-          }
-          return Math.min(w + Style.spacing.md, parent.width * 0.5)
-        }
-
-        Repeater {
-          id: chordMeter
-          model: root.rows
-          // Measured, never shown: the widest chord.
-          Text {
-            required property var modelData
-            visible: false
-            text: modelData.chord
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-        }
-
-        Repeater {
-          model: root.rows
-
-          Item {
-            required property var modelData
-            width: list.width
-            height: doesText.implicitHeight + Style.spacing.xs
-
-            Text {
-              id: chordText
-              anchors.left: parent.left
-              anchors.leftMargin: Style.spacing.md
-              anchors.verticalCenter: parent.verticalCenter
-              width: list.chordColumn
-              elide: Text.ElideRight
-              text: modelData.chord
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              color: Color.foreground
-            }
-
-            Text {
-              id: doesText
-              anchors.left: chordText.right
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              elide: Text.ElideRight
-              text: modelData.does
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              color: root.muted
-            }
-          }
-        }
+      maxHeight: Math.max(Style.space(60), root.maxListHeight)
+      rows: {
+        var out = []
+        for (var i = 0; i < root.rows.length; i++)
+          out.push({ chord: root.rows[i].chord, does: root.rows[i].does, muted: false })
+        return out
       }
+    }
+
+    Text {
+      id: scrollHint
+      visible: root.expanded && list.overflowing
+      width: parent.width
+      text: "Scroll the list with the mouse wheel."
+      font.family: Style.font.family
+      font.pixelSize: Style.font.caption
+      color: root.muted
     }
   }
 }

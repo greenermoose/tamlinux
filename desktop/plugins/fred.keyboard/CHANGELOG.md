@@ -3,6 +3,118 @@
 All notable changes to `fred.keyboard` are documented here.
 Format follows Keep a Changelog; this project uses SemVer.
 
+## [1.0.0] - 2026-09-20
+
+First release. Everything below was built and tested on Fred's workstation
+between 2026-09-19 and 2026-09-20 as the 0.x pre-releases listed after this
+section; 1.0.0 is 0.3.6 with the README and screenshots brought up to date.
+
+### Added
+- A model of the attached keyboard, drawn from a field-observed layout when
+  one exists for the board (Lenovo Calliope ships) and from the OS XKB
+  geometries otherwise, with the resolution reported honestly as exact or
+  stand-in. Keys light as they are pressed; Caps and Num Lock come from the
+  real hardware LEDs in sysfs.
+- Capture mode: a `keyboard-shortcuts-inhibit` request tied to the panel
+  window, off by default. While on, every Hyprland bind - keys, mouse
+  buttons and wheel - reaches the panel instead of running, so any
+  combination can be inspected. Esc ends it; closing the panel resets it.
+- Binding overlay from `hyprctl binds`: bound keys tinted, a hover on any key
+  listing its evdev code and every bind on it, and a "Pressed: ... / Runs:
+  ..." readout for the chord or click just made. Modifier keys report how
+  many binds they are held in.
+- Reverse lookup: search a command and see the chords that run it, marked on
+  the board.
+- Orphan binds - keys this keyboard cannot send - listed in a collapsible
+  section rather than dropped.
+- The panel stays open while apps on other monitors are used
+  (`ExplorerPanel.qml`, cloned from the stock panel window, see
+  `UPSTREAM.md`).
+- Bar tooltip naming the keyboard, its bus and keymap; a clickable version
+  footer.
+
+### Security
+- Panel-scoped capture only: keys are read through QML handlers while the
+  panel holds keyboard focus. No `/dev/input`, no `input` group, no
+  background process, nothing typed elsewhere is visible.
+- Every child process runs through one closed-environment launcher with a
+  deadline; no shell is ever spawned. `hyprctl` output is bounded before it
+  is parsed. The only URL opened is a fixed constant via `xdg-open`.
+
+## [0.3.6] - Unreleased
+
+### Fixed
+- The expanded orphan-bind list pushed the panel's content past the card's
+  bottom edge. The list now gets exactly the room left after everything else
+  in the panel, so the column never exceeds the card; the card itself may use
+  whatever height the screen allows.
+
+## [0.3.5] - Unreleased
+
+### Changed
+- Search results and the orphan-bind list are laid out in two columns
+  (`BindList.qml`, shared by both), so far fewer entries need scrolling.
+- When a list does overflow, a scroll indicator appears at its right edge and
+  the caption says "Scroll the list with the mouse wheel."
+
+## [0.3.4] - Unreleased
+
+### Changed
+- Capture mode is one box: title with its state ("Capture mode - ON"),
+  description, the switch, and - while the mode is live - the notice inside
+  the same box. The box takes the accent border and fill while live, the
+  switch dims, and the notice says that clicking the switch is recorded too:
+  press Esc to exit capture mode, click outside the panel to exit the plugin.
+- An Esc hint at the top right of the panel: "Press Esc to close", becoming
+  "Esc to exit capture mode" while the mode is on. The old "Escape closes."
+  at the bottom is gone.
+
+## [0.3.3] - Unreleased
+
+### Changed
+- Modifier keys (Super, Ctrl, Alt, Shift) no longer hover as "No Hyprland
+  binds": a modifier never carries a bind of its own but is held in other
+  keys' binds, and the hover now says how many. Non-modifier keys with no
+  binds still say so.
+- The Fn sentence moved from the Layout line to the capture-mode hint at the
+  bottom, keeping the Layout line to the board and its tint.
+
+## [0.3.2] - Unreleased
+
+### Changed
+- The version footer is centred, matching the rest of the suite, and clicking
+  it opens the plugin's public repository in the browser (`xdg-open` through
+  the closed-environment `Launch`, the URL a fixed constant).
+
+## [0.3.1] - Unreleased
+
+### Added
+- Hover any key for its name, evdev code and every Hyprland bind on it, one
+  "chord - what it does" line per bind (`Bindings.keyTooltip`, stock
+  `PanelToolTip`). Unbound keys say "No Hyprland binds"; Fn says why it can
+  never have any.
+- A version footer at the bottom of the panel.
+
+### Changed
+- The tint legend ("tinted keys have Hyprland binds", the Fn ring) moved up
+  to the Layout line, where the board it describes is, out of the capture
+  mode hint at the bottom.
+
+## [0.3.0] - Unreleased
+
+### Added
+- Reverse lookup (M6, `SearchView.qml`): type part of a command ("volume",
+  "workspace", or a chord such as "super + k") and the matching binds are
+  listed as chord and description, with their keys and modifiers marked on
+  the board. Orphan binds are findable but shown muted. Escape clears the
+  query, then returns focus to the live board. `Bindings.searchBinds` and
+  `markedCodes` are pure and unit-tested.
+
+### Changed
+- Search and capture mode are modes, not neighbours: switching capture on
+  takes focus from the field, and while capture is on the field cannot be
+  clicked, since every click in the panel is recorded instead.
+
 ## [0.2.2] - Unreleased
 
 ### Changed
@@ -109,6 +221,5 @@ Format follows Keep a Changelog; this project uses SemVer.
   index rather than guessed, and polled only while the panel is open.
 
 ### Planned
-- Rendering the resolved layout in the panel, with an extras region for keys
-  the layout does not place and self-discovery of unknown keys.
-- Reverse lookup: command to key combination.
+- An extras region for keys the layout does not place, and self-discovery of
+  unknown keys in capture mode.

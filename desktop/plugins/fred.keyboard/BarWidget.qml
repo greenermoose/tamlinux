@@ -42,11 +42,19 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "0.2.2"
+  readonly property string pluginVersion: "1.0.0"
+  readonly property string repoUrl: "https://github.com/greenermoose/omarchy-fred-keyboard"
 
   // Closed environment: only these names reach a child process.
   readonly property var keyboardEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY",
                                       "HYPRLAND_INSTANCE_SIGNATURE"]
+  // xdg-open needs enough of the session to find and start the browser.
+  readonly property var xdgOpenEnv: [
+    "HOME", "LANG", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "DISPLAY",
+    "DBUS_SESSION_BUS_ADDRESS", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE",
+    "XDG_DATA_HOME", "XDG_DATA_DIRS", "XDG_CONFIG_HOME", "XDG_CONFIG_DIRS",
+    "HYPRLAND_INSTANCE_SIGNATURE"
+  ]
 
   property var device: null           // primary physical keyboard
   property string keymap: ""          // e.g. "English (US)"
@@ -87,6 +95,12 @@ Panel {
     return rows
   }
   property bool orphansExpanded: false
+
+  // Reverse lookup (M6): query -> matching binds -> keys marked on the board.
+  property string searchQuery: ""
+  readonly property var searchResults: Bindings.searchBinds(root.bindIndex, root.byId,
+                                                             root.byCode, root.searchQuery)
+  readonly property var markedCodes: Bindings.markedCodes(root.searchResults)
   property bool capsOn: false         // real hardware LED state
   property bool numOn: false
   readonly property var ledState: ({ capslock: root.capsOn, numlock: root.numOn })
@@ -218,6 +232,21 @@ Panel {
     }
   }
 
+  // The one URL this plugin ever opens, via xdg-open in a closed
+  // environment, never Qt.openUrlExternally.
+  Launch {
+    id: xdgOpenProc
+    exe: "/usr/bin/xdg-open"
+    envKeys: root.xdgOpenEnv
+    deadlineMs: 10000
+  }
+
+  function openRepo() {
+    if (!/^https:\/\/[^\s<>'"]+$/.test(root.repoUrl)) return
+    xdgOpenProc.args = [root.repoUrl]
+    xdgOpenProc.launch()
+  }
+
   Launch {
     id: geometryProc
     exe: "/usr/bin/ls"
@@ -264,7 +293,9 @@ Panel {
     open: root.opened
     focusTarget: captureArea
     contentWidth: panel.fittedContentWidth(Style.space(1000))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(800))
+    // No cap of our own: the card may use whatever the screen allows, and the
+    // orphan list below is sized so the column never exceeds that.
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight)
 
     // Panel-scoped capture. A plain focused Item rather than PanelKeyCatcher:
     // that component takes keys before its descendants for menu navigation,
@@ -314,9 +345,32 @@ Panel {
         width: parent.width
         spacing: Style.spacing.sm
 
-        PanelSectionHeader {
+        // Header with the Esc hint at the right: what Esc does right now.
+        Item {
           width: parent.width
-          text: root.device ? Device.summary(root.device, root.keymap) : "Keyboard"
+          height: Math.max(header.implicitHeight, escHint.implicitHeight)
+
+          PanelSectionHeader {
+            id: header
+            anchors.left: parent.left
+            anchors.right: escHint.left
+            anchors.rightMargin: Style.spacing.md
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.device ? Device.summary(root.device, root.keymap) : "Keyboard"
+          }
+
+          Text {
+            id: escHint
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            textFormat: Text.PlainText
+            text: capture.wanted ? "Esc to exit capture mode" : "Press Esc to close"
+            color: capture.wanted ? Color.accent
+                                  : Qt.rgba(Color.foreground.r, Color.foreground.g,
+                                            Color.foreground.b, 0.55)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
         }
 
         Text {
@@ -328,9 +382,10 @@ Panel {
           text: {
             if (root.loadError !== "") return root.loadError
             if (!root.resolution) return "Resolving layout..."
+            var legend = ". Tinted keys have Hyprland binds - hover a key to see them."
             if (root.resolution.kind === "field-observed")
-              return "Layout: " + root.resolution.layoutId + " - transcribed for this board"
-            return "Layout: " + root.resolution.layoutId + " - stand-in, " + root.resolution.why
+              return "Layout: " + root.resolution.layoutId + " - transcribed for this board" + legend
+            return "Layout: " + root.resolution.layoutId + " - stand-in, " + root.resolution.why + legend
           }
         }
 
@@ -339,7 +394,11 @@ Panel {
           layout: root.layout
           pressed: root.pressed
           bindings: root.boundCounts
+          marked: root.markedCodes
           ledState: root.ledState
+          tooltipFor: function (cell) {
+            return Bindings.keyTooltip(root.bindIndex, cell, root.byId, root.byCode)
+          }
           unit: Math.max(Style.space(20),
                          Math.min(Style.space(38),
                                   (panelColumn.width - Style.space(6)) /
@@ -376,6 +435,15 @@ Panel {
           }
         }
 
+        SearchView {
+          id: search
+          width: parent.width
+          results: root.searchResults
+          total: root.binds.length
+          focusHome: captureArea
+          onQueryChanged: root.searchQuery = query
+        }
+
         CaptureMode {
           id: capture
           width: parent.width
@@ -391,21 +459,68 @@ Panel {
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.55)
-          text: "Keys light up on the board while this panel has focus; tinted keys " +
-                "have Hyprland binds. With capture mode off, bound combinations run " +
-                "their command and never arrive here; with it on, keys and mouse " +
-                "actions arrive here and do not run. A key marked with a small " +
-                "circle (Fn) never reaches the OS at all. Escape closes."
+          text: "Keys light up on the board while this panel has focus. With capture " +
+                "mode off, bound combinations run their command and never arrive " +
+                "here; with it on, keys and mouse actions arrive here and do not " +
+                "run. A key marked with a small circle (Fn) never reaches the OS."
         }
 
         // Binds this keyboard cannot send. Collapsed to one line; the list is
         // for the occasional audit, not the everyday glance.
         OrphanBinds {
+          id: orphans
           width: parent.width
           rows: root.orphanRows
           total: root.binds.length
           expanded: root.orphansExpanded
           onToggled: root.orphansExpanded = !root.orphansExpanded
+          // Whatever the card can hold minus everything else in the column.
+          // Summed from the siblings' own implicit heights, none of which
+          // depend on this list, so there is no binding loop.
+          maxListHeight: {
+            var room = panel.availableCardHeight - panel.verticalContentInset
+            var used = 0, n = 0
+            for (var i = 0; i < panelColumn.children.length; i++) {
+              var c = panelColumn.children[i]
+              if (!c.visible || c === orphans) continue
+              used += c.implicitHeight
+              n++
+            }
+            used += panelColumn.spacing * n + orphans.fixedHeight
+            return room - used
+          }
+        }
+
+        // Version footer, centred like the rest of the suite; clicking it
+        // opens the plugin's public repository.
+        Item {
+          width: parent.width
+          height: Style.space(22)
+
+          Text {
+            id: footer
+            anchors.centerIn: parent
+            textFormat: Text.PlainText
+            text: "fred.keyboard v" + root.pluginVersion
+            color: root.bar.foreground
+            opacity: footerHover.containsMouse ? 0.9 : 0.45
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.underline: footerHover.containsMouse
+
+            MouseArea {
+              id: footerHover
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openRepo()
+            }
+
+            PanelToolTip {
+              visible: footerHover.containsMouse
+              text: root.repoUrl
+            }
+          }
         }
       }
 
@@ -447,6 +562,7 @@ Panel {
       root.lastPressed = ({})
       root.lastMouse = ""
       root.orphansExpanded = false
+      search.clear()
     }
   }
 }
