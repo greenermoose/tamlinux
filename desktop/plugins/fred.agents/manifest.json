@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.agents",
   "name": "Agents",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Fred (@greenermoose)",
   "description": "Antigravity, Claude, Codex, and Cursor usage, limits, and pace in a native Omarchy bar panel.",
   "repository": "https://github.com/greenermoose/omarchy-fred-agents",

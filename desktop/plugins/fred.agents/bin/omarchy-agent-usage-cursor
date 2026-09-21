@@ -4,9 +4,11 @@
 # omarchy:hidden=true
 """Collect Cursor usage into one display-ready JSON record.
 
-Cursor is prompt-only: there is no local token ledger and no rate-limit RPC,
-so this collector reports real prompt and session counts and none of the
-token fields. The agents panel only ever reads the JSON this prints.
+Prompt and session counts come from local transcripts; live plan usage comes
+from Cursor's usage endpoint, authorized with the access token Cursor keeps
+in its SQLite state (state.vscdb), read read-only. Nothing sensitive is
+printed or written: the token exists only inside the Authorization header,
+and the record and the limits cache carry only percentages and reset times.
 
 Sessions come from Cursor agent transcripts under
 ~/.cursor/projects/*/agent-transcripts/<session>/<session>.jsonl. A subagent
@@ -24,6 +26,7 @@ calendar days without any timezone conversion.
 """
 
 import argparse
+import base64
 import datetime as _dt
 import fcntl
 import hashlib
@@ -34,19 +37,26 @@ import sqlite3
 import sys
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 AGENT_ID = "cursor"
 AGENT_NAME = "Cursor"
-AUTH_HELP = ""
+AUTH_HELP = "Open Cursor to sign in and restore live usage."
+USAGE_ENDPOINT = "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage"
+# A panel that is opened and shut repeatedly must not re-probe the endpoint
+# each flick; the limits cache is reused inside this window much like the
+# Claude and Codex collectors reuse theirs.
+PROBE_MIN_INTERVAL_SECONDS = 15
 
 # A scan this recent is only reused to dedup concurrent collector runs (the
 # update command backgrounds one per agent while the panel refreshes on its
 # own); every periodic widget refresh lands a real rescan, however low
 # refreshIntervalSec is set. --limits-only promises only fresh limits, so it
-# may reuse a scan for up to 15 minutes. Cursor has no limits to refresh, but
-# the flag is kept for CLI compatibility with the panel's refreshLimits().
+# may reuse a scan for up to 15 minutes; the live usage probe additionally
+# has its own reuse window in collect_limits().
 SCAN_REUSE_SECONDS = 20
 LIMITS_ONLY_REUSE_SECONDS = 900
 
@@ -364,6 +374,232 @@ def _cached_local_stats(max_age):
     return stats
 
 
+# ---------------------------------------------------------------- live usage
+#
+# The plan allowance comes from Cursor's usage endpoint, authorized with the
+# access token Cursor keeps in state.vscdb. That database is read read-only:
+# nothing here renews, rotates, or writes a credential, and the token lives
+# only inside the probe's Authorization header.
+
+def state_vsc_path():
+  return Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "state.vscdb"
+
+
+def b64url_payload(token):
+  """Decode a JWT's unsigned JSON body without verifying it."""
+  try:
+    segment = str(token or "").split(".")[1]
+    segment += "=" * (-len(segment) % 4)
+    payload = json.loads(base64.urlsafe_b64decode(segment))
+    return payload if isinstance(payload, dict) else {}
+  except Exception:
+    return {}
+
+
+def cursor_auth():
+  """Cursor's stored sign-in, read read-only.
+
+  Returns (access_token, expires_at_ms, plan). The plan is Cursor's own
+  membership type ("pro", ...) and becomes the record's tier label; the
+  token is used in-memory only.
+  """
+  db = state_vsc_path()
+  try:
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
+  except sqlite3.Error:
+    return "", 0, ""
+  try:
+    conn.execute("PRAGMA query_only = ON")
+    values = dict(conn.execute("SELECT key, value FROM ItemTable WHERE key LIKE 'cursorAuth/%'"))
+  except sqlite3.Error:
+    return "", 0, ""
+  finally:
+    try:
+      conn.close()
+    except Exception:
+      pass
+  access = str(values.get("cursorAuth/accessToken") or "")
+  plan = str(values.get("cursorAuth/stripeMembershipType") or "")
+  expires_ms = number(b64url_payload(access).get("exp")) * 1000
+  return access, expires_ms if expires_ms > 0 else 0, plan
+
+
+def normalize_percent(value):
+  # The endpoint reports a percentage on a 0-100 scale; the record wants the
+  # used fraction 0..1. Values already in range pass through.
+  try:
+    n = float(value)
+  except Exception:
+    return -1
+  if n != n:
+    return -1
+  if n > 1:
+    n = n / 100.0
+  return min(max(n, 0.0), 1.0)
+
+
+def normalize_reset_at(value):
+  if value is None or str(value).strip() == "":
+    return ""
+  # The endpoint has returned billingCycleEnd both as a number and as a
+  # numeric string; either way it is epoch milliseconds.
+  try:
+    millis = float(str(value).strip())
+  except Exception:
+    return str(value)
+  millis = millis / 1000 if millis > 10_000_000_000 else millis
+  return datetime.fromtimestamp(millis, timezone.utc).isoformat()
+
+
+def probe_limits(access_token):
+  request = urllib.request.Request(
+    USAGE_ENDPOINT,
+    method="POST",
+    data=b"{}",
+    headers={
+      "Authorization": "Bearer " + access_token,
+      "Content-Type": "application/json",
+      "Connect-Protocol-Version": "1",
+      "Accept": "application/json",
+    },
+  )
+  try:
+    with urllib.request.urlopen(request, timeout=10) as response:
+      payload = json.loads(response.read().decode("utf-8", errors="replace"))
+  except urllib.error.HTTPError as error:
+    if error.code == 429:
+      help_text = "Cursor's usage endpoint is rate limiting checks right now. Local Cursor stats are still shown."
+    elif error.code == 401:
+      help_text = "Cursor's stored sign-in no longer authorizes this machine. Open Cursor to sign back in; local stats are still shown."
+    else:
+      help_text = f"Cursor's usage endpoint returned status {error.code}. Local Cursor stats are still shown."
+    return {"ok": False, "helpText": help_text}
+  except Exception:
+    # A transport failure reached no server at all — no route, no DNS. Any
+    # real answer, including an error status, is a server we should stop
+    # pestering; this is not.
+    return {
+      "ok": False,
+      "transport": True,
+      "helpText": "Couldn't reach Cursor's usage endpoint. Retrying shortly. Local Cursor stats are still shown.",
+    }
+
+  limits = []
+  plan = payload.get("planUsage") or {}
+  percent = normalize_percent(plan.get("totalPercentUsed"))
+  if percent >= 0:
+    limits.append({
+      "label": "Monthly (billing cycle)",
+      "percent": percent,
+      "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
+    })
+  spend = payload.get("spendLimitUsage") or {}
+  if isinstance(spend.get("percent"), (int, float)):
+    percent = normalize_percent(spend.get("percent"))
+    if percent >= 0:
+      limits.append({
+        "label": "Spend (billing cycle)",
+        "percent": percent,
+        "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
+      })
+  # The API may grow a scoped limits list; honor it if it does.
+  for entry in payload.get("limits") or []:
+    if not isinstance(entry, dict):
+      continue
+    percent = normalize_percent(entry.get("percent"))
+    if percent < 0:
+      continue
+    limits.append({
+      "label": "Plan",
+      "percent": percent,
+      "resetsAt": normalize_reset_at(entry.get("resetsAt")),
+    })
+
+  if not limits:
+    return {"ok": False, "helpText": "Cursor's usage endpoint returned no limits. Local Cursor stats are still shown."}
+  return {"ok": True, "limits": limits}
+
+
+# A cached percentage outlives the probe that measured it, but only until its
+# window rolls over: once a window has reset, the figure describes a period
+# that is over, and a stale 78% would misreport an allowance that is now
+# untouched. A window with no reset time, or one that will not parse, is kept
+# — an unreadable timestamp is no reason to throw away a real number.
+def usable_cached_limits(cached):
+  entries = cached.get("limits")
+  if not isinstance(entries, list):
+    return []
+  now = datetime.now(timezone.utc)
+  out = []
+  for entry in entries:
+    if not isinstance(entry, dict):
+      continue
+    raw = str(entry.get("resetsAt") or "")
+    if raw == "":
+      out.append(entry)
+      continue
+    try:
+      resets_at = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+      if resets_at.tzinfo is None:
+        resets_at = resets_at.replace(tzinfo=timezone.utc)
+    except Exception:
+      out.append(entry)
+      continue
+    if resets_at > now:
+      out.append(entry)
+  return out
+
+
+def collect_limits(access_token, expires_at_ms, force):
+  result = {"limits": [], "usageStatusText": "", "authHelpText": AUTH_HELP}
+
+  # A panel that is opened and shut repeatedly must not turn into a request
+  # per flick, so recent probe results are reused for a short window — and
+  # kept as the answer of record when a later probe fails.
+  probe_cache = cache_root() / "cursor-limits.json"
+  cached = read_fresh_json(probe_cache, float("inf")) or {}
+  fallback = usable_cached_limits(cached)
+
+  if access_token == "":
+    result["limits"] = fallback
+    result["usageStatusText"] = "Waiting for auth"
+    return result
+  if expires_at_ms > 0 and expires_at_ms <= time.time() * 1000:
+    result["limits"] = fallback
+    result["usageStatusText"] = "Sign-in expired"
+    result["authHelpText"] = (
+      "Cursor's saved sign-in expired"
+      + (" — showing the last known limits." if fallback else ".")
+      + " Open Cursor to refresh it."
+    )
+    return result
+
+  # --force is a person asking for fresh numbers, so it skips the reuse window
+  # entirely; the interval is there to absorb repeated panel opens, not to
+  # overrule someone who pressed refresh.
+  fetched_at = number(cached.get("fetchedAtMs")) / 1000
+  if fallback and not force and time.time() - fetched_at < PROBE_MIN_INTERVAL_SECONDS:
+    result["limits"] = fallback
+    return result
+
+  probe = probe_limits(access_token)
+  if probe["ok"]:
+    result["limits"] = probe["limits"]
+    write_json(probe_cache, {"fetchedAtMs": round(time.time() * 1000), "limits": probe["limits"]})
+    return result
+
+  # The first probe after login often fires before DHCP has handed out a
+  # route. Ask the shell to try again sooner than its regular interval.
+  if probe.get("transport"):
+    result["retryAdvised"] = True
+  if fallback:
+    result["limits"] = fallback
+  else:
+    result["usageStatusText"] = "Cursor limits unavailable"
+    result["authHelpText"] = probe["helpText"]
+  return result
+
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument("--force", action="store_true")
@@ -373,6 +609,9 @@ def main():
   max_age = 0 if args.force else (LIMITS_ONLY_REUSE_SECONDS if args.limits_only else SCAN_REUSE_SECONDS)
   stats = cached_local_stats(max_age)
 
+  access_token, expires_at_ms, plan = cursor_auth()
+  limits = collect_limits(access_token, expires_at_ms, args.force)
+
   record = {
     "schemaVersion": 1,
     "id": AGENT_ID,
@@ -380,12 +619,19 @@ def main():
     "updatedAt": datetime.now(timezone.utc).isoformat(),
     "ready": True,
     "hasLocalStats": True,
-    # Cursor exposes no token ledger; the prompt-mode panel uses this to show
-    # prompt charts where Claude/Codex show token charts.
+    "tierLabel": plan,
+    "usageStatusText": limits["usageStatusText"],
+    "authHelpText": limits["authHelpText"],
+    "limits": limits["limits"],
+    # Cursor exposes no local token ledger (the live plan usage covers the
+    # billing cycle instead); the prompt-mode panel uses this to show prompt
+    # charts where Claude/Codex show token charts.
     "tokensAvailable": False,
     "hasPromptStats": True,
     "scope": "device",
   }
+  if limits.get("retryAdvised"):
+    record["retryAdvised"] = True
   record.update(stats)
   print(json.dumps(record, separators=(",", ":")))
 

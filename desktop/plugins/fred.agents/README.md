@@ -1,25 +1,25 @@
-# Agents (`fred.agents`)
+# Agents Token Usage Reporter (`fred.agents`)
 
-One bar icon and one panel for every AI coding agent on the machine, tracking
-**Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
+Fred's Omarchy agents plugin: a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
 panel in place via `omarchy.clonedFrom` routing.
 
-The panel is strictly a display: it watches the usage records that the
-vendored `omarchy-agent-usage-update` writes to
-`~/.local/state/omarchy/agents/usage/` and draws whatever appears there.
+The panel displays usage records that `omarchy-agent-usage-update` writes to
+`~/.local/state/omarchy/agents/usage/`.
 `Panel.qml` owns the bar button and the popup; `Main.qml` discovers and
 watches the records (and handles the optional cross-device aggregation);
 `Agent.qml` is the per-record file watcher.
 
 ## Panel
 
-- **Hero** — the mark, the tool, and the plan it runs on ("Max 20x", "Pro").
+- **Hero** — the mark, the tool, and the plan it runs on.
   Auth and endpoint problems replace the plan line and repeat in a card.
 - **Subscription switch** — one chip per enabled agent (`h`/`l` or click).
   It appears only when more than one agent is enabled.
 - **Limits** — the percentage of each allowance used, a matching meter, and
-  the time until the session or weekly window resets. Only Claude and Codex
-  have rate limits locally; the section hides for the others.
+  the time until the session or weekly window resets. Claude and Codex report
+  from their providers' own endpoints, and Cursor reports live plan usage from
+  its dashboard endpoint (see Data); Antigravity has no remote usage read-out
+  yet, so its section stays hidden.
 - **Tokens by day** — one row per day for the last week: day, bar, tokens,
   with today bolded at the bottom. Hover today for its prompt and session
   count.
@@ -51,12 +51,17 @@ The collectors are vendored inside the plugin so nothing modifies
 |---|---|---|
 | `claude` | Anthropic's OAuth usage endpoint (5-hour session + 7-day weekly) | `~/.claude/projects` transcripts, opencode sessions on an Anthropic provider, plus `stats-cache.json` and `history.jsonl` as fallback |
 | `codex` | The Codex app-server RPC | native Codex CLI session files (plus pi and opencode sessions) |
-| `antigravity` | — (none available) | `~/.gemini/antigravity-cli/history.jsonl` and `conversation_summaries.db`: prompt, session, and active-day counts |
-| `cursor` | — (none available) | `~/.cursor/projects/*/agent-transcripts/*.jsonl` and `conversation-search.db`: prompt, session, and active-day counts |
+| `antigravity` | — (unavailable) | `~/.gemini/antigravity-cli/history.jsonl` and `conversation_summaries.db`: prompt, session, and active-day counts |
+| `cursor` | Cursor's dashboard RPC (`api2.cursor.sh` `DashboardService/GetCurrentPeriodUsage`): percent of the monthly plan used, resets with the billing cycle | `~/.cursor/projects/*/agent-transcripts/*.jsonl` and `conversation-search.db`: prompt, session, and active-day counts |
 
 Claude limits need a signed-in CLI; without credentials the panel says so and
 falls back to local stats only. A non-default Claude directory is honored via
 `CLAUDE_CONFIG_DIR`, Codex via `CODEX_HOME`.
+
+Cursor's dashboard RPC is unofficial and may change: the collector reads the
+sign-in token Cursor keeps in `state.vscdb` read-only, uses it only inside the
+request's Authorization header, and never writes it anywhere — the record and
+the limits cache carry only percentages and reset times.
 
 ## Interactions
 

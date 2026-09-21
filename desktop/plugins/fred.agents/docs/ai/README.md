@@ -13,6 +13,7 @@ against a local transcript says so explicitly.
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
 | 2026-09-20 | Swap & rebrand through prompt-mode panel and pre-release prep (`0.1.0`–`1.0.0`) | `opencode` (OpenCode `1.18.31`) | Big Pickle (`big-pickle`) | [`2026-09-20-development-to-prerelease.md`](2026-09-20-development-to-prerelease.md), transcript via opencode store `ses_f40a47824ffeTRjyEoDjuA9NUj` |
+| 2026-09-20/21 | Cursor live plan limits (`1.1.0`); Antigravity live limits assessed, blocked | `opencode` (OpenCode `1.18.31`) | Big Pickle (`big-pickle`) | [`2026-09-20-cursor-live-limits.md`](2026-09-20-cursor-live-limits.md), transcripts via opencode store `ses_f3e75eee...` and `ses_f3c853...` |
 
 ## Related
 

@@ -2,6 +2,17 @@
 
 All notable changes to `fred.agents` (`omarchy-fred-agents`) will be documented in this file.
 
+## [1.1.0] - Unreleased
+
+### Added
+- Cursor live plan usage: `omarchy-agent-usage-cursor` reads the sign-in token
+  Cursor keeps in `state.vscdb` (read-only, in-memory only) and probes its
+  dashboard RPC (`api2.cursor.sh` `DashboardService/GetCurrentPeriodUsage`) for
+  the percent of the monthly plan used plus the billing-cycle reset time. The
+  panel's Limits section now renders Cursor alongside Claude and Codex, with a
+  `tierLabel` from the stored membership plan. Failures fall back to the last
+  known limits and say so. (Endpoint is unofficial and may change.)
+
 ## [0.1.0] - Unreleased
 
 ### Added
