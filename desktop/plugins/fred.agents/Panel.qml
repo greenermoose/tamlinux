@@ -18,7 +18,7 @@ Panel {
   readonly property color track: Style.selectedFillFor(foreground, Color.accent)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  readonly property string pluginVersion: "1.1.0"
+  readonly property string pluginVersion: "1.1.2"
 
   readonly property var providers: usage.enabledProviders
   // The selection follows the provider, not the slot it happens to sit in: a
@@ -151,6 +151,53 @@ Panel {
     if (days > 0) return days + "d " + (hours % 24) + "h"
     if (hours > 0) return hours + "h " + (minutes % 60) + "m"
     return Math.max(1, minutes) + "m"
+  }
+
+  function pad2(n) { return String(n).padStart(2, "0") }
+
+  // Reset stamps are ISO instants; the panel reads them in local wall-clock
+  // time, the way the "Today" row already prints dates.
+  function formatTimestamp(iso) {
+    var d = new Date(iso)
+    if (isNaN(d.getTime())) return ""
+    return d.getFullYear() + "-" + root.pad2(d.getMonth() + 1) + "-" + root.pad2(d.getDate())
+      + " " + root.pad2(d.getHours()) + ":" + root.pad2(d.getMinutes())
+  }
+
+  // The LimitRow reset line: the countdown plus its absolute stamp. Leading
+  // zero units are dropped, so a window under a day reads "Gh Mm" and under
+  // an hour just "Mm".
+  function resetLine(w) {
+    var remainingMs = root.resetMsFor(w)
+    if (!(remainingMs > 0)) return ""
+    var totalMinutes = Math.floor(remainingMs / 60000)
+    var days = Math.floor(totalMinutes / 1440)
+    var hours = Math.floor((totalMinutes % 1440) / 60)
+    var minutes = Math.max(1, totalMinutes % 60)
+    var parts = []
+    if (days > 0) parts.push(days + "d", hours + "h")
+    else if (hours > 0) parts.push(hours + "h")
+    parts.push(minutes + "m")
+    return "Resets in " + parts.join(" ") + " on " + root.formatTimestamp(w.resetAt)
+  }
+
+  // The bar button's hover message, rendered by the shell's own tooltip
+  // popup (plugin-hover-messages.md): header, one entity per line, a blank
+  // line, then the version footer. The binding window is the fullest limit —
+  // the one that actually stops the next prompt — so the bar shows the same
+  // headline the panel does. Providers without limits (Antigravity until live
+  // limits land; a synced-only agent never carries limits) read unknown.
+  function formatBarHover() {
+    var lines = ["AI Agent Usage"]
+    for (var i = 0; i < root.providers.length; i++) {
+      var provider = root.providers[i]
+      var w = root.bindingWindow(provider)
+      var name = provider ? String(provider.providerName || provider.providerId || "?") : "?"
+      if (w) lines.push(name + " " + Math.round(w.percent * 100) + "% · resets " + root.formatTimestamp(w.resetAt))
+      else lines.push(name + " · unknown")
+    }
+    lines.push("", "fred.agents v" + root.pluginVersion)
+    return lines.join("\n")
   }
 
   // ---------------------------------------------------------------- balance
@@ -355,7 +402,7 @@ Panel {
     bar: root.bar
     text: "󱚣"
     active: root.alarming
-    tooltipText: "fred.agents v" + root.pluginVersion
+    tooltipText: root.formatBarHover()
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.RightButton) root.launchAgent()
       else if (buttonCode === Qt.MiddleButton) root.selectProvider(root.providerIndex + 1)
@@ -771,10 +818,7 @@ Panel {
       id: resetText
       textFormat: Text.PlainText
       width: parent.width
-      text: {
-        var remainingMs = root.resetMsFor(limitRow.window)
-        return remainingMs > 0 ? "Resets in " + root.formatDuration(remainingMs) : ""
-      }
+      text: root.resetLine(limitRow.window)
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption

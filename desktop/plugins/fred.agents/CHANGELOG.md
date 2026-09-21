@@ -2,6 +2,29 @@
 
 All notable changes to `fred.agents` (`omarchy-fred-agents`) will be documented in this file.
 
+## [1.1.2] - Unreleased
+
+### Added
+- Bar hover now shows a per-agent limits summary ("AI Agent Usage") through
+  the standard themed bar tooltip (`tooltipText`): each agent's binding-window
+  percent (the fullest limit, the one that stops the next prompt) and its
+  reset stamp (`yyyy-mm-dd hh:mm`, local time), one line per agent. Providers
+  with no limits — Antigravity until live limits land, synced-only agents —
+  read "unknown". The text ends with the `fred.agents vX.Y.Z` footer.
+- The panel's limit rows now pair the countdown with the absolute stamp:
+  `Resets in Xd Yh Zm on yyyy-mm-dd hh:mm`, hiding the leading zero day/hour
+  when the window rolls sooner than a day or an hour.
+
+## [1.1.1] - Unreleased
+
+### Added
+- Cursor limits show both meters from the dashboard RPC: the included-total
+  percent (`totalPercentUsed`) and the separate auto-model percent
+  (`autoPercentUsed`) that Cursor's in-app Plan view surfaces (61% vs 56% with
+  untouched API-model spend). Each is its own row in the Limits section, both
+  resetting with the billing cycle. The binding window is now the fullest of
+  the two, so the meter that actually throttles first drives the hero.
+
 ## [1.1.0] - Unreleased
 
 ### Added

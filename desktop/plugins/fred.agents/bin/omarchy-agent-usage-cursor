@@ -493,6 +493,16 @@ def probe_limits(access_token):
       "percent": percent,
       "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
     })
+  # Cursor's in-app Plan view meters the auto-model bucket against its own
+  # allowance; that reads higher than the included total (above) while
+  # API-model spend is untouched. Both are recorded so the panel shows both.
+  auto_percent = normalize_percent(plan.get("autoPercentUsed"))
+  if auto_percent >= 0:
+    limits.append({
+      "label": "Auto usage (billing cycle)",
+      "percent": auto_percent,
+      "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
+    })
   spend = payload.get("spendLimitUsage") or {}
   if isinstance(spend.get("percent"), (int, float)):
     percent = normalize_percent(spend.get("percent"))

@@ -18,8 +18,9 @@ watches the records (and handles the optional cross-device aggregation);
 - **Limits** — the percentage of each allowance used, a matching meter, and
   the time until the session or weekly window resets. Claude and Codex report
   from their providers' own endpoints, and Cursor reports live plan usage from
-  its dashboard endpoint (see Data); Antigravity has no remote usage read-out
-  yet, so its section stays hidden.
+  its dashboard endpoint — the included-total meter and the auto-model meter
+  as separate rows (see Data); Antigravity has no remote usage read-out yet,
+  so its section stays hidden.
 - **Tokens by day** — one row per day for the last week: day, bar, tokens,
   with today bolded at the bottom. Hover today for its prompt and session
   count.
@@ -52,7 +53,7 @@ The collectors are vendored inside the plugin so nothing modifies
 | `claude` | Anthropic's OAuth usage endpoint (5-hour session + 7-day weekly) | `~/.claude/projects` transcripts, opencode sessions on an Anthropic provider, plus `stats-cache.json` and `history.jsonl` as fallback |
 | `codex` | The Codex app-server RPC | native Codex CLI session files (plus pi and opencode sessions) |
 | `antigravity` | — (unavailable) | `~/.gemini/antigravity-cli/history.jsonl` and `conversation_summaries.db`: prompt, session, and active-day counts |
-| `cursor` | Cursor's dashboard RPC (`api2.cursor.sh` `DashboardService/GetCurrentPeriodUsage`): percent of the monthly plan used, resets with the billing cycle | `~/.cursor/projects/*/agent-transcripts/*.jsonl` and `conversation-search.db`: prompt, session, and active-day counts |
+| `cursor` | Cursor's dashboard RPC (`api2.cursor.sh` `DashboardService/GetCurrentPeriodUsage`): both the included-total and the auto-model percents of the monthly plan, each resets with the billing cycle | `~/.cursor/projects/*/agent-transcripts/*.jsonl` and `conversation-search.db`: prompt, session, and active-day counts |
 
 Claude limits need a signed-in CLI; without credentials the panel says so and
 falls back to local stats only. A non-default Claude directory is honored via
