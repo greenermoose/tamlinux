@@ -11,3 +11,14 @@
 - **Clarification**: Fred chose stem-only naming: `omarchy-fred-clock` becomes `clock-fred-tamlinux`.
 - **Changes**: Renamed the GitHub repository and origin; replaced the reviewed shell command in `BarWidget.qml` with a literal argv process, a closed environment, a 4096-character summary cap, and a ten-second watchdog. Prepared version 1.0.4 as unreleased.
 - **Verification**: `omarchy plugin validate .` and `git diff --check` passed. Live right-click testing and marketplace resubmission remain pending.
+
+## Session: 2026-09-22 — Release v1.0.4
+
+- **CLI Tool**: Cursor `3.21.16`
+- **Model**: `composer`
+- **Implementation author**: Codex session above (`58791e0`)
+- **Later AI assistance**: Cursor dated the changelog, tagged the release, and resubmitted marketplace #7664
+- **Prompts**:
+  > I want to do a big rename project for my code. When I'm done, this is what I want to have accomplished: 1) fred.tides and fred.sysinfo will be in normal mode, not test. I have tested them and they are ready to be published to GitHub and used as regular plugins on my system.
+- **Clarification**: Fred chose Release (tags, GitHub Releases, Show & Tell, marketplace replies).
+- **Verification**: Home Manager generation 92 serves 1.0.4 from the Nix store. `omarchy plugin validate` passed. Test mode off.
