@@ -1,4 +1,4 @@
-# fred.tides (`omarchy-fred-tides`)
+# fred.tides (`tides-fred-tamlinux`)
 
 A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve panel for [Tamlinux](https://github.com/greenermoose/tamlinux), designed to sit directly adjacent to `fred.weather` on the bar. Displays current sea level height, rising/falling status, today's tidal range, upcoming highs and lows, and a scrubbable Catmull-Rom tidal curve.
 
@@ -12,7 +12,7 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 | **Cloned From** | `io.github.woogy7.tides` |
 | **License** | GPL-3.0-or-later |
 | **Inspiration** | [`Woogy7/omarchy-tides`](https://github.com/Woogy7/omarchy-tides) & [`ashuttl/linecast`](https://github.com/ashuttl/linecast) |
-| **Repository** | `greenermoose/omarchy-fred-tides` |
+| **Repository** | `greenermoose/tides-fred-tamlinux` |
 | **Author** | Fred (@greenermoose) |
 
 ---
