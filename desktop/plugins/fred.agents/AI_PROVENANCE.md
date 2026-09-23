@@ -32,5 +32,5 @@ AI tools, models, prompts, and architectural decisions that shaped
 ## 3. Session Records
 
 Individual session records are archived under [`docs/ai/`](docs/ai/). The
-design plan lives in `config-fred-tamlinux` (`~/docs/plans/fred-agents-plan.md`)
-and records every decision with its date and rationale.
+design plan lives in the private workstation config and records every
+decision with its date and rationale.
