@@ -5,6 +5,10 @@ Two kinds of debt are recorded here: one file cloned from Omarchy itself
 without any of their code being used (section 2). Credit where due, both
 ways.
 
+## Field surveys
+
+The cloned Omarchy component and the prior-art table below are the existing starting map. For a new requested survey, revisit those sources and search current forks and independent keyboard or binding tools. Save dated findings in [upstream/](upstream/) and link each result here.
+
 ## 1. Cloned code: `ExplorerPanel.qml`
 
 `ExplorerPanel.qml` is a clone of one stock Omarchy shell component, the
