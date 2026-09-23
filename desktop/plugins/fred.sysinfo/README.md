@@ -26,9 +26,9 @@ Comprehensive hardware telemetry, thermal sensors, and system information bar pl
 ## Features
 
 - **Universal Dynamic Probing:** Pure standard-library Python engine (`sysinfo-probe.py`) querying native Linux interfaces (`/sys`, `/proc`, `/usr/bin/lspci`), eliminating hardcoded vendor strings.
-- **Blazing Fast Performance:** Stateful delta calculations and in-memory caching deliver sub-5ms warm polling cycles during live panel viewing, avoiding bar stutter or compositor lag.
+- **Stateful CPU Sampling:** A private cache holds the previous CPU counters so polls spaced at least 50 ms apart can calculate usage without a second sample delay.
 - **Marketplace Security Hardening:**
-  - Subprocesses run inside a strictly closed environment (`clearEnvironment: true`) with whitelisted variables (`PATH`, `HOME`, `LC_ALL`, `XDG_RUNTIME_DIR`).
+  - Subprocesses run inside a strictly closed environment (`clearEnvironment: true`) with whitelisted variables (`PATH`, `HOME`, `LC_ALL`, `XDG_RUNTIME_DIR`, `XDG_CACHE_HOME`).
   - Helper paths resolve canonically via descriptor URLs (`Qt.resolvedUrl`).
   - Execution watchdog timers automatically terminate hung processes.
   - Input collectors enforce payload caps to prevent unbounded memory allocation.
@@ -36,6 +36,12 @@ Comprehensive hardware telemetry, thermal sensors, and system information bar pl
 - **Interactive Power Management:** Toggle system power profiles directly between Saver, Balanced, and Performance modes via `powerprofilesctl`.
 - **Fresh Resource Summary:** Hover over the bar icon for current CPU usage, available RAM, and free root-disk space without opening the full panel.
 - **System Monitor Integration:** Launch `btop` in your configured terminal with a single click from the panel footer.
+
+## Security model and cache
+
+The probe stores CPU counters and static hardware details under `$XDG_RUNTIME_DIR/fred.sysinfo`, or `$XDG_CACHE_HOME/fred.sysinfo` when no runtime directory is available. It creates the directory with mode `0700` and refuses caching unless it is owned by the current user and private. It never caches directly in shared `/dev/shm` or `/tmp`.
+
+Each write creates an unpredictable `0600` temporary file using `O_EXCL` and `O_NOFOLLOW`, then atomically renames it relative to an open directory descriptor. Reads also use `O_NOFOLLOW` and validate owner, file type, mode, size, and age on the opened descriptor. A rejected cache leaves live telemetry available. Cache security tests run with `python3 -m unittest discover -s tests`.
 
 ---
 
@@ -54,7 +60,7 @@ Comprehensive hardware telemetry, thermal sensors, and system information bar pl
 Install and enable the plugin directly using Omarchy's plugin manager:
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-sysinfo.git --enable
+omarchy plugin add https://github.com/greenermoose/sysinfo-fred-tamlinux.git --enable
 ```
 
 ### Adding to Bar Layout

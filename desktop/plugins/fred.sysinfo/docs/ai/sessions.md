@@ -108,3 +108,16 @@ Chronological records of prompts, tool versions, and architectural decisions for
   - Live shell loaded `Panel.qml` from the deployed development symlink and reported installed version 1.1.2.
   - Screenshot text visibly reports `fred.sysinfo v1.1.2` and the new CPU/RAM/disk summary.
   - Published to public `main` as a pre-release without creating a tag or GitHub Release.
+
+---
+
+## Session: 2026-09-22 — Marketplace cache security fix (v1.1.2 unreleased)
+
+- **CLI Tool**: Codex CLI `0.155.1`
+- **Model**: `gpt-6-sol`
+- **Transcript Reference**: `01a0cbc5-55fc-7b33-bdea-230b6f8502ed`
+- **Prompt**:
+  > Please get up to speed on the plan to finish up in-progress omarchy plugin work, then rename my existing GitHub repos from omarchy-fred-* to *-fred-tamlinux. Check to see what plugins we've submitted to the marketplace that are midstream, had security reviews, and have not yet been resubmitted. I want to get those done with the security fixes required, and resubmit them so the review work is not done in vain.
+- **Clarification**: Fred chose stem-only GitHub repository names.
+- **Changes**: Renamed the GitHub repository and origin; moved probe caches to private runtime storage; added descriptor-relative no-follow atomic writes and checked reads; included `XDG_CACHE_HOME` in the closed QML environment; added attack-focused cache tests and documentation.
+- **Verification**: Six cache tests, `omarchy plugin validate .`, and `git diff --check` passed. The live probe created a `0700` cache directory with `0600` files. The full probe benchmark measured 86 ms warm in this session. Live bar testing and marketplace resubmission remain pending.

@@ -12,11 +12,96 @@ import json
 import re
 import shlex
 import subprocess
+import stat
+import sys
 
-SHM_DIR = "/dev/shm" if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.W_OK) else "/tmp"
-CPU_STAT_FILE = os.path.join(SHM_DIR, "fred_sysinfo_cpu_stat.json")
-STATIC_CACHE_FILE = os.path.join(SHM_DIR, "fred_sysinfo_static.json")
 STATIC_CACHE_TTL = 300  # 5 minutes
+MAX_CACHE_BYTES = 65536
+
+
+def get_secure_cache_dir():
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime_dir and os.path.isdir(runtime_dir):
+        return os.path.join(runtime_dir, "fred.sysinfo")
+    cache_home = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    return os.path.join(cache_home, "fred.sysinfo")
+
+
+def open_secure_cache_dir(cache_dir=None):
+    cache_dir = cache_dir or get_secure_cache_dir()
+    try:
+        os.makedirs(cache_dir, mode=0o700, exist_ok=True)
+        fd = os.open(cache_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        info = os.fstat(fd)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+            os.close(fd)
+            raise ValueError("cache directory must be owned by this user and mode 0700")
+        return fd
+    except (OSError, ValueError) as exc:
+        print(f"fred.sysinfo: refusing cache directory {cache_dir}: {exc}", file=sys.stderr)
+        return None
+
+
+def _safe_cache_name(name):
+    return bool(name) and name not in (".", "..") and os.path.basename(name) == name
+
+
+def write_private_file(name, data, cache_dir=None):
+    if not _safe_cache_name(name) or len(data) > MAX_CACHE_BYTES:
+        return False
+    dfd = open_secure_cache_dir(cache_dir)
+    if dfd is None:
+        return False
+    temp_name = f".{name}.{os.urandom(8).hex()}.tmp"
+    try:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC
+        fd = os.open(temp_name, flags, 0o600, dir_fd=dfd)
+        try:
+            with os.fdopen(fd, "wb", closefd=False) as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.rename(temp_name, name, src_dir_fd=dfd, dst_dir_fd=dfd)
+        temp_name = None
+        os.fsync(dfd)
+        return True
+    except OSError as exc:
+        print(f"fred.sysinfo: cache write failed: {exc}", file=sys.stderr)
+        return False
+    finally:
+        if temp_name is not None:
+            try:
+                os.unlink(temp_name, dir_fd=dfd)
+            except OSError:
+                pass
+        os.close(dfd)
+
+
+def read_private_file(name, max_age=None, max_bytes=MAX_CACHE_BYTES, cache_dir=None):
+    if not _safe_cache_name(name):
+        return None
+    dfd = open_secure_cache_dir(cache_dir)
+    if dfd is None:
+        return None
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, dir_fd=dfd)
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+                return None
+            if info.st_size > max_bytes or max_age is not None and time.time() - info.st_mtime > max_age:
+                return None
+            with os.fdopen(fd, "rb", closefd=False) as stream:
+                data = stream.read(max_bytes + 1)
+                return data if len(data) <= max_bytes else None
+        finally:
+            os.close(fd)
+    except OSError:
+        return None
+    finally:
+        os.close(dfd)
 
 
 def read_file(path, default=""):
@@ -289,14 +374,12 @@ def get_pci_devices_static():
 
 
 def get_static_data(force=False):
-    if not force and os.path.isfile(STATIC_CACHE_FILE):
+    cached = None if force else read_private_file("static_cache.json", max_age=STATIC_CACHE_TTL)
+    if cached is not None:
         try:
-            mtime = os.path.getmtime(STATIC_CACHE_FILE)
-            if time.time() - mtime < STATIC_CACHE_TTL:
-                with open(STATIC_CACHE_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict) and "cpu" in data and "system" in data:
-                        return data
+            data = json.loads(cached)
+            if isinstance(data, dict) and "cpu" in data and "system" in data:
+                return data
         except Exception:
             pass
 
@@ -312,11 +395,7 @@ def get_static_data(force=False):
         "pci": pci
     }
 
-    try:
-        with open(STATIC_CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-    except Exception:
-        pass
+    write_private_file("static_cache.json", json.dumps(data).encode("utf-8"))
 
     return data
 
@@ -334,16 +413,16 @@ def get_dynamic_cpu(cpu_static):
     max_freq = max(freqs) if freqs else 0.0
     governor = read_file("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor", "performance")
 
-    # CPU Usage delta via /dev/shm
+    # CPU usage delta from the private session cache.
     now = time.time()
     cur_stat_line = read_file("/proc/stat").split("\n")[0].split()[1:8]
     cur_vals = [parse_float(x) for x in cur_stat_line]
     cpu_usage = None
 
-    if os.path.isfile(CPU_STAT_FILE):
+    cached = read_private_file("cpu_stat.json", max_age=60.0)
+    if cached is not None:
         try:
-            with open(CPU_STAT_FILE, "r", encoding="utf-8") as f:
-                old = json.load(f)
+            old = json.loads(cached)
             prev_vals = old["vals"]
             prev_time = old["time"]
             dt = now - prev_time
@@ -367,11 +446,7 @@ def get_dynamic_cpu(cpu_static):
         cur_vals = vals2
         now = time.time()
 
-    try:
-        with open(CPU_STAT_FILE, "w", encoding="utf-8") as f:
-            json.dump({"vals": cur_vals, "time": now}, f)
-    except Exception:
-        pass
+    write_private_file("cpu_stat.json", json.dumps({"vals": cur_vals, "time": now}).encode("utf-8"))
 
     loadavg = read_file("/proc/loadavg").split()[:3]
     load_str = ", ".join(loadavg) if loadavg else "0.00, 0.00, 0.00"

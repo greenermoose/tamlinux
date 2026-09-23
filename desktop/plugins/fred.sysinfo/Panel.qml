@@ -43,7 +43,8 @@ Panel {
     "PATH": "/usr/bin:/bin",
     "HOME": Quickshell.env("HOME") || "",
     "LC_ALL": "C.UTF-8",
-    "XDG_RUNTIME_DIR": Quickshell.env("XDG_RUNTIME_DIR") || ""
+    "XDG_RUNTIME_DIR": Quickshell.env("XDG_RUNTIME_DIR") || "",
+    "XDG_CACHE_HOME": Quickshell.env("XDG_CACHE_HOME") || ""
   })
 
   function refresh() {
