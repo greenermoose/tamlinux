@@ -1,6 +1,6 @@
 # Workspaces with Desktop Mode (`fred.workspaces`)
 
-Fred's Tamlinux workspaces plugin: a shell bar widget with dynamic all-monitor desktop sets, endpoint-based independent switching, rich window tooltips, and automatic display geometry detection.
+Fred's [Tamlinux](https://github.com/greenermoose/tamlinux) workspaces plugin: a shell bar widget with dynamic all-monitor desktop sets, endpoint-based independent switching, rich window tooltips, and automatic display geometry detection.
 
 ![Workspaces with Desktop Mode](assets/screenshot.png)
 
