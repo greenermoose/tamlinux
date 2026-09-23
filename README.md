@@ -43,6 +43,10 @@ Wayland, and Nix.
 comes after this workstation is solid. Version rules are in
 [`VERSIONING.md`](VERSIONING.md).
 
+The [development plans](docs/plans/README.md) track the reviewed installation
+direction and the approved first slice of the `tamlinux` command. Neither is
+part of the 0.0.1 installation yet.
+
 ## Why
 
 Software gets bloated, abandoned, and insecure long before physical hardware
