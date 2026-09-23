@@ -121,4 +121,7 @@ files, passed the Node tests and Omarchy plugin validation, and prepared the
 v1.0.4 release metadata. The [session record](2026-09-23-release-v1.0.4.md)
 contains the verbatim user prompts and authorship boundary.
 
+## 2026-09-23 upstream survey foundation
+
+- [Codex session record](2026-09-23-upstream-survey-foundation.md).
 
