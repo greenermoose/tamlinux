@@ -7,8 +7,8 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 | Attribute | Detail |
 | :-- | :-- |
 | **Plugin ID** | `fred.tides` |
-| **Version** | `1.0.3` |
-| **Version Tags** | [`v1.0.3`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.3), [`v1.0.2`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.2), [`v1.0.1`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.1), [`v1.0.0`](https://github.com/greenermoose/omarchy-fred-tides/releases/tag/v1.0.0) |
+| **Version** | `1.0.4` (unreleased security fix) |
+| **Version Tags** | [`v1.0.3`](https://github.com/greenermoose/tides-fred-tamlinux/releases/tag/v1.0.3), [`v1.0.2`](https://github.com/greenermoose/tides-fred-tamlinux/releases/tag/v1.0.2), [`v1.0.1`](https://github.com/greenermoose/tides-fred-tamlinux/releases/tag/v1.0.1), [`v1.0.0`](https://github.com/greenermoose/tides-fred-tamlinux/releases/tag/v1.0.0) |
 | **Cloned From** | `io.github.woogy7.tides` |
 | **License** | GPL-3.0-or-later |
 | **Inspiration** | [`Woogy7/omarchy-tides`](https://github.com/Woogy7/omarchy-tides) & [`ashuttl/linecast`](https://github.com/ashuttl/linecast) |
@@ -22,7 +22,7 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 - **Multi-Monitor Focus Isolation (Non-Modal Popout):**
   Unlike stock panels that create blocking overlay twins across all screens and demand layer-shell focus, `fred.tides` binds its layer-shell surface strictly to the host monitor and requests keyboard focus on demand only when its screen has Hyprland focus (`WlrLayershell.keyboardFocus: OnDemand`). You can keep full 24-hour tidal charts open on a secondary monitor while typing or working on your primary screen uninterrupted.
 - **Glanceable Bar Hover Tooltip:**
-  Hovering over the bar icon displays rich telemetry without expanding the panel: location name, current water height, rising/falling trend, upcoming highs and lows with exact times, and widget version (`fred.tides v1.0.3`).
+  Hovering over the bar icon displays rich telemetry without expanding the panel: location name, current water height, rising/falling trend, upcoming highs and lows with exact times, and widget version (`fred.tides v1.0.4`).
 - **Interactive 24-Hour Scrubbable Curve & Visual Range Bar:**
   Canvas-drawn Catmull-Rom cubic spline spanning 6 hours past to 18 hours future with an adjacent visual range bar showing highest high tide and lowest low tide with a real-time water level indicator. Hover or drag along the curve to inspect water levels at any moment, with gentle snapping to peaks, troughs, and "now".
 - **Chronological Daily Highs & Lows (4 Cards):**
@@ -53,7 +53,7 @@ See [`UPSTREAM.md`](UPSTREAM.md) for full attribution, original MIT license noti
 ## Installation
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-tides.git --enable
+omarchy plugin add https://github.com/greenermoose/tides-fred-tamlinux.git --enable
 ```
 
 ### Bar Layout Positioning

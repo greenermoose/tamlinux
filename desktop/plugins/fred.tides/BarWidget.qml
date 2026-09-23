@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
@@ -7,8 +8,31 @@ BarWidget {
   id: root
   moduleName: "fred.tides"
 
-  readonly property string pluginVersion: "1.0.3"
+  readonly property string pluginVersion: "1.0.4"
   property bool hoverOpen: false
+  readonly property string notificationHelper: {
+    var base = Quickshell.env("OMARCHY_PATH") || ""
+    return base !== "" ? base + "/bin/omarchy-notification-send" : ""
+  }
+
+  Process {
+    id: notificationProc
+    clearEnvironment: true
+    environment: ({
+      "PATH": "/usr/bin:/bin",
+      "HOME": Quickshell.env("HOME") || "",
+      "XDG_RUNTIME_DIR": Quickshell.env("XDG_RUNTIME_DIR") || "",
+      "WAYLAND_DISPLAY": Quickshell.env("WAYLAND_DISPLAY") || "",
+      "DBUS_SESSION_BUS_ADDRESS": Quickshell.env("DBUS_SESSION_BUS_ADDRESS") || "",
+      "OMARCHY_PATH": Quickshell.env("OMARCHY_PATH") || ""
+    })
+    readonly property Timer watchdog: Timer {
+      interval: 10000
+      onTriggered: notificationProc.signal(9)
+    }
+    onStarted: watchdog.restart()
+    onExited: watchdog.stop()
+  }
 
   function injectPanel() {
     var target = panelLoader.item
@@ -89,8 +113,9 @@ BarWidget {
       root.hoverOpen = false
       if (!root.bar) return
       if (b === Qt.RightButton) {
-        if (panelLoader.item && panelLoader.item.statusSummary) {
-          root.bar.run("omarchy-notification-send \"Tides\" \"" + panelLoader.item.statusSummary.replace(/"/g, "\\\"") + "\"")
+        if (panelLoader.item && panelLoader.item.statusSummary && root.notificationHelper !== "" && !notificationProc.running) {
+          notificationProc.command = [root.notificationHelper, "Tides", String(panelLoader.item.statusSummary).slice(0, 4096)]
+          notificationProc.running = true
         }
       } else if (b === Qt.MiddleButton) {
         root.refresh()
