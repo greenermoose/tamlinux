@@ -31,3 +31,7 @@
   > Several plugin UPSTREAM.md examples also point to old clone directories, such as fred.monitor’s example. Those examples will fail if copied as written.
 - **Changes**: Pointed the upstream inspiration diff example at `~/Code/tamlinux/tides-fred-tamlinux`.
 - **Verification**: Example path matches the published checkout.
+
+## 2026-09-23 upstream survey foundation
+
+- [Codex session record](2026-09-23-upstream-survey-foundation.md).
