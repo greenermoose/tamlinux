@@ -2,8 +2,8 @@
 
 Tamlinux uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The published number is the file [`VERSION`](VERSION) in this repository.
-The workstation checkout [`config-fred-tamlinux`](https://github.com/greenermoose/config-fred-tamlinux)
-keeps a matching `VERSION` so the running machine and this explainer agree.
+The private workstation checkout keeps a matching `VERSION` so the running
+machine and this explainer agree.
 
 ## What the numbers mean
 
@@ -27,7 +27,7 @@ Plugin versions (`fred.workspaces`, `fred.clock`, and the rest), the
 independent artifacts. They have their own `VERSION` or `manifest.json`
 numbers.
 
-`config-fred-tamlinux` **1.5.1** is the last overlay-era composite. Those git
+The last overlay-era workstation composite was **1.5.1**. Those git
 tags stay. They are no longer the product version. 0.0.1 is that overlay
 frozen into Tamlinux.
 
