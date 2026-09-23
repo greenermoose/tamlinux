@@ -43,7 +43,7 @@ Panel {
   implicitHeight: button.implicitHeight
 
   readonly property string pluginVersion: "1.0.0"
-  readonly property string repoUrl: "https://github.com/greenermoose/omarchy-fred-keyboard"
+  readonly property string repoUrl: "https://github.com/greenermoose/keyboard-fred-tamlinux"
 
   // Closed environment: only these names reach a child process.
   readonly property var keyboardEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY",
