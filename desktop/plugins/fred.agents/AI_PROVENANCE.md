@@ -11,7 +11,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
 | **OpenCode** (`opencode`) | `1.18.31` | Big Pickle (`big-pickle`) | **Implementation** across this repository: panel swap & rebrand, both new collectors (Cursor, Antigravity), and the prompt-mode panel. |
-| **Codex** (`codex`) | `0.155.1` | GPT-6 Sol (`gpt-6-sol`) | Repository rename, publication metadata, and pre-release validation. |
+| **Codex** (`codex`) | `0.156.1` | GPT-6 Sol (`gpt-6-sol`) | Repository rename, publication metadata, and pre-release validation. |
 
 ## 2. Key Architectural Milestones & AI Role
 
@@ -36,3 +36,10 @@ AI tools, models, prompts, and architectural decisions that shaped
 Individual session records are archived under [`docs/ai/`](docs/ai/). The
 design plan lives in the private workstation config and records every
 decision with its date and rationale.
+
+## 2026-09-23 upstream survey foundation
+
+Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
+and dated survey directory for this repository. This was documentation only;
+no field survey or runtime change was made.
+[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
