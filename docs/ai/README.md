@@ -8,3 +8,4 @@ tools, models, and key decisions for the Tamlinux public explainer.
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
 | 2026-09-22 | Public explainer and suite branding | Cursor `3.21.16` | composer | [`2026-09-22-public-explainer.md`](2026-09-22-public-explainer.md) |
+| 2026-09-22 | Product version 0.0.1 | Cursor `3.21.16` | composer | [`2026-09-22-version-0.0.1.md`](2026-09-22-version-0.0.1.md) |

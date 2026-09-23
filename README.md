@@ -6,10 +6,11 @@ from Arch Linux, Nix, Wayland, Hyprland, Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
+| **Version** | [0.0.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | First public description; not an installable image yet |
+| **Status** | 0.0.1 — first workstation snapshot; not an installable image yet |
 
 ---
 
@@ -29,6 +30,17 @@ the desktop. The `fred.*` plugin IDs stay `fred.*`.
 
 This repository is the public explainer. It is not an ISO, installer, or
 package repository yet.
+
+## Current base
+
+Tamlinux 0.x is built on Omarchy, plus Fred's patches and the `fred.*`
+plugins. The intent is to remove that dependence while continuing to borrow
+ideas from Omarchy and to keep up with upstream Quickshell, Hyprland,
+Wayland, and Nix.
+
+0.0.1 is the first workstation snapshot. An installer for a second computer
+comes after this workstation is solid. Version rules are in
+[`VERSIONING.md`](VERSIONING.md).
 
 ## Why
 
