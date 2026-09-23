@@ -1,6 +1,6 @@
 # Display & Monitor Manager (`fred.monitor`)
 
-Display information, per-display control, multi-monitor alignment, and link reset plugin for Tamlinux (Hyprland + Quickshell).
+Display information, per-display control, multi-monitor alignment, and link reset plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Hyprland + Quickshell).
 
 ![fred.monitor Screenshot](assets/screenshot.png)
 
