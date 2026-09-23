@@ -1,0 +1,11 @@
+# Cache and temporary files
+__pycache__/
+*.py[cod]
+*~
+*.swp
+*.bak*
+.DS_Store
+
+# Test / runtime scratch
+scratch/
+tmp/
