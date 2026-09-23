@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 
-HELPER = Path(__file__).resolve().parents[1] / "omarchy-desktop-mode"
+HELPER = Path(__file__).resolve().parents[1] / "tam-desktop-mode"
 LOADER = SourceFileLoader("omarchy_desktop_mode", str(HELPER))
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
 desktop_mode = importlib.util.module_from_spec(SPEC)

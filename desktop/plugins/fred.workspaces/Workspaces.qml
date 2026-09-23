@@ -50,11 +50,11 @@ BarWidget {
     return stateHome + "/omarchy/desktop-monitors"
   }
   readonly property string canonicalHelperPath: {
-    var resolved = String(Qt.resolvedUrl("omarchy-desktop-mode"))
+    var resolved = String(Qt.resolvedUrl("tam-desktop-mode"))
     if (resolved.indexOf("file://") === 0) {
       return decodeURIComponent(resolved.substring(7))
     }
-    return Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode"
+    return Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.workspaces/tam-desktop-mode"
   }
   readonly property var processEnv: {
     var env = {

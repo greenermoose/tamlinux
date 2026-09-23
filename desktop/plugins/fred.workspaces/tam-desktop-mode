@@ -832,7 +832,7 @@ def switch_desktop(
         if switched:
             atomic_write_state("desktop-current", str(number) + "\n")
     if not switched:
-        sys.stderr.write(f"omarchy-desktop-mode: warning: desktop switch {number} incomplete\n")
+        sys.stderr.write(f"tam-desktop-mode: warning: desktop switch {number} incomplete\n")
 
 
 def move_window(
@@ -869,9 +869,9 @@ def move_window(
 
     if mode == "windows" and monitors:
         if not switch_windows(number, monitors):
-            sys.stderr.write("omarchy-desktop-mode: warning: destination monitor set switch incomplete\n")
+            sys.stderr.write("tam-desktop-mode: warning: destination monitor set switch incomplete\n")
         if monitor in monitors and not dispatch_focus_monitor(monitor):
-            sys.stderr.write("omarchy-desktop-mode: warning: could not restore focused monitor\n")
+            sys.stderr.write("tam-desktop-mode: warning: could not restore focused monitor\n")
     elif mode != "windows" and len(monitors) > 1 and monitor in monitors:
         if not dispatch_focus_monitor(monitor) or not dispatch_focus_workspace(target):
             raise RuntimeError("destination workspace did not activate")
@@ -989,20 +989,20 @@ def main() -> None:
         if len(sys.argv) < 4 or not MONITOR_RE.fullmatch(sys.argv[2]):
             sys.exit(2)
         if not realign_monitor(sys.argv[2], normalize_number(sys.argv[3]), monitors, slots, topology_size):
-            sys.stderr.write(f"omarchy-desktop-mode: warning: realign of {sys.argv[2]} incomplete\n")
+            sys.stderr.write(f"tam-desktop-mode: warning: realign of {sys.argv[2]} incomplete\n")
     elif cmd == "reconcile":
         sys.stdout.write(reconcile() + "\n")
     elif cmd == "dpms-off":
         if len(sys.argv) < 3 or not MONITOR_RE.fullmatch(sys.argv[2]):
             sys.exit(2)
         if not dpms_off(sys.argv[2]):
-            sys.stderr.write(f"omarchy-desktop-mode: warning: dpms-off of {sys.argv[2]} failed\n")
+            sys.stderr.write(f"tam-desktop-mode: warning: dpms-off of {sys.argv[2]} failed\n")
             sys.exit(1)
     elif cmd == "dpms-on":
         if len(sys.argv) < 3 or not MONITOR_RE.fullmatch(sys.argv[2]):
             sys.exit(2)
         if not dpms_on(sys.argv[2]):
-            sys.stderr.write(f"omarchy-desktop-mode: warning: dpms-on of {sys.argv[2]} failed\n")
+            sys.stderr.write(f"tam-desktop-mode: warning: dpms-on of {sys.argv[2]} failed\n")
             sys.exit(1)
     elif cmd == "monitors":
         sys.stdout.write(f"Monitor set ({len(monitors)}): {', '.join(monitors) or '(unavailable)'}\n")
@@ -1042,5 +1042,5 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, OSError, subprocess.SubprocessError) as err:
-        sys.stderr.write(f"omarchy-desktop-mode: {err}\n")
+        sys.stderr.write(f"tam-desktop-mode: {err}\n")
         sys.exit(1)
