@@ -22,3 +22,7 @@ against a local transcript says so explicitly.
 - The `fred.keyboard` design plan in the private workstation config —
   decisions with dates, and the milestone checklist the next session
   starts from.
+
+## 2026-09-23 upstream survey foundation
+
+- [Codex session record](2026-09-23-upstream-survey-foundation.md).

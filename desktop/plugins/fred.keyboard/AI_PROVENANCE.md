@@ -15,6 +15,7 @@ the tools that touched this repository.
 | :-- | :-- | :-- | :-- |
 | **Claude Code** (`claude`) | `2.1.278` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: research, feasibility verification, plan authoring, scaffolding. |
 | **Antigravity CLI** (`agy`) | `1.2.7` | Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`) | **Research**: initial reconnaissance of Omarchy internals and prior art. |
+| **Codex CLI** (`codex`) | `0.156.1` | GPT-6 Sol (`gpt-6-sol`) | Upstream survey documentation and publication. |
 
 ---
 
@@ -64,3 +65,10 @@ Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `keyboard-f
 ## 2026-09-22 Tamlinux branding
 
 Cursor `3.21.16` (`composer`) replaced current-facing `Fred's Omarchy keyboard` / `for Omarchy Linux` wording with Tamlinux. Omarchy 4.0.4 package version and shell UI kit references are unchanged.
+
+## 2026-09-23 upstream survey foundation
+
+Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
+and dated survey directory for this repository. This was documentation only;
+no field survey or runtime change was made.
+[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
