@@ -36,3 +36,7 @@ architectural decisions for `workspaces-fred-tamlinux`.
 | Sep 17 (v1.5.0) | Several prompts missing | Added from transcript `b406cca2` |
 | Sep 18 (v1.5.1) | Three prompts missing | Added from transcript `322664c3` |
 | All agy sessions | agy version presented as fact | Not self-reported in transcripts; noted per session |
+
+## 2026-09-23 upstream survey foundation
+
+- [Codex session record](2026-09-23-upstream-survey-foundation.md).
