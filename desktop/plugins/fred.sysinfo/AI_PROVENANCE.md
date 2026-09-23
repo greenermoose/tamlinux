@@ -29,3 +29,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Marketplace cache security fix** | `v1.1.2` | Codex CLI (`codex 0.155.1`, `gpt-6-sol`) implementation; Cursor `3.21.16` (`composer`) release | Removed shared scratch cache paths, added private runtime storage with descriptor-relative no-follow atomic writes and checked reads, and added cache attack tests; released after Fred's live test. |
 
 Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced current-facing `Omarchy Linux` platform wording in the README and `sysinfo-probe.py` header with Tamlinux.

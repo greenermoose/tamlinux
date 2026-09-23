@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hardware telemetry and system information probe for Omarchy Linux.
+Hardware telemetry and system information probe for Tamlinux.
 Universal dynamic sysfs/procfs/pci probing engine for fred.sysinfo.
 Outputs a structured JSON object to stdout.
 """
