@@ -13,7 +13,7 @@ This plugin began life as a clone of the stock Omarchy agent-usage bar panel (`o
 To compare this plugin's files against the upstream Omarchy distribution:
 
 ```bash
-diff -u -r /usr/share/omarchy/shell/plugins/agents ~/Code/omarchy-fred-agents
+diff -u -r /usr/share/omarchy/shell/plugins/agents ~/Code/agents-fred-tamlinux
 ```
 
 ## Upstream MIT License Notice

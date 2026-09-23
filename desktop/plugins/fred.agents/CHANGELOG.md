@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `fred.agents` (`omarchy-fred-agents`) will be documented in this file.
+All notable changes to `fred.agents` (`agents-fred-tamlinux`) will be documented in this file.
 
 ## [1.1.2] - Unreleased
 

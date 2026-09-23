@@ -3,6 +3,15 @@
 Fred's Omarchy agents plugin: a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
 panel in place via `omarchy.clonedFrom` routing.
 
+This is a public pre-release at v1.1.2. It has no GitHub release tag and will
+not be submitted to the Omarchy Plugin Marketplace.
+
+## Install
+
+```bash
+omarchy plugin add https://github.com/greenermoose/agents-fred-tamlinux.git --enable
+```
+
 The panel displays usage records that `omarchy-agent-usage-update` writes to
 `~/.local/state/omarchy/agents/usage/`.
 `Panel.qml` owns the bar button and the popup; `Main.qml` discovers and
