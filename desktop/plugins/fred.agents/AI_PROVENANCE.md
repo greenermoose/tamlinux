@@ -25,6 +25,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 | **Dual Cursor meters + hover limits** | `1.1.1`–`1.1.2` | OpenCode (`big-pickle`) | `1.1.1`: both dashboard percents (`totalPercentUsed` + `autoPercentUsed`) as Limits rows; binding window = fuller of the two. `1.1.2`: bar `tooltipText` via `formatBarHover` ("AI Agent Usage", per-agent percent + `yyyy-mm-dd hh:mm` reset, Antigravity "unknown"); panel `resetLine` pairs countdown with absolute stamp; wrong-track QQC2 `LimitsToolTip` removed after hover guidance update. Deployed `beece18`/`b0683c5`; published carry `3f5fa5a`. |
 | **Public pre-release** | `1.1.2` | Codex (`gpt-6-sol`) | Renamed the checkout and public repository to `agents-fred-tamlinux`, updated install and source links, validated the existing code, and published `main` without a release tag or marketplace submission. |
 | **Collector rename** | `1.1.2` | Cursor `3.21.16` (`composer`) | Name-only `main` sync: collectors are `tam-agent-usage-*`. [Session record](docs/ai/2026-09-22-tam-agent-usage.md). |
+| **Tamlinux branding** | `1.1.2` | Cursor `3.21.16` (`composer`) | README tagline and `manifest.json` description say Tamlinux; `omarchy.agents` / `clonedFrom` stay. |
 
 ---
 
