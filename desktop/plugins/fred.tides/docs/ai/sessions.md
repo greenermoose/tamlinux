@@ -22,3 +22,12 @@
   > I want to do a big rename project for my code. When I'm done, this is what I want to have accomplished: 1) fred.tides and fred.sysinfo will be in normal mode, not test. I have tested them and they are ready to be published to GitHub and used as regular plugins on my system.
 - **Clarification**: Fred chose Release (tags, GitHub Releases, Show & Tell, marketplace replies).
 - **Verification**: Home Manager generation 92 serves 1.0.4 from the Nix store. `omarchy plugin validate` passed. Test mode off.
+
+## Session: 2026-09-22 — UPSTREAM example path
+
+- **CLI Tool**: Cursor `3.21.16`
+- **Model**: `composer`
+- **Prompts**:
+  > Several plugin UPSTREAM.md examples also point to old clone directories, such as fred.monitor’s example. Those examples will fail if copied as written.
+- **Changes**: Pointed the upstream inspiration diff example at `~/Code/tamlinux/tides-fred-tamlinux`.
+- **Verification**: Example path matches the published checkout.

@@ -16,7 +16,7 @@
 ### Upstream Inspiration Diff Command
 
 ```bash
-diff -u -r ~/Code/omarchy-fred-tides <(git clone https://github.com/Woogy7/omarchy-tides /tmp/upstream-tides && echo /tmp/upstream-tides)
+diff -u -r ~/Code/tamlinux/tides-fred-tamlinux <(git clone https://github.com/Woogy7/omarchy-tides /tmp/upstream-tides && echo /tmp/upstream-tides)
 ```
 
 ### Upstream Copyright Notice
