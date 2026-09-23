@@ -2,6 +2,10 @@
 
 `fred.weather` originated as an in-place clone replacement of the stock Omarchy weather plugin, enhanced with timeline architecture inspired by `daniellopez12/just-right-weather`, multi-monitor focus isolation, and an extended 10-day forecast.
 
+## Field surveys
+
+The Omarchy clone and Just Right Weather references below are the existing starting map. For a new requested survey, revisit those sources and search current forks and independent weather interfaces. Save dated findings in [upstream/](upstream/) and link each result here.
+
 ---
 
 ## 1. Upstream Omarchy Component
