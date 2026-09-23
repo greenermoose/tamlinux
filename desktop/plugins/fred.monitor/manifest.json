@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "author": "Fred (@greenermoose)",
   "description": "Display information, per-display control, and link reset",
-  "repository": "https://github.com/greenermoose/omarchy-fred-monitor",
-  "homepage": "https://github.com/greenermoose/omarchy-fred-monitor",
+  "repository": "https://github.com/greenermoose/monitor-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/monitor-fred-tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"

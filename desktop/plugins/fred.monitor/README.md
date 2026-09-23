@@ -16,7 +16,7 @@ Display information, per-display control, multi-monitor alignment, and link rese
 | **Upstream Target** | `omarchy.monitor` |
 | **License** | GPL-3.0-or-later |
 | **Author** | Fred (@greenermoose) |
-| **Repository** | `https://github.com/greenermoose/omarchy-fred-monitor` |
+| **Repository** | `https://github.com/greenermoose/monitor-fred-tamlinux` |
 
 ---
 
@@ -48,7 +48,7 @@ Display information, per-display control, multi-monitor alignment, and link rese
 Install and enable the plugin via Omarchy:
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-monitor.git --enable
+omarchy plugin add https://github.com/greenermoose/monitor-fred-tamlinux.git --enable
 ```
 
 Because `fred.monitor` declares `clonedFrom: "omarchy.monitor"`, Omarchy automatically replaces the stock Display widget in place on the bar.
