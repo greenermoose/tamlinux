@@ -1,10 +1,10 @@
 # Keyboard Shortcut Visualizer (fred.keyboard)
 
-Fred's Omarchy keyboard plugin: a shell bar widget that shows your shortcuts on an interactive keyboard display. Press a combination to see what it runs, or search for a command to see which keys run it.
+Fred's Tamlinux keyboard plugin: a shell bar widget that shows your shortcuts on an interactive keyboard display. Press a combination to see what it runs, or search for a command to see which keys run it.
 
 ![The panel: your keyboard drawn from a field-observed layout, bound keys tinted](assets/screenshot.png)
 
-Part of Fred's `fred.*` plugin suite for Omarchy Linux (Hyprland +
+Part of Fred's `fred.*` plugin suite for Tamlinux (Hyprland +
 Quickshell). Version 1.0.0.
 
 ## Overview
@@ -74,7 +74,7 @@ disk.
 
 ## Requirements
 
-Everything the plugin needs is part of a stock Omarchy installation; there is
+Everything the plugin needs is part of a stock Tamlinux installation; there is
 nothing to install first.
 
 - **Omarchy 4.0.4 or newer** (developed and tested on 4.0.4). The plugin is a
@@ -84,10 +84,10 @@ nothing to install first.
   `keyboard-shortcuts-inhibit-unstable-v1`. Hyprland does; capture mode is
   the only feature that would not work on a compositor that does not.
 - **Quickshell 0.3.1 or newer** with its Wayland module, as shipped with
-  Omarchy, for the `ShortcutInhibitor` type.
+  Tamlinux, for the `ShortcutInhibitor` type.
 - **`xdg-utils`** (`xdg-open`) for the footer link to this repository, and
   **`xkeyboard-config`** for the OS-supplied keyboard geometries used as
-  stand-in layouts. Both are already present on Omarchy.
+  stand-in layouts. Both are already present on Tamlinux.
 - A physical keyboard listed in `/proc/bus/input/devices`. A USB board is
   identified by vendor and product id; without one the panel falls back to
   a generic layout and says so.
