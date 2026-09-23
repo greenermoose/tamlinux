@@ -2,6 +2,10 @@
 
 This plugin began life as a clone of the stock Omarchy workspaces bar widget.
 
+## Field surveys
+
+The Omarchy clone provenance and license notice below remain the code-ancestry record. For a requested workspace survey, start with that source and its forks, then compare independent compositor and shell designs. Save dated findings in [upstream/](upstream/) and link each result here.
+
 - **Upstream Project:** [Omarchy](https://omarchy.org/)
 - **Upstream Version:** 4.0.3-1
 - **Upstream Path:** `/usr/share/omarchy/shell/plugins/bar/widgets/Workspaces.qml`
