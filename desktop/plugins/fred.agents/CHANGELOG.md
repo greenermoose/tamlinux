@@ -2,7 +2,10 @@
 
 All notable changes to `fred.agents` (`agents-fred-tamlinux`) will be documented in this file.
 
-## [1.1.2] - Unreleased
+## [1.1.2] - 2026-09-23
+
+First tagged release, including the changes recorded in the earlier development
+versions below.
 
 ### Added
 - Bar hover now shows a per-agent limits summary ("AI Agent Usage") through

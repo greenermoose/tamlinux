@@ -26,6 +26,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 | **Public pre-release** | `1.1.2` | Codex (`gpt-6-sol`) | Renamed the checkout and public repository to `agents-fred-tamlinux`, updated install and source links, validated the existing code, and published `main` without a release tag or marketplace submission. |
 | **Collector rename** | `1.1.2` | Cursor `3.21.16` (`composer`) | Name-only `main` sync: collectors are `tam-agent-usage-*`. [Session record](docs/ai/2026-09-22-tam-agent-usage.md). |
 | **Tamlinux branding** | `1.1.2` | Cursor `3.21.16` (`composer`) | README tagline and `manifest.json` description say Tamlinux; `omarchy.agents` / `clonedFrom` stay. |
+| **First tagged release** | `v1.1.2` | Codex CLI `0.155.1` (`gpt-6-sol`) | Checked deployed and public runtime files, validated the plugin, dated the changelog, and prepared the GitHub release. No new runtime code was authored in this release step. [Session record](docs/ai/2026-09-23-first-release.md). |
 
 ---
 

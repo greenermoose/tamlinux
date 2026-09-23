@@ -3,8 +3,8 @@
 Fred's [Tamlinux](https://github.com/greenermoose/tamlinux) agents plugin: a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
 panel in place via `omarchy.clonedFrom` routing.
 
-This is a public pre-release at v1.1.2. It has no GitHub release tag and will
-not be submitted to the Omarchy Plugin Marketplace.
+Version 1.1.2 is the first tagged release. This plugin is not submitted to the
+Omarchy Plugin Marketplace.
 
 ## Install
 
