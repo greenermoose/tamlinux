@@ -1,6 +1,6 @@
 # Keyboard Shortcut Visualizer (fred.keyboard)
 
-Fred's Tamlinux keyboard plugin: a shell bar widget that shows your shortcuts on an interactive keyboard display. Press a combination to see what it runs, or search for a command to see which keys run it.
+Fred's [Tamlinux](https://github.com/greenermoose/tamlinux) keyboard plugin: a shell bar widget that shows your shortcuts on an interactive keyboard display. Press a combination to see what it runs, or search for a command to see which keys run it.
 
 ![The panel: your keyboard drawn from a field-observed layout, bound keys tinted](assets/screenshot.png)
 
