@@ -6,48 +6,250 @@ Emits a single JSON document: { focusedMonitor: string, displays: [...] }
 """
 
 import json
+import fcntl
 import os
 import re
+import secrets
+import stat
 import subprocess
 import time
+from hashlib import sha256
 
-def get_brightness(monitor_name):
-    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
-    cache_path = os.path.join(runtime_dir, f"fred-monitor-brightness-{monitor_name}.json")
-    now = time.time()
-    
-    if os.path.exists(cache_path):
+MAX_COMMAND_OUTPUT = 1024 * 1024
+MAX_CACHE_BYTES = 8192
+BRIGHTNESS_LOCK_FILE = "brightness-scan.lock"
+BRIGHTNESS_SUCCESS_TTL = 60
+BRIGHTNESS_UNAVAILABLE_TTL = 60
+BRIGHTNESS_LOCK_WAIT = 4.0
+
+
+def command_output(argv, timeout):
+    result = subprocess.run(
+        argv,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        timeout=timeout,
+    )
+    if len(result.stdout) > MAX_COMMAND_OUTPUT:
+        raise ValueError("command output too large")
+    return result.stdout.decode("utf-8", errors="strict").strip()
+
+
+def private_runtime_dir():
+    base = os.environ.get("XDG_RUNTIME_DIR", "")
+    if not base or not os.path.isabs(base):
+        return None
+    path = os.path.join(base, "fred.monitor")
+    try:
+        os.mkdir(path, 0o700)
+    except FileExistsError:
+        pass
+    try:
+        info = os.lstat(path)
+        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            return None
+        if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+            return None
+        return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return None
+
+
+def cache_name(monitor_name):
+    digest = sha256(monitor_name.encode("utf-8", errors="strict")).hexdigest()[:24]
+    return f"brightness-{digest}.json"
+
+
+def read_cache(dir_fd, filename):
+    if dir_fd is None:
+        return None
+    fd = None
+    try:
+        fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_size > MAX_CACHE_BYTES:
+            return None
+        with os.fdopen(fd, "r", encoding="utf-8") as handle:
+            fd = None
+            return json.load(handle)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
+def write_cache(dir_fd, filename, data):
+    if dir_fd is None:
+        return
+    temporary = f".{filename}.{secrets.token_hex(8)}.tmp"
+    fd = None
+    try:
+        fd = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=dir_fd,
+        )
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None
+            json.dump(data, handle, separators=(",", ":"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.rename(temporary, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+        os.fsync(dir_fd)
+    except OSError:
+        if fd is not None:
+            os.close(fd)
         try:
-            with open(cache_path, "r") as f:
-                entry = json.load(f)
-            ttl = 10 if entry.get("available") else 60
-            if now - entry.get("timestamp", 0) < ttl:
-                return entry.get("percent", 0), entry.get("available", False)
-        except Exception:
+            os.unlink(temporary, dir_fd=dir_fd)
+        except OSError:
             pass
 
+
+def acquire_brightness_lock(dir_fd, timeout=BRIGHTNESS_LOCK_WAIT):
+    if dir_fd is None:
+        return None
+    fd = None
     try:
-        out = subprocess.check_output(
-            ["omarchy-brightness-display", "--monitor", monitor_name],
-            stderr=subprocess.DEVNULL,
-            timeout=2.0
-        ).decode().strip()
-        val = int(out)
-        data = {"percent": val, "available": True, "timestamp": now}
-    except Exception:
-        data = {"percent": 0, "available": False, "timestamp": now}
+        fd = os.open(
+            BRIGHTNESS_LOCK_FILE,
+            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=dir_fd,
+        )
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) & 0o077
+        ):
+            os.close(fd)
+            return None
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return fd
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    os.close(fd)
+                    return None
+                time.sleep(0.05)
+    except OSError:
+        if fd is not None:
+            os.close(fd)
+        return None
+
+
+def cache_has_success(entry):
+    return isinstance(entry, dict) and bool(entry.get("lastSuccess", entry.get("available", False)))
+
+
+def cached_percent(entry):
+    try:
+        value = int(entry.get("percent", 0))
+    except (AttributeError, TypeError, ValueError):
+        return 0
+    return value if 1 <= value <= 100 else 0
+
+
+def get_brightness(monitor_name, runtime_fd, allow_probe=True):
+    filename = cache_name(monitor_name)
+    now = time.time()
+
+    entry = read_cache(runtime_fd, filename)
+    if isinstance(entry, dict):
+        ttl = BRIGHTNESS_SUCCESS_TTL if cache_has_success(entry) else BRIGHTNESS_UNAVAILABLE_TTL
+        if now - entry.get("timestamp", 0) < ttl:
+            return cached_percent(entry), cache_has_success(entry)
+
+    # Another panel instance owns the shared probe lock. Reuse even stale
+    # evidence instead of issuing a concurrent DDC request or hiding a control
+    # that has already worked during this session.
+    if not allow_probe:
+        return cached_percent(entry), cache_has_success(entry)
 
     try:
-        with open(cache_path, "w") as f:
-            json.dump(data, f)
+        out = command_output(
+            ["/usr/share/omarchy/bin/omarchy-brightness-display", "--monitor", monitor_name],
+            3.0,
+        )
+        val = int(out)
+        if not 1 <= val <= 100:
+            raise ValueError("brightness is out of range")
+        data = {"percent": val, "available": True, "lastSuccess": True, "timestamp": now}
     except Exception:
-        pass
+        # A monitor that has answered successfully is supported. Preserve that
+        # fact across temporary DDC contention instead of removing its slider.
+        if cache_has_success(entry) and cached_percent(entry):
+            data = {
+                "percent": cached_percent(entry),
+                "available": True,
+                "lastSuccess": True,
+                "stale": True,
+                "timestamp": now,
+            }
+        else:
+            data = {"percent": 0, "available": False, "lastSuccess": False, "timestamp": now}
+
+    write_cache(runtime_fd, filename, data)
 
     return data["percent"], data["available"]
 
-def main():
+
+def set_brightness(monitor_name, percent):
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", monitor_name):
+        raise SystemExit("invalid monitor name")
     try:
-        raw = subprocess.check_output(["hyprctl", "monitors", "all", "-j"]).decode()
+        value = int(percent)
+    except ValueError as error:
+        raise SystemExit("invalid brightness") from error
+    if not 1 <= value <= 100:
+        raise SystemExit("brightness must be between 1 and 100")
+
+    runtime_fd = private_runtime_dir()
+    lock_fd = acquire_brightness_lock(runtime_fd)
+    if runtime_fd is not None and lock_fd is None:
+        os.close(runtime_fd)
+        raise SystemExit("brightness control is busy")
+    try:
+        command_output(
+            [
+                "/usr/share/omarchy/bin/omarchy-brightness-display",
+                "--no-osd",
+                "--monitor",
+                monitor_name,
+                f"{value}%",
+            ],
+            12.0,
+        )
+        # Omarchy deliberately emits no value for a successful --no-osd set.
+        # Cache the validated requested percentage so all panel instances can
+        # reuse it without immediately contending for another DDC read.
+        applied = value
+        write_cache(runtime_fd, cache_name(monitor_name), {
+            "percent": applied,
+            "available": True,
+            "lastSuccess": True,
+            "timestamp": time.time(),
+        })
+        print(applied)
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
+        if runtime_fd is not None:
+            os.close(runtime_fd)
+
+def main(fast=False):
+    runtime_fd = private_runtime_dir()
+    brightness_lock_fd = None
+    if not fast:
+        brightness_lock_fd = acquire_brightness_lock(runtime_fd)
+    allow_probe = runtime_fd is None or brightness_lock_fd is not None
+    try:
+        raw = command_output(["/usr/bin/hyprctl", "monitors", "all", "-j"], 3.0)
         monitors = json.loads(raw)
     except Exception:
         monitors = []
@@ -67,26 +269,39 @@ def main():
         pw = m.get("physicalWidth", 0)
         ph = m.get("physicalHeight", 0)
         enabled = not m.get("disabled", False)
+        transform = int(m.get("transform", 0))
+        rotated = transform % 2 == 1
 
-        # Extract refresh rates for current resolution
+        # Extract supported resolutions and their refresh rates.
         rates = []
+        modes_by_size = {}
         prefix = f"{w}x{h}@"
         for mode in m.get("availableModes", []):
-            if mode.startswith(prefix):
-                hz_match = re.search(r"@([0-9.]+)Hz", mode)
-                if hz_match:
-                    hz = float(hz_match.group(1))
+            mode_match = re.fullmatch(r"([0-9]+)x([0-9]+)@([0-9.]+)Hz", mode)
+            if mode_match:
+                mode_w = int(mode_match.group(1))
+                mode_h = int(mode_match.group(2))
+                hz = float(mode_match.group(3))
+                key = f"{mode_w}x{mode_h}"
+                modes_by_size.setdefault(key, {"width": mode_w, "height": mode_h, "rates": []})
+                if not any(abs(hz - r) < 0.02 for r in modes_by_size[key]["rates"]):
+                    modes_by_size[key]["rates"].append(hz)
+                if mode.startswith(prefix):
                     if not any(abs(hz - r) < 0.02 for r in rates):
                         rates.append(hz)
         rates.sort(reverse=True)
+        available_modes = list(modes_by_size.values())
+        for available_mode in available_modes:
+            available_mode["rates"].sort(reverse=True)
+        available_modes.sort(key=lambda item: (item["width"] * item["height"], item["width"]), reverse=True)
 
         diag = round(((pw / 25.4)**2 + (ph / 25.4)**2)**0.5, 1) if (pw and ph) else 0
         w_in = round(pw / 25.4, 1) if pw else 0
         h_in = round(ph / 25.4, 1) if ph else 0
 
         # Query brightness only if enabled
-        if enabled:
-            brightness, brightness_avail = get_brightness(name)
+        if enabled and not fast:
+            brightness, brightness_avail = get_brightness(name, runtime_fd, allow_probe=allow_probe)
         else:
             brightness, brightness_avail = 0, False
 
@@ -106,12 +321,13 @@ def main():
             "sizeInches": f"{w_in}\"×{h_in}\" ({diag}\" diag)" if diag else "",
             "refreshRate": m.get("refreshRate", 60.0),
             "availableRates": rates,
+            "availableModes": available_modes,
             "x": m.get("x", 0),
             "y": m.get("y", 0),
             "scale": scale,
-            "logicalWidth": int(round(w / scale)) if scale > 0 else w,
-            "logicalHeight": int(round(h / scale)) if scale > 0 else h,
-            "transform": m.get("transform", 0),
+            "logicalWidth": int(round((h if rotated else w) / scale)) if scale > 0 else (h if rotated else w),
+            "logicalHeight": int(round((w if rotated else h) / scale)) if scale > 0 else (w if rotated else h),
+            "transform": transform,
             "dpmsStatus": bool(m.get("dpmsStatus", True)),
             "vrr": bool(m.get("vrr", False)),
             "workspace": str(m.get("activeWorkspace", {}).get("name", "")),
@@ -124,6 +340,17 @@ def main():
         "displays": displays
     }
     print(json.dumps(out))
+    if brightness_lock_fd is not None:
+        os.close(brightness_lock_fd)
+    if runtime_fd is not None:
+        os.close(runtime_fd)
 
 if __name__ == "__main__":
-    main()
+    if len(os.sys.argv) == 4 and os.sys.argv[1] == "--set-brightness":
+        set_brightness(os.sys.argv[2], os.sys.argv[3])
+    elif len(os.sys.argv) == 1:
+        main()
+    elif len(os.sys.argv) == 2 and os.sys.argv[1] == "--fast":
+        main(fast=True)
+    else:
+        raise SystemExit("usage: fred-monitor-state [--fast | --set-brightness MONITOR PERCENT]")

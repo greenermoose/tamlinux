@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "fred.monitor",
   "name": "Display",
-  "version": "1.0.0",
+  "version": "1.2.3",
   "author": "Fred (@greenermoose)",
-  "description": "Display information, per-display control, and link reset",
+  "description": "Compact multi-display control, saved layouts, and safe rollback",
   "repository": "https://github.com/greenermoose/monitor-fred-tamlinux",
   "homepage": "https://github.com/greenermoose/monitor-fred-tamlinux",
   "license": "GPL-3.0-or-later",
@@ -16,7 +16,7 @@
   },
   "barWidget": {
     "displayName": "Display",
-    "description": "Display information, per-display control, and link reset",
+    "description": "Compact multi-display control, saved layouts, and safe rollback",
     "category": "System",
     "allowMultiple": false
   },

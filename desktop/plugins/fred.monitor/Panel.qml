@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Ui
 import qs.Commons
 import "Model.js" as Model
@@ -13,18 +14,49 @@ Panel {
   ipcTarget: "omarchy.monitor"
   manageIpc: false
 
-  readonly property string pluginVersion: "1.0.0"
-  readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME"]
+  readonly property string pluginVersion: "1.2.3"
+  readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"]
 
   property int brightnessPercent: 0
   property int pendingBrightnessPercent: 0
+  property string pendingBrightnessMonitor: ""
   property bool brightnessAvailable: false
   property string focusedMonitor: ""
   property string monitorScale: ""
   property var displays: []
+  property var draftDisplays: []
   property int enabledDisplayCount: 0
   property var displayCache: ({})
   property string expandedCard: ""
+  property string layoutAlignment: "bottom"
+  property string layoutToken: ""
+  property int layoutCountdown: 0
+  property string layoutMessage: ""
+  property bool identifyVisible: false
+  property bool helpVisible: false
+  property bool cardDropdownOpen: false
+  property var savedProfiles: []
+  property string selectedProfileId: ""
+  property bool profileNameVisible: false
+  property string profileDeleteArmed: ""
+
+  readonly property int cardGap: Style.space(10)
+  readonly property int cardCount: Math.max(1, draftDisplays.length || displays.length)
+  readonly property int enabledDraftCount: {
+    var count = 0
+    for (var i = 0; i < draftDisplays.length; i++) if (draftDisplays[i].enabled) count++
+    return count
+  }
+  readonly property bool draftDirty: draftDisplays.length > 0
+    && Model.layoutSignature(draftDisplays) !== Model.layoutSignature(displays)
+  readonly property int draftDirtyCount: {
+    var count = 0
+    for (var i = 0; i < draftDisplays.length; i++) {
+      var live = findDisplay(draftDisplays[i].name)
+      if (!live || Model.layoutSignature([draftDisplays[i]]) !== Model.layoutSignature([live])) count++
+    }
+    return count
+  }
 
   // Retraining state
   property string resetRunningMonitor: ""
@@ -39,6 +71,29 @@ Panel {
   property real wheelAccumulator: 0
 
   readonly property var scalePresets: ["1", "1.25", "1.6", "2", "3", "4"]
+  readonly property var alignmentOptions: [
+    { value: "top", label: "Align: Top" },
+    { value: "center", label: "Align: Center" },
+    { value: "bottom", label: "Align: Bottom" }
+  ]
+  readonly property var orientationOptions: [
+    { value: "0", label: "Landscape" },
+    { value: "1", label: "Portrait" },
+    { value: "2", label: "Flipped" },
+    { value: "3", label: "Portrait flipped" }
+  ]
+  readonly property var keyboardShortcuts: [
+    { keys: "Home", action: "Show or hide keyboard help" },
+    { keys: "I", action: "Toggle monitor identification overlays" },
+    { keys: "Arrow keys / H J K L", action: "Navigate or adjust the selected control" },
+    { keys: "Enter / Space", action: "Activate the selected control" },
+    { keys: "D", action: "Toggle DPMS for the selected monitor" },
+    { keys: "R", action: "Reset / retrain the selected monitor" },
+    { keys: "[ / ]", action: "Move the selected monitor left / right" },
+    { keys: "A", action: "Apply staged display changes" },
+    { keys: "Tab / Shift+Tab", action: "Switch between open panels" },
+    { keys: "Esc / Q", action: "Close help, then close the panel" }
+  ]
 
   // Text size slider — curated macOS-style notches (px)
   readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
@@ -51,14 +106,13 @@ Panel {
   }
 
   // Focus and keyboard navigation
-  // focusSection: "textsize" or "card_" + display.name
-  property string focusSection: "textsize"
+  property string focusSection: ""
   property int cardSubRow: 0
   property int cardSubItem: 0
   property bool cursorActive: false
 
   readonly property var visibleSections: {
-    var list = ["textsize"]
+    var list = []
     for (var i = 0; i < displays.length; i++) {
       if (displays[i] && displays[i].name) {
         list.push("card_" + displays[i].name)
@@ -72,6 +126,237 @@ Panel {
       if (displays[i] && displays[i].name === name) return displays[i]
     }
     return null
+  }
+
+  function findDraftDisplay(name) {
+    for (var i = 0; i < draftDisplays.length; i++) {
+      if (draftDisplays[i] && draftDisplays[i].name === name) return draftDisplays[i]
+    }
+    return null
+  }
+
+  function monitorForButton() {
+    var window = button && button.QsWindow ? button.QsWindow.window : null
+    var name = window && window.screen ? window.screen.name : ""
+    return findDisplay(name) || findDisplay(focusedMonitor) || (displays.length > 0 ? displays[0] : null)
+  }
+
+  function cloneDisplays(source) {
+    return JSON.parse(JSON.stringify(source || []))
+  }
+
+  function resetDraft() {
+    draftDisplays = cloneDisplays(Model.sortDisplays(displays))
+    layoutMessage = ""
+  }
+
+  function layoutPayload() {
+    return draftDisplays.map(function(display) {
+      return {
+        name: display.name,
+        enabled: !!display.enabled,
+        width: Number(display.width),
+        height: Number(display.height),
+        refreshRate: Number(display.refreshRate),
+        x: Number(display.x),
+        y: Number(display.y),
+        scale: Number(display.scale),
+        transform: Number(display.transform || 0)
+      }
+    })
+  }
+
+  function replaceDraft(name, changes, realign) {
+    layoutMessage = ""
+    var next = cloneDisplays(draftDisplays)
+    for (var i = 0; i < next.length; i++) {
+      if (next[i].name !== name) continue
+      for (var key in changes) next[i][key] = changes[key]
+      if (changes.scale !== undefined) {
+        next[i].logicalWidth = Math.round(next[i].width / Number(changes.scale))
+        next[i].logicalHeight = Math.round(next[i].height / Number(changes.scale))
+      }
+      break
+    }
+    draftDisplays = realign ? Model.alignDisplays(next, layoutAlignment) : Model.sortDisplays(next)
+  }
+
+  function setAlignment(alignment) {
+    layoutMessage = ""
+    layoutAlignment = alignment
+    draftDisplays = Model.alignDisplays(draftDisplays, alignment)
+  }
+
+  function moveDraftDisplay(name, delta) {
+    layoutMessage = ""
+    draftDisplays = Model.moveDisplay(draftDisplays, name, delta, layoutAlignment)
+  }
+
+  function setMonitorMode(name, mode) {
+    if (!mode || Number(mode.width) <= 0 || Number(mode.height) <= 0) return
+    var draft = findDraftDisplay(name)
+    if (!draft) return
+    var rates = mode.rates || []
+    var refresh = Number(draft.refreshRate)
+    if (rates.length > 0 && rates.every(function(rate) { return Math.abs(Number(rate) - refresh) >= 0.05 })) {
+      refresh = Number(rates[0])
+    }
+    replaceDraft(name, {
+      width: Number(mode.width),
+      height: Number(mode.height),
+      refreshRate: refresh,
+      availableRates: rates
+    }, true)
+  }
+
+  function setMonitorModeValue(name, value) {
+    var draft = findDraftDisplay(name)
+    if (!draft) return
+    var modes = draft.availableModes || []
+    for (var i = 0; i < modes.length; i++) {
+      var candidate = modes[i]
+      if ((candidate.width + "x" + candidate.height) === value) {
+        setMonitorMode(name, candidate)
+        return
+      }
+    }
+  }
+
+  function profileOptions() {
+    if (savedProfiles.length === 0) return [{ value: "", label: "No saved layouts yet" }]
+    return savedProfiles.map(function(profile) {
+      return { value: String(profile.id || ""), label: String(profile.name || "Saved layout") }
+    })
+  }
+
+  function refreshProfiles() {
+    if (!profileListProc.running) profileListProc.launch()
+  }
+
+  function saveNamedProfile(name) {
+    var clean = String(name || "").trim()
+    if (clean === "" || profileSaveProc.running || draftDirty || layoutToken !== "") return
+    layoutMessage = "Saving layout…"
+    profileSaveProc.args = [Model.helperPath("fred-monitor-layout"), "profile-save", clean]
+    profileSaveProc.launch()
+  }
+
+  function restoreSelectedProfile() {
+    if (selectedProfileId === "" || profileLoadProc.running || layoutToken !== "") return
+    layoutMessage = "Loading saved layout…"
+    profileLoadProc.args = [Model.helperPath("fred-monitor-layout"), "profile-load", selectedProfileId]
+    profileLoadProc.launch()
+  }
+
+  function deleteSelectedProfile() {
+    if (selectedProfileId.indexOf("user:") !== 0 || profileDeleteProc.running) return
+    if (profileDeleteArmed !== selectedProfileId) {
+      profileDeleteArmed = selectedProfileId
+      layoutMessage = "Press Delete again to remove this saved layout"
+      profileDeleteTimer.restart()
+      return
+    }
+    profileDeleteTimer.stop()
+    profileDeleteArmed = ""
+    profileDeleteProc.args = [Model.helperPath("fred-monitor-layout"), "profile-delete", selectedProfileId]
+    profileDeleteProc.launch()
+  }
+
+  function stageProfileLayout(layout) {
+    if (!Array.isArray(layout)) {
+      layoutMessage = "Saved layout is invalid"
+      return
+    }
+    var byName = ({})
+    for (var i = 0; i < layout.length; i++) byName[layout[i].name] = layout[i]
+    if (layout.length !== displays.length) {
+      layoutMessage = "Saved layout does not match the connected displays"
+      return
+    }
+    var merged = cloneDisplays(displays)
+    for (var j = 0; j < merged.length; j++) {
+      var saved = byName[merged[j].name]
+      if (!saved) {
+        layoutMessage = "Saved layout does not match the connected displays"
+        return
+      }
+      if (!saved.enabled) {
+        layoutMessage = "Layouts that disable a display are deferred to a future version"
+        return
+      }
+      merged[j].enabled = true
+      merged[j].width = Number(saved.width)
+      merged[j].height = Number(saved.height)
+      merged[j].refreshRate = Number(saved.refreshRate)
+      merged[j].x = Number(saved.x)
+      merged[j].y = Number(saved.y)
+      merged[j].scale = Number(saved.scale)
+      merged[j].transform = Number(saved.transform || 0)
+      merged[j].logicalWidth = Model.logicalWidth ? Model.logicalWidth(merged[j]) : Math.round(merged[j].width / merged[j].scale)
+      merged[j].logicalHeight = Model.logicalHeight ? Model.logicalHeight(merged[j]) : Math.round(merged[j].height / merged[j].scale)
+    }
+    draftDisplays = Model.sortDisplays(merged)
+    layoutMessage = "Saved layout loaded — review it, then Apply"
+  }
+
+  function setMonitorTransform(name, transform) {
+    replaceDraft(name, { transform: Number(transform) }, true)
+  }
+
+  function toggleIdentify() {
+    identifyVisible = !identifyVisible
+  }
+
+  function toggleHelp() {
+    helpVisible = !helpVisible
+  }
+
+  function closeHelpOrPanel() {
+    if (helpVisible) helpVisible = false
+    else close()
+  }
+
+  function toggleHighlightedDpms() {
+    var d = getTargetDisplay()
+    if (!d || !d.name || !d.enabled) return
+    if (root.dpmsSafetyMonitor === d.name) root.restoreDpms()
+    else if (d.dpmsStatus) root.setDpmsOffWithSafety(d.name)
+    else root.setDpmsOn(d.name)
+  }
+
+  function moveHighlighted(delta) {
+    var d = getTargetDisplay()
+    if (d && d.name && d.enabled) root.moveDraftDisplay(d.name, delta)
+  }
+
+  function handleShortcut(text) {
+    if (text === "q" || text === "Q") root.closeHelpOrPanel()
+    else if (text === "i" || text === "I") root.toggleIdentify()
+    else if (text === "r" || text === "R") root.resetHighlighted()
+    else if (text === "d" || text === "D") root.toggleHighlightedDpms()
+    else if (text === "[") root.moveHighlighted(-1)
+    else if (text === "]") root.moveHighlighted(1)
+    else if (text === "a" || text === "A") root.applyDraft()
+  }
+
+  function applyDraft() {
+    if (!draftDirty || layoutToken !== "" || layoutProc.running) return
+    layoutMessage = "Applying preview…"
+    layoutProc.stdinText = JSON.stringify(layoutPayload())
+    layoutProc.args = [Model.helperPath("fred-monitor-layout"), "preview"]
+    layoutProc.launch()
+  }
+
+  function keepLayout() {
+    if (layoutToken === "" || layoutKeepProc.running) return
+    layoutKeepProc.args = [Model.helperPath("fred-monitor-layout"), "keep", layoutToken]
+    layoutKeepProc.launch()
+  }
+
+  function revertLayout() {
+    if (layoutToken === "" || layoutRevertProc.running) return
+    layoutRevertProc.args = [Model.helperPath("fred-monitor-layout"), "revert", layoutToken]
+    layoutRevertProc.launch()
   }
 
   function findDisplayIndex(name) {
@@ -93,9 +378,9 @@ Panel {
   function cardSubRows(display) {
     if (!display) return ["header"]
     var rows = ["header"]
-    if (root.expandedCard === display.name && display.enabled) {
-      if (display.brightnessAvailable) rows.push("brightness")
+    if (display.enabled) {
       rows.push("scale")
+      if (display.brightnessAvailable) rows.push("brightness")
       if (display.availableRates && display.availableRates.length > 0) rows.push("rate")
       rows.push("actions")
     }
@@ -103,17 +388,6 @@ Panel {
   }
 
   function moveCursor(delta) {
-    if (focusSection === "textsize") {
-      if (delta > 0 && displays.length > 0) {
-        var first = displays[0]
-        focusSection = "card_" + first.name
-        root.expandedCard = first.name
-        cardSubRow = 0
-        cardSubItem = 0
-      }
-      return
-    }
-
     if (focusSection.indexOf("card_") === 0) {
       var name = focusSection.substring(5)
       var currentDisp = findDisplay(name)
@@ -146,10 +420,6 @@ Panel {
             var prevRows = cardSubRows(prev)
             cardSubRow = prevRows.length - 1
             cardSubItem = 0
-          } else {
-            focusSection = "textsize"
-            cardSubRow = 0
-            cardSubItem = 0
           }
         }
       }
@@ -157,11 +427,6 @@ Panel {
   }
 
   function moveCursorH(delta) {
-    if (focusSection === "textsize") {
-      adjustTextSize(delta)
-      return
-    }
-
     if (focusSection.indexOf("card_") === 0) {
       var name = focusSection.substring(5)
       var d = findDisplay(name)
@@ -170,8 +435,7 @@ Panel {
       var rowName = cardSubRow < subRows.length ? subRows[cardSubRow] : "header"
 
       if (rowName === "header") {
-        if (delta > 0) cardSubItem = 1
-        else if (delta < 0) cardSubItem = 0
+        cardSubItem = 0
       } else if (rowName === "brightness") {
         var curB = d.brightness !== undefined ? d.brightness : 50
         setMonitorBrightness(d.name, curB + delta * 5)
@@ -188,10 +452,7 @@ Panel {
         if (rIdx >= rates.length) rIdx = rates.length - 1
         cardSubItem = rIdx
       } else if (rowName === "actions") {
-        var aIdx = cardSubItem + delta
-        if (aIdx < 0) aIdx = 0
-        if (aIdx > 1) aIdx = 1
-        cardSubItem = aIdx
+        cardSubItem = 0
       }
     }
   }
@@ -205,11 +466,7 @@ Panel {
       var rowName = cardSubRow < subRows.length ? subRows[cardSubRow] : "header"
 
       if (rowName === "header") {
-        if (cardSubItem === 1) {
-          toggleDisplay(d.name, d.enabled)
-        } else {
-          toggleCardExpanded(d.name)
-        }
+        toggleCardExpanded(d.name)
       } else if (rowName === "scale") {
         var scales = Model.availableScales(scalePresets, d.width, d.height)
         if (cardSubItem >= 0 && cardSubItem < scales.length) {
@@ -221,27 +478,16 @@ Panel {
           setMonitorRefreshRate(d.name, rates[cardSubItem])
         }
       } else if (rowName === "actions") {
-        if (cardSubItem === 0) {
-          if (root.dpmsSafetyMonitor === d.name) {
-            restoreDpms()
-          } else if (d.dpmsStatus) {
-            setDpmsOffWithSafety(d.name)
-          } else {
-            setDpmsOn(d.name)
-          }
-        } else if (cardSubItem === 1) {
-          resetDisplay(d.name)
-        }
+        if (root.dpmsSafetyMonitor === d.name) restoreDpms()
+        else if (d.dpmsStatus) setDpmsOffWithSafety(d.name)
+        else setDpmsOn(d.name)
       }
     }
   }
 
   function toggleCardExpanded(name) {
-    if (root.expandedCard === name) {
-      root.expandedCard = ""
-    } else {
-      root.expandedCard = name
-    }
+    root.expandedCard = name
+    root.focusSection = "card_" + name
   }
 
   function clampCursor() {
@@ -281,7 +527,7 @@ Panel {
 
   function updateState(raw) {
     var state = Model.parseState(raw)
-    root.displays = state.displays
+    root.displays = Model.sortDisplays(state.displays)
     root.enabledDisplayCount = state.enabledDisplayCount
     if (state.focusedMonitor) {
       root.focusedMonitor = state.focusedMonitor
@@ -321,6 +567,30 @@ Panel {
     if (root.expandedCard === "" && root.displays.length > 0) {
       root.expandedCard = root.focusedMonitor || root.displays[0].name
     }
+    if (!root.draftDirty && root.layoutToken === "") {
+      root.draftDisplays = root.cloneDisplays(root.displays)
+    }
+  }
+
+  function updateHoverState(raw) {
+    var state = Model.parseState(raw)
+    var merged = []
+    for (var i = 0; i < state.displays.length; i++) {
+      var fresh = Object.assign({}, state.displays[i])
+      var prior = root.findDisplay(fresh.name)
+      if (prior) {
+        fresh.brightness = prior.brightness
+        fresh.brightnessAvailable = prior.brightnessAvailable
+      }
+      merged.push(fresh)
+    }
+    root.displays = Model.sortDisplays(merged)
+    root.enabledDisplayCount = state.enabledDisplayCount
+    if (state.focusedMonitor) root.focusedMonitor = state.focusedMonitor
+    if (!root.draftDirty && root.layoutToken === "") root.draftDisplays = root.cloneDisplays(root.displays)
+    Qt.callLater(function() {
+      if (button.tooltipHovered && !root.opened && root.bar) root.bar.showTooltip(button, button.tooltipText)
+    })
   }
 
   function effectiveScale(scale) {
@@ -332,70 +602,31 @@ Panel {
   }
 
   // --- Display Management Actions ---
-  function toggleDisplay(name, enabled) {
-    if (!name || !Model.isValidOutputName(name)) return
-    if (enabled && root.enabledDisplayCount <= 1) return
-
-    var lua = ""
-    if (enabled) {
-      lua = 'hl.monitor({ output = "' + name + '", disabled = true })'
-    } else {
-      var d = root.findDisplay(name)
-      var cached = root.displayCache[name] || {}
-      var width = (d && d.width) ? d.width : (cached.width || 1920)
-      var height = (d && d.height) ? d.height : (cached.height || 1080)
-      var rate = (d && d.refreshRate) ? Math.round(d.refreshRate) : (cached.refreshRate ? Math.round(cached.refreshRate) : 60)
-      var x = (d && d.x !== undefined) ? d.x : (cached.x !== undefined ? cached.x : 0)
-      var y = (d && d.y !== undefined) ? d.y : (cached.y !== undefined ? cached.y : 0)
-      var scale = (d && d.scale) ? d.scale : (cached.scale || 1)
-
-      var mode = width + "x" + height + "@" + rate
-      var pos = x + "x" + y
-      lua = 'hl.monitor({ output = "' + name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + scale + ', disabled = false })'
-    }
-
-    actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["eval", lua]
-    actionProc.launch()
-  }
-
   function setMonitorScale(name, scale) {
     if (!name || !Model.isValidOutputName(name)) return
-    var d = findDisplay(name)
+    var d = findDraftDisplay(name)
     if (!d) return
     var clean = Model.cleanScale(scale, d.width, d.height)
     if (clean === "") clean = Model.normalizeScale(scale)
     if (clean === "") return
 
-    var rate = d.refreshRate ? Math.round(d.refreshRate) : 60
-    var mode = d.width + "x" + d.height + "@" + rate
-    var pos = (d.x !== undefined ? d.x : 0) + "x" + (d.y !== undefined ? d.y : 0)
-    var lua = 'hl.monitor({ output = "' + d.name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + clean + ' })'
-
-    actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["eval", lua]
-    actionProc.launch()
+    replaceDraft(name, { scale: Number(clean) }, true)
   }
 
   function setMonitorRefreshRate(name, rate) {
     if (!name || !Model.isValidOutputName(name)) return
-    var d = findDisplay(name)
+    var d = findDraftDisplay(name)
     if (!d) return
     var rateNum = Number(rate)
     if (!isFinite(rateNum) || rateNum <= 0) return
 
-    var mode = d.width + "x" + d.height + "@" + rateNum
-    var pos = (d.x !== undefined ? d.x : 0) + "x" + (d.y !== undefined ? d.y : 0)
-    var scale = d.scale || 1
-    var lua = 'hl.monitor({ output = "' + d.name + '", mode = "' + mode + '", position = "' + pos + '", scale = ' + scale + ' })'
-
-    actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["eval", lua]
-    actionProc.launch()
+    replaceDraft(name, { refreshRate: rateNum }, false)
   }
 
   function setMonitorBrightness(monitorName, percent) {
     if (!monitorName || !Model.isValidOutputName(monitorName)) return
+    var target = findDisplay(monitorName)
+    if (!target || !target.brightnessAvailable) return
     var p = Model.clampBrightness(percent)
 
     // Update locally so UI responds immediately
@@ -408,29 +639,37 @@ Panel {
       dList.push(item)
     }
     root.displays = dList
+    var draftList = root.cloneDisplays(root.draftDisplays)
+    for (var j = 0; j < draftList.length; j++) {
+      if (draftList[j].name === monitorName) draftList[j].brightness = p
+    }
+    root.draftDisplays = draftList
 
     if (monitorName === root.focusedMonitor) {
       root.brightnessPercent = p
       root.pendingBrightnessPercent = p
     }
 
-    setBrightnessProc.exe = "/usr/share/omarchy/bin/omarchy-brightness-display"
-    setBrightnessProc.args = ["--no-osd", "--monitor", monitorName, p + "%"]
+    root.pendingBrightnessMonitor = monitorName
+    root.pendingBrightnessPercent = p
+    brightnessDebounce.restart()
+  }
+
+  function flushMonitorBrightness() {
+    if (root.pendingBrightnessMonitor === "") return
+    if (setBrightnessProc.running) {
+      brightnessDebounce.restart()
+      return
+    }
+    var monitorName = root.pendingBrightnessMonitor
+    var percent = root.pendingBrightnessPercent
+    root.pendingBrightnessMonitor = ""
+    setBrightnessProc.args = [Model.helperPath("fred-monitor-state"), "--set-brightness", monitorName, String(percent)]
     setBrightnessProc.launch()
   }
 
   function previewMonitorBrightness(monitorName, percent) {
-    var p = Model.clampBrightness(percent)
-    for (var i = 0; i < root.displays.length; i++) {
-      if (root.displays[i].name === monitorName) {
-        root.displays[i].brightness = p
-        break
-      }
-    }
-    if (monitorName === root.focusedMonitor) {
-      root.brightnessPercent = p
-    }
-    brightnessDebounce.restart()
+    root.setMonitorBrightness(monitorName, percent)
   }
 
   function setBrightness(value) {
@@ -583,6 +822,7 @@ Panel {
     function brightness(percent: string): string { return root.brightnessIpc(percent) }
     function state(): string { return root.stateIpc() }
     function reset(name: string): string { return root.resetDisplay(name) }
+    function identify() { root.toggleIdentify() }
     function open() { root.open() }
     function close() { root.close() }
     function toggle() { root.toggle() }
@@ -602,17 +842,18 @@ Panel {
   onOpenedChanged: {
     if (opened) {
       refresh()
+      layoutStatusProc.launch()
+      refreshProfiles()
       if (displays.length > 0) {
         var targetName = root.focusedMonitor || displays[0].name
         root.expandedCard = targetName
         root.focusSection = "card_" + targetName
         root.cardSubRow = 0
         root.cardSubItem = 0
-      } else {
-        root.focusSection = "textsize"
-      }
+      } else root.focusSection = ""
       cursorActive = false
     } else {
+      root.helpVisible = false
       if (root.dpmsSafetyMonitor !== "") {
         root.restoreDpms()
       }
@@ -627,6 +868,28 @@ Panel {
     running: root.opened
     repeat: true
     onTriggered: root.refresh()
+  }
+
+  Timer {
+    id: profileDeleteTimer
+    interval: 4000
+    onTriggered: root.profileDeleteArmed = ""
+  }
+
+  Timer {
+    id: layoutCountdownTimer
+    interval: 1000
+    repeat: true
+    running: root.layoutToken !== ""
+    onTriggered: {
+      root.layoutCountdown = Math.max(0, root.layoutCountdown - 1)
+      if (root.layoutCountdown === 0) {
+        root.layoutToken = ""
+        root.layoutMessage = "Preview timed out — previous layout restored"
+        root.draftDisplays = []
+        root.refresh()
+      }
+    }
   }
 
   // --- External Processes ---
@@ -645,24 +908,222 @@ Panel {
     }
   }
 
-  Timer {
-    id: brightnessDebounce
-    interval: 180
-    repeat: false
-    onTriggered: {
-      var d = root.findDisplay(root.focusedMonitor)
-      if (d && d.brightness !== undefined) {
-        root.setMonitorBrightness(d.name, d.brightness)
+  Launch {
+    id: hoverStateProc
+    exe: "/usr/bin/python3"
+    args: [Model.helperPath("fred-monitor-state"), "--fast"]
+    envKeys: root.monitorEnv
+    deadlineMs: 3000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.updateHoverState(String(text || "").trim())
+    }
+  }
+
+  Launch {
+    id: layoutProc
+    exe: "/usr/bin/python3"
+    envKeys: root.monitorEnv
+    deadlineMs: 10000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          if (result.ok) {
+            root.layoutToken = String(result.token || "")
+            root.layoutCountdown = Number(result.seconds || 15)
+            root.layoutMessage = "Preview applied"
+          } else {
+            root.layoutMessage = String(result.error || "Could not apply layout")
+          }
+        } catch (error) {
+          root.layoutMessage = "Could not read layout helper response"
+        }
+        layoutProc.stdinText = ""
+        root.refresh()
       }
     }
   }
 
   Launch {
-    id: setBrightnessProc
-    exe: "/usr/share/omarchy/bin/omarchy-brightness-display"
+    id: layoutKeepProc
+    exe: "/usr/bin/python3"
+    envKeys: root.monitorEnv
+    deadlineMs: 8000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          if (!result.ok) {
+            root.layoutMessage = String(result.error || "Could not save layout")
+            return
+          }
+          root.layoutToken = ""
+          root.layoutCountdown = 0
+          root.layoutMessage = result.profileWarning
+            ? "Layout saved; automatic recovery snapshot failed"
+            : "Layout saved"
+          root.displays = root.cloneDisplays(root.draftDisplays)
+          root.refreshProfiles()
+          root.refresh()
+        } catch (error) {
+          root.layoutMessage = "Could not read save response"
+        }
+      }
+    }
+  }
+
+  Launch {
+    id: layoutRevertProc
+    exe: "/usr/bin/python3"
+    envKeys: root.monitorEnv
+    deadlineMs: 8000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          root.layoutMessage = result.ok ? "Previous layout restored" : String(result.error || "Could not restore layout")
+          if (result.ok) {
+            root.layoutToken = ""
+            root.layoutCountdown = 0
+            root.draftDisplays = []
+            root.refresh()
+          }
+        } catch (error) {
+          root.layoutMessage = "Could not read restore response"
+        }
+      }
+    }
+  }
+
+  Launch {
+    id: layoutStatusProc
+    exe: "/usr/bin/python3"
+    args: [Model.helperPath("fred-monitor-layout"), "status"]
+    envKeys: root.monitorEnv
+    deadlineMs: 4000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          if (result.ok && result.pending) {
+            root.layoutToken = String(result.token || "")
+            root.layoutCountdown = Number(result.seconds || 0)
+            root.layoutMessage = "Preview applied"
+          }
+        } catch (error) {}
+      }
+    }
+  }
+
+  Launch {
+    id: profileListProc
+    exe: "/usr/bin/python3"
+    args: [Model.helperPath("fred-monitor-layout"), "profile-list"]
+    envKeys: root.monitorEnv
+    deadlineMs: 4000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          root.savedProfiles = result.ok && Array.isArray(result.profiles) ? result.profiles : []
+          var found = false
+          for (var i = 0; i < root.savedProfiles.length; i++) {
+            if (root.savedProfiles[i].id === root.selectedProfileId) found = true
+          }
+          if (!found) root.selectedProfileId = root.savedProfiles.length > 0 ? String(root.savedProfiles[0].id) : ""
+        } catch (error) {
+          root.savedProfiles = []
+        }
+      }
+    }
+  }
+
+  Launch {
+    id: profileSaveProc
+    exe: "/usr/bin/python3"
+    envKeys: root.monitorEnv
+    deadlineMs: 6000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          if (!result.ok) {
+            root.layoutMessage = String(result.error || "Could not save layout")
+            return
+          }
+          root.profileNameVisible = false
+          root.selectedProfileId = String(result.profile.id || "")
+          root.layoutMessage = "Saved current layout as “" + String(result.profile.name || "Layout") + "”"
+          root.refreshProfiles()
+        } catch (error) {
+          root.layoutMessage = "Could not read saved-layout response"
+        }
+      }
+    }
+  }
+
+  Launch {
+    id: profileLoadProc
+    exe: "/usr/bin/python3"
     envKeys: root.monitorEnv
     deadlineMs: 5000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          if (result.ok) root.stageProfileLayout(result.layout)
+          else root.layoutMessage = String(result.error || "Could not load saved layout")
+        } catch (error) {
+          root.layoutMessage = "Could not read saved-layout response"
+        }
+      }
+    }
+  }
+
+  Launch {
+    id: profileDeleteProc
+    exe: "/usr/bin/python3"
+    envKeys: root.monitorEnv
+    deadlineMs: 5000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var result = JSON.parse(String(text || "{}"))
+          root.layoutMessage = result.ok ? "Saved layout deleted" : String(result.error || "Could not delete saved layout")
+          if (result.ok) {
+            root.selectedProfileId = ""
+            root.refreshProfiles()
+          }
+        } catch (error) {
+          root.layoutMessage = "Could not read saved-layout response"
+        }
+      }
+    }
+  }
+
+  Timer {
+    id: brightnessDebounce
+    interval: 180
+    repeat: false
+    onTriggered: root.flushMonitorBrightness()
+  }
+
+  Launch {
+    id: setBrightnessProc
+    exe: "/usr/bin/python3"
+    envKeys: root.monitorEnv
+    deadlineMs: 15000
     stdout: StdioCollector { waitForEnd: true }
+    onRunningChanged: if (!running && root.pendingBrightnessMonitor !== "") brightnessDebounce.restart()
   }
 
   Launch {
@@ -745,7 +1206,10 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     text: Quickshell.screens.length > 1 ? "󰍺" : "󰍹"
-    tooltipText: "Display\n\nfred.monitor v" + root.pluginVersion
+    tooltipText: Model.formatHover(root.monitorForButton(), root.displays, root.pluginVersion)
+    onTooltipHoveredChanged: {
+      if (tooltipHovered && !root.opened && !hoverStateProc.running) hoverStateProc.launch()
+    }
     onPressed: function(b) { root.toggle() }
     onWheelMoved: function(delta) {
       if (!root.brightnessAvailable) return
@@ -757,31 +1221,99 @@ Panel {
     }
   }
 
+  Variants {
+    model: root.identifyVisible ? Quickshell.screens : []
+
+    delegate: Component {
+      PanelWindow {
+        required property var modelData
+        readonly property var identifiedDisplay: root.findDisplay(modelData.name)
+        screen: modelData
+        visible: root.identifyVisible
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "fred-monitor-identify"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        anchors { top: true; bottom: true; left: true; right: true }
+        mask: Region {}
+
+        Rectangle {
+          anchors.centerIn: parent
+          width: Math.min(parent.width * 0.72, Style.space(420))
+          height: Style.space(150)
+          radius: Style.cornerRadius
+          color: Qt.rgba(0.04, 0.04, 0.05, 0.92)
+          border.color: Color.accent
+          border.width: Style.space(2)
+
+          Column {
+            anchors.centerIn: parent
+            width: parent.width - Style.space(24)
+            spacing: Style.space(6)
+            Text {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              textFormat: Text.PlainText
+              text: {
+                var label = Model.positionLabel(identifiedDisplay ? identifiedDisplay.name : "", root.displays)
+                return label ? label + " Monitor" : "Monitor"
+              }
+              color: "white"
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.display
+              font.bold: true
+            }
+            Text {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              textFormat: Text.PlainText
+              text: identifiedDisplay ? (identifiedDisplay.name + " · " + Model.displayIdentity(identifiedDisplay)) : modelData.name
+              color: "white"
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.title
+              elide: Text.ElideRight
+            }
+          }
+        }
+      }
+    }
+  }
+
   // --- Main Panel Window ---
-  KeyboardPanel {
+  MonitorPanelWindow {
     id: panel
     anchorItem: button
     owner: root
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(400))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(620))
+    centerOnBar: true
+    contentWidth: panel.fittedContentWidth(panel.availableCardWidth)
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, panel.availableCardHeight)
+
+    Item {
+      Shortcut {
+        sequence: "Home"
+        enabled: root.opened
+        onActivated: root.toggleHelp()
+      }
+    }
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      blocked: root.cardDropdownOpen || profileNameField.activeFocus
+        || alignmentDropdown.popupOpen || profileDropdown.popupOpen
       onMoveRequested: function(dx, dy) {
         if (!root.cursorActive) { root.cursorActive = true; return }
         if (dy !== 0) root.moveCursor(dy)
         else if (dx !== 0) root.moveCursorH(dx)
       }
       onActivateRequested: if (root.cursorActive) root.activateCursor()
-      onCloseRequested: root.close()
+      onCloseRequested: root.closeHelpOrPanel()
       onTabRequested: function(direction) { root.switchPanel(direction) }
-      onTextKey: function(t) {
-        if (t === "r" || t === "R") root.resetHighlighted()
-      }
+      onTextKey: function(t) { root.handleShortcut(t) }
 
       ScrollView {
         id: scrollArea
@@ -800,62 +1332,233 @@ Panel {
           width: scrollArea.availableWidth
           spacing: Style.space(12)
 
-          // ---------- Hero: display icon · title/status ----------
+          // ---------- Header: title · layout controls · close ----------
           Item {
             width: parent.width
-            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight)
+            implicitHeight: headerRow.implicitHeight
 
-            Text {
-              id: heroIcon
-              textFormat: Text.PlainText
-              text: root.displays.length > 1 ? "󰍺" : "󰍹"
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.display
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Column {
-              id: heroLabels
-              anchors.left: heroIcon.right
-              anchors.leftMargin: Style.space(14)
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(2)
+            RowLayout {
+              id: headerRow
+              anchors.fill: parent
+              spacing: Style.space(8)
 
               Text {
-                text: "Display"
+                textFormat: Text.PlainText
+                text: root.enabledDisplayCount > 1 ? "󰍺" : "󰍹"
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.display
+                Layout.alignment: Qt.AlignVCenter
+              }
+
+              Text {
+                textFormat: Text.PlainText
+                text: "Display: " + Model.monitorCountLabel(root.enabledDisplayCount)
                 color: root.bar.foreground
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.title
                 font.bold: true
                 elide: Text.ElideRight
-                width: parent.width
+                Layout.alignment: Qt.AlignVCenter
+              }
+
+              Button {
+                id: identifyButton
+                visible: root.enabledDisplayCount > 1
+                bordered: true
+                active: root.identifyVisible
+                iconText: "󰍹"
+                text: "Identify"
+                fontSize: Style.font.caption
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: root.toggleIdentify()
+              }
+
+              Dropdown {
+                id: alignmentDropdown
+                Layout.preferredWidth: Style.space(150)
+                Layout.alignment: Qt.AlignVCenter
+                showLabel: false
+                value: root.layoutAlignment
+                options: root.alignmentOptions
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                onChanged: function(newValue) { root.setAlignment(newValue) }
+              }
+
+              Button {
+                visible: root.draftDirty && root.layoutToken === ""
+                text: "Discard changes"
+                bordered: true
+                fontSize: Style.font.caption
+                tooltipText: "Throw away staged monitor edits and reload the current live arrangement"
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: root.resetDraft()
+              }
+
+              Item { Layout.fillWidth: true }
+
+              Button {
+                text: "Home for help"
+                tooltipText: "Show keyboard shortcuts"
+                fontSize: Style.font.caption
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: root.toggleHelp()
               }
 
               Text {
-                id: heroLabel
                 textFormat: Text.PlainText
-                text: {
-                  var fd = root.findDisplay(root.focusedMonitor)
-                  if (fd && fd.brightnessAvailable) {
-                    return root.brightnessName(fd.brightness).toUpperCase()
-                  }
-                  return (root.enabledDisplayCount + " ACTIVE DISPLAYS").toUpperCase()
-                }
-                color: Qt.darker(root.bar.foreground, 1.4)
+                text: "Esc to close"
+                color: Qt.darker(root.bar.foreground, 1.35)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                elide: Text.ElideRight
-                width: parent.width
+                Layout.alignment: Qt.AlignVCenter
+              }
+
+              Button {
+                bordered: true
+                text: "×"
+                tooltipText: "Close"
+                fontSize: Style.font.body
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: root.close()
               }
             }
           }
 
-          // ---------- Text size ----------
+          PanelSeparator {
+            foreground: root.bar.foreground
+          }
+
+          Column {
+            width: parent.width
+            spacing: Style.space(10)
+
+            Column {
+              width: parent.width
+              spacing: Style.space(6)
+
+              PanelSectionHeader {
+                text: "SAVED LAYOUTS"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+              }
+
+              Row {
+                width: parent.width
+                spacing: Style.space(6)
+
+                Dropdown {
+                  id: profileDropdown
+                  width: Math.min(Style.space(250), Math.max(Style.space(170), parent.width - profileButtons.width - Style.space(12)))
+                  showLabel: false
+                  value: root.selectedProfileId
+                  options: root.profileOptions()
+                  foreground: root.bar.foreground
+                  fontFamily: root.bar.fontFamily
+                  onChanged: function(newValue) {
+                    root.selectedProfileId = newValue
+                    root.profileDeleteArmed = ""
+                  }
+                }
+
+                Row {
+                  id: profileButtons
+                  spacing: Style.space(6)
+
+                  Button {
+                    text: "Restore"
+                    bordered: true
+                    fontSize: Style.font.caption
+                    enabled: root.selectedProfileId !== "" && root.layoutToken === ""
+                    opacity: enabled ? 1 : 0.4
+                    tooltipText: "Load into the cards for review; Apply is still required"
+                    onClicked: root.restoreSelectedProfile()
+                  }
+                  Button {
+                    text: "Save current"
+                    bordered: true
+                    fontSize: Style.font.caption
+                    enabled: !root.draftDirty && root.layoutToken === ""
+                    opacity: enabled ? 1 : 0.4
+                    tooltipText: enabled ? "Save the verified live layout" : "Apply or discard pending changes first"
+                    onClicked: {
+                      root.profileNameVisible = !root.profileNameVisible
+                      if (root.profileNameVisible) Qt.callLater(function() { profileNameField.forceActiveFocus() })
+                    }
+                  }
+                  Button {
+                    text: root.profileDeleteArmed === root.selectedProfileId ? "Delete?" : "Delete"
+                    bordered: true
+                    fontSize: Style.font.caption
+                    enabled: root.selectedProfileId.indexOf("user:") === 0 && root.savedProfiles.length > 1
+                    opacity: enabled ? 1 : 0.4
+                    tooltipText: enabled
+                      ? "Delete this named layout"
+                      : (root.savedProfiles.length <= 1
+                         ? "At least one restorable layout is always kept"
+                         : "Automatic recovery layouts cannot be deleted")
+                    onClicked: root.deleteSelectedProfile()
+                  }
+                }
+              }
+
+              Row {
+                visible: root.profileNameVisible
+                width: parent.width
+                spacing: Style.space(6)
+
+                TextField {
+                  id: profileNameField
+                  width: Math.min(Style.space(300), parent.width - saveProfileButton.width - Style.space(6))
+                  placeholderText: "Layout name, e.g. Desk"
+                  maximumLength: 40
+                  foreground: root.bar.foreground
+                  onAccepted: root.saveNamedProfile(text)
+                }
+                Button {
+                  id: saveProfileButton
+                  text: "Save"
+                  bordered: true
+                  active: profileNameField.text.trim() !== ""
+                  fontSize: Style.font.caption
+                  onClicked: root.saveNamedProfile(profileNameField.text)
+                }
+              }
+
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: "Restore only stages a saved arrangement. Apply previews it with the 15-second safety timer."
+                color: Qt.darker(root.bar.foreground, 1.5)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.Wrap
+              }
+            }
+
+            Row {
+              id: displayRow
+              width: parent.width
+              spacing: root.cardGap
+
+              Repeater {
+                model: root.draftDisplays
+
+                DisplayCard {
+                  required property var modelData
+                  required property int index
+
+                  display: modelData
+                  cardIndex: index
+                  availableWidth: Math.max(1,
+                    Math.floor((displayRow.width - root.cardGap * Math.max(0, root.cardCount - 1)) / root.cardCount))
+                }
+              }
+            }
+          }
+
+          // ---------- Global Settings ----------
           PanelSeparator {
             foreground: root.bar.foreground
           }
@@ -866,11 +1569,11 @@ Panel {
 
             Item {
               width: parent.width
-              implicitHeight: Math.max(textSizeHeader.implicitHeight, textSizePx.implicitHeight)
+              implicitHeight: Math.max(globalSettingsHeader.implicitHeight, textSizePx.implicitHeight)
 
               PanelSectionHeader {
-                id: textSizeHeader
-                text: "TEXT SIZE"
+                id: globalSettingsHeader
+                text: "GLOBAL SETTINGS · ALL MONITORS"
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
@@ -893,12 +1596,20 @@ Panel {
               }
             }
 
+            Text {
+              width: parent.width
+              textFormat: Text.PlainText
+              text: "Text Size changes fonts in the Omarchy shell, GTK apps, and terminals everywhere. Per-monitor Scale changes the size of all content on that display and its usable workspace."
+              color: Qt.darker(root.bar.foreground, 1.5)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
+              wrapMode: Text.Wrap
+            }
+
             CursorSurface {
               id: textSizeRow
               width: parent.width
               height: textSizeSlider.implicitHeight + Style.spacing.controlGap
-              hasCursor: root.cursorActive && root.focusSection === "textsize"
-              onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(textSizeRow)
               foreground: root.bar.foreground
               outline: true
 
@@ -916,42 +1627,52 @@ Panel {
                 value: root.currentTextIndex()
                 onReleased: function(v) { root.setTextSize(root.textSizeStops[Math.round(v)]) }
               }
-
-              HoverHandler {
-                onHoveredChanged: if (hovered && !root.reflowingText) {
-                  root.cursorActive = true
-                  root.focusSection = "textsize"
-                  root.cardSubRow = 0
-                  root.cardSubItem = 0
-                }
-              }
             }
           }
 
-          // ---------- Displays Section ----------
-          PanelSeparator {
-            foreground: root.bar.foreground
-          }
-
-          Column {
+          Rectangle {
+            visible: root.draftDirty || root.layoutToken !== "" || root.layoutMessage !== ""
             width: parent.width
-            spacing: Style.space(10)
+            implicitHeight: transactionRow.implicitHeight + Style.space(14)
+            radius: Style.cornerRadius
+            color: root.layoutToken !== "" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14) : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.05)
+            border.color: root.layoutToken !== "" ? Color.accent : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.12)
+            border.width: 1
 
-            PanelSectionHeader {
-              text: "DISPLAYS"
-              foreground: root.bar.foreground
-              fontFamily: root.bar.fontFamily
-            }
-
-            Repeater {
-              model: root.displays
-
-              DisplayCard {
-                required property var modelData
-                required property int index
-
-                display: modelData
-                cardIndex: index
+            Row {
+              id: transactionRow
+              anchors.centerIn: parent
+              spacing: Style.space(8)
+              Text {
+                text: root.layoutToken !== "" ? ("Keep this layout? " + root.layoutCountdown + "s") : (root.layoutMessage || (root.draftDirtyCount + " display" + (root.draftDirtyCount === 1 ? "" : "s") + " changed"))
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                anchors.verticalCenter: parent.verticalCenter
+              }
+              Button {
+                visible: root.layoutToken === ""
+                text: "Apply"
+                iconText: "󰄬"
+                bordered: true
+                active: root.draftDirty
+                fontSize: Style.font.caption
+                onClicked: root.applyDraft()
+              }
+              Button {
+                visible: root.layoutToken !== ""
+                text: "Keep"
+                bordered: true
+                active: true
+                fontSize: Style.font.caption
+                onClicked: root.keepLayout()
+              }
+              Button {
+                visible: root.layoutToken !== ""
+                text: "Revert"
+                bordered: true
+                fontSize: Style.font.caption
+                onClicked: root.revertLayout()
               }
             }
           }
@@ -978,6 +1699,109 @@ Panel {
           }
         }
       }
+
+      Rectangle {
+        id: helpOverlay
+        anchors.fill: parent
+        visible: root.helpVisible
+        z: 100
+        color: Qt.rgba(0, 0, 0, 0.62)
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: root.helpVisible = false
+        }
+
+        Rectangle {
+          anchors.centerIn: parent
+          width: Math.min(parent.width - Style.space(24), Style.space(620))
+          height: helpColumn.implicitHeight + Style.space(24)
+          radius: Style.cornerRadius
+          color: Color.popups.background
+          border.color: Color.popups.border
+          border.width: Math.max(1, Style.normalBorderWidth)
+
+          MouseArea {
+            anchors.fill: parent
+            onClicked: function(mouse) { mouse.accepted = true }
+          }
+
+          Column {
+            id: helpColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Style.space(12)
+            spacing: Style.space(8)
+
+            RowLayout {
+              width: parent.width
+
+              Text {
+                text: "Keyboard shortcuts"
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.title
+                font.bold: true
+                Layout.fillWidth: true
+              }
+
+              Button {
+                text: "×"
+                bordered: true
+                tooltipText: "Close help"
+                onClicked: root.helpVisible = false
+              }
+            }
+
+            PanelSeparator {
+              foreground: root.bar.foreground
+            }
+
+            Repeater {
+              model: root.keyboardShortcuts
+
+              Item {
+                required property var modelData
+                width: helpColumn.width
+                implicitHeight: Math.max(helpKeys.implicitHeight, helpAction.implicitHeight)
+
+                Text {
+                  id: helpKeys
+                  width: Style.space(165)
+                  textFormat: Text.PlainText
+                  text: modelData.keys
+                  color: Color.accent
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.body
+                  font.bold: true
+                }
+
+                Text {
+                  id: helpAction
+                  anchors.left: helpKeys.right
+                  anchors.right: parent.right
+                  textFormat: Text.PlainText
+                  text: modelData.action
+                  color: root.bar.foreground
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.body
+                  wrapMode: Text.Wrap
+                }
+              }
+            }
+
+            Text {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              text: "Press Home, Esc, or Q to close help"
+              color: Qt.darker(root.bar.foreground, 1.35)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+          }
+        }
+      }
     }
   }
 
@@ -986,21 +1810,24 @@ Panel {
     id: card
     required property var display
     required property int cardIndex
+    required property real availableWidth
 
     readonly property bool isCardFocused: root.focusSection === ("card_" + display.name)
-    readonly property bool isExpanded: root.expandedCard === display.name
+    readonly property bool isExpanded: true
     readonly property var subRows: root.cardSubRows(display)
     readonly property string currentSubRow: isCardFocused && root.cardSubRow < subRows.length ? subRows[root.cardSubRow] : ""
     readonly property var cardResetInfo: root.resetStatus[display.name]
-    readonly property bool isResetting: root.resetRunningMonitor === display.name || (cardResetInfo && cardResetInfo.status === "running")
+    readonly property bool isResetting: root.resetRunningMonitor === display.name || (!!cardResetInfo && cardResetInfo.status === "running")
     readonly property string resetMsg: cardResetInfo ? cardResetInfo.message : ""
-    readonly property string posLabel: Model.positionLabel(display.name, root.displays)
+    readonly property string posLabel: Model.positionLabel(display.name, root.draftDisplays)
     readonly property var availableScalesList: Model.availableScales(root.scalePresets, display.width, display.height)
     readonly property int activeScaleIdx: Model.matchingScaleIndex(availableScalesList, display.scale, display.width, display.height)
-    readonly property bool canToggle: display && (!display.enabled || root.enabledDisplayCount > 1)
+    readonly property var resolutionOptions: (display.availableModes || []).map(function(mode) {
+      return { value: mode.width + "x" + mode.height, label: mode.width + " × " + mode.height }
+    })
 
-    width: panelColumn.width
-    radius: Style.radius.md
+    width: availableWidth
+    radius: Style.cornerRadius
     color: isCardFocused
       ? Style.selectedFillFor(root.bar.foreground, Color.accent)
       : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.04)
@@ -1022,7 +1849,7 @@ Panel {
       // Header row
       Item {
         width: parent.width
-        implicitHeight: Math.max(headerRow.implicitHeight, headerControls.implicitHeight)
+        implicitHeight: headerRow.implicitHeight
 
         MouseArea {
           anchors.fill: parent
@@ -1037,22 +1864,21 @@ Panel {
           onClicked: root.toggleCardExpanded(card.display.name)
         }
 
-        Row {
+        RowLayout {
           id: headerRow
           anchors.left: parent.left
-          anchors.right: headerControls.left
-          anchors.rightMargin: Style.space(8)
+          anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(8)
+          spacing: Style.space(5)
 
           Text {
             text: card.display.enabled ? "󰍹" : "󰍺"
             color: root.bar.foreground
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.title
-            width: Style.space(20)
+            Layout.preferredWidth: Style.space(20)
             horizontalAlignment: Text.AlignHCenter
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.alignment: Qt.AlignVCenter
           }
 
           Text {
@@ -1062,19 +1888,19 @@ Panel {
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.body
             font.bold: true
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.alignment: Qt.AlignVCenter
           }
 
           Text {
-            visible: card.display.model || card.display.make
             textFormat: Text.PlainText
-            text: card.display.model || card.display.make || ""
+            text: Model.cardIdentity(card.display)
             color: Qt.darker(root.bar.foreground, 1.3)
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             elide: Text.ElideRight
-            width: Math.min(Style.space(100), implicitWidth)
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.fillWidth: true
+            Layout.minimumWidth: Style.space(54)
+            Layout.alignment: Qt.AlignVCenter
           }
 
           Text {
@@ -1085,16 +1911,42 @@ Panel {
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.alignment: Qt.AlignVCenter
+          }
+
+          Button {
+            visible: card.display.enabled
+            text: "←"
+            bordered: true
+            fontSize: Style.font.caption
+            horizontalPadding: Style.spacing.xs
+            tooltipText: "Move " + card.display.name + " left"
+            enabled: card.cardIndex > 0
+            opacity: enabled ? 1 : 0.4
+            Layout.alignment: Qt.AlignVCenter
+            onClicked: root.moveDraftDisplay(card.display.name, -1)
+          }
+
+          Button {
+            visible: card.display.enabled
+            text: "→"
+            bordered: true
+            fontSize: Style.font.caption
+            horizontalPadding: Style.spacing.xs
+            tooltipText: "Move " + card.display.name + " right"
+            enabled: card.cardIndex < root.enabledDraftCount - 1
+            opacity: enabled ? 1 : 0.4
+            Layout.alignment: Qt.AlignVCenter
+            onClicked: root.moveDraftDisplay(card.display.name, 1)
           }
 
           Rectangle {
             visible: card.display.focused
-            radius: Style.radius.sm
+            radius: Math.max(2, Style.cornerRadius / 2)
             color: Color.accent
             implicitWidth: focusedBadgeText.implicitWidth + Style.space(8)
             implicitHeight: focusedBadgeText.implicitHeight + Style.space(2)
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.alignment: Qt.AlignVCenter
 
             Text {
               id: focusedBadgeText
@@ -1107,46 +1959,31 @@ Panel {
               font.bold: true
             }
           }
-        }
-
-        Row {
-          id: headerControls
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(6)
 
           Button {
+            id: cardResetBtn
+            visible: card.display.enabled
             bordered: true
-            active: card.display.enabled
-            hasCursor: card.isCardFocused && card.currentSubRow === "header" && root.cardSubItem === 1
-            iconText: card.display.enabled ? "󰄬" : ""
-            text: card.display.enabled ? "" : "Off"
             fontSize: Style.font.caption
-            horizontalPadding: Style.space(6)
-            verticalPadding: Style.space(2)
-            tooltipText: card.display.enabled
-              ? (card.canToggle ? "Disable display" : "Cannot disable only active display")
-              : "Enable display"
-            opacity: (card.display.enabled && !card.canToggle) ? 0.4 : 1.0
-            onClicked: if (card.canToggle) root.toggleDisplay(card.display.name, card.display.enabled)
-            onHovered: function(h) {
-              if (h && !root.reflowingText) {
-                root.cursorActive = true
-                root.focusSection = "card_" + card.display.name
-                root.cardSubRow = 0
-                root.cardSubItem = 1
-              }
-            }
-          }
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            horizontalPadding: Style.spacing.xs
+            verticalPadding: Style.spacing.controlPaddingY
+            Layout.alignment: Qt.AlignVCenter
 
-          Text {
-            text: card.isExpanded ? "󰅀" : "󰅂"
-            color: Qt.darker(root.bar.foreground, 1.4)
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.body
-            anchors.verticalCenter: parent.verticalCenter
+            iconSpinning: card.isResetting
+            iconText: card.isResetting ? "󰑐" : (card.cardResetInfo && card.cardResetInfo.status === "success" ? "󰄬" : (card.cardResetInfo && card.cardResetInfo.status === "error" ? "󰅚" : ""))
+            text: {
+              if (card.isResetting) return "Retraining…"
+              if (card.cardResetInfo && card.cardResetInfo.status === "success") return "Retrained"
+              if (card.cardResetInfo && card.cardResetInfo.status === "error") return "Failed"
+              return "Reset"
+            }
+            tooltipText: card.resetMsg !== "" ? card.resetMsg : "Retrain display link"
+            onClicked: root.resetDisplay(card.display.name)
           }
         }
+
       }
 
       // Facts row
@@ -1167,9 +2004,148 @@ Panel {
         foreground: root.bar.foreground
       }
 
-      // Brightness slider (only if controllable)
+      // Resolution and orientation pickers
+      Row {
+        visible: card.isExpanded && card.display.enabled && card.display.availableModes && card.display.availableModes.length > 0
+        width: parent.width
+        spacing: Style.space(8)
+
+        Column {
+          width: (parent.width - parent.spacing) / 2
+          spacing: Style.space(4)
+
+          PanelSectionHeader {
+            text: "RESOLUTION"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+          }
+
+          Dropdown {
+            id: resolutionDropdown
+            width: parent.width
+            showLabel: false
+            value: card.display.width + "x" + card.display.height
+            options: card.resolutionOptions
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            onPopupOpenChanged: root.cardDropdownOpen = popupOpen
+            onChanged: function(newValue) { root.setMonitorModeValue(card.display.name, newValue) }
+          }
+        }
+
+        Column {
+          width: (parent.width - parent.spacing) / 2
+          spacing: Style.space(4)
+
+          PanelSectionHeader {
+            text: "ORIENTATION"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+          }
+
+          Dropdown {
+            id: orientationDropdown
+            width: parent.width
+            showLabel: false
+            value: String(card.display.transform || 0)
+            options: root.orientationOptions
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            onPopupOpenChanged: root.cardDropdownOpen = popupOpen
+            onChanged: function(newValue) { root.setMonitorTransform(card.display.name, Number(newValue)) }
+          }
+        }
+      }
+
+      // Per-output scale
       Column {
-        visible: card.isExpanded && card.display.enabled && card.display.brightnessAvailable
+        visible: card.isExpanded && card.display.enabled
+        width: parent.width
+        spacing: Style.space(4)
+
+        Item {
+          width: parent.width
+          implicitHeight: Math.max(cardScaleHeader.implicitHeight, cardScaleValue.implicitHeight)
+
+          PanelSectionHeader {
+            id: cardScaleHeader
+            text: "SCALE"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            id: cardScaleValue
+            textFormat: Text.PlainText
+            text: {
+              var idx = cardScaleSlider.dragging ? Math.round(cardScaleSlider.liveValue) : card.activeScaleIdx
+              if (idx < 0 || idx >= card.availableScalesList.length) return root.effectiveScale(card.display.scale) + "×"
+              return root.effectiveScale(card.availableScalesList[idx]) + "×"
+            }
+            color: Qt.darker(root.bar.foreground, 1.4)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+
+        Text {
+          width: parent.width
+          textFormat: Text.PlainText
+          text: "Sizes everything on this display and changes its usable workspace."
+          color: Qt.darker(root.bar.foreground, 1.5)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.Wrap
+        }
+
+        CursorSurface {
+          id: cardScaleRow
+          width: parent.width
+          height: cardScaleSlider.implicitHeight + Style.spacing.controlGap
+          hasCursor: card.isCardFocused && card.currentSubRow === "scale"
+          onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(card)
+          foreground: root.bar.foreground
+          outline: true
+
+          PanelSlider {
+            id: cardScaleSlider
+            bar: root.bar
+            anchors.fill: parent
+            anchors.leftMargin: Style.space(4)
+            anchors.rightMargin: Style.space(4)
+            minimum: 0
+            maximum: Math.max(0, card.availableScalesList.length - 1)
+            step: 1
+            integer: true
+            tickCount: card.availableScalesList.length
+            value: Math.max(0, card.activeScaleIdx)
+            onMoved: function(v) { root.cardSubItem = Math.round(v) }
+            onReleased: function(v) {
+              var idx = Math.round(v)
+              if (idx >= 0 && idx < card.availableScalesList.length)
+                root.setMonitorScale(card.display.name, card.availableScalesList[idx])
+            }
+          }
+
+          HoverHandler {
+            onHoveredChanged: if (hovered && !root.reflowingText) {
+              root.cursorActive = true
+              root.focusSection = "card_" + card.display.name
+              root.cardSubRow = card.subRows.indexOf("scale")
+              root.cardSubItem = Math.max(0, card.activeScaleIdx)
+            }
+          }
+        }
+      }
+
+      // Brightness follows Scale so the two per-display sliders stay together.
+      Column {
+        visible: card.isExpanded && card.display.enabled
         width: parent.width
         spacing: Style.space(4)
 
@@ -1182,6 +2158,7 @@ Panel {
             text: "BRIGHTNESS"
             foreground: root.bar.foreground
             fontFamily: root.bar.fontFamily
+            opacity: card.display.brightnessAvailable ? 1 : 0.45
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
           }
@@ -1189,8 +2166,11 @@ Panel {
           Text {
             id: cardBrightnessVal
             textFormat: Text.PlainText
-            text: (cardBrightnessSlider.dragging ? Math.round(cardBrightnessSlider.liveValue) : (card.display.brightness || 0)) + "%"
+            text: card.display.brightnessAvailable
+              ? ((cardBrightnessSlider.dragging ? Math.round(cardBrightnessSlider.liveValue) : (card.display.brightness || 0)) + "%")
+              : "Unavailable"
             color: Qt.darker(root.bar.foreground, 1.4)
+            opacity: card.display.brightnessAvailable ? 1 : 0.55
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -1203,7 +2183,9 @@ Panel {
           id: cardBrightnessRow
           width: parent.width
           height: cardBrightnessSlider.implicitHeight + Style.spacing.controlGap
-          hasCursor: card.isCardFocused && card.currentSubRow === "brightness"
+          enabled: card.display.brightnessAvailable
+          opacity: enabled ? 1 : 0.32
+          hasCursor: enabled && card.isCardFocused && card.currentSubRow === "brightness"
           onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(card)
           foreground: root.bar.foreground
           outline: true
@@ -1218,6 +2200,7 @@ Panel {
             maximum: 100
             step: 1
             integer: true
+            enabled: card.display.brightnessAvailable
             value: card.display.brightness !== undefined ? card.display.brightness : 50
             onMoved: function(v) { root.previewMonitorBrightness(card.display.name, v) }
             onReleased: function(v) { root.setMonitorBrightness(card.display.name, Math.round(v)) }
@@ -1232,59 +2215,16 @@ Panel {
             }
           }
         }
-      }
 
-      // Scale presets
-      Column {
-        visible: card.isExpanded && card.display.enabled
-        width: parent.width
-        spacing: Style.space(4)
-
-        PanelSectionHeader {
-          text: "SCALE"
-          foreground: root.bar.foreground
-          fontFamily: root.bar.fontFamily
-        }
-
-        Grid {
-          id: cardScaleGrid
+        Text {
+          visible: !card.display.brightnessAvailable
           width: parent.width
-          columns: card.availableScalesList.length
-          spacing: Style.spacing.xs
-
-          readonly property real cellWidth: card.availableScalesList.length > 0
-            ? (width - spacing * (columns - 1)) / columns
-            : 0
-
-          Repeater {
-            model: card.availableScalesList
-
-            Button {
-              required property string modelData
-              required property int index
-
-              width: cardScaleGrid.cellWidth
-              text: root.effectiveScale(modelData) + "x"
-              fontSize: Style.font.caption
-              foreground: root.bar.foreground
-              fontFamily: root.bar.fontFamily
-              horizontalPadding: Style.spacing.xs
-              verticalPadding: Style.spacing.controlPaddingY
-              bordered: true
-              active: card.activeScaleIdx === index
-              hasCursor: card.isCardFocused && card.currentSubRow === "scale" && root.cardSubItem === index
-
-              onClicked: root.setMonitorScale(card.display.name, modelData)
-              onHovered: function(h) {
-                if (h && !root.reflowingText) {
-                  root.cursorActive = true
-                  root.focusSection = "card_" + card.display.name
-                  root.cardSubRow = card.subRows.indexOf("scale")
-                  root.cardSubItem = index
-                }
-              }
-            }
-          }
+          textFormat: Text.PlainText
+          text: "Brightness control is not available for this monitor."
+          color: Qt.darker(root.bar.foreground, 1.5)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.Wrap
         }
       }
 
@@ -1336,35 +2276,46 @@ Panel {
         }
       }
 
-      // Action row: DPMS and Reset
-      Row {
+      // DPMS is an immediate, stateful control. Reset lives in the card header.
+      Column {
         visible: card.isExpanded && card.display.enabled
         width: parent.width
-        spacing: Style.space(8)
+        spacing: Style.space(4)
 
-        // DPMS control
-        Item {
-          implicitWidth: dpmsBtn.implicitWidth
-          implicitHeight: dpmsBtn.implicitHeight
+        RowLayout {
+          width: parent.width
+          spacing: Style.space(6)
 
-          Button {
-            id: dpmsBtn
-            visible: root.dpmsSafetyMonitor !== card.display.name
-            bordered: true
-            fontSize: Style.font.caption
+          PanelSectionHeader {
+            text: "DPMS"
             foreground: root.bar.foreground
             fontFamily: root.bar.fontFamily
-            iconText: card.display.dpmsStatus ? "󰶐" : "󰶑"
-            text: card.display.dpmsStatus ? "DPMS Off" : "DPMS On"
-            hasCursor: card.isCardFocused && card.currentSubRow === "actions" && root.cardSubItem === 0
-            tooltipText: card.display.dpmsStatus ? "Turn display off with 10s auto-on safety" : "Turn display on"
+          }
 
-            onClicked: {
-              if (card.display.dpmsStatus) {
-                root.setDpmsOffWithSafety(card.display.name)
-              } else {
-                root.setDpmsOn(card.display.name)
-              }
+          Item {
+            Layout.fillWidth: true
+          }
+
+          Text {
+            text: card.display.dpmsStatus ? "On" : "Off"
+            color: card.display.dpmsStatus ? Color.accent : Qt.darker(root.bar.foreground, 1.4)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            Layout.alignment: Qt.AlignVCenter
+          }
+
+          ToggleSwitch {
+            id: dpmsToggle
+            checked: card.display.dpmsStatus
+            busy: actionProc.running
+            hasCursor: card.isCardFocused && card.currentSubRow === "actions"
+            foreground: root.bar.foreground
+            accent: Color.accent
+            Layout.alignment: Qt.AlignVCenter
+            onToggled: {
+              if (card.display.dpmsStatus) root.setDpmsOffWithSafety(card.display.name)
+              else root.setDpmsOn(card.display.name)
             }
             onHovered: function(h) {
               if (h && !root.reflowingText) {
@@ -1375,64 +2326,26 @@ Panel {
               }
             }
           }
-
-          Row {
-            visible: root.dpmsSafetyMonitor === card.display.name
-            spacing: Style.space(4)
-
-            Button {
-              bordered: true
-              fontSize: Style.font.caption
-              foreground: Color.accent
-              text: "Restore (" + root.dpmsCountdown + "s)"
-              hasCursor: card.isCardFocused && card.currentSubRow === "actions" && root.cardSubItem === 0
-              onClicked: root.restoreDpms()
-            }
-
-            Button {
-              bordered: true
-              fontSize: Style.font.caption
-              text: "Keep Off"
-              onClicked: root.confirmDpmsOff()
-            }
-          }
         }
 
-        Item {
-          Layout.fillWidth: true
-          width: Style.space(4)
-        }
+        Row {
+          visible: root.dpmsSafetyMonitor === card.display.name
+          spacing: Style.space(4)
+          anchors.horizontalCenter: parent.horizontalCenter
 
-        // Reset button
-        Button {
-          id: cardResetBtn
-          bordered: true
-          fontSize: Style.font.caption
-          foreground: root.bar.foreground
-          fontFamily: root.bar.fontFamily
-          horizontalPadding: Style.spacing.xs
-          verticalPadding: Style.spacing.controlPaddingY
-          hasCursor: card.isCardFocused && card.currentSubRow === "actions" && root.cardSubItem === 1
-          onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(card)
-
-          iconSpinning: card.isResetting
-          iconText: card.isResetting ? "󰑐" : (card.cardResetInfo && card.cardResetInfo.status === "success" ? "󰄬" : (card.cardResetInfo && card.cardResetInfo.status === "error" ? "󰅚" : ""))
-          text: {
-            if (card.isResetting) return "Retraining…"
-            if (card.cardResetInfo && card.cardResetInfo.status === "success") return "Retrained"
-            if (card.cardResetInfo && card.cardResetInfo.status === "error") return "Failed"
-            return "Reset"
+          Button {
+            bordered: true
+            fontSize: Style.font.caption
+            foreground: Color.accent
+            text: "Restore (" + root.dpmsCountdown + "s)"
+            onClicked: root.restoreDpms()
           }
-          tooltipText: card.resetMsg !== "" ? card.resetMsg : "Retrain display link"
 
-          onClicked: root.resetDisplay(card.display.name)
-          onHovered: function(h) {
-            if (h && !root.reflowingText) {
-              root.cursorActive = true
-              root.focusSection = "card_" + card.display.name
-              root.cardSubRow = card.subRows.indexOf("actions")
-              root.cardSubItem = 1
-            }
+          Button {
+            bordered: true
+            fontSize: Style.font.caption
+            text: "Keep Off"
+            onClicked: root.confirmDpmsOff()
           }
         }
       }

@@ -1,6 +1,6 @@
 # Display & Monitor Manager (`fred.monitor`)
 
-Display information, per-display control, multi-monitor alignment, and link reset plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Hyprland + Quickshell).
+Display information, per-display control, saved layouts, and guarded link reset plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Hyprland + Quickshell). Current release: **v1.2.3**.
 
 ![fred.monitor Screenshot](assets/screenshot.png)
 
@@ -22,17 +22,18 @@ Display information, per-display control, multi-monitor alignment, and link rese
 
 ## Features
 
-- **Per-Display Cards**: Collapsed-by-default, highlighted-display-expanded cards showing rich hardware facts: resolution, refresh rate, logical scale, transform, DPMS, VRR, workspace, and physical size in inches.
+- **Per-Display Cards**: Side-by-side cards show connector, monitor identity, physical size, position, and live hardware facts.
 - **Per-Display Controls**:
-  - Individual DDC brightness sliders (cached, debounced; hidden when DDC is unavailable).
-  - Clean scale preset pills preserving output coordinates.
-  - Refresh-rate chips dynamically populated from supported modes at the current resolution.
-  - DPMS toggle with a 10-second auto-restore safety countdown.
+  - Individual DDC brightness sliders with guarded writes and explicit unavailable state.
+  - Resolution, orientation, scale, and position controls staged before Apply.
+  - DPMS On/Off toggle and per-display Identify overlays.
+- **Saved Layouts**: Named layouts, a first-use Default, and automatic Previous and Last saved recovery entries.
+- **Safe Apply**: A detached 15-second rollback guard; Keep persists the verified layout and Revert restores the prior one.
 - **Link Reset / Retrain**: Per-display link retraining (`fred-monitor-reset`) to recover from DP/HDMI jitter or panel sync faults.
 - **Stock Defect Fixes**:
   - Uses native Hyprland Lua syntax for display toggling (`hl.monitor({ output = ..., disabled = true/false })`).
   - Applies monitor scaling without clobbering existing physical offsets and monitor positions.
-- **Unified Keyboard Navigation**: `j`/`k` walks across card sub-rows and between cards; `h`/`l` adjusts sliders and steps through chips; `r`/`R` retrains link.
+- **Unified Keyboard Navigation**: Home opens a help sheet; shortcuts cover cards, controls, Identify, Reset, Apply, and close.
 - **Running Version Visibility**: Running version displayed on bar icon hover tooltip and in the popup panel footer.
 - **Hardened Process Execution**:
   - All process execution goes through a supervised `Launch.qml` component.
@@ -52,6 +53,19 @@ omarchy plugin add https://github.com/greenermoose/monitor-fred-tamlinux.git --e
 ```
 
 Because `fred.monitor` declares `clonedFrom: "omarchy.monitor"`, Omarchy automatically replaces the stock Display widget in place on the bar.
+
+To persist an applied layout, `~/.config/hypr/monitors.lua` must contain one
+`fred.monitor` managed block. Put the monitor rules you want this plugin to
+manage between these markers, keeping any unrelated configuration outside:
+
+```lua
+-- BEGIN fred.monitor managed displays
+-- Your current hl.monitor({ ... }) rules go here.
+-- END fred.monitor managed displays
+```
+
+Apply previews a layout temporarily; Keep only saves it when that block is
+present and writable. The helper refuses to replace an unmarked file.
 
 ---
 

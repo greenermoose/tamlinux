@@ -8,6 +8,14 @@ This plugin began life as a clone of the stock Omarchy display panel widget (`om
 - **Clone Date:** 2026-09-18
 - **Upstream License:** MIT
 
+`MonitorPanelWindow.qml` in v1.1.0 is adapted from Omarchy's
+`/usr/share/omarchy/shell/Ui/KeyboardPanel.qml`. It retains the owner-output
+layer-shell surface, focus prime, popout coordination, animation, local
+outside-click dismissal, and bar click forwarding, while intentionally
+omitting upstream's `Variants` block of transparent dismissal windows on
+other outputs. The adapted component remains covered by the upstream MIT
+notice below and the plugin's GPL-3.0-or-later distribution terms.
+
 ## Upstream Diff Recipe
 
 To compare this plugin's files against the upstream Omarchy distribution:

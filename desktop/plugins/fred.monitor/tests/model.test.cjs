@@ -103,16 +103,22 @@ test("parseState parses new JSON document correctly", () => {
   assert.equal(parsed.displays[2].brightnessAvailable, false);
 });
 
-test("formatFacts produces formatted facts row", () => {
+test("formatFacts omits settings repeated by card controls", () => {
   const parsed = Model.parseState(sampleStateJson);
   const factsDP2 = Model.formatFacts(parsed.displays[0]);
-  assert.ok(factsDP2.includes("1920×1080 @ 60.00 Hz"));
-  assert.ok(factsDP2.includes("scale 1.5 → 1280×720 logical"));
-  assert.ok(factsDP2.includes("transform 0"));
-  assert.ok(factsDP2.includes("DPMS on"));
+  assert.ok(!factsDP2.includes("1920×1080"));
+  assert.ok(!factsDP2.includes("60.00 Hz"));
+  assert.ok(!factsDP2.includes("scale"));
+  assert.ok(!factsDP2.includes("15.3″"));
+  assert.ok(!factsDP2.includes("DPMS"));
   assert.ok(factsDP2.includes("VRR off"));
   assert.ok(factsDP2.includes("workspace 1"));
-  assert.ok(factsDP2.includes('13.4"×7.5" (15.3" diag)'));
+});
+
+test("cardIdentity puts physical inches before the monitor model", () => {
+  const parsed = Model.parseState(sampleStateJson);
+  assert.equal(Model.cardIdentity(parsed.displays[0]), "15.3″ MSI MP161");
+  assert.equal(Model.cardIdentity(parsed.displays[1]), "27.2″ DELL S2725DSM");
 });
 
 test("positionLabel assigns Left, Center, Right accurately based on x coordinates", () => {
@@ -144,4 +150,42 @@ test("brightness clamping and names", () => {
   assert.equal(Model.brightnessName(25), "Lamp light");
   assert.equal(Model.brightnessName(15), "Candlelit");
   assert.equal(Model.brightnessName(5), "Night owl");
+});
+
+test("monitorCountLabel uses readable singular and plural headings", () => {
+  assert.equal(Model.monitorCountLabel(0), "No Monitors");
+  assert.equal(Model.monitorCountLabel(1), "One Monitor");
+  assert.equal(Model.monitorCountLabel(2), "Two Monitors");
+  assert.equal(Model.monitorCountLabel(3), "Three Monitors");
+  assert.equal(Model.monitorCountLabel(4), "4 Monitors");
+});
+
+test("formatHover describes the bar instance monitor", () => {
+  const parsed = Model.parseState(sampleStateJson);
+  const text = Model.formatHover(parsed.displays[1], parsed.displays, "1.2.0");
+  assert.equal(text.split("\n")[0], "Center Monitor");
+  assert.ok(text.includes("DP-1 · Dell Inc. DELL S2725DSM · 27.2″"));
+  assert.ok(text.includes("2560 × 1440 · 59.95 Hz · 1×"));
+  assert.ok(text.endsWith("\n\nfred.monitor v1.2.0"));
+});
+
+test("sortDisplays and alignDisplays use physical order and logical geometry", () => {
+  const parsed = Model.parseState(sampleStateJson);
+  const sorted = Model.sortDisplays([parsed.displays[2], parsed.displays[0], parsed.displays[1]]);
+  assert.deepEqual(sorted.map(d => d.name), ["DP-2", "DP-1", "HDMI-A-1"]);
+
+  const bottom = Model.alignDisplays(sorted, "bottom");
+  assert.deepEqual(bottom.map(d => [d.name, d.x, d.y]), [
+    ["DP-2", 0, 720],
+    ["DP-1", 1280, 0],
+    ["HDMI-A-1", 3840, 360]
+  ]);
+});
+
+test("moveDisplay swaps columns before recalculating geometry", () => {
+  const parsed = Model.parseState(sampleStateJson);
+  const moved = Model.moveDisplay(parsed.displays, "DP-1", -1, "bottom");
+  assert.deepEqual(Model.sortDisplays(moved).map(d => d.name), ["DP-1", "DP-2", "HDMI-A-1"]);
+  assert.equal(moved.find(d => d.name === "DP-1").x, 0);
+  assert.equal(moved.find(d => d.name === "DP-2").x, 2560);
 });

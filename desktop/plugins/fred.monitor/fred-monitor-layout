@@ -1,0 +1,691 @@
+#!/usr/bin/env python3
+"""Guarded display-layout preview, rollback, and persistence for fred.monitor."""
+
+import fcntl
+import json
+import os
+import re
+import secrets
+import stat
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+MAX_INPUT = 64 * 1024
+MAX_OUTPUT = 1024 * 1024
+MAX_MONITORS = 16
+MAX_BACKUPS = 5
+MAX_PROFILES = 20
+MAX_PROFILE_NAME = 40
+STATE_FILE = "layout-transaction.json"
+LOCK_FILE = "layout-transaction.lock"
+PROFILES_FILE = "profiles.json"
+START_MARKER = "-- BEGIN fred.monitor managed displays"
+END_MARKER = "-- END fred.monitor managed displays"
+NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$")
+
+
+class LayoutError(Exception):
+    pass
+
+
+def emit(ok, **fields):
+    fields["ok"] = ok
+    print(json.dumps(fields, separators=(",", ":")))
+
+
+def finite_number(value, label, minimum, maximum):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise LayoutError(f"invalid {label}")
+    if not minimum <= number <= maximum:
+        raise LayoutError(f"{label} out of range")
+    return number
+
+
+def validate_layout(value):
+    if not isinstance(value, list) or not 1 <= len(value) <= MAX_MONITORS:
+        raise LayoutError("layout must contain 1 to 16 displays")
+    result = []
+    names = set()
+    enabled_count = 0
+    for raw in value:
+        if not isinstance(raw, dict):
+            raise LayoutError("display entry must be an object")
+        name = raw.get("name", "")
+        if not isinstance(name, str) or not NAME_RE.fullmatch(name) or name in names:
+            raise LayoutError("invalid or duplicate output name")
+        names.add(name)
+        enabled = bool(raw.get("enabled", True))
+        if enabled:
+            enabled_count += 1
+        width = int(finite_number(raw.get("width", 0), "width", 320 if enabled else 0, 16384))
+        height = int(finite_number(raw.get("height", 0), "height", 200 if enabled else 0, 16384))
+        refresh = finite_number(raw.get("refreshRate", 60), "refresh rate", 20 if enabled else 0, 1000)
+        x = int(finite_number(raw.get("x", 0), "x", -32768, 32768))
+        y = int(finite_number(raw.get("y", 0), "y", -32768, 32768))
+        scale = finite_number(raw.get("scale", 1), "scale", 0.5, 4)
+        transform = int(finite_number(raw.get("transform", 0), "transform", 0, 7))
+        result.append({
+            "name": name,
+            "enabled": enabled,
+            "width": width,
+            "height": height,
+            "refreshRate": refresh,
+            "x": x,
+            "y": y,
+            "scale": scale,
+            "transform": transform,
+        })
+    if enabled_count == 0:
+        raise LayoutError("at least one display must remain enabled")
+    return result
+
+
+def number_text(value, precision=3):
+    text = f"{float(value):.{precision}f}".rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def lua_rule(display):
+    name = display["name"]
+    if not display["enabled"]:
+        return f'hl.monitor({{ output = "{name}", disabled = true }})'
+    mode = f'{display["width"]}x{display["height"]}@{number_text(display["refreshRate"])}'
+    position = f'{display["x"]}x{display["y"]}'
+    return (
+        f'hl.monitor({{ output = "{name}", mode = "{mode}", '
+        f'position = "{position}", scale = {number_text(display["scale"])}, '
+        f'transform = {display["transform"]}, disabled = false }})'
+    )
+
+
+def managed_block(layout):
+    return "\n".join([START_MARKER] + [lua_rule(display) for display in layout] + [END_MARKER])
+
+
+def replace_managed_block(text, layout):
+    if text.count(START_MARKER) != 1 or text.count(END_MARKER) != 1:
+        raise LayoutError("monitors.lua must contain exactly one fred.monitor managed block")
+    start = text.index(START_MARKER)
+    end = text.index(END_MARKER, start) + len(END_MARKER)
+    return text[:start] + managed_block(layout) + text[end:]
+
+
+def layouts_match(expected, actual):
+    actual_by_name = {item["name"]: item for item in actual}
+    for wanted in expected:
+        found = actual_by_name.get(wanted["name"])
+        if not found or bool(found["enabled"]) != bool(wanted["enabled"]):
+            return False
+        if not wanted["enabled"]:
+            continue
+        exact = ["width", "height", "x", "y", "transform"]
+        if any(int(found[key]) != int(wanted[key]) for key in exact):
+            return False
+        if abs(float(found["scale"]) - float(wanted["scale"])) > 0.01:
+            return False
+        if abs(float(found["refreshRate"]) - float(wanted["refreshRate"])) > 0.2:
+            return False
+    return True
+
+
+def command(argv, timeout=5):
+    result = subprocess.run(
+        argv,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+    )
+    if len(result.stdout) > MAX_OUTPUT or len(result.stderr) > MAX_OUTPUT:
+        raise LayoutError("command output too large")
+    return result.stdout.decode("utf-8", errors="strict")
+
+
+def capture_layout():
+    try:
+        monitors = json.loads(command(["/usr/bin/hyprctl", "monitors", "all", "-j"], 4))
+    except (subprocess.SubprocessError, OSError, ValueError, json.JSONDecodeError) as error:
+        raise LayoutError(f"could not read current layout: {error}")
+    layout = []
+    for monitor in monitors:
+        scale = float(monitor.get("scale", 1)) or 1
+        layout.append({
+            "name": monitor.get("name", ""),
+            "enabled": not bool(monitor.get("disabled", False)),
+            "width": monitor.get("width", 1920),
+            "height": monitor.get("height", 1080),
+            "refreshRate": monitor.get("refreshRate", 60),
+            "x": monitor.get("x", 0),
+            "y": monitor.get("y", 0),
+            "scale": scale,
+            "transform": monitor.get("transform", 0),
+        })
+    return validate_layout(layout)
+
+
+def apply_layout(layout):
+    # Establish every enabled output before disabling any old output, so the
+    # compositor always retains a visible confirmation surface.
+    ordered = [item for item in layout if item["enabled"]] + [item for item in layout if not item["enabled"]]
+    for display in ordered:
+        try:
+            command(["/usr/bin/hyprctl", "eval", lua_rule(display)], 5)
+        except (subprocess.SubprocessError, OSError, UnicodeError) as error:
+            raise LayoutError(f'could not apply {display["name"]}: {error}')
+
+
+def runtime_directory():
+    base = os.environ.get("XDG_RUNTIME_DIR", "")
+    if not base or not os.path.isabs(base):
+        raise LayoutError("XDG_RUNTIME_DIR is unavailable")
+    path = os.path.join(base, "fred.monitor")
+    try:
+        os.mkdir(path, 0o700)
+    except FileExistsError:
+        pass
+    info = os.lstat(path)
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise LayoutError("runtime path is not a directory")
+    if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+        raise LayoutError("runtime directory ownership or mode is unsafe")
+    return path
+
+
+def open_runtime(path):
+    return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+
+
+def read_json_at(dir_fd, filename):
+    fd = None
+    try:
+        fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) & 0o077
+            or info.st_size > MAX_INPUT
+        ):
+            raise LayoutError("unsafe transaction state")
+        with os.fdopen(fd, "r", encoding="utf-8") as handle:
+            fd = None
+            value = json.load(handle)
+        return value if isinstance(value, dict) else None
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise LayoutError(f"could not read transaction state: {error}")
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
+def write_json_at(dir_fd, filename, value):
+    temporary = f".{filename}.{secrets.token_hex(8)}.tmp"
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            json.dump(value, handle, separators=(",", ":"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.rename(temporary, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+        os.fsync(dir_fd)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            os.unlink(temporary, dir_fd=dir_fd)
+        except FileNotFoundError:
+            pass
+
+
+def clear_state(dir_fd):
+    try:
+        os.unlink(STATE_FILE, dir_fd=dir_fd)
+        os.fsync(dir_fd)
+    except FileNotFoundError:
+        pass
+
+
+def persist_layout(layout):
+    config_home = os.environ.get("XDG_CONFIG_HOME", "")
+    if not config_home:
+        home = os.environ.get("HOME", "")
+        if not home or not os.path.isabs(home):
+            raise LayoutError("configuration home is unavailable")
+        config_home = os.path.join(home, ".config")
+    requested = Path(config_home) / "hypr" / "monitors.lua"
+    try:
+        target = requested.resolve(strict=True)
+        directory = target.parent
+        dir_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        file_fd = os.open(target.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+        info = os.fstat(file_fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_size > MAX_OUTPUT:
+            raise LayoutError("monitors.lua is not a safe regular file")
+        with os.fdopen(file_fd, "r", encoding="utf-8") as handle:
+            current = handle.read(MAX_OUTPUT + 1)
+        updated = replace_managed_block(current, layout)
+        previous_bytes = current.encode("utf-8")
+        backup = create_backup(previous_bytes)
+        temporary = f".monitors.lua.{secrets.token_hex(8)}.tmp"
+        out_fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, stat.S_IMODE(info.st_mode), dir_fd=dir_fd)
+        with os.fdopen(out_fd, "w", encoding="utf-8") as handle:
+            handle.write(updated)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.rename(temporary, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+        os.fsync(dir_fd)
+        os.close(dir_fd)
+        return target, previous_bytes, stat.S_IMODE(info.st_mode), backup
+    except LayoutError:
+        raise
+    except (OSError, UnicodeError) as error:
+        raise LayoutError(f"could not persist monitors.lua: {error}")
+
+
+def private_state_directory():
+    base = os.environ.get("XDG_STATE_HOME", "")
+    if not base:
+        home = os.environ.get("HOME", "")
+        if not home or not os.path.isabs(home):
+            raise LayoutError("state home is unavailable")
+        base = os.path.join(home, ".local", "state")
+    if not os.path.isabs(base):
+        raise LayoutError("state home must be absolute")
+    plugin_dir = os.path.join(base, "fred.monitor")
+    backup_dir = os.path.join(plugin_dir, "backups")
+    try:
+        os.makedirs(base, mode=0o700, exist_ok=True)
+        base_info = os.lstat(base)
+        if stat.S_ISLNK(base_info.st_mode) or not stat.S_ISDIR(base_info.st_mode) or base_info.st_uid != os.getuid():
+            raise LayoutError("state home ownership or type is unsafe")
+        for path in (plugin_dir, backup_dir):
+            try:
+                os.mkdir(path, 0o700)
+            except FileExistsError:
+                pass
+            info = os.lstat(path)
+            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+                raise LayoutError("backup path is not a directory")
+            if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+                raise LayoutError("backup directory ownership or mode is unsafe")
+        return backup_dir
+    except OSError as error:
+        raise LayoutError(f"could not prepare backup directory: {error}")
+
+
+def open_profile_directory():
+    plugin_dir = os.path.dirname(private_state_directory())
+    return os.open(plugin_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+
+
+def empty_profiles():
+    return {"schemaVersion": 1, "automatic": {}, "user": []}
+
+
+def read_profiles_at(dir_fd):
+    document = read_json_at(dir_fd, PROFILES_FILE)
+    if document is None:
+        return empty_profiles()
+    if document.get("schemaVersion") != 1:
+        raise LayoutError("unsupported saved-layout format")
+    automatic = document.get("automatic", {})
+    users = document.get("user", [])
+    if not isinstance(automatic, dict) or not isinstance(users, list) or len(users) > MAX_PROFILES:
+        raise LayoutError("saved-layout file is malformed")
+
+    cleaned = empty_profiles()
+    for key in ("previous", "lastSaved"):
+        if key in automatic:
+            cleaned["automatic"][key] = validate_layout(automatic[key])
+    for item in users:
+        if not isinstance(item, dict):
+            raise LayoutError("saved-layout entry is malformed")
+        name = validate_profile_name(item.get("name", ""))
+        cleaned["user"].append({
+            "name": name,
+            "savedAt": int(item.get("savedAt", 0)),
+            "layout": validate_layout(item.get("layout")),
+        })
+    return cleaned
+
+
+def validate_profile_name(value):
+    name = str(value).strip()
+    if len(name) > MAX_PROFILE_NAME or not PROFILE_NAME_RE.fullmatch(name):
+        raise LayoutError("layout name must use 1 to 40 letters, numbers, spaces, dots, dashes, or underscores")
+    return name
+
+
+def profile_listing(store):
+    entries = []
+    automatic = store["automatic"]
+    if "previous" in automatic:
+        entries.append({"id": "automatic:previous", "name": "Previous layout", "automatic": True})
+    if "lastSaved" in automatic:
+        entries.append({"id": "automatic:last-saved", "name": "Last saved layout", "automatic": True})
+    for item in sorted(store["user"], key=lambda value: value["name"].casefold()):
+        entries.append({"id": "user:" + item["name"], "name": item["name"], "automatic": False})
+    return entries
+
+
+def ensure_default_profile(dir_fd, store):
+    if store["user"]:
+        return store
+    store["user"].append({
+        "name": "Default",
+        "savedAt": int(time.time()),
+        "layout": capture_layout(),
+    })
+    write_json_at(dir_fd, PROFILES_FILE, store)
+    return store
+
+
+def save_profile(name):
+    clean_name = validate_profile_name(name)
+    layout = capture_layout()
+    dir_fd = open_profile_directory()
+    try:
+        store = ensure_default_profile(dir_fd, read_profiles_at(dir_fd))
+        matching = next((item for item in store["user"] if item["name"].casefold() == clean_name.casefold()), None)
+        entry = {"name": clean_name, "savedAt": int(time.time()), "layout": layout}
+        if matching is None:
+            if len(store["user"]) >= MAX_PROFILES:
+                raise LayoutError(f"at most {MAX_PROFILES} named layouts may be saved")
+            store["user"].append(entry)
+        else:
+            raise LayoutError(f'a layout named "{matching["name"]}" already exists; delete it first')
+        write_json_at(dir_fd, PROFILES_FILE, store)
+        emit(True, action="profile-save", profile={"id": "user:" + clean_name, "name": clean_name, "automatic": False})
+    finally:
+        os.close(dir_fd)
+
+
+def list_profiles():
+    dir_fd = open_profile_directory()
+    try:
+        store = ensure_default_profile(dir_fd, read_profiles_at(dir_fd))
+        emit(True, profiles=profile_listing(store))
+    finally:
+        os.close(dir_fd)
+
+
+def find_profile_layout(store, profile_id):
+    if profile_id == "automatic:previous":
+        layout = store["automatic"].get("previous")
+    elif profile_id == "automatic:last-saved":
+        layout = store["automatic"].get("lastSaved")
+    elif profile_id.startswith("user:"):
+        name = profile_id[5:]
+        item = next((entry for entry in store["user"] if entry["name"] == name), None)
+        layout = item["layout"] if item else None
+    else:
+        layout = None
+    if layout is None:
+        raise LayoutError("saved layout not found")
+    return validate_layout(layout)
+
+
+def load_profile(profile_id):
+    dir_fd = open_profile_directory()
+    try:
+        emit(True, action="profile-load", layout=find_profile_layout(read_profiles_at(dir_fd), profile_id))
+    finally:
+        os.close(dir_fd)
+
+
+def delete_profile(profile_id):
+    if not profile_id.startswith("user:"):
+        raise LayoutError("automatic recovery layouts cannot be deleted")
+    name = profile_id[5:]
+    dir_fd = open_profile_directory()
+    try:
+        store = ensure_default_profile(dir_fd, read_profiles_at(dir_fd))
+        if len(profile_listing(store)) <= 1:
+            raise LayoutError("at least one saved layout must remain")
+        kept = [item for item in store["user"] if item["name"] != name]
+        if len(kept) == len(store["user"]):
+            raise LayoutError("saved layout not found")
+        store["user"] = kept
+        write_json_at(dir_fd, PROFILES_FILE, store)
+        emit(True, action="profile-delete")
+    finally:
+        os.close(dir_fd)
+
+
+def remember_automatic_profiles(before, saved):
+    dir_fd = open_profile_directory()
+    try:
+        store = read_profiles_at(dir_fd)
+        store["automatic"]["previous"] = validate_layout(before)
+        store["automatic"]["lastSaved"] = validate_layout(saved)
+        write_json_at(dir_fd, PROFILES_FILE, store)
+    finally:
+        os.close(dir_fd)
+
+
+def create_backup(data):
+    directory = private_state_directory()
+    dir_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    filename = f"monitors-{int(time.time())}-{secrets.token_hex(5)}.lua"
+    fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    names = sorted(name for name in os.listdir(directory) if re.fullmatch(r"monitors-[0-9]+-[0-9a-f]+\.lua", name))
+    for old in names[:-MAX_BACKUPS]:
+        try:
+            os.unlink(old, dir_fd=dir_fd)
+        except FileNotFoundError:
+            pass
+    os.fsync(dir_fd)
+    os.close(dir_fd)
+    return os.path.join(directory, filename)
+
+
+def atomic_restore(target, data, mode):
+    directory = target.parent
+    dir_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temporary = f".monitors.lua.restore.{secrets.token_hex(8)}.tmp"
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode, dir_fd=dir_fd)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.rename(temporary, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+    os.fsync(dir_fd)
+    os.close(dir_fd)
+
+
+def reload_and_verify(layout):
+    command(["/usr/bin/hyprctl", "reload"], 8)
+    errors = command(["/usr/bin/hyprctl", "configerrors"], 5).strip()
+    if errors and "no errors" not in errors.lower():
+        raise LayoutError(f"Hyprland rejected the saved config: {errors[:500]}")
+    time.sleep(0.25)
+    actual = capture_layout()
+    if not layouts_match(layout, actual):
+        raise LayoutError("live layout did not match the saved layout after reload")
+
+
+def read_stdin_layout():
+    data = sys.stdin.buffer.read(MAX_INPUT + 1)
+    if len(data) > MAX_INPUT:
+        raise LayoutError("layout input is too large")
+    try:
+        value = json.loads(data.decode("utf-8", errors="strict"))
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise LayoutError(f"invalid layout JSON: {error}")
+    return validate_layout(value)
+
+
+def spawn_guard(token):
+    allowed = ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "XDG_CONFIG_HOME"]
+    env = {key: os.environ[key] for key in allowed if os.environ.get(key)}
+    env["PATH"] = "/usr/share/omarchy/bin:/usr/bin"
+    subprocess.Popen(
+        [sys.executable, os.path.realpath(__file__), "_guard", token],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+        env=env,
+    )
+
+
+def with_transaction(callback):
+    path = runtime_directory()
+    dir_fd = open_runtime(path)
+    lock_fd = os.open(LOCK_FILE, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        return callback(dir_fd)
+    finally:
+        os.close(lock_fd)
+        os.close(dir_fd)
+
+
+def preview():
+    proposed = read_stdin_layout()
+
+    def operation(dir_fd):
+        existing = read_json_at(dir_fd, STATE_FILE)
+        if existing:
+            apply_layout(validate_layout(existing.get("before")))
+            clear_state(dir_fd)
+        before = capture_layout()
+        token = secrets.token_urlsafe(18)
+        state = {
+            "token": token,
+            "before": before,
+            "proposed": proposed,
+            "deadline": time.time() + 15,
+        }
+        write_json_at(dir_fd, STATE_FILE, state)
+        spawn_guard(token)
+        try:
+            apply_layout(proposed)
+        except LayoutError:
+            apply_layout(before)
+            clear_state(dir_fd)
+            raise
+        emit(True, action="preview", token=token, seconds=15)
+
+    with_transaction(operation)
+
+
+def keep(token):
+    def operation(dir_fd):
+        state = read_json_at(dir_fd, STATE_FILE)
+        if not state or not secrets.compare_digest(str(state.get("token", "")), token):
+            raise LayoutError("preview transaction not found")
+        proposed = validate_layout(state.get("proposed"))
+        target, previous_bytes, previous_mode, backup = persist_layout(proposed)
+        try:
+            reload_and_verify(proposed)
+        except (LayoutError, subprocess.SubprocessError, OSError) as error:
+            atomic_restore(target, previous_bytes, previous_mode)
+            try:
+                command(["/usr/bin/hyprctl", "reload"], 8)
+                apply_layout(validate_layout(state.get("before")))
+            except Exception:
+                pass
+            raise LayoutError(f"save verification failed; restored {backup}: {error}")
+        profile_warning = ""
+        try:
+            remember_automatic_profiles(state.get("before"), proposed)
+        except (LayoutError, OSError, ValueError) as error:
+            profile_warning = str(error)
+        clear_state(dir_fd)
+        emit(True, action="keep", backup=backup, profileWarning=profile_warning)
+
+    with_transaction(operation)
+
+
+def revert(token, quiet=False):
+    def operation(dir_fd):
+        state = read_json_at(dir_fd, STATE_FILE)
+        if not state or not secrets.compare_digest(str(state.get("token", "")), token):
+            if not quiet:
+                raise LayoutError("preview transaction not found")
+            return
+        apply_layout(validate_layout(state.get("before")))
+        clear_state(dir_fd)
+        if not quiet:
+            emit(True, action="revert")
+
+    with_transaction(operation)
+
+
+def status():
+    def operation(dir_fd):
+        state = read_json_at(dir_fd, STATE_FILE)
+        if not state:
+            emit(True, pending=False)
+            return
+        emit(
+            True,
+            pending=True,
+            token=str(state.get("token", "")),
+            seconds=max(0, int(float(state.get("deadline", 0)) - time.time() + 0.999)),
+        )
+
+    with_transaction(operation)
+
+
+def guard(token):
+    def deadline(dir_fd):
+        state = read_json_at(dir_fd, STATE_FILE)
+        if not state or not secrets.compare_digest(str(state.get("token", "")), token):
+            return 0
+        return max(0, float(state.get("deadline", 0)) - time.time())
+
+    delay = with_transaction(deadline)
+    if delay:
+        time.sleep(delay)
+    revert(token, quiet=True)
+
+
+def main(argv):
+    if len(argv) < 2:
+        raise LayoutError("action required")
+    action = argv[1]
+    if action == "validate":
+        emit(True, layout=read_stdin_layout())
+    elif action == "preview" and len(argv) == 2:
+        preview()
+    elif action == "keep" and len(argv) == 3:
+        keep(argv[2])
+    elif action == "revert" and len(argv) == 3:
+        revert(argv[2])
+    elif action == "status" and len(argv) == 2:
+        status()
+    elif action == "profile-list" and len(argv) == 2:
+        list_profiles()
+    elif action == "profile-save" and len(argv) == 3:
+        save_profile(argv[2])
+    elif action == "profile-load" and len(argv) == 3:
+        load_profile(argv[2])
+    elif action == "profile-delete" and len(argv) == 3:
+        delete_profile(argv[2])
+    elif action == "_guard" and len(argv) == 3:
+        guard(argv[2])
+    else:
+        raise LayoutError("invalid action")
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv)
+    except LayoutError as error:
+        emit(False, error=str(error))
+        raise SystemExit(1)
