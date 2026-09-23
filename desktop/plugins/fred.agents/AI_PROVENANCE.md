@@ -27,6 +27,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 | **Collector rename** | `1.1.2` | Cursor `3.21.16` (`composer`) | Name-only `main` sync: collectors are `tam-agent-usage-*`. [Session record](docs/ai/2026-09-22-tam-agent-usage.md). |
 | **Tamlinux branding** | `1.1.2` | Cursor `3.21.16` (`composer`) | README tagline and `manifest.json` description say Tamlinux; `omarchy.agents` / `clonedFrom` stay. |
 | **First tagged release** | `v1.1.2` | Codex CLI `0.155.1` (`gpt-6-sol`) | Checked deployed and public runtime files, validated the plugin, dated the changelog, and prepared the GitHub release. No new runtime code was authored in this release step. [Session record](docs/ai/2026-09-23-first-release.md). |
+| **Antigravity live limits** | `1.2.0` | Antigravity (`Gemini 3.8 Flash High`) | Investigated past blocker (missing User-Agent header, stale file token vs active keyring). Built dual-path collector in `tam-agent-usage-antigravity`: direct HTTPS probe (<300ms) with `User-Agent: Antigravity` for quota summary and `Google AI Pro` tierLabel; CLI probe (`agy -p /usage --output-format json`) fallback for token refresh. Emits Gemini and Claude & GPT 5h and weekly limit rows. [Session record](docs/ai/2026-09-23-antigravity-live-limits.md). |
 
 ---
 

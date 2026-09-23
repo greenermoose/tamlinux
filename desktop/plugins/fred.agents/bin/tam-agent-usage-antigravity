@@ -4,17 +4,16 @@
 # omarchy:hidden=true
 """Collect Antigravity usage into one display-ready JSON record.
 
-Antigravity is prompt-only: there is no local token ledger and no rate-limit
-RPC, so this collector reports real prompt and session counts and none of the
-token fields. The agents panel only ever reads the JSON this prints.
+Prompt and session counts come from local CLI history and summaries; live plan
+usage and subscription tier come from Google's Cloud Code quota endpoints,
+authorized with the OAuth access token agy keeps in the system keyring
+(service=gemini, username=antigravity), read read-only. Nothing sensitive is
+printed or written: the token exists only inside the Authorization header,
+and the record and limits cache carry only percentages and reset times.
 
-Prompts come from ~/.gemini/antigravity-cli/history.jsonl, one row per CLI
-invocation: {display, timestamp(ms), workspace, conversationId?, type?}. A
-row whose type is "slash_command" (e.g. /usage, /exit) is a built-in command,
-not a prompt, so it is excluded. Session counts and their days come from
-conversation_summaries.db, one row per conversation: a conversation's day is
-last_user_input_time (fallback last_modified_time); a row whose timestamps
-are all absent still counts as a session, just with no day to bucket.
+When the keyring token expires, the collector falls back to invoking agy
+non-interactively (`agy --output-format json -p /usage`), which automatically
+refreshes credentials and updates the keyring.
 """
 
 import argparse
@@ -23,31 +22,28 @@ import fcntl
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 AGENT_ID = "antigravity"
 AGENT_NAME = "Antigravity"
-AUTH_HELP = ""
+AUTH_HELP = "Start agy or sign in to restore live usage."
+QUOTA_ENDPOINT = "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
+LOAD_CODE_ASSIST_ENDPOINT = "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
+PROBE_MIN_INTERVAL_SECONDS = 15
 
-# A scan this recent is only reused to dedup concurrent collector runs (the
-# update command backgrounds one per agent while the panel refreshes on its
-# own); every periodic widget refresh lands a real rescan, however low
-# refreshIntervalSec is set. --limits-only promises only fresh limits, so it
-# may reuse a scan for up to 15 minutes. Antigravity has no limits to refresh,
-# but the flag is kept for CLI compatibility with the panel's refreshLimits().
 SCAN_REUSE_SECONDS = 20
 LIMITS_ONLY_REUSE_SECONDS = 900
 
-# Guard against a pathological history file being loaded into memory whole.
 MAX_FILE_BYTES = 128 * 1024 * 1024
-
-# conversation_summaries.db stamps conversations with zeros when the event was
-# never recorded; those rows have no day to bucket into.
 VOID_TS = "0001-01-01"
 
 
@@ -162,8 +158,6 @@ def read_fresh_json(path, max_age_seconds):
   if max_age_seconds <= 0 or not path.exists():
     return None
   try:
-    # A negative age means the mtime is in the future: the clock moved
-    # backwards since the write, so the cache's freshness cannot be trusted.
     age = time.time() - path.stat().st_mtime
     if 0 <= age <= max_age_seconds:
       return json.loads(path.read_text(encoding="utf-8"))
@@ -173,17 +167,11 @@ def read_fresh_json(path, max_age_seconds):
 
 
 def write_json(path, payload):
-  # A temp name unique to this writer, not derived from the target: several
-  # collectors can run at once (the update command backgrounds one per agent,
-  # the panel refreshes on its own), and a shared temp path means the second
-  # replace finds the first one's file already moved away.
   handle_fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
   tmp = Path(tmp_name)
   try:
     with os.fdopen(handle_fd, "w", encoding="utf-8") as handle:
       handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
-    # mkstemp opens at 0600; nothing in the cache is sensitive, so open it
-    # up to the usual 0644.
     tmp.chmod(0o644)
     tmp.replace(path)
   except BaseException:
@@ -191,9 +179,6 @@ def write_json(path, payload):
     raise
 
 
-# The cache payload is a versioned envelope around the local-stats dict, so a
-# corrupted or foreign-shaped file is a cache miss (rescan + rewrite) instead
-# of a crash or a garbage record.
 def read_cached_stats(cache_file, max_age_seconds):
   cached = read_fresh_json(cache_file, max_age_seconds)
   if not isinstance(cached, dict) or cached.get("schemaVersion") != 1:
@@ -233,9 +218,6 @@ def local_stats():
     "todayTotalTokens": 0,
     "todayTokensByModel": {},
     "recentDays": [{"date": day, "messageCount": prompts_by_day.get(day, 0)} for day in recent_dates],
-    # Prompt count from the CLI history; session count distinct
-    # conversations. The two can disagree — not every prompt conversation has
-    # a summary row, and not every summary row has a history prompt.
     "totalPrompts": sum(prompts_by_day.values()),
     "totalSessions": len(all_session_ids),
     "activeDays": len(active_dates),
@@ -245,12 +227,6 @@ def local_stats():
 
 
 def cached_local_stats(max_age):
-  """Local stats, with the cache as a pure optimization.
-
-  The cache must never take the collector down: any cache-layer failure
-  (unwritable cache root, lock errors, disk full) degrades to a direct scan
-  and a warning on stderr. The JSON record is the contract; the cache is not.
-  """
   try:
     return _cached_local_stats(max_age)
   except Exception as exc:
@@ -275,6 +251,238 @@ def _cached_local_stats(max_age):
     return stats
 
 
+# ---------------------------------------------------------------- live usage
+#
+# Antigravity plan limits and subscription tier come from Google's Cloud Code
+# API, authorized with the OAuth token agy keeps in the system keyring.
+
+def runtime_env():
+  home = str(Path.home())
+  path_parts = [
+    os.environ.get("PATH", ""),
+    f"{home}/.local/bin",
+    f"{home}/.npm-global/bin",
+    f"{home}/.local/share/mise/shims",
+  ]
+  env = os.environ.copy()
+  env["PATH"] = os.pathsep.join(part for part in path_parts if part)
+  return env
+
+
+ENV = runtime_env()
+
+
+def keyring_auth():
+  """Read Antigravity's stored OAuth token from the system keyring.
+
+  Returns (access_token, expires_at_ts).
+  """
+  try:
+    proc = subprocess.run(
+      ["secret-tool", "lookup", "service", "gemini", "username", "antigravity"],
+      capture_output=True, text=True, timeout=3, env=ENV
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+      return "", 0
+    data = json.loads(proc.stdout.strip())
+    token_info = data.get("token", {})
+    access_token = str(token_info.get("access_token") or "")
+    expiry_str = str(token_info.get("expiry") or "")
+    expiry_ts = 0
+    if expiry_str:
+      try:
+        dt = datetime.fromisoformat(expiry_str)
+        if dt.tzinfo is not None:
+          expiry_ts = dt.timestamp()
+      except Exception:
+        pass
+    return access_token, expiry_ts
+  except Exception:
+    return "", 0
+
+
+def format_bucket_entry(gname, b):
+  window = str(b.get("window") or "")
+  rem = float(b.get("remainingFraction", b.get("remaining_fraction", 1.0)))
+  used = round(max(0.0, min(1.0, 1.0 - rem)), 4)
+  reset = str(b.get("resetTime", b.get("reset_time", "")) or "")
+  bname = str(b.get("displayName", b.get("name", "")) or "")
+
+  if "gemini" in gname.lower():
+    prefix = "Gemini"
+  elif "claude" in gname.lower() or "gpt" in gname.lower():
+    prefix = "Claude & GPT"
+  else:
+    prefix = gname
+
+  if window == "5h" or "5" in bname:
+    wlabel = "5-hour"
+  elif window == "weekly" or "week" in bname.lower():
+    wlabel = "Weekly"
+  else:
+    wlabel = bname
+
+  title = f"{prefix} {wlabel}"
+  label = f"{prefix} ({wlabel})"
+  return {
+    "label": label,
+    "title": title,
+    "percent": used,
+    "resetsAt": reset,
+  }
+
+
+def probe_limits_http(access_token):
+  """Probe Google Cloud Code quota summary and subscription tier."""
+  headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json",
+    "User-Agent": "Antigravity",
+  }
+
+  quota_req = urllib.request.Request(
+    QUOTA_ENDPOINT,
+    data=json.dumps({"project": "default-cli-project"}).encode("utf-8"),
+    headers=headers
+  )
+  try:
+    with urllib.request.urlopen(quota_req, timeout=6) as resp:
+      quota_data = json.loads(resp.read().decode("utf-8"))
+  except urllib.error.HTTPError as err:
+    return {"ok": False, "code": err.code, "helpText": f"Antigravity quota endpoint returned status {err.code}."}
+  except Exception:
+    return {"ok": False, "transport": True, "helpText": "Couldn't reach Antigravity quota endpoint."}
+
+  limits = []
+  for group in quota_data.get("groups", []):
+    gname = str(group.get("displayName") or "")
+    for b in group.get("buckets", []):
+      limits.append(format_bucket_entry(gname, b))
+
+  tier_label = ""
+  tier_req = urllib.request.Request(
+    LOAD_CODE_ASSIST_ENDPOINT,
+    data=json.dumps({"metadata": {"ideType": "ANTIGRAVITY"}}).encode("utf-8"),
+    headers=headers
+  )
+  try:
+    with urllib.request.urlopen(tier_req, timeout=5) as resp:
+      tier_data = json.loads(resp.read().decode("utf-8"))
+      paid = tier_data.get("paidTier")
+      if isinstance(paid, dict):
+        tier_label = str(paid.get("name") or "")
+      if not tier_label:
+        curr = tier_data.get("currentTier")
+        if isinstance(curr, dict):
+          tier_label = str(curr.get("name") or "")
+  except Exception:
+    pass
+
+  return {"ok": True, "limits": limits, "tierLabel": tier_label}
+
+
+def probe_limits_cli():
+  """Run agy non-interactively to refresh credentials and fetch limits."""
+  agy_bin = shutil.which("agy", path=ENV.get("PATH"))
+  if not agy_bin:
+    return {"ok": False, "helpText": "agy CLI not found in PATH."}
+  try:
+    proc = subprocess.run(
+      [agy_bin, "--output-format", "json", "-p", "/usage"],
+      capture_output=True, text=True, timeout=12, env=ENV
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+      return {"ok": False, "helpText": "agy CLI failed to return usage."}
+    data = json.loads(proc.stdout.strip())
+    groups = data.get("command", {}).get("data", {}).get("groups", [])
+    limits = []
+    for group in groups:
+      gname = str(group.get("name") or "")
+      for b in group.get("buckets", []):
+        limits.append(format_bucket_entry(gname, b))
+    return {"ok": True, "limits": limits, "tierLabel": "Google AI Pro"}
+  except Exception as exc:
+    return {"ok": False, "helpText": f"agy CLI invocation error: {exc}"}
+
+
+def limit_window_open(entry, now):
+  raw = str(entry.get("resetsAt") or "")
+  if raw == "":
+    return True
+  try:
+    resets_at = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+  except Exception:
+    return True
+  if resets_at.tzinfo is None:
+    resets_at = resets_at.replace(tzinfo=timezone.utc)
+  return resets_at > now
+
+
+def usable_cached_limits(cached):
+  entries = cached.get("limits")
+  if not isinstance(entries, list):
+    return []
+  now = datetime.now(timezone.utc)
+  return [entry for entry in entries if isinstance(entry, dict) and limit_window_open(entry, now)]
+
+
+def collect_limits(force):
+  result = {"limits": [], "tierLabel": "", "usageStatusText": "", "authHelpText": AUTH_HELP}
+  probe_cache = cache_root() / "antigravity-limits.json"
+  cached = read_fresh_json(probe_cache, float("inf")) or {}
+  fallback = usable_cached_limits(cached)
+  tier_fallback = str(cached.get("tierLabel") or "")
+
+  fetched_at = number(cached.get("fetchedAtMs")) / 1000
+  if fallback and not force and time.time() - fetched_at < PROBE_MIN_INTERVAL_SECONDS:
+    result["limits"] = fallback
+    result["tierLabel"] = tier_fallback
+    return result
+
+  access_token, expiry_ts = keyring_auth()
+
+  # If access token exists and is valid for at least 60 more seconds, try fast HTTP probe
+  if access_token and (expiry_ts == 0 or expiry_ts > time.time() + 60):
+    probe = probe_limits_http(access_token)
+    if probe.get("ok"):
+      result["limits"] = probe["limits"]
+      result["tierLabel"] = probe.get("tierLabel") or tier_fallback or "Google AI Pro"
+      write_json(probe_cache, {
+        "fetchedAtMs": round(time.time() * 1000),
+        "limits": result["limits"],
+        "tierLabel": result["tierLabel"]
+      })
+      return result
+    if probe.get("code") not in (401, 403) and probe.get("transport"):
+      # Network/DNS down
+      if fallback:
+        result["limits"] = fallback
+        result["tierLabel"] = tier_fallback
+        return result
+
+  # Token expired, missing, or HTTP probe failed with 401/403: invoke CLI to refresh
+  cli_probe = probe_limits_cli()
+  if cli_probe.get("ok"):
+    result["limits"] = cli_probe["limits"]
+    result["tierLabel"] = cli_probe.get("tierLabel") or tier_fallback or "Google AI Pro"
+    write_json(probe_cache, {
+      "fetchedAtMs": round(time.time() * 1000),
+      "limits": result["limits"],
+      "tierLabel": result["tierLabel"]
+    })
+    return result
+
+  # Fallback to cached limits if still open
+  if fallback:
+    result["limits"] = fallback
+    result["tierLabel"] = tier_fallback
+  else:
+    result["usageStatusText"] = "Antigravity limits unavailable"
+    result["authHelpText"] = cli_probe.get("helpText") or AUTH_HELP
+
+  return result
+
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument("--force", action="store_true")
@@ -283,6 +491,7 @@ def main():
 
   max_age = 0 if args.force else (LIMITS_ONLY_REUSE_SECONDS if args.limits_only else SCAN_REUSE_SECONDS)
   stats = cached_local_stats(max_age)
+  limits_info = collect_limits(args.force)
 
   record = {
     "schemaVersion": 1,
@@ -291,6 +500,10 @@ def main():
     "updatedAt": datetime.now(timezone.utc).isoformat(),
     "ready": True,
     "hasLocalStats": True,
+    "tierLabel": limits_info["tierLabel"],
+    "usageStatusText": limits_info["usageStatusText"],
+    "authHelpText": limits_info["authHelpText"],
+    "limits": limits_info["limits"],
     # Antigravity exposes no token ledger; the prompt-mode panel uses this to
     # show prompt charts where Claude/Codex show token charts.
     "tokensAvailable": False,

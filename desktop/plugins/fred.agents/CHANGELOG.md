@@ -2,6 +2,16 @@
 
 All notable changes to `fred.agents` (`agents-fred-tamlinux`) will be documented in this file.
 
+## [1.2.0] - Unreleased
+
+### Added
+- Antigravity live limits: `tam-agent-usage-antigravity` now fetches live quota
+  and subscription tier from Google Cloud Code's `v1internal:retrieveUserQuotaSummary`
+  and `v1internal:loadCodeAssist` endpoints using the system keyring OAuth token
+  and `User-Agent: Antigravity` (with fallback to non-interactive `agy -p /usage`).
+- Displays 5-hour and weekly rate limits for both Gemini and Claude/GPT model
+  groups, along with the "Google AI Pro" subscription tier label.
+
 ## [1.1.2] - 2026-09-23
 
 First tagged release, including the changes recorded in the earlier development

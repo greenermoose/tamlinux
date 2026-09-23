@@ -18,7 +18,7 @@ Panel {
   readonly property color track: Style.selectedFillFor(foreground, Color.accent)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  readonly property string pluginVersion: "1.1.2"
+  readonly property string pluginVersion: "1.2.0"
 
   readonly property var providers: usage.enabledProviders
   // The selection follows the provider, not the slot it happens to sit in: a
@@ -178,7 +178,7 @@ Panel {
     if (days > 0) parts.push(days + "d", hours + "h")
     else if (hours > 0) parts.push(hours + "h")
     parts.push(minutes + "m")
-    return "Resets in " + parts.join(" ") + " on " + root.formatTimestamp(w.resetAt)
+    return "Resets in " + parts.join(" ") + " at " + root.formatTimestamp(w.resetAt)
   }
 
   // The bar button's hover message, rendered by the shell's own tooltip
