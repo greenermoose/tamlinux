@@ -24,11 +24,12 @@ AI tools, models, prompts, and architectural decisions that shaped
 | **Cursor live limits** | `1.1.0` | OpenCode (`big-pickle`) | `omarchy-agent-usage-cursor` reads Cursor's stored sign-in from `state.vscdb` (read-only; token lives only inside the probe's Authorization header) and probes `api2.cursor.sh` `DashboardService/GetCurrentPeriodUsage` (unofficial) for the monthly plan percent + billing-cycle reset; `tierLabel` from the stored membership. Panel Limits section renders Cursor alongside Claude/Codex; failures fall back to cached limits with honest messages. Antigravity live limits are **blocked**: expired token, refresh 401, `loadCodeAssist` 403. Verified live: record carries `limits:[{"label":"Monthly (billing cycle)","percent":0.55,...}]`. |
 | **Dual Cursor meters + hover limits** | `1.1.1`–`1.1.2` | OpenCode (`big-pickle`) | `1.1.1`: both dashboard percents (`totalPercentUsed` + `autoPercentUsed`) as Limits rows; binding window = fuller of the two. `1.1.2`: bar `tooltipText` via `formatBarHover` ("AI Agent Usage", per-agent percent + `yyyy-mm-dd hh:mm` reset, Antigravity "unknown"); panel `resetLine` pairs countdown with absolute stamp; wrong-track QQC2 `LimitsToolTip` removed after hover guidance update. Deployed `beece18`/`b0683c5`; published carry `3f5fa5a`. |
 | **Public pre-release** | `1.1.2` | Codex (`gpt-6-sol`) | Renamed the checkout and public repository to `agents-fred-tamlinux`, updated install and source links, validated the existing code, and published `main` without a release tag or marketplace submission. |
+| **Collector rename** | `1.1.2` | Cursor `3.21.16` (`composer`) | Name-only `main` sync: collectors are `tam-agent-usage-*`. [Session record](docs/ai/2026-09-22-tam-agent-usage.md). |
 
 ---
 
 ## 3. Session Records
 
 Individual session records are archived under [`docs/ai/`](docs/ai/). The
-design plan lives in `omarchy-fred-config` (`~/docs/plans/fred-agents-plan.md`)
+design plan lives in `config-fred-tamlinux` (`~/docs/plans/fred-agents-plan.md`)
 and records every decision with its date and rationale.
