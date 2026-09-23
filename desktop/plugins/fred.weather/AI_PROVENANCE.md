@@ -29,3 +29,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Daily Forecast Local Timezone Alignment** | `v1.0.4` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Fixed off-by-one daily forecast date bug where late-evening local time in western timezones rolled to UTC tomorrow; added `forecastTodayString`, cache rollover filtering, and dynamic today index resolution. |
 
 Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `weather-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).

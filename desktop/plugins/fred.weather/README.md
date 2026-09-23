@@ -45,7 +45,7 @@ Special thanks to Daniel Lopez for the 48-hour canvas curve implementation and c
 ## Installation
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-weather.git --enable
+omarchy plugin add https://github.com/greenermoose/weather-fred-tamlinux.git --enable
 ```
 
 Because `fred.weather` declares `clonedFrom: "omarchy.weather"`, Omarchy automatically replaces the stock weather widget in your bar layout while preserving your layout anchors and notification routing.
