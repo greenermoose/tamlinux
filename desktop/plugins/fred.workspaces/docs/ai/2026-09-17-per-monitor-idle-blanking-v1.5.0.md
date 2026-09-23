@@ -14,7 +14,7 @@
 
 ## Prompts (verbatim from transcript)
 
-> **Fred:** "Update the list of priorities in omarchy-fred-improvements. Look to see what we've already done so completed projects don't keep appearing in PRIORITIES.md. Determine what more we need to do."
+> **Fred:** "Update the private priorities backlog. Look to see what we've already done so completed projects don't keep appearing. Determine what more we need to do."
 
 > **Fred:** "For per-monitor blanking, I need more info to know whether to poll hyprctl cursorpos only or trigger strictly on Hyprland events. I need to see the pros and cons of a Quickshell service versus a systemd user daemon."
 
