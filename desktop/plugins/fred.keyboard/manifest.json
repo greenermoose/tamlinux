@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "author": "Fred (@greenermoose)",
   "description": "Keyboard shortcut explorer: which keys run which commands, and which commands need which keys",
-  "repository": "https://github.com/greenermoose/omarchy-fred-keyboard",
-  "homepage": "https://github.com/greenermoose/omarchy-fred-keyboard",
+  "repository": "https://github.com/greenermoose/keyboard-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/keyboard-fred-tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"

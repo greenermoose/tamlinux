@@ -56,3 +56,7 @@ the tools that touched this repository.
 - Human direction throughout: Fred set the concept, chose panel-scoped capture
   over global capture, and decided the layout, binding scope, capture-mode and
   build-versus-fork questions.
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `keyboard-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).

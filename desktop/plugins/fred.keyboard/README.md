@@ -97,7 +97,7 @@ Node.js is needed only to run the tests.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-keyboard.git --enable
+omarchy plugin add https://github.com/greenermoose/keyboard-fred-tamlinux.git --enable
 ```
 
 Remove with `omarchy plugin remove fred.keyboard`.
