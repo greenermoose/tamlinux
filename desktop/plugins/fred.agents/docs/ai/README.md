@@ -2,7 +2,7 @@
 
 Individual session records documenting prompts, tools, models, and key
 architectural decisions for `fred.agents`. One file per session; there is no
-monolithic `sessions.md` here, matching `omarchy-fred-plugin`.
+monolithic `sessions.md` here, matching `plugin-fred-tamlinux`.
 
 Tool and model versions are read live (`<tool> --version`) at the time of
 writing, never recalled. An entry whose attribution has not been checked
