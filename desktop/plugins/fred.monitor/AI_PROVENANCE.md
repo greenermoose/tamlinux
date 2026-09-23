@@ -33,3 +33,7 @@ Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `monitor-fr
 ## 2026-09-22 UPSTREAM example path
 
 Cursor `3.21.16` (`composer`) pointed the upstream diff example at `~/Code/tamlinux/monitor-fred-tamlinux`.
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `for Omarchy Linux` tagline with Tamlinux. Stock `omarchy.monitor` wording is unchanged.
