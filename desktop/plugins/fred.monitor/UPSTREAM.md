@@ -13,7 +13,7 @@ This plugin began life as a clone of the stock Omarchy display panel widget (`om
 To compare this plugin's files against the upstream Omarchy distribution:
 
 ```bash
-diff -u -r /usr/share/omarchy/shell/plugins/panels/monitor ~/Code/omarchy-fred-monitor
+diff -u -r /usr/share/omarchy/shell/plugins/panels/monitor ~/Code/tamlinux/monitor-fred-tamlinux
 ```
 
 ## Upstream MIT License Notice

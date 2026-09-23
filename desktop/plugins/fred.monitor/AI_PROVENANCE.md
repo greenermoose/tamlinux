@@ -29,3 +29,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 ## 2026-09-22 repository rename
 
 Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `monitor-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 UPSTREAM example path
+
+Cursor `3.21.16` (`composer`) pointed the upstream diff example at `~/Code/tamlinux/monitor-fred-tamlinux`.
