@@ -35,8 +35,8 @@ package repository yet.
 ## Current base
 
 Tamlinux 0.x is built on Omarchy, plus Fred's patches and the `fred.*`
-plugins. The intent is to remove that dependence while continuing to borrow
-ideas from Omarchy and to keep up with upstream Quickshell, Hyprland,
+plugins. The intent is to remove the Omarchy dependence while continuing
+to borrow ideas from it and to keep up with upstream Quickshell, Hyprland,
 Wayland, and Nix.
 
 0.0.1 is the first workstation snapshot. An installer for a second computer
