@@ -114,5 +114,11 @@ This document records the exact prompts, tools, and models used during the devel
 - **Changes**: Pointed the upstream diff example at `~/Code/tamlinux/weather-fred-tamlinux`.
 - **Verification**: Example path matches the published checkout.
 
+## Session: 2026-09-23 — GitHub Release v1.0.4
+
+Codex CLI `0.155.1` (`gpt-6-sol`) verified the deployed and public runtime
+files, passed the Node tests and Omarchy plugin validation, and prepared the
+v1.0.4 release metadata. The [session record](2026-09-23-release-v1.0.4.md)
+contains the verbatim user prompts and authorship boundary.
 
 

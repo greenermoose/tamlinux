@@ -22,7 +22,7 @@ A security-hardened, multi-monitor weather bar widget and popup panel for [Tamli
 - **Font Awesome Sun (`\uf185` / ``):**
   Replaces the stock monitor-brightness glyph (`\ue30d`) with a crisp, classic solar disc and flared rays from Font Awesome, rendered via the system's pre-installed JetBrainsMono Nerd Font.
 - **At-a-Glance Bar Hover Tooltip:**
-  Hovering over the bar widget instantly displays today's weather report for your city and state/province, current conditions, feels-like temperature, humidity, wind, rain chance, tomorrow's outlook, and widget version (`fred.weather v1.0.2`) at the bottom without expanding the panel.
+  Hovering over the bar widget instantly displays today's weather report for your city and state/province, current conditions, feels-like temperature, humidity, wind, rain chance, tomorrow's outlook, and widget version (`fred.weather v1.0.4`) at the bottom without expanding the panel.
 - **48-Hour Scrollable Hourly Timeline:**
   Canvas-drawn temperature graph, precipitation probability (%) and rainfall volume, condition icons, and minute-precision chronological sunrise/sunset markers.
 - **10-Day Extended Forecast:**
