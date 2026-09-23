@@ -4,7 +4,7 @@
 are only fully reliable with Fred's Hyprland / Aquamarine patch set; on stock
 packages the plugin works, but display retraining and hotplugging can expose
 upstream regressions. The patches, their recipes, and their retirement rules
-are published in [omarchy-fred-ecosystem](https://github.com/greenermoose/ecosystem-fred-tamlinux)
+are published in [ecosystem-fred-tamlinux](https://github.com/greenermoose/ecosystem-fred-tamlinux)
 (`ECOSYSTEM.md` there is the full matrix).
 
 | Package | Stock behaviour | With the patch | Where |
