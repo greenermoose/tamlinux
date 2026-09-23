@@ -20,9 +20,10 @@ Tamlinux is Fred's personal Linux distribution. Its job is to get the most
 from hardware that already exists: workstations, mini PCs, and older laptops
 that still have years of useful silicon left.
 
-*Tam* means both **tamarack** and **total addressable market**. Like the
-tamarack's needles, Tamlinux is meant to be temporary. It exists to explore
-what it takes to create a distribution and to widen the market for Linux.
+*Tam* can mean **tamarack**, **total addressable market**, or **the absolute
+max**. Like the tamarack's needles, Tamlinux is meant to be temporary. It
+exists to explore what it takes to create a new linux distro, widen the
+market for Linux, and to maximize the performance of existing hardware.
 
 It is a Wayland-based system. Arch and Nix are technical inspirations; the
 base is not a settled implementation commitment. Hyprland and Quickshell are
