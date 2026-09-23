@@ -105,5 +105,14 @@ This document records the exact prompts, tools, and models used during the devel
 - Added unit tests in `tests/model.test.cjs` covering negative and positive timezone offsets, late-evening rollover scenarios, cached data rollover across midnight, and dynamic today index resolution.
 - Bumped version to `1.0.4` across `manifest.json`, `BarWidget.qml`, `Panel.qml`, and `Model.js`.
 
+## Session: 2026-09-22 — UPSTREAM example path
+
+- **CLI Tool**: Cursor `3.21.16`
+- **Model**: `composer`
+- **Prompts**:
+  > Several plugin UPSTREAM.md examples also point to old clone directories, such as fred.monitor’s example. Those examples will fail if copied as written.
+- **Changes**: Pointed the upstream diff example at `~/Code/tamlinux/weather-fred-tamlinux`.
+- **Verification**: Example path matches the published checkout.
+
 
 

@@ -15,7 +15,7 @@
 ### Upstream Inspection Diff Command
 
 ```bash
-diff -u -r /usr/share/omarchy/shell/plugins/panels/weather ~/Code/omarchy-fred-weather
+diff -u -r /usr/share/omarchy/shell/plugins/panels/weather ~/Code/tamlinux/weather-fred-tamlinux
 ```
 
 ### Upstream Copyright Notice
