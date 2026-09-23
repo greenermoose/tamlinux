@@ -33,3 +33,7 @@ Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs
 ## 2026-09-22 repository rename
 
 Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `weather-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `for Omarchy Linux` tagline with Tamlinux. Stock `omarchy.weather` wording is unchanged.
