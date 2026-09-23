@@ -40,3 +40,7 @@ Detailed session logs and prompts are documented in [`docs/ai/README.md`](docs/a
 ## 2026-09-22 repository rename
 
 Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `workspaces-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 helper rename
+
+Cursor `3.21.16` (`composer`) renamed `omarchy-desktop-mode` to `tam-desktop-mode` so the published tree matches the deployed Tamlinux command names. [Session record](docs/ai/2026-09-22-tam-desktop-mode.md).

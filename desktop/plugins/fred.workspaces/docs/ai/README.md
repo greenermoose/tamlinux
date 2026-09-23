@@ -23,6 +23,7 @@ architectural decisions for `omarchy-fred-workspaces`.
 | 2026-09-17 | ECOSYSTEM.md: Patched Hyprland Dependencies (v1.4.3) | `claude` (`2.1.274`) | Claude Opus 5 (`claude-opus-5`) | [`2026-09-17-ecosystem-md-patched-dependencies-v1.4.3.md`](2026-09-17-ecosystem-md-patched-dependencies-v1.4.3.md) |
 | 2026-09-17 | Per-Monitor Idle Blanking of Unused Monitors (v1.5.0) | `agy` | Gemini 3.8 Flash (High) | [`2026-09-17-per-monitor-idle-blanking-v1.5.0.md`](2026-09-17-per-monitor-idle-blanking-v1.5.0.md) |
 | 2026-09-18 | Settled Idle Tracking, DPMS Sync & Version Footers (v1.5.1) | `agy` | Gemini 3.8 Flash (High) | [`2026-09-18-settled-idle-tracking-dpms-sync-v1.5.1.md`](2026-09-18-settled-idle-tracking-dpms-sync-v1.5.1.md) |
+| 2026-09-22 | Rename the workspace helper to tam-desktop-mode | Cursor `3.21.16` | composer | [`2026-09-22-tam-desktop-mode.md`](2026-09-22-tam-desktop-mode.md) |
 
 ## Corrections vs. prior `sessions.md`
 
