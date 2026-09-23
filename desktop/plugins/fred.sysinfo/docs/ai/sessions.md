@@ -133,3 +133,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
   > I want to do a big rename project for my code. When I'm done, this is what I want to have accomplished: 1) fred.tides and fred.sysinfo will be in normal mode, not test. I have tested them and they are ready to be published to GitHub and used as regular plugins on my system.
 - **Clarification**: Fred chose Release including the S8 reviewer reply.
 - **Verification**: Home Manager generation 92 serves 1.1.2 with `$XDG_RUNTIME_DIR` cache. Six unit tests passed. Test mode off.
+
+## 2026-09-23 upstream survey foundation
+
+- [Codex session record](2026-09-23-upstream-survey-foundation.md).
