@@ -34,6 +34,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Ecosystem dependency record** | `v1.4.3` | Claude Code `2.1.274` (Claude Opus 5) | `ECOSYSTEM.md`: the two Hyprland patches `reconcile` relies on, with stock-vs-patched behaviour and links to the fork branches and the public registry `omarchy-fred-ecosystem`. |
 | **Per-Monitor Idle Blanking of Unused Monitors** | `v1.5.0` | Antigravity CLI `1.2.5` (Gemini 3.8 Flash (High)) | Strictly event-driven per-monitor idle DPMS blanking embedded directly in `fred.workspaces` BarWidget; zero background polling preserving CPU deep C-states; immediate wake on cursor entry / window / workspace change; Fault C protection on DP-2 with background retrain; remote `resetIdle` IPC method. |
 | **Settled Idle Tracking, DPMS Sync & Version Footers** | `v1.5.1` | Antigravity CLI `1.2.6` (Gemini 3.8 Flash (High)) | Fixed idle blanking to act on settled state (400 ms debounce), adopted true DPMS state on bar init, and added version footer on hover across all workspace and mode buttons. |
+| **State Directory and Read-Only Command Audit** | `v1.5.2` | Codex CLI `0.155.1` (`gpt-6-sol`) | Preserved the mode of Omarchy's shared state directory, made status and indicator avoid state writes, and added a symlinked config regression test. |
 
 Detailed session logs and prompts are documented in [`docs/ai/README.md`](docs/ai/README.md). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).
 
@@ -48,3 +49,7 @@ Cursor `3.21.16` (`composer`) renamed `omarchy-desktop-mode` to `tam-desktop-mod
 ## 2026-09-22 Tamlinux branding
 
 Cursor `3.21.16` (`composer`) replaced the current-facing `Fred's Omarchy workspaces` tagline and platform line with Tamlinux. Omarchy Desktop / Stock mode names are unchanged.
+
+## 2026-09-23 workspaces audit fixes
+
+Codex CLI `0.155.1` (`gpt-6-sol`) implemented and deployed the v1.5.2 audit fixes. [Session record](docs/ai/2026-09-23-workspaces-audit.md).

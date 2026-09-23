@@ -10,7 +10,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "1.5.1"
+  readonly property string pluginVersion: "1.5.2"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -1081,4 +1081,3 @@ BarWidget {
     function resetIdle(): void { root.broadcastWorkspaces("resetIdle") }
   }
 }
-

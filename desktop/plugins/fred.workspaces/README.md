@@ -26,7 +26,7 @@ Fred's [Tamlinux](https://github.com/greenermoose/tamlinux) workspaces plugin: a
 - **Dynamic Geometry Detection**: Queries `hyprctl monitors -j`, excludes disabled and mirrored outputs, and orders the remaining displays by `(x, y, name)`.
 - **Single-to-Many Monitor Support**: One formula handles laptops, the original two-monitor pair, three-monitor desks, and larger arrangements.
 - **Optional Endpoint Overrides**: `OMARCHY_DESKTOP_LEFT_MONITOR` and `OMARCHY_DESKTOP_RIGHT_MONITOR` customize Mac-mode endpoints without excluding displays from Windows mode.
-- **Self-Contained Execution**: Bundles the standard-library-only `omarchy-desktop-mode` helper and launches it descriptor-relatively from the bar.
+- **Self-Contained Execution**: Bundles the standard-library-only `tam-desktop-mode` helper and launches it descriptor-relatively from the bar.
 
 ### Windows-mode mapping
 
@@ -69,7 +69,7 @@ To enable synchronized desktop switching with your keyboard shortcuts, add the f
 
 ```lua
 -- Desktop mode toggle
-o.bind("SUPER + CTRL + M", "Toggle Mac/Windows desktop mode", "omarchy-desktop-mode toggle")
+o.bind("SUPER + CTRL + M", "Toggle Mac/Windows desktop mode", "tam-desktop-mode toggle")
 
 -- XKB keycodes (evdev + 8); keypad bindings ignore Num Lock.
 local keypad_codes = {
@@ -85,36 +85,36 @@ for desktop = 1, 10 do
   hl.unbind("SUPER + SHIFT + " .. top_row)
   hl.unbind("SUPER + SHIFT + ALT + " .. top_row)
 
-  o.bind("SUPER + " .. top_row, "Switch desktop " .. desktop, "omarchy-desktop-mode switch " .. desktop)
-  o.bind("SUPER + SHIFT + " .. top_row, "Move window to desktop " .. desktop, "omarchy-desktop-mode move " .. desktop)
-  o.bind("SUPER + SHIFT + ALT + " .. top_row, "Move window silently to desktop " .. desktop, "omarchy-desktop-mode move-silent " .. desktop)
+  o.bind("SUPER + " .. top_row, "Switch desktop " .. desktop, "tam-desktop-mode switch " .. desktop)
+  o.bind("SUPER + SHIFT + " .. top_row, "Move window to desktop " .. desktop, "tam-desktop-mode move " .. desktop)
+  o.bind("SUPER + SHIFT + ALT + " .. top_row, "Move window silently to desktop " .. desktop, "tam-desktop-mode move-silent " .. desktop)
 
-  o.bind("SUPER + " .. keypad, "Switch desktop " .. desktop, "omarchy-desktop-mode switch " .. desktop)
-  o.bind("SUPER + SHIFT + " .. keypad, "Move window to desktop " .. desktop, "omarchy-desktop-mode move " .. desktop)
-  o.bind("SUPER + SHIFT + ALT + " .. keypad, "Move window silently to desktop " .. desktop, "omarchy-desktop-mode move-silent " .. desktop)
+  o.bind("SUPER + " .. keypad, "Switch desktop " .. desktop, "tam-desktop-mode switch " .. desktop)
+  o.bind("SUPER + SHIFT + " .. keypad, "Move window to desktop " .. desktop, "tam-desktop-mode move " .. desktop)
+  o.bind("SUPER + SHIFT + ALT + " .. keypad, "Move window silently to desktop " .. desktop, "tam-desktop-mode move-silent " .. desktop)
 end
 ```
 
-> **Note**: If `omarchy-desktop-mode` is not in your `PATH`, you can symlink it into `~/.local/bin/`:
+> **Note**: If `tam-desktop-mode` is not in your `PATH`, you can symlink it into `~/.local/bin/`:
 > ```bash
-> ln -sf ~/.config/omarchy/plugins/fred.workspaces/omarchy-desktop-mode ~/.local/bin/omarchy-desktop-mode
+> ln -sf ~/.config/omarchy/plugins/fred.workspaces/tam-desktop-mode ~/.local/bin/tam-desktop-mode
 > ```
 
 ---
 
 ## CLI Usage
 
-The bundled `omarchy-desktop-mode` command provides scriptable desktop management:
+The bundled `tam-desktop-mode` command provides scriptable desktop management:
 
 ```bash
-omarchy-desktop-mode status            # Print current mode (mac, windows, omarchy)
-omarchy-desktop-mode indicator         # Print single-letter indicator (M, W, O)
-omarchy-desktop-mode toggle            # Cycle mode (omarchy -> mac -> windows)
-omarchy-desktop-mode switch <NUMBER>   # Switch to desktop / workspace NUMBER
-omarchy-desktop-mode move <NUMBER>     # Move active window to desktop NUMBER and follow
-omarchy-desktop-mode move-silent <NUM> # Move active window without switching
-omarchy-desktop-mode realign <MON> <N> # Bring one monitor back to desktop N, leaving the rest of the set
-omarchy-desktop-mode monitors          # Print the ordered monitor set and endpoints
+tam-desktop-mode status            # Print current mode (mac, windows, omarchy)
+tam-desktop-mode indicator         # Print single-letter indicator (M, W, O)
+tam-desktop-mode toggle            # Cycle mode (omarchy -> mac -> windows)
+tam-desktop-mode switch <NUMBER>   # Switch to desktop / workspace NUMBER
+tam-desktop-mode move <NUMBER>     # Move active window to desktop NUMBER and follow
+tam-desktop-mode move-silent <NUM> # Move active window without switching
+tam-desktop-mode realign <MON> <N> # Bring one monitor back to desktop N, leaving the rest of the set
+tam-desktop-mode monitors          # Print the ordered monitor set and endpoints
 ```
 
 ---
@@ -134,6 +134,9 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 > - Values may optionally be enclosed in single or double quotes.
 > - Monitor names must be alphanumeric identifiers matching `^[A-Za-z0-9._-]{1,64}$`.
 > - Inline comments after values (e.g. `KEY=VAL # comment`) are rejected to avoid parsing ambiguities.
+> - A Home Manager symlink to a regular, user-owned config file is supported.
+> - The helper leaves the permissions of Omarchy's shared state directory unchanged.
+> - `status` and `indicator` read the current mode without updating monitor state.
 > - Windows mode always uses every active, non-mirrored monitor. Endpoint overrides do not remove monitors from its set.
 
 ### Split monitor sets (Windows mode)
@@ -158,7 +161,7 @@ The helper's monitor discovery, mapping, dispatch verification, and window-move 
 
 ```bash
 python -m unittest discover -s tests -v
-python -m py_compile omarchy-desktop-mode tests/test_desktop_mode.py
+python -m py_compile tam-desktop-mode tests/test_desktop_mode.py
 omarchy plugin validate .
 ```
 

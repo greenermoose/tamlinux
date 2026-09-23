@@ -1,7 +1,10 @@
 import importlib.util
 from importlib.machinery import SourceFileLoader
+import io
 import json
+import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import call, patch
@@ -115,6 +118,62 @@ class MonitorDiscoveryTests(unittest.TestCase):
         ):
             self.assertEqual(desktop_mode.resolve_monitors(), ([], "", ""))
             write_state.assert_not_called()
+
+
+class StateAndConfigTests(unittest.TestCase):
+    def test_existing_shared_state_directory_keeps_its_mode(self):
+        with tempfile.TemporaryDirectory() as state_home:
+            shared_dir = Path(state_home) / "omarchy"
+            shared_dir.mkdir(mode=0o755)
+            os.chmod(shared_dir, 0o755)
+            with patch.dict(desktop_mode.os.environ, {"XDG_STATE_HOME": state_home}):
+                desktop_mode.atomic_write_state("desktop-mode", "mac\n")
+            self.assertEqual(shared_dir.stat().st_mode & 0o777, 0o755)
+            self.assertEqual((shared_dir / "desktop-mode").read_text(), "mac\n")
+
+    def test_status_and_indicator_do_not_create_or_update_state(self):
+        with tempfile.TemporaryDirectory() as state_home:
+            shared_dir = Path(state_home) / "omarchy"
+            with patch.dict(desktop_mode.os.environ, {"XDG_STATE_HOME": state_home}):
+                for command, expected in (("status", "mac\n"), ("indicator", "M\n")):
+                    output = io.StringIO()
+                    with (
+                        patch.object(desktop_mode.sys, "argv", ["tam-desktop-mode", command]),
+                        patch.object(desktop_mode.sys, "stdout", output),
+                        patch.object(desktop_mode, "resolve_topology") as resolve,
+                    ):
+                        desktop_mode.main()
+                    self.assertEqual(output.getvalue(), expected)
+                    resolve.assert_not_called()
+                    self.assertFalse(shared_dir.exists())
+
+                shared_dir.mkdir(mode=0o755)
+                os.chmod(shared_dir, 0o755)
+                state_file = shared_dir / "desktop-mode"
+                state_file.write_text("windows\n")
+                before = state_file.stat().st_mtime_ns
+                for command, expected in (("status", "windows\n"), ("indicator", "W\n")):
+                    output = io.StringIO()
+                    with (
+                        patch.object(desktop_mode.sys, "argv", ["tam-desktop-mode", command]),
+                        patch.object(desktop_mode.sys, "stdout", output),
+                        patch.object(desktop_mode, "resolve_topology") as resolve,
+                    ):
+                        desktop_mode.main()
+                    self.assertEqual(output.getvalue(), expected)
+                    resolve.assert_not_called()
+                    self.assertEqual(state_file.stat().st_mtime_ns, before)
+                    self.assertEqual(shared_dir.stat().st_mode & 0o777, 0o755)
+
+    def test_config_read_follows_owned_regular_file_symlink(self):
+        with tempfile.TemporaryDirectory() as config_home:
+            config_dir = Path(config_home) / "omarchy"
+            config_dir.mkdir()
+            target = Path(config_home) / "desktop-mode-target.conf"
+            target.write_text("left_monitor=DP-2\n")
+            (config_dir / "desktop-mode.conf").symlink_to(target)
+            with patch.dict(desktop_mode.os.environ, {"XDG_CONFIG_HOME": config_home}):
+                self.assertEqual(desktop_mode.load_config_file(), ("DP-2", ""))
 
 
 class DispatchTests(unittest.TestCase):
@@ -522,4 +581,3 @@ class IdleBlankingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

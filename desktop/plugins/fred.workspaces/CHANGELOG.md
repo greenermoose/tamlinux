@@ -4,6 +4,15 @@ All notable changes to `fred.workspaces` (`omarchy-fred-workspaces`) will be doc
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.2] - 2026-09-23
+
+### Fixed
+- Keep the existing permissions on Omarchy's shared state directory while writing
+  plugin state; status reads no longer create that directory.
+- Make `status` and `indicator` read-only commands by skipping topology resolution
+  and its monitor-state update.
+- Cover Home Manager symlinked desktop-mode configuration with a regression test.
+
 ## [1.5.1] - 2026-09-18
 
 ### Fixed
