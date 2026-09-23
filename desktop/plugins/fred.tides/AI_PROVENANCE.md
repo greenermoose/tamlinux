@@ -29,3 +29,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Marketplace notification security fix** | `v1.0.4` | Codex CLI (`codex 0.155.1`, `gpt-6-sol`) implementation; Cursor `3.21.16` (`composer`) release | Replaced shell-built right-click notification command with a bounded literal argv call through a closed-environment process and watchdog; released after Fred's live test. |
 
 The 2026-09-22 security work is recorded in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `for Omarchy Linux` tagline with Tamlinux.
