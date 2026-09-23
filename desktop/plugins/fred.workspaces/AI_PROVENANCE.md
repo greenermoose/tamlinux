@@ -36,3 +36,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Settled Idle Tracking, DPMS Sync & Version Footers** | `v1.5.1` | Antigravity CLI `1.2.6` (Gemini 3.8 Flash (High)) | Fixed idle blanking to act on settled state (400 ms debounce), adopted true DPMS state on bar init, and added version footer on hover across all workspace and mode buttons. |
 
 Detailed session logs and prompts are documented in [`docs/ai/README.md`](docs/ai/README.md). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `workspaces-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).

@@ -5,8 +5,8 @@
   "version": "1.5.1",
   "author": "Fred (@greenermoose)",
   "description": "Workspace numbers with clickable desktop modes, dynamic Windows sets, and unused monitor idle blanking",
-  "repository": "https://github.com/greenermoose/omarchy-fred-workspaces",
-  "homepage": "https://github.com/greenermoose/omarchy-fred-workspaces",
+  "repository": "https://github.com/greenermoose/workspaces-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/workspaces-fred-tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"

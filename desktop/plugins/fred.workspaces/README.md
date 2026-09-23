@@ -56,7 +56,7 @@ workspace = (D - 1) * S + P + 1
 Install directly with Omarchy's plugin manager:
 
 ```bash
-omarchy plugin add https://github.com/greenermoose/omarchy-fred-workspaces.git --enable --yes
+omarchy plugin add https://github.com/greenermoose/workspaces-fred-tamlinux.git --enable --yes
 ```
 
 Because this plugin declares `clonedFrom: "omarchy.workspaces"`, enabling it replaces the stock Omarchy workspace widget in-place in your bar layout.
