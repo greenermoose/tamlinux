@@ -122,3 +122,14 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **Clarification**: Fred chose stem-only GitHub repository names.
 - **Changes**: Renamed the GitHub repository and origin; moved probe caches to private runtime storage; added descriptor-relative no-follow atomic writes and checked reads; included `XDG_CACHE_HOME` in the closed QML environment; added attack-focused cache tests and documentation.
 - **Verification**: Six cache tests, `omarchy plugin validate .`, and `git diff --check` passed. The live probe created a `0700` cache directory with `0600` files. The full probe benchmark measured 86 ms warm in this session. Live bar testing and marketplace resubmission remain pending.
+
+## Session: 2026-09-22 — Release v1.1.2
+
+- **CLI Tool**: Cursor `3.21.16`
+- **Model**: `composer`
+- **Implementation author**: Codex session above (`d7d716e`)
+- **Later AI assistance**: Cursor dated the changelog, tagged the release, and answered marketplace #7504 (S8)
+- **Prompts**:
+  > I want to do a big rename project for my code. When I'm done, this is what I want to have accomplished: 1) fred.tides and fred.sysinfo will be in normal mode, not test. I have tested them and they are ready to be published to GitHub and used as regular plugins on my system.
+- **Clarification**: Fred chose Release including the S8 reviewer reply.
+- **Verification**: Home Manager generation 92 serves 1.1.2 with `$XDG_RUNTIME_DIR` cache. Six unit tests passed. Test mode off.
