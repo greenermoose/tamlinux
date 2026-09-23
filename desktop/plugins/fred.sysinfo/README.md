@@ -1,6 +1,6 @@
 # System Information & Hardware Monitor (`fred.sysinfo`)
 
-Comprehensive hardware telemetry, thermal sensors, and system information bar plugin for Tamlinux (Hyprland + Quickshell).
+Comprehensive hardware telemetry, thermal sensors, and system information bar plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Hyprland + Quickshell).
 
 ![Resource summary hover](assets/hover.png)
 
