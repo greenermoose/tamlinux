@@ -10,6 +10,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
+| **Antigravity** (`agy`) | `1.2.9` | Gemini 3.8 Flash High (`gemini-3.8-flash-high`) | Live rate limits collector implementation, visual screenshot capture, and showcase presentation. |
 | **OpenCode** (`opencode`) | `1.18.31` | Big Pickle (`big-pickle`) | **Implementation** across this repository: panel swap & rebrand, both new collectors (Cursor, Antigravity), and the prompt-mode panel. |
 | **Codex** (`codex`) | `0.156.1` | GPT-6 Sol (`gpt-6-sol`) | Repository rename, publication metadata, and pre-release validation. |
 
@@ -28,6 +29,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 | **Tamlinux branding** | `1.1.2` | Cursor `3.21.16` (`composer`) | README tagline and `manifest.json` description say Tamlinux; `omarchy.agents` / `clonedFrom` stay. |
 | **First tagged release** | `v1.1.2` | Codex CLI `0.155.1` (`gpt-6-sol`) | Checked deployed and public runtime files, validated the plugin, dated the changelog, and prepared the GitHub release. No new runtime code was authored in this release step. [Session record](docs/ai/2026-09-23-first-release.md). |
 | **Antigravity live limits** | `1.2.0` | Antigravity (`Gemini 3.8 Flash High`) | Investigated past blocker (missing User-Agent header, stale file token vs active keyring). Built dual-path collector in `tam-agent-usage-antigravity`: direct HTTPS probe (<300ms) with `User-Agent: Antigravity` for quota summary and `Google AI Pro` tierLabel; CLI probe (`agy -p /usage --output-format json`) fallback for token refresh. Emits Gemini and Claude & GPT 5h and weekly limit rows. [Session record](docs/ai/2026-09-23-antigravity-live-limits.md). |
+| **Visual Assets** | `1.2.0` | Antigravity (`Gemini 3.8 Flash High`) | Captured authentic hover tooltip (`assets/hover.png`) and full panel (`assets/screenshot.png`, `preview.png`) on secondary monitor MSI MP161 (`DP-2`). [Session record](docs/ai/2026-09-23-screenshots-hover-and-panel.md). |
 
 ---
 

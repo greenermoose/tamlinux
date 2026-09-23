@@ -6,6 +6,10 @@ panel in place via `omarchy.clonedFrom` routing.
 Version 1.1.2 is the first tagged release. This plugin is not submitted to the
 Omarchy Plugin Marketplace.
 
+![fred.agents bar hover](assets/hover.png)
+
+![fred.agents panel](assets/screenshot.png)
+
 ## Install
 
 ```bash
