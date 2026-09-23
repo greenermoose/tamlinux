@@ -1,6 +1,6 @@
 # Workspaces with Desktop Mode (`fred.workspaces`)
 
-Fred's Omarchy workspaces plugin: a shell bar widget with dynamic all-monitor desktop sets, endpoint-based independent switching, rich window tooltips, and automatic display geometry detection.
+Fred's Tamlinux workspaces plugin: a shell bar widget with dynamic all-monitor desktop sets, endpoint-based independent switching, rich window tooltips, and automatic display geometry detection.
 
 ![Workspaces with Desktop Mode](assets/screenshot.png)
 
@@ -46,7 +46,7 @@ workspace = (D - 1) * S + P + 1
 
 ## Requirements
 
-- Omarchy Linux (or Arch Linux with Hyprland and Quickshell)
+- Tamlinux (or Arch Linux with Hyprland and Quickshell)
 - Python 3 (`python3`, standard library only — executed with `python3 -I` isolated mode)
 
 ---

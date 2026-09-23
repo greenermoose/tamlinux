@@ -44,3 +44,7 @@ Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `workspaces
 ## 2026-09-22 helper rename
 
 Cursor `3.21.16` (`composer`) renamed `omarchy-desktop-mode` to `tam-desktop-mode` so the published tree matches the deployed Tamlinux command names. [Session record](docs/ai/2026-09-22-tam-desktop-mode.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `Fred's Omarchy workspaces` tagline and platform line with Tamlinux. Omarchy Desktop / Stock mode names are unchanged.
