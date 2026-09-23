@@ -312,7 +312,7 @@ def write_cached_stats(cache_file, stats):
   try:
     write_json(cache_file, {"schemaVersion": 1, "scanDate": datetime.now().strftime("%Y-%m-%d"), "stats": stats})
   except Exception as exc:
-    print(f"omarchy-agent-usage-cursor: could not write usage cache ({exc})", file=sys.stderr)
+    print(f"tam-agent-usage-cursor: could not write usage cache ({exc})", file=sys.stderr)
 
 
 def local_stats():
@@ -353,7 +353,7 @@ def cached_local_stats(max_age):
   try:
     return _cached_local_stats(max_age)
   except Exception as exc:
-    print(f"omarchy-agent-usage-cursor: cache unavailable ({exc}); scanning directly", file=sys.stderr)
+    print(f"tam-agent-usage-cursor: cache unavailable ({exc}); scanning directly", file=sys.stderr)
     return local_stats()
 
 

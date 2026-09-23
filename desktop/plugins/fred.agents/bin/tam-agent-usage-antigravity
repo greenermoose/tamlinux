@@ -87,7 +87,7 @@ def scan_history(prompts_by_day):
     return
   try:
     if path.stat().st_size > MAX_FILE_BYTES:
-      print("omarchy-agent-usage-antigravity: history.jsonl exceeds size cap; skipping", file=sys.stderr)
+      print("tam-agent-usage-antigravity: history.jsonl exceeds size cap; skipping", file=sys.stderr)
       return
   except OSError:
     return
@@ -120,7 +120,7 @@ def scan_conversation_summaries(sessions_by_day, all_session_ids):
   try:
     conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
   except sqlite3.Error as exc:
-    print(f"omarchy-agent-usage-antigravity: could not open conversation_summaries.db ({exc})", file=sys.stderr)
+    print(f"tam-agent-usage-antigravity: could not open conversation_summaries.db ({exc})", file=sys.stderr)
     return
   try:
     conn.execute("PRAGMA query_only = ON")
@@ -134,7 +134,7 @@ def scan_conversation_summaries(sessions_by_day, all_session_ids):
       except Exception:
         continue
   except sqlite3.Error as exc:
-    print(f"omarchy-agent-usage-antigravity: conversation_summaries.db scan failed ({exc})", file=sys.stderr)
+    print(f"tam-agent-usage-antigravity: conversation_summaries.db scan failed ({exc})", file=sys.stderr)
     return
   finally:
     try:
@@ -213,7 +213,7 @@ def write_cached_stats(cache_file, stats):
   try:
     write_json(cache_file, {"schemaVersion": 1, "scanDate": datetime.now().strftime("%Y-%m-%d"), "stats": stats})
   except Exception as exc:
-    print(f"omarchy-agent-usage-antigravity: could not write usage cache ({exc})", file=sys.stderr)
+    print(f"tam-agent-usage-antigravity: could not write usage cache ({exc})", file=sys.stderr)
 
 
 def local_stats():
@@ -254,7 +254,7 @@ def cached_local_stats(max_age):
   try:
     return _cached_local_stats(max_age)
   except Exception as exc:
-    print(f"omarchy-agent-usage-antigravity: cache unavailable ({exc}); scanning directly", file=sys.stderr)
+    print(f"tam-agent-usage-antigravity: cache unavailable ({exc}); scanning directly", file=sys.stderr)
     return local_stats()
 
 

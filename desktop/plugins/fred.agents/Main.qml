@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Io
 
 // The display side of agent usage. All extraction lives behind
-// omarchy-agent-usage-update, which writes one JSON record per agent into
+// tam-agent-usage-update, which writes one JSON record per agent into
 // the usage directory; this file only discovers those records, watches them
 // for changes, and optionally merges snapshots synced from other machines.
 Item {
@@ -21,11 +21,11 @@ Item {
   // environment. The collectors extend PATH themselves for codex/rg via the
   // same runtime_env() the stock copies use.
   readonly property string updateHelperPath: {
-    var resolved = String(Qt.resolvedUrl("bin/omarchy-agent-usage-update"))
+    var resolved = String(Qt.resolvedUrl("bin/tam-agent-usage-update"))
     if (resolved.indexOf("file://") === 0) {
       return decodeURIComponent(resolved.substring(7))
     }
-    return home + "/.config/omarchy/plugins/fred.agents/bin/omarchy-agent-usage-update"
+    return home + "/.config/omarchy/plugins/fred.agents/bin/tam-agent-usage-update"
   }
 
   readonly property var updateEnv: ({

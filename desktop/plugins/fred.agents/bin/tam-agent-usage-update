@@ -4,7 +4,7 @@
 # omarchy:args=[--force] [--limits-only] [--except <agent>] [agent...]
 # omarchy:examples=omarchy agent usage-update | omarchy agent usage-update claude | omarchy agent usage-update --except codex
 
-# Each omarchy-agent-usage-<agent> collector prints one display-ready JSON
+# Each tam-agent-usage-<agent> collector prints one display-ready JSON
 # record; this writes them to ~/.local/state/omarchy/agents/usage/ where the
 # agents panel watches them. Adding an agent is adding a collector — the
 # panel picks up any record that appears here.
@@ -43,7 +43,7 @@ collect() {
   local collector="$1" agent="$2"
   local record tmp
   if ! record=$("$collector" "${flags[@]}") || [[ -z $record ]] || ! jq -e . >/dev/null 2>&1 <<<"$record"; then
-    echo "omarchy-agent-usage-update: $agent collector failed" >&2
+    echo "tam-agent-usage-update: $agent collector failed" >&2
     return 1
   fi
   tmp=$(mktemp "$USAGE_DIR/.$agent.XXXXXX")
@@ -57,9 +57,9 @@ collect() {
 collector_dir="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 
 pids=()
-for collector in "$collector_dir"/omarchy-agent-usage-*; do
+for collector in "$collector_dir"/tam-agent-usage-*; do
   [[ -x $collector ]] || continue
-  agent="${collector##*/omarchy-agent-usage-}"
+  agent="${collector##*/tam-agent-usage-}"
   [[ $agent == "update" ]] && continue
   wanted "$agent" || continue
   collect "$collector" "$agent" &
