@@ -4,7 +4,7 @@
 are only correct with Fred's Hyprland patch set; on stock Hyprland the plugin
 still works, but the desktop misbehaves in the ways listed. The patches, their
 recipes and their retirement rules are published in
-[omarchy-fred-ecosystem](https://github.com/greenermoose/ecosystem-fred-tamlinux)
+[ecosystem-fred-tamlinux](https://github.com/greenermoose/ecosystem-fred-tamlinux)
 (`ECOSYSTEM.md` there is the full matrix).
 
 | Package | Stock behaviour | With the patch | Where |

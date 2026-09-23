@@ -1,7 +1,7 @@
-# AI Collaboration Session Archive: `omarchy-fred-workspaces`
+# AI Collaboration Session Archive: `workspaces-fred-tamlinux`
 
 Individual session records documenting prompt history, tools, models, and key
-architectural decisions for `omarchy-fred-workspaces`.
+architectural decisions for `workspaces-fred-tamlinux`.
 
 > [!NOTE]
 > All entries were verified against local transcript stores during migration on
