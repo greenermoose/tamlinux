@@ -3,7 +3,7 @@
 - **Date**: 2026-09-20 (morning)
 - **Tool**: `claude` (Claude Code `2.1.278`)
 - **Model**: `claude-opus-5` (Claude Opus 5)
-- **Scope**: the deployed copy in `omarchy-fred-config` (SOP 2); this repo's
+- **Scope**: the deployed copy in the local workstation config (SOP 2); this repo's
   `tests/` harness
 - **Transcript**: `~/.claude/projects/-home-fred/a18febdb-55c9-42f4-87f7-2ae104759b15.jsonl`
 - **Attribution**: verified. Tool and model versions were read live.

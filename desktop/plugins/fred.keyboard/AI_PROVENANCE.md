@@ -46,8 +46,8 @@ the tools that touched this repository.
 
 ## 3. Provenance Notes
 
-- The design plan lives at `~/docs/plans/fred-keyboard-plan.md` in
-  `omarchy-fred-config` and records every decision with its date and rationale.
+- The design plan lives in the private workstation config and records every
+  decision with its date and rationale.
 - Agy's reconnaissance session transcript:
   `~/.gemini/antigravity-cli/brain/3eb22acb-1ed1-46e1-a06e-efd56bd84846/`.
 - No third-party code is vendored into this repository. The prior-art plugins

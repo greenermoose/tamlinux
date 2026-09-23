@@ -6,8 +6,8 @@
 - **Prior work**: `agy` (Antigravity CLI `1.2.7`, Gemini 3.8 Flash High), session
   `3eb22acb-1ed1-46e1-a06e-efd56bd84846` — research only, no code, stopped on an
   API quota limit
-- **Scope**: `omarchy-fred-keyboard` (new repository), `omarchy-fred-plugin`
-  (catalog, README, showcase), `omarchy-fred-config` (deployment, suite plan)
+- **Scope**: `keyboard-fred-tamlinux` (new repository), `plugin-fred-tamlinux`
+  (catalog, README, showcase), local workstation config (deployment, suite plan)
 - **Attribution**: verified. Tool and model versions were read live
   (`claude --version`, `agy --version`), not recalled.
 
@@ -122,6 +122,6 @@ showcase. Milestones M0-M3b complete; M4b (capture mode) is next.
 Fred asked for `system/bom.json` drift to be fixed *and* the mechanism that
 allowed it. Three entries had drifted. The cause was four runbooks and a
 memory each instructing agents to hand-maintain a file that restates facts the
-workstation already knows. Fixed in `omarchy-fred-config` by generating the
-derived sections (`bin/omarchy-fred-bom`, run by `omarchy-fred-sync` during
-capture) and removing the hand-edit instructions.
+workstation already knows. Fixed in the local workstation config by generating
+the derived BOM sections (`tam-bom`, run during capture) and removing the
+hand-edit instructions.

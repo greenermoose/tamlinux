@@ -19,6 +19,6 @@ against a local transcript says so explicitly.
 ## Related
 
 - [`../../AI_PROVENANCE.md`](../../AI_PROVENANCE.md) — toolchain and milestone table.
-- `~/docs/plans/fred-keyboard-plan.md` in `omarchy-fred-config` — the design
-  plan, decisions with dates, and the milestone checklist the next session
+- The `fred.keyboard` design plan in the private workstation config —
+  decisions with dates, and the milestone checklist the next session
   starts from.
