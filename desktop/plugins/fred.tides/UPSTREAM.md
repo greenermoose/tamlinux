@@ -2,6 +2,10 @@
 
 `fred.tides` originated as an Omarchy shell bar plugin inspired by and adapting concepts from `Woogy7/omarchy-tides`, enhanced with multi-monitor focus isolation, security-hardened execution, glanceable bar hover telemetry, configurable units, and a modular provider architecture (Open-Meteo Marine in v1.0; NOAA and harmonic calculations in v1.1).
 
+## Field surveys
+
+The Omarchy Tides and Linecast references below are the existing starting map. For a new requested survey, revisit those sources and search current forks and independent tide data or display projects. Save dated findings in [upstream/](upstream/) and link each result here.
+
 ---
 
 ## 1. Upstream Inspiration & Component
