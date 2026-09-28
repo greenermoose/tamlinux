@@ -2,7 +2,7 @@
 
 - **Tool:** Codex CLI 0.155.1
 - **Model:** `gpt-6-sol` (from the Codex session rollout)
-- **Session:** `01a0cdfb-e7dd-7ee1-b72e-14d7a9f05eb4`
+- **Transcript**: Retained privately by the author.
 - **User prompts:**
   > Make it so.
 

@@ -3,11 +3,10 @@
 - **Primary AI Agent**: Claude Code (`claude`)
 - **Primary Model**: Claude Opus 5 (`claude-opus-5`)
 - **Claude version**: `2.1.273` — stated in sessions.md. **Transcript not found locally.**
-- **Transcript**: `348c2c39-df3c-4b6f-aea0-e47c001361fb` — **not present** in
-  `~/.claude/projects/-home-fred/`. Prompts and implementation details below are
+- **Transcript**: Not verified. Prompts and implementation details below are
   taken from the prior `sessions.md` without transcript verification.
   — **Note**: sessions.md labels this as a "continuation of the v1.4.1 session",
-  but v1.4.1 was done with agy (`f6fed9ce`). `348c2c39` is a different conversation.
+  but v1.4.1 was done with agy in a different conversation.
 - **Commits**: `15795bf` (2026-09-16 21:47), `546c8ed`, `2271c94`, `2b7403e`
 
 ## Prompts (from sessions.md — transcript not verified)

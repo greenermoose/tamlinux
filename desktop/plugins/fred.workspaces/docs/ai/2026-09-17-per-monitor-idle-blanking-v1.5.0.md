@@ -6,7 +6,7 @@
   `64d77d5` on this date is titled "correct Antigravity CLI version to 1.2.5 in provenance
   records", suggesting the author confirmed 1.2.5 at the time, but it is not confirmed from
   the transcript itself.
-- **Transcript**: Antigravity `b406cca2-7398-4b2f-ad9d-0901cd85cbb8`
+- **Transcript**: Retained privately by the author.
 - **Session start**: 2026-09-17T13:57:54-04:00 (from transcript)
 - **Commits**: `d6cdd58` (2026-09-17 17:08 — v1.5.0),
   `64d77d5` (2026-09-17 17:14 — provenance correction),

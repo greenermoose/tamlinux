@@ -4,7 +4,7 @@
 - **Primary Model**: Gemini 3.8 Flash (High) — confirmed from `USER_SETTINGS_CHANGE` in transcript
 - **agy version**: Not self-reported in transcript. `1.2.5` mentioned in sessions.md for a
   later session on the same day; version for this session is unverified.
-- **Transcript**: Antigravity `f6fed9ce-46a1-4443-bdb0-104e729808ca`
+- **Transcript**: Retained privately by the author.
 - **Session start**: 2026-09-16T12:46:59-04:00 (from transcript)
 - **Commits**: `9e5047c` (2026-09-16 16:50 — v1.4.0 unreleased),
   `324ed5c` (2026-09-16 21:34 — v1.4.1), `546c8ed` (2026-09-16 21:51),

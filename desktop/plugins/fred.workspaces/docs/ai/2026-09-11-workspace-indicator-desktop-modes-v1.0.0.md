@@ -3,8 +3,7 @@
 - **Primary AI Agent**: Antigravity CLI (`agy`)
 - **Primary Model**: Gemini 3.8 Flash (High) — confirmed from `USER_SETTINGS_CHANGE` in transcripts
 - **agy version**: Not self-reported in transcripts. `1.2.2` cited in sessions.md is unverified.
-- **Transcripts**: Antigravity `c1116175-d8e8-4360-9093-53e741a64f22`,
-  `cead9faa-43ca-4781-a95f-abfa43d5fa3a`, `fe3dadb8-142b-47d6-ad62-92e4b4a113c9`
+- **Transcripts**: Three Antigravity sessions, retained privately by the author.
 - **Session start**: 2026-09-11T09:40:37-04:00 (from first transcript)
 - **Commits**: `92d9dd4` (2026-09-11 09:48), `42c3e39` (2026-09-11 12:45),
   `49f296f` (2026-09-11 13:35)

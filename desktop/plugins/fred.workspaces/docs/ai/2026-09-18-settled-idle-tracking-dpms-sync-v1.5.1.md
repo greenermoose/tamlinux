@@ -4,7 +4,7 @@
 - **Primary Model**: Gemini 3.8 Flash (High) — confirmed from `USER_SETTINGS_CHANGE` in transcript
 - **agy version**: Not self-reported in transcript. `1.2.6` stated in sessions.md is
   unverifiable from transcript content (system prompt contains all historical version strings).
-- **Transcript**: Antigravity `322664c3-5bc9-4253-af58-a97c0d5f900a`
+- **Transcript**: Retained privately by the author.
   (same session as `omarchy-fred-clock` v1.3.3 — this session touched multiple plugins)
 - **Session start**: 2026-09-18T09:46:17-04:00 (from transcript)
 - **Commits**: `b0b7372` (2026-09-18 12:54 — v1.5.1)

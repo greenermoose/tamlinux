@@ -3,7 +3,7 @@
 - **Primary AI Agent**: Claude Code (`claude`)
 - **Primary Model**: Claude Opus 5 (`claude-opus-5`) — model confirmed from `"model"` field in transcript
 - **Claude version**: `2.1.274` — confirmed from `"version"` field in transcript
-- **Transcript**: Claude Code `d6c65ea2-7efb-41ed-bae1-86bc3f78d651`
+- **Transcript**: Retained privately by the author.
 - **Session start**: 2026-09-17T12:09:57-04:00 (from transcript timestamp)
 - **Commits**: `74437e9` (2026-09-17 12:52 — ECOSYSTEM.md),
   `8a4233d` (2026-09-17 12:52 — provenance docs)

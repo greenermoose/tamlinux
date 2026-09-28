@@ -29,14 +29,18 @@ architectural decisions for `workspaces-fred-tamlinux`.
 
 | Session | Error | Correction |
 | :-- | :-- | :-- |
-| Sep 15 (v1.3.0) | No Codex transcript UUID cited | Found: `01a0a5ed` in `.codex/session_index.jsonl` |
-| Sep 15 (v1.3.1) | Transcript `348c2c39` cited | Not found locally; content marked unverified |
-| Sep 16 (v1.4.2) | Transcript `348c2c39` cited | Not found locally; content marked unverified |
-| Sep 16 (v1.4.0/1.4.1) | Several prompts missing | Added from transcript `f6fed9ce` |
-| Sep 17 (v1.5.0) | Several prompts missing | Added from transcript `b406cca2` |
-| Sep 18 (v1.5.1) | Three prompts missing | Added from transcript `322664c3` |
+| Sep 15 (v1.3.0) | No Codex transcript cited | Found by searching the Codex session index |
+| Sep 15 (v1.3.1) | Cited transcript not verified | Content marked unverified |
+| Sep 16 (v1.4.2) | Cited transcript not verified | Content marked unverified |
+| Sep 16 (v1.4.0/1.4.1) | Several prompts missing | Added from the session transcript |
+| Sep 17 (v1.5.0) | Several prompts missing | Added from the session transcript |
+| Sep 18 (v1.5.1) | Three prompts missing | Added from the session transcript |
 | All agy sessions | agy version presented as fact | Not self-reported in transcripts; noted per session |
 
 ## 2026-09-23 upstream survey foundation
 
 - [Codex session record](2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+- [Claude Code session record](2026-09-28-private-session-ids.md).

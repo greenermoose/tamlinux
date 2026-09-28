@@ -3,8 +3,7 @@
 - **Primary AI Agent**: Antigravity CLI (`agy`)
 - **Primary Model**: Gemini 3.8 Flash (High)
 - **agy version**: `1.2.3` — stated in sessions.md. **Transcript not found locally.**
-- **Transcript**: `348c2c39-df3c-4b6f-aea0-e47c001361fb` — **not present** in
-  `~/.gemini/antigravity-cli/brain/`. Prompt and implementation details below are
+- **Transcript**: Not verified. Prompt and implementation details below are
   taken from the prior `sessions.md` without transcript verification.
 - **Commits**: `5e198a9` (2026-09-15 22:47), `20c7b78` (2026-09-15 17:29 — provenance docs)
 

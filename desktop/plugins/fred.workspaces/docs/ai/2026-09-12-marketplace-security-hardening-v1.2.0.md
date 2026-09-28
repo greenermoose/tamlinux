@@ -5,11 +5,10 @@
 - **Primary Model**: Gemini 3.8 Flash (High) — confirmed from `USER_SETTINGS_CHANGE` in agy transcript
 - **Secondary Model**: Claude Opus 5 (`claude-opus-5`)
 - **agy version**: Not self-reported in transcript. `1.2.2` in prior sessions.md is unverified.
-- **Claude version**: `2.1.267` — cited in sessions.md; Claude transcript `7364485a` not found locally
-  (transcript not present in `~/.claude/projects/-home-fred/`).
+- **Claude version**: `2.1.267` — cited in sessions.md; not verified against a transcript.
 - **Marketplace Issue**: [omacom/omarchy-plugin-marketplace#6504](https://github.com/omacom/omarchy-plugin-marketplace/issues/6504)
-- **agy Transcript**: Antigravity `690b235e-54a1-4b83-8360-f603e806620c`
-- **Claude Transcript**: `7364485a-f10d-489d-9a64-7c3852ca2e65` — **not found locally**
+- **agy Transcript**: Retained privately by the author.
+- **Claude Transcript**: Not verified — the cited transcript could not be matched.
 - **Session start**: 2026-09-12T10:10:38-04:00 (from agy transcript)
 - **Commits**: `4d421b9` (2026-09-12 15:11), `397c701` (2026-09-12 15:24),
   `a55aec7` (2026-09-13 07:24), `94362b0` (2026-09-13 07:34)

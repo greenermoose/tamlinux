@@ -3,12 +3,11 @@
 - **Primary AI Agent**: Codex CLI (`codex`)
 - **Primary Model**: `gpt-5.6-sol` — confirmed from Codex session store
 - **Codex version**: `0.154.0` — stated by Fred in prompt
-- **Codex Session**: `01a0a5ed-fe53-7ae3-82da-1a4a68479dd1`
-  (file: `~/.codex/sessions/2026/09/15/rollout-2026-09-15T12-37-12-01a0a5ed-fe53-7ae3-82da-1a4a68479dd1.jsonl`)
-  — **Note**: this UUID was not cited in the prior `sessions.md`; it was found by
-  searching `.codex/session_index.jsonl` for "Support dynamic monitor sets".
+- **Transcript**: Retained privately by the author. It was not cited in the
+  prior `sessions.md`; it was found by searching the Codex session index for
+  "Support dynamic monitor sets".
 - **Public Plan**: [`docs/plans/monitor-set-windows-mode.md`](../plans/monitor-set-windows-mode.md)
-- **Session start**: 2026-09-15T12:37:12Z (from rollout filename)
+- **Session start**: 2026-09-15T12:37:12Z (from the transcript)
 - **Commits**: `10e91a2` (2026-09-15 14:38), `84e2ba9` (2026-09-15 14:39 — provenance docs)
 
 ## Prompts (verbatim from sessions.md; full prompt verified as first user message in Codex session)
