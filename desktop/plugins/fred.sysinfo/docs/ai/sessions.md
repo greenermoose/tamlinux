@@ -10,7 +10,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **Primary AI Agent**: Antigravity CLI (`agy 1.2.2`)
 - **Primary Model**: Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`)
 - **Commit**: `0dc548c`
-- **Transcript Reference**: `3abd7a9c-0943-487b-84c1-42180771c8ea`
+- **Transcript**: Retained privately by the author.
 - **Prompts**:
   > "Work on the fred.sysinfo plugin"
   >
@@ -41,7 +41,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **Date**: 2026-09-18
 - **Primary AI Agent**: Antigravity CLI (`agy 1.2.6`)
 - **Primary Model**: Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`)
-- **Transcript Reference**: `d830646a-a9ee-49d9-ac6a-02934673163e`
+- **Transcript**: Retained privately by the author.
 - **Prompts**:
   > "Take a new screen of fred.sysinfo on the MSI monitor that is more tightly cropped on the sysinfo display. The current screenshot is too busy. (Not clear what it's showing.) Bump the version, push to GitHub, then make a release of the latest version on GitHub. Write up the submission to omarchy plugin marketplace and let me review. Ask if you have any questions."
   >
@@ -67,7 +67,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **Date**: 2026-09-18
 - **Primary AI Agent**: Antigravity CLI (`agy 1.2.6`)
 - **Primary Model**: Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`)
-- **Conversation ID**: `322664c3-5bc9-4253-af58-a97c0d5f900a`
+- **Transcript**: Retained privately by the author.
 - **Prompts**:
   > "Check which version of fred.workspaces is published. Have we released 1.5.1 yet? Add a version footer to all fred plugins: fred.workspaces, fred.clock, fred.sysinfo, etc. I want to see that version info on hover for all fred plugins as well as when the plugin is open (in the case of fred.clock and fred.sysinfo). That will allow me to quickly tell which version of my plugins are running."
   >
@@ -87,7 +87,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **Date**: 2026-09-20
 - **Primary AI Agent**: Codex CLI (`codex 0.155.1`)
 - **Primary Model**: GPT-5.6 Sol (`gpt-5.6-sol`)
-- **Transcript Reference**: `01a0be6a-6329-77b2-9413-b4cd5b7e7971`
+- **Transcript**: Retained privately by the author.
 - **Prompts**:
   > "I don't understand what the temperature value the hover on fred.sysinfo is showing me. Let's replace that with CPU Usage, RAM available, and free disk space. Those are the values I'm usually most interested in. If I want to know temperatures, I can open the panel. Check whether the temperature values are reliable. I'm slightly concerned that we're just making up temperatures since the hover value seems unconnected to any of the other values."
   >
@@ -116,7 +116,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 - **CLI Tool**: Codex CLI `0.155.1`
 - **Model**: `gpt-6-sol`
 - **Implementation commit**: `d7d716e`
-- **Transcript Reference**: `01a0cbc5-55fc-7b33-bdea-230b6f8502ed`
+- **Transcript**: Retained privately by the author.
 - **Prompt**:
   > Please get up to speed on the plan to finish up in-progress omarchy plugin work, then rename my existing GitHub repos from omarchy-fred-* to *-fred-tamlinux. Check to see what plugins we've submitted to the marketplace that are midstream, had security reviews, and have not yet been resubmitted. I want to get those done with the security fixes required, and resubmit them so the review work is not done in vain.
 - **Clarification**: Fred chose stem-only GitHub repository names.
@@ -137,3 +137,7 @@ Chronological records of prompts, tool versions, and architectural decisions for
 ## 2026-09-23 upstream survey foundation
 
 - [Codex session record](2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+- [Claude Code session record](2026-09-28-private-session-ids.md).
