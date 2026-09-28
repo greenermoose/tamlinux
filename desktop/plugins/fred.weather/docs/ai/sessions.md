@@ -125,3 +125,6 @@ contains the verbatim user prompts and authorship boundary.
 
 - [Codex session record](2026-09-23-upstream-survey-foundation.md).
 
+## 2026-09-28 private session IDs
+
+- [Claude Code session record](2026-09-28-private-session-ids.md).
