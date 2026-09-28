@@ -15,6 +15,7 @@ explicitly.
 | 2026-09-22 | Public explainer and suite branding | Cursor `3.21.16` | composer | [`2026-09-22-public-explainer.md`](2026-09-22-public-explainer.md) |
 | 2026-09-22 | Product version 0.0.1 | Cursor `3.21.16` | composer | [`2026-09-22-version-0.0.1.md`](2026-09-22-version-0.0.1.md) |
 | 2026-09-23 | Installation and `tamlinux` command plans | Codex CLI `0.156.1` | `gpt-6-sol` | [`2026-09-23-installation-and-command-plans.md`](2026-09-23-installation-and-command-plans.md) |
+| 2026-09-28 | AntiX base layer, Arch rolling updates, and Suspra vision | Antigravity CLI (`agy`) `1.2.12` | Gemini 3.8 Flash (High) | [`2026-09-28-antix-base-and-suspra-vision.md`](2026-09-28-antix-base-and-suspra-vision.md) |
 
 ## Related
 

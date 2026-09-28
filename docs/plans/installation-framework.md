@@ -13,36 +13,39 @@ computer.
 
 ## Recommended base sequence
 
-1. **Current base: Omarchy.** The existing 0.x workstation already runs it.
-   Use it to identify and package the Tamlinux layer: user configuration,
-   desktop behavior, tools, documentation, and version metadata. This gives us
-   a short path to a reproducible first install without rebuilding the OS now.
-2. **Next base to prove: NixOS.** Try it on a second computer. Declarative
-   system configuration and generation rollback fit the goal of applying a
-   reviewed set of changes together. Existing Home Manager work provides a
-   starting point for the user layer. NixOS is the preferred experiment, not a
-   commitment to migrate the working computer before the pilot succeeds.
-3. **Alternative: plain Arch Linux.** Keep the Tamlinux layer separable so it
-   could be applied to Arch if NixOS proves unsuitable. Arch is familiar and
-   lightweight, but matching NixOS-style rollback and fleet reproducibility
-   would require extra machinery. Choose it on evidence from the pilot.
-
-Removing the Omarchy runtime dependency is the criterion for Tamlinux 1.x, as
-described in [VERSIONING.md](../../VERSIONING.md). Changing the base name alone
-does not meet it: the desktop shell and plugin loading must work without
-Omarchy's modules and conventions.
+1. **Transitional base: Omarchy (0.x).** The existing workstation already
+   runs it. Use it as a top-down decoupling testbed: cataloging Omarchy and
+   Hyprland dependencies, isolating `fred.*` plugins, and extracting user
+   configurations, commands, and documentation.
+2. **Target Base Layer: antiX Linux Core + `seatd` + Wayland + River (under Nix).**
+   - **antiX Linux Core:** Based directly on Debian stable without `systemd`.
+     Boots to a clean terminal with network access in under 100 MB RAM,
+     leaving maximum resources available for user workflows and local AI.
+     Its mature live-USB system enables rapid deployment (e.g. at Maker Fests).
+   - **`seatd`:** Minimal seat/session management without `systemd-logind` or `elogind`.
+   - **Hardened River:** Lean Zig-based Wayland dynamic tiling compositor.
+     Hardened by strictly separating user declarative configuration files
+     from root-owned system scripting and compositor plumbing.
+   - **Nix determinism & rollbacks:** Deployed on top of antiX Core as the
+     package and environment manager, providing atomic generations and instant
+     rollback to previous known-good states.
+3. **Graduation to Suspra Linux & Tier 3 Suspra Workstations:** Once the system
+   runs cleanly on the AntiX Linux base layer, Tamlinux completes its transitional
+   purpose and launches as **Suspra Linux**, the operating system powering the
+   Tier 3 Suspra Workstation designed to run across a wide variety of hardware
+   (from revived legacy computers to modern high-performance machines).
 
 ## Layers and ownership
 
 ```text
-Base OS (Omarchy now; candidate NixOS or Arch later)
-  -> system services, boot, graphics, packages
-Tamlinux system profile
-  -> system policy, required packages, desktop session, version
-Tamlinux user profile
-  -> Home Manager configuration, commands, shell, documentation
-Tamlinux shell and plugins
-  -> Hyprland + Quickshell, shared UI, fred.* widgets
+Application & Environment Layer (Tamlinux/Suspra user environment, fred.* plugins, AI harnesses)
+  -> user profile, commands, local knowledge, shell
+Packaging & Rollback Layer (Nix standalone)
+  -> pinned flakes, deterministic packages, atomic generations, rollbacks
+Windowing & Compositor Layer (Hardened River + seatd)
+  -> user declarative configs, root-owned compositor plumbing, Wayland IPC
+Base OS Host (Omarchy 0.x transitional; target antiX Linux Core)
+  -> Debian stable package pool, sysvinit/runit (no systemd), tuned kernel, boot
 Host profile
   -> hardware-specific settings and explicitly local state
 ```
@@ -55,8 +58,8 @@ their source versions, so a result can be reconstructed.
 
 The current `fred.*` widgets use Omarchy's Quickshell `qs.Commons`, `qs.Ui`,
 and plugin loader. An independent base needs Tamlinux-owned equivalents before
-those widgets can be considered portable. This is an explicit dependency of
-the NixOS and plain Arch paths.
+those widgets can be considered portable. This decoupling is an explicit milestone
+of the AntiX Linux base layer path.
 
 ## Proposed repository shape
 
@@ -68,8 +71,8 @@ their contents into this repository.
 tamlinux/
   bin/tamlinux                 # command entry point
   installer/                   # inspect, plan, apply, verify orchestration
-  profiles/omarchy/            # current base adapter
-  profiles/nixos/              # second-machine pilot, when ready
+  profiles/omarchy/            # transitional base adapter (0.x)
+  profiles/antix/              # target antiX Core base adapter
   manifests/                   # component sources and pinned versions
   knowledge/                   # offline command and onboarding content
   docs/plans/                  # decisions, milestones, and evidence
@@ -85,53 +88,59 @@ The first command surface is `tamlinux install`:
 
 - `tamlinux install inspect` reports the OS, architecture, current Tamlinux
   version, available package tools, and the profile it can use.
-- `tamlinux install plan --profile omarchy` prints the exact intended changes,
+- `tamlinux install plan --profile <profile>` prints the exact intended changes,
   required inputs, source revisions, privileges, and a rollback route. It makes
   no changes.
-- `tamlinux install apply --profile omarchy` performs only the reviewed plan,
+- `tamlinux install apply --profile <profile>` performs only the reviewed plan,
   with clear checkpoints and a recorded result. A mismatched or stale plan
   requires a new review.
 - `tamlinux install verify` checks the installed components, versions, command
   resolution, desktop integration, and any failed or skipped steps.
 
-Use structured step results so the same framework can gain a NixOS adapter.
-Each step declares its prerequisites, owner, expected state, action, and
-verification. Re-running an already satisfied step must be safe. A failure
-stops before later dependent steps and tells the operator how to recover.
+Use structured step results so the framework can transition from the Omarchy
+profile to the antiX Core adapter. Each step declares its prerequisites, owner,
+expected state, action, and verification. Re-running an already satisfied step
+must be safe. A failure stops before later dependent steps and tells the
+operator how to recover.
 The framework must never partition a disk or switch the active OS as a hidden
 side effect of `apply`.
 
-For 0.x, system packages remain native Arch packages; user tools can remain
-under Home Manager or Mise according to their declared owner. The framework
-does not silently transfer package ownership. For a NixOS pilot, the system
-profile becomes NixOS configuration and the user profile can still use Home
-Manager. A bootable image and storage layout require a separate reviewed plan.
+For 0.x, system packages remain native host packages; user tools can remain
+under Home Manager or Mise according to their declared owner. For the antiX
+target, the host is antiX Core, while desktop tools and user applications
+are managed deterministically via Nix flakes with instant rollback.
 
 ## Milestones
 
 | Milestone | Deliverable | Evidence to record here |
 | :-- | :-- | :-- |
-| A. Inventory | Component/owner manifest for the current 0.0.1 workstation; portability gaps and required licenses. | Source revision and classification of each component. |
+| A. Inventory | Component/owner manifest for current 0.0.1 workstation; catalog Omarchy/Hyprland dependencies. | Source revision and classification of each component. |
 | B. Framework | `inspect`, read-only `plan`, bounded `apply`, and `verify` for the Omarchy profile. | Plan output, applied steps, versions, and recovery path. |
-| C. Fresh install | Use the framework on a second computer with a supported base image. | Installation transcript, missing inputs, and any manual steps. |
-| D. Independent base | NixOS pilot with Tamlinux-owned shell integration. | Boot, desktop, widgets, rollback, and maintenance observations. |
-| E. Delivery | Decide whether an image, guided installer, or both are justified. | Install time, failure recovery, and maintenance cost. |
+| C. Decoupling Pilot | Test antiX Linux Core + `seatd` + River baseline on a secondary computer. | Installation transcript, boot time, memory footprint (<100MB). |
+| D. AntiX Base Layer | Deploy Nix flakes, River hardening, and ported `fred.*` plugins on antiX Core. | River session, declarative configs, Nix atomic generations and rollback. |
+| E. Graduation to Suspra Workstation | Transition Tamlinux to Suspra Linux; package Tier 3 Suspra Workstation. | Turnkey USB installer (Maker Fest model), single-command setup, multi-hardware verification. |
 
-The daily workstation remains on its working installation while B–D are
+The daily workstation remains on its working installation while C–D are
 developed and checked on a separate computer. A product version changes only
 when a reviewed product snapshot is ready; installer iterations do not equal
 Home Manager generations.
 
 ## Review record and remaining decisions
 
-- **2026-09-23:** Fred reviewed this framework and said the installation
-  direction looks good. The proposed base sequence and command contract are
-  the starting design for implementation.
-- **Open:** Choose the second computer and whether its first pilot may erase
-  its disk. Disk layout and migration instructions follow that choice.
+- **2026-09-23:** Fred reviewed this framework and approved the installation
+  contract and general command structure.
+- **2026-09-28:** Fred refined the base layer strategy to **antiX Linux Core +
+  `seatd` + Wayland + River**, with Nix for package determinism and atomic
+  rollbacks. Clarified the vision: Tamlinux works from Omarchy toward this AntiX
+  Linux base layer, at which point it launches as **Suspra Linux** to build the
+  Tier 3 Suspra Workstation for diverse hardware.
+- **Open:** Choose the secondary machine for the antiX Core pilot and define
+  its disk boundaries before installation.
 
 ## References
 
-- [Omarchy manual](https://omarchy.org/manual/) — current base and desktop stack.
-- [NixOS manual: rolling back configuration changes](https://nixos.org/manual/nixos/stable/) — system generations and rollback.
-- [Home Manager manual: NixOS module](https://nix-community.github.io/home-manager/installation/nixos.html) — managing user configuration with NixOS.
+- [antiX Linux](https://antixlinux.com/) — lean, systemd-free Debian-based Linux.
+- [River compositor](https://github.com/riverwm/river) — dynamic tiling Wayland compositor written in Zig.
+- [seatd](https://git.sr.ht/~kennylevinsen/seatd) — minimal seat management daemon.
+- [NixOS manual: rolling back configuration changes](https://nixos.org/manual/nixos/stable/) — generations and rollback concepts.
+- [Home Manager manual](https://nix-community.github.io/home-manager/) — managing user configuration with Nix.

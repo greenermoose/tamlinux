@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [Unreleased]
+
+### Changed
+
+- Refined architectural vision and public explainer in [`README.md`](README.md):
+  clarified that Arch Linux's appealing idea is continuous rolling updates,
+  adopted AntiX Linux's inspiration for older hardware support and lean
+  non-systemd base layer, and elevated simplifying and minimizing resource use
+  as a general principle that allows Linux to run faster and use less energy
+  on modern hardware as well.
+- Defined the transition roadmap: working from Omarchy (0.x) toward an AntiX
+  Linux base layer (`antiX Core` + `seatd` + Wayland + River, with Nix rollbacks),
+  graduating to the launch of **Suspra Linux** and the Tier 3 Suspra Workstation.
+- Updated [`UPSTREAM.md`](UPSTREAM.md) and [`VERSIONING.md`](VERSIONING.md) to
+  align with the AntiX base layer and Suspra Workstation trajectory.
+- Updated [`docs/plans/installation-framework.md`](docs/plans/installation-framework.md)
+  and [`docs/plans/README.md`](docs/plans/README.md) to replace the exploratory
+  NixOS/Arch host sequence with the settled AntiX Linux Core base sequence and
+  Maker Fest distribution model.
+
 ## [0.0.1] - 2026-09-22
 
 ### Added
