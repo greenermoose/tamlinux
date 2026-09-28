@@ -3,7 +3,7 @@
 - **CLI tool:** Codex CLI `0.156.1` (checked on 2026-09-23)
 - **Model:** `gpt-6-sol` (verified in the Codex session transcript)
 - **Plan commit:** `6524407`
-- **Transcript reference:** Codex session `01a0cecc-2ca6-7790-a727-110f64b918da`
+- **Transcript**: Retained privately by the author.
 - **Scope:** Planning and review. No installer or `tamlinux` command was implemented.
 
 ## User direction

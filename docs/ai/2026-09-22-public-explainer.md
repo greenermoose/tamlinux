@@ -3,7 +3,7 @@
 - **CLI Tool**: Cursor `3.21.16`
 - **Model**: `composer`
 - **Commit**: `31e0fff` (initial explainer) plus the branding commits in the `*-fred-tamlinux` repos
-- **Transcript Reference**: `88a15629-5548-46a5-9948-f82903a2e6be`
+- **Transcript**: Retained privately by the author.
 
 ## Prompts
 
