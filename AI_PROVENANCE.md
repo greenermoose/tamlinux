@@ -32,7 +32,7 @@ version was checked again for the 2026-09-23 planning session.
 | **Product version 0.0.1** | 0.0.1 | Cursor `3.21.16` (`composer`) | First Tamlinux version. 0.x is Omarchy-based; 1.x is independent. Home Manager generation is recorded separately. [Session record](docs/ai/2026-09-22-version-0.0.1.md). |
 | **Installation and command plans** | 0.0.1 planning | Codex CLI `0.156.1` (`gpt-6-sol`), with Fred's direct edits and review | Omarchy first installation profile; NixOS pilot next; approved first `tamlinux` command slice, first-use welcome, and Lynx fallback. No installer or command implementation yet. [Session record](docs/ai/2026-09-23-installation-and-command-plans.md). |
 
-Detailed session records are indexed in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+Detailed session records are indexed in [`docs/ai/README.md`](docs/ai/README.md).
 
 ## 2026-09-23 upstream survey foundation
 

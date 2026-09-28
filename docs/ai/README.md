@@ -1,5 +1,25 @@
 # AI Collaboration Session Archive: `tamlinux`
 
-This directory contains individual session records documenting prompt history,
-tools, models, and key decisions for Tamlinux. See the
-[session index](sessions.md) for the chronological list.
+Individual session records documenting prompt history, tools, models, and key
+architectural decisions for Tamlinux. One file per session; there is no
+monolithic `sessions.md` here, matching `plugin-fred-tamlinux`.
+
+Tool and model versions are verified against local transcript stores. An entry
+whose attribution has not been checked against a local transcript says so
+explicitly.
+
+## Session Records
+
+| Date | Topic | Primary Tool | Model | Session Document |
+| :-- | :-- | :-- | :-- | :-- |
+| 2026-09-22 | Public explainer and suite branding | Cursor `3.21.16` | composer | [`2026-09-22-public-explainer.md`](2026-09-22-public-explainer.md) |
+| 2026-09-22 | Product version 0.0.1 | Cursor `3.21.16` | composer | [`2026-09-22-version-0.0.1.md`](2026-09-22-version-0.0.1.md) |
+| 2026-09-23 | Installation and `tamlinux` command plans | Codex CLI `0.156.1` | `gpt-6-sol` | [`2026-09-23-installation-and-command-plans.md`](2026-09-23-installation-and-command-plans.md) |
+
+## Related
+
+- [`../../AI_PROVENANCE.md`](../../AI_PROVENANCE.md) — toolchain and milestone table.
+
+## 2026-09-23 upstream survey foundation
+
+- [Codex session record](2026-09-23-upstream-survey-foundation.md).
