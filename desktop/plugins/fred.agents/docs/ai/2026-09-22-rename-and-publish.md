@@ -2,7 +2,7 @@
 
 - **Tool:** Codex CLI `0.155.1`
 - **Model:** GPT-6 Sol (`gpt-6-sol`)
-- **Transcript:** Codex session `01a0cbc2-f57e-7571-ae15-aee3f924c840`
+- **Transcript**: Retained privately by the author.
 - **Scope:** Repository naming and public pre-release. The existing v1.1.2 plugin code was preserved.
 
 ## Guiding prompt

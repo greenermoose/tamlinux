@@ -2,7 +2,7 @@
 
 - **Tool:** Antigravity CLI (`agy`) `1.2.9`
 - **Model:** Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`)
-- **Conversation ID:** `365f4bb9-73a7-4423-b747-7e45d7127108`
+- **Transcript**: Retained privately by the author.
 - **User prompt:**
   > I need screenshots of fred.agents hover and panel. Add them to the agents-fred-tamlinux and plugin-fred-tamlinux repos. I want the screenshots to show on Fred's Tamlinux Plugin Suite site (https://greenermoose.github.io/plugin-fred-tamlinux/).
 

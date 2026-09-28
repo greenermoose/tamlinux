@@ -7,9 +7,8 @@
 - **Scope**: milestone F — give the prompt-only Cursor collector live plan
   usage, following the Claude/Codex limits pattern; assess the same for
   Antigravity (blocked, milestone G)
-- **Transcript**: opencode store sessions `ses_f3e75eee5ffeE0pG9EyMwWx8oF`
-  (implementation, interrupted mid-file) and `ses_f3c853dceffecnb5epXXfdUJDG`
-  (this continuation)
+- **Transcript**: Two sessions (an implementation interrupted mid-file, then
+  this continuation), retained privately by the author.
 - **Attribution**: verified. Tool and model were read live.
 
 ## Prompts

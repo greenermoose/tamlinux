@@ -3,7 +3,7 @@
 - **CLI Tool**: Cursor `3.21.16`
 - **Model**: `composer`
 - **Commit**: `4136c09`
-- **Transcript Reference**: `68f9fa04-2323-4102-841a-25ab29a68985`
+- **Transcript**: Retained privately by the author.
 
 ## Prompts
 

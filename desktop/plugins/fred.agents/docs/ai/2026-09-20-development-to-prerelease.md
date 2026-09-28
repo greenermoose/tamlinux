@@ -5,8 +5,7 @@
 - **Model**: Big Pickle (`big-pickle`)
 - **Scope**: `fred.agents` from scratch through milestone D, plus the
   pre-release prep phase of milestone E
-- **Transcript**: opencode store session `ses_f40a47824ffeTRjyEoDjuA9NUj`
-  (`~/.local/share/opencode/opencode.db`)
+- **Transcript**: Retained privately by the author.
 - **Attribution**: verified. Tool and model were read live.
 
 ## Prompts

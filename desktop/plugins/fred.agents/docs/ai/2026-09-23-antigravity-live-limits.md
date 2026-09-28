@@ -2,7 +2,7 @@
 
 - **Tool:** Antigravity CLI (`agy`)
 - **Model:** Gemini 3.8 Flash (High)
-- **Session:** `b76c4bc7-94b9-4bfd-b673-e255374b2f10`
+- **Transcript**: Retained privately by the author.
 - **User prompt:**
   > Investigate why in fred.agents we could not figure out how to display usage limits for agy. Do research and propose a plan to fix that. We show limits for our other AI subscriptions. Please try to get limits working for antigravity, too.
 
@@ -21,6 +21,6 @@
      - Maps Google's quota hierarchy into 4 limit rows: Gemini Weekly, Gemini 5-hour, Claude & GPT Weekly, and Claude & GPT 5-hour.
      - Detects and reports the `"Google AI Pro"` subscription tier.
      - Caches results at `~/.cache/omarchy/agent-usage/antigravity-limits.json` with a 15-second debounce and open-window fallback.
-   - Mirrored collector to `~/Code/tamlinux/config-fred-tamlinux/config/omarchy/plugins/fred.agents/bin/tam-agent-usage-antigravity`.
+   - Mirrored `bin/tam-agent-usage-antigravity` to the deployed copy in Fred's private workstation configuration.
    - Bumped deployed version to `1.2.0` (`[1.2.0] - Unreleased` in CHANGELOG.md; `manifest.json` and `Panel.qml`).
    - Created detailed plan and investigation report in `docs/plans/fred-agents-antigravity-limits-plan.md` and reviewed in Omawrite.
