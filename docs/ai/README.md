@@ -28,3 +28,7 @@ explicitly.
 ## 2026-09-28 private session IDs
 
 - [Claude Code session record](2026-09-28-private-session-ids.md).
+
+## 2026-09-28 provenance audit and publish
+
+- [Claude Code session record](2026-09-28-provenance-audit-and-publish.md).

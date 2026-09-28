@@ -60,3 +60,11 @@ Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
 [Session record](docs/ai/2026-09-28-private-session-ids.md).
+
+## 2026-09-28 provenance audit and publish
+
+Claude Code `2.1.284` (`claude-sonnet-5-5`) audited every public repository's
+AI records against the public provenance standard, redacted one private
+repository name from a quoted prompt, and published the pending Antigravity
+session record. Documentation only.
+[Session record](docs/ai/2026-09-28-provenance-audit-and-publish.md).
