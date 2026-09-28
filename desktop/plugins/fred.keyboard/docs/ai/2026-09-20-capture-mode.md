@@ -5,7 +5,7 @@
 - **Model**: `claude-opus-5` (Claude Opus 5)
 - **Scope**: the deployed copy in the local workstation config (SOP 2); this repo's
   `tests/` harness
-- **Transcript**: `~/.claude/projects/-home-fred/a18febdb-55c9-42f4-87f7-2ae104759b15.jsonl`
+- **Transcript**: Retained privately by the author.
 - **Attribution**: verified. Tool and model versions were read live.
 
 ## Opening request

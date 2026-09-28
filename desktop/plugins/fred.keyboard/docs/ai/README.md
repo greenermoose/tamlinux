@@ -12,7 +12,7 @@ against a local transcript says so explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
-| 2026-09-19 | Reconnaissance (Omarchy internals, binds, marketplace); no code, stopped on an API quota limit | `agy` (Antigravity CLI `1.2.7`) | Gemini 3.8 Flash (High) | recorded within the session below; transcript `~/.gemini/antigravity-cli/brain/3eb22acb-1ed1-46e1-a06e-efd56bd84846/` |
+| 2026-09-19 | Reconnaissance (Omarchy internals, binds, marketplace); no code, stopped on an API quota limit | `agy` (Antigravity CLI `1.2.7`) | Gemini 3.8 Flash (High) | recorded within the session below |
 | 2026-09-19 | Design, First Working Build & Pre-Release (v0.1.0) | `claude` (Claude Code `2.1.278`) | Claude Opus 5 (`claude-opus-5`) | [`2026-09-19-design-build-and-pre-release.md`](2026-09-19-design-build-and-pre-release.md) |
 | 2026-09-20 | From Capture Mode to Release 1.0.0 | `claude` (Claude Code `2.1.278`) | Claude Opus 5 (`claude-opus-5`) | [`2026-09-20-capture-mode.md`](2026-09-20-capture-mode.md) |
 
@@ -26,3 +26,7 @@ against a local transcript says so explicitly.
 ## 2026-09-23 upstream survey foundation
 
 - [Codex session record](2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+- [Claude Code session record](2026-09-28-private-session-ids.md).
