@@ -34,7 +34,38 @@ is not copied into this directory.
 These shared types are used by the other plugins and are not built yet:
 `Border`, `BarIconButton`, `BorderSurface`, `CursorSurface`, `Dropdown`,
 `PanelHero`, `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`.
-Hyprland imports and `hyprctl` stay on the compositor step.
+
+## Compositor contract
+
+Shell UI and fixtures read `desktop/shell/host/Compositor.qml`.
+`HyprlandAdapter.qml` is the only shell file that imports
+`Quickshell.Hyprland` or starts `/usr/bin/hyprctl`. There is no generic
+`hyprctl` argument list. `desktop/shell/host/compositor_commands.py` builds
+the same argv for tests and does not run it.
+
+The facade exposes plain data:
+
+- outputs: name, focused flag, active workspace id, `dpmsOn`
+- `focusedOutputName` and `outputForScreen(screen)`
+- workspaces: id, output name, occupied, bounded window summaries
+- `focusedWorkspaceId`, `bindingsText`, `activeKeymap`
+- a revision counter that changes when the snapshot changes
+
+Named actions are `focusWorkspace(id)`, `focusOutput(name)`, and
+`setDpms(name, on)`. They record the request unless
+`TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`. The proof launcher removes that
+variable, so a selftest cannot blank a display or move focus. Output names
+must match `^[A-Za-z0-9._-]{1,64}$`. Workspace ids are 1 through 10. Reads
+are the fixed commands `binds`, `-j devices`, and `-j monitors`, each with
+`PATH=/usr/bin`, the Wayland runtime directory, the Hyprland instance
+signature, and a four-second deadline. Bindings text, the keymap, and window
+summaries are capped. Layout rewrite, `hyprctl reload`, and monitor reset
+stay out of this slice.
+
+`desktop/fixtures/compositor/` is `tamlinux.compositor`. It reads the facade
+and logs names, counts, the keymap, and whether the screen matches an output.
+It does not import Hyprland. The seven plugins are unchanged and still talk
+to Hyprland themselves.
 
 IPC stays on the shell target `tamlinux-shell` and the one `tamlinux.clock`
 handler inside the single clock instance. The fixture sets `manageIpc` false
@@ -56,11 +87,16 @@ desktop/
   launch-clock-proof          # stage, launch, and --selftest
   shell/shell.qml             # named config root
   shell/host/                 # bar, settings writes, manifest checks
+  shell/host/Compositor.qml   # facade the shell and fixtures read
+  shell/host/HyprlandAdapter.qml
+  shell/host/compositor_commands.py
   shell/modules/Tam/          # Commons and Ui
   adapters/clock-step1.patch  # imports, identity, offline gate, disabled edits
   adapters/build_patch.py     # regenerates that patch from the pinned revision
   fixtures/panel/             # tamlinux.fixture, not a fred.* plugin
+  fixtures/compositor/        # tamlinux.compositor, reads the facade only
   tests/test_host.py
+  tests/test_compositor.py
 ```
 
 The launcher exports the pinned clock with `git archive`, applies the patch,
@@ -142,8 +178,31 @@ Automated, on the development Wayland session, after the clock checks above:
 - With `--output all`, the shell saw three outputs. Dropping `HDMI-A-1`
   destroyed that bar and left the `DP-2` and `DP-1` bars in place.
 
+## Checks recorded 2026-10-03, compositor contract
+
+Automated, on the development Wayland session, after the host-contract checks:
+
+- `desktop/tests/test_compositor.py` passed (9 tests). It builds argv for
+  focus, DPMS, binds, and devices, and rejects bad output names and workspace
+  ids, without running `hyprctl`. The adapter source matches those command
+  templates. Other shell QML does not import `Quickshell.Hyprland` or mention
+  `hyprctl`.
+- `desktop/tests/test_host.py` still passed (11 tests).
+- `--selftest --scale 1` and `--scale 1.25` kept the clock and host-contract
+  results: calendar open and close, format `dddd h:mm AP` across restart,
+  refused event edit, fetch suppressed, and tooltip sizes 132×42 at 11px and
+  168×54 at 14px.
+- The same runs compared adapter output names, the focused output, and active
+  workspace ids with one `hyprctl -j monitors` snapshot. Bindings text and the
+  keymap were non-empty and within their caps. Recorded focus and DPMS lines
+  appeared. Live action lines did not. The proof log mentioned `hyprctl` only
+  on the adapter's binds, devices, and monitors read lines.
+
 ## Limits
 
 This is a Develop candidate. It does not install a package, switch the
-production shell, or prove a Void target session. The other seven plugins are not
-loaded. Compositor backends and the one-command install are later steps.
+production shell, or prove a Void target session. The other seven plugins are
+not loaded and are not pointed at the facade yet. The Hyprland adapter is the
+only new Hyprland import in this tree. A Sway backend and the one-command
+install are later steps. Live compositor actions stay off unless
+`TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.

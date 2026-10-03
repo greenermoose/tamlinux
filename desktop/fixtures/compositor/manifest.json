@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "tamlinux.compositor",
+  "name": "Compositor contract fixture",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  }
+}

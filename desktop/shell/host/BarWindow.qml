@@ -65,7 +65,18 @@ PanelWindow {
       onLoaded: win.adopt(item, false)
       onStatusChanged: {
         if (status === Loader.Error)
-          console.log("TAMLINUX_EVIDENCE fixture-load-failed host=" + win.hostKey)
+          console.log("TAM LINUX_EVIDENCE fixture-load-failed host=" + win.hostKey)
+      }
+    }
+
+    Loader {
+      id: compositorLoader
+      active: win.loadsClock && shell.compositorEntry !== ""
+      source: win.loadsClock ? shell.compositorEntry : ""
+      onLoaded: win.adopt(item, false)
+      onStatusChanged: {
+        if (status === Loader.Error)
+          console.log("TAM LINUX_EVIDENCE compositor-load-failed host=" + win.hostKey)
       }
     }
   }
@@ -84,6 +95,10 @@ PanelWindow {
     if (!item) return
     item.bar = api
     if (item.moduleName === "tamlinux.fixture") item.hostKey = hostKey
+    if (item.moduleName === "tamlinux.compositor") {
+      item.hostKey = hostKey
+      item.screenRef = screenRef
+    }
     var id = item.moduleName || (isClock ? "fred.clock" : "")
     item.settings = shell.entrySettings(id)
     if (item.bindHost) item.bindHost()

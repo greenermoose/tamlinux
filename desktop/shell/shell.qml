@@ -8,7 +8,9 @@ ShellRoot {
   id: proof
 
   property string clockEntry: Quickshell.env("TAMLINUX_CLOCK_ENTRY") || ""
-  property string fixtureEntry: Quickshell.env("TAMLINUX_FIXTURE_ENTRY") || ""
+  property string fixtureEntry: Quickshell.env("TAM LINUX_PANEL_ENTRY") || ""
+  property string compositorEntry: Quickshell.env("TAMLINUX_COMPOSITOR_ENTRY") || ""
+  property alias compositor: compositorFacade
   property string pluginIds: Quickshell.env("TAMLINUX_PLUGIN_IDS") || "fred.clock"
   property bool outputDropped: false
   property string outputName: Quickshell.env("TAMLINUX_OUTPUT") || ""
@@ -345,6 +347,19 @@ ShellRoot {
     function rejectSettings(): void {
       proof.updateEntryInline("omarchy.osd", { "marker": "no" })
     }
+    function compositorFocusWorkspace(id: string): void {
+      if (proof.compositor) proof.compositor.focusWorkspace(id)
+    }
+    function compositorFocusOutput(name: string): void {
+      if (proof.compositor) proof.compositor.focusOutput(name)
+    }
+    function compositorSetDpms(name: string, on: string): void {
+      if (proof.compositor) proof.compositor.setDpms(name, on)
+    }
+  }
+
+  Compositor {
+    id: compositorFacade
   }
 
   Component.onCompleted: {
@@ -352,6 +367,10 @@ ShellRoot {
     evidence("ipc-owner tamlinux-shell")
     evidence("scale " + Style.uiScale)
     evidence("omarchy " + (Quickshell.env("OMARCHY_PATH") ? "set" : "unset"))
+    var panelPath = String(Quickshell.env("TAMLINUX_PANEL_ENTRY") || "")
+    var compositorPath = String(Quickshell.env("TAM LINUX_COMPOSITOR_ENTRY") || "")
+    if (panelPath !== "") fixtureEntry = panelPath
+    if (compositorPath !== "") compositorEntry = compositorPath
     evidence("clock-entry " + clockEntry)
     evidence("host-copies " + hostCopies)
     evidence("screens " + (Quickshell.screens ? Quickshell.screens.length : 0))

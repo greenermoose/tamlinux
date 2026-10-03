@@ -16,6 +16,12 @@ from pathlib import Path
 HOST = Path(__file__).resolve().parent / "shell" / "host"
 sys.path.insert(0, str(HOST))
 
+from compositor_commands import (  # noqa: E402
+    BINDS_LIMIT,
+    KEYMAP_LIMIT,
+    CompositorCommandError,
+    snapshot_from_monitors,
+)
 from registry import RegistryError, validate_directories  # noqa: E402
 from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
 
@@ -23,6 +29,7 @@ PINNED_REVISION = "ed5140ccefc83c0a2fdd5f899bbd290acc35d88a"
 SHELL_DIR = Path(__file__).resolve().parent / "shell"
 PATCH = Path(__file__).resolve().parent / "adapters" / "clock-step1.patch"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "panel"
+COMPOSITOR = Path(__file__).resolve().parent / "fixtures" / "compositor"
 ALLOWED = {"fred.clock", "tamlinux.fixture"}
 
 
@@ -136,11 +143,13 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     if not os.environ.get("XDG_RUNTIME_DIR"):
         raise SystemExit("XDG_RUNTIME_DIR is required; the proof does not use /tmp")
     try:
-        records = validate_directories([plugin, FIXTURE])
+        records = validate_directories([plugin, FIXTURE, COMPOSITOR])
     except RegistryError as exc:
         raise SystemExit(f"registry rejected a staged plugin: {exc}") from exc
+    by_id = {record["id"]: record for record in records}
     env = os.environ.copy()
     env.pop("OMARCHY_PATH", None)
+    env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
     env.update({
         "HOME": str(home),
         "XDG_CONFIG_HOME": str(config),
@@ -149,8 +158,9 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "PATH": "/usr/bin",
         "QML_IMPORT_PATH": str(SHELL_DIR / "modules"),
         "TAMLINUX_CLOCK_OFFLINE": "1",
-        "TAMLINUX_CLOCK_ENTRY": records[0]["entry"],
-        "TAMLINUX_FIXTURE_ENTRY": records[1]["entry"],
+        "TAMLINUX_CLOCK_ENTRY": by_id["fred.clock"]["entry"],
+        "TAMLINUX_PANEL_ENTRY": by_id["tamlinux.fixture"]["entry"],
+        "TAMLINUX_COMPOSITOR_ENTRY": by_id["tamlinux.compositor"]["entry"],
         "TAMLINUX_PLUGIN_IDS": "fred.clock,tamlinux.fixture",
         "TAMLINUX_HOST_COPIES": copies,
         "TAMLINUX_UI_SCALE": scale,
@@ -329,6 +339,7 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
     require(lambda: "settings-wrote tamlinux.fixture marker=step2" in lines(), "fixture setting was not written:")
     ipc(env, "tamlinux-shell", "rejectSettings")
     require(lambda: "settings-rejected omarchy.osd" in lines(), "unknown settings id was not rejected:")
+    drive_compositor(env, process, lines, require)
     ipc(env, "tamlinux-shell", "dropHost", [keys[1]])
     require(lambda: contains(f"bar-destroyed host={keys[1]}"), "dropped host was not destroyed:")
     require(lambda: live_hosts() == 1, "surviving host was not kept:")
@@ -336,6 +347,122 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("dropping one host destroyed the other")
     ipc(env, "tamlinux-shell", "dropOutput")
     require(lambda: has("bar-destroyed "), "output drop did not destroy the bar:")
+
+
+def last_suffix(lines: list[str], prefix: str) -> str | None:
+    found = None
+    for line in lines:
+        if line.startswith(prefix):
+            found = line[len(prefix):]
+    return found
+
+
+def fetch_monitors() -> dict:
+    try:
+        completed = subprocess.run(
+            ["/usr/bin/hyprctl", "-j", "monitors"],
+            capture_output=True, text=True, timeout=3, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SystemExit(f"hyprctl monitors failed: {exc}") from exc
+    if completed.returncode != 0:
+        raise SystemExit(completed.stderr or "hyprctl monitors failed")
+    try:
+        data = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("hyprctl monitors was not json") from exc
+    try:
+        return snapshot_from_monitors(data)
+    except CompositorCommandError as exc:
+        raise SystemExit(f"hyprctl monitors snapshot: {exc}") from exc
+
+
+def compositor_mismatch(lines: list[str], snapshot: dict) -> str:
+    outputs = last_suffix(lines, "compositor-outputs ")
+    focused = last_suffix(lines, "compositor-focused-output ")
+    workspaces = last_suffix(lines, "compositor-active-workspaces ")
+    if outputs is None or focused is None or workspaces is None:
+        return "compositor snapshot evidence is missing"
+    seen = [name for name in outputs.split(",") if name]
+    active = [int(item) for item in workspaces.split(",") if item]
+    if seen != snapshot["names"]:
+        return f"outputs {seen} != {snapshot['names']}"
+    if focused != snapshot["focused"]:
+        return f"focused {focused!r} != {snapshot['focused']!r}"
+    if active != snapshot["workspaces"]:
+        return f"workspaces {active} != {snapshot['workspaces']}"
+    return ""
+
+
+def proof_log_is_adapter_only(log: str) -> str:
+    for line in log.splitlines():
+        if "Quickshell.Hyprland" in line:
+            return line
+        if "hyprctl" not in line:
+            continue
+        if "compositor-adapter hyprctl binds " in line:
+            continue
+        if "compositor-adapter hyprctl devices " in line:
+            continue
+        if "compositor-adapter hyprctl monitors " in line:
+            continue
+        return line
+    return ""
+
+
+def drive_compositor(env: dict, process: subprocess.Popen, lines, require) -> None:
+    require(lambda: last_suffix(lines(), "compositor-screen-match ") == "true", "screen did not match an output:")
+    require(lambda: _bounded_int(last_suffix(lines(), "compositor-bindings-bytes "), 1, BINDS_LIMIT), "bindings text was empty or unbounded:")
+    require(lambda: _keymap_ok(last_suffix(lines(), "compositor-keymap ")), "keymap was empty or unbounded:")
+    require(lambda: last_suffix(lines(), "compositor-windows ") is not None, "window summary was not published:")
+    for label in ("binds", "devices", "monitors"):
+        require(lambda label=label: any(line.startswith(f"compositor-adapter hyprctl {label} ") for line in lines()), f"{label} read did not finish:")
+    outputs = last_suffix(lines(), "compositor-outputs ") or ""
+    name = next((item for item in outputs.split(",") if item), "")
+    if not name:
+        raise SystemExit("compositor published no output name")
+    ipc(env, "tamlinux-shell", "compositorFocusWorkspace", ["1"])
+    ipc(env, "tamlinux-shell", "compositorFocusOutput", [name])
+    ipc(env, "tamlinux-shell", "compositorSetDpms", [name, "off"])
+    ipc(env, "tamlinux-shell", "compositorFocusWorkspace", ["99"])
+    ipc(env, "tamlinux-shell", "compositorFocusWorkspace", ["2abc"])
+    ipc(env, "tamlinux-shell", "compositorFocusOutput", ["../x"])
+    ipc(env, "tamlinux-shell", "compositorSetDpms", [name, "maybe"])
+    require(lambda: "compositor-action recorded focus-workspace 1" in lines(), "workspace focus was not recorded:")
+    require(lambda: f"compositor-action recorded focus-output {name}" in lines(), "output focus was not recorded:")
+    require(lambda: f"compositor-action recorded set-dpms {name} off" in lines(), "dpms was not recorded:")
+    require(lambda: lines().count("compositor-action rejected focus-workspace") >= 2, "bad workspace ids were not rejected:")
+    require(lambda: "compositor-action rejected focus-output" in lines(), "bad output name was not rejected:")
+    require(lambda: "compositor-action rejected set-dpms" in lines(), "bad dpms action was not rejected:")
+    if any(line.startswith("compositor-action live ") for line in lines()):
+        raise SystemExit("live compositor action ran during the proof")
+    leaked = proof_log_is_adapter_only(read_log(process))
+    if leaked:
+        raise SystemExit("compositor detail escaped the adapter:\n" + leaked)
+
+    last = {"error": "compositor snapshot was not compared"}
+
+    def matched() -> bool:
+        try:
+            last["error"] = compositor_mismatch(lines(), fetch_monitors())
+        except SystemExit as exc:
+            last["error"] = str(exc)
+            return False
+        return last["error"] == ""
+
+    if not wait_for(matched, 8, 0.4):
+        raise SystemExit(last["error"] + "\n" + read_log(process)[-2500:])
+
+
+def _keymap_ok(text: str | None) -> bool:
+    return text is not None and text != "" and "\n" not in text and len(text) <= KEYMAP_LIMIT
+
+
+def _bounded_int(text: str | None, low: int, high: int) -> bool:
+    if text is None or not text.isdigit():
+        return False
+    value = int(text)
+    return low <= value <= high
 
 
 def expect(lines: list[str], text: str) -> None:
@@ -412,6 +539,19 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     expect(lines, "output-dropped")
     expect_prefix(lines, "bar-destroyed ")
     expect_prefix(lines, "popup-destroyed")
+    expect(lines, "compositor-screen-match true")
+    expect(lines, "compositor-action recorded focus-workspace 1")
+    expect_prefix(lines, "compositor-action recorded focus-output ")
+    expect_prefix(lines, "compositor-action recorded set-dpms ")
+    expect(lines, "compositor-action rejected focus-workspace")
+    expect(lines, "compositor-adapter hyprctl binds ")
+    expect(lines, "compositor-adapter hyprctl devices ")
+    expect(lines, "compositor-adapter hyprctl monitors ")
+    if any(line.startswith("compositor-action live ") for line in lines):
+        raise SystemExit("live compositor action ran during the proof")
+    leaked = proof_log_is_adapter_only(log)
+    if leaked:
+        raise SystemExit("compositor detail escaped the adapter:\n" + leaked)
     if "/usr/share/omarchy" in log:
         raise SystemExit("proof log references the Omarchy shell tree")
     settings = read_settings(primary / "home" / ".config" / "tamlinux-shell" / "settings.json", ALLOWED)

@@ -12,7 +12,8 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
-| 2026-10-03 | Void-first target base and repository alignment | Codex CLI `0.160.0` | `gpt-6.1-sol` | [2026-10-03-void-first-target-base.md](2026-10-03-void-first-target-base.md) |
+| 2026-10-03 | Compositor contract and Hyprland adapter | Cursor `3.23.12` | `composer` | [`2026-10-03-compositor-contract.md`](2026-10-03-compositor-contract.md) |
+| 2026-10-03 | Void-first target base and repository alignment | Codex CLI `0.160.0` | `gpt-6.1-sol` | [2026-10-03-void-first-target-base.md](2026-10-03-void-first-target-base.md)
 | 2026-10-03 | runit for system initialization and service management | Antigravity CLI (`agy`) `1.2.16` | `gemini-3.8-flash-high` | [`2026-10-03-runit-system-initialization-and-service-management.md`](2026-10-03-runit-system-initialization-and-service-management.md) |
 | 2026-10-03 | Shell host contract for the other plugins | Cursor `3.21.18` | `composer` | [`2026-10-03-shell-host-contract.md`](2026-10-03-shell-host-contract.md) |
 | 2026-10-03 | Independent clock shell proof | Cursor `3.21.18` | `composer` | [`2026-10-03-independent-clock-shell.md`](2026-10-03-independent-clock-shell.md) |

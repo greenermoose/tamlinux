@@ -26,6 +26,7 @@ QtObject {
   property var activePopout: null
   property var clickTargets: []
   property var shell: null
+  readonly property var compositor: shell ? shell.compositor : null
 
   function setCenterHoverRevealSuppressed(value) {
     centerHoverRevealSuppressed = !!value

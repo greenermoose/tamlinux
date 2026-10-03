@@ -27,7 +27,8 @@ CLI version was updated to `1.2.12` on 2026-09-28 and `1.2.16` on 2026-10-03.
 
 Codex CLI was checked again as `0.160.0` for the 2026-10-03 dependency planning
 session, using the logged model `gpt-6.1-sol`. Cursor was checked as `3.21.18`
-for the 2026-10-03 clock-shell candidate.
+for the 2026-10-03 clock-shell candidate, and as `3.23.12` for the compositor
+contract the same day.
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
@@ -45,6 +46,7 @@ for the 2026-10-03 clock-shell candidate.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Compositor contract and Hyprland adapter** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Shell UI in `desktop/` reads a compositor facade. The Hyprland adapter is the only new file that imports Hyprland or starts hyprctl. Focus and DPMS stay record-only in the proof. The seven plugins are unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-compositor-contract.md). |
 | **runit for init and service management** | 0.0.1 planning | Antigravity CLI (`agy`) `1.2.16` (`gemini-3.8-flash-high`) | Recorded Fred's decision to use runit for system initialization (PID 1) and service supervision on Suspra Workstations, aligning with antiX Linux Core's default runit base. Documentation only. [Session record](docs/ai/2026-10-03-runit-system-initialization-and-service-management.md). |
 | **Shell host contract** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | The clock host now covers the other plugins' bar and shell calls: per-output popouts, settings, manifests, tooltips, panel focus, and IPC. A fixture widget proves the contract. The other seven plugins are not loaded. Not a Test promotion. [Session record](docs/ai/2026-10-03-shell-host-contract.md). |
 | **Independent clock shell** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | Separate Quickshell host loads pinned `fred.clock` through owned modules and isolated fixture data. Automated checks passed; manual hover and output checks remain. Not a Test promotion. [Session record](docs/ai/2026-10-03-independent-clock-shell.md). |

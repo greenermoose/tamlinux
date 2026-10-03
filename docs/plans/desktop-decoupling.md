@@ -1,8 +1,9 @@
 # Desktop decoupling toward Void Linux
 
-**Status:** Step 2 candidate is in `desktop/` as of 2026-10-03. The clock
-proof remains, and the host contract checks passed the same day. Product
-remains 0.0.1. Not promoted past Develop. Step 3 has not started.
+**Status:** Step 3 candidate is in `desktop/` as of 2026-10-03. The clock
+proof and the host contract remain, and the compositor facade checks passed
+the same day. Product remains 0.0.1. Not promoted past Develop. The seven
+plugins are unchanged. Step 4 has not started.
 **First implementation:** a standalone Quickshell host running `fred.clock`
 with Tamlinux-owned shared modules and isolated data. The candidate lives in
 `desktop/`; see that README for the launch command and the 2026-10-03 check
@@ -114,7 +115,7 @@ XBPS/xbps-src delivery; Nix is an option, not a prerequisite for the pilot.
 | 0 | Current dependency inventory and source baseline | Completed reconnaissance | Classified matrix, source revisions, recorded unknowns. Prepared 2026-10-03. |
 | 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only. |
 | 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only; Step 3 has not started. |
-| 3 | Compositor contract and Hyprland adapter | 2 | Existing behavior preserved behind interfaces; no shell UI reads raw Hyprland state directly. |
+| 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only; Step 4 has not started. |
 | 4 | Host-safe profiles and non-systemd session/service design | 0; prototype experience from 1–3 | Host-specific state external, service ownership explicit, tested recovery design and target inputs selected. |
 | 5 | Void hardware pilot with Sway, runit, Btrfs and libc comparison | 4; hardware/disk selection | Unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
 | 6 | Selected compositor/WM backend and remaining plugin/workflow ports | 3 + 5 | All eight plugins and required desktop workflows pass parity checks. |
@@ -236,7 +237,9 @@ Recorded needs, from the pinned revisions in the source baseline:
 - Shared UI not built in this slice: `Border`, `BarIconButton`,
   `BorderSurface`, `CursorSurface`, `Dropdown`, `PanelHero`,
   `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`.
-- Hyprland imports and `hyprctl` remain Step 3. Keyboard already disables its
+- Hyprland imports and `hyprctl` in this tree now live only in
+  `HyprlandAdapter.qml` (Step 3). The seven plugins still talk to Hyprland
+  themselves. Keyboard already disables its
   per-instance IPC handler because one target cannot be registered on every
   output. This host keeps IPC on `tamlinux-shell` and one clock instance.
 
@@ -244,6 +247,30 @@ One popout is owned per output. `targetBelongsToWindow` follows the target's
 window. `moduleWidgets` returns every live instance of an id. Settings writes
 succeed only for a registered id. Output removal clears that output's widgets,
 click targets, popout, and tooltip.
+
+## Step 3 compositor contract
+
+`desktop/shell/host/Compositor.qml` is the facade shell UI and fixtures read.
+`HyprlandAdapter.qml` is the only shell file that imports `Quickshell.Hyprland`
+or starts `/usr/bin/hyprctl`. `desktop/fixtures/compositor/`
+(`tamlinux.compositor`) reads the facade. The contract is in
+[desktop/README.md](../../desktop/README.md).
+
+The facade carries output names, focus, active workspace ids, DPMS state,
+workspace and bounded window summaries, bindings text, the active keymap, and
+a revision counter. `focusWorkspace`, `focusOutput`, and `setDpms` record the
+request unless `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`. The proof launcher removes
+that variable. Output names match `^[A-Za-z0-9._-]{1,64}$`. Workspace ids are
+1 through 10. Reads are the fixed argv for `binds`, `-j devices`, and
+`-j monitors`, with a closed environment and a short deadline. There is no
+generic `hyprctl` argument list.
+
+Checked on 2026-10-03. Argv and rejection tests do not run `hyprctl`.
+`--selftest` at scale 1 and 1.25 compares output names, the focused output,
+and active workspace ids with one `hyprctl -j monitors` snapshot, and the
+clock checks still pass. Live focus and DPMS lines are absent from the proof
+log. Layout rewrite, `hyprctl reload`, and monitor reset stay with the later
+plugin backends. A Sway backend is Step 6.
 
 ## Boundaries and recovery
 
@@ -261,7 +288,8 @@ hardened.
 
 ## Next handoff
 
-The Step 2 candidate is in `desktop/`. Review that README, including the
-manual checks it does not claim. Promotion to Test is a separate decision.
-Steps 3–7 define the subsequent project order; they are not claimed complete
-by this prototype.
+The Step 3 candidate is in `desktop/`. Shell UI in that tree reads the
+compositor facade. The seven plugins still read Hyprland directly; moving
+them is later work. Promotion to Test is a separate decision. Steps 4–7
+define the subsequent project order; they are not claimed complete by this
+prototype.
