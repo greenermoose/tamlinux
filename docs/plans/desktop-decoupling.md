@@ -1,4 +1,4 @@
-# Desktop decoupling toward antiX Core
+# Desktop decoupling toward Void Linux
 
 **Status:** Step 2 candidate is in `desktop/` as of 2026-10-03. The clock
 proof remains, and the host contract checks passed the same day. Product
@@ -11,7 +11,8 @@ record.
 ## Goal and evidence
 
 Keep the working desktop usable while replacing its Omarchy dependencies with
-components that can run on antiX Core. The first deliverable is a real plugin
+components that can run on Void Linux, with antiX Core as the fallback if
+Void has a showstopper. The first deliverable is a real plugin
 running in an independent shell configuration. Later milestones establish the
 compositor, session and host-service contracts, prove them on secondary hardware,
 and feed the [installation framework](installation-framework.md).
@@ -55,10 +56,12 @@ development but is not yet a reproducible install manifest.
 
 ## Target ownership matrix
 
-Categories: **A** native antiX host/compatible apt pool; **B** pinned Nix package
-or user configuration; **C** third-party replacement; **D** Tamlinux rewrite or
-integration. These are proposed owners. Exact ISO presence, versions and
-dependency closure must be proved on the chosen pilot.
+Categories: **A** native Void host/XBPS package; **B** reproducible desktop
+package or user configuration (native XBPS candidate, Nix optional);
+**C** third-party replacement; **D** Tamlinux rewrite/integration. Exact package
+versions and dependency closure must be proved on the pilot. The
+[base plan](base-operating-system.md) defines Void first, antiX Core fallback,
+Btrfs recovery, and musl/glibc evaluation.
 
 | Dependency group | Class | Work needed |
 | --- | --- | --- |
@@ -86,28 +89,23 @@ dependency closure must be proved on the chosen pilot.
 
 ## Decisions needed before target integration
 
-The antiX + seatd + standalone Nix direction is retained. On 2026-10-03 Fred
-chose **Sway**, built by Tamlinux with Nix, after a
-[compositor survey](../../upstream/2026-10-03-compositor.md). Two details need
-explicit evidence before implementation relies on them:
+The target is **Void + runit + Btrfs**, with antiX Core + runit if Void has a
+showstopper. **Sway** remains selected after the
+[compositor survey](../../upstream/2026-10-03-compositor.md). Evaluate native
+XBPS/xbps-src delivery; Nix is an option, not a prerequisite for the pilot.
 
-1. **Sway on old graphics, and its plugin backend.** Measure Sway with GLES2
-   and with the `pixman` CPU renderer on circa-2006 graphics before porting.
-   Write the backend against `ext-workspace-v1` (Quickshell's `WindowManager`)
-   first and `Quickshell.I3` second. Sway has no binding-list query, so binding
-   discovery reads the generated configuration. The independent shell
-   milestone does not depend on the backend.
-2. **Non-systemd package and service boundary.** Verify dependencies using
-   the chosen antiX repositories. Debian package availability is not sufficient:
-   for example, [Debian dbus](https://packages.debian.org/trixie/dbus) lists
-   libsystemd0. [seatd](https://packages.debian.org/trixie/seatd) is a package
-   candidate, not proof of the complete desktop/session closure.
-
-The [Nix manual](https://nix.dev/manual/nix/2.34/installation/installing-binary)
-documents single-user installation on non-systemd Linux. Our chosen installation
-and any daemon supervisor must be proved on the pilot. Home Manager package and
-configuration generations do not replace host-service management or roll back
-the host kernel, apt state, mutable data or live-linked source files.
+1. **Sway and plugin backends.** Measure supported renderer paths on old graphics.
+   Use compositor-neutral interfaces (`ext-workspace-v1` first, `Quickshell.I3`
+   second where supported). Binding discovery reads generated configuration.
+   The independent shell milestone does not depend on the final backend.
+2. **Native package and service boundary.** Prove Void's actual package closure,
+   seatd, session bus, runtime directory, PAM, login, and runit supervision.
+   Compare musl and glibc including required application compatibility costs.
+   If antiX is needed, validate its own APT/service closure separately.
+3. **Coordinated recovery.** Pair a Btrfs system/package-database checkpoint with
+   kernel/modules, firmware, initramfs, and boot selection. Test rescue restoration
+   while preserving user documents. If Nix is used, include its state consistently;
+   a profile generation alone does not restore native packages or the host kernel.
 
 ## Ordered milestones
 
@@ -118,7 +116,7 @@ the host kernel, apt state, mutable data or live-linked source files.
 | 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only; Step 3 has not started. |
 | 3 | Compositor contract and Hyprland adapter | 2 | Existing behavior preserved behind interfaces; no shell UI reads raw Hyprland state directly. |
 | 4 | Host-safe profiles and non-systemd session/service design | 0; prototype experience from 1–3 | Host-specific state external, service ownership explicit, tested recovery design and target inputs selected. |
-| 5 | antiX hardware pilot with chosen compositor/WM, Nix and session | 4; hardware/disk selection | Unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and generation rollback proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
+| 5 | Void hardware pilot with Sway, runit, Btrfs and libc comparison | 4; hardware/disk selection | Unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
 | 6 | Selected compositor/WM backend and remaining plugin/workflow ports | 3 + 5 | All eight plugins and required desktop workflows pass parity checks. |
 | 7 | One-command workstation layer | 5 + 6 | Fresh-host inspect/plan/apply/verify, repeatable application and demonstrated recovery on pilot. |
 

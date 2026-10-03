@@ -6,6 +6,11 @@ compositor").
 **Status:** Fred chose Sway on 2026-10-03 (see Outcome). Nothing has been
 installed or implemented.
 
+**Current deployment target:** Void first, antiX Core fallback if Void has a
+showstopper. Sway remains selected; its packaging route is evaluated on the
+pilot. This dated survey retains the antiX-specific question and evidence from
+its original scope. See the [current base plan](../docs/plans/base-operating-system.md).
+
 ## Question
 
 Which tiling Wayland compositor should carry the Tamlinux desktop on antiX

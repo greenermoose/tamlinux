@@ -10,6 +10,14 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- Set **Void Linux as the first target base**, with antiX Core as the fallback
+  if Void has a showstopper. Updated the architecture, installation, and desktop
+  plans directly. Btrfs is the preferred pilot filesystem; musl/glibc and native
+  XBPS/xbps-src versus portable delivery are evaluated rather than assumed.
+  See the [base plan](docs/plans/base-operating-system.md).
+
+The following entries record earlier directions that led to this target:
+
 - Recorded the decision to use **runit** for system initialization and service
   management for Suspra Workstations in [`README.md`](README.md),
   [`VERSIONING.md`](VERSIONING.md), and the

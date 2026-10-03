@@ -145,5 +145,5 @@ Automated, on the development Wayland session, after the clock checks above:
 ## Limits
 
 This is a Develop candidate. It does not install a package, switch the
-production shell, or prove an antiX session. The other seven plugins are not
+production shell, or prove a Void target session. The other seven plugins are not
 loaded. Compositor backends and the one-command install are later steps.
