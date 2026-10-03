@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Hardware floor, open compositor, and workstation requirements | Claude Code `2.1.288` | `claude-opus-5-5` | [`2026-10-03-hardware-floor-and-workstation-requirements.md`](2026-10-03-hardware-floor-and-workstation-requirements.md) |
 | 2026-10-03 | Desktop dependency inventory and agy handoff | Codex CLI `0.160.0` | `gpt-6.1-sol` | [`2026-10-03-desktop-dependency-inventory-and-handoff.md`](2026-10-03-desktop-dependency-inventory-and-handoff.md) |
 | 2026-09-22 | Public explainer and suite branding | Cursor `3.21.16` | composer | [`2026-09-22-public-explainer.md`](2026-09-22-public-explainer.md) |
 | 2026-09-22 | Product version 0.0.1 | Cursor `3.21.16` | composer | [`2026-09-22-version-0.0.1.md`](2026-09-22-version-0.0.1.md) |

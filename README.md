@@ -11,7 +11,7 @@ Quickshell, and Omarchy.
 | :-- | :-- |
 | **Version** | [0.0.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
-| **Desktop** | Hyprland + Quickshell (River target) |
+| **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell on antiX Core) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
 | **Status** | 0.0.1 — first workstation snapshot; not an installable image yet |
 
@@ -40,8 +40,9 @@ consumption.
 
 It is a Wayland-based system. Arch's rolling updates, AntiX's non-systemd
 efficiency and hardware longevity, and Nix's atomic package rollbacks are core
-technical inspirations. Hyprland and Quickshell power the initial desktop, with
-River identified as the target compositor. The `fred.*` plugin IDs stay `fred.*`.
+technical inspirations. Hyprland and Quickshell power the initial desktop. The
+target is a tiling Wayland desktop inspired by the UI Omarchy provides, built
+on Sway and running on antiX Linux Core. The `fred.*` plugin IDs stay `fred.*`.
 
 This repository is the public explainer. It is not an ISO, installer, or
 package repository yet.
@@ -50,7 +51,7 @@ package repository yet.
 
 Tamlinux 0.x is built on Omarchy, plus Fred's patches and the `fred.*`
 plugins. The roadmap is to decouple top-down from Omarchy toward an AntiX Linux
-base layer (antiX Core + `seatd` + Wayland + River, with Nix for deterministic
+base layer (antiX Core + `seatd` + Wayland + Sway, with Nix for deterministic
 package sets and rollbacks). Once this AntiX-based foundation is achieved,
 Tamlinux graduates to Suspra Linux, powering the Tier 3 Suspra Workstation.
 
@@ -61,6 +62,32 @@ comes after this workstation is solid. Version rules are in
 The [development plans](docs/plans/README.md) track the reviewed installation
 direction and the approved first slice of the `tamlinux` command. Neither is
 part of the 0.0.1 installation yet.
+
+## Targets
+
+Set on 2026-10-03 for Tamlinux and the Tier 3 Suspra Workstation it graduates
+into:
+
+- **Hardware from circa 2006 onward.** Computers up to about 20 years old are
+  in scope; older ones are not. That floor is what makes Wayland, rather than
+  X11, a realistic display stack.
+- **antiX Linux Core plus a tiling window system.** antiX Core is the base. On
+  it goes a keyboard-driven tiling Wayland desktop inspired by the UI Omarchy
+  provides, built on Sway. Sway was chosen after a
+  [field survey](upstream/2026-10-03-compositor.md) because it can render on
+  the CPU when a 2006 graphics chip cannot keep up.
+- **One Nix-built package.** The workstation layer is a package built with
+  Nix from dependencies we build ourselves. It installs on antiX Core, or
+  directly on a computer that already runs Linux.
+- **Chrome and VS Code run.** Both ship only 64-bit x86 (and ARM) Linux
+  builds.
+- **Terminal-only machines.** Three kinds of machine get a terminal-only
+  system without Chrome or VS Code: 32-bit machines, very old machines without
+  the graphics drivers Wayland needs, and machines with too little memory to
+  compile code or run Chrome and Nix comfortably.
+- **Terminal first.** Most things can be done from a terminal with a keyboard,
+  starting with the console on a fresh antiX Core install. Graphical menus and
+  bar widgets call the same commands.
 
 ## Why
 

@@ -17,18 +17,26 @@ computer.
    runs it. Use it as a top-down decoupling testbed: cataloging Omarchy and
    Hyprland dependencies, isolating `fred.*` plugins, and extracting user
    configurations, commands, and documentation.
-2. **Target Base Layer: antiX Linux Core + `seatd` + Wayland + River (under Nix).**
+2. **Target Base Layer: antiX Linux Core + `seatd` + Wayland + Sway (Nix-built package).**
    - **antiX Linux Core:** Based directly on Debian stable without `systemd`.
      Boots to a clean terminal with network access in under 100 MB RAM,
      leaving maximum resources available for user workflows and local AI.
      Its mature live-USB system enables rapid deployment (e.g. at Maker Fests).
    - **`seatd`:** Minimal seat/session management without `systemd-logind` or `elogind`.
-   - **Hardened River:** Lean Zig-based Wayland dynamic tiling compositor.
-     Hardened by strictly separating user declarative configuration files
-     from root-owned system scripting and compositor plumbing.
-   - **Nix determinism & rollbacks:** Deployed on top of antiX Core as the
-     package and environment manager, providing atomic generations and instant
-     rollback to previous known-good states.
+   - **Hardened Sway (chosen 2026-10-03):** a keyboard-driven tiling Wayland
+     desktop inspired by the UI Omarchy provides. Chosen after the
+     [compositor survey](../../upstream/2026-10-03-compositor.md): wlroots can
+     fall back to CPU rendering (`pixman`) on circa-2006 graphics, `libseat`
+     works with `seatd` or `logind`, and Quickshell supports Sway's IPC.
+     Hardened by a root-owned `/etc/sway/config` that includes a generated,
+     validated user fragment, separating user declarative settings from
+     compositor plumbing.
+   - **Nix-built workstation package:** Sway, Quickshell and the `fred.*`
+     plugins, terminal tools, and graphics userspace are built with Nix from
+     dependencies we build ourselves, giving atomic generations and instant
+     rollback. The package installs on antiX Core, or directly on a computer
+     that already runs Linux (where `libseat` uses `logind`). Computers that
+     do not already boot Linux get antiX Core first.
 3. **Graduation to Suspra Linux & Tier 3 Suspra Workstations:** Once the system
    runs cleanly on the AntiX Linux base layer, Tamlinux completes its transitional
    purpose and launches as **Suspra Linux**, the operating system powering the
@@ -42,7 +50,7 @@ Application & Environment Layer (Tamlinux/Suspra user environment, fred.* plugin
   -> user profile, commands, local knowledge, shell
 Packaging & Rollback Layer (Nix standalone)
   -> pinned flakes, deterministic packages, atomic generations, rollbacks
-Windowing & Compositor Layer (Hardened River + seatd)
+Windowing & Compositor Layer (hardened Sway + seatd)
   -> user declarative configs, root-owned compositor plumbing, Wayland IPC
 Base OS Host (Omarchy 0.x transitional; target antiX Linux Core)
   -> Debian stable package pool, sysvinit/runit (no systemd), tuned kernel, boot
@@ -64,8 +72,9 @@ of the AntiX Linux base layer path.
 The [desktop decoupling plan](desktop-decoupling.md) records the measured
 dependency groups and implementation sequence prepared on 2026-10-03. Its
 independent shell/clock proof comes first; target service/package closure and
-the compositor/window-manager selection remain pilot inputs. Earlier references
-to River's tag/riverctl interface must be checked against the chosen version.
+pilot measurements of Sway on old graphics remain pilot inputs. Earlier
+references to River's tag/riverctl interface no longer apply; Sway was chosen
+on 2026-10-03.
 The current workstation inventory is prepared; it is not yet a verified target
 component manifest or an implemented installer.
 
@@ -124,8 +133,8 @@ are managed deterministically via Nix flakes with instant rollback.
 | :-- | :-- | :-- |
 | A. Inventory | Component/owner manifest for current 0.0.1 workstation; catalog Omarchy/Hyprland dependencies. | Source revision and classification of each component. |
 | B. Framework | `inspect`, read-only `plan`, bounded `apply`, and `verify` for the Omarchy profile. | Plan output, applied steps, versions, and recovery path. |
-| C. Decoupling Pilot | Test antiX Linux Core + `seatd` + River baseline on a secondary computer. | Installation transcript, boot time, memory footprint (<100MB). |
-| D. AntiX Base Layer | Deploy Nix flakes, River hardening, and ported `fred.*` plugins on antiX Core. | River session, declarative configs, Nix atomic generations and rollback. |
+| C. Decoupling Pilot | Test antiX Linux Core + `seatd` + the chosen compositor on a secondary x86-64 computer near the circa-2006 floor. | Installation transcript, boot time, memory footprint (<100MB), compositor rendering path. |
+| D. AntiX Base Layer | Deploy Nix flakes, compositor hardening, and ported `fred.*` plugins on antiX Core. | Compositor session, declarative configs, Nix atomic generations and rollback; Chrome and VS Code running; routine tasks done from the terminal. |
 | E. Graduation to Suspra Workstation | Transition Tamlinux to Suspra Linux; package Tier 3 Suspra Workstation. | Turnkey USB installer (Maker Fest model), single-command setup, multi-hardware verification. |
 
 The daily workstation remains on its working installation while C–D are
@@ -142,13 +151,65 @@ Home Manager generations.
   rollbacks. Clarified the vision: Tamlinux works from Omarchy toward this AntiX
   Linux base layer, at which point it launches as **Suspra Linux** to build the
   Tier 3 Suspra Workstation for diverse hardware.
+- **2026-10-03:** Fred set the hardware floor at circa 2006 (older is out of
+  scope; Wayland, not X11), confirmed antiX Linux Core, reopened the
+  compositor (a tiling window system inspired by the UI Omarchy provides;
+  River no longer settled), and required Chrome, VS Code, and a terminal-first
+  experience.
 - **Open:** Choose the secondary machine for the antiX Core pilot and define
   its disk boundaries before installation.
+- **2026-10-03:** 32-bit-only machines, which cannot run Chrome or VS Code,
+  get a terminal-only system. On antiX, Debian packages (including vendor apt
+  repositories) are native packaging. A
+  [compositor survey](../../upstream/2026-10-03-compositor.md) proposes Sway,
+  measured with GLES2 and `pixman` on old graphics first and built without
+  `libsystemd0`, which antiX does not provide in the version Debian's Sway
+  needs. Not yet decided.
+- **2026-10-03 (later):** Fred chose **Sway**, built by Tamlinux and managed
+  with Nix. The workstation layer is a Nix-built package that installs on
+  antiX Core or on an existing Linux. Terminal-only machines, without Chrome
+  or VS Code, are: 32-bit machines; very old machines without the graphics
+  drivers Wayland needs; and machines with too little memory to compile code
+  or run Chrome and Nix comfortably.
+
+## Package design points
+
+These are the agreed direction. Their details are open and will be settled as
+systems are built on older hardware.
+
+1. **Thin native root layer.** Nix's usual tool for root-level configuration
+   on other distributions (`system-manager`) generates systemd units, and
+   antiX uses runit. A small native layer therefore provides the `seatd`
+   service, groups, PAM and session bus, the login path, root-owned
+   `/etc/sway`, and the graphics-driver link. Open: deliver it as a `.deb` or
+   as a Nix-built activation script run as root.
+2. **Clients never evaluate nixpkgs.** Evaluation can need 1–2 GB of RAM, and
+   compiling on a 2006 CPU is impractical. Packages are built on build machines
+   and served from a signed binary cache; clients only download and switch
+   generations. Open: hosting, signing, and the switching mechanism.
+3. **Graphics userspace from Nix.** Mesa comes from Nix, with a bridge (nixGL or
+   a driver link) so Nix-built programs find it. Open: confirm nixpkgs' Mesa
+   includes drivers for 2006-era GPUs (`i915`/`crocus`, `r300`, `nouveau`);
+   Sway's CPU renderer is the fallback.
+4. **Chrome and VS Code are not served from our cache.** Their licenses likely
+   forbid redistribution. Each machine builds them locally from nixpkgs or
+   installs them from the vendors' apt repositories. Open: license review and
+   the choice between those two.
+5. **Terminal-only machines do not run Nix.** Open: how their terminal profile
+   is delivered and updated (likely native antiX packages).
+
+Also open: the memory threshold between graphical and terminal-only machines;
+the install-time test that decides whether a machine's graphics drivers can run
+Wayland; generation retention and disk budget; the terminal emulator (it must
+run without GPU acceleration on floor hardware), shell, multiplexer, and default
+TUI tools; and whether to ship XWayland. Keep the host minimal so apt and Nix
+never provide the same tool.
 
 ## References
 
 - [antiX Linux](https://antixlinux.com/) — lean, systemd-free Debian-based Linux.
-- [River compositor](https://github.com/riverwm/river) — dynamic tiling Wayland compositor written in Zig.
+- [Sway](https://swaywm.org/) — i3-compatible tiling Wayland compositor on wlroots.
+- [Compositor survey](../../upstream/2026-10-03-compositor.md) — why Sway, and the alternatives.
 - [seatd](https://git.sr.ht/~kennylevinsen/seatd) — minimal seat management daemon.
 - [NixOS manual: rolling back configuration changes](https://nixos.org/manual/nixos/stable/) — generations and rollback concepts.
 - [Home Manager manual](https://nix-community.github.io/home-manager/) — managing user configuration with Nix.

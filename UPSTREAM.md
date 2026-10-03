@@ -15,3 +15,9 @@ forks, and independent projects; save dated evidence in
 [upstream/](upstream/) and link it here. Chosen product work belongs in a
 reviewed plan under [docs/plans/](docs/plans/). Record exact code ancestry,
 license, and attribution if a later implementation adapts source code.
+
+## Survey records
+
+- [2026-10-03 — compositor](upstream/2026-10-03-compositor.md): a tiling
+  Wayland compositor for antiX Core and circa-2006 hardware. Outcome: Sway
+  chosen 2026-10-03, built by Tamlinux with Nix.

@@ -10,6 +10,20 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- Recorded the 2026-10-03 targets in [`README.md`](README.md): hardware from
+  circa 2006 onward (older is out of scope) on Wayland, not X11; antiX Linux
+  Core with a tiling window system inspired by the Omarchy UI, with the
+  compositor reopened (River is no longer the settled choice); Chrome and VS
+  Code must run; and a terminal-first experience. Updated
+  [`VERSIONING.md`](VERSIONING.md) and the
+  [installation framework](docs/plans/installation-framework.md) to match.
+- Added the [compositor field survey](upstream/2026-10-03-compositor.md) and
+  recorded its outcome: **Sway**, built by Tamlinux with Nix. River,
+  river-classic, and mango are deferred; dwl and niri are rejected for now.
+- Recorded the Nix-built workstation package (on antiX Core or an existing
+  Linux), the three kinds of terminal-only machine, and the package design
+  points in the [installation framework](docs/plans/installation-framework.md).
+
 - Refined architectural vision and public explainer in [`README.md`](README.md):
   clarified that Arch Linux's appealing idea is continuous rolling updates,
   adopted AntiX Linux's inspiration for older hardware support and lean

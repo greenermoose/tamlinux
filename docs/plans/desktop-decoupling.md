@@ -84,18 +84,17 @@ dependency closure must be proved on the chosen pilot.
 
 ## Decisions needed before target integration
 
-The antiX + seatd + standalone Nix direction is retained. Since 2026-10-03 the
-compositor is open: the target is a tiling Wayland window system inspired by
-the UI Omarchy provides, able to run on circa-2006 graphics hardware, and River
-is one candidate. Two details need explicit evidence before implementation
-relies on them:
+The antiX + seatd + standalone Nix direction is retained. On 2026-10-03 Fred
+chose **Sway**, built by Tamlinux with Nix, after a
+[compositor survey](../../upstream/2026-10-03-compositor.md). Two details need
+explicit evidence before implementation relies on them:
 
-1. **Compositor, and for River its family and window manager.** Current
-   [River](https://github.com/riverwm/river) separates the compositor from the
-   window manager. [river-classic](https://github.com/riverwm/river-classic)
-   retains the older tag/riverctl design assumed in earlier plans. Pin the
-   family/version and, if needed, a window manager. The independent shell
-   milestone can proceed without choosing that backend.
+1. **Sway on old graphics, and its plugin backend.** Measure Sway with GLES2
+   and with the `pixman` CPU renderer on circa-2006 graphics before porting.
+   Write the backend against `ext-workspace-v1` (Quickshell's `WindowManager`)
+   first and `Quickshell.I3` second. Sway has no binding-list query, so binding
+   discovery reads the generated configuration. The independent shell
+   milestone does not depend on the backend.
 2. **Non-systemd package and service boundary.** Verify dependencies using
    the chosen antiX repositories. Debian package availability is not sufficient:
    for example, [Debian dbus](https://packages.debian.org/trixie/dbus) lists
