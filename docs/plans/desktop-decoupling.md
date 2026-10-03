@@ -1,10 +1,12 @@
 # Desktop decoupling toward antiX Core
 
-**Status:** Dependency inventory prepared 2026-10-03; implementation has not
-started. Fred approved committing and publishing this plan on 2026-10-03.
-Product remains 0.0.1.
+**Status:** Step 1 candidate is in `desktop/` as of 2026-10-03. Automated
+checks passed, and Fred accepted the visible proof bar the same day. Product
+remains 0.0.1. Not promoted past Develop. Step 2 has not started.
 **First implementation:** a standalone Quickshell host running `fred.clock`
-with Tamlinux-owned shared modules and isolated data.
+with Tamlinux-owned shared modules and isolated data. The candidate lives in
+`desktop/`; see that README for the launch command and the 2026-10-03 check
+record.
 
 ## Goal and evidence
 
@@ -112,7 +114,7 @@ the host kernel, apt state, mutable data or live-linked source files.
 | Step | Deliverable | Depends on | Exit evidence |
 | --- | --- | --- | --- |
 | 0 | Current dependency inventory and source baseline | Completed reconnaissance | Classified matrix, source revisions, recorded unknowns. Prepared 2026-10-03. |
-| 1 | Independent shell + clock proof | 0 | Clock and read-only calendar load through owned modules, isolated data and no Omarchy runtime imports. |
+| 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only; Step 2 has not started. |
 | 2 | Host contract and incremental shared UI | 1 | Settings, manifests, multi-output lifecycle, tooltips, panel focus and IPC tests; other plugins' API needs recorded. |
 | 3 | Compositor contract and Hyprland adapter | 2 | Existing behavior preserved behind interfaces; no shell UI reads raw Hyprland state directly. |
 | 4 | Host-safe profiles and non-systemd session/service design | 0; prototype experience from 1–3 | Host-specific state external, service ownership explicit, tested recovery design and target inputs selected. |
@@ -148,6 +150,14 @@ and load that result. The final package should compose pinned inputs rather
 than maintain a second permanent copy of the plugins here. Preserve licenses
 and identify changed files. This shape is proposed for the first slice; record
 any implementation adjustment and its reason in this plan.
+
+The 2026-10-03 candidate kept that layout and adjusted three loading details.
+The proof bar is on the bottom edge and does not take an exclusive zone, so it
+does not reflow the production desktop. Sibling `Launch.qml` is listed in a
+generated `qmldir` and imported with `import "."`, because a file-URL load does
+not otherwise see it. `Tam.Ui` includes a `TextField` because the calendar
+constructs one. Tooltip scale and output removal in the automated run are host
+probes, not a physical hover or unplug.
 
 ### Build in this order
 
@@ -223,7 +233,7 @@ hardened.
 
 ## Next handoff
 
-Implement **Step 1 only** from this approved plan. Return a reviewable source
-diff, reproducible launch instructions and evidence against its acceptance
-checks. Steps 2–7 define the subsequent project order; they are not claimed
-complete by the first shell prototype.
+The Step 1 candidate is in `desktop/`. Review that README, including the manual
+checks it does not claim. Promotion to Test is a separate decision. Steps 2–7
+define the subsequent project order; they are not claimed complete by this
+prototype.

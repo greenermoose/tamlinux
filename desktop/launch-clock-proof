@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+"""Launch the isolated Tamlinux clock proof and, with --selftest, check it."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOST = Path(__file__).resolve().parent / "shell" / "host"
+sys.path.insert(0, str(HOST))
+
+from registry import RegistryError, validate_directory  # noqa: E402
+from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
+
+PINNED_REVISION = "ed5140ccefc83c0a2fdd5f899bbd290acc35d88a"
+SHELL_DIR = Path(__file__).resolve().parent / "shell"
+PATCH = Path(__file__).resolve().parent / "adapters" / "clock-step1.patch"
+ALLOWED = {"fred.clock"}
+
+
+def clock_repo() -> Path:
+    override = os.environ.get("TAMLINUX_CLOCK_SOURCE")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[1].parent / "clock-fred-tamlinux"
+
+
+def evidence_lines(text: str) -> list[str]:
+    return [line.split("TAMLINUX_EVIDENCE ", 1)[1] for line in text.splitlines() if "TAMLINUX_EVIDENCE " in line]
+
+
+def wait_for(predicate, timeout: float, interval: float = 0.1):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        value = predicate()
+        if value:
+            return value
+        time.sleep(interval)
+    return None
+
+
+def _private(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    os.chmod(path, 0o700)
+
+
+def _seed(home: Path, config: Path, plugin: Path) -> None:
+    _private(config / "fred.clock")
+    _private(config / "tamlinux-shell")
+    _private(home / ".cache" / "fred.clock")
+    _private(home)
+    archive = subprocess.run(
+        ["git", "-C", str(clock_repo()), "archive", PINNED_REVISION],
+        check=True,
+        capture_output=True,
+    )
+    plugin.mkdir()
+    subprocess.run(["tar", "-x", "-C", str(plugin)], input=archive.stdout, check=True)
+    applied = subprocess.run(
+        ["patch", "-p1", "--forward", "--input", str(PATCH)],
+        cwd=plugin,
+        capture_output=True,
+        text=True,
+    )
+    if applied.returncode != 0:
+        raise SystemExit(applied.stderr or applied.stdout)
+    now = int(time.time())
+    later = now + 30 * 60
+    day = time.strftime("%Y-%m-%d", time.localtime(now))
+    hour = time.strftime("%H:%M", time.localtime(later))
+    events = {
+        "updatedAt": now,
+        "events": [{
+            "summary": "Fixture standup",
+            "dateKey": day,
+            "endDateKey": day,
+            "startTs": later,
+            "endTs": later + 1800,
+            "allDay": False,
+            "color": "#4285f4",
+            "account": "Fixture",
+                "timeStr": hour,
+                "isLocal": False,
+                "meetingUrl": "",
+                "location": "",
+        }],
+    }
+    cache = home / ".cache" / "fred.clock" / "events.json"
+    cache.write_text(json.dumps(events, indent=2) + "\n", encoding="utf-8")
+    os.chmod(cache, 0o600)
+    calendars = [{
+        "enabled": True,
+        "account": "Fixture",
+        "name": "Local",
+        "path": str(config / "fred.clock" / "local.ics"),
+    }]
+    (config / "fred.clock" / "calendars.json").write_text(json.dumps(calendars, indent=2) + "\n", encoding="utf-8")
+    (config / "fred.clock" / "local.ics").write_text(
+        "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\n"
+        f"UID:fixture-standup\nDTSTART:{time.strftime('%Y%m%dT%H%M%S', time.localtime(later))}\n"
+        "SUMMARY:Fixture standup\nEND:VEVENT\nEND:VCALENDAR\n",
+        encoding="utf-8",
+    )
+    write_settings(config / "tamlinux-shell", {
+        "version": 1,
+        "entries": {
+            "fred.clock": {
+                "id": "fred.clock",
+                "format": "dddd HH:mm",
+                "formatAlt": "d MMMM 'W'ww yyyy",
+                "verticalFormat": "HH\n—\nmm",
+                "verticalFormatAlt": "dd\nMMM\n'W'ww\n''yy",
+                "badgeMinutes": 60,
+            }
+        },
+    }, ALLOWED)
+
+
+def prepare(state: Path, scale: str, output: str, reset: bool = True) -> dict:
+    home = state / "home"
+    config = home / ".config"
+    plugin = state / "plugin"
+    if reset and state.exists():
+        shutil.rmtree(state)
+    if reset or not plugin.exists():
+        _seed(home, config, plugin)
+    if not os.environ.get("XDG_RUNTIME_DIR"):
+        raise SystemExit("XDG_RUNTIME_DIR is required; the proof does not use /tmp")
+    try:
+        record = validate_directory(plugin)
+    except RegistryError as exc:
+        raise SystemExit(f"registry rejected the staged clock: {exc}") from exc
+    env = os.environ.copy()
+    env.pop("OMARCHY_PATH", None)
+    env.update({
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(config),
+        "XDG_CACHE_HOME": str(home / ".cache"),
+        "XDG_DATA_HOME": str(home / ".local" / "share"),
+        "PATH": "/usr/bin",
+        "QML_IMPORT_PATH": str(SHELL_DIR / "modules"),
+        "TAMLINUX_CLOCK_OFFLINE": "1",
+        "TAMLINUX_CLOCK_ENTRY": str(record["entry"]),
+        "TAMLINUX_UI_SCALE": scale,
+        "TAMLINUX_OUTPUT": output,
+        "QT_QPA_PLATFORM": "wayland",
+    })
+    return {"env": env, "home": home, "plugin": plugin, "record": record}
+
+
+def spawn(env: dict) -> subprocess.Popen:
+    log = Path(env["HOME"]).parent / "quickshell.log"
+    handle = log.open("w", encoding="utf-8")
+    process = subprocess.Popen(
+        ["/usr/bin/quickshell", "-p", str(SHELL_DIR)],
+        env=env,
+        stdout=handle,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    process._log_handle = handle  # type: ignore[attr-defined]
+    process._log_path = log  # type: ignore[attr-defined]
+    return process
+
+
+def read_log(process: subprocess.Popen) -> str:
+    path = process._log_path  # type: ignore[attr-defined]
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def ipc(env: dict, target: str, function: str, args: list[str] | None = None) -> subprocess.CompletedProcess:
+    command = ["/usr/bin/quickshell", "ipc", "-p", str(SHELL_DIR), "call", target, function]
+    if args:
+        command.extend(args)
+    return subprocess.run(command, env=env, capture_output=True, text=True, timeout=10)
+
+
+def stop(process: subprocess.Popen) -> None:
+    if process.poll() is None:
+        os.killpg(process.pid, signal.SIGTERM)
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=3)
+    handle = getattr(process, "_log_handle", None)
+    if handle:
+        handle.close()
+
+
+def helper_leaks(plugin: Path) -> list[str]:
+    try:
+        listing = subprocess.run(
+            ["ps", "-u", str(os.getuid()), "-o", "pid=,args="],
+            capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        return []
+    needle = str(plugin)
+    return [
+        line.strip() for line in listing.stdout.splitlines()
+        if ("fetch-events.py" in line or "manage-event.py" in line) and needle in line
+    ]
+
+
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True) -> str:
+    prepared = prepare(state, scale, output, reset=reset)
+    process = spawn(prepared["env"])
+    try:
+        ready = wait_for(
+            lambda: next((line for line in evidence_lines(read_log(process)) if line.startswith("ready ")), None),
+            15,
+        )
+        if not ready:
+            raise SystemExit("clock proof did not become ready:\n" + read_log(process)[-4000:])
+        if drive:
+            drive(prepared["env"], process)
+        log = read_log(process)
+    finally:
+        stop(process)
+    leaks = helper_leaks(prepared["plugin"])
+    if leaks:
+        raise SystemExit("helper processes still running:\n" + "\n".join(leaks))
+    if process.poll() is None:
+        raise SystemExit("quickshell did not exit")
+    return log
+
+
+def drive_primary(env: dict, process: subprocess.Popen) -> None:
+    def has(prefix: str) -> bool:
+        return any(line.startswith(prefix) for line in evidence_lines(read_log(process)))
+
+    opened = ipc(env, "tamlinux.clock", "open")
+    if opened.returncode != 0:
+        raise SystemExit(opened.stderr or opened.stdout or "open ipc failed")
+    if not wait_for(lambda: has("popup-open=true"), 5):
+        raise SystemExit("calendar did not open:\n" + read_log(process)[-2500:])
+    ipc(env, "tamlinux.clock", "close")
+    if not wait_for(lambda: has("popup-open=false"), 5):
+        raise SystemExit("calendar did not close:\n" + read_log(process)[-2500:])
+    ipc(env, "tamlinux.clock", "cycleFormat")
+    if not wait_for(lambda: has("settings-wrote dddd h:mm AP"), 5):
+        raise SystemExit("format cycle did not persist:\n" + read_log(process)[-2500:])
+    ipc(env, "tamlinux.clock", "createEvent", ["Fixture", "2026-10-03", "true", "", "", ""])
+    if not wait_for(lambda: "unsupported event-edit" in evidence_lines(read_log(process)), 5):
+        raise SystemExit("event edit IPC was not refused:\n" + read_log(process)[-2500:])
+    ipc(env, "tamlinux-shell", "tooltipProbe")
+    if not wait_for(lambda: has("tooltip "), 5):
+        raise SystemExit("tooltip probe produced no evidence:\n" + read_log(process)[-2500:])
+    ipc(env, "tamlinux-shell", "dropOutput")
+    if not wait_for(lambda: has("bar-destroyed "), 5):
+        raise SystemExit("output drop did not destroy the bar:\n" + read_log(process)[-2500:])
+
+
+def expect(lines: list[str], text: str) -> None:
+    if not any(text in line for line in lines):
+        raise SystemExit(f"missing evidence: {text}")
+
+
+def expect_prefix(lines: list[str], prefix: str) -> None:
+    if not any(line.startswith(prefix) for line in lines):
+        raise SystemExit(f"missing evidence prefix: {prefix}")
+
+
+def selftest(scale: str, output: str, state_root: Path) -> None:
+    primary = state_root / "primary"
+    log = run_session(primary, scale, output, drive_primary)
+    lines = evidence_lines(log)
+    expect(lines, "omarchy unset")
+    expect(lines, "fetch-suppressed")
+    expect_prefix(lines, "popup-open=true")
+    expect_prefix(lines, "popup-open=false")
+    expect(lines, "unsupported event-edit")
+    expect_prefix(lines, "settings-wrote dddd h:mm AP")
+    expect_prefix(lines, "tooltip ")
+    expect(lines, "output-dropped")
+    expect_prefix(lines, "bar-destroyed ")
+    expect_prefix(lines, "popup-destroyed")
+    if "/usr/share/omarchy" in log:
+        raise SystemExit("proof log references the Omarchy shell tree")
+    settings = read_settings(primary / "home" / ".config" / "tamlinux-shell" / "settings.json", ALLOWED)
+    if settings["entries"]["fred.clock"]["format"] != "dddd h:mm AP":
+        raise SystemExit("format was not persisted")
+    restarted = run_session(primary, scale, output, None, reset=False)
+    ready = next(line for line in evidence_lines(restarted) if line.startswith("ready "))
+    if "format=dddd h:mm AP" not in ready:
+        raise SystemExit(f"restart did not keep the format: {ready}")
+    print("selftest ok")
+    print(f"scale {scale}")
+    print(f"pinned {PINNED_REVISION}")
+    for line in lines:
+        if line.startswith(("ready ", "tooltip ", "settings-wrote ", "shell-id ")):
+            print(line)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run the isolated Tamlinux clock proof")
+    parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("--scale", default="1")
+    parser.add_argument("--output", default="")
+    parser.add_argument("--timeout", type=int, default=120)
+    args = parser.parse_args()
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if not runtime:
+        raise SystemExit("XDG_RUNTIME_DIR is required")
+    state_root = Path(runtime) / "tamlinux-clock-proof"
+    state_root.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(state_root, 0o700)
+    if args.selftest:
+        try:
+            selftest(args.scale, args.output, state_root / f"selftest-{args.scale}")
+        except SettingsError as exc:
+            raise SystemExit(str(exc)) from exc
+        return
+    state = state_root / "interactive"
+    prepared = prepare(state, args.scale, args.output)
+    process = spawn(prepared["env"])
+    print(f"proof pid {process.pid}")
+    print(f"state {state}")
+    print("stop with Ctrl-C; the next launch replaces this isolated state")
+    try:
+        process.wait(timeout=args.timeout)
+    except KeyboardInterrupt:
+        stop(process)
+    except subprocess.TimeoutExpired:
+        stop(process)
+        print("proof timed out and was stopped")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,9 @@
+import QtQuick
+
+QtObject {
+  id: root
+  property bool open: false
+  function show() { if (!open) open = true }
+  function hide() { open = false }
+  function toggle() { open = !open }
+}

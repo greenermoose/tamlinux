@@ -26,7 +26,8 @@ version was checked again for the 2026-09-23 planning session, and the Antigravi
 CLI version was updated to `1.2.12` on 2026-09-28.
 
 Codex CLI was checked again as `0.160.0` for the 2026-10-03 dependency planning
-session, using the logged model `gpt-6.1-sol`.
+session, using the logged model `gpt-6.1-sol`. Cursor was checked as `3.21.18`
+for the 2026-10-03 clock-shell candidate.
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
@@ -43,6 +44,7 @@ session, using the logged model `gpt-6.1-sol`.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Independent clock shell** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | Separate Quickshell host loads pinned `fred.clock` through owned modules and isolated fixture data. Automated checks passed; manual hover and output checks remain. Not a Test promotion. [Session record](docs/ai/2026-10-03-independent-clock-shell.md). |
 | **Hardware floor and workstation requirements** | 0.0.1 planning; local draft | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's circa-2006 hardware floor (Wayland, not X11), antiX Core with an Omarchy-inspired tiling window system and the compositor reopened, and the Chrome, VS Code, and terminal-first requirements; then ran Fred's compositor field survey and recorded his decisions: Sway, a Nix-built workstation package on antiX Core or existing Linux, and terminal-only machines. Documentation only. [Session record](docs/ai/2026-10-03-hardware-floor-and-workstation-requirements.md). |
 | **Desktop dependency inventory and handoff** | 0.0.1 planning; approved 2026-10-03 | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Classified desktop dependencies; ordered the shell/compositor/session/pilot work and specified the independent clock proof. No desktop implementation or migration. [Session record](docs/ai/2026-10-03-desktop-dependency-inventory-and-handoff.md). |
 | **Public explainer (first version)** | first description | Cursor `3.21.16` (`composer`) | Public one-liner, etymology, values, plugin-suite links, GPL-3.0-or-later. Not an installable image. [Session record](docs/ai/2026-09-22-public-explainer.md). |

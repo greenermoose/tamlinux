@@ -1,0 +1,228 @@
+diff -ruN a/BarWidget.qml b/BarWidget.qml
+--- a/BarWidget.qml
++++ b/BarWidget.qml
+@@ -1,8 +1,9 @@
+ import QtQuick
+ import Quickshell
+ import Quickshell.Io
+-import qs.Commons
+-import qs.Ui
++import Tam.Commons
++import Tam.Ui
++import "."
+ import "Model.js" as Model
+ 
+ // Date/time label for the bar, and the host for the calendar popup.
+@@ -12,7 +13,7 @@
+ // middle click opens the timezone picker.
+ BarWidget {
+   id: root
+-  moduleName: "omarchy.clock"
++  moduleName: "fred.clock"
+ 
+   readonly property string pluginVersion: "1.3.3"
+ 
+@@ -78,9 +79,11 @@
+   }
+ 
+   function runFetch() {
+-    if (!fetchProc.running) {
+-      fetchProc.launch()
++    if (Quickshell.env("TAMLINUX_CLOCK_OFFLINE") === "1") {
++      console.log("TAMLINUX_EVIDENCE fetch-suppressed")
++      return
+     }
++    if (!fetchProc.running) fetchProc.launch()
+   }
+ 
+   FileView {
+@@ -172,7 +175,7 @@
+   Timer {
+     id: fetchTimer
+     interval: 15 * 60 * 1000
+-    running: true
++    running: Quickshell.env("TAMLINUX_CLOCK_OFFLINE") !== "1"
+     repeat: true
+     onTriggered: root.runFetch()
+   }
+@@ -313,7 +316,7 @@
+   }
+ 
+   IpcHandler {
+-    target: "omarchy.clock"
++    target: "tamlinux.clock"
+ 
+     function refresh(): void { root.broadcastClock("refresh") }
+     function cycleFormat(): void { root.cycleFormat() }
+@@ -335,75 +338,16 @@
+       }
+     }
+     function openAddEvent(): void {
+-      root.open()
+-      if (panelLoader.item && panelLoader.item.openAddEvent) {
+-        panelLoader.item.openAddEvent()
+-      }
++      if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
+     }
+     function closeAddEvent(): void {
+-      if (panelLoader.item && panelLoader.item.closeAddEvent) {
+-        panelLoader.item.closeAddEvent()
+-      }
+-    }
+-    function filterAccount(account: string): void {
+-      if (panelLoader.item) {
+-        panelLoader.item.selectedAccount = account
+-      }
++      if (panelLoader.item && panelLoader.item.closeAddEvent) panelLoader.item.closeAddEvent()
+     }
+     function createEvent(summary: string, date: string, allDay: string, startTime: string, endTime: string, location: string): void {
+-      if (manageProc.running) {
+-        root.notify("Calendar Busy", "Another calendar update is in progress")
+-        return
+-      }
+-      var isAllDay = (allDay === "true" || allDay === "1" || allDay === "yes")
+-      var script = Model.helperPath("manage-event.py")
+-      var args = [script, "add", "--date", date, "--summary", summary]
+-      if (isAllDay) {
+-        args.push("--all-day")
+-      } else {
+-        args.push("--start-time", startTime || "09:00")
+-        args.push("--end-time", endTime || "10:00")
+-      }
+-      if (location && location.trim() !== "") {
+-        args.push("--location", location.trim())
+-      }
+-      manageProc.args = args
+-      manageProc.launch()
+-      root.notify("Event Added", summary + " (" + date + ")")
++      if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
+     }
+     function deleteEvent(uid: string): void {
+-      if (manageProc.running) {
+-        root.notify("Calendar Busy", "Another calendar update is in progress")
+-        return
+-      }
+-      var script = Model.helperPath("manage-event.py")
+-      manageProc.args = [script, "delete", "--uid", uid]
+-      manageProc.launch()
+-      root.notify("Event Deleted", "Local event removed")
+-    }
+-  }
+-
+-  IpcHandler {
+-    target: "fred.clock"
+-
+-    function refresh(): void { root.broadcastClock("refresh") }
+-    function cycleFormat(): void { root.cycleFormat() }
+-    function toggleWeekStart(): void { root.toggleWeekStart() }
+-    function open(): void { root.open() }
+-    function close(): void { root.close() }
+-    function show(): void { root.open() }
+-    function hide(): void { root.close() }
+-    function toggle(): void { root.togglePanel() }
+-    function selectDate(key: string): void {
+-      if (panelLoader.item && panelLoader.item.selectDateString) {
+-        panelLoader.item.selectDateString(key)
+-        root.open()
+-      }
+-    }
+-    function copyAgenda(): void {
+-      if (panelLoader.item && panelLoader.item.copyDayMarkdown) {
+-        panelLoader.item.copyDayMarkdown()
+-      }
++      if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
+     }
+   }
+ 
+@@ -424,7 +368,7 @@
+ 
+     onPressed: function(b) {
+       if (b === Qt.RightButton) root.cycleFormat()
+-      else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("omarchy-menu-timezone") }
++      else if (b === Qt.MiddleButton) { if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("timezone") }
+       else root.togglePanel()
+     }
+ 
+diff -ruN a/Panel.qml b/Panel.qml
+--- a/Panel.qml
++++ b/Panel.qml
+@@ -1,8 +1,9 @@
+ import QtQuick
+ import Quickshell
+ import Quickshell.Io
+-import qs.Commons
+-import qs.Ui
++import Tam.Commons
++import Tam.Ui
++import "."
+ import "Model.js" as Model
+ 
+ // The clock's calendar popup: a month grid with ISO week numbers, built to
+@@ -17,7 +18,8 @@
+ // anchor against.
+ Panel {
+   id: root
+-  moduleName: "omarchy.clock"
++  moduleName: "fred.clock"
++  readonly property bool eventEditingEnabled: Quickshell.env("TAMLINUX_CLOCK_OFFLINE") !== "1"
+   ipcTarget: "omarchy.clock"
+   manageIpc: false
+ 
+@@ -316,11 +318,19 @@
+ 
+   property bool addEventOpen: false
+ 
++  function refuseEventEdit() {
++    if (root.eventEditingEnabled) return false
++    if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
++    return true
++  }
++
+   function toggleAddEvent() {
++    if (root.refuseEventEdit()) return
+     root.addEventOpen = !root.addEventOpen
+   }
+ 
+   function openAddEvent() {
++    if (root.refuseEventEdit()) return
+     root.addEventOpen = true
+   }
+ 
+@@ -329,6 +339,7 @@
+   }
+ 
+   function submitNewEvent(title, allDay, startTime, endTime, location, targetDate) {
++    if (root.refuseEventEdit()) return
+     if (!title || !title.trim()) return
+     if (root.hostWidget && root.hostWidget.manageProc && root.hostWidget.manageProc.running) {
+       notify("Calendar Busy", "Another calendar update is in progress")
+@@ -360,6 +371,7 @@
+   }
+ 
+   function deleteLocalEvent(eventUid) {
++    if (root.refuseEventEdit()) return
+     if (!eventUid) return
+     if (root.hostWidget && root.hostWidget.manageProc && root.hostWidget.manageProc.running) {
+       notify("Calendar Busy", "Another calendar update is in progress")
+@@ -1129,6 +1141,7 @@
+ 
+                   PanelActionButton {
+                     id: agendaAddBtn
++                    visible: root.eventEditingEnabled
+                     iconText: "󰐕"
+                     tooltipText: "Add local event (n)"
+                     foreground: root.contentForeground
+@@ -1567,7 +1580,7 @@
+                   // Delete button for local events
+                   Rectangle {
+                     id: deleteLocalBtn
+-                    visible: !!modelData.isLocal
++                    visible: root.eventEditingEnabled && !!modelData.isLocal
+                     anchors.right: parent.right
+                     anchors.rightMargin: Style.space(10)
+                     anchors.verticalCenter: parent.verticalCenter
+diff -ruN a/qmldir b/qmldir
+--- a/qmldir
++++ b/qmldir
+@@ -0,0 +1 @@
++Launch 1.0 Launch.qml
