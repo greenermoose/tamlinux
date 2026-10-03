@@ -51,7 +51,7 @@ package repository yet.
 
 Tamlinux 0.x is built on Omarchy, plus Fred's patches and the `fred.*`
 plugins. The roadmap is to decouple top-down from Omarchy toward an AntiX Linux
-base layer (antiX Core + `seatd` + Wayland + Sway, with Nix for deterministic
+base layer (antiX Core + runit + `seatd` + Wayland + Sway, with Nix for deterministic
 package sets and rollbacks). Once this AntiX-based foundation is achieved,
 Tamlinux graduates to Suspra Linux, powering the Tier 3 Suspra Workstation.
 
@@ -76,6 +76,10 @@ into:
   provides, built on Sway. Sway was chosen after a
   [field survey](upstream/2026-10-03-compositor.md) because it can render on
   the CPU when a 2006 graphics chip cannot keep up.
+- **runit for system initialization and service management.** Suspra Workstations
+  use runit for both init (PID 1) and service supervision, adopting antiX Core's
+  default runit base to provide fast, reliable process supervision with minimal
+  memory footprint, strictly without systemd.
 - **One Nix-built package.** The workstation layer is a package built with
   Nix from dependencies we build ourselves. It installs on antiX Core, or
   directly on a computer that already runs Linux.

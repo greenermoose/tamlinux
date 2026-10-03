@@ -7,7 +7,7 @@ The [project README](../../README.md) describes the current released state.
 | Work | Status | Next step |
 | :-- | :-- | :-- |
 | [Desktop decoupling](desktop-decoupling.md) | Step 1 accepted on the visible bar, 2026-10-03; still Develop | Step 2: widen the host contract for the other plugins. |
-| [Installation framework](installation-framework.md) | Direction updated 2026-09-28; antiX Core + River target base | Use the measured dependency sequence; select pilot hardware/ISO/init and prove the host/session boundary. |
+| [Installation framework](installation-framework.md) | Direction updated 2026-10-03; antiX Core + runit + Sway target base | Use the measured dependency sequence; select pilot hardware and prove the host/session boundary. |
 | [`tamlinux` command](tamlinux-command.md) | First slice and first-use welcome approved, 2026-09-23 | Implement the command skeleton and minimal offline guide. |
 
 The initial delivery order is: describe the current system, decouple dependencies

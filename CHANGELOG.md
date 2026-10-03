@@ -10,6 +10,10 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- Recorded the decision to use **runit** for system initialization and service
+  management for Suspra Workstations in [`README.md`](README.md),
+  [`VERSIONING.md`](VERSIONING.md), and the
+  [installation framework](docs/plans/installation-framework.md).
 - Recorded the 2026-10-03 targets in [`README.md`](README.md): hardware from
   circa 2006 onward (older is out of scope) on Wayland, not X11; antiX Linux
   Core with a tiling window system inspired by the Omarchy UI, with the

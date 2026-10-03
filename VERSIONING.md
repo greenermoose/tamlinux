@@ -10,7 +10,7 @@ machine and this explainer agree.
 | Series | Meaning |
 | :-- | :-- |
 | **0.x** | Tamlinux is the transitional testbed running on [Omarchy](https://omarchy.com), plus Fred's patches and `fred.*` plugins, actively decoupling dependencies top-down. |
-| **Graduation / Suspra Linux** | Working from Omarchy toward an AntiX Linux base layer (`antiX Core` + `seatd` + Wayland + Sway, delivered as a Nix-built package). Once the system runs cleanly on this AntiX foundation, Tamlinux has fulfilled its transitional purpose and launches as **Suspra Linux**, the foundation for the Tier 3 Suspra Workstation. |
+| **Graduation / Suspra Linux** | Working from Omarchy toward an AntiX Linux base layer (`antiX Core` + `runit` + `seatd` + Wayland + Sway, delivered as a Nix-built package). Once the system runs cleanly on this AntiX foundation, Tamlinux has fulfilled its transitional purpose and launches as **Suspra Linux**, the foundation for the Tier 3 Suspra Workstation. |
 
 **0.0.1** is the first workstation snapshot: this daily driver, working as
 Tamlinux. An installer for a second computer (a fresh install) comes only

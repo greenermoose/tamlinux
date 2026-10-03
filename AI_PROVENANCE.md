@@ -22,8 +22,8 @@ session IDs or local transcript paths.
 Rather than relying on a single AI model or interface, Fred uses a specialized
 toolchain tailored to each tool's strengths. Most CLI versions below were
 captured on 2026-09-22 (`<tool> --version` / `cursor --version`); the Codex
-version was checked again for the 2026-09-23 planning session, and the Antigravity
-CLI version was updated to `1.2.12` on 2026-09-28.
+version was checked again for the 2026-09-23 planning session, the Antigravity
+CLI version was updated to `1.2.12` on 2026-09-28 and `1.2.16` on 2026-10-03.
 
 Codex CLI was checked again as `0.160.0` for the 2026-10-03 dependency planning
 session, using the logged model `gpt-6.1-sol`. Cursor was checked as `3.21.18`
@@ -33,7 +33,7 @@ for the 2026-10-03 clock-shell candidate.
 | :-- | :-- | :-- | :-- |
 | **Claude Code** (`claude`) | `2.1.280` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
 | **Codex CLI** (`codex`) | `0.160.0` | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
-| **Antigravity CLI** (`agy`) | `1.2.12` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
+| **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
 | **Cursor** (`cursor`) | `3.21.16` | composer | **Implementation in this repository**: public explainer, suite branding, and 0.0.1 versioning. |
 | **OpenCode** (`opencode`) | `1.18.31` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux package specifics and shell configuration. |
 | **Grok CLI** (`grok`) | `1.0.25` | Grok 4.6 | **Workstation Support**: Additional debugging and hardware diagnostics. |
@@ -44,6 +44,7 @@ for the 2026-10-03 clock-shell candidate.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **runit for init and service management** | 0.0.1 planning | Antigravity CLI (`agy`) `1.2.16` (`gemini-3.8-flash-high`) | Recorded Fred's decision to use runit for system initialization (PID 1) and service supervision on Suspra Workstations, aligning with antiX Linux Core's default runit base. Documentation only. [Session record](docs/ai/2026-10-03-runit-system-initialization-and-service-management.md). |
 | **Shell host contract** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | The clock host now covers the other plugins' bar and shell calls: per-output popouts, settings, manifests, tooltips, panel focus, and IPC. A fixture widget proves the contract. The other seven plugins are not loaded. Not a Test promotion. [Session record](docs/ai/2026-10-03-shell-host-contract.md). |
 | **Independent clock shell** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | Separate Quickshell host loads pinned `fred.clock` through owned modules and isolated fixture data. Automated checks passed; manual hover and output checks remain. Not a Test promotion. [Session record](docs/ai/2026-10-03-independent-clock-shell.md). |
 | **Hardware floor and workstation requirements** | 0.0.1 planning; local draft | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's circa-2006 hardware floor (Wayland, not X11), antiX Core with an Omarchy-inspired tiling window system and the compositor reopened, and the Chrome, VS Code, and terminal-first requirements; then ran Fred's compositor field survey and recorded his decisions: Sway, a Nix-built workstation package on antiX Core or existing Linux, and terminal-only machines. Documentation only. [Session record](docs/ai/2026-10-03-hardware-floor-and-workstation-requirements.md). |

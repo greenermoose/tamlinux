@@ -53,7 +53,7 @@ Packaging & Rollback Layer (Nix standalone)
 Windowing & Compositor Layer (hardened Sway + seatd)
   -> user declarative configs, root-owned compositor plumbing, Wayland IPC
 Base OS Host (Omarchy 0.x transitional; target antiX Linux Core)
-  -> Debian stable package pool, sysvinit/runit (no systemd), tuned kernel, boot
+  -> Debian stable package pool, runit init and service management (no systemd), tuned kernel, boot
 Host profile
   -> hardware-specific settings and explicitly local state
 ```
@@ -171,6 +171,10 @@ Home Manager generations.
   or VS Code, are: 32-bit machines; very old machines without the graphics
   drivers Wayland needs; and machines with too little memory to compile code
   or run Chrome and Nix comfortably.
+- **2026-10-03 (runit):** Fred decided to use **runit** for system
+  initialization (PID 1) and service management on Suspra Workstations,
+  aligning with antiX Linux Core's default runit base to provide lean, fast,
+  and reliable process supervision without systemd.
 
 ## Package design points
 
@@ -208,6 +212,7 @@ never provide the same tool.
 ## References
 
 - [antiX Linux](https://antixlinux.com/) — lean, systemd-free Debian-based Linux.
+- [runit](http://smarden.org/runit/) — lightweight UNIX init scheme with service supervision.
 - [Sway](https://swaywm.org/) — i3-compatible tiling Wayland compositor on wlroots.
 - [Compositor survey](../../upstream/2026-10-03-compositor.md) — why Sway, and the alternatives.
 - [seatd](https://git.sr.ht/~kennylevinsen/seatd) — minimal seat management daemon.
