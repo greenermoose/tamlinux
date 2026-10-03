@@ -84,6 +84,7 @@ PanelWindow {
 
   onOpenChanged: {
     console.log("TAMLINUX_EVIDENCE popup-open=" + (open ? "true" : "false"))
+    if (open) console.log("TAMLINUX_EVIDENCE panel-focus ondemand")
     if (!bar) return
     if (open) {
       if (bar.requestPopout) bar.requestPopout(owner || root)

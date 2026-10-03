@@ -8,11 +8,22 @@ ShellRoot {
   id: proof
 
   property string clockEntry: Quickshell.env("TAMLINUX_CLOCK_ENTRY") || ""
+  property string fixtureEntry: Quickshell.env("TAMLINUX_FIXTURE_ENTRY") || ""
+  property string pluginIds: Quickshell.env("TAMLINUX_PLUGIN_IDS") || "fred.clock"
   property bool outputDropped: false
   property string outputName: Quickshell.env("TAMLINUX_OUTPUT") || ""
+  property string droppedHosts: ""
   property var settingsDoc: ({ "version": 1, "entries": {} })
   property bool settingsReady: false
-  property var activeBar: null
+  property var hosts: []
+  property var liveWidgets: []
+
+  readonly property int hostCopies: {
+    var n = Number(Quickshell.env("TAMLINUX_HOST_COPIES") || "1")
+    if (!isFinite(n) || n < 1) return 1
+    if (n > 4) return 4
+    return Math.round(n)
+  }
 
   readonly property string settingsPath: (Quickshell.env("HOME") || "") + "/.config/tamlinux-shell/settings.json"
 
@@ -20,10 +31,18 @@ ShellRoot {
     console.log("TAMLINUX_EVIDENCE " + message)
   }
 
-  function clockEntrySettings() {
+  function allowedId(id) {
+    var parts = pluginIds.split(",")
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] === id) return true
+    }
+    return false
+  }
+
+  function entrySettings(id) {
     var entries = settingsDoc && settingsDoc.entries ? settingsDoc.entries : {}
-    var entry = entries["fred.clock"]
-    return entry ? entry : { "id": "fred.clock" }
+    var entry = entries[id]
+    return entry ? entry : { "id": id }
   }
 
   function ingestSettings(raw) {
@@ -38,11 +57,11 @@ ShellRoot {
   }
 
   function updateEntryInline(moduleName, settings) {
-    if (moduleName !== "fred.clock") {
+    if (!allowedId(moduleName)) {
       evidence("settings-rejected " + moduleName)
       return false
     }
-    var entry = { "id": "fred.clock" }
+    var entry = { "id": moduleName }
     for (var key in settings) {
       if (key === "id") continue
       var value = settings[key]
@@ -64,17 +83,19 @@ ShellRoot {
     var doc = { "version": 1, "entries": {} }
     var existing = settingsDoc && settingsDoc.entries ? settingsDoc.entries : {}
     for (var name in existing) doc.entries[name] = existing[name]
-    doc.entries["fred.clock"] = entry
+    doc.entries[moduleName] = entry
     settingsDoc = doc
     settingsFile.setText(JSON.stringify(doc, null, 2) + "\n")
-    evidence("settings-wrote " + String(entry.format || ""))
+    if (moduleName === "fred.clock")
+      evidence("settings-wrote " + String(entry.format || ""))
+    else
+      evidence("settings-wrote " + moduleName + " marker=" + String(entry.marker || ""))
     return true
   }
 
-  readonly property var screenModel: {
+  function selectedScreens() {
     var listed = Quickshell.screens
-    if (outputDropped) return []
-    if (!listed || listed.length === 0) return []
+    if (outputDropped || !listed || listed.length === 0) return []
     if (outputName === "" || outputName === "first") return [listed[0]]
     if (outputName === "all") {
       var every = []
@@ -85,6 +106,201 @@ ShellRoot {
       if (listed[j].name === outputName) return [listed[j]]
     }
     return []
+  }
+
+  readonly property var hostKeys: {
+    var screens = selectedScreens()
+    var dropped = {}
+    var parts = droppedHosts.split(",")
+    for (var d = 0; d < parts.length; d++) {
+      if (parts[d] !== "") dropped[parts[d]] = true
+    }
+    var keys = []
+    for (var s = 0; s < screens.length; s++) {
+      var name = screens[s].name || "screen"
+      for (var c = 0; c < hostCopies; c++) {
+        var key = name + "#" + c
+        if (!dropped[key]) keys.push(key)
+      }
+    }
+    return keys
+  }
+
+  function screenFor(key) {
+    var name = String(key || "").split("#")[0]
+    var listed = Quickshell.screens
+    if (!listed) return null
+    for (var i = 0; i < listed.length; i++) {
+      if (listed[i].name === name) return listed[i]
+    }
+    return null
+  }
+
+  function loadsClock(key) {
+    return hostKeys.length > 0 && hostKeys[0] === key
+  }
+
+  function attachHost(bar) {
+    var next = hosts.filter(function(item) { return item !== bar })
+    next.push(bar)
+    hosts = next
+    evidence("hosts-live " + hosts.length)
+  }
+
+  function detachHost(bar) {
+    hosts = hosts.filter(function(item) { return item !== bar })
+    evidence("hosts-live " + hosts.length)
+  }
+
+  function registerWidget(key, widget) {
+    if (!widget) return
+    for (var i = 0; i < liveWidgets.length; i++) {
+      if (liveWidgets[i].widget === widget) return
+    }
+    var next = liveWidgets.slice()
+    next.push({ key: key, id: String(widget.moduleName || ""), widget: widget })
+    liveWidgets = next
+    evidence("widget-registered " + String(widget.moduleName || "") + " host=" + key)
+  }
+
+  function unregisterHost(key) {
+    liveWidgets = liveWidgets.filter(function(row) { return row.key !== key })
+    evidence("host-cleared " + key)
+  }
+
+  function moduleWidgets(id) {
+    var found = []
+    var wanted = String(id || "")
+    for (var i = 0; i < liveWidgets.length; i++) {
+      if (liveWidgets[i].id === wanted && liveWidgets[i].widget)
+        found.push(liveWidgets[i].widget)
+    }
+    return found
+  }
+
+  function firstWidget(id) {
+    var items = moduleWidgets(id)
+    return items.length > 0 ? items[0] : null
+  }
+
+  function summon(id) {
+    if (!allowedId(id)) {
+      evidence("unsupported summon " + id)
+      return false
+    }
+    var item = firstWidget(id)
+    if (!item || typeof item.open !== "function") {
+      evidence("summon-missing " + id)
+      return false
+    }
+    item.open()
+    evidence("summoned " + id)
+    return true
+  }
+
+  function hidePlugin(id) {
+    if (!allowedId(id)) {
+      evidence("unsupported hide " + id)
+      return false
+    }
+    var item = firstWidget(id)
+    if (!item || typeof item.close !== "function") {
+      evidence("hide-missing " + id)
+      return false
+    }
+    item.close()
+    evidence("hidden " + id)
+    return true
+  }
+
+  function togglePlugin(id) {
+    if (!allowedId(id)) {
+      evidence("unsupported toggle " + id)
+      return false
+    }
+    var item = firstWidget(id)
+    if (!item || typeof item.toggle !== "function") {
+      evidence("toggle-missing " + id)
+      return false
+    }
+    item.toggle()
+    evidence("toggled " + id)
+    return true
+  }
+
+  function openOn(key, id) {
+    for (var i = 0; i < liveWidgets.length; i++) {
+      var row = liveWidgets[i]
+      if (row.key === key && row.id === id && row.widget && typeof row.widget.open === "function") {
+        row.widget.open()
+        evidence("opened " + id + " host=" + key)
+        return true
+      }
+    }
+    evidence("open-missing " + id + " host=" + key)
+    return false
+  }
+
+  function dropHost(key) {
+    var name = String(key || "")
+    if (name === "" || droppedHosts.split(",").indexOf(name) !== -1) return
+    droppedHosts = droppedHosts === "" ? name : droppedHosts + "," + name
+    evidence("host-dropped " + name)
+  }
+
+  function probeWidgets() {
+    evidence("widgets fred.clock=" + moduleWidgets("fred.clock").length
+      + " tamlinux.fixture=" + moduleWidgets("tamlinux.fixture").length)
+  }
+
+  function clockHost() {
+    for (var i = 0; i < hosts.length; i++) {
+      if (hosts[i].loadsClock) return hosts[i]
+    }
+    return hosts.length > 0 ? hosts[0] : null
+  }
+
+  function probeSwitch() {
+    var bar = clockHost()
+    if (!bar || !bar.surface) {
+      evidence("switch-result false")
+      return
+    }
+    var panels = bar.surface.panelWidgets()
+    evidence("switch-panels " + panels.length + " widgets " + bar.surface.widgets.length)
+    if (panels.length < 2) {
+      evidence("switch-result false")
+      return
+    }
+    var owner = panels[0]
+    for (var n = 0; n < panels.length; n++) {
+      if (panels[n].moduleName === "fred.clock") owner = panels[n]
+    }
+    var ok = bar.surface.switchPanelFrom(owner, 1)
+    evidence("switch-result " + (ok ? "true" : "false"))
+  }
+
+  function probeClick() {
+    if (hosts.length < 2) {
+      evidence("click-same false click-other false")
+      return
+    }
+    var first = clockHost()
+    var second = null
+    for (var i = 0; i < hosts.length; i++) {
+      if (hosts[i] !== first) {
+        second = hosts[i]
+        break
+      }
+    }
+    if (!first || !second) {
+      evidence("click-same false click-other false")
+      return
+    }
+    var target = first.firstClickTarget ? first.firstClickTarget() : null
+    var same = first.surface && first.surface.targetBelongsToWindow(target, first)
+    var other = second.surface && second.surface.targetBelongsToWindow(target, second)
+    evidence("click-same " + (same ? "true" : "false") + " click-other " + (other ? "true" : "false"))
   }
 
   FileView {
@@ -107,36 +323,49 @@ ShellRoot {
     target: "tamlinux-shell"
     function ping(): void { proof.evidence("ping") }
     function tooltipProbe(): void {
-      if (proof.activeBar) proof.activeBar.probeTooltip()
+      var bar = proof.clockHost()
+      if (bar && bar.probeTooltip) bar.probeTooltip()
       else proof.evidence("tooltip-no-bar")
     }
     function dropOutput(): void {
       proof.outputDropped = true
       proof.evidence("output-dropped")
     }
+    function dropHost(key: string): void { proof.dropHost(key) }
+    function openOn(key: string, id: string): void { proof.openOn(key, id) }
+    function summon(id: string): void { proof.summon(id) }
+    function hide(id: string): void { proof.hidePlugin(id) }
+    function toggle(id: string): void { proof.togglePlugin(id) }
+    function probeWidgets(): void { proof.probeWidgets() }
+    function probeSwitch(): void { proof.probeSwitch() }
+    function probeClick(): void { proof.probeClick() }
+    function writeFixture(): void {
+      proof.updateEntryInline("tamlinux.fixture", { "marker": "step2" })
+    }
+    function rejectSettings(): void {
+      proof.updateEntryInline("omarchy.osd", { "marker": "no" })
+    }
   }
 
   Component.onCompleted: {
     evidence("shell-id tamlinux-clock-proof")
+    evidence("ipc-owner tamlinux-shell")
     evidence("scale " + Style.uiScale)
     evidence("omarchy " + (Quickshell.env("OMARCHY_PATH") ? "set" : "unset"))
     evidence("clock-entry " + clockEntry)
+    evidence("host-copies " + hostCopies)
+    evidence("screens " + (Quickshell.screens ? Quickshell.screens.length : 0))
   }
 
   Variants {
-    model: proof.settingsReady ? proof.screenModel : []
+    model: proof.settingsReady ? proof.hostKeys : []
     delegate: BarWindow {
       id: barWindow
       required property var modelData
-      screenRef: modelData
       shell: proof
-      onClockReady: function(widget) {
-        proof.activeBar = barWindow
-        var text = widget.displayText || ""
-        proof.evidence("ready screen=" + (modelData.name || "")
-          + " format=" + String(widget.configuredFormat || "")
-          + " text=" + JSON.stringify(text))
-      }
+      hostKey: modelData
+      screenRef: proof.screenFor(modelData)
+      loadsClock: proof.loadsClock(modelData)
     }
   }
 
@@ -145,7 +374,7 @@ ShellRoot {
     running: proof.settingsReady
     repeat: false
     onTriggered: {
-      if (!proof.screenModel || proof.screenModel.length === 0)
+      if (!proof.hostKeys || proof.hostKeys.length === 0)
         proof.evidence("output-missing name=" + proof.outputName)
     }
   }

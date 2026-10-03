@@ -47,6 +47,23 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaises(registry.RegistryError):
                 registry.validate_directory(root, seen)
 
+    def test_accepts_two_plugins_and_rejects_a_repeated_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            first = base / "clock"
+            second = base / "fixture"
+            first.mkdir()
+            second.mkdir()
+            _manifest(first, "fred.clock")
+            _manifest(second, "tamlinux.fixture")
+            records = registry.validate_directories([first, second])
+            self.assertEqual([item["id"] for item in records], ["fred.clock", "tamlinux.fixture"])
+            again = base / "again"
+            again.mkdir()
+            _manifest(again, "fred.clock")
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directories([first, again])
+
     def test_rejects_malformed_manifest(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -110,6 +127,27 @@ class SettingsTests(unittest.TestCase):
                     "entries": {"fred.clock": {"id": "fred.clock", "format": {"bad": True}}},
                 }, {"fred.clock"})
 
+    def test_allows_each_registered_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "settings"
+            directory.mkdir()
+            os.chmod(directory, 0o700)
+            allowed = {"fred.clock", "tamlinux.fixture"}
+            path = settings_store.write_settings(directory, {
+                "version": 1,
+                "entries": {
+                    "fred.clock": {"id": "fred.clock", "format": "HH:mm"},
+                    "tamlinux.fixture": {"id": "tamlinux.fixture", "marker": "step2"},
+                },
+            }, allowed)
+            loaded = settings_store.read_settings(path, allowed)
+            self.assertEqual(loaded["entries"]["tamlinux.fixture"]["marker"], "step2")
+            with self.assertRaises(settings_store.SettingsError):
+                settings_store.validate_document({
+                    "version": 1,
+                    "entries": {"omarchy.osd": {"id": "omarchy.osd"}},
+                }, allowed)
+
     def test_refuses_a_shared_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary) / "open"
@@ -120,6 +158,17 @@ class SettingsTests(unittest.TestCase):
                     "version": 1,
                     "entries": {"fred.clock": {"id": "fred.clock"}},
                 }, {"fred.clock"})
+
+
+class FixtureTests(unittest.TestCase):
+    def test_fixture_has_no_ipc_handler(self):
+        text = (DESKTOP / "fixtures" / "panel" / "BarWidget.qml").read_text(encoding="utf-8")
+        self.assertIn('moduleName: "tamlinux.fixture"', text)
+        self.assertIn("manageIpc: false", text)
+        self.assertNotIn("IpcHandler", text)
+        shell = (DESKTOP / "shell" / "shell.qml").read_text(encoding="utf-8")
+        self.assertEqual(shell.count('target: "tamlinux-shell"'), 1)
+        self.assertNotIn('target: "tamlinux.fixture"', shell)
 
 
 class AdapterTests(unittest.TestCase):

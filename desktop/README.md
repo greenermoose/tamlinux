@@ -1,34 +1,46 @@
 # Tamlinux shell proof
 
-Develop-stage host for one real plugin: pinned `fred.clock` 1.3.3, with a
-read-only calendar, running outside the Omarchy shell. This does not replace
-the running desktop. Stopping the proof process and deleting its isolated
-state is the recovery path.
+Develop-stage host for pinned `fred.clock` 1.3.3, with a read-only calendar,
+plus a small fixture widget that is not a `fred.*` plugin. It runs outside
+the Omarchy shell and does not replace the running desktop. Stopping the
+proof process and deleting its isolated state is the recovery path.
 
 Pinned clock revision: `ed5140ccefc83c0a2fdd5f899bbd290acc35d88a`.
 Development closure checked here: Quickshell 0.3.1, Qt 6.11.2.
 
 ## Host contract
 
-The clock still expects a bar object. This host supplies that object from
-`desktop/shell/host/BarApi.qml`.
+Each output gets its own bar object from `desktop/shell/host/BarApi.qml`.
+The shell answers calls that have to see every output. Call sites below are
+the pinned revisions in the source baseline of
+[desktop-decoupling.md](../docs/plans/desktop-decoupling.md). Plugin source
+is not copied into this directory.
 
-| Clock use | Host behavior |
-| --- | --- |
-| `bar.foreground`, `fontFamily`, `vertical`, `position`, `barSize` | Bottom bar, horizontal, owned palette and type scale. |
-| `setting()` / `settings` | Inline entry `fred.clock` in the proof settings file. |
-| `bar.shell.updateEntryInline` | Validates scalar values and writes that entry. Unknown ids are refused. |
-| `bar.moduleWidgets` | Returns the live clock instance for `fred.clock`. |
-| `requestPopout` / `releasePopout` | One open popup. Opening another closes the current one. |
-| `registerClickTarget` / `unregisterClickTarget` | Bar clicks are forwarded while the calendar overlay is open. |
-| `showTooltip` / `hideTooltip` | Separate overlay window. Size follows `TAMLINUX_UI_SCALE`. |
-| `bar.run` / timezone / event edit | Logged as unsupported and not executed. |
-| Panel open, close, Escape wiring, outside click | Owned `KeyboardPanel`. Escape is handled by `PanelKeyCatcher`. |
+| Call | Who uses it | Host behavior |
+| --- | --- | --- |
+| `foreground`, `fontFamily`, `position`, `urgent`, `barSize` | all eight plugins | Bottom bar, horizontal, owned palette and type scale. |
+| `bar.screen.name` | weather, tides | The output this bar was built for. |
+| `setting()` / `updateEntryInline` | clock | Scalar writes for a registered id. Unknown ids are refused. |
+| `moduleWidgets` | workspaces | Every live instance of that id, across outputs. |
+| `requestPopout` / `releasePopout` | keyboard, monitor, sysinfo, weather, tides, clock | One open popup per output. Opening another on that output closes the current one. |
+| `switchPanelFrom` | clock, weather, tides | Opens the next widget on that output that has `open` and `close`. |
+| `targetBelongsToWindow` | keyboard, monitor, sysinfo, weather, tides | True only when the click target belongs to that window. |
+| `setCenterHoverRevealSuppressed` | weather, tides | Stored on that bar. |
+| `showTooltip` / `hideTooltip` | sysinfo, monitor, and the shared buttons | Separate overlay. Size follows `TAMLINUX_UI_SCALE`. |
+| `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the first registered panel widget. `omarchy.osd` is refused. |
+| `bar.run` | agents, sysinfo, weather, clock | Logged and not executed. The call sites are `omarchy-agent --pick`, `omarchy-launch-terminal btop`, `omarchy-notification-send`, and `omarchy-menu-timezone`. |
 
-Shared modules are `Tam.Commons` and `Tam.Ui`. They cover the types the clock
-actually constructs, including `TextField`, and they do not read an Omarchy
-theme directory. IPC targets in this proof are `tamlinux-shell` and
-`tamlinux.clock`. The proof does not register `omarchy.clock` or `fred.clock`.
+`Tam.Commons` and `Tam.Ui` still cover only the types the clock constructs.
+These shared types are used by the other plugins and are not built yet:
+`Border`, `BarIconButton`, `BorderSurface`, `CursorSurface`, `Dropdown`,
+`PanelHero`, `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`.
+Hyprland imports and `hyprctl` stay on the compositor step.
+
+IPC stays on the shell target `tamlinux-shell` and the one `tamlinux.clock`
+handler inside the single clock instance. The fixture sets `manageIpc` false
+and does not register a target, because a widget instantiated once per output
+would otherwise register the same target more than once. The proof does not
+register `omarchy.clock` or `fred.clock`.
 
 `TAMLINUX_CLOCK_OFFLINE=1` makes `runFetch()` return before starting
 `fetch-events.py`, and it leaves the 15-minute refresh timer stopped. The
@@ -47,6 +59,7 @@ desktop/
   shell/modules/Tam/          # Commons and Ui
   adapters/clock-step1.patch  # imports, identity, offline gate, disabled edits
   adapters/build_patch.py     # regenerates that patch from the pinned revision
+  fixtures/panel/             # tamlinux.fixture, not a fred.* plugin
   tests/test_host.py
 ```
 
@@ -106,8 +119,31 @@ everything works. Local event creation is disabled in this slice on purpose.
 The output check above removes the screen from the host model. That is a
 simulated disappearance, not an unplugged monitor.
 
+## Checks recorded 2026-10-03, host contract
+
+Automated, on the development Wayland session, after the clock checks above:
+
+- Registry acceptance of two plugin ids, rejection of a repeated id, settings
+  writes for each registered id, and refusal of an unknown id.
+- The fixture source does not register an IPC handler. The shell registers
+  `tamlinux-shell` once.
+- `--selftest --scale 1` and `--scale 1.25` kept the clock results: calendar
+  open and close, format `dddd h:mm AP` across restart, refused event edit,
+  fetch suppressed, and tooltip sizes 132×42 at 11px and 168×54 at 14px.
+- The same runs loaded one clock and two fixture instances. Panel switch
+  opened the fixture. The calendar took on-demand keyboard focus. The fixture
+  recorded that it does not take focus. Opening the calendar closed the
+  fixture on that host and left the other host's fixture open. A click target
+  belonged to its own window and not the other. `summon("omarchy.osd")` was
+  refused. Hide, toggle, and a fixture settings write succeeded.
+- Dropping one of the two host copies destroyed that copy and left the other.
+  Those two copies share one physical output, so that half of the check is
+  simulated.
+- With `--output all`, the shell saw three outputs. Dropping `HDMI-A-1`
+  destroyed that bar and left the `DP-2` and `DP-1` bars in place.
+
 ## Limits
 
 This is a Develop candidate. It does not install a package, switch the
-production shell, or prove an antiX session. Compositor backends, the other
-seven plugins, and the one-command install are later steps.
+production shell, or prove an antiX session. The other seven plugins are not
+loaded. Compositor backends and the one-command install are later steps.

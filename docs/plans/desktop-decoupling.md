@@ -1,8 +1,8 @@
 # Desktop decoupling toward antiX Core
 
-**Status:** Step 1 candidate is in `desktop/` as of 2026-10-03. Automated
-checks passed, and Fred accepted the visible proof bar the same day. Product
-remains 0.0.1. Not promoted past Develop. Step 2 has not started.
+**Status:** Step 2 candidate is in `desktop/` as of 2026-10-03. The clock
+proof remains, and the host contract checks passed the same day. Product
+remains 0.0.1. Not promoted past Develop. Step 3 has not started.
 **First implementation:** a standalone Quickshell host running `fred.clock`
 with Tamlinux-owned shared modules and isolated data. The candidate lives in
 `desktop/`; see that README for the launch command and the 2026-10-03 check
@@ -114,8 +114,8 @@ the host kernel, apt state, mutable data or live-linked source files.
 | Step | Deliverable | Depends on | Exit evidence |
 | --- | --- | --- | --- |
 | 0 | Current dependency inventory and source baseline | Completed reconnaissance | Classified matrix, source revisions, recorded unknowns. Prepared 2026-10-03. |
-| 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only; Step 2 has not started. |
-| 2 | Host contract and incremental shared UI | 1 | Settings, manifests, multi-output lifecycle, tooltips, panel focus and IPC tests; other plugins' API needs recorded. |
+| 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only. |
+| 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only; Step 3 has not started. |
 | 3 | Compositor contract and Hyprland adapter | 2 | Existing behavior preserved behind interfaces; no shell UI reads raw Hyprland state directly. |
 | 4 | Host-safe profiles and non-systemd session/service design | 0; prototype experience from 1–3 | Host-specific state external, service ownership explicit, tested recovery design and target inputs selected. |
 | 5 | antiX hardware pilot with chosen compositor/WM, Nix and session | 4; hardware/disk selection | Unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and generation rollback proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
@@ -217,6 +217,36 @@ settings writes, plus integration checks for popup lifecycle and process
 cleanup. Do not claim the shell proved independent merely because an import
 search passed; exercise the real component.
 
+## Step 2 host contract
+
+The clock remains the only real plugin. `desktop/fixtures/panel/` is a second
+widget, `tamlinux.fixture`, used to exercise two widgets and two host
+instances without loading Hyprland. The full call matrix is in
+[desktop/README.md](../../desktop/README.md).
+
+Recorded needs, from the pinned revisions in the source baseline:
+
+- Bar: `switchPanelFrom` (clock, weather, tides), `targetBelongsToWindow`
+  (keyboard, monitor, sysinfo, weather, tides), `moduleWidgets` (workspaces),
+  `screen.name` (weather, tides), `showTooltip` (sysinfo, monitor), and
+  `setCenterHoverRevealSuppressed` (weather, tides).
+- Shell: `updateEntryInline` (clock) and `summon` (monitor, currently aimed
+  at `omarchy.osd`, which this host refuses).
+- `bar.run` stays refused. The commands are `omarchy-agent --pick`,
+  `omarchy-launch-terminal btop`, `omarchy-notification-send`, and
+  `omarchy-menu-timezone`.
+- Shared UI not built in this slice: `Border`, `BarIconButton`,
+  `BorderSurface`, `CursorSurface`, `Dropdown`, `PanelHero`,
+  `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`.
+- Hyprland imports and `hyprctl` remain Step 3. Keyboard already disables its
+  per-instance IPC handler because one target cannot be registered on every
+  output. This host keeps IPC on `tamlinux-shell` and one clock instance.
+
+One popout is owned per output. `targetBelongsToWindow` follows the target's
+window. `moduleWidgets` returns every live instance of an id. Settings writes
+succeed only for a registered id. Output removal clears that output's widgets,
+click targets, popout, and tooltip.
+
 ## Boundaries and recovery
 
 This task is Develop-stage work. Do not restart or replace the production shell,
@@ -233,7 +263,7 @@ hardened.
 
 ## Next handoff
 
-The Step 1 candidate is in `desktop/`. Review that README, including the manual
-checks it does not claim. Promotion to Test is a separate decision. Steps 2–7
-define the subsequent project order; they are not claimed complete by this
-prototype.
+The Step 2 candidate is in `desktop/`. Review that README, including the
+manual checks it does not claim. Promotion to Test is a separate decision.
+Steps 3–7 define the subsequent project order; they are not claimed complete
+by this prototype.

@@ -73,3 +73,9 @@ def validate_directory(root: Path, seen_ids: set[str] | None = None) -> dict:
     if not manifest_path.is_file() or manifest_path.is_symlink():
         raise RegistryError("manifest.json is missing")
     return validate_manifest(Path(root), load_manifest(manifest_path), seen_ids)
+
+
+def validate_directories(roots: list[Path]) -> list[dict]:
+    """Validate plugins in order, rejecting an id that appears twice."""
+    seen: set[str] = set()
+    return [validate_directory(Path(root), seen) for root in roots]

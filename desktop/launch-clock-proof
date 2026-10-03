@@ -16,13 +16,14 @@ from pathlib import Path
 HOST = Path(__file__).resolve().parent / "shell" / "host"
 sys.path.insert(0, str(HOST))
 
-from registry import RegistryError, validate_directory  # noqa: E402
+from registry import RegistryError, validate_directories  # noqa: E402
 from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
 
 PINNED_REVISION = "ed5140ccefc83c0a2fdd5f899bbd290acc35d88a"
 SHELL_DIR = Path(__file__).resolve().parent / "shell"
 PATCH = Path(__file__).resolve().parent / "adapters" / "clock-step1.patch"
-ALLOWED = {"fred.clock"}
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "panel"
+ALLOWED = {"fred.clock", "tamlinux.fixture"}
 
 
 def clock_repo() -> Path:
@@ -118,12 +119,13 @@ def _seed(home: Path, config: Path, plugin: Path) -> None:
                 "verticalFormat": "HH\n—\nmm",
                 "verticalFormatAlt": "dd\nMMM\n'W'ww\n''yy",
                 "badgeMinutes": 60,
-            }
+            },
+            "tamlinux.fixture": {"id": "tamlinux.fixture", "marker": "ready"},
         },
     }, ALLOWED)
 
 
-def prepare(state: Path, scale: str, output: str, reset: bool = True) -> dict:
+def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1") -> dict:
     home = state / "home"
     config = home / ".config"
     plugin = state / "plugin"
@@ -134,9 +136,9 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True) -> dict:
     if not os.environ.get("XDG_RUNTIME_DIR"):
         raise SystemExit("XDG_RUNTIME_DIR is required; the proof does not use /tmp")
     try:
-        record = validate_directory(plugin)
+        records = validate_directories([plugin, FIXTURE])
     except RegistryError as exc:
-        raise SystemExit(f"registry rejected the staged clock: {exc}") from exc
+        raise SystemExit(f"registry rejected a staged plugin: {exc}") from exc
     env = os.environ.copy()
     env.pop("OMARCHY_PATH", None)
     env.update({
@@ -147,12 +149,15 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True) -> dict:
         "PATH": "/usr/bin",
         "QML_IMPORT_PATH": str(SHELL_DIR / "modules"),
         "TAMLINUX_CLOCK_OFFLINE": "1",
-        "TAMLINUX_CLOCK_ENTRY": str(record["entry"]),
+        "TAMLINUX_CLOCK_ENTRY": records[0]["entry"],
+        "TAMLINUX_FIXTURE_ENTRY": records[1]["entry"],
+        "TAMLINUX_PLUGIN_IDS": "fred.clock,tamlinux.fixture",
+        "TAMLINUX_HOST_COPIES": copies,
         "TAMLINUX_UI_SCALE": scale,
         "TAMLINUX_OUTPUT": output,
         "QT_QPA_PLATFORM": "wayland",
     })
-    return {"env": env, "home": home, "plugin": plugin, "record": record}
+    return {"env": env, "home": home, "plugin": plugin, "record": records[0]}
 
 
 def spawn(env: dict) -> subprocess.Popen:
@@ -213,8 +218,8 @@ def helper_leaks(plugin: Path) -> list[str]:
     ]
 
 
-def run_session(state: Path, scale: str, output: str, drive, reset: bool = True) -> str:
-    prepared = prepare(state, scale, output, reset=reset)
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1") -> str:
+    prepared = prepare(state, scale, output, reset=reset, copies=copies)
     process = spawn(prepared["env"])
     try:
         ready = wait_for(
@@ -236,30 +241,101 @@ def run_session(state: Path, scale: str, output: str, drive, reset: bool = True)
     return log
 
 
+def host_keys(lines: list[str]) -> list[str]:
+    keys = []
+    for line in lines:
+        if line.startswith("bar-created host="):
+            key = line.split(" host=", 1)[1].split(" ", 1)[0]
+            if key not in keys:
+                keys.append(key)
+    return keys
+
+
+def fixture_open(lines: list[str]) -> dict[str, bool]:
+    state: dict[str, bool] = {}
+    for line in lines:
+        if not line.startswith("fixture host=") or " opened=" not in line:
+            continue
+        key, rest = line.split(" host=", 1)[1].split(" opened=", 1)
+        state[key.strip()] = rest.startswith("true")
+    return state
+
+
 def drive_primary(env: dict, process: subprocess.Popen) -> None:
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
     def has(prefix: str) -> bool:
-        return any(line.startswith(prefix) for line in evidence_lines(read_log(process)))
+        return any(line.startswith(prefix) for line in lines())
+
+    def contains(text: str) -> bool:
+        return any(text in line for line in lines())
+
+    def live_hosts() -> int:
+        count = -1
+        for line in lines():
+            if line.startswith("hosts-live "):
+                count = int(line.split()[1])
+        return count
+
+    def require(predicate, message: str) -> None:
+        if not wait_for(predicate, 5):
+            raise SystemExit(message + "\n" + read_log(process)[-2500:])
 
     opened = ipc(env, "tamlinux.clock", "open")
     if opened.returncode != 0:
         raise SystemExit(opened.stderr or opened.stdout or "open ipc failed")
-    if not wait_for(lambda: has("popup-open=true"), 5):
-        raise SystemExit("calendar did not open:\n" + read_log(process)[-2500:])
+    require(lambda: has("popup-open=true"), "calendar did not open:")
+    require(lambda: has("panel-focus ondemand"), "calendar did not take panel focus:")
     ipc(env, "tamlinux.clock", "close")
-    if not wait_for(lambda: has("popup-open=false"), 5):
-        raise SystemExit("calendar did not close:\n" + read_log(process)[-2500:])
+    require(lambda: has("popup-open=false"), "calendar did not close:")
     ipc(env, "tamlinux.clock", "cycleFormat")
-    if not wait_for(lambda: has("settings-wrote dddd h:mm AP"), 5):
-        raise SystemExit("format cycle did not persist:\n" + read_log(process)[-2500:])
+    require(lambda: has("settings-wrote dddd h:mm AP"), "format cycle did not persist:")
     ipc(env, "tamlinux.clock", "createEvent", ["Fixture", "2026-10-03", "true", "", "", ""])
-    if not wait_for(lambda: "unsupported event-edit" in evidence_lines(read_log(process)), 5):
-        raise SystemExit("event edit IPC was not refused:\n" + read_log(process)[-2500:])
+    require(lambda: "unsupported event-edit" in lines(), "event edit IPC was not refused:")
     ipc(env, "tamlinux-shell", "tooltipProbe")
-    if not wait_for(lambda: has("tooltip "), 5):
-        raise SystemExit("tooltip probe produced no evidence:\n" + read_log(process)[-2500:])
+    require(lambda: has("tooltip "), "tooltip probe produced no evidence:")
+    require(lambda: has("hosts-live 2"), "two host instances were not created:")
+    require(lambda: sum(1 for line in lines() if line.startswith("clock-loaded host=")) == 1, "clock was not loaded once:")
+    require(
+        lambda: sum(1 for line in lines() if line.startswith("fixture host=") and line.endswith(" loaded")) >= 2,
+        "fixture did not load on both hosts:",
+    )
+    ipc(env, "tamlinux-shell", "probeWidgets")
+    require(lambda: "widgets fred.clock=1 tamlinux.fixture=2" in lines(), "widget census was wrong:")
+    ipc(env, "tamlinux-shell", "probeSwitch")
+    require(lambda: "switch-result true" in lines(), "panel switch did not move:")
+    require(lambda: contains("panel-focus none"), "fixture did not record a non-focus panel:")
+    keys = host_keys(lines())
+    if len(keys) < 2:
+        raise SystemExit(f"expected two host keys, got {keys}")
+    ipc(env, "tamlinux-shell", "openOn", [keys[0], "tamlinux.fixture"])
+    ipc(env, "tamlinux-shell", "openOn", [keys[1], "tamlinux.fixture"])
+    require(lambda: fixture_open(lines()).get(keys[0]) and fixture_open(lines()).get(keys[1]), "both fixtures did not open:")
+    ipc(env, "tamlinux.clock", "open")
+    require(
+        lambda: fixture_open(lines()).get(keys[0]) is False and fixture_open(lines()).get(keys[1]) is True,
+        "popout exclusivity did not stay on one host:",
+    )
+    ipc(env, "tamlinux-shell", "probeClick")
+    require(lambda: "click-same true click-other false" in lines(), "click ownership was wrong:")
+    ipc(env, "tamlinux-shell", "summon", ["omarchy.osd"])
+    require(lambda: "unsupported summon omarchy.osd" in lines(), "osd summon was not refused:")
+    ipc(env, "tamlinux-shell", "hide", ["fred.clock"])
+    require(lambda: "hidden fred.clock" in lines(), "clock hide did not run:")
+    ipc(env, "tamlinux-shell", "toggle", ["tamlinux.fixture"])
+    require(lambda: "toggled tamlinux.fixture" in lines(), "fixture toggle did not run:")
+    ipc(env, "tamlinux-shell", "writeFixture")
+    require(lambda: "settings-wrote tamlinux.fixture marker=step2" in lines(), "fixture setting was not written:")
+    ipc(env, "tamlinux-shell", "rejectSettings")
+    require(lambda: "settings-rejected omarchy.osd" in lines(), "unknown settings id was not rejected:")
+    ipc(env, "tamlinux-shell", "dropHost", [keys[1]])
+    require(lambda: contains(f"bar-destroyed host={keys[1]}"), "dropped host was not destroyed:")
+    require(lambda: live_hosts() == 1, "surviving host was not kept:")
+    if contains(f"bar-destroyed host={keys[0]}"):
+        raise SystemExit("dropping one host destroyed the other")
     ipc(env, "tamlinux-shell", "dropOutput")
-    if not wait_for(lambda: has("bar-destroyed "), 5):
-        raise SystemExit("output drop did not destroy the bar:\n" + read_log(process)[-2500:])
+    require(lambda: has("bar-destroyed "), "output drop did not destroy the bar:")
 
 
 def expect(lines: list[str], text: str) -> None:
@@ -272,9 +348,59 @@ def expect_prefix(lines: list[str], prefix: str) -> None:
         raise SystemExit(f"missing evidence prefix: {prefix}")
 
 
+def monitor_names() -> list[str]:
+    try:
+        completed = subprocess.run(
+            ["hyprctl", "monitors", "-j"],
+            capture_output=True, text=True, timeout=3, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if completed.returncode != 0:
+        return []
+    try:
+        data = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [str(item.get("name")) for item in data if isinstance(item, dict) and item.get("name")]
+
+
+def drive_outputs(env: dict, process: subprocess.Popen) -> None:
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
+    def live_hosts() -> int:
+        count = -1
+        for line in lines():
+            if line.startswith("hosts-live "):
+                count = int(line.split()[1])
+        return count
+
+    def screen_count() -> int:
+        for line in reversed(lines()):
+            if line.startswith("screens "):
+                return int(line.split()[1])
+        return 0
+
+    if not wait_for(lambda: screen_count() >= 2 and live_hosts() >= screen_count() and len(host_keys(lines())) >= screen_count(), 8):
+        return
+    keys = host_keys(lines())
+    before = live_hosts()
+    ipc(env, "tamlinux-shell", "dropHost", [keys[-1]])
+    if not wait_for(
+        lambda: any(f"bar-destroyed host={keys[-1]}" in line for line in lines()) and live_hosts() == before - 1,
+        5,
+    ):
+        raise SystemExit("dropping one physical output did not leave the others:\n" + read_log(process)[-2500:])
+    if any(f"bar-destroyed host={keys[0]}" in line for line in lines()):
+        raise SystemExit("dropping one physical output destroyed the other")
+
+
 def selftest(scale: str, output: str, state_root: Path) -> None:
     primary = state_root / "primary"
-    log = run_session(primary, scale, output, drive_primary)
+    log = run_session(primary, scale, output, drive_primary, copies="2")
     lines = evidence_lines(log)
     expect(lines, "omarchy unset")
     expect(lines, "fetch-suppressed")
@@ -291,10 +417,23 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     settings = read_settings(primary / "home" / ".config" / "tamlinux-shell" / "settings.json", ALLOWED)
     if settings["entries"]["fred.clock"]["format"] != "dddd h:mm AP":
         raise SystemExit("format was not persisted")
-    restarted = run_session(primary, scale, output, None, reset=False)
+    restarted = run_session(primary, scale, output, None, reset=False, copies="2")
     ready = next(line for line in evidence_lines(restarted) if line.startswith("ready "))
     if "format=dddd h:mm AP" not in ready:
         raise SystemExit(f"restart did not keep the format: {ready}")
+    names = monitor_names()
+    if len(names) >= 2 and output in ("", "all"):
+        output_log = run_session(state_root / "outputs", scale, "all", drive_outputs, copies="1")
+        output_lines = evidence_lines(output_log)
+        created = host_keys(output_lines)
+        destroyed = [line for line in output_lines if line.startswith("bar-destroyed host=")]
+        kept = len(created) >= 2 and any(created[-1] in line for line in destroyed) and not any(created[0] in line for line in destroyed)
+        if kept:
+            print("physical outputs checked")
+        else:
+            print("physical second output not checked")
+    else:
+        print("physical second output not checked")
     print("selftest ok")
     print(f"scale {scale}")
     print(f"pinned {PINNED_REVISION}")

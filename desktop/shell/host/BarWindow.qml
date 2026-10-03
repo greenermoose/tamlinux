@@ -6,9 +6,12 @@ import Tam.Commons
 PanelWindow {
   id: win
 
-  required property var screenRef
   required property var shell
+  property string hostKey: ""
+  property var screenRef: null
+  property bool loadsClock: false
 
+  property alias surface: api
   signal clockReady(var widget)
 
   property string tooltipText: ""
@@ -19,7 +22,7 @@ PanelWindow {
   color: Color.bar.background
   exclusionMode: ExclusionMode.Ignore
   implicitHeight: Style.bar.sizeHorizontal
-  WlrLayershell.namespace: "tamlinux-clock-proof"
+  WlrLayershell.namespace: "tamlinux-proof-" + hostKey.replace("#", "-")
   WlrLayershell.layer: WlrLayer.Top
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
@@ -33,23 +36,37 @@ PanelWindow {
     id: api
     host: win
     shell: win.shell
+    hostKey: win.hostKey
+    screen: win.screenRef
     barSize: win.implicitHeight
   }
 
-  Loader {
-    id: clockLoader
-    active: shell.clockEntry !== ""
-    source: shell.clockEntry
-    onLoaded: {
-      api.widget = item
-      item.bar = api
-      item.settings = shell.clockEntrySettings()
-      win.clockReady(item)
-      console.log("TAMLINUX_EVIDENCE clock-loaded")
+  Row {
+    anchors.left: parent.left
+    anchors.leftMargin: 8
+    anchors.verticalCenter: parent.verticalCenter
+    spacing: 8
+
+    Loader {
+      id: clockLoader
+      active: win.loadsClock && shell.clockEntry !== ""
+      source: win.loadsClock ? shell.clockEntry : ""
+      onLoaded: win.adopt(item, true)
+      onStatusChanged: {
+        if (status === Loader.Error)
+          console.log("TAMLINUX_EVIDENCE clock-load-failed host=" + win.hostKey)
+      }
     }
-    onStatusChanged: {
-      if (status === Loader.Error)
-        console.log("TAMLINUX_EVIDENCE clock-load-failed")
+
+    Loader {
+      id: fixtureLoader
+      active: shell.fixtureEntry !== "" && (!win.loadsClock || clockLoader.status === Loader.Ready || clockLoader.status === Loader.Error)
+      source: shell.fixtureEntry
+      onLoaded: win.adopt(item, false)
+      onStatusChanged: {
+        if (status === Loader.Error)
+          console.log("TAMLINUX_EVIDENCE fixture-load-failed host=" + win.hostKey)
+      }
     }
   }
 
@@ -61,6 +78,30 @@ PanelWindow {
     color: Color.urgent
     text: "fred.clock failed to load"
     font.pixelSize: Style.font.body
+  }
+
+  function adopt(item, isClock) {
+    if (!item) return
+    item.bar = api
+    if (item.moduleName === "tamlinux.fixture") item.hostKey = hostKey
+    var id = item.moduleName || (isClock ? "fred.clock" : "")
+    item.settings = shell.entrySettings(id)
+    if (item.bindHost) item.bindHost()
+    api.registerWidget(item)
+    if (isClock) {
+      api.widget = item
+      clockReady(item)
+      var text = item.displayText || ""
+      shell.evidence("ready screen=" + (screenRef ? screenRef.name || "" : "")
+        + " host=" + hostKey
+        + " format=" + String(item.configuredFormat || "")
+        + " text=" + JSON.stringify(text))
+      console.log("TAMLINUX_EVIDENCE clock-loaded host=" + hostKey)
+    }
+  }
+
+  function firstClickTarget() {
+    return api.clickTargets.length > 0 ? api.clickTargets[0] : null
   }
 
   function showTooltip(target, text) {
@@ -79,7 +120,7 @@ PanelWindow {
 
   function probeTooltip() {
     var label = api.widget ? ("fred.clock v" + (api.widget.pluginVersion || "")) : "fred.clock"
-    showTooltip(clockLoader.item, label + "\nscale " + Style.uiScale)
+    showTooltip(clockLoader.item || win, label + "\nscale " + Style.uiScale)
   }
 
   function logTooltip() {
@@ -91,8 +132,17 @@ PanelWindow {
       + " text=" + JSON.stringify(tooltipText))
   }
 
-  Component.onCompleted: console.log("TAMLINUX_EVIDENCE bar-created screen=" + (screenRef.name || ""))
-  Component.onDestruction: console.log("TAMLINUX_EVIDENCE bar-destroyed screen=" + (screenRef.name || ""))
+  Component.onCompleted: {
+    shell.attachHost(win)
+    console.log("TAMLINUX_EVIDENCE bar-created host=" + hostKey + " screen=" + (screenRef ? screenRef.name || "" : ""))
+  }
+
+  Component.onDestruction: {
+    api.clearSurface()
+    shell.unregisterHost(hostKey)
+    shell.detachHost(win)
+    console.log("TAMLINUX_EVIDENCE bar-destroyed host=" + hostKey + " screen=" + (screenRef ? screenRef.name || "" : ""))
+  }
 
   PanelWindow {
     id: tipWindow
@@ -100,7 +150,7 @@ PanelWindow {
     screen: win.screenRef
     color: Color.tooltip.background
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "tamlinux-clock-tooltip"
+    WlrLayershell.namespace: "tamlinux-tooltip-" + win.hostKey.replace("#", "-")
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     anchors.bottom: true
