@@ -1,30 +1,41 @@
 # Installation framework
 
 **Status:** Installation contract approved on 2026-09-23; target updated on
-2026-10-03 to Void first, antiX Core fallback. No installer has been implemented.
-Pilot machine and disk boundaries remain open.
+2026-10-03 to Void first, antiX Core fallback; route updated on 2026-10-03 to
+install the workstation package on existing distributions first. No installer
+has been implemented. Pilot machine and disk boundaries remain open.
 
 ## Goal
 
-Make a fresh computer reproducibly become Tamlinux without copying one
-workstation's state. First implement inspect, plan, apply, and verify; develop
-bootable media and a disk installer after the framework works on a second
-computer. The [base operating system plan](base-operating-system.md) defines
+Make a computer reproducibly become Tamlinux without copying one
+workstation's state. First implement inspect, plan, apply, and verify for the
+workstation package on an existing distribution; develop bootable media and a
+disk installer for the Void base after the package works on a second
+distribution. The [base operating system plan](base-operating-system.md) defines
 the target and acceptance criteria.
 
 ## Base sequence
 
+Version numbers are in [VERSIONING.md](../../VERSIONING.md).
+
 1. **Omarchy 0.x development system.** Keep the working workstation productive
-   while decoupling plugins, configuration, and services from Omarchy/Hyprland.
-2. **Void Linux target.** Try a minimal Void base with runit and Btrfs on
-   secondary hardware. Compare musl and glibc; use XBPS for the native operating
-   system and evaluate `xbps-src` for the workstation packages.
-3. **antiX Core fallback.** If Void has a showstopper, try antiX Core with runit.
+   while decoupling plugins, configuration, and services from Omarchy/Hyprland
+   (0.1–0.3).
+2. **Workstation package on an existing distribution.** Install the package on
+   Fred's Arch workstation beside the Omarchy session (0.4), daily-drive it
+   (0.5–0.9), then remove Omarchy and Hyprland (1.0.0). Arch and pacman remain
+   the base.
+3. **A second distribution.** Install the same package on another machine
+   running a different distribution with systemd, to exercise the host adapter
+   away from Arch (1.1).
+4. **Void Linux target.** Try a minimal Void base with runit and Btrfs on
+   secondary hardware. Compare musl and glibc; XBPS owns the native operating
+   system, and the workstation package is built from the same sources with
+   `xbps-src` (1.2). Then repeatable media, single-command activation, and the
+   terminal-only profile (1.3).
+5. **antiX Core fallback.** If Void has a showstopper, try antiX Core with runit.
    A musl-only problem should first be tested on Void glibc. On antiX, APT/dpkg
    owns native packages; do not mix native managers in the same root.
-4. **Independent workstation.** Prove Sway, seatd, the Quickshell host, ported
-   plugins, required workflows, installation, and complete recovery. Graduation
-   to Suspra Linux follows evidence from the selected base.
 
 ## Layers and ownership
 
@@ -32,7 +43,8 @@ the target and acceptance criteria.
 Application and environment
   -> independent shell, fred.* plugins, commands, knowledge, AI harnesses
 Packaging and recovery
-  -> native XBPS/xbps-src candidate; portable delivery open, Nix candidate
+  -> existing distributions: Nix flake + Home Manager module + native host adapter
+  -> Void base: native xbps-src packages from the same sources
   -> Btrfs system checkpoints paired with kernel/initramfs/boot selection
 Windowing and session
   -> Sway + seatd; session bus, runtime directory, PAM, login, native runit services
@@ -48,20 +60,35 @@ configuration are distinct from service activation. Root-owned `/etc/sway`
 plumbing includes a generated, validated user fragment. Invalid configuration
 must have a demonstrated recovery path.
 
-Pin or record component versions and source revisions. Native Void packaging
-and portable installation on an existing Linux may need different delivery
-adapters; the earlier all-Nix package requirement is reopened. If Nix is used,
-prove its runit integration and constrained-client update path. Profile rollback
-alone does not restore the host kernel or native package database.
+Pin or record component versions and source revisions. One set of sources
+feeds two delivery adapters:
+
+| Owner on an existing distribution | Owns |
+| :-- | :-- |
+| Host distribution | Kernel, firmware, graphics drivers, PAM, logind or seatd, PipeWire, NetworkManager, BlueZ, Chrome, VS Code |
+| Host adapter (native package, e.g. a PKGBUILD on Arch) | Wayland session entry, locker PAM file, groups and udev rules, graphics-driver bridge for Nix-built Sway |
+| Workstation flake (Nix) | Sway, Qt/Quickshell closure, shell, plugins, selected third-party desktop tools, `tamlinux` command, knowledge corpus |
+| User | Validated declarative settings only |
+
+On the Void base, native `xbps-src` packages replace the flake and the host
+adapter, and runit services supply the session. Prove early on existing
+distributions: Nix-built Sway and Mesa against host kernel drivers, locker
+authentication through host PAM, and portal and keyring startup under the host
+session manager. Chrome and VS Code come from their vendors' packages and are
+checked, never redistributed. Nix profile rollback alone does not restore the
+host kernel or native package database.
 
 ## Proposed repository shape
 
 ```text
 tamlinux/
   bin/tamlinux                 # command entry point
+  flake.nix                    # workstation package for existing distributions
   installer/                   # inspect, plan, apply, verify orchestration
+  host-adapters/arch/          # native host adapter (PKGBUILD) for Arch
   profiles/omarchy/            # current 0.x development adapter
-  profiles/void/               # first target base adapter
+  profiles/arch/               # existing-distribution profile, first host
+  profiles/void/               # first target base adapter, native xbps-src
   profiles/antix/              # fallback base adapter
   manifests/                   # source and package versions/owners
   knowledge/                   # offline command and onboarding content
@@ -116,13 +143,14 @@ Snapshots supplement an external backup.
 | :-- | :-- | :-- |
 | A. Inventory | Current component/owner manifest and dependency classification | Recorded source revisions and ownership. |
 | B. Framework | Inspect, plan, bounded apply, verify on the current base | Plans, step results, versions, recovery route. |
-| C. Void pilot | Minimal runit/Btrfs base; libc comparison on secondary hardware | BIOS/UEFI installation, hardware checks, resource measurements. |
-| D. Workstation integration | Sway/seatd, native service and package ownership, ported workflows | Chrome, VS Code, terminal workflow, kernel/userspace update and full recovery. |
-| E. Distribution | Repeatable media and single-command setup | Multi-hardware installation and recovery verification. |
+| C. Package on this workstation | Workstation flake and Arch host adapter; Sway session beside Omarchy, then Omarchy and Hyprland removed (0.4–1.0.0) | `install verify` passes; required workflows and parity checks; rollback route recorded before removal. |
+| D. Second distribution | Same package on a different distribution (1.1) | Install, verify, and a recorded list of host-adapter differences. |
+| E. Void pilot | Minimal runit/Btrfs base, native `xbps-src` packages, libc comparison on secondary hardware (1.2) | BIOS/UEFI installation, hardware checks, resource measurements; Chrome, VS Code, terminal workflow, kernel/userspace update and full recovery. |
+| F. Distribution | Repeatable media, single-command activation, terminal-only profile (1.3) | Multi-hardware installation and recovery verification. |
 
 Try antiX Core if Void fails an essential requirement at acceptable maintenance
-cost. The daily workstation stays on its working installation until the pilot
-has evidence. Documentation changes do not bump the product version.
+cost. The daily workstation's base stays Arch until the pilot has evidence;
+its desktop moves to the workstation package first (1.0.0). Documentation changes do not bump the product version.
 
 ## Decision record
 
@@ -133,9 +161,13 @@ has evidence. Documentation changes do not bump the product version.
 - **2026-10-03, latest:** Try Void first; try antiX Core if Void has a showstopper.
   Prefer Btrfs for the pilot, compare musl/glibc, and evaluate native XBPS packaging.
   Mandatory Nix delivery is reopened; portable delivery remains a goal.
+- **2026-10-03, route:** Install the workstation package on existing
+  distributions first, with a Nix flake and a native host adapter; Fred's Arch
+  workstation is the first host and reaches 1.0.0 when Omarchy and Hyprland are
+  removed. On Void, build the same sources as native `xbps-src` packages.
 
-Open: pilot hardware, disk layout, libc choice, native versus portable packaging,
-signed binary delivery, application licensing, graphics drivers/renderer,
+Open: pilot hardware, disk layout, libc choice, supported existing
+distributions, the graphics bridge for Nix-built Sway, signed binary delivery, application licensing, graphics drivers/renderer,
 session services, resource thresholds, retention, and tested boot recovery.
 
 ## References

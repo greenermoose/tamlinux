@@ -19,7 +19,7 @@
   private repository. It is now marked `[redacted: private repository]`.
 - Searched for shortened session IDs, which the check cannot catch; none.
 - Checked the uncommitted Antigravity session record
-  (`2026-09-28-antix-base-and-suspra-vision.md`) against its transcript: both
+  (`2026-09-28-antix-base-and-product-vision.md`) against its transcript: both
   prompts are verbatim, and the tool version (`agy 1.2.12`) matches the live
   binary. The transcript logs only the human-readable model name, so no
   logged model ID was added.

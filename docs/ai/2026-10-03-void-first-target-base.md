@@ -31,7 +31,7 @@ packages, promote the shell candidate, or bump the product version.
 
 ## Verification
 
-- Audited target references across the local Tamlinux and Suspra repositories;
+- Audited target references across the local Tamlinux repositories;
   updated the three repositories carrying target architecture and planning.
 - Checked changed Markdown links and fenced-code balance, and Git whitespace checks.
 - Checked syntax of the dependency collector after changing its target-description text.

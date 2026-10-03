@@ -11,8 +11,8 @@
 >
 > 1) I want to run on hardware that is 20 years old (starting circa 2006), but older than that is beyond our remit. This should allow us to run on Wayland instead of X11.
 > 2) I am not sure about river. I am sure that I want to build on antiX Linux core and then install a tiling windowing system inspired by the UI Omarchy provides.
-> 3) I want to be able to run Chrome and vscode on Suspra Workstations.
-> 4) I also want to provide a good terminal experience on Suspra Workstations so that you can do most things using a terminal and keyboard.
+> 3) I want to be able to run Chrome and vscode on [redacted: unannounced plans].
+> 4) I also want to provide a good terminal experience on [redacted: unannounced plans] so that you can do most things using a terminal and keyboard.
 
 ## Changes
 
@@ -52,9 +52,9 @@ These follow from Fred's statements but are the agent's analysis:
 
 ## Follow-up: Sway and the Nix-built package
 
-> Let's choose sway and we will bulid it ourselves and manage it with nix. My current thinking is that we'll install core antiX Linux on systems that don't already boot to any flavor of linux, then have a Suspra package managed with nix that we install on top of it. We can build all the dependencies we need to include for the Suspra package. Does this makes sense?
+> Let's choose sway and we will bulid it ourselves and manage it with nix. My current thinking is that we'll install core antiX Linux on systems that don't already boot to any flavor of linux, then have a [redacted: unannounced plans] package managed with nix that we install on top of it. We can build all the dependencies we need to include for the [redacted: unannounced plans] package. Does this makes sense?
 
-> Yes, record these decisions: 1) sway chosen, 2) Nix-build Suspra package on antiX Core or existing Linux. As far as machines without enough RAM to compile packages, let's make those terminal only and not try to shoehorn Chrome and VS Code onto them. So terminal-only Suspra Workstations include two kinds of machines: 1) very old hardware that doesn't have the drivers necessary to run Wayland, and 2) very memory constrained machines that can't compile code or comfortably run Chrome and nix. Record the five adjustments and open design points to be determined as we begin building systems on older hardware.
+> Yes, record these decisions: 1) sway chosen, 2) Nix-build [redacted: unannounced plans] package on antiX Core or existing Linux. As far as machines without enough RAM to compile packages, let's make those terminal only and not try to shoehorn Chrome and VS Code onto them. So terminal-only [redacted: unannounced plans] include two kinds of machines: 1) very old hardware that doesn't have the drivers necessary to run Wayland, and 2) very memory constrained machines that can't compile code or comfortably run Chrome and nix. Record the five adjustments and open design points to be determined as we begin building systems on older hardware.
 
 - The decisions are Fred's. The five design points and their wording (root
   layer, binary cache, graphics userspace, Chrome/VS Code redistribution,

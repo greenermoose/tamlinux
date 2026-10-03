@@ -3,7 +3,9 @@
 **Status:** Step 3 candidate is in `desktop/` as of 2026-10-03. The clock
 proof and the host contract remain, and the compositor facade checks passed
 the same day. Product remains 0.0.1. Not promoted past Develop. The seven
-plugins are unchanged. Step 4 has not started.
+plugins are unchanged. Step 4 has not started. The milestone order was
+updated on 2026-10-03: the workstation package replaces Omarchy on the
+development workstation (1.0.0) before the Void pilot.
 **First implementation:** a standalone Quickshell host running `fred.clock`
 with Tamlinux-owned shared modules and isolated data. The candidate lives in
 `desktop/`; see that README for the launch command and the 2026-10-03 check
@@ -12,11 +14,15 @@ record.
 ## Goal and evidence
 
 Keep the working desktop usable while replacing its Omarchy dependencies with
-components that can run on Void Linux, with antiX Core as the fallback if
-Void has a showstopper. The first deliverable is a real plugin
-running in an independent shell configuration. Later milestones establish the
-compositor, session and host-service contracts, prove them on secondary hardware,
-and feed the [installation framework](installation-framework.md).
+components packaged as one workstation package. That package installs first on
+existing distributions, starting with Fred's Arch workstation, and later on
+Void Linux, with antiX Core as the fallback if Void has a showstopper. The first
+deliverable is a real plugin running in an independent shell configuration.
+Later milestones rewrite the plugins, establish the compositor and host-service
+contracts, package the result, remove Omarchy from the development workstation,
+and then prove the package on another distribution and on Void through the
+[installation framework](installation-framework.md). Version numbers for each
+milestone are in [VERSIONING.md](../../VERSIONING.md).
 
 The current dependency inventory was measured from plugin source, inherited
 desktop configuration, helper scripts, package metadata and service definitions.
@@ -57,8 +63,9 @@ development but is not yet a reproducible install manifest.
 
 ## Target ownership matrix
 
-Categories: **A** native Void host/XBPS package; **B** reproducible desktop
-package or user configuration (native XBPS candidate, Nix optional);
+Categories: **A** native host package (the existing distribution's packages,
+or XBPS on Void); **B** the workstation package or user configuration (Nix
+flake on existing distributions, native `xbps-src` on Void);
 **C** third-party replacement; **D** Tamlinux rewrite/integration. Exact package
 versions and dependency closure must be proved on the pilot. The
 [base plan](base-operating-system.md) defines Void first, antiX Core fallback,
@@ -92,14 +99,17 @@ Btrfs recovery, and musl/glibc evaluation.
 
 The target is **Void + runit + Btrfs**, with antiX Core + runit if Void has a
 showstopper. **Sway** remains selected after the
-[compositor survey](../../upstream/2026-10-03-compositor.md). Evaluate native
-XBPS/xbps-src delivery; Nix is an option, not a prerequisite for the pilot.
+[compositor survey](../../upstream/2026-10-03-compositor.md). The workstation
+package is delivered as a Nix flake with a native host adapter on existing
+distributions and as native `xbps-src` packages on Void.
 
 1. **Sway and plugin backends.** Measure supported renderer paths on old graphics.
    Use compositor-neutral interfaces (`ext-workspace-v1` first, `Quickshell.I3`
    second where supported). Binding discovery reads generated configuration.
    The independent shell milestone does not depend on the final backend.
-2. **Native package and service boundary.** Prove Void's actual package closure,
+2. **Native package and service boundary.** On existing distributions, prove
+   the host adapter: session entry, locker PAM, groups and udev rules, and the
+   graphics-driver bridge for Nix-built Sway. On Void, prove the actual package closure,
    seatd, session bus, runtime directory, PAM, login, and runit supervision.
    Compare musl and glibc including required application compatibility costs.
    If antiX is needed, validate its own APT/service closure separately.
@@ -114,15 +124,20 @@ XBPS/xbps-src delivery; Nix is an option, not a prerequisite for the pilot.
 | --- | --- | --- | --- |
 | 0 | Current dependency inventory and source baseline | Completed reconnaissance | Classified matrix, source revisions, recorded unknowns. Prepared 2026-10-03. |
 | 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only. |
-| 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only; Step 3 has not started. |
+| 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only. |
 | 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only; Step 4 has not started. |
-| 4 | Host-safe profiles and non-systemd session/service design | 0; prototype experience from 1–3 | Host-specific state external, service ownership explicit, tested recovery design and target inputs selected. |
-| 5 | Void hardware pilot with Sway, runit, Btrfs and libc comparison | 4; hardware/disk selection | Unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
-| 6 | Selected compositor/WM backend and remaining plugin/workflow ports | 3 + 5 | All eight plugins and required desktop workflows pass parity checks. |
-| 7 | One-command workstation layer | 5 + 6 | Fresh-host inspect/plan/apply/verify, repeatable application and demonstrated recovery on pilot. |
+| 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | `Tam.Commons`/`Tam.Ui` cover every plugin; a typed action API replaces `bar.run`; each plugin is rewritten in its own repository as `fred.<id>` 2.0.0; the independent bar replaces Omarchy's in daily use. |
+| 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | No plugin reads raw Hyprland state; parity tests pass against the Hyprland and Sway adapters (`ext-workspace-v1` first, `Quickshell.I3` second); bindings come from generated configuration. |
+| 6 | Remaining inherited desktop functions (0.3) | 4 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. |
+| 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the inherited one; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
+| 8 | Inherited desktop removed from the development workstation (1.0.0) | 7 | Omarchy and Hyprland removed after a backup and recorded rollback route; carried patches for dropped components retired. |
+| 9 | Second distribution (1.1) | 8 | Same package installed and verified on a different distribution with systemd; host-adapter differences recorded. |
+| 10 | Void hardware pilot with Sway, runit, Btrfs and libc comparison (1.2) | 8; hardware/disk selection | Native `xbps-src` packages from the same sources; unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
+| 11 | Repeatable installation (1.3) | 10 | Live-media base install, single-command activation, terminal-only profile, and demonstrated recovery on more than one machine. |
 
-The pilot machine can be selected in parallel with Steps 1–3. No primary-machine
-OS migration follows merely from a successful prototype.
+The pilot machine can be selected in parallel with Steps 4–8. The development
+workstation keeps Arch as its base through Step 8; moving its base is a separate
+later decision.
 
 ## Step 1 implementation specification
 
@@ -270,7 +285,7 @@ Checked on 2026-10-03. Argv and rejection tests do not run `hyprctl`.
 and active workspace ids with one `hyprctl -j monitors` snapshot, and the
 clock checks still pass. Live focus and DPMS lines are absent from the proof
 log. Layout rewrite, `hyprctl reload`, and monitor reset stay with the later
-plugin backends. A Sway backend is Step 6.
+plugin backends. A Sway backend is Step 5.
 
 ## Boundaries and recovery
 
@@ -290,6 +305,6 @@ hardened.
 
 The Step 3 candidate is in `desktop/`. Shell UI in that tree reads the
 compositor facade. The seven plugins still read Hyprland directly; moving
-them is later work. Promotion to Test is a separate decision. Steps 4–7
+them is Steps 4 and 5. Promotion to Test is a separate decision. Steps 4–11
 define the subsequent project order; they are not claimed complete by this
 prototype.

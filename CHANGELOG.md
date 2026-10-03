@@ -10,6 +10,17 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- Set the **route and version series** in [`VERSIONING.md`](VERSIONING.md):
+  0.1 owned shell with the eight rewritten plugins, 0.2 compositor contract,
+  0.3 remaining Omarchy functions replaced, 0.4 workstation package beside
+  Omarchy, 0.5–0.9 release candidates, **1.0.0 Omarchy and Hyprland removed**
+  from the workstation, 1.1 a second distribution, 1.2 the Void pilot, 1.3
+  repeatable installation and the terminal-only profile. The workstation
+  package installs on existing distributions with a Nix flake and a native
+  host adapter, and on Void as native `xbps-src` packages. Updated the
+  [README](README.md), [installation framework](docs/plans/installation-framework.md),
+  [desktop decoupling plan](docs/plans/desktop-decoupling.md), and
+  [plans index](docs/plans/README.md) to match.
 - Set **Void Linux as the first target base**, with antiX Core as the fallback
   if Void has a showstopper. Updated the architecture, installation, and desktop
   plans directly. Btrfs is the preferred pilot filesystem; musl/glibc and native
@@ -19,7 +30,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 The following entries record earlier directions that led to this target:
 
 - Recorded the decision to use **runit** for system initialization and service
-  management for Suspra Workstations in [`README.md`](README.md),
+  management for the target workstation in [`README.md`](README.md),
   [`VERSIONING.md`](VERSIONING.md), and the
   [installation framework](docs/plans/installation-framework.md).
 - Recorded the 2026-10-03 targets in [`README.md`](README.md): hardware from
@@ -43,10 +54,9 @@ The following entries record earlier directions that led to this target:
   as a general principle that allows Linux to run faster and use less energy
   on modern hardware as well.
 - Defined the transition roadmap: working from Omarchy (0.x) toward an AntiX
-  Linux base layer (`antiX Core` + `seatd` + Wayland + River, with Nix rollbacks),
-  graduating to the launch of **Suspra Linux** and the Tier 3 Suspra Workstation.
+  Linux base layer (`antiX Core` + `seatd` + Wayland + River, with Nix rollbacks).
 - Updated [`UPSTREAM.md`](UPSTREAM.md) and [`VERSIONING.md`](VERSIONING.md) to
-  align with the AntiX base layer and Suspra Workstation trajectory.
+  align with the AntiX base layer trajectory.
 - Updated [`docs/plans/installation-framework.md`](docs/plans/installation-framework.md)
   and [`docs/plans/README.md`](docs/plans/README.md) to replace the exploratory
   NixOS/Arch host sequence with the settled AntiX Linux Core base sequence and

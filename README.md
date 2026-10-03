@@ -11,7 +11,7 @@ Quickshell, and Omarchy.
 | :-- | :-- |
 | **Version** | [0.0.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
-| **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell on Void; antiX Core fallback) |
+| **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
 | **Status** | 0.0.1 — first workstation snapshot; not an installable image yet |
 
@@ -25,12 +25,11 @@ that still have years of useful silicon left.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
 max**. Like the tamarack's needles, Tamlinux is meant to be temporary. Its
-vision is to work from Omarchy toward a lean Linux system running on Void,
-with antiX Core as the fallback if Void has a showstopper. Once the base is
-proved, it will launch as Suspra Linux and begin
-building the Tier 3 Suspra Workstation—a sustainable, high-efficiency operating
-system and workstation environment envisioned to run on a wide variety of
-hardware.
+vision is to work from Omarchy toward one installable workstation package that
+turns an existing Linux distribution into a lean, high-efficiency workstation,
+and then toward a minimal Void base for that package, with antiX Core as the
+fallback if Void has a showstopper. The aim is a sustainable workstation
+environment that runs on a wide variety of hardware.
 
 Simplifying and minimizing resource use is not merely an accommodation for
 older computers: it is a universal virtue. Removing bloat, resident daemons,
@@ -51,16 +50,22 @@ package repository yet.
 ## Current base
 
 Tamlinux 0.x is built on Omarchy, plus Fred's patches and the `fred.*`
-plugins. The roadmap is to decouple top-down from Omarchy toward **Void Linux
-with runit, seatd, Wayland, Sway, and Btrfs**. If Void has a showstopper, we will
-try **antiX Linux Core with runit**. Compare musl and glibc and evaluate native
-XBPS/xbps-src packaging; Nix remains a delivery option. Once the selected
-foundation is proved, Tamlinux graduates to Suspra Linux, powering the Tier 3
-Suspra Workstation. See the [base operating system plan](docs/plans/base-operating-system.md).
+plugins. The roadmap decouples top-down from Omarchy in two moves:
 
-0.0.1 is the first workstation snapshot. An installer for a second computer
-comes after this workstation is solid. Version rules are in
-[`VERSIONING.md`](VERSIONING.md).
+1. **A workstation package for existing distributions.** Sway, the
+   independent Quickshell shell, the rewritten `fred.*` plugins, selected
+   third-party tools, and the `tamlinux` command, delivered as a Nix flake
+   with a small native host adapter. Fred's Arch workstation installs it,
+   then removes Omarchy and Hyprland: that is **Tamlinux 1.0.0**. A second,
+   different distribution follows.
+2. **A minimal base for the same package.** **Void Linux with runit, seatd,
+   Wayland, Sway, and Btrfs**, with the package built from the same sources as
+   native `xbps-src` packages. If Void has a showstopper, we will try
+   **antiX Linux Core with runit**. Compare musl and glibc. See the
+   [base operating system plan](docs/plans/base-operating-system.md).
+
+0.0.1 is the first workstation snapshot. The version series for each step is
+in [`VERSIONING.md`](VERSIONING.md).
 
 The [development plans](docs/plans/README.md) track the reviewed installation
 direction and the approved first slice of the `tamlinux` command. Neither is
@@ -68,8 +73,7 @@ part of the 0.0.1 installation yet.
 
 ## Targets
 
-Set on 2026-10-03 for Tamlinux and the Tier 3 Suspra Workstation it graduates
-into:
+Set on 2026-10-03 for Tamlinux:
 
 - **Hardware from circa 2006 onward.** Computers up to about 20 years old are
   in scope; older ones are not. That floor is what makes Wayland, rather than
@@ -82,9 +86,11 @@ into:
   on the oldest supported graphics hardware.
 - **runit for init and service supervision.** The target workstation uses runit
   for PID 1 and native services, without systemd.
-- **Tracked packages and complete recovery.** Evaluate XBPS/xbps-src for native
-  workstation packages and Btrfs checkpoints paired with the boot artifacts.
-  Portable delivery on an existing Linux remains a goal; Nix is a candidate.
+- **One workstation package, two deliveries.** On existing distributions,
+  a Nix flake with a Home Manager module and a small native host adapter; on
+  Void, native `xbps-src` packages built from the same sources.
+- **Tracked packages and complete recovery.** Btrfs checkpoints of the system
+  and package database, paired with the boot artifacts, on the Void base.
 - **musl versus glibc.** Compare full workloads and compatibility requirements;
   lower disk/memory use and better security are hypotheses to test.
 - **Chrome and VS Code run.** Both ship only 64-bit x86 (and ARM) Linux

@@ -41,10 +41,11 @@ binary packages. Keep one declared owner for each package and setting.
 [Void custom repositories](https://docs.voidlinux.org/xbps/repositories/custom.html).
 
 Sway remains the selected compositor, with seatd and an independent Quickshell
-host. Native XBPS versus Nix delivery is an open design choice. The earlier
-requirement to build the whole workstation with Nix is reopened for this pilot;
-Nix remains a candidate for portable application delivery on existing Linux.
-No package-manager migration is implied for the current workstation.
+host. On Void, the workstation package is built as native `xbps-src`
+packages; on existing distributions, the same sources are delivered as a Nix
+flake with a native host adapter (decided 2026-10-03). The workstation does not
+need Nix on the Void base. No base migration is implied for the current
+workstation, which stays on Arch.
 [Void Wayland support](https://docs.voidlinux.org/config/graphical-session/wayland.html).
 
 ## C library evaluation
@@ -81,5 +82,5 @@ The fallback decision follows this evidence, not a first configuration error.
 
 The [installation framework](installation-framework.md) and
 [desktop decoupling plan](desktop-decoupling.md) carry the implementation order.
-Portable installation on an existing Linux remains a goal; native Void packaging
-does not by itself solve that delivery path.
+Installation on existing distributions comes first, through the Nix flake and
+host adapter; native Void packaging serves the Void base.

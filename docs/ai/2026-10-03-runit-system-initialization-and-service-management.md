@@ -8,13 +8,13 @@
 
 ## User direction
 
-> I'm thinking we should use runit for system initialization and service management for Suspra Workstations. Please update the appropriate repos to note that.
+> I'm thinking we should use runit for system initialization and service management for [redacted: unannounced plans]. Please update the appropriate repos to note that.
 
 ## Key decisions & changes
 
-1. **System initialization and service management with runit:** Suspra Workstations will use `runit` for both system initialization (PID 1) and service supervision. This builds on antiX Linux Core's default runit base, provides reliable, lightweight process supervision, and eliminates systemd overhead.
+1. **System initialization and service management with runit:** The target workstation will use `runit` for both system initialization (PID 1) and service supervision. This builds on antiX Linux Core's default runit base, provides reliable, lightweight process supervision, and eliminates systemd overhead.
 2. **README updates:** Updated `README.md` to note `runit` in the AntiX Linux base layer roadmap under Current Base and added a dedicated target bullet under Targets.
-3. **Versioning alignment:** Updated `VERSIONING.md` to reflect `antiX Core` + `runit` + `seatd` + Wayland + Sway in the Suspra Linux graduation table.
+3. **Versioning alignment:** Updated `VERSIONING.md` to reflect `antiX Core` + `runit` + `seatd` + Wayland + Sway in the graduation table.
 4. **Installation framework update:** Updated `docs/plans/installation-framework.md` layer diagram to note `runit` init and service management, recorded the 2026-10-03 decision, and added a reference link for `runit`.
 5. **Development plans index:** Updated `docs/plans/README.md` to note the `antiX Core` + `runit` + Sway target base.
 6. **Changelog update:** Recorded the decision in `CHANGELOG.md` under `[Unreleased]`.
