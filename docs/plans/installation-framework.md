@@ -61,6 +61,14 @@ and plugin loader. An independent base needs Tamlinux-owned equivalents before
 those widgets can be considered portable. This decoupling is an explicit milestone
 of the AntiX Linux base layer path.
 
+The [desktop decoupling plan](desktop-decoupling.md) records the measured
+dependency groups and implementation sequence prepared on 2026-10-03. Its
+independent shell/clock proof comes first; target service/package closure and
+the compositor/window-manager selection remain pilot inputs. Earlier references
+to River's tag/riverctl interface must be checked against the chosen version.
+The current workstation inventory is prepared; it is not yet a verified target
+component manifest or an implemented installer.
+
 ## Proposed repository shape
 
 This is the initial target structure, subject to review. The first implementation

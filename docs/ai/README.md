@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Desktop dependency inventory and agy handoff | Codex CLI `0.160.0` | `gpt-6.1-sol` | [`2026-10-03-desktop-dependency-inventory-and-handoff.md`](2026-10-03-desktop-dependency-inventory-and-handoff.md) |
 | 2026-09-22 | Public explainer and suite branding | Cursor `3.21.16` | composer | [`2026-09-22-public-explainer.md`](2026-09-22-public-explainer.md) |
 | 2026-09-22 | Product version 0.0.1 | Cursor `3.21.16` | composer | [`2026-09-22-version-0.0.1.md`](2026-09-22-version-0.0.1.md) |
 | 2026-09-23 | Installation and `tamlinux` command plans | Codex CLI `0.156.1` | `gpt-6-sol` | [`2026-09-23-installation-and-command-plans.md`](2026-09-23-installation-and-command-plans.md) |

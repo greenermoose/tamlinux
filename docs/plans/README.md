@@ -6,7 +6,8 @@ The [project README](../../README.md) describes the current released state.
 
 | Work | Status | Next step |
 | :-- | :-- | :-- |
-| [Installation framework](installation-framework.md) | Direction updated 2026-09-28; antiX Core + River target base | Prepare antiX Core live-USB installer and choose secondary machine for pilot. |
+| [Desktop decoupling](desktop-decoupling.md) | Inventory and plan approved for publication 2026-10-03; implementation pending | Build an independent Quickshell host with the real clock and isolated read-only calendar. |
+| [Installation framework](installation-framework.md) | Direction updated 2026-09-28; antiX Core + River target base | Use the measured dependency sequence; select pilot hardware/ISO/init and prove the host/session boundary. |
 | [`tamlinux` command](tamlinux-command.md) | First slice and first-use welcome approved, 2026-09-23 | Implement the command skeleton and minimal offline guide. |
 
 The initial delivery order is: describe the current system, decouple dependencies
