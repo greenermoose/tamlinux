@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import Tam.Ui
 import Tam.Commons
 import "."
@@ -13,7 +12,7 @@ import "."
 //    transparent dismiss twins on other monitors. Other monitors remain 100%
 //    unobstructed and interactive.
 // 2. Focus isolation: Requests WlrKeyboardFocus.OnDemand ONLY when the panel's
-//    monitor is currently the active/focused monitor in Hyprland. If the user is
+//    monitor is the compositor's focused output. If the user is
 //    working in a terminal or writing emails on another monitor (e.g. center
 //    monitor while tides is showing on the side monitor), WlrKeyboardFocus is
 //    None, preventing any focus loss or interruption in background windows.
@@ -61,7 +60,8 @@ PanelWindow {
 
   // Focus isolation: Only take keyboard focus if the panel's screen is the focused monitor.
   readonly property bool isScreenFocused: {
-    var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+    var comp = bar && bar.compositor ? bar.compositor : null
+    var cur = comp ? String(comp.focusedOutputName || "") : ""
     var myScreen = screen ? String(screen.name || "") : ""
     return cur !== "" && cur === myScreen
   }

@@ -65,3 +65,9 @@ Cursor `3.23.12` (`composer`) rewrote `fred.tides` to 2.0.0 on
 `develop/2.0.0`. The widget no longer calls `bar.run`. Not tagged or
 released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.tides 2.0.0 QML at the Tamlinux
+compositor facade. Both IPC targets pass the facade's focused output and output list into the store. `TidesPanelWindow` takes keyboard focus only on the focused output. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).

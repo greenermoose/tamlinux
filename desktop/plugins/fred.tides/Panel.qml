@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import Tam.Commons
 import Tam.Ui
 import "Model.js" as Model
@@ -49,6 +48,16 @@ Panel {
         if (tideCurve) tideCurve.requestPaint()
       })
     }
+  }
+
+  function focusedOutputName() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp ? String(comp.focusedOutputName || "") : ""
+  }
+
+  function compositorOutputs() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp && comp.outputs ? comp.outputs : []
   }
 
   function open() {
@@ -104,30 +113,24 @@ Panel {
     target: "fred.tides"
 
     function open(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.open("", cur, Hyprland.monitors)
+      TidesStore.open("", root.focusedOutputName(), root.compositorOutputs())
     }
     function close(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.close("", cur, Hyprland.monitors)
+      TidesStore.close("", root.focusedOutputName(), root.compositorOutputs())
     }
     function show(): void { open() }
     function hide(): void { close() }
     function toggle(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.toggle("", cur, Hyprland.monitors)
+      TidesStore.toggle("", root.focusedOutputName(), root.compositorOutputs())
     }
     function openMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.open(monitor, cur, Hyprland.monitors)
+      TidesStore.open(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function closeMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.close(monitor, cur, Hyprland.monitors)
+      TidesStore.close(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function toggleMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.toggle(monitor, cur, Hyprland.monitors)
+      TidesStore.toggle(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function refresh(): void { TidesStore.refreshAll(root) }
   }
@@ -136,28 +139,22 @@ Panel {
     target: "io.github.woogy7.tides"
 
     function open(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.open("", cur, Hyprland.monitors)
+      TidesStore.open("", root.focusedOutputName(), root.compositorOutputs())
     }
     function close(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.close("", cur, Hyprland.monitors)
+      TidesStore.close("", root.focusedOutputName(), root.compositorOutputs())
     }
     function toggle(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.toggle("", cur, Hyprland.monitors)
+      TidesStore.toggle("", root.focusedOutputName(), root.compositorOutputs())
     }
     function openMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.open(monitor, cur, Hyprland.monitors)
+      TidesStore.open(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function closeMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.close(monitor, cur, Hyprland.monitors)
+      TidesStore.close(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function toggleMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      TidesStore.toggle(monitor, cur, Hyprland.monitors)
+      TidesStore.toggle(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function refresh(): void { TidesStore.refreshAll(root) }
   }

@@ -46,7 +46,7 @@ function resolveTargetPanel(monitorName, fallbackScreenName, hyprlandMonitors) {
       }
     }
 
-    // 3. Match by Hyprland monitor description/model
+    // 3. Match by compositor output name or description
     if (hyprlandMonitors) {
       var list = Array.isArray(hyprlandMonitors) ? hyprlandMonitors : (hyprlandMonitors.values || [])
       var count = list.length || (typeof hyprlandMonitors.count === "number" ? hyprlandMonitors.count : 0)
