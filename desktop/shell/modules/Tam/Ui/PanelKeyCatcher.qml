@@ -10,6 +10,7 @@ Item {
   signal moveRequested(int dx, int dy)
   signal activateRequested()
   signal closeRequested()
+  signal returnRequested()
   signal tabRequested(int direction)
   signal textKey(string text)
 
@@ -31,7 +32,13 @@ Item {
     if (event.key === Qt.Key_Up) { moveRequested(0, -1); event.accepted = true; return }
     if (event.key === Qt.Key_Right) { moveRequested(1, 0); event.accepted = true; return }
     if (event.key === Qt.Key_Left) { moveRequested(-1, 0); event.accepted = true; return }
-    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+      returnRequested()
+      activateRequested()
+      event.accepted = true
+      return
+    }
+    if (event.key === Qt.Key_Space) {
       activateRequested()
       event.accepted = true
       return

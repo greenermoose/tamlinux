@@ -1,11 +1,13 @@
 # Tamlinux shell proof
 
-Develop-stage host for pinned `fred.clock` 1.3.3, with a read-only calendar,
-plus fixture widgets that are not `fred.*` plugins. It runs outside the
-Omarchy shell and does not replace the running desktop. Stopping the proof
-process and deleting its isolated state is the recovery path.
+Develop-stage host for `fred.clock` 2.0.0 and the other seven `fred.*` 2.0.0
+plugins. The proof still uses an isolated home and a read-only calendar.
+It runs outside the Omarchy shell and does not replace the running desktop.
+Stopping the proof process and deleting its isolated state is the recovery path.
 
-Pinned clock revision: `ed5140ccefc83c0a2fdd5f899bbd290acc35d88a`.
+Clock source is the `develop/2.0.0` working tree. The 1.3.3 pin
+`ed5140ccefc83c0a2fdd5f899bbd290acc35d88a` remains the baseline the adapter
+patch is generated from.
 Development closure checked here: Quickshell 0.3.1, Qt 6.11.2.
 
 ## Host contract
@@ -28,11 +30,11 @@ is not copied into this directory.
 | `setCenterHoverRevealSuppressed` | weather, tides | Stored on that bar. |
 | `showTooltip` / `hideTooltip` | sysinfo, monitor, and the shared buttons | Separate overlay. Size follows `TAMLINUX_UI_SCALE`. |
 | `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the first registered panel widget. `omarchy.osd` is refused. |
-| `bar.run` | agents, sysinfo, weather, clock | Logged and not executed. The string is not interpreted. |
-| `pickAgent()` | agents | Recorded. Does not start `omarchy-agent`. |
-| `openTerminal(program)` | sysinfo | Records `btop` only. Any other program is refused. |
-| `notify(text)` | weather | Records the length of a plain notice up to 512 characters. Shell characters are refused. |
-| `openTimezoneMenu()` | clock | Recorded. Does not open a menu. |
+| `bar.run` | none of the 2.0.0 plugins | Logged and not executed. The string is not interpreted. |
+| `pickAgent()` | agents | Recorded. Starts `/usr/bin/omarchy-agent --pick` only when `TAMLINUX_HOST_ACTIONS=1`. |
+| `openTerminal(program)` | sysinfo | Records `btop` only. Any other program is refused. The `btop` launch uses the same actions flag. |
+| `notify(text)` | weather | Records the length of a plain notice up to 512 characters. Shell characters are refused. A plain notice is sent only when the actions flag is set. |
+| `openTimezoneMenu()` | clock | Recorded. Opens the timezone program only when the actions flag is set. |
 
 `Tam.Commons` and `Tam.Ui` include the shared types the eight plugins construct:
 `Border`, `BarIconButton`, `BorderSurface`, `CursorSurface`, `Dropdown`,
@@ -230,12 +232,34 @@ Automated, on the development Wayland session, after the compositor checks:
   No new `omarchy-agent`, terminal, notification, timezone, or `btop` process
   appeared.
 
+## Checks recorded 2026-10-03, plugin 2.0.0
+
+Automated, on the development Wayland session:
+
+- `desktop/tests/test_host.py`, `test_compositor.py`, and `test_ui.py` passed
+  (28 tests).
+- `--selftest --scale 1` and `--scale 1.25` kept the clock, host, compositor,
+  and shared-UI results. The tooltip read `fred.clock v2.0.0`, at 132×42 / 11px
+  and 168×54 / 14px.
+- The same runs registered `fred.agents`, `fred.sysinfo`, `fred.weather`,
+  `fred.tides`, `fred.keyboard`, `fred.monitor`, and `fred.workspaces` from
+  their `develop/2.0.0` trees. No plugin-load failure and no `qs.Commons` or
+  `qs.Ui` import in that log.
+- Clock helper tests `test_fetch.py` and `test_manage.py` passed.
+  `test_limits.py` still has the known `test_oversized_remote_feed` failure
+  (0 events instead of 1). `fred.sysinfo`, `fred.monitor`, and
+  `fred.workspaces` Python tests passed.
+
 ## Limits
 
 This is a Develop candidate. It does not install a package, switch the
-production shell, or prove a Void target session. The other seven plugins are
-not loaded, are not pointed at the facade, and have not been rewritten. The
-typed actions record the request and do not launch the old helpers. The
-Hyprland adapter is the only new Hyprland import in this tree. A Sway backend
-and the one-command install are later steps. Live compositor actions stay off
-unless `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
+production shell, or prove a Void target session. The eight plugins load in
+the isolated host. They are not the running bar. Typed actions record the
+request during the proof. They start the existing programs only when
+`TAMLINUX_HOST_ACTIONS=1`, which `launch-daily-bar --replace` sets and the
+proof unsets. Plugins that already read Hyprland still do. The shell's
+Hyprland adapter remains the only new Hyprland import in `desktop/`. A Sway
+backend and the one-command install are later steps. Live compositor actions
+stay off unless `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets
+that flag. Replacing the running bar is `desktop/launch-daily-bar --replace`
+after this candidate is accepted. That acceptance is Tamlinux 0.1.

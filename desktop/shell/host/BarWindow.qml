@@ -20,7 +20,7 @@ PanelWindow {
 
   screen: screenRef
   color: Color.bar.background
-  exclusionMode: ExclusionMode.Ignore
+  exclusionMode: Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Normal : ExclusionMode.Ignore
   implicitHeight: Style.bar.sizeHorizontal
   WlrLayershell.namespace: "tamlinux-proof-" + hostKey.replace("#", "-")
   WlrLayershell.layer: WlrLayer.Top
@@ -77,6 +77,19 @@ PanelWindow {
       onStatusChanged: {
         if (status === Loader.Error)
           console.log("TAMLINUX_EVIDENCE compositor-load-failed host=" + win.hostKey)
+      }
+    }
+
+    Repeater {
+      model: (win.loadsClock || Quickshell.env("TAMLINUX_PLUGINS_ON_ALL") === "1") ? shell.extraEntries : []
+      delegate: Loader {
+        required property string modelData
+        source: modelData
+        onLoaded: win.adopt(item, false)
+        onStatusChanged: {
+          if (status === Loader.Error)
+            console.log("TAMLINUX_EVIDENCE plugin-load-failed " + modelData)
+        }
       }
     }
 

@@ -67,17 +67,36 @@ def _private(path: Path) -> None:
     os.chmod(path, 0o700)
 
 
-def _seed(home: Path, config: Path, plugin: Path) -> None:
-    _private(config / "fred.clock")
-    _private(config / "tamlinux-shell")
-    _private(home / ".cache" / "fred.clock")
-    _private(home)
+EXTRA_REPOS = (
+    "agents-fred-tamlinux",
+    "sysinfo-fred-tamlinux",
+    "weather-fred-tamlinux",
+    "tides-fred-tamlinux",
+    "keyboard-fred-tamlinux",
+    "monitor-fred-tamlinux",
+    "workspaces-fred-tamlinux",
+)
+
+
+def copy_tree(source: Path, dest: Path) -> None:
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(source, dest, ignore=shutil.ignore_patterns(".git"))
+
+
+def stage_clock(plugin: Path) -> None:
+    source = clock_repo()
+    bar = source / "BarWidget.qml"
+    text = bar.read_text(encoding="utf-8") if bar.is_file() else ""
+    if "import Tam.Commons" in text and "import qs.Commons" not in text:
+        copy_tree(source, plugin)
+        return
+    plugin.mkdir()
     archive = subprocess.run(
-        ["git", "-C", str(clock_repo()), "archive", PINNED_REVISION],
+        ["git", "-C", str(source), "archive", PINNED_REVISION],
         check=True,
         capture_output=True,
     )
-    plugin.mkdir()
     subprocess.run(["tar", "-x", "-C", str(plugin)], input=archive.stdout, check=True)
     applied = subprocess.run(
         ["patch", "-p1", "--forward", "--input", str(PATCH)],
@@ -87,6 +106,29 @@ def _seed(home: Path, config: Path, plugin: Path) -> None:
     )
     if applied.returncode != 0:
         raise SystemExit(applied.stderr or applied.stdout)
+
+
+def stage_extras(state: Path) -> list[dict]:
+    roots = []
+    for name in EXTRA_REPOS:
+        source = clock_repo().parent / name
+        if not (source / "manifest.json").is_file():
+            raise SystemExit(f"plugin checkout is missing: {source}")
+        dest = state / "plugins" / name
+        copy_tree(source, dest)
+        roots.append(dest)
+    try:
+        return validate_directories(roots)
+    except RegistryError as exc:
+        raise SystemExit(f"registry rejected a staged plugin: {exc}") from exc
+
+
+def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = None) -> None:
+    _private(config / "fred.clock")
+    _private(config / "tamlinux-shell")
+    _private(home / ".cache" / "fred.clock")
+    _private(home)
+    stage_clock(plugin)
     now = int(time.time())
     later = now + 30 * 60
     day = time.strftime("%Y-%m-%d", time.localtime(now))
@@ -124,30 +166,33 @@ def _seed(home: Path, config: Path, plugin: Path) -> None:
         "SUMMARY:Fixture standup\nEND:VEVENT\nEND:VCALENDAR\n",
         encoding="utf-8",
     )
-    write_settings(config / "tamlinux-shell", {
-        "version": 1,
-        "entries": {
-            "fred.clock": {
-                "id": "fred.clock",
-                "format": "dddd HH:mm",
-                "formatAlt": "d MMMM 'W'ww yyyy",
-                "verticalFormat": "HH\n—\nmm",
-                "verticalFormatAlt": "dd\nMMM\n'W'ww\n''yy",
-                "badgeMinutes": 60,
-            },
-            "tamlinux.fixture": {"id": "tamlinux.fixture", "marker": "ready"},
+    entries = {
+        "fred.clock": {
+            "id": "fred.clock",
+            "format": "dddd HH:mm",
+            "formatAlt": "d MMMM 'W'ww yyyy",
+            "verticalFormat": "HH\n—\nmm",
+            "verticalFormatAlt": "dd\nMMM\n'W'ww\n''yy",
+            "badgeMinutes": 60,
         },
-    }, ALLOWED)
+        "tamlinux.fixture": {"id": "tamlinux.fixture", "marker": "ready"},
+    }
+    allowed = set(ALLOWED)
+    for record in extras or []:
+        entries[record["id"]] = {"id": record["id"]}
+        allowed.add(record["id"])
+    write_settings(config / "tamlinux-shell", {"version": 1, "entries": entries}, allowed)
 
 
-def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1") -> dict:
+def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False) -> dict:
     home = state / "home"
     config = home / ".config"
     plugin = state / "plugin"
     if reset and state.exists():
         shutil.rmtree(state)
+    extra_records = stage_extras(state) if extras else []
     if reset or not plugin.exists():
-        _seed(home, config, plugin)
+        _seed(home, config, plugin, extra_records)
     if not os.environ.get("XDG_RUNTIME_DIR"):
         raise SystemExit("XDG_RUNTIME_DIR is required; the proof does not use /tmp")
     try:
@@ -155,9 +200,11 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     except RegistryError as exc:
         raise SystemExit(f"registry rejected a staged plugin: {exc}") from exc
     by_id = {record["id"]: record for record in records}
+    plugin_ids = ["fred.clock", "tamlinux.fixture"] + [record["id"] for record in extra_records]
     env = os.environ.copy()
     env.pop("OMARCHY_PATH", None)
     env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+    env.pop("TAMLINUX_HOST_ACTIONS", None)
     env.update({
         "HOME": str(home),
         "XDG_CONFIG_HOME": str(config),
@@ -170,7 +217,8 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "TAMLINUX_PANEL_ENTRY": by_id["tamlinux.fixture"]["entry"],
         "TAMLINUX_COMPOSITOR_ENTRY": by_id["tamlinux.compositor"]["entry"],
         "TAMLINUX_UI_ENTRY": by_id["tamlinux.ui"]["entry"],
-        "TAMLINUX_PLUGIN_IDS": "fred.clock,tamlinux.fixture",
+        "TAMLINUX_PLUGIN_IDS": ",".join(plugin_ids),
+        "TAMLINUX_EXTRA_ENTRIES": "|".join(record["entry"] for record in extra_records),
         "TAMLINUX_HOST_COPIES": copies,
         "TAMLINUX_UI_SCALE": scale,
         "TAMLINUX_OUTPUT": output,
@@ -259,8 +307,8 @@ def helper_leaks(plugin: Path) -> list[str]:
     ]
 
 
-def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1") -> str:
-    prepared = prepare(state, scale, output, reset=reset, copies=copies)
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False) -> str:
+    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras)
     process = spawn(prepared["env"])
     try:
         ready = wait_for(
@@ -579,6 +627,37 @@ def drive_outputs(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("dropping one physical output destroyed the other")
 
 
+PLUGIN_IDS = (
+    "fred.agents",
+    "fred.sysinfo",
+    "fred.weather",
+    "fred.tides",
+    "fred.keyboard",
+    "fred.monitor",
+    "fred.workspaces",
+)
+
+
+def drive_plugins(env: dict, process: subprocess.Popen) -> None:
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
+    def failed() -> bool:
+        return any(line.startswith("plugin-load-failed") for line in lines())
+
+    def registered() -> bool:
+        text = lines()
+        return all(any(line.startswith(f"widget-registered {plugin_id} ") for line in text) for plugin_id in PLUGIN_IDS)
+
+    if not wait_for(lambda: failed() or registered(), 25):
+        raise SystemExit("plugins did not register:\n" + read_log(process)[-4000:])
+    if failed():
+        raise SystemExit("a plugin failed to load:\n" + read_log(process)[-4000:])
+    log = read_log(process)
+    if "qs.Commons" in log or "qs.Ui" in log:
+        raise SystemExit("an Omarchy shell import appeared while loading plugins")
+
+
 def selftest(scale: str, output: str, state_root: Path) -> None:
     primary = state_root / "primary"
     log = run_session(primary, scale, output, drive_primary, copies="2")
@@ -639,6 +718,8 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
             print("physical second output not checked")
     else:
         print("physical second output not checked")
+    run_session(state_root / "plugins", scale, output, drive_plugins, copies="1", extras=True)
+    print("plugins registered")
     print("selftest ok")
     print(f"scale {scale}")
     print(f"pinned {PINNED_REVISION}")
@@ -650,9 +731,10 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the isolated Tamlinux clock proof")
     parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("--plugins", action="store_true", help="load the seven plugins beside the clock")
     parser.add_argument("--scale", default="1")
     parser.add_argument("--output", default="")
-    parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--timeout", type=int, default=120, help="seconds before the interactive proof stops; 0 waits until interrupted")
     args = parser.parse_args()
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if not runtime:
@@ -667,13 +749,18 @@ def main() -> None:
             raise SystemExit(str(exc)) from exc
         return
     state = state_root / "interactive"
-    prepared = prepare(state, args.scale, args.output)
+    prepared = prepare(state, args.scale, args.output, extras=args.plugins)
+    if args.plugins:
+        prepared["env"]["TAMLINUX_PLUGINS_ON_ALL"] = "1"
     process = spawn(prepared["env"])
     print(f"proof pid {process.pid}")
     print(f"state {state}")
     print("stop with Ctrl-C; the next launch replaces this isolated state")
     try:
-        process.wait(timeout=args.timeout)
+        if args.timeout <= 0:
+            process.wait()
+        else:
+            process.wait(timeout=args.timeout)
     except KeyboardInterrupt:
         stop(process)
     except subprocess.TimeoutExpired:

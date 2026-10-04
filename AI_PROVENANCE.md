@@ -83,3 +83,10 @@ AI records against the public provenance standard, redacted one private
 repository name from a quoted prompt, and published the pending Antigravity
 session record. Documentation only.
 [Session record](docs/ai/2026-09-28-provenance-audit-and-publish.md).
+
+## 2026-10-03 shell-independent plugins
+
+Cursor `3.23.12` (`composer`) taught the proof host to load the eight
+`fred.*` 2.0.0 checkouts and to start typed actions only when that flag is
+set. The daily shell was not replaced. Product version stays 0.0.1.
+[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).

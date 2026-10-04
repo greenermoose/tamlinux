@@ -125,18 +125,41 @@ QtObject {
     console.log("TAMLINUX_EVIDENCE targets-cleared host=" + hostKey + " count=" + count)
   }
 
+  readonly property bool liveActions: Quickshell.env("TAMLINUX_HOST_ACTIONS") === "1"
+
+  function actionEnvironment() {
+    var keys = [
+      "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM",
+      "XDG_RUNTIME_DIR", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE",
+      "XDG_DATA_DIRS", "XDG_CONFIG_HOME", "WAYLAND_DISPLAY",
+      "DBUS_SESSION_BUS_ADDRESS", "HYPRLAND_INSTANCE_SIGNATURE", "OMARCHY_PATH"
+    ]
+    var env = { "PATH": "/usr/bin" }
+    for (var i = 0; i < keys.length; i++) {
+      var value = Quickshell.env(keys[i]) || ""
+      if (value !== "") env[keys[i]] = value
+    }
+    return env
+  }
+
+  function startAction(argv, deadline) {
+    if (!liveActions) return true
+    return actionRunner.launch(argv, deadline, actionEnvironment())
+  }
+
   function run(command) {
     reportUnsupported(String(command || "run"))
   }
 
   function pickAgent() {
     recordAction("pick-agent")
+    return startAction(["/usr/bin/omarchy-agent", "--pick"], 600000)
   }
 
   function openTerminal(program) {
     if (String(program || "") === "btop") {
       recordAction("open-terminal btop")
-      return true
+      return startAction(["/usr/bin/omarchy-launch-terminal", "btop"], 600000)
     }
     reportUnsupported("open-terminal")
     return false
@@ -149,11 +172,17 @@ QtObject {
       return false
     }
     recordAction("notify " + body.length)
-    return true
+    return startAction(["/usr/bin/omarchy-notification-send", body], 15000)
   }
 
   function openTimezoneMenu() {
     recordAction("timezone-menu")
+    return startAction(["/usr/bin/omarchy-menu-timezone"], 600000)
+  }
+
+  readonly property HostActions actionRunner: HostActions {
+    onRefused: reportUnsupported("action-busy")
+    onStarted: console.log("TAMLINUX_EVIDENCE action-live " + path)
   }
 
   function plainNotice(body) {

@@ -11,6 +11,7 @@ ShellRoot {
   property string fixtureEntry: Quickshell.env("TAMLINUX_PANEL_ENTRY") || ""
   property string compositorEntry: Quickshell.env("TAMLINUX_COMPOSITOR_ENTRY") || ""
   property string uiEntry: Quickshell.env("TAMLINUX_UI_ENTRY") || ""
+  property var extraEntries: []
   property alias compositor: compositorFacade
   property string pluginIds: Quickshell.env("TAMLINUX_PLUGIN_IDS") || "fred.clock"
   property bool outputDropped: false
@@ -140,6 +141,8 @@ ShellRoot {
   }
 
   function loadsClock(key) {
+    if (Quickshell.env("TAMLINUX_CLOCK_ON_ALL") === "1")
+      return hostKeys.indexOf(key) !== -1
     return hostKeys.length > 0 && hostKeys[0] === key
   }
 
@@ -395,7 +398,17 @@ ShellRoot {
     if (panelPath !== "") fixtureEntry = panelPath
     if (compositorPath !== "") compositorEntry = compositorPath
     if (uiPath !== "") uiEntry = uiPath
+    var rawEntries = String(Quickshell.env("TAMLINUX_EXTRA_ENTRIES") || "")
+    var parsedEntries = []
+    if (rawEntries !== "") {
+      var entryParts = rawEntries.split("|")
+      for (var n = 0; n < entryParts.length; n++) {
+        if (entryParts[n] !== "") parsedEntries.push(entryParts[n])
+      }
+    }
+    extraEntries = parsedEntries
     evidence("clock-entry " + clockEntry)
+    evidence("extra-entries " + extraEntries.length)
     evidence("host-copies " + hostCopies)
     evidence("screens " + (Quickshell.screens ? Quickshell.screens.length : 0))
   }

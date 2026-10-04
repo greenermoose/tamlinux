@@ -22,6 +22,7 @@ Rectangle {
   property var bar: null
 
   signal clicked()
+  signal hovered(bool isHovered)
 
   readonly property real padX: horizontalPadding >= 0 ? horizontalPadding : Style.spacing.controlPaddingX
   readonly property real padY: verticalPadding >= 0 ? verticalPadding : Style.spacing.controlPaddingY
@@ -69,8 +70,14 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onEntered: if (root.bar && root.bar.showTooltip && root.tooltipText !== "") root.bar.showTooltip(root, root.tooltipText)
-    onExited: if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
+    onEntered: {
+      root.hovered(true)
+      if (root.bar && root.bar.showTooltip && root.tooltipText !== "") root.bar.showTooltip(root, root.tooltipText)
+    }
+    onExited: {
+      root.hovered(false)
+      if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
+    }
     onClicked: root.clicked()
   }
 }

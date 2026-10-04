@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Prepare the Tamlinux daily bar.
+
+Without --replace this prints the rollback and does not touch the running
+shell. --replace is the 0.1 switch: it records the current Quickshell command,
+stops that process, and starts this host on the real home directory.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import signal
+import subprocess
+import sys
+from pathlib import Path
+
+DESKTOP = Path(__file__).resolve().parent
+SHELL = DESKTOP / "shell"
+ROOT = DESKTOP.parents[1]
+PLUGINS = (
+    "clock-fred-tamlinux",
+    "agents-fred-tamlinux",
+    "sysinfo-fred-tamlinux",
+    "weather-fred-tamlinux",
+    "tides-fred-tamlinux",
+    "keyboard-fred-tamlinux",
+    "monitor-fred-tamlinux",
+    "workspaces-fred-tamlinux",
+)
+
+
+def plugin_entries() -> list[str]:
+    sys.path.insert(0, str(SHELL / "host"))
+    from registry import RegistryError, validate_directories  # noqa: E402
+
+    roots = [ROOT / name for name in PLUGINS]
+    try:
+        records = validate_directories(roots)
+    except RegistryError as exc:
+        raise SystemExit(f"registry rejected a plugin: {exc}") from exc
+    clock = next(record for record in records if record["id"] == "fred.clock")
+    extras = [record["entry"] for record in records if record["id"] != "fred.clock"]
+    return [clock["entry"], "|".join(extras)]
+
+
+def quickshell_commands() -> list[tuple[int, str]]:
+    listing = subprocess.run(
+        ["ps", "-u", str(os.getuid()), "-o", "pid=,args="],
+        capture_output=True, text=True, check=False,
+    )
+    found = []
+    for line in listing.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped or "quickshell" not in stripped:
+            continue
+        pid_text, _, args = stripped.partition(" ")
+        if pid_text.isdigit():
+            found.append((int(pid_text), args))
+    return found
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Start the Tamlinux daily bar")
+    parser.add_argument("--replace", action="store_true", help="stop the current Quickshell and start this bar")
+    parser.add_argument("--output", default="all")
+    args = parser.parse_args()
+    clock_entry, extras = plugin_entries()
+    current = quickshell_commands()
+    state = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))) / "tamlinux"
+    print("current quickshell:")
+    if not current:
+        print("  none")
+    for pid, args_text in current:
+        print(f"  pid {pid} {args_text}")
+    print("rollback: start the recorded command again, then stop the Tamlinux quickshell")
+    if not args.replace:
+        print("not replacing the running shell; pass --replace after accepting this bar")
+        return
+    state.mkdir(parents=True, exist_ok=True)
+    rollback = state / "bar-rollback.txt"
+    rollback.write_text("".join(f"{pid} {args_text}\n" for pid, args_text in current), encoding="utf-8")
+    os.chmod(rollback, 0o600)
+    for pid, args_text in current:
+        if "tamlinux/desktop/shell" in args_text:
+            continue
+        os.kill(pid, signal.SIGTERM)
+    env = os.environ.copy()
+    env.update({
+        "QML_IMPORT_PATH": str(SHELL / "modules"),
+        "TAMLINUX_CLOCK_ENTRY": clock_entry,
+        "TAMLINUX_EXTRA_ENTRIES": extras,
+        "TAMLINUX_PLUGIN_IDS": "fred.clock,fred.agents,fred.sysinfo,fred.weather,fred.tides,fred.keyboard,fred.monitor,fred.workspaces",
+        "TAMLINUX_HOST_ACTIONS": "1",
+        "TAMLINUX_BAR_EXCLUSIVE": "1",
+        "TAMLINUX_CLOCK_ON_ALL": "1",
+        "TAMLINUX_PLUGINS_ON_ALL": "1",
+        "TAMLINUX_OUTPUT": args.output,
+        "QT_QPA_PLATFORM": "wayland",
+    })
+    env.pop("TAMLINUX_CLOCK_OFFLINE", None)
+    env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+    os.execvpe("/usr/bin/quickshell", ["/usr/bin/quickshell", "-p", str(SHELL)], env)
+
+
+if __name__ == "__main__":
+    main()

@@ -126,7 +126,7 @@ distributions and as native `xbps-src` packages on Void.
 | 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only. |
 | 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only. |
 | 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only. |
-| 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | First slice checked 2026-10-03: `Tam.Commons`/`Tam.Ui` cover the shared types, and typed actions record requests without launching them. Plugin rewrites and the daily bar replacement have not started. |
+| 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | Shared UI checked 2026-10-03. The eight plugins are rewritten as `fred.<id>` 2.0.0 on `develop/2.0.0` and load in the isolated host. The daily bar replacement waits for acceptance; that acceptance is Tamlinux 0.1. |
 | 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | No plugin reads raw Hyprland state; parity tests pass against the Hyprland and Sway adapters (`ext-workspace-v1` first, `Quickshell.I3` second); bindings come from generated configuration. |
 | 6 | Remaining inherited desktop functions (0.3) | 4 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. |
 | 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the inherited one; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
@@ -303,10 +303,14 @@ does not execute it. `Util.wheelSteps` is the pure notch helper. There is no
 `execDetached`.
 
 `desktop/fixtures/ui/` is `tamlinux.ui`. It constructs the new controls and is
-not a `fred.*` plugin. Checked on 2026-10-03 with the existing clock, host,
-and compositor selftests at scale 1 and 1.25. The seven plugins are unchanged.
-Rewriting each one as `fred.<id>` 2.0.0, and replacing the daily bar, are the
-rest of this step.
+not a `fred.*` plugin. The eight `fred.*` plugins on `develop/2.0.0` import
+`Tam.Commons` and `Tam.Ui` instead of the Omarchy shell modules. `bar.run` is
+gone. `pickAgent`, `openTerminal`, `notify`, and `openTimezoneMenu` record the
+request in the proof. They start the existing programs only when
+`TAMLINUX_HOST_ACTIONS=1`, which the proof unsets. Hyprland reads stay inside
+the plugins that already had them. Replacing the running bar is
+`desktop/launch-daily-bar --replace` after that bar is accepted, and that
+acceptance is Tamlinux 0.1.
 
 ## Boundaries and recovery
 
@@ -324,9 +328,8 @@ hardened.
 
 ## Next handoff
 
-The shared UI slice is in `desktop/`. Shell UI in that tree reads the
-compositor facade, and `tamlinux.ui` constructs the shared controls. The seven
-plugins still read Hyprland directly and still call `bar.run`. Rewriting them
-is the rest of Step 4; pointing them at the facade is Step 5. Promotion to
-Test is a separate decision. Steps 4–11 are not claimed complete by this
-prototype.
+The eight rewritten plugins load in `desktop/`. They still read Hyprland
+directly where they already did. Pointing them at the facade is Step 5.
+Replacing the running bar is the 0.1 acceptance, not a side effect of this
+develop candidate. Promotion to Test is a separate decision. Steps 4–11 are
+not claimed complete by this prototype.
