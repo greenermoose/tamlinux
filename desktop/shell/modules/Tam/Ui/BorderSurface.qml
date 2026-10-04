@@ -15,6 +15,10 @@ Rectangle {
   readonly property real borderRight: Border.right(borderSpec)
   readonly property real borderBottom: Border.bottom(borderSpec)
   readonly property real borderLeft: Border.left(borderSpec)
+  readonly property real contentTopInset: borderTop + topPadding
+  readonly property real contentRightInset: borderRight + rightPadding
+  readonly property real contentBottomInset: borderBottom + bottomPadding
+  readonly property real contentLeftInset: borderLeft + leftPadding
 
   color: "transparent"
   border.width: Border.canUseNative(borderSpec) ? Border.uniformWidth(borderSpec) : 0

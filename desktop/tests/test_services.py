@@ -9,6 +9,7 @@ DESKTOP = Path(__file__).resolve().parents[1]
 SERVICES = DESKTOP / "shell" / "services"
 NOTIFICATIONS = SERVICES / "notifications"
 OSD = SERVICES / "osd"
+CLIPBOARD = SERVICES / "clipboard"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -22,6 +23,14 @@ class ServiceSourceTests(unittest.TestCase):
             NOTIFICATIONS / "components" / "NotificationCard.qml",
             OSD / "Service.qml",
             OSD / "OsdModel.js",
+            CLIPBOARD / "Service.qml",
+            CLIPBOARD / "ClipboardHistory.js",
+            CLIPBOARD / "capture.sh",
+            CLIPBOARD / "paste-text.sh",
+            CLIPBOARD / "paste-file.sh",
+            CLIPBOARD / "open.sh",
+            CLIPBOARD / "components" / "ConfirmDialog.qml",
+            CLIPBOARD / "components" / "PointerMoveGate.qml",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -30,6 +39,8 @@ class ServiceSourceTests(unittest.TestCase):
             NOTIFICATIONS / "Service.qml",
             NOTIFICATIONS / "components" / "NotificationCard.qml",
             OSD / "Service.qml",
+            CLIPBOARD / "Service.qml",
+            CLIPBOARD / "components" / "ConfirmDialog.qml",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertIn("import Tam.Commons", text, path.name)
@@ -56,9 +67,35 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("mask: Region {}", text)
         self.assertIn("WlrKeyboardFocus.None", text)
 
+    def test_clipboard_target_state_and_helpers(self):
+        text = (CLIPBOARD / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-clipboard"', text)
+        self.assertIn('target: "clipboard"', text)
+        for method in ("toggle()", "open()", "close()", "count()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn('"/tamlinux/clipboard"', text)
+        self.assertIn('Quickshell.shellDir + "/services/clipboard"', text)
+        # Reaps only its own watchers, never another shell's.
+        self.assertIn("wl-paste .*--watch .*/services/clipboard/capture", text)
+        self.assertIn('"setpriv", "--pdeathsig", "TERM"', text)
+
+    def test_clipboard_helpers_use_tamlinux_state(self):
+        for name in ("capture.sh", "paste-text.sh", "open.sh"):
+            text = (CLIPBOARD / name).read_text(encoding="utf-8")
+            self.assertIn("/tamlinux/clipboard", text, name)
+            self.assertNotIn("/state/omarchy", text, name)
+            self.assertNotIn("omarchy-", text.split("\n\n", 2)[-1], name)
+        for name in ("capture.sh", "paste-text.sh", "paste-file.sh", "open.sh"):
+            self.assertTrue((CLIPBOARD / name).stat().st_mode & 0o111, name + " is not executable")
+        # Sensitive selections (password managers) are never recorded.
+        self.assertIn("x-kde-passwordManagerHint", (CLIPBOARD / "capture.sh").read_text(encoding="utf-8"))
+        # Opened programs run in their own scope, not the services unit.
+        self.assertEqual((CLIPBOARD / "open.sh").read_text(encoding="utf-8").count("exec setsid uwsm-app --"), 3)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard"]', text)
+        self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/notifications" as Notifications', text)
         self.assertIn('import "../services/osd" as Osd', text)
         self.assertIn("TAMLINUX_SERVICES", text)
