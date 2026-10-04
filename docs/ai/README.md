@@ -13,6 +13,7 @@ explicitly.
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
 | 2026-10-04 | Notifications service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-notifications-service.md`](2026-10-04-notifications-service.md) |
+| 2026-10-04 | OSD service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-osd-service.md`](2026-10-04-osd-service.md) |
 | 2026-10-04 | Omarchy removed before Hyprland (0.3) | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-omarchy-before-hyprland.md`](2026-10-04-omarchy-before-hyprland.md) |
 | 2026-10-04 | Sway adapter, first slice | Cursor `3.23.12` | `composer` | [`2026-10-04-sway-adapter.md`](2026-10-04-sway-adapter.md) |
 | 2026-10-03 | Helper Hyprland commands use the named backend | Cursor `3.23.12` | `composer` | [`2026-10-03-hyprland-command-ownership.md`](2026-10-03-hyprland-command-ownership.md) |

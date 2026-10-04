@@ -115,6 +115,7 @@ the host then reports its bar position as `top` so popups clear that bar.
 | Service | Source | Behavior |
 | --- | --- | --- |
 | `notifications` | `shell/services/notifications/`, vendored with its MIT notice (`shell/services/LICENSE-omarchy`) | Owns `org.freedesktop.Notifications`. Popups top-right on every output, do-not-disturb with bypass rules, ten-entry history and replay, popups that survive a restart, argv and `default` actions. Clicking a card without an action calls the facade's `focusApp(name)`. State is under `~/.local/state/tamlinux/notifications/`. IPC target `notifications`: `ping`, `dndState`, `toggleDnd`, `setDnd`, `isDnd`, `showHistory`, `clear`, `dismissAll`, `dismissOne`, `invokeLast`, `dismiss`. |
+| `osd` | `shell/services/osd/`, vendored with the same notice | Volume, brightness, and status overlays, bottom-centre on the focused output, on the `tamlinux-osd` overlay layer. It takes no pointer or keyboard input. A card shows a glyph with a progress bar and percentage, or a glyph with a short message, and hides after its duration (default 1200 ms; 0 keeps it open). IPC target `osd`: `show(payloadJson)` with `icon`, `message`, `value`, `max`, `progressText`, and `duration`; `close`, `state`, `ping`. |
 
 `focusApp(name)` takes `^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$`. On Hyprland it
 matches the window class case-insensitively and dispatches a focus by window
