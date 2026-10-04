@@ -4,17 +4,18 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
 import "Model.js" as Model
+import "."
 
 Panel {
   id: root
-  moduleName: "omarchy.monitor"
-  ipcTarget: "omarchy.monitor"
+  moduleName: "fred.monitor"
+  ipcTarget: "fred.monitor"
   manageIpc: false
 
-  readonly property string pluginVersion: "1.2.3"
+  readonly property string pluginVersion: "2.0.0"
   readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"]
 
   property int brightnessPercent: 0
@@ -678,11 +679,7 @@ Panel {
   }
 
   function showBrightnessOsd(percent) {
-    if (!bar || !bar.shell) return
-    bar.shell.summon("omarchy.osd", JSON.stringify({
-      icon: "brightness",
-      value: percent
-    }))
+    if (bar && bar.reportUnsupported) bar.reportUnsupported("osd")
   }
 
   // --- DPMS Controls & Safety Timer ---
@@ -817,7 +814,7 @@ Panel {
   }
 
   IpcHandler {
-    target: "omarchy.monitor"
+    target: "fred.monitor"
 
     function brightness(percent: string): string { return root.brightnessIpc(percent) }
     function state(): string { return root.stateIpc() }

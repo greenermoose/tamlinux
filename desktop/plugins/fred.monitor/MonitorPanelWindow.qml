@@ -1,8 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
+import "."
 
 // A KeyboardPanel-compatible surface whose outside-click catcher exists only
 // on the bar's output. This lets another monitor receive pointer and keyboard

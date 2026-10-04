@@ -2,6 +2,12 @@
 
 All notable changes to `fred.monitor` are documented here.
 
+## [2.0.0] - Unreleased
+
+### Changed
+- The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.
+- Omarchy shell IPC targets are gone. Hyprland reads that this plugin already had stay in the plugin until the compositor contract.
+
 ## [1.2.3] - 2026-09-23
 
 ### Fixed
