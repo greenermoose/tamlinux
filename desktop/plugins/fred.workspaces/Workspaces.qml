@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Tam.Commons
 import Tam.Ui
@@ -74,21 +73,58 @@ BarWidget {
     return env
   }
 
-  readonly property var barMonitor: root.QsWindow && root.QsWindow.window
-    ? Hyprland.monitorFor(root.QsWindow.window.screen)
-    : null
+  function compositorOutputs() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp && comp.outputs ? comp.outputs : []
+  }
+
+  function outputRecord(item) {
+    if (!item || !item.name) return null
+    var id = item.activeWorkspaceId > 0 ? item.activeWorkspaceId : 0
+    return {
+      name: String(item.name),
+      x: typeof item.x === "number" ? item.x : 0,
+      y: typeof item.y === "number" ? item.y : 0,
+      description: String(item.description || ""),
+      dpmsOn: item.dpmsOn !== false,
+      focused: item.focused === true,
+      special: item.special === true,
+      activeWorkspace: id > 0 ? { id: id } : null
+    }
+  }
+
+  readonly property var barMonitor: {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    var _rev = comp ? comp.revision : 0
+    if (!(root.QsWindow && root.QsWindow.window && root.QsWindow.window.screen)) return null
+    var screen = root.QsWindow.window.screen
+    var wanted = comp && comp.outputForScreen ? comp.outputForScreen(screen) : ""
+    if (!wanted) wanted = String(screen.name || "")
+    var outputs = root.compositorOutputs()
+    for (var i = 0; i < outputs.length; i++) {
+      if (outputs[i] && String(outputs[i].name) === wanted) return root.outputRecord(outputs[i])
+    }
+    if (wanted && /^[A-Za-z0-9._-]{1,64}$/.test(wanted)) {
+      return {
+        name: wanted, x: 0, y: 0, description: "", dpmsOn: true,
+        focused: false, special: false, activeWorkspace: null
+      }
+    }
+    return null
+  }
 
   function workspaceById(id) {
-    var values = Hyprland.workspaces.values
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    var values = comp && comp.workspaces ? comp.workspaces : []
     for (var i = 0; i < values.length; i++) {
-      if (values[i].id === id) return values[i]
+      if (values[i] && values[i].id === id) return values[i]
     }
     return null
   }
 
   function quickshellMonitorNames() {
     var records = []
-    var monitors = Hyprland.monitors.values
+    var monitors = root.compositorOutputs()
     for (var i = 0; i < monitors.length && records.length < 16; i++) {
       var monitor = monitors[i]
       var name = monitor && monitor.name ? String(monitor.name) : ""
@@ -141,9 +177,9 @@ BarWidget {
   }
 
   function monitorByName(name) {
-    var monitors = Hyprland.monitors.values
+    var monitors = root.compositorOutputs()
     for (var i = 0; i < monitors.length; i++) {
-      if (monitors[i].name === name) return monitors[i]
+      if (monitors[i] && monitors[i].name === name) return root.outputRecord(monitors[i])
     }
     return null
   }
@@ -158,9 +194,9 @@ BarWidget {
   function isLeftMonitor() {
     if (barMonitor === null) return true
     if (leftMonitor !== "") return barMonitor.name === leftMonitor
-    if (Hyprland.monitors.values.length <= 1) return true
+    if (root.compositorOutputs().length <= 1) return true
 
-    var monitors = Hyprland.monitors.values
+    var monitors = root.compositorOutputs()
     if (monitors.length > 0) {
       var firstMon = monitors[0]
       for (var i = 1; i < monitors.length; i++) {
@@ -188,7 +224,8 @@ BarWidget {
     if (desktopMode === "omarchy") return [1, 2, 3, 4, 5]
 
     var ids = [1, 2, 3, 4, 5]
-    var values = Hyprland.workspaces.values
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    var values = comp && comp.workspaces ? comp.workspaces : []
     for (var i = 0; i < values.length; i++) {
       var id = values[i].id
       var displayId = desktopMode === "windows" ? windowsDisplayId(id) : id
@@ -240,8 +277,8 @@ BarWidget {
     if (desktopMode !== "windows") return none
     var names = effectiveMonitorNames()
     if (names.length < 2) return none
-    var focusedName = Hyprland.focusedMonitor && Hyprland.focusedMonitor.name
-      ? String(Hyprland.focusedMonitor.name) : ""
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    var focusedName = comp ? String(comp.focusedOutputName || "") : ""
     var desktops = {}
     var counts = {}
     var focusedDesktop = 0
@@ -303,15 +340,16 @@ BarWidget {
 
   function monitorHasWindows() {
     if (!barMonitor) return false
-    if (barMonitor.activeSpecialWorkspace && barMonitor.activeSpecialWorkspace.id !== 0) return true
+    if (barMonitor.special) return true
     if (!barMonitor.activeWorkspace) return false
     var ws = workspaceById(barMonitor.activeWorkspace.id)
-    return ws !== null && ws.toplevels && ws.toplevels.values && ws.toplevels.values.length > 0
+    return ws !== null && ws.occupied === true
   }
 
   function monitorIsFocused() {
-    return barMonitor !== null && Hyprland.focusedMonitor !== null
-      && barMonitor.name === Hyprland.focusedMonitor.name
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    var focusedName = comp ? String(comp.focusedOutputName || "") : ""
+    return barMonitor !== null && focusedName !== "" && barMonitor.name === focusedName
   }
 
   function idleLog(message) {
@@ -433,47 +471,16 @@ BarWidget {
     Qt.callLater(root.trackMonitorIdle)
   }
 
-  // A bar created while its monitor is already dark (shell restart, output
-  // re-added after an HPD drop) has to know it, or cursor entry can never
-  // wake that monitor; and one that believes its monitor dark while it is
-  // lit would never blank it again. Hyprland has no IPC event for DPMS, so
-  // ask once per bar lifetime.
-  Process {
-    id: dpmsProbe
-    clearEnvironment: true
-    environment: root.processEnv
-    command: ["/usr/bin/hyprctl", "-j", "monitors"]
-
-    stdout: StdioCollector {
-      onStreamFinished: root.loadDpmsState(text)
-    }
-  }
-
+  // A bar created while its monitor is already dark has to know it, or
+  // cursor entry can never wake that monitor. The facade publishes dpmsOn.
   function probeDpmsState() {
-    if (!barMonitor || dpmsProbe.running) return
-    dpmsProbe.running = true
-  }
-
-  function loadDpmsState(raw) {
-    if (!barMonitor || !raw || raw.length > 65536) return
-    var monitors
-    try {
-      monitors = JSON.parse(raw)
-    } catch (err) {
-      return
-    }
-    if (!Array.isArray(monitors)) return
-    for (var i = 0; i < monitors.length; i++) {
-      var m = monitors[i]
-      if (!m || m.name !== barMonitor.name) continue
-      var dark = m.dpmsStatus === false
-      if (dark !== root.isMonitorDark) {
-        root.idleLog(dark ? "monitor already dark; adopting it" : "monitor is lit; dropping stale dark state")
-        root.isMonitorDark = dark
-        if (dark && idleBlankTimer.running) idleBlankTimer.stop()
-        Qt.callLater(root.trackMonitorIdle)
-      }
-      return
+    if (!barMonitor) return
+    var dark = barMonitor.dpmsOn === false
+    if (dark !== root.isMonitorDark) {
+      root.idleLog(dark ? "monitor already dark; adopting it" : "monitor is lit; dropping stale dark state")
+      root.isMonitorDark = dark
+      if (dark && idleBlankTimer.running) idleBlankTimer.stop()
+      Qt.callLater(root.trackMonitorIdle)
     }
   }
 
@@ -543,22 +550,48 @@ BarWidget {
     return parts.join(", ")
   }
 
-  Connections {
-    target: Hyprland
-    // rawEvent carries a HyprlandIpcEvent (name + data), not the raw line.
-    function onRawEvent(event) {
-      root.windowsRevision++
-      Qt.callLater(root.trackAlignment)
-      Qt.callLater(root.trackMonitorIdle)
-      var name = event && event.name ? String(event.name) : ""
-      if (name === "monitoradded" || name === "monitorremoved"
-          || name === "monitoraddedv2" || name === "monitorremovedv2") {
-        reconcileDebounce.restart()
-      } else if (name === "workspace" || name === "workspacev2" || name === "focusedmon"
-          || name === "focusedmonv2") {
-        followDebounce.restart()
-      }
+  property string seenOutputs: ""
+  property string seenFocus: ""
+  property bool compositorSeen: false
+
+  function onCompositorRevision() {
+    root.windowsRevision++
+    Qt.callLater(root.trackAlignment)
+    Qt.callLater(root.trackMonitorIdle)
+    Qt.callLater(root.probeDpmsState)
+    var outputs = root.compositorOutputs()
+    var names = []
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    var focus = (comp ? String(comp.focusedOutputName || "") : "") + "#"
+      + (comp ? comp.focusedWorkspaceId : 0)
+    for (var i = 0; i < outputs.length; i++) {
+      if (!outputs[i]) continue
+      names.push(String(outputs[i].name))
+      focus += "|" + outputs[i].name + ":" + outputs[i].activeWorkspaceId
     }
+    names.sort()
+    var outputKey = names.join(",")
+    if (!root.compositorSeen) {
+      root.compositorSeen = true
+      root.seenOutputs = outputKey
+      root.seenFocus = focus
+      return
+    }
+    if (outputKey !== root.seenOutputs) {
+      root.seenOutputs = outputKey
+      root.seenFocus = focus
+      reconcileDebounce.restart()
+      return
+    }
+    if (focus !== root.seenFocus) {
+      root.seenFocus = focus
+      followDebounce.restart()
+    }
+  }
+
+  Connections {
+    target: root.bar && root.bar.compositor ? root.bar.compositor : null
+    function onRevisionChanged() { root.onCompositorRevision() }
   }
 
   // splitSet=false: realign the set to the focused monitor's desktop. Only
@@ -571,8 +604,9 @@ BarWidget {
     repeat: false
     onTriggered: {
       if (root.splitSetAllowed || root.desktopMode !== "windows") return
-      if (barMonitor === null || Hyprland.focusedMonitor === null
-          || barMonitor.name !== Hyprland.focusedMonitor.name) return
+      var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+      var focusedName = comp ? String(comp.focusedOutputName || "") : ""
+      if (barMonitor === null || focusedName === "" || barMonitor.name !== focusedName) return
       var state = root.setState()
       if (!state.split) return
       var desktop = state.focused > 0 ? state.focused : state.setDesktop
@@ -592,7 +626,9 @@ BarWidget {
   function formatToplevel(t) {
     if (!t) return ""
     var app = ""
-    if (t.wayland && t.wayland.appId) {
+    if (t.className) {
+      app = String(t.className)
+    } else if (t.wayland && t.wayland.appId) {
       app = t.wayland.appId
     } else if (t.lastIpcObject && t.lastIpcObject["class"]) {
       app = t.lastIpcObject["class"]
@@ -638,9 +674,9 @@ BarWidget {
   function workspaceWindowSummaries(workspaceId) {
     try {
       var ws = workspaceById(workspaceId)
-      if (!ws || !ws.toplevels || !ws.toplevels.values) return []
+      if (!ws || !ws.windows) return []
       var list = []
-      var toplevels = ws.toplevels.values
+      var toplevels = ws.windows
       for (var i = 0; i < toplevels.length; i++) {
         var summary = formatToplevel(toplevels[i])
         if (summary && list.indexOf(summary) === -1) {
@@ -756,13 +792,13 @@ BarWidget {
     var _rev = root.windowsRevision
     if (desktopMode !== "windows") {
       var workspace = workspaceById(displayId)
-      return workspace !== null && workspace.toplevels.values.length > 0
+      return workspace !== null && workspace.occupied === true
     }
 
     var setSize = effectiveSetSize()
     for (var slot = 0; slot < setSize; slot++) {
       var workspace = workspaceById(windowsWorkspaceId(displayId, slot))
-      if (workspace !== null && workspace.toplevels.values.length > 0) return true
+      if (workspace !== null && workspace.occupied === true) return true
     }
     return false
   }
@@ -772,8 +808,9 @@ BarWidget {
     if (desktopMode === "windows") {
       var names = effectiveMonitorNames()
       if (names.length === 0) {
-        return Hyprland.focusedWorkspace !== null
-          && windowsDisplayId(Hyprland.focusedWorkspace.id) === displayId
+        var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+        return comp !== null && comp.focusedWorkspaceId > 0
+          && windowsDisplayId(comp.focusedWorkspaceId) === displayId
       }
       for (var i = 0; i < names.length; i++) {
         var monitor = monitorByName(names[i])
@@ -788,7 +825,8 @@ BarWidget {
       return barMonitor !== null && barMonitor.activeWorkspace !== null
         && barMonitor.activeWorkspace.id === displayId
     }
-    return Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === displayId
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp !== null && comp.focusedWorkspaceId === displayId
   }
 
   property var pendingActions: []

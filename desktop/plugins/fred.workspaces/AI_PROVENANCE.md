@@ -85,3 +85,9 @@ Cursor `3.23.12` (`composer`) rewrote `fred.workspaces` to 2.0.0 on
 `develop/2.0.0`. The Omarchy workspaces IPC handler is gone. Hyprland reads
 stay. Not tagged or released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.workspaces 2.0.0 QML at the Tamlinux
+compositor facade. QML reads outputs, workspaces, focus, and `dpmsOn` from the facade and reacts to `revision`. `tam-desktop-mode` still dispatches through Hyprland. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).
