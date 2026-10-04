@@ -65,3 +65,9 @@ Cursor `3.23.12` (`composer`) rewrote `fred.sysinfo` to 2.0.0 on
 `develop/2.0.0`. Opening the monitor is a host terminal action. Not tagged
 or released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.sysinfo 2.0.0 QML at the Tamlinux
+compositor facade. IPC uses the facade's focused output name. `SysinfoPanel` takes keyboard focus only when that output is the panel's screen. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).

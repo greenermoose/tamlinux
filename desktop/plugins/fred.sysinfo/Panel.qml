@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import Tam.Ui
 import Tam.Commons
 import "SysinfoStore.js" as SysinfoStore
@@ -87,6 +86,11 @@ Panel {
     clipProc.running = true
   }
 
+  function focusedOutputName() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp ? String(comp.focusedOutputName || "") : ""
+  }
+
   function launchSystemMonitor() {
     if (root.bar && root.bar.openTerminal) root.bar.openTerminal("btop")
   }
@@ -117,30 +121,24 @@ Panel {
   IpcHandler {
     target: "fred.sysinfo"
     function toggleMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      SysinfoStore.toggle(monitor, cur)
+      SysinfoStore.toggle(monitor, root.focusedOutputName())
     }
     function openMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      SysinfoStore.open(monitor, cur)
+      SysinfoStore.open(monitor, root.focusedOutputName())
     }
     function closeMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      SysinfoStore.close(monitor, cur)
+      SysinfoStore.close(monitor, root.focusedOutputName())
     }
     function open(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      SysinfoStore.open("", cur)
+      SysinfoStore.open("", root.focusedOutputName())
     }
     function close(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      SysinfoStore.close("", cur)
+      SysinfoStore.close("", root.focusedOutputName())
     }
     function show(): void { open() }
     function hide(): void { close() }
     function toggle(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      SysinfoStore.toggle("", cur)
+      SysinfoStore.toggle("", root.focusedOutputName())
     }
   }
 
