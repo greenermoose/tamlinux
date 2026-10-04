@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "."
 
 // The display side of agent usage. All extraction lives behind
 // tam-agent-usage-update, which writes one JSON record per agent into

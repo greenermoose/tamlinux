@@ -12,6 +12,7 @@ against a local transcript says so explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Shell-independent 2.0.0 | Cursor `3.23.12` | `composer` | [`2026-10-03-shell-independent-2.0.0.md`](2026-10-03-shell-independent-2.0.0.md) |
 | 2026-09-20 | Swap & rebrand through prompt-mode panel and pre-release prep (`0.1.0`–`1.0.0`) | `opencode` (OpenCode `1.18.31`) | Big Pickle (`big-pickle`) | [`2026-09-20-development-to-prerelease.md`](2026-09-20-development-to-prerelease.md) |
 | 2026-09-20/21 | Cursor live plan limits (`1.1.0`); Antigravity live limits assessed, blocked | `opencode` (OpenCode `1.18.31`) | Big Pickle (`big-pickle`) | [`2026-09-20-cursor-live-limits.md`](2026-09-20-cursor-live-limits.md) |
 | 2026-09-21 | Dual Cursor meters (`1.1.1`) + bar hover limits summary (`1.1.2`) | `opencode` (OpenCode `1.18.31`) | Big Pickle (`big-pickle`) | [`2026-09-21-hover-limits-summary.md`](2026-09-21-hover-limits-summary.md) |

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import "."
 
 // One agent's usage record, read straight off the data file that
 // tam-agent-usage-update maintains. The panel never learns how the
