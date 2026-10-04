@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Plugin QML reads the compositor facade | Cursor `3.23.12` | `composer` | [`2026-10-03-compositor-facade.md`](2026-10-03-compositor-facade.md) |
 | 2026-10-03 | Shell-independent 2.0.0 | Cursor `3.23.12` | `composer` | [`2026-10-03-shell-independent-2.0.0.md`](2026-10-03-shell-independent-2.0.0.md) |
 | 2026-10-03 | Shared UI closure and typed actions | Cursor `3.23.12` | `composer` | [`2026-10-03-shared-ui-closure.md`](2026-10-03-shared-ui-closure.md) |
 | 2026-10-03 | Workstation package route and version series | Claude Code `2.1.288` | `claude-opus-5-5` | [`2026-10-03-workstation-package-route-and-versions.md`](2026-10-03-workstation-package-route-and-versions.md) |

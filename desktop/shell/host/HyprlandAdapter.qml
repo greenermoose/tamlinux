@@ -22,6 +22,7 @@ QtObject {
   readonly property int devicesLimit: 262144
   readonly property int monitorsLimit: 262144
   readonly property int keymapLimit: 128
+  readonly property int descriptionLimit: 128
   readonly property int windowLimit: 8
   readonly property int titleLimit: 80
   readonly property int classLimit: 64
@@ -192,6 +193,24 @@ QtObject {
     }
   }
 
+  function boundedDescription(monitor) {
+    var text = ""
+    if (monitor && monitor.description) text = String(monitor.description)
+    else if (monitor && monitor.lastIpcObject && monitor.lastIpcObject.description)
+      text = String(monitor.lastIpcObject.description)
+    text = text.replace(/\r/g, " ").replace(/\n/g, " ")
+    if (text.length > descriptionLimit) text = text.substring(0, descriptionLimit)
+    return text
+  }
+
+  function boundedPosition(value) {
+    if (typeof value !== "number" || !isFinite(value)) return 0
+    var n = Math.round(value)
+    if (n > 100000) return 100000
+    if (n < -100000) return -100000
+    return n
+  }
+
   function windowSummary(toplevel) {
     if (!toplevel) return null
     var cls = ""
@@ -228,11 +247,18 @@ QtObject {
       if (dpmsByName && dpmsByName[monitor.name] === false) dpmsOn = false
       else if (dpmsByName && dpmsByName[monitor.name] === true) dpmsOn = true
       else if (monitor.lastIpcObject && monitor.lastIpcObject.dpmsStatus === false) dpmsOn = false
+      var special = false
+      if (monitor.activeSpecialWorkspace && monitor.activeSpecialWorkspace.id)
+        special = monitor.activeSpecialWorkspace.id !== 0
       outputs.push({
         name: String(monitor.name),
         focused: String(monitor.name) === focused,
         activeWorkspaceId: wsId,
-        dpmsOn: dpmsOn
+        dpmsOn: dpmsOn,
+        description: boundedDescription(monitor),
+        x: boundedPosition(monitor.x),
+        y: boundedPosition(monitor.y),
+        special: special
       })
     }
     outputs.sort(function(a, b) {
@@ -264,6 +290,7 @@ QtObject {
     var key = focused + "#" + focusedWorkspace + "#" + bindingsText.length + "#" + activeKeymap
     for (var n = 0; n < outputs.length; n++) {
       key += "|" + outputs[n].name + ":" + outputs[n].activeWorkspaceId + ":" + (outputs[n].dpmsOn ? "1" : "0")
+      key += ":" + (outputs[n].special ? "s" : "") + ":" + outputs[n].x + "," + outputs[n].y + ":" + outputs[n].description
     }
     for (var s = 0; s < workspaces.length; s++) {
       key += "|w" + workspaces[s].id + ":" + workspaces[s].output + ":" + workspaces[s].windows.length

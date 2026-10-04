@@ -64,6 +64,9 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(commands.active_keymap(payload), "English (US)")
         self.assertEqual(commands.active_keymap('{"keyboards": []}'), "")
         self.assertEqual(commands.active_keymap("x" * (commands.DEVICES_LIMIT + 1)), "")
+        self.assertEqual(commands.bounded_description("HP\n22cwa"), "HP 22cwa")
+        self.assertEqual(commands.bounded_description(None), "")
+        self.assertEqual(len(commands.bounded_description("d" * 200)), commands.DESCRIPTION_LIMIT)
         snapshot = commands.snapshot_from_monitors([
             {"name": "HDMI-A-1", "focused": False, "activeWorkspace": {"id": 3}, "dpmsStatus": True},
             {"name": "DP-1", "focused": True, "activeWorkspace": {"id": 1}, "dpmsStatus": False},
@@ -102,6 +105,8 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn(r"/^(?:[1-9]|10)$/", qml)
         self.assertIn(str(commands.BINDS_LIMIT), qml)
         self.assertIn(str(commands.KEYMAP_LIMIT), qml)
+        self.assertIn(str(commands.DESCRIPTION_LIMIT), qml)
+        self.assertIn("description:", qml)
         self.assertNotIn("sh -c", qml)
         self.assertNotIn("bash", qml)
 
@@ -117,6 +122,23 @@ class SourceBoundaryTests(unittest.TestCase):
             self.assertNotIn("hyprctl", text, path.name)
             self.assertNotIn("Hyprland.", text, path.name)
         self.assertTrue(seen)
+
+    def test_plugin_qml_reads_the_facade(self):
+        root = DESKTOP.parents[1]
+        names = (
+            "clock", "agents", "sysinfo", "weather", "tides",
+            "keyboard", "monitor", "workspaces",
+        )
+        seen = 0
+        for name in names:
+            plugin = root / f"{name}-fred-tamlinux"
+            self.assertTrue(plugin.is_dir(), name)
+            for path in plugin.rglob("*.qml"):
+                text = path.read_text(encoding="utf-8")
+                seen += 1
+                self.assertNotIn("Quickshell.Hyprland", text, path.name)
+                self.assertNotIn("/usr/bin/hyprctl", text, path.name)
+        self.assertGreater(seen, 0)
 
     def test_launcher_clears_live_actions(self):
         text = (DESKTOP / "launch-clock-proof").read_text(encoding="utf-8")

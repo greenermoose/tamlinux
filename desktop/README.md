@@ -42,7 +42,8 @@ is not copied into this directory.
 type and spacing tokens those plugins read. `Border.surfaceSpec` and
 `Border.controlSpec` use the fallback color and a uniform width. They do not
 read a theme file. `Util.wheelSteps` accumulates wheel notches. There is no
-`execDetached`. The seven plugins are not loaded here and still import `qs.*`.
+`execDetached`. The eight `develop/2.0.0` plugins load from their own trees
+and import `Tam.Commons` and `Tam.Ui`.
 
 ## Compositor contract
 
@@ -54,7 +55,9 @@ the same argv for tests and does not run it.
 
 The facade exposes plain data:
 
-- outputs: name, focused flag, active workspace id, `dpmsOn`
+- outputs: name, focused flag, active workspace id, `dpmsOn`, a description
+  capped at 128 characters, integer `x` and `y`, and whether a special
+  workspace is showing
 - `focusedOutputName` and `outputForScreen(screen)`
 - workspaces: id, output name, occupied, bounded window summaries
 - `focusedWorkspaceId`, `bindingsText`, `activeKeymap`
@@ -73,8 +76,8 @@ stay out of this slice.
 
 `desktop/fixtures/compositor/` is `tamlinux.compositor`. It reads the facade
 and logs names, counts, the keymap, and whether the screen matches an output.
-It does not import Hyprland. The seven plugins are unchanged and still talk
-to Hyprland themselves.
+It does not import Hyprland. Plugin QML reads this facade. `tam-desktop-mode`
+and the monitor layout, state, and reset helpers still call Hyprland.
 
 IPC stays on the shell target `tamlinux-shell` and the one `tamlinux.clock`
 handler inside the single clock instance. The fixture sets `manageIpc` false
@@ -257,9 +260,11 @@ production shell, or prove a Void target session. The eight plugins load in
 the isolated host. They are not the running bar. Typed actions record the
 request during the proof. They start the existing programs only when
 `TAMLINUX_HOST_ACTIONS=1`, which `launch-daily-bar --replace` sets and the
-proof unsets. Plugins that already read Hyprland still do. The shell's
-Hyprland adapter remains the only new Hyprland import in `desktop/`. A Sway
-backend and the one-command install are later steps. Live compositor actions
-stay off unless `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets
-that flag. Replacing the running bar is `desktop/launch-daily-bar --replace`
-after this candidate is accepted. That acceptance is Tamlinux 0.1.
+proof unsets. Plugin QML does not import Hyprland or start `hyprctl`.
+`tam-desktop-mode` still dispatches through Hyprland, and the monitor layout,
+state, and reset helpers still do. The shell's Hyprland adapter remains the
+only Hyprland import in `desktop/`. A Sway backend and the one-command
+install are later steps. Live compositor actions stay off unless
+`TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
+Replacing the running bar is `desktop/launch-daily-bar --replace` after this
+candidate is accepted. That acceptance is Tamlinux 0.1.

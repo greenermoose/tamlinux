@@ -13,6 +13,7 @@ BINDS_LIMIT = 262144
 DEVICES_LIMIT = 262144
 MONITORS_LIMIT = 262144
 KEYMAP_LIMIT = 128
+DESCRIPTION_LIMIT = 128
 WINDOW_LIMIT = 8
 TITLE_LIMIT = 80
 CLASS_LIMIT = 64
@@ -99,6 +100,16 @@ def active_keymap(payload: object) -> str:
         if fallback == "":
             fallback = name
     return fallback
+
+
+def bounded_description(text: object) -> str:
+    """Monitor description with newlines flattened and a fixed cap."""
+    if not isinstance(text, str):
+        return ""
+    flat = text.replace("\r", " ").replace("\n", " ")
+    if len(flat) > DESCRIPTION_LIMIT:
+        return flat[:DESCRIPTION_LIMIT]
+    return flat
 
 
 def snapshot_from_monitors(data: object) -> dict:
