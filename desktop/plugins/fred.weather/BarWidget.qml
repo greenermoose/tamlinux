@@ -1,13 +1,14 @@
 import QtQuick
 import Quickshell
-import qs.Commons
-import qs.Ui
+import Tam.Commons
+import Tam.Ui
+import "."
 
 BarWidget {
   id: root
   moduleName: "fred.weather"
 
-  readonly property string pluginVersion: "1.0.4"
+  readonly property string pluginVersion: "2.0.0"
   property bool hoverOpen: false
 
   function injectPanel() {
@@ -22,6 +23,16 @@ BarWidget {
 
   function refresh() {
     if (panelLoader.item && panelLoader.item.refresh) panelLoader.item.refresh()
+  }
+
+  function notifyStatus() {
+    var panel = panelLoader.item
+    if (!root.bar || !root.bar.notify) return
+    var place = panel && panel.reportLocation ? String(panel.reportLocation) : "Weather"
+    var temp = panel && panel.reportTempNum ? String(panel.reportTempNum) : ""
+    var unit = panel && panel.tempUnit ? String(panel.tempUnit) : ""
+    var notice = temp !== "" ? place + " " + temp + unit : place
+    root.bar.notify(notice)
   }
 
   function togglePanel() {
@@ -94,7 +105,7 @@ BarWidget {
     onPressed: function(b) {
       root.hoverOpen = false
       if (!root.bar) return
-      if (b === Qt.RightButton) root.bar.run("omarchy-notification-send \"$(omarchy-weather-status)\"")
+      if (b === Qt.RightButton) root.notifyStatus()
       else if (b === Qt.MiddleButton) root.refresh()
       else root.togglePanel()
     }

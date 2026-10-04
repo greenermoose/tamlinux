@@ -2,21 +2,22 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import qs.Commons
-import qs.Ui
+import Tam.Commons
+import Tam.Ui
 import "Model.js" as Model
 import "Network.js" as Network
 import "WeatherStore.js" as WeatherStore
+import "."
 
 Panel {
   id: root
   moduleName: "fred.weather"
-  ipcTarget: "omarchy.weather"
+  ipcTarget: "fred.weather"
   manageIpc: false
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.4"
+  property string pluginVersion: "2.0.0"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -91,54 +92,7 @@ Panel {
     }
   }
 
-  IpcHandler {
-    target: "omarchy.weather"
-
-    function open(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.open("", cur, Hyprland.monitors)
-    }
-    function close(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.close("", cur, Hyprland.monitors)
-    }
-    function show(): void { open() }
-    function hide(): void { close() }
-    function toggle(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.toggle("", cur, Hyprland.monitors)
-    }
-    function openMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.open(monitor, cur, Hyprland.monitors)
-    }
-    function closeMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.close(monitor, cur, Hyprland.monitors)
-    }
-    function toggleMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.toggle(monitor, cur, Hyprland.monitors)
-    }
-    function showHover(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.showHover(monitor, cur, Hyprland.monitors)
-    }
-    function hideHover(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.hideHover(monitor, cur, Hyprland.monitors)
-    }
-    function refresh(): void { WeatherStore.refreshAll(root) }
-    function edit(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      var p = WeatherStore.resolveTargetPanel("", cur, Hyprland.monitors)
-      if (p) {
-        p.open()
-        p.startEditingLocation()
-      }
-    }
-  }
-
+  
   function open() {
     openedFromHotkey = false
     setCenterHoverRevealSuppressed(false)

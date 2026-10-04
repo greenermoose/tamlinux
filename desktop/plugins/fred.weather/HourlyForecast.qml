@@ -1,6 +1,7 @@
 import QtQuick
-import qs.Commons
+import Tam.Commons
 import "Model.js" as Model
+import "."
 
 Column {
   id: root
