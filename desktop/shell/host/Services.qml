@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import "../services/clipboard" as Clipboard
 import "../services/emojis" as Emojis
+import "../services/imagepicker" as ImagePicker
 import "../services/notifications" as Notifications
 import "../services/osd" as Osd
 
@@ -13,7 +14,7 @@ Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -63,6 +64,15 @@ Item {
     }
     onLoaded: services.note("service-loaded emojis")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed emojis")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("imagepicker") !== -1
+    sourceComponent: Component {
+      ImagePicker.Service {}
+    }
+    onLoaded: services.note("service-loaded imagepicker")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed imagepicker")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))

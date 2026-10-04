@@ -31,8 +31,8 @@ QtObject {
     property color countdown: root.accent
   }
 
-  // Full-screen pickers (clipboard now; the menu, emoji, and image pickers
-  // later) share these surface tokens.
+  // Full-screen pickers (clipboard and emojis now; the menu later) share
+  // these surface tokens.
   readonly property QtObject menu: QtObject {
     property color background: root.popups.background
     property color text: root.foreground
@@ -40,6 +40,14 @@ QtObject {
     property color scrim: Qt.rgba(0.078, 0.094, 0.11, 0.5)
     property color selectedBackground: Qt.rgba(0.843, 0.867, 0.886, 0.08)
     property color selectedText: root.accent
+  }
+
+  // The image picker has no card surface: `scrim` is the full-screen wash.
+  readonly property QtObject imagePicker: QtObject {
+    property color scrim: Qt.rgba(0.078, 0.094, 0.11, 0.5)
+    property color text: root.foreground
+    property color selectedBorder: root.accent
+    property color unselectedBorder: Qt.rgba(0.843, 0.867, 0.886, 0.28)
   }
 
   readonly property QtObject tooltip: QtObject {

@@ -12,6 +12,7 @@ NOTIFICATIONS = SERVICES / "notifications"
 OSD = SERVICES / "osd"
 CLIPBOARD = SERVICES / "clipboard"
 EMOJIS = SERVICES / "emojis"
+IMAGEPICKER = SERVICES / "imagepicker"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -36,6 +37,9 @@ class ServiceSourceTests(unittest.TestCase):
             EMOJIS / "Service.qml",
             EMOJIS / "EmojiSearch.js",
             EMOJIS / "insert.sh",
+            IMAGEPICKER / "Service.qml",
+            IMAGEPICKER / "ImagePickerModel.js",
+            IMAGEPICKER / "list.sh",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -47,6 +51,7 @@ class ServiceSourceTests(unittest.TestCase):
             CLIPBOARD / "Service.qml",
             CLIPBOARD / "components" / "ConfirmDialog.qml",
             EMOJIS / "Service.qml",
+            IMAGEPICKER / "Service.qml",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertIn("import Tam.Commons", text, path.name)
@@ -116,11 +121,30 @@ class ServiceSourceTests(unittest.TestCase):
         # Offered as sensitive, so the clipboard history never records it.
         self.assertIn("wl-copy --type text/plain --sensitive --foreground", body)
 
+    def test_imagepicker_target_and_helper(self):
+        text = (IMAGEPICKER / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-imagepicker"', text)
+        self.assertIn('target: "imagepicker"', text)
+        for method in ("open(", "preload(", "cancel(", "count()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn('Quickshell.shellDir + "/services/imagepicker"', text)
+        self.assertIn('root.serviceDir + "/list.sh"', text)
+        self.assertNotIn("OMARCHY_", text)
+        # Paths from a request reach the shell as arguments, never as script text.
+        self.assertNotIn("shellQuote", text)
+        self.assertIn('["sh", "-c", \': > "$1"\', "sh", path]', text)
+        helper = IMAGEPICKER / "list.sh"
+        self.assertTrue(helper.stat().st_mode & 0o111, "list.sh is not executable")
+        body = helper.read_text(encoding="utf-8")
+        self.assertIn("/tamlinux/image-picker", body)
+        self.assertNotIn("omarchy", body.split("\n\n", 2)[-1])
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
+        self.assertIn('import "../services/imagepicker" as ImagePicker', text)
         self.assertIn('import "../services/notifications" as Notifications', text)
         self.assertIn('import "../services/osd" as Osd', text)
         self.assertIn("TAMLINUX_SERVICES", text)
