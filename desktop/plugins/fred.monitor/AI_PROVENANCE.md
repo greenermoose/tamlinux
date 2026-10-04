@@ -71,6 +71,11 @@ Cursor `3.23.12` (`composer`) rewrote `fred.monitor` to 2.0.0 on
 `develop/2.0.0`. The IPC target is `fred.monitor`. Not tagged or released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
 
+## 2026-10-03 named compositor backend
+
+Cursor `3.23.12` (`composer`) pointed the layout, state, and reset helpers on `develop/2.0.0` at the Tamlinux compositor backend. They no longer build Hyprland command text. Brightness still uses the Omarchy helper. Not tagged or released.
+[Session record](docs/ai/2026-10-03-hyprland-command-ownership.md).
+
 ## 2026-10-03 compositor facade reads
 
 Cursor `3.23.12` (`composer`) pointed fred.monitor 2.0.0 QML at the Tamlinux

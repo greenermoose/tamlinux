@@ -8,6 +8,8 @@ import unittest
 
 
 PLUGIN = pathlib.Path(__file__).resolve().parents[1]
+HOST = pathlib.Path(__file__).resolve().parents[2] / "tamlinux" / "desktop" / "shell" / "host"
+os.environ["TAMLINUX_COMPOSITOR_COMMANDS"] = str(HOST)
 LOADER = importlib.machinery.SourceFileLoader("fred_monitor_layout", str(PLUGIN / "fred-monitor-layout"))
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
 LAYOUT = importlib.util.module_from_spec(SPEC)
@@ -70,9 +72,11 @@ class LayoutTests(unittest.TestCase):
             previous_state = os.environ.get("XDG_STATE_HOME")
             os.environ["XDG_CONFIG_HOME"] = temp
             os.environ["XDG_STATE_HOME"] = str(config / "state")
+            os.environ["TAMLINUX_COMPOSITOR_LIVE_ACTIONS"] = "1"
             try:
                 LAYOUT.persist_layout(LAYOUT.validate_layout(SAMPLE))
             finally:
+                os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
                 if previous is None:
                     os.environ.pop("XDG_CONFIG_HOME", None)
                 else:
@@ -88,6 +92,27 @@ class LayoutTests(unittest.TestCase):
             backups = list((config / "state" / "fred.monitor" / "backups").glob("*.lua"))
             self.assertEqual(len(backups), 1)
             self.assertEqual(stat.S_IMODE(backups[0].stat().st_mode), 0o600)
+
+    def test_persist_layout_records_without_the_live_flag(self):
+        with tempfile.TemporaryDirectory() as temp:
+            config = pathlib.Path(temp)
+            hypr = config / "hypr"
+            hypr.mkdir()
+            target = hypr / "monitors.lua"
+            original = "before\n" + LAYOUT.START_MARKER + "\nold\n" + LAYOUT.END_MARKER + "\nafter\n"
+            target.write_text(original)
+            previous = os.environ.get("XDG_CONFIG_HOME")
+            os.environ["XDG_CONFIG_HOME"] = temp
+            os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+            try:
+                with self.assertRaises(LAYOUT.LayoutError):
+                    LAYOUT.persist_layout(LAYOUT.validate_layout(SAMPLE))
+            finally:
+                if previous is None:
+                    os.environ.pop("XDG_CONFIG_HOME", None)
+                else:
+                    os.environ["XDG_CONFIG_HOME"] = previous
+            self.assertEqual(target.read_text(), original)
 
     def test_named_and_automatic_profiles_round_trip_privately(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -2,6 +2,7 @@
 """Guarded display-layout preview, rollback, and persistence for fred.monitor."""
 
 import fcntl
+import importlib.util
 import json
 import os
 import re
@@ -29,6 +30,62 @@ PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$")
 
 class LayoutError(Exception):
     pass
+
+
+_BACKEND = None
+
+
+def live_actions():
+    return os.environ.get("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") == "1"
+
+
+def load_backend():
+    global _BACKEND
+    if _BACKEND is not None:
+        return _BACKEND
+    root = os.environ.get("TAMLINUX_COMPOSITOR_COMMANDS", "")
+    if not root or not os.path.isabs(root):
+        raise LayoutError("compositor commands unavailable")
+    backend_path = os.path.join(root, "hyprland_backend.py")
+    commands_path = os.path.join(root, "compositor_commands.py")
+    for path in (backend_path, commands_path):
+        if os.path.islink(path) or not os.path.isfile(path):
+            raise LayoutError("compositor commands unavailable")
+    commands_spec = importlib.util.spec_from_file_location("compositor_commands", commands_path)
+    backend_spec = importlib.util.spec_from_file_location("tamlinux_hyprland_backend", backend_path)
+    if (
+        commands_spec is None
+        or commands_spec.loader is None
+        or backend_spec is None
+        or backend_spec.loader is None
+    ):
+        raise LayoutError("compositor commands unavailable")
+    commands_module = importlib.util.module_from_spec(commands_spec)
+    sys.modules["compositor_commands"] = commands_module
+    commands_spec.loader.exec_module(commands_module)
+    module = importlib.util.module_from_spec(backend_spec)
+    sys.modules["tamlinux_hyprland_backend"] = module
+    backend_spec.loader.exec_module(module)
+    _BACKEND = module
+    return module
+
+
+def run_named(operation, payload=None):
+    try:
+        return load_backend().run(operation, payload)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        raise LayoutError("compositor command failed") from error
+
+
+def command_text(operation, payload=None):
+    result = run_named(operation, payload)
+    stdout = result.stdout or ""
+    stderr = result.stderr or ""
+    if len(stdout) > MAX_OUTPUT or len(stderr) > MAX_OUTPUT:
+        raise LayoutError("command output too large")
+    if result.returncode != 0:
+        raise LayoutError(stderr.strip() or "compositor command failed")
+    return stdout
 
 
 def emit(ok, **fields):
@@ -90,16 +147,26 @@ def number_text(value, precision=3):
     return text or "0"
 
 
-def lua_rule(display):
-    name = display["name"]
+def rule_fields(display):
     if not display["enabled"]:
-        return f'hl.monitor({{ output = "{name}", disabled = true }})'
+        return [display["name"], "disabled"]
     mode = f'{display["width"]}x{display["height"]}@{number_text(display["refreshRate"])}'
     position = f'{display["x"]}x{display["y"]}'
-    return (
-        f'hl.monitor({{ output = "{name}", mode = "{mode}", '
-        f'position = "{position}", scale = {number_text(display["scale"])}, '
-        f'transform = {display["transform"]}, disabled = false }})'
+    return [display["name"], mode, position, display["scale"], display["transform"]]
+
+
+def lua_rule(display):
+    commands = load_backend().commands
+    fields = rule_fields(display)
+    if fields[1] == "disabled":
+        return commands.monitor_rule_text(fields[0], disabled=True)
+    return commands.monitor_rule_text(
+        fields[0],
+        disabled=False,
+        mode=fields[1],
+        position=fields[2],
+        scale=fields[3],
+        transform=fields[4],
     )
 
 
@@ -133,24 +200,11 @@ def layouts_match(expected, actual):
     return True
 
 
-def command(argv, timeout=5):
-    result = subprocess.run(
-        argv,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=timeout,
-    )
-    if len(result.stdout) > MAX_OUTPUT or len(result.stderr) > MAX_OUTPUT:
-        raise LayoutError("command output too large")
-    return result.stdout.decode("utf-8", errors="strict")
-
-
 def capture_layout():
     try:
-        monitors = json.loads(command(["/usr/bin/hyprctl", "monitors", "all", "-j"], 4))
-    except (subprocess.SubprocessError, OSError, ValueError, json.JSONDecodeError) as error:
-        raise LayoutError(f"could not read current layout: {error}")
+        monitors = json.loads(command_text("monitors-all"))
+    except (LayoutError, ValueError, json.JSONDecodeError) as error:
+        raise LayoutError(f"could not read current layout: {error}") from error
     layout = []
     for monitor in monitors:
         scale = float(monitor.get("scale", 1)) or 1
@@ -171,12 +225,14 @@ def capture_layout():
 def apply_layout(layout):
     # Establish every enabled output before disabling any old output, so the
     # compositor always retains a visible confirmation surface.
+    if not live_actions():
+        return
     ordered = [item for item in layout if item["enabled"]] + [item for item in layout if not item["enabled"]]
     for display in ordered:
         try:
-            command(["/usr/bin/hyprctl", "eval", lua_rule(display)], 5)
-        except (subprocess.SubprocessError, OSError, UnicodeError) as error:
-            raise LayoutError(f'could not apply {display["name"]}: {error}')
+            command_text("monitor-rule", rule_fields(display))
+        except LayoutError as error:
+            raise LayoutError(f'could not apply {display["name"]}: {error}') from error
 
 
 def runtime_directory():
@@ -254,6 +310,8 @@ def clear_state(dir_fd):
 
 
 def persist_layout(layout):
+    if not live_actions():
+        raise LayoutError("layout write recorded")
     config_home = os.environ.get("XDG_CONFIG_HOME", "")
     if not config_home:
         home = os.environ.get("HOME", "")
@@ -506,8 +564,8 @@ def atomic_restore(target, data, mode):
 
 
 def reload_and_verify(layout):
-    command(["/usr/bin/hyprctl", "reload"], 8)
-    errors = command(["/usr/bin/hyprctl", "configerrors"], 5).strip()
+    command_text("reload")
+    errors = command_text("config-errors").strip()
     if errors and "no errors" not in errors.lower():
         raise LayoutError(f"Hyprland rejected the saved config: {errors[:500]}")
     time.sleep(0.25)
@@ -528,7 +586,15 @@ def read_stdin_layout():
 
 
 def spawn_guard(token):
-    allowed = ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "XDG_CONFIG_HOME"]
+    allowed = [
+        "HOME",
+        "XDG_RUNTIME_DIR",
+        "WAYLAND_DISPLAY",
+        "HYPRLAND_INSTANCE_SIGNATURE",
+        "XDG_CONFIG_HOME",
+        "TAMLINUX_COMPOSITOR_COMMANDS",
+        "TAMLINUX_COMPOSITOR_LIVE_ACTIONS",
+    ]
     env = {key: os.environ[key] for key in allowed if os.environ.get(key)}
     env["PATH"] = "/usr/share/omarchy/bin:/usr/bin"
     subprocess.Popen(
@@ -595,7 +661,7 @@ def keep(token):
         except (LayoutError, subprocess.SubprocessError, OSError) as error:
             atomic_restore(target, previous_bytes, previous_mode)
             try:
-                command(["/usr/bin/hyprctl", "reload"], 8)
+                command_text("reload")
                 apply_layout(validate_layout(state.get("before")))
             except Exception:
                 pass

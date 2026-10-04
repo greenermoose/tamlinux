@@ -16,7 +16,7 @@ Panel {
   manageIpc: false
 
   readonly property string pluginVersion: "2.0.0"
-  readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"]
+  readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "TAMLINUX_COMPOSITOR_COMMANDS", "TAMLINUX_COMPOSITOR_LIVE_ACTIONS"]
 
   property int brightnessPercent: 0
   property int pendingBrightnessPercent: 0

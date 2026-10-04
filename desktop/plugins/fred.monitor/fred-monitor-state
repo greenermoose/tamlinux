@@ -5,6 +5,7 @@ Part of fred.monitor (GPL-3.0-or-later).
 Emits a single JSON document: { focusedMonitor: string, displays: [...] }
 """
 
+import importlib.util
 import json
 import fcntl
 import os
@@ -12,6 +13,7 @@ import re
 import secrets
 import stat
 import subprocess
+import sys
 import time
 from hashlib import sha256
 
@@ -21,6 +23,48 @@ BRIGHTNESS_LOCK_FILE = "brightness-scan.lock"
 BRIGHTNESS_SUCCESS_TTL = 60
 BRIGHTNESS_UNAVAILABLE_TTL = 60
 BRIGHTNESS_LOCK_WAIT = 4.0
+
+
+_BACKEND = None
+
+
+def load_backend():
+    global _BACKEND
+    if _BACKEND is not None:
+        return _BACKEND
+    root = os.environ.get("TAMLINUX_COMPOSITOR_COMMANDS", "")
+    if not root or not os.path.isabs(root):
+        raise ValueError("compositor commands unavailable")
+    backend_path = os.path.join(root, "hyprland_backend.py")
+    commands_path = os.path.join(root, "compositor_commands.py")
+    for path in (backend_path, commands_path):
+        if os.path.islink(path) or not os.path.isfile(path):
+            raise ValueError("compositor commands unavailable")
+    commands_spec = importlib.util.spec_from_file_location("compositor_commands", commands_path)
+    backend_spec = importlib.util.spec_from_file_location("tamlinux_hyprland_backend", backend_path)
+    if (
+        commands_spec is None
+        or commands_spec.loader is None
+        or backend_spec is None
+        or backend_spec.loader is None
+    ):
+        raise ValueError("compositor commands unavailable")
+    commands_module = importlib.util.module_from_spec(commands_spec)
+    sys.modules["compositor_commands"] = commands_module
+    commands_spec.loader.exec_module(commands_module)
+    module = importlib.util.module_from_spec(backend_spec)
+    sys.modules["tamlinux_hyprland_backend"] = module
+    backend_spec.loader.exec_module(module)
+    _BACKEND = module
+    return module
+
+
+def read_monitors():
+    result = load_backend().run("monitors-all", None)
+    text = result.stdout or ""
+    if result.returncode != 0 or len(text) > MAX_COMMAND_OUTPUT:
+        raise ValueError("monitor read failed")
+    return text.strip()
 
 
 def command_output(argv, timeout):
@@ -249,7 +293,7 @@ def main(fast=False):
         brightness_lock_fd = acquire_brightness_lock(runtime_fd)
     allow_probe = runtime_fd is None or brightness_lock_fd is not None
     try:
-        raw = command_output(["/usr/bin/hyprctl", "monitors", "all", "-j"], 3.0)
+        raw = read_monitors()
         monitors = json.loads(raw)
     except Exception:
         monitors = []
