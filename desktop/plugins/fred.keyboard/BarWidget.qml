@@ -203,35 +203,21 @@ Panel {
     onTriggered: root.refreshLeds()
   }
 
+  // Binds and the keymap come from the shell compositor. The adapter keeps
+  // the text form of the bind list, which Bindings.parseBinds already accepts.
+  function applyCompositorReads() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    if (!comp) return
+    root.keymap = String(comp.activeKeymap || "")
+    root.binds = Bindings.parseBinds(String(comp.bindingsText || ""))
+  }
+
+  Connections {
+    target: root.bar && root.bar.compositor ? root.bar.compositor : null
+    function onRevisionChanged() { root.applyCompositorReads() }
+  }
+
   // --- Processes ---------------------------------------------------------
-
-  Launch {
-    id: hyprctlProc
-    exe: "/usr/bin/hyprctl"
-    args: ["-j", "devices"]
-    envKeys: root.keyboardEnv
-    deadlineMs: 4000
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.keymap = Device.activeKeymap(String(text || ""))
-    }
-  }
-
-  // Plain `ls` with arguments, never a shell: a login shell would source the
-  // user's profile and defeat the closed environment above.
-  // The text form, not -j: on Hyprland 0.56.2 the JSON drops the key of every
-  // `code:N` bind. Bindings.parseBinds bounds and validates the input.
-  Launch {
-    id: bindsProc
-    exe: "/usr/bin/hyprctl"
-    args: ["binds"]
-    envKeys: root.keyboardEnv
-    deadlineMs: 4000
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.binds = Bindings.parseBinds(String(text || ""))
-    }
-  }
 
   // The one URL this plugin ever opens, via xdg-open in a closed
   // environment, never Qt.openUrlExternally.
@@ -266,7 +252,7 @@ Panel {
   }
 
   Component.onCompleted: {
-    hyprctlProc.launch()
+    root.applyCompositorReads()
     geometryProc.launch()
   }
 
@@ -553,8 +539,7 @@ Panel {
   onOpenedChanged: {
     if (opened) {
       procDevices.reload()
-      hyprctlProc.launch()
-      bindsProc.launch()   // binds change with the config; re-read per open
+      root.applyCompositorReads()
     } else {
       // Closing must never leave the inhibitor wanted: the next open would
       // otherwise silently pause the system's shortcuts again.
