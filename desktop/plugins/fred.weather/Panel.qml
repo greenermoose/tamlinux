@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import Tam.Commons
 import Tam.Ui
 import "Model.js" as Model
@@ -36,6 +35,16 @@ Panel {
     if (screenName) WeatherStore.register(screenName, root)
   }
 
+  function focusedOutputName() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp ? String(comp.focusedOutputName || "") : ""
+  }
+
+  function compositorOutputs() {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    return comp && comp.outputs ? comp.outputs : []
+  }
+
   function showHover() {
     if (hostWidget && "hoverOpen" in hostWidget) hostWidget.hoverOpen = true
   }
@@ -48,43 +57,34 @@ Panel {
     target: "fred.weather"
 
     function open(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.open("", cur, Hyprland.monitors)
+      WeatherStore.open("", root.focusedOutputName(), root.compositorOutputs())
     }
     function close(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.close("", cur, Hyprland.monitors)
+      WeatherStore.close("", root.focusedOutputName(), root.compositorOutputs())
     }
     function show(): void { open() }
     function hide(): void { close() }
     function toggle(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.toggle("", cur, Hyprland.monitors)
+      WeatherStore.toggle("", root.focusedOutputName(), root.compositorOutputs())
     }
     function openMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.open(monitor, cur, Hyprland.monitors)
+      WeatherStore.open(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function closeMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.close(monitor, cur, Hyprland.monitors)
+      WeatherStore.close(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function toggleMonitor(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.toggle(monitor, cur, Hyprland.monitors)
+      WeatherStore.toggle(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function showHover(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.showHover(monitor, cur, Hyprland.monitors)
+      WeatherStore.showHover(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function hideHover(monitor: string): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      WeatherStore.hideHover(monitor, cur, Hyprland.monitors)
+      WeatherStore.hideHover(monitor, root.focusedOutputName(), root.compositorOutputs())
     }
     function refresh(): void { WeatherStore.refreshAll(root) }
     function edit(): void {
-      var cur = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
-      var p = WeatherStore.resolveTargetPanel("", cur, Hyprland.monitors)
+      var p = WeatherStore.resolveTargetPanel("", root.focusedOutputName(), root.compositorOutputs())
       if (p) {
         p.open()
         p.startEditingLocation()

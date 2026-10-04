@@ -70,3 +70,9 @@ Cursor `3.23.12` (`composer`) rewrote `fred.weather` to 2.0.0 on
 `develop/2.0.0`. A right-click notifies a plain status string. Not tagged
 or released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.weather 2.0.0 QML at the Tamlinux
+compositor facade. Panel targeting uses `bar.compositor.focusedOutputName` and `outputs`. The store still matches a monitor by name or description. `WeatherPanelWindow` takes keyboard focus only on the focused output. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).

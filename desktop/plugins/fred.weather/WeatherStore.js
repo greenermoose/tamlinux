@@ -46,7 +46,7 @@ function resolveTargetPanel(monitorName, fallbackScreenName, hyprlandMonitors) {
       }
     }
 
-    // 3. Match by screen list or Hyprland monitor description/model (e.g. "hp", "dell", "msi")
+    // 3. Match by compositor output name or description (e.g. "hp", "dell", "msi")
     if (hyprlandMonitors) {
       var list = Array.isArray(hyprlandMonitors) ? hyprlandMonitors : (hyprlandMonitors.values || [])
       var count = list.length || (typeof hyprlandMonitors.count === "number" ? hyprlandMonitors.count : 0)
