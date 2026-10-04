@@ -1,6 +1,6 @@
 # fred.tides (`tides-fred-tamlinux`)
 
-A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve panel for [Tamlinux](https://github.com/greenermoose/tamlinux), designed to sit directly adjacent to `fred.weather` on the bar. Displays current sea level height, rising/falling status, today's tidal range, upcoming highs and lows, and a scrubbable Catmull-Rom tidal curve.
+A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve panel for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment), designed to sit directly adjacent to `fred.weather` on the bar. Displays current sea level height, rising/falling status, today's tidal range, upcoming highs and lows, and a scrubbable Catmull-Rom tidal curve.
 
 ![fred.tides — 24-Hour Scrubbable Curve, Range Bar & Daily Tides](assets/screenshot.png)
 
