@@ -4,9 +4,10 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
 import "SysinfoStore.js" as SysinfoStore
+import "."
 
 Panel {
   id: root
@@ -14,7 +15,7 @@ Panel {
   ipcTarget: "fred.sysinfo"
   manageIpc: false
 
-  readonly property string pluginVersion: "1.1.2"
+  readonly property string pluginVersion: "2.0.0"
 
   property var stats: ({})
   property int phraseIndex: 0
@@ -87,11 +88,7 @@ Panel {
   }
 
   function launchSystemMonitor() {
-    if (root.bar && typeof root.bar.run === "function") {
-      root.bar.run("omarchy-launch-terminal btop")
-    } else {
-      Util.execDetached("omarchy-launch-terminal btop")
-    }
+    if (root.bar && root.bar.openTerminal) root.bar.openTerminal("btop")
   }
 
   onOpenedChanged: {
