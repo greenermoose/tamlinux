@@ -42,6 +42,10 @@ QtObject {
     if (backend) backend.setDpms(name, on)
   }
 
+  function focusApp(name) {
+    if (backend) backend.focusApp(name)
+  }
+
   function applySnapshot(snapshot) {
     outputs = snapshot.outputs
     focusedOutputName = snapshot.focusedOutputName

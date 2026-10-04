@@ -7,6 +7,8 @@ import re
 
 HYPRCTL = "/usr/bin/hyprctl"
 NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+APP_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$")
+ADDRESS_RE = re.compile(r"^(?:0x)?([0-9a-fA-F]{1,16})$")
 WORKSPACE_MIN = 1
 WORKSPACE_MAX = 10
 DISPATCH_WORKSPACE_MAX = 160
@@ -119,6 +121,23 @@ def focus_workspace_fallback_argv(workspace_id: object) -> list[str]:
 def focus_output_argv(name: str) -> list[str]:
     output = require_output(name)
     return [HYPRCTL, "dispatch", f'hl.dsp.focus({{ monitor = "{output}" }})']
+
+
+def require_app_name(name: object) -> str:
+    if not isinstance(name, str) or not APP_NAME_RE.fullmatch(name):
+        raise CompositorCommandError("app")
+    return name
+
+
+def require_address(address: object) -> str:
+    match = ADDRESS_RE.fullmatch(address) if isinstance(address, str) else None
+    if not match:
+        raise CompositorCommandError("address")
+    return "0x" + match.group(1).lower()
+
+
+def focus_window_argv(address: object) -> list[str]:
+    return [HYPRCTL, "dispatch", f'hl.dsp.focus({{ window = "address:{require_address(address)}" }})']
 
 
 def focus_output_fallback_argv(name: str) -> list[str]:

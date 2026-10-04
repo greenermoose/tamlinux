@@ -48,6 +48,24 @@ class CommandTests(unittest.TestCase):
             ["/usr/bin/hyprctl", "dispatch", "dpms", "off", "DP-1"],
         )
 
+    def test_focus_window_by_address(self):
+        for address in ("55d1c2a0", "0x55D1C2A0"):
+            with self.subTest(address=address):
+                self.assertEqual(
+                    commands.focus_window_argv(address),
+                    ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ window = "address:0x55d1c2a0" })'],
+                )
+        for address in ("", "0x", "zz", "0x" + "f" * 17, "1;rm", 12, None):
+            with self.subTest(address=address):
+                with self.assertRaises(commands.CompositorCommandError):
+                    commands.focus_window_argv(address)
+        for name in ("Slack", "Google Chrome", "org.gnome.Nautilus", "c++-app"):
+            self.assertEqual(commands.require_app_name(name), name)
+        for name in ("", " lead", '"x"', "a(b)", "a" * 65, "x\n", None):
+            with self.subTest(name=name):
+                with self.assertRaises(commands.CompositorCommandError):
+                    commands.require_app_name(name)
+
     def test_rejects_bad_names_and_workspaces(self):
         for name in ("", "DP-1;rm", "../x", "DP 1", "a" * 65, "DP-1\n"):
             with self.subTest(name=name):
@@ -229,6 +247,9 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn('hl.dsp.focus({ workspace = "', qml)
         self.assertIn('hl.dsp.focus({ monitor = "', qml)
         self.assertIn('hl.dsp.dpms({ action = "', qml)
+        self.assertIn('hl.dsp.focus({ window = "address:', qml)
+        self.assertIn(r"/^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$/", qml)
+        self.assertIn(commands.APP_NAME_RE.pattern.strip("^$"), qml)
         self.assertIn('"on"', qml)
         self.assertIn('"off"', qml)
         self.assertNotIn("hl.dispatch", qml)

@@ -24,6 +24,13 @@ QtObject {
     property color border: "#3c4a54"
   }
 
+  readonly property QtObject notifications: QtObject {
+    property color background: root.popups.background
+    property color text: root.foreground
+    property color border: root.accent
+    property color countdown: root.accent
+  }
+
   readonly property QtObject tooltip: QtObject {
     property color background: "#101417"
     property color text: root.foreground

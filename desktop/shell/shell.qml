@@ -15,6 +15,9 @@ ShellRoot {
   property alias compositor: compositorFacade
   property string pluginIds: Quickshell.env("TAMLINUX_PLUGIN_IDS") || "fred.clock"
   property bool outputDropped: false
+  // TAMLINUX_BAR=0 runs only the services, beside another shell's bar.
+  readonly property bool barEnabled: Quickshell.env("TAMLINUX_BAR") !== "0"
+  readonly property string barPosition: barEnabled ? "bottom" : "top"
   property string outputName: Quickshell.env("TAMLINUX_OUTPUT") || ""
   property string droppedHosts: ""
   property var settingsDoc: ({ "version": 1, "entries": {} })
@@ -387,6 +390,10 @@ ShellRoot {
     id: compositorFacade
   }
 
+  Services {
+    shell: proof
+  }
+
   Component.onCompleted: {
     evidence("shell-id tamlinux-clock-proof")
     evidence("ipc-owner tamlinux-shell")
@@ -411,10 +418,11 @@ ShellRoot {
     evidence("extra-entries " + extraEntries.length)
     evidence("host-copies " + hostCopies)
     evidence("screens " + (Quickshell.screens ? Quickshell.screens.length : 0))
+    evidence("bar " + (barEnabled ? "on" : "off"))
   }
 
   Variants {
-    model: proof.settingsReady ? proof.hostKeys : []
+    model: proof.settingsReady && proof.barEnabled ? proof.hostKeys : []
     delegate: BarWindow {
       id: barWindow
       required property var modelData
@@ -427,7 +435,7 @@ ShellRoot {
 
   Timer {
     interval: 1500
-    running: proof.settingsReady
+    running: proof.settingsReady && proof.barEnabled
     repeat: false
     onTriggered: {
       if (!proof.hostKeys || proof.hostKeys.length === 0)

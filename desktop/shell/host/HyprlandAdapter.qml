@@ -45,6 +45,16 @@ QtObject {
     return /^[A-Za-z0-9._-]{1,64}$/.test(String(name || ""))
   }
 
+  function validAppName(name) {
+    return /^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$/.test(String(name || ""))
+  }
+
+  function windowAddress(value) {
+    var hex = String(value || "").replace(/^0x/, "")
+    if (!/^[0-9a-fA-F]{1,16}$/.test(hex)) return ""
+    return "0x" + hex.toLowerCase()
+  }
+
   function validWorkspace(id) {
     return /^(?:[1-9]|10)$/.test(String(id || ""))
   }
@@ -108,6 +118,62 @@ QtObject {
       "dispatch",
       'hl.dsp.dpms({ action = "' + word + '", monitor = "' + output + '" })'
     ], "dispatch")
+  }
+
+  property string pendingApp: ""
+
+  // Focus the first window whose class contains name (case-insensitive).
+  // Agent terminals share one class and keep the program in initialTitle.
+  function focusApp(name) {
+    var app = String(name || "")
+    if (!validAppName(app)) {
+      note("compositor-action rejected focus-app")
+      return
+    }
+    if (!liveActions) {
+      note("compositor-action recorded focus-app " + app)
+      return
+    }
+    pendingApp = app
+    Hyprland.refreshToplevels()
+    focusAppTimer.restart()
+  }
+
+  function addressForApp(app) {
+    var needle = app.toLowerCase()
+    var toplevels = Hyprland.toplevels && Hyprland.toplevels.values ? Hyprland.toplevels.values : []
+    var agent = ""
+    for (var i = 0; i < toplevels.length; i++) {
+      var toplevel = toplevels[i]
+      if (!toplevel) continue
+      var ipc = toplevel.lastIpcObject || {}
+      var cls = ""
+      if (toplevel.wayland && toplevel.wayland.appId) cls = String(toplevel.wayland.appId)
+      else if (ipc["class"]) cls = String(ipc["class"])
+      if (cls.toLowerCase().indexOf(needle) !== -1) return windowAddress(toplevel.address)
+      if (agent === "" && String(ipc.initialClass || "") === "org.omarchy.agent"
+          && String(ipc.initialTitle || "").toLowerCase().indexOf(needle) !== -1)
+        agent = windowAddress(toplevel.address)
+    }
+    return agent
+  }
+
+  function finishFocusApp() {
+    var app = pendingApp
+    pendingApp = ""
+    if (app === "") return
+    var address = addressForApp(app)
+    if (address === "") {
+      note("compositor-action focus-app no-window " + app)
+      return
+    }
+    note("compositor-action live focus-app " + app)
+    enqueue(["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ window = "address:' + address + '" })'], "dispatch")
+  }
+
+  readonly property Timer focusAppTimer: Timer {
+    interval: 150
+    onTriggered: adapter.finishFocusApp()
   }
 
   function enqueue(argv, label) {

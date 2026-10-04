@@ -59,6 +59,16 @@ QtObject {
     return "focus output " + output
   }
 
+  function validAppName(name) {
+    return /^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$/.test(String(name || ""))
+  }
+
+  // Case-insensitive app_id search. "." and "+" become classes so the
+  // criteria string never carries a backslash.
+  function focusAppRequest(app) {
+    return '[app_id="(?i)' + app.replace(/[.+]/g, function(c) { return "[" + c + "]" }) + '"] focus'
+  }
+
   function setDpmsArgv(output, word) {
     return ["/usr/bin/swaymsg", "output", output, "power", word]
   }
@@ -123,6 +133,20 @@ QtObject {
     }
     note("compositor-action live set-dpms " + output + " " + word)
     I3.dispatch(setDpmsRequest(output, word))
+  }
+
+  function focusApp(name) {
+    var app = String(name || "")
+    if (!validAppName(app)) {
+      note("compositor-action rejected focus-app")
+      return
+    }
+    if (!liveActions) {
+      note("compositor-action recorded focus-app " + app)
+      return
+    }
+    note("compositor-action live focus-app " + app)
+    I3.dispatch(focusAppRequest(app))
   }
 
   function activateWindowset(number) {

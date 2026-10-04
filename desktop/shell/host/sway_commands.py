@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from compositor_commands import CompositorCommandError, require_output, require_workspace
+from compositor_commands import CompositorCommandError, require_app_name, require_output, require_workspace
 
 SWAYMSG = "/usr/bin/swaymsg"
 
@@ -35,6 +35,12 @@ def focus_output_request(name: str) -> str:
 def focus_output_argv(name: str) -> list[str]:
     output = require_output(name)
     return [SWAYMSG, "focus", "output", output]
+
+
+def focus_app_request(name: object) -> str:
+    app = require_app_name(name)
+    pattern = "".join(f"[{c}]" if c in ".+" else c for c in app)
+    return f'[app_id="(?i){pattern}"] focus'
 
 
 def _power_word(on: object) -> str:

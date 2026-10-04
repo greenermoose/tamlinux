@@ -31,6 +31,13 @@ class CommandTests(unittest.TestCase):
             ["/usr/bin/swaymsg", "output", "HDMI-A-1", "power", "off"],
         )
         self.assertEqual(commands.set_dpms_request("HDMI-A-1", "on"), "output HDMI-A-1 power on")
+        self.assertEqual(commands.focus_app_request("Slack"), '[app_id="(?i)Slack"] focus')
+        self.assertEqual(
+            commands.focus_app_request("org.c++ app"),
+            '[app_id="(?i)org[.]c[+][+] app"] focus',
+        )
+        with self.assertRaises(hyprland.CompositorCommandError):
+            commands.focus_app_request('x"] exec rm')
 
     def test_rejects_bad_names_and_workspaces(self):
         for name in ("", "DP-1;rm", "../x", "DP 1", "a" * 65):
@@ -135,6 +142,8 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn("I3.dispatch(focusWorkspaceRequest(number))", qml)
         self.assertIn("I3.dispatch(focusOutputRequest(output))", qml)
         self.assertIn("I3.dispatch(setDpmsRequest(output, word))", qml)
+        self.assertIn("I3.dispatch(focusAppRequest(app))", qml)
+        self.assertIn("""'[app_id="(?i)'""", qml)
         self.assertIn("WindowManager.windowsets", qml)
         self.assertIn("workspacesFromI3", qml)
         self.assertLess(qml.index("workspacesFromWindowsets"), qml.index("workspacesFromI3"))

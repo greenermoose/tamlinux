@@ -104,6 +104,27 @@ under the isolated home. Event add/delete stays in the QML tree but the
 offline profile hides those controls and refuses both the UI path and the
 `createEvent` / `deleteEvent` IPC.
 
+## Session services
+
+`shell/host/Services.qml` loads the session services named in
+`TAMLINUX_SERVICES` (comma-separated; unknown names are ignored). Each is
+imported statically, because Quickshell only scans files it reaches by import.
+`TAMLINUX_BAR=0` runs the services without a bar, beside another shell's bar;
+the host then reports its bar position as `top` so popups clear that bar.
+
+| Service | Source | Behavior |
+| --- | --- | --- |
+| `notifications` | `shell/services/notifications/`, vendored with its MIT notice (`shell/services/LICENSE-omarchy`) | Owns `org.freedesktop.Notifications`. Popups top-right on every output, do-not-disturb with bypass rules, ten-entry history and replay, popups that survive a restart, argv and `default` actions. Clicking a card without an action calls the facade's `focusApp(name)`. State is under `~/.local/state/tamlinux/notifications/`. IPC target `notifications`: `ping`, `dndState`, `toggleDnd`, `setDnd`, `isDnd`, `showHistory`, `clear`, `dismissAll`, `dismissOne`, `invokeLast`, `dismiss`. |
+
+`focusApp(name)` takes `^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$`. On Hyprland it
+matches the window class case-insensitively and dispatches a focus by window
+address; on Sway it dispatches `[app_id="(?i)…"] focus` with `.` and `+` as
+character classes. Like the other mutations it is recorded unless
+`TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`.
+
+If another notification server already owns the name, Quickshell logs that
+and claims the name when the other server releases it.
+
 ## Layout
 
 ```text
