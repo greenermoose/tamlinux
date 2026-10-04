@@ -86,6 +86,11 @@ Cursor `3.23.12` (`composer`) rewrote `fred.workspaces` to 2.0.0 on
 stay. Not tagged or released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
 
+## 2026-10-03 named compositor backend
+
+Cursor `3.23.12` (`composer`) pointed `tam-desktop-mode` on `develop/2.0.0` at the Tamlinux compositor backend. The helper no longer builds Hyprland command text. Not tagged or released.
+[Session record](docs/ai/2026-10-03-hyprland-command-ownership.md).
+
 ## 2026-10-03 compositor facade reads
 
 Cursor `3.23.12` (`composer`) pointed fred.workspaces 2.0.0 QML at the Tamlinux

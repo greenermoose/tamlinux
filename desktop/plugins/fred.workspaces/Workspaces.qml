@@ -70,6 +70,10 @@ BarWidget {
     if (xdgRuntime) env["XDG_RUNTIME_DIR"] = xdgRuntime
     var sig = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")
     if (sig) env["HYPRLAND_INSTANCE_SIGNATURE"] = sig
+    var commands = Quickshell.env("TAMLINUX_COMPOSITOR_COMMANDS")
+    if (commands) env["TAMLINUX_COMPOSITOR_COMMANDS"] = commands
+    var live = Quickshell.env("TAMLINUX_COMPOSITOR_LIVE_ACTIONS")
+    if (live) env["TAMLINUX_COMPOSITOR_LIVE_ACTIONS"] = live
     return env
   }
 

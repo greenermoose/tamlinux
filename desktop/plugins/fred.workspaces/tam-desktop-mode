@@ -7,6 +7,7 @@ Supports:
   - Windows mode: synchronized workspace sets anchored to fixed topology slots.
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -27,21 +28,46 @@ MAX_HYPRCTL_OUTPUT = 262144
 DEFAULT_TOPOLOGY_SIZE = 3
 
 
-def get_hyprland_signature() -> str:
-    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
-    if sig and MONITOR_RE.match(sig):
-        return sig
-    uid = os.getuid()
-    hypr_dir = f"/run/user/{uid}/hypr"
-    if os.path.isdir(hypr_dir):
-        try:
-            for entry in os.listdir(hypr_dir):
-                sock = os.path.join(hypr_dir, entry, ".socket.sock")
-                if os.path.exists(sock) and stat.S_ISSOCK(os.stat(sock).st_mode):
-                    return entry
-        except OSError:
-            pass
-    return ""
+_BACKEND = None
+
+
+def load_backend():
+    """Load the shell's named compositor backend. Missing module fails closed."""
+    global _BACKEND
+    if _BACKEND is not None:
+        return _BACKEND
+    root = os.environ.get("TAMLINUX_COMPOSITOR_COMMANDS", "")
+    if not root or not os.path.isabs(root):
+        raise SystemExit("compositor commands unavailable")
+    backend_path = os.path.join(root, "hyprland_backend.py")
+    commands_path = os.path.join(root, "compositor_commands.py")
+    for path in (backend_path, commands_path):
+        if os.path.islink(path) or not os.path.isfile(path):
+            raise SystemExit("compositor commands unavailable")
+    commands_spec = importlib.util.spec_from_file_location("compositor_commands", commands_path)
+    backend_spec = importlib.util.spec_from_file_location("tamlinux_hyprland_backend", backend_path)
+    if (
+        commands_spec is None
+        or commands_spec.loader is None
+        or backend_spec is None
+        or backend_spec.loader is None
+    ):
+        raise SystemExit("compositor commands unavailable")
+    commands_module = importlib.util.module_from_spec(commands_spec)
+    sys.modules["compositor_commands"] = commands_module
+    commands_spec.loader.exec_module(commands_module)
+    module = importlib.util.module_from_spec(backend_spec)
+    sys.modules["tamlinux_hyprland_backend"] = module
+    backend_spec.loader.exec_module(module)
+    _BACKEND = module
+    return module
+
+
+def run_named(operation: str, payload: object = None) -> subprocess.CompletedProcess:
+    try:
+        return load_backend().run(operation, payload)
+    except SystemExit:
+        return subprocess.CompletedProcess([], 1, "", "compositor commands unavailable\n")
 
 
 def get_state_dir_fd(create: bool = True) -> int:
@@ -302,20 +328,6 @@ def load_canonical_topology() -> list[dict]:
     return []
 
 
-def run_hyprctl(cmd_args: list[str], timeout: float = 2.0) -> subprocess.CompletedProcess:
-    env = {
-        "PATH": "/usr/bin:/bin",
-        "HYPRLAND_INSTANCE_SIGNATURE": get_hyprland_signature(),
-    }
-    if "XDG_RUNTIME_DIR" in os.environ:
-        env["XDG_RUNTIME_DIR"] = os.environ["XDG_RUNTIME_DIR"]
-    return subprocess.run(
-        ["/usr/bin/hyprctl"] + cmd_args,
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=timeout,
-    )
 
 
 def ordered_monitors(data: object) -> list[str]:
@@ -372,7 +384,7 @@ def desktop_for_workspace(workspace: int, set_size: int) -> int:
 
 def discover_monitors() -> list[str]:
     try:
-        res = run_hyprctl(["monitors", "-j"])
+        res = run_named("monitors")
         if res.returncode != 0 or not res.stdout or len(res.stdout) > MAX_HYPRCTL_OUTPUT:
             return []
         return ordered_monitors(json.loads(res.stdout))
@@ -477,7 +489,7 @@ def ensure_contiguous_layout(active_monitors: list[str], canonical_info: list[di
     canonical_map = {m["output"]: m for m in canonical_info}
     live_details: dict[str, dict] = {}
     try:
-        res = run_hyprctl(["monitors", "-j"])
+        res = run_named("monitors")
         if res.returncode == 0 and res.stdout:
             data = json.loads(res.stdout)
             if isinstance(data, list):
@@ -503,7 +515,7 @@ def ensure_contiguous_layout(active_monitors: list[str], canonical_info: list[di
                 if cur_x != can_x or cur_y != can_y:
                     mode = c.get("mode", f"{live.get('width', 1920)}x{live.get('height', 1080)}@{round(live.get('refreshRate', 60))}")
                     scale = c.get("scale", live.get("scale", 1.0))
-                    run_hyprctl(["eval", f'hl.monitor({{ output = "{name}", mode = "{mode}", position = "{c_pos}", scale = {scale} }})'])
+                    run_named("monitor-rule", [name, mode, c_pos, scale])
         return
 
     # Intermediate monitors missing: compress gaps
@@ -535,7 +547,7 @@ def ensure_contiguous_layout(active_monitors: list[str], canonical_info: list[di
             if cur_x > current_x:
                 new_pos = f"{current_x}x{cur_y}"
                 mode = c.get("mode") or f"{width}x{height}@{refresh}"
-                run_hyprctl(["eval", f'hl.monitor({{ output = "{name}", mode = "{mode}", position = "{new_pos}", scale = {scale} }})'])
+                run_named("monitor-rule", [name, mode, new_pos, scale])
                 current_x += logical_w
             else:
                 current_x = max(current_x, cur_x + logical_w)
@@ -589,7 +601,7 @@ def set_mode(mode: str, monitors: list[str], topology_size: int = DEFAULT_TOPOLO
     if mode == "windows":
         workspace = 1
         try:
-            res = run_hyprctl(["activeworkspace", "-j"])
+            res = run_named("active-workspace")
             if res.returncode == 0 and res.stdout:
                 data = json.loads(res.stdout)
                 ws = int(data.get("id", 1))
@@ -606,7 +618,7 @@ def monitor_snapshot() -> tuple[dict[str, int], str]:
     active: dict[str, int] = {}
     focused = ""
     try:
-        res = run_hyprctl(["monitors", "-j"])
+        res = run_named("monitors")
         if res.returncode == 0 and res.stdout and len(res.stdout) <= MAX_HYPRCTL_OUTPUT:
             monitors = json.loads(res.stdout)
             if not isinstance(monitors, list):
@@ -649,45 +661,55 @@ def dispatch_ok(result: subprocess.CompletedProcess) -> bool:
     return result.returncode == 0 and "error" not in output.lower()
 
 
-def dispatch_batch(expressions: list[str]) -> bool:
-    if not expressions:
+def _named_ok(operation: str, payload: object = None) -> tuple[bool, bool]:
+    """Return (accepted, succeeded). A rejected command is not a fallback case."""
+    try:
+        result = run_named(operation, payload)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return True, False
+    return True, dispatch_ok(result)
+
+
+def dispatch_batch(steps: list[tuple]) -> bool:
+    if not steps:
         return True
-    command = "; ".join("dispatch " + expression for expression in expressions)
-    return dispatch_ok(run_hyprctl(["--batch", command], timeout=5.0))
+    _accepted, ok = _named_ok("batch", steps)
+    return ok
 
 
 def dispatch_focus_monitor(monitor: str) -> bool:
     if not MONITOR_RE.fullmatch(monitor):
         return False
-    res = run_hyprctl(["dispatch", f'hl.dsp.focus({{ monitor = "{monitor}" }})'])
-    if dispatch_ok(res):
+    _accepted, ok = _named_ok("focus-output", monitor)
+    if ok:
         return True
-    return dispatch_ok(run_hyprctl(["dispatch", "focusmonitor", monitor]))
+    _accepted, ok = _named_ok("focus-output-fallback", monitor)
+    return ok
 
 
 def dispatch_focus_workspace(workspace: int) -> bool:
-    res = run_hyprctl(["dispatch", f'hl.dsp.focus({{ workspace = "{workspace}" }})'])
-    if dispatch_ok(res):
+    _accepted, ok = _named_ok("focus-workspace", workspace)
+    if ok:
         return True
-    return dispatch_ok(run_hyprctl(["dispatch", "workspace", str(workspace)]))
+    _accepted, ok = _named_ok("focus-workspace-fallback", workspace)
+    return ok
 
 
 def dispatch_move_window(workspace: int, follow: bool) -> bool:
-    follow_str = "true" if follow else "false"
-    res = run_hyprctl(["dispatch", f'hl.dsp.window.move({{ workspace = "{workspace}", follow = {follow_str} }})'])
-    if dispatch_ok(res):
+    word = "follow" if follow else "stay"
+    _accepted, ok = _named_ok("move-window", [workspace, word])
+    if ok:
         return True
-    subcmd = "movetoworkspace" if follow else "movetoworkspacesilent"
-    return dispatch_ok(run_hyprctl(["dispatch", subcmd, str(workspace)]))
+    _accepted, ok = _named_ok("move-window-fallback", [workspace, word])
+    return ok
 
 
 def place_workspace(workspace: int, monitor: str) -> bool:
     if not MONITOR_RE.fullmatch(monitor) or not dispatch_focus_workspace(workspace):
         return False
-    res = run_hyprctl(["dispatch", f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})'])
-    moved = dispatch_ok(res)
+    _accepted, moved = _named_ok("move-workspace", monitor)
     if not moved:
-        moved = dispatch_ok(run_hyprctl(["dispatch", "moveworkspacetomonitor", str(workspace), monitor]))
+        _accepted, moved = _named_ok("move-workspace-fallback", [workspace, monitor])
     return moved
 
 
@@ -740,25 +762,17 @@ def switch_windows(
         ws = workspace_for_slot(desktop, slot, topology_size)
         assignments.append((mon, ws))
 
-    expressions: list[str] = []
+    steps: list[tuple] = []
     for monitor, workspace in assignments:
-        expressions.extend(
-            [
-                f'hl.dsp.focus({{ workspace = "{workspace}" }})',
-                f'hl.dsp.workspace.move({{ monitor = "{monitor}" }})',
-            ]
-        )
+        steps.append(("focus-workspace", workspace))
+        steps.append(("move-workspace", monitor))
     for monitor, workspace in assignments:
-        expressions.extend(
-            [
-                f'hl.dsp.focus({{ monitor = "{monitor}" }})',
-                f'hl.dsp.focus({{ workspace = "{workspace}" }})',
-            ]
-        )
+        steps.append(("focus-output", monitor))
+        steps.append(("focus-workspace", workspace))
     if original_monitor in monitors:
-        expressions.append(f'hl.dsp.focus({{ monitor = "{original_monitor}" }})')
+        steps.append(("focus-output", original_monitor))
 
-    switched = dispatch_batch(expressions)
+    switched = dispatch_batch(steps)
     if not switched:
         return False
 
@@ -893,7 +907,7 @@ def all_dpms_off(monitors_json: object) -> bool:
 
 def desktop_is_dark() -> bool:
     try:
-        res = run_hyprctl(["monitors", "-j"])
+        res = run_named("monitors")
         if res.returncode != 0 or not res.stdout or len(res.stdout) > MAX_HYPRCTL_OUTPUT:
             return False
         return all_dpms_off(json.loads(res.stdout))
@@ -904,19 +918,19 @@ def desktop_is_dark() -> bool:
 def dpms_off(monitor: str) -> bool:
     if not MONITOR_RE.fullmatch(monitor):
         return False
-    res = run_hyprctl(["dispatch", f'hl.dsp.dpms({{ action = "off", monitor = "{monitor}" }})'])
-    if dispatch_ok(res):
+    _accepted, ok = _named_ok("dpms", [monitor, "off"])
+    if ok:
         return True
-    return dispatch_ok(run_hyprctl(["dispatch", "dpms", "off", monitor]))
+    _accepted, ok = _named_ok("dpms-fallback", [monitor, "off"])
+    return ok
 
 
 def dpms_on(monitor: str) -> bool:
     if not MONITOR_RE.fullmatch(monitor):
         return False
-    res = run_hyprctl(["dispatch", f'hl.dsp.dpms({{ action = "on", monitor = "{monitor}" }})'])
-    ok = dispatch_ok(res)
+    _accepted, ok = _named_ok("dpms", [monitor, "on"])
     if not ok:
-        ok = dispatch_ok(run_hyprctl(["dispatch", "dpms", "on", monitor]))
+        _accepted, ok = _named_ok("dpms-fallback", [monitor, "on"])
     if ok and monitor == "DP-2":
         workaround = os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround")
         if os.path.isfile(workaround) and os.access(workaround, os.X_OK):

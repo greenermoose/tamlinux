@@ -11,6 +11,9 @@ from unittest.mock import call, patch
 
 
 HELPER = Path(__file__).resolve().parents[1] / "tam-desktop-mode"
+HOST = Path(__file__).resolve().parents[2] / "tamlinux" / "desktop" / "shell" / "host"
+os.environ["TAMLINUX_COMPOSITOR_COMMANDS"] = str(HOST)
+os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
 LOADER = SourceFileLoader("omarchy_desktop_mode", str(HELPER))
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
 desktop_mode = importlib.util.module_from_spec(SPEC)
@@ -86,7 +89,7 @@ class MonitorDiscoveryTests(unittest.TestCase):
             completed(stdout="not-json"),
         )
         for result in results:
-            with self.subTest(result=result), patch.object(desktop_mode, "run_hyprctl", return_value=result):
+            with self.subTest(result=result), patch.object(desktop_mode, "run_named", return_value=result):
                 self.assertEqual(desktop_mode.discover_monitors(), [])
 
     def test_resolve_writes_versioned_monitor_set_and_outer_endpoints(self):
@@ -179,21 +182,11 @@ class StateAndConfigTests(unittest.TestCase):
 class DispatchTests(unittest.TestCase):
     MONITORS = ["DP-2", "DP-1", "HDMI-A-1"]
 
-    def test_batch_uses_one_bounded_hyprctl_request(self):
-        expressions = [
-            'hl.dsp.focus({ monitor = "DP-2" })',
-            'hl.dsp.focus({ workspace = "4" })',
-        ]
-        with patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run:
-            self.assertTrue(desktop_mode.dispatch_batch(expressions))
-        run.assert_called_once_with(
-            [
-                "--batch",
-                'dispatch hl.dsp.focus({ monitor = "DP-2" }); '
-                'dispatch hl.dsp.focus({ workspace = "4" })',
-            ],
-            timeout=5.0,
-        )
+    def test_batch_uses_one_named_request(self):
+        steps = [("focus-output", "DP-2"), ("focus-workspace", 4)]
+        with patch.object(desktop_mode, "run_named", return_value=completed()) as run:
+            self.assertTrue(desktop_mode.dispatch_batch(steps))
+        run.assert_called_once_with("batch", steps)
 
     def test_three_monitor_switch_places_contiguous_set_and_restores_focus(self):
         with (
@@ -207,11 +200,11 @@ class DispatchTests(unittest.TestCase):
             patch.object(desktop_mode, "atomic_write_state") as write_state,
         ):
             self.assertTrue(desktop_mode.switch_windows(2, self.MONITORS))
-        expressions = batch.call_args.args[0]
-        self.assertIn('hl.dsp.focus({ workspace = "4" })', expressions)
-        self.assertIn('hl.dsp.workspace.move({ monitor = "DP-1" })', expressions)
-        self.assertIn('hl.dsp.focus({ workspace = "6" })', expressions)
-        self.assertEqual(expressions[-1], 'hl.dsp.focus({ monitor = "DP-1" })')
+        steps = batch.call_args.args[0]
+        self.assertIn(("focus-workspace", 4), steps)
+        self.assertIn(("move-workspace", "DP-1"), steps)
+        self.assertIn(("focus-workspace", 6), steps)
+        self.assertEqual(steps[-1], ("focus-output", "DP-1"))
         write_state.assert_called_once_with("desktop-current", "2\n")
 
     def test_two_monitor_switch_preserves_pair_mapping(self):
@@ -222,9 +215,9 @@ class DispatchTests(unittest.TestCase):
             patch.object(desktop_mode, "atomic_write_state"),
         ):
             self.assertTrue(desktop_mode.switch_windows(5, ["LEFT", "RIGHT"]))
-        expressions = batch.call_args.args[0]
-        self.assertIn('hl.dsp.focus({ workspace = "9" })', expressions)
-        self.assertIn('hl.dsp.focus({ workspace = "10" })', expressions)
+        steps = batch.call_args.args[0]
+        self.assertIn(("focus-workspace", 9), steps)
+        self.assertIn(("focus-workspace", 10), steps)
 
     def test_failed_batch_does_not_advance_current_state(self):
         with (
@@ -291,18 +284,18 @@ class DispatchTests(unittest.TestCase):
         switch.assert_not_called()
         focus.assert_not_called()
 
-    def test_dispatch_uses_fallback_when_lua_dispatch_fails(self):
+    def test_dispatch_uses_fallback_when_primary_dispatch_fails(self):
         with patch.object(
             desktop_mode,
-            "run_hyprctl",
+            "run_named",
             side_effect=[completed(returncode=1, stderr="error"), completed()],
         ) as run:
             self.assertTrue(desktop_mode.dispatch_focus_workspace(4))
         self.assertEqual(
             run.call_args_list,
             [
-                call(["dispatch", 'hl.dsp.focus({ workspace = "4" })']),
-                call(["dispatch", "workspace", "4"]),
+                call("focus-workspace", 4),
+                call("focus-workspace-fallback", 4),
             ],
         )
 
@@ -385,7 +378,7 @@ class ResilienceTests(unittest.TestCase):
             {"name": "HDMI-A-1", "x": 3840, "y": 360, "width": 1920, "height": 1080, "scale": 1.0, "refreshRate": 60.0},
         ]
         with (
-            patch.object(desktop_mode, "run_hyprctl", side_effect=[
+            patch.object(desktop_mode, "run_named", side_effect=[
                 completed(stdout=json.dumps(live_monitors)),
                 completed(stdout="ok"),
             ]) as run_ctl,
@@ -393,10 +386,11 @@ class ResilienceTests(unittest.TestCase):
             desktop_mode.ensure_contiguous_layout(["DP-2", "HDMI-A-1"], self.CANONICAL_TOPO)
 
             self.assertEqual(run_ctl.call_count, 2)
-            eval_arg = run_ctl.call_args_list[1].args[0]
-            self.assertEqual(eval_arg[0], "eval")
-            self.assertIn('output = "HDMI-A-1"', eval_arg[1])
-            self.assertIn('position = "1280x360"', eval_arg[1])
+            self.assertEqual(run_ctl.call_args_list[0].args[0], "monitors")
+            self.assertEqual(run_ctl.call_args_list[1].args[0], "monitor-rule")
+            rule = run_ctl.call_args_list[1].args[1]
+            self.assertEqual(rule[0], "HDMI-A-1")
+            self.assertEqual(rule[2], "1280x360")
 
     def test_geometric_layout_restoration_when_all_monitors_present(self):
         live_monitors = [
@@ -405,7 +399,7 @@ class ResilienceTests(unittest.TestCase):
             {"name": "HDMI-A-1", "x": 1280, "y": 360, "width": 1920, "height": 1080, "scale": 1.0, "refreshRate": 60.0},
         ]
         with (
-            patch.object(desktop_mode, "run_hyprctl", side_effect=[
+            patch.object(desktop_mode, "run_named", side_effect=[
                 completed(stdout=json.dumps(live_monitors)),
                 completed(stdout="ok"),
             ]) as run_ctl,
@@ -413,9 +407,10 @@ class ResilienceTests(unittest.TestCase):
             desktop_mode.ensure_contiguous_layout(["DP-2", "DP-1", "HDMI-A-1"], self.CANONICAL_TOPO)
 
             self.assertEqual(run_ctl.call_count, 2)
-            eval_arg = run_ctl.call_args_list[1].args[0]
-            self.assertIn('output = "HDMI-A-1"', eval_arg[1])
-            self.assertIn('position = "3840x360"', eval_arg[1])
+            self.assertEqual(run_ctl.call_args_list[1].args[0], "monitor-rule")
+            rule = run_ctl.call_args_list[1].args[1]
+            self.assertEqual(rule[0], "HDMI-A-1")
+            self.assertEqual(rule[2], "3840x360")
 
     def test_switch_windows_degraded_two_monitors_preserves_slots(self):
         with (
@@ -431,10 +426,10 @@ class ResilienceTests(unittest.TestCase):
         ):
             self.assertTrue(desktop_mode.switch_windows(2, ["DP-2", "HDMI-A-1"]))
 
-        expressions = batch.call_args.args[0]
-        self.assertIn('hl.dsp.focus({ workspace = "4" })', expressions)
-        self.assertIn('hl.dsp.focus({ workspace = "6" })', expressions)
-        self.assertNotIn('hl.dsp.focus({ workspace = "5" })', expressions)
+        steps = batch.call_args.args[0]
+        self.assertIn(("focus-workspace", 4), steps)
+        self.assertIn(("focus-workspace", 6), steps)
+        self.assertNotIn(("focus-workspace", 5), steps)
         write_state.assert_called_once_with("desktop-current", "2\n")
 
     def test_realign_moves_only_the_deviated_monitor(self):
@@ -482,7 +477,7 @@ class ResilienceTests(unittest.TestCase):
             patch.object(desktop_mode, "ensure_contiguous_layout"),
             patch.object(desktop_mode, "current_mode", return_value="windows"),
             patch.object(desktop_mode, "read_state_file", return_value="2"),
-            patch.object(desktop_mode, "run_hyprctl", return_value=completed(stdout=json.dumps(live_monitors))),
+            patch.object(desktop_mode, "run_named", return_value=completed(stdout=json.dumps(live_monitors))),
             patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
             patch.object(desktop_mode, "write_desktop_monitors_state") as write_state,
         ):
@@ -533,48 +528,48 @@ class IdleBlankingTests(unittest.TestCase):
             self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
 
     def test_dpms_off_valid_monitor(self):
-        with patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run:
+        with patch.object(desktop_mode, "run_named", return_value=completed()) as run:
             self.assertTrue(desktop_mode.dpms_off("DP-1"))
-        run.assert_called_once_with(["dispatch", 'hl.dsp.dpms({ action = "off", monitor = "DP-1" })'])
+        run.assert_called_once_with("dpms", ["DP-1", "off"])
 
-    def test_dpms_off_fallback_when_lua_dispatch_fails(self):
+    def test_dpms_off_fallback_when_primary_dispatch_fails(self):
         results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
-        with patch.object(desktop_mode, "run_hyprctl", side_effect=results) as run:
+        with patch.object(desktop_mode, "run_named", side_effect=results) as run:
             self.assertTrue(desktop_mode.dpms_off("DP-1"))
         self.assertEqual(run.call_count, 2)
-        self.assertEqual(run.call_args_list[1], call(["dispatch", "dpms", "off", "DP-1"]))
+        self.assertEqual(run.call_args_list[1], call("dpms-fallback", ["DP-1", "off"]))
 
     def test_dpms_off_rejects_invalid_monitor_name(self):
-        with patch.object(desktop_mode, "run_hyprctl") as run:
+        with patch.object(desktop_mode, "run_named") as run:
             self.assertFalse(desktop_mode.dpms_off("DP-1; rm -rf /"))
         run.assert_not_called()
 
     def test_dpms_on_valid_monitor_not_dp2(self):
-        with patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run, patch("subprocess.Popen") as popen:
+        with patch.object(desktop_mode, "run_named", return_value=completed()) as run, patch("subprocess.Popen") as popen:
             self.assertTrue(desktop_mode.dpms_on("DP-1"))
-        run.assert_called_once_with(["dispatch", 'hl.dsp.dpms({ action = "on", monitor = "DP-1" })'])
+        run.assert_called_once_with("dpms", ["DP-1", "on"])
         popen.assert_not_called()
 
     def test_dpms_on_dp2_invokes_msi_workaround(self):
         with (
-            patch.object(desktop_mode, "run_hyprctl", return_value=completed()) as run,
+            patch.object(desktop_mode, "run_named", return_value=completed()) as run,
             patch("os.path.isfile", return_value=True),
             patch("os.access", return_value=True),
             patch("subprocess.Popen") as popen,
         ):
             self.assertTrue(desktop_mode.dpms_on("DP-2"))
-        run.assert_called_once_with(["dispatch", 'hl.dsp.dpms({ action = "on", monitor = "DP-2" })'])
+        run.assert_called_once_with("dpms", ["DP-2", "on"])
         popen.assert_called_once_with([desktop_mode.os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround"), "--once"])
 
-    def test_dpms_on_fallback_when_lua_dispatch_fails(self):
+    def test_dpms_on_fallback_when_primary_dispatch_fails(self):
         results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
-        with patch.object(desktop_mode, "run_hyprctl", side_effect=results) as run:
+        with patch.object(desktop_mode, "run_named", side_effect=results) as run:
             self.assertTrue(desktop_mode.dpms_on("DP-1"))
         self.assertEqual(run.call_count, 2)
-        self.assertEqual(run.call_args_list[1], call(["dispatch", "dpms", "on", "DP-1"]))
+        self.assertEqual(run.call_args_list[1], call("dpms-fallback", ["DP-1", "on"]))
 
     def test_dpms_on_rejects_invalid_monitor_name(self):
-        with patch.object(desktop_mode, "run_hyprctl") as run:
+        with patch.object(desktop_mode, "run_named") as run:
             self.assertFalse(desktop_mode.dpms_on("invalid$(name)"))
         run.assert_not_called()
 
