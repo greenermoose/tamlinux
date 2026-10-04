@@ -51,7 +51,8 @@ Shell UI and fixtures read `desktop/shell/host/Compositor.qml`.
 `HyprlandAdapter.qml` is the only shell file that imports
 `Quickshell.Hyprland` or starts `/usr/bin/hyprctl`. There is no generic
 `hyprctl` argument list. `desktop/shell/host/compositor_commands.py` builds
-the same argv for tests and does not run it.
+the argv and does not run it. `hyprland_backend.py` is the only Python that
+starts `/usr/bin/hyprctl`, and only for a named operation.
 
 The facade exposes plain data:
 
@@ -67,17 +68,23 @@ Named actions are `focusWorkspace(id)`, `focusOutput(name)`, and
 `setDpms(name, on)`. They record the request unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`. The proof launcher removes that
 variable, so a selftest cannot blank a display or move focus. Output names
-must match `^[A-Za-z0-9._-]{1,64}$`. Workspace ids are 1 through 10. Reads
-are the fixed commands `binds`, `-j devices`, and `-j monitors`, each with
-`PATH=/usr/bin`, the Wayland runtime directory, the Hyprland instance
-signature, and a four-second deadline. Bindings text, the keymap, and window
-summaries are capped. Layout rewrite, `hyprctl reload`, and monitor reset
-stay out of this slice.
+must match `^[A-Za-z0-9._-]{1,64}$`. Public workspace ids are 1 through 10.
+Helper dispatch ids, used by windows-mode sets, are 1 through 160. Reads
+are the fixed commands `binds`, `-j devices`, `-j monitors`,
+`monitors all -j`, `activeworkspace -j`, `configerrors`, and `rollinglog`,
+each with `PATH=/usr/bin`, the Wayland runtime directory, the Hyprland
+instance signature, and a short deadline. Bindings text, the keymap, and
+window summaries are capped. Mutations are focus, move, DPMS, a bounded
+batch, one validated monitor rule, and `reload`. DPMS uses `dispatch` with
+`on` or `off`, then a fixed fallback. The layout helper does not write
+`monitors.lua` unless the live flag is set.
 
 `desktop/fixtures/compositor/` is `tamlinux.compositor`. It reads the facade
 and logs names, counts, the keymap, and whether the screen matches an output.
-It does not import Hyprland. Plugin QML reads this facade. `tam-desktop-mode`
-and the monitor layout, state, and reset helpers still call Hyprland.
+It does not import Hyprland. Plugin QML reads this facade. The develop
+helpers load the backend from `TAMLINUX_COMPOSITOR_COMMANDS`, which the
+proof exports as the host directory. Brightness still calls the Omarchy
+display helper.
 
 IPC stays on the shell target `tamlinux-shell` and the one `tamlinux.clock`
 handler inside the single clock instance. The fixture sets `manageIpc` false
@@ -102,6 +109,7 @@ desktop/
   shell/host/Compositor.qml   # facade the shell and fixtures read
   shell/host/HyprlandAdapter.qml
   shell/host/compositor_commands.py
+  shell/host/hyprland_backend.py  # the only Python that starts hyprctl
   shell/host/ui_contract.py   # border and wheel numbers; does not launch anything
   shell/modules/Tam/          # Commons and Ui
   adapters/clock-step1.patch  # imports, identity, offline gate, disabled edits
@@ -252,6 +260,11 @@ Automated, on the development Wayland session:
   `test_limits.py` still has the known `test_oversized_remote_feed` failure
   (0 events instead of 1). `fred.sysinfo`, `fred.monitor`, and
   `fred.workspaces` Python tests passed.
+- On 2026-10-03 the helper command move was checked: compositor tests
+  passed (17), host tests passed (11), UI tests passed (8), workspace
+  desktop-mode tests passed (42), monitor layout tests passed (10), and
+  monitor state tests passed (3). `--plugins --selftest` at scale 1 and
+  1.25 registered all eight plugins and rejected any live compositor action.
 
 ## Limits
 
@@ -261,9 +274,9 @@ the isolated host. They are not the running bar. Typed actions record the
 request during the proof. They start the existing programs only when
 `TAMLINUX_HOST_ACTIONS=1`, which `launch-daily-bar --replace` sets and the
 proof unsets. Plugin QML does not import Hyprland or start `hyprctl`.
-`tam-desktop-mode` still dispatches through Hyprland, and the monitor layout,
-state, and reset helpers still do. The shell's Hyprland adapter remains the
-only Hyprland import in `desktop/`. A Sway backend and the one-command
+The develop workspace and monitor helpers call the named backend instead of
+building Hyprland commands. The shell's Hyprland adapter remains the only
+Hyprland import in `desktop/`. A Sway backend and the one-command
 install are later steps. Live compositor actions stay off unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
 Replacing the running bar is `desktop/launch-daily-bar --replace` after this

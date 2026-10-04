@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 DESKTOP = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DESKTOP / "shell" / "host"))
 
 import compositor_commands as commands  # noqa: E402
+import hyprland_backend as backend  # noqa: E402
 
 
 class CommandTests(unittest.TestCase):
@@ -31,13 +35,17 @@ class CommandTests(unittest.TestCase):
             commands.set_dpms_argv("HDMI-A-1", False),
             [
                 "/usr/bin/hyprctl",
-                "eval",
-                'hl.dispatch(hl.dsp.dpms({ action = "disable", monitor = "HDMI-A-1" }))',
+                "dispatch",
+                'hl.dsp.dpms({ action = "off", monitor = "HDMI-A-1" })',
             ],
         )
         self.assertEqual(
-            commands.set_dpms_argv("eDP-1", True)[2],
-            'hl.dispatch(hl.dsp.dpms({ action = "enable", monitor = "eDP-1" }))',
+            commands.set_dpms_argv("eDP-1", "on")[2],
+            'hl.dsp.dpms({ action = "on", monitor = "eDP-1" })',
+        )
+        self.assertEqual(
+            commands.set_dpms_fallback_argv("DP-1", False),
+            ["/usr/bin/hyprctl", "dispatch", "dpms", "off", "DP-1"],
         )
 
     def test_rejects_bad_names_and_workspaces(self):
@@ -52,7 +60,7 @@ class CommandTests(unittest.TestCase):
                 with self.assertRaises(commands.CompositorCommandError):
                     commands.focus_workspace_argv(workspace)  # type: ignore[arg-type]
         with self.assertRaises(commands.CompositorCommandError):
-            commands.set_dpms_argv("DP-1", "off")  # type: ignore[arg-type]
+            commands.set_dpms_argv("DP-1", "disable")
 
     def test_keymap_and_monitor_snapshot(self):
         payload = {
@@ -85,6 +93,129 @@ class CommandTests(unittest.TestCase):
         self.assertNotIn("os.system", text)
         self.assertNotIn("Popen", text)
 
+    def test_helper_reads_and_dispatch_commands(self):
+        self.assertEqual(commands.monitors_all_argv(), ["/usr/bin/hyprctl", "monitors", "all", "-j"])
+        self.assertEqual(commands.active_workspace_argv(), ["/usr/bin/hyprctl", "activeworkspace", "-j"])
+        self.assertEqual(commands.reload_argv(), ["/usr/bin/hyprctl", "reload"])
+        self.assertEqual(commands.config_errors_argv(), ["/usr/bin/hyprctl", "configerrors"])
+        self.assertEqual(commands.rollinglog_argv(), ["/usr/bin/hyprctl", "rollinglog"])
+        self.assertEqual(
+            commands.dispatch_focus_workspace_argv(28),
+            ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ workspace = "28" })'],
+        )
+        self.assertEqual(
+            commands.focus_workspace_fallback_argv(4),
+            ["/usr/bin/hyprctl", "dispatch", "workspace", "4"],
+        )
+        self.assertEqual(
+            commands.move_window_argv(6, False),
+            [
+                "/usr/bin/hyprctl",
+                "dispatch",
+                'hl.dsp.window.move({ workspace = "6", follow = false })',
+            ],
+        )
+        self.assertEqual(
+            commands.move_window_fallback_argv(6, True),
+            ["/usr/bin/hyprctl", "dispatch", "movetoworkspace", "6"],
+        )
+        self.assertEqual(
+            commands.move_workspace_argv("DP-1"),
+            ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.workspace.move({ monitor = "DP-1" })'],
+        )
+        self.assertEqual(
+            commands.move_workspace_fallback_argv(4, "HDMI-A-1"),
+            ["/usr/bin/hyprctl", "dispatch", "moveworkspacetomonitor", "4", "HDMI-A-1"],
+        )
+        self.assertEqual(
+            commands.focus_output_fallback_argv("DP-2"),
+            ["/usr/bin/hyprctl", "dispatch", "focusmonitor", "DP-2"],
+        )
+
+    def test_batch_is_built_from_named_steps(self):
+        argv = commands.batch_argv([
+            ("focus-output", "DP-2"),
+            ("focus-workspace", 4),
+            ("move-workspace", "DP-1"),
+        ])
+        self.assertEqual(
+            argv,
+            [
+                "/usr/bin/hyprctl",
+                "--batch",
+                'dispatch hl.dsp.focus({ monitor = "DP-2" }); '
+                'dispatch hl.dsp.focus({ workspace = "4" }); '
+                'dispatch hl.dsp.workspace.move({ monitor = "DP-1" })',
+            ],
+        )
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.batch_argv([])
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.batch_argv([("dispatch", "workspace")])
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.batch_argv([("focus-workspace", 4)] * (commands.BATCH_LIMIT + 1))
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.focus_workspace_argv(11)
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.dispatch_focus_workspace_argv(commands.DISPATCH_WORKSPACE_MAX + 1)
+
+    def test_monitor_rule_fields_are_bounded(self):
+        self.assertEqual(
+            commands.monitor_rule_text(
+                "DP-1",
+                disabled=False,
+                mode="2560x1440@59.951",
+                position="1280x0",
+                scale=1,
+                transform=0,
+            ),
+            'hl.monitor({ output = "DP-1", mode = "2560x1440@59.951", '
+            'position = "1280x0", scale = 1, transform = 0, disabled = false })',
+        )
+        self.assertEqual(
+            commands.monitor_rule_argv("HDMI-A-1", disabled=True),
+            ["/usr/bin/hyprctl", "eval", 'hl.monitor({ output = "HDMI-A-1", disabled = true })'],
+        )
+        for mode in ("1920x1080@60", "preferred", "1920x1080@60Hz"):
+            commands.require_mode(mode)
+        for bad in ("preferred;rm", "1920x1080", "auto", "1920x1080@60 Hz", ""):
+            with self.subTest(mode=bad), self.assertRaises(commands.CompositorCommandError):
+                commands.require_mode(bad)
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.monitor_rule_text("DP-1", disabled=False, mode="preferred", position="1 0", scale=1)
+
+
+class BackendTests(unittest.TestCase):
+    def test_reads_run_and_mutations_record(self):
+        recorded = subprocess.CompletedProcess(["/usr/bin/hyprctl"], 0, "{}\n", "")
+        env = os.environ.copy()
+        env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+        with patch.dict(os.environ, env, clear=True), patch.object(backend.subprocess, "run", return_value=recorded) as run:
+            result = backend.run("monitors", None)
+            self.assertEqual(run.call_args.args[0], commands.monitors_argv())
+            self.assertEqual(run.call_args.kwargs["env"]["PATH"], "/usr/bin")
+            self.assertNotIn("HOME", run.call_args.kwargs["env"])
+            run.reset_mock()
+            recorded_action = backend.run("dpms", ["DP-1", "off"])
+            run.assert_not_called()
+            self.assertEqual(recorded_action.returncode, 0)
+            self.assertEqual(recorded_action.stdout, "recorded\n")
+            self.assertEqual(recorded_action.args, commands.set_dpms_argv("DP-1", "off"))
+
+    def test_live_mutation_uses_the_fixed_argv(self):
+        completed = subprocess.CompletedProcess(["/usr/bin/hyprctl"], 0, "ok\n", "")
+        with (
+            patch.dict(os.environ, {"TAMLINUX_COMPOSITOR_LIVE_ACTIONS": "1"}, clear=False),
+            patch.object(backend.subprocess, "run", return_value=completed) as run,
+        ):
+            backend.run("reload", None)
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], commands.reload_argv())
+
+    def test_backend_rejects_unknown_operations(self):
+        with self.assertRaises(commands.CompositorCommandError):
+            backend.run("dispatch", ["workspace", "1"])
+
 
 class SourceBoundaryTests(unittest.TestCase):
     def test_adapter_matches_the_command_text(self):
@@ -98,8 +229,11 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn('hl.dsp.focus({ workspace = "', qml)
         self.assertIn('hl.dsp.focus({ monitor = "', qml)
         self.assertIn('hl.dsp.dpms({ action = "', qml)
-        self.assertIn('"enable"', qml)
-        self.assertIn('"disable"', qml)
+        self.assertIn('"on"', qml)
+        self.assertIn('"off"', qml)
+        self.assertNotIn("hl.dispatch", qml)
+        self.assertNotIn('action = "enable"', qml)
+        self.assertNotIn('action = "disable"', qml)
         self.assertIn("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", qml)
         self.assertIn(r"/^[A-Za-z0-9._-]{1,64}$/", qml)
         self.assertIn(r"/^(?:[1-9]|10)$/", qml)
@@ -122,6 +256,19 @@ class SourceBoundaryTests(unittest.TestCase):
             self.assertNotIn("hyprctl", text, path.name)
             self.assertNotIn("Hyprland.", text, path.name)
         self.assertTrue(seen)
+
+    def test_helpers_do_not_build_hyprland_commands(self):
+        root = DESKTOP.parents[1]
+        helpers = (
+            root / "workspaces-fred-tamlinux" / "tam-desktop-mode",
+            root / "monitor-fred-tamlinux" / "fred-monitor-layout",
+            root / "monitor-fred-tamlinux" / "fred-monitor-state",
+            root / "monitor-fred-tamlinux" / "fred-monitor-reset",
+        )
+        for path in helpers:
+            text = path.read_text(encoding="utf-8")
+            for banned in ("hyprctl", "hl.dsp", "hl.monitor"):
+                self.assertNotIn(banned, text, path.name)
 
     def test_plugin_qml_reads_the_facade(self):
         root = DESKTOP.parents[1]

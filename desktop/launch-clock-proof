@@ -216,6 +216,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "TAMLINUX_CLOCK_ENTRY": by_id["fred.clock"]["entry"],
         "TAMLINUX_PANEL_ENTRY": by_id["tamlinux.fixture"]["entry"],
         "TAMLINUX_COMPOSITOR_ENTRY": by_id["tamlinux.compositor"]["entry"],
+        "TAMLINUX_COMPOSITOR_COMMANDS": str(SHELL_DIR / "host"),
         "TAMLINUX_UI_ENTRY": by_id["tamlinux.ui"]["entry"],
         "TAMLINUX_PLUGIN_IDS": ",".join(plugin_ids),
         "TAMLINUX_EXTRA_ENTRIES": "|".join(record["entry"] for record in extra_records),

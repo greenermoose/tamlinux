@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Helper Hyprland commands use the named backend | Cursor `3.23.12` | `composer` | [`2026-10-03-hyprland-command-ownership.md`](2026-10-03-hyprland-command-ownership.md) |
 | 2026-10-03 | Plugin QML reads the compositor facade | Cursor `3.23.12` | `composer` | [`2026-10-03-compositor-facade.md`](2026-10-03-compositor-facade.md) |
 | 2026-10-03 | Shell-independent 2.0.0 | Cursor `3.23.12` | `composer` | [`2026-10-03-shell-independent-2.0.0.md`](2026-10-03-shell-independent-2.0.0.md) |
 | 2026-10-03 | Shared UI closure and typed actions | Cursor `3.23.12` | `composer` | [`2026-10-03-shared-ui-closure.md`](2026-10-03-shared-ui-closure.md) |

@@ -9,6 +9,12 @@ HYPRCTL = "/usr/bin/hyprctl"
 NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 WORKSPACE_MIN = 1
 WORKSPACE_MAX = 10
+DISPATCH_WORKSPACE_MAX = 160
+BATCH_LIMIT = 64
+MODE_RE = re.compile(
+    r"^(?:preferred|[1-9]\d{0,4}x[1-9]\d{0,4}@[1-9]\d{0,3}(?:\.\d{1,3})?(?:Hz)?)$"
+)
+POSITION_RE = re.compile(r"^-?\d{1,6}x-?\d{1,6}$")
 BINDS_LIMIT = 262144
 DEVICES_LIMIT = 262144
 MONITORS_LIMIT = 262144
@@ -38,6 +44,29 @@ def require_workspace(workspace_id: int) -> int:
     return workspace_id
 
 
+def require_dispatch_workspace(workspace_id: int) -> int:
+    """Windows-mode set ids: (desktop - 1) * topology + slot + 1, at most 160."""
+    if isinstance(workspace_id, bool) or not isinstance(workspace_id, int):
+        raise CompositorCommandError("workspace")
+    if workspace_id < WORKSPACE_MIN or workspace_id > DISPATCH_WORKSPACE_MAX:
+        raise CompositorCommandError("workspace")
+    return workspace_id
+
+
+def parse_workspace(value: object, *, public: bool) -> int:
+    if isinstance(value, bool):
+        raise CompositorCommandError("workspace")
+    if isinstance(value, int):
+        number = value
+    elif isinstance(value, str) and value.isdigit():
+        number = int(value)
+    else:
+        raise CompositorCommandError("workspace")
+    if public:
+        return require_workspace(number)
+    return require_dispatch_workspace(number)
+
+
 def binds_argv() -> list[str]:
     return [HYPRCTL, "binds"]
 
@@ -50,9 +79,41 @@ def monitors_argv() -> list[str]:
     return [HYPRCTL, "-j", "monitors"]
 
 
-def focus_workspace_argv(workspace_id: int) -> list[str]:
-    number = require_workspace(workspace_id)
+def monitors_all_argv() -> list[str]:
+    return [HYPRCTL, "monitors", "all", "-j"]
+
+
+def active_workspace_argv() -> list[str]:
+    return [HYPRCTL, "activeworkspace", "-j"]
+
+
+def config_errors_argv() -> list[str]:
+    return [HYPRCTL, "configerrors"]
+
+
+def rollinglog_argv() -> list[str]:
+    return [HYPRCTL, "rollinglog"]
+
+
+def reload_argv() -> list[str]:
+    return [HYPRCTL, "reload"]
+
+
+def _focus_workspace_dispatch(number: int) -> list[str]:
     return [HYPRCTL, "dispatch", f'hl.dsp.focus({{ workspace = "{number}" }})']
+
+
+def focus_workspace_argv(workspace_id: int) -> list[str]:
+    return _focus_workspace_dispatch(require_workspace(workspace_id))
+
+
+def dispatch_focus_workspace_argv(workspace_id: object) -> list[str]:
+    return _focus_workspace_dispatch(parse_workspace(workspace_id, public=False))
+
+
+def focus_workspace_fallback_argv(workspace_id: object) -> list[str]:
+    number = parse_workspace(workspace_id, public=False)
+    return [HYPRCTL, "dispatch", "workspace", str(number)]
 
 
 def focus_output_argv(name: str) -> list[str]:
@@ -60,16 +121,181 @@ def focus_output_argv(name: str) -> list[str]:
     return [HYPRCTL, "dispatch", f'hl.dsp.focus({{ monitor = "{output}" }})']
 
 
-def set_dpms_argv(name: str, on: bool) -> list[str]:
+def focus_output_fallback_argv(name: str) -> list[str]:
+    return [HYPRCTL, "dispatch", "focusmonitor", require_output(name)]
+
+
+def move_window_argv(workspace_id: object, follow: bool) -> list[str]:
+    number = parse_workspace(workspace_id, public=False)
+    if not isinstance(follow, bool):
+        raise CompositorCommandError("follow")
+    word = "true" if follow else "false"
+    return [
+        HYPRCTL,
+        "dispatch",
+        f'hl.dsp.window.move({{ workspace = "{number}", follow = {word} }})',
+    ]
+
+
+def move_window_fallback_argv(workspace_id: object, follow: bool) -> list[str]:
+    number = parse_workspace(workspace_id, public=False)
+    if not isinstance(follow, bool):
+        raise CompositorCommandError("follow")
+    subcommand = "movetoworkspace" if follow else "movetoworkspacesilent"
+    return [HYPRCTL, "dispatch", subcommand, str(number)]
+
+
+def move_workspace_argv(name: str) -> list[str]:
     output = require_output(name)
-    if not isinstance(on, bool):
-        raise CompositorCommandError("dpms")
-    action = "enable" if on else "disable"
+    return [HYPRCTL, "dispatch", f'hl.dsp.workspace.move({{ monitor = "{output}" }})']
+
+
+def move_workspace_fallback_argv(workspace_id: object, name: str) -> list[str]:
+    number = parse_workspace(workspace_id, public=False)
+    output = require_output(name)
+    return [HYPRCTL, "dispatch", "moveworkspacetomonitor", str(number), output]
+
+
+def _dpms_word(on: object) -> str:
+    if on is True or on == "on":
+        return "on"
+    if on is False or on == "off":
+        return "off"
+    raise CompositorCommandError("dpms")
+
+
+def set_dpms_argv(name: str, on: object) -> list[str]:
+    output = require_output(name)
+    action = _dpms_word(on)
+    return [
+        HYPRCTL,
+        "dispatch",
+        f'hl.dsp.dpms({{ action = "{action}", monitor = "{output}" }})',
+    ]
+
+
+def set_dpms_fallback_argv(name: str, on: object) -> list[str]:
+    output = require_output(name)
+    action = _dpms_word(on)
+    return [HYPRCTL, "dispatch", "dpms", action, output]
+
+
+def format_scale(value: object) -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise CompositorCommandError("scale")
+    if isinstance(value, str):
+        if not re.fullmatch(r"\d+(?:\.\d+)?", value):
+            raise CompositorCommandError("scale")
+        number = float(value)
+    else:
+        number = float(value)
+    if number != number or number < 0.1 or number > 10:
+        raise CompositorCommandError("scale")
+    text = f"{number:.3f}".rstrip("0").rstrip(".")
+    if text in ("", "-0"):
+        raise CompositorCommandError("scale")
+    return text
+
+
+def require_mode(mode: object) -> str:
+    if not isinstance(mode, str) or not MODE_RE.fullmatch(mode):
+        raise CompositorCommandError("mode")
+    return mode
+
+
+def require_position(position: object) -> str:
+    if not isinstance(position, str) or not POSITION_RE.fullmatch(position):
+        raise CompositorCommandError("position")
+    return position
+
+
+def require_transform(value: object) -> int:
+    if isinstance(value, bool):
+        raise CompositorCommandError("transform")
+    if isinstance(value, str) and value.isdigit():
+        value = int(value)
+    if not isinstance(value, int) or value < 0 or value > 7:
+        raise CompositorCommandError("transform")
+    return value
+
+
+def monitor_rule_text(
+    output: str,
+    *,
+    disabled: bool,
+    mode: object = None,
+    position: object = None,
+    scale: object = None,
+    transform: object = None,
+) -> str:
+    name = require_output(output)
+    if not isinstance(disabled, bool):
+        raise CompositorCommandError("monitor-rule")
+    if disabled:
+        return f'hl.monitor({{ output = "{name}", disabled = true }})'
+    shown_mode = require_mode(mode)
+    shown_position = require_position(position)
+    shown_scale = format_scale(scale)
+    if transform is None:
+        return (
+            f'hl.monitor({{ output = "{name}", mode = "{shown_mode}", '
+            f'position = "{shown_position}", scale = {shown_scale} }})'
+        )
+    shown_transform = require_transform(transform)
+    return (
+        f'hl.monitor({{ output = "{name}", mode = "{shown_mode}", '
+        f'position = "{shown_position}", scale = {shown_scale}, '
+        f"transform = {shown_transform}, disabled = false }})"
+    )
+
+
+def monitor_rule_argv(
+    output: str,
+    *,
+    disabled: bool,
+    mode: object = None,
+    position: object = None,
+    scale: object = None,
+    transform: object = None,
+) -> list[str]:
     return [
         HYPRCTL,
         "eval",
-        f'hl.dispatch(hl.dsp.dpms({{ action = "{action}", monitor = "{output}" }}))',
+        monitor_rule_text(
+            output,
+            disabled=disabled,
+            mode=mode,
+            position=position,
+            scale=scale,
+            transform=transform,
+        ),
     ]
+
+
+def _dispatch_expression(argv: list[str]) -> str:
+    if len(argv) != 3 or argv[0] != HYPRCTL or argv[1] != "dispatch":
+        raise CompositorCommandError("batch")
+    return argv[2]
+
+
+def batch_argv(steps: object) -> list[str]:
+    if not isinstance(steps, list) or not steps or len(steps) > BATCH_LIMIT:
+        raise CompositorCommandError("batch")
+    parts: list[str] = []
+    for step in steps:
+        if not isinstance(step, tuple) or len(step) != 2:
+            raise CompositorCommandError("batch")
+        kind, value = step
+        if kind == "focus-workspace":
+            expression = _dispatch_expression(dispatch_focus_workspace_argv(value))
+        elif kind == "focus-output":
+            expression = _dispatch_expression(focus_output_argv(value))
+        elif kind == "move-workspace":
+            expression = _dispatch_expression(move_workspace_argv(value))
+        else:
+            raise CompositorCommandError("batch")
+        parts.append("dispatch " + expression)
+    return [HYPRCTL, "--batch", "; ".join(parts)]
 
 
 def active_keymap(payload: object) -> str:

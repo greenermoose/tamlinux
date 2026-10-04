@@ -1,9 +1,10 @@
 # Desktop decoupling toward Void Linux
 
-**Status:** Step 5's first slice is in `desktop/` and the `develop/2.0.0`
+**Status:** Step 5's second slice is in `desktop/` and the `develop/2.0.0`
 plugin trees as of 2026-10-03. Plugin QML reads the compositor facade.
-`tam-desktop-mode` and the monitor layout helpers still call Hyprland. Product
-remains 0.0.1. Not promoted past Develop. The daily bar has not been replaced.
+`tam-desktop-mode` and the monitor helpers call the named Hyprland backend.
+A Sway adapter is still ahead. Product remains 0.0.1. Not promoted past
+Develop. The daily bar has not been replaced.
 The milestone order was updated on 2026-10-03: the workstation package
 replaces Omarchy on the development workstation (1.0.0) before the Void pilot.
 **First implementation:** a standalone Quickshell host running `fred.clock`
@@ -129,7 +130,7 @@ distributions and as native `xbps-src` packages on Void.
 | 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only. |
 | 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only. |
 | 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | Shared UI checked 2026-10-03. The eight plugins are rewritten as `fred.<id>` 2.0.0 on `develop/2.0.0` and load in the isolated host. The daily bar replacement waits for acceptance; that acceptance is Tamlinux 0.1. |
-| 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | First slice, 2026-10-03: plugin QML reads the facade. `tam-desktop-mode` and the monitor layout helpers still call Hyprland. Exit still requires no plugin Hyprland reads, parity against the Hyprland and Sway adapters (`ext-workspace-v1` first, `Quickshell.I3` second), and bindings from generated configuration. |
+| 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | Second slice, 2026-10-03: helper Hyprland commands go through the named backend. Reads run. Mutations record unless the live flag is set. Exit still requires a Sway adapter (`ext-workspace-v1` first, `Quickshell.I3` second) and bindings from generated configuration. |
 | 6 | Remaining inherited desktop functions (0.3) | 4 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. |
 | 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the inherited one; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
 | 8 | Inherited desktop removed from the development workstation (1.0.0) | 7 | Omarchy and Hyprland removed after a backup and recorded rollback route; carried patches for dropped components retired. |
@@ -337,17 +338,20 @@ bounded monitor description. Keyboard reads `bindingsText` and
 `activeKeymap`. Monitor DPMS calls `setDpms`. Workspaces QML reads outputs,
 workspaces, focus, and `dpmsOn`, and reacts to `revision`.
 
-`tam-desktop-mode` still dispatches switch, move, and DPMS through Hyprland.
-`fred-monitor-layout`, `fred-monitor-state`, and `fred-monitor-reset` still
-call Hyprland. Those stay until the adapter grows the missing commands and a
-Sway backend exists. The installed Quickshell is 0.3.1; `ext-workspace-v1` is
-on Quickshell's development branch. Replacing the running bar remains the
+`tam-desktop-mode`, `fred-monitor-layout`, `fred-monitor-state`, and
+`fred-monitor-reset` on `develop/2.0.0` call named operations in
+`hyprland_backend.py`. That file is the only Python that starts `hyprctl`.
+Command text stays in `compositor_commands.py`. Reads run. Mutations,
+including the `monitors.lua` write, record unless
+`TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`. Brightness still uses the Omarchy
+helper. The installed Quickshell is 0.3.1; `ext-workspace-v1` is on
+Quickshell's development branch. Replacing the running bar remains the
 0.1 acceptance.
 
 ## Next handoff
 
-Move the remaining Hyprland commands in `tam-desktop-mode` and the monitor
-helpers into the Hyprland adapter, then add the Sway adapter. Replacing the
-running bar is the 0.1 acceptance, not a side effect of this develop
-candidate. Promotion to Test is a separate decision. Steps 5–11 are not
-claimed complete by this prototype.
+Add the Sway adapter: `ext-workspace-v1` first, `Quickshell.I3` second, with
+bindings read from generated configuration. Replacing the running bar is the
+0.1 acceptance, not a side effect of this develop candidate. Promotion to
+Test is a separate decision. Steps 5–11 are not claimed complete by this
+prototype.

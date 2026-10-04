@@ -97,7 +97,6 @@ QtObject {
       note("compositor-action rejected set-dpms")
       return
     }
-    var action = enabled ? "enable" : "disable"
     var word = enabled ? "on" : "off"
     if (!liveActions) {
       note("compositor-action recorded set-dpms " + output + " " + word)
@@ -106,9 +105,9 @@ QtObject {
     note("compositor-action live set-dpms " + output + " " + word)
     enqueue([
       "/usr/bin/hyprctl",
-      "eval",
-      'hl.dispatch(hl.dsp.dpms({ action = "' + action + '", monitor = "' + output + '" }))'
-    ], "eval")
+      "dispatch",
+      'hl.dsp.dpms({ action = "' + word + '", monitor = "' + output + '" })'
+    ], "dispatch")
   }
 
   function enqueue(argv, label) {
