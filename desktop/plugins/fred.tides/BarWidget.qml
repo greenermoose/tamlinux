@@ -1,14 +1,15 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.Commons
-import qs.Ui
+import Tam.Commons
+import Tam.Ui
+import "."
 
 BarWidget {
   id: root
   moduleName: "fred.tides"
 
-  readonly property string pluginVersion: "1.0.4"
+  readonly property string pluginVersion: "2.0.0"
   property bool hoverOpen: false
   readonly property string notificationHelper: {
     var base = Quickshell.env("OMARCHY_PATH") || ""

@@ -2,11 +2,12 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import qs.Commons
-import qs.Ui
+import Tam.Commons
+import Tam.Ui
 import "Model.js" as Model
 import "Network.js" as Network
 import "TidesStore.js" as TidesStore
+import "."
 
 Panel {
   id: root
@@ -16,7 +17,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "1.0.4"
+  property string pluginVersion: "2.0.0"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
   property string numberFontFamily: (root.settings && root.settings.numberFontFamily)

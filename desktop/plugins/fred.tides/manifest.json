@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.tides",
   "name": "Tides",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "author": "Fred (@greenermoose)",
   "license": "GPL-3.0-or-later",
   "repository": "https://github.com/greenermoose/tides-fred-tamlinux",
@@ -20,8 +20,5 @@
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "center"
-  },
-  "omarchy": {
-    "clonedFrom": "io.github.woogy7.tides"
   }
 }

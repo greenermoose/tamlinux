@@ -2,8 +2,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
+import "."
 
 // Dedicated tides popup panel with multi-monitor focus isolation.
 //
