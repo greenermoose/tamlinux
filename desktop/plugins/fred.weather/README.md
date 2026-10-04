@@ -1,6 +1,6 @@
 # fred.weather (`weather-fred-tamlinux`)
 
-A security-hardened, multi-monitor weather bar widget and popup panel for [Tamlinux](https://github.com/greenermoose/tamlinux), replacing the stock `omarchy.weather` widget. Provides current conditions, a scrollable 48-hour timeline with temperature curve and solar markers, and an extended 10-day forecast.
+A security-hardened, multi-monitor weather bar widget and popup panel for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment), replacing the stock `omarchy.weather` widget. Provides current conditions, a scrollable 48-hour timeline with temperature curve and solar markers, and an extended 10-day forecast.
 
 ![fred.weather Screenshot](assets/screenshot.png)
 
