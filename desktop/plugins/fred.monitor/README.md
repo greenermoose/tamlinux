@@ -1,6 +1,6 @@
 # Display & Monitor Manager (`fred.monitor`)
 
-Display information, per-display control, saved layouts, and guarded link reset plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Hyprland + Quickshell). Current release: **v1.2.3**.
+Display information, per-display control, saved layouts, and guarded link reset plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment; Hyprland + Quickshell). Current release: **v1.2.3**.
 
 ![fred.monitor Screenshot](assets/screenshot.png)
 
