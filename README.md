@@ -1,6 +1,6 @@
 # Tamlinux
 
-Fred's Tamlinux is a bespoke personal Linux distribution aimed at getting the best
+Fred's Tamlinux is a bespoke personal Linux workstation environment aimed at getting the best
 possible performance from the computing resources you already own. It is
 inspired by the rolling updates of Arch Linux, AntiX Linux's commitment to
 ensuring Linux runs on older hardware, the declarative reproducibility and atomic
@@ -19,14 +19,14 @@ Quickshell, and Omarchy.
 
 ## What Tamlinux is
 
-Tamlinux is Fred's personal Linux distribution. Its job is to get the most
+Tamlinux is Fred's personal Linux workstation environment (or a workstation environment for Linux). Its job is to get the most
 from hardware that already exists: workstations, mini PCs, and older laptops
 that still have years of useful silicon left.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
 max**. Like the tamarack's needles, Tamlinux is meant to be temporary. Its
 vision is to work from Omarchy toward one installable workstation package that
-turns an existing Linux distribution into a lean, high-efficiency workstation,
+turns an existing Linux distribution into a lean, high-efficiency workstation environment,
 and then toward a minimal Void base for that package, with antiX Core as the
 fallback if Void has a showstopper. The aim is a sustainable workstation
 environment that runs on a wide variety of hardware.
