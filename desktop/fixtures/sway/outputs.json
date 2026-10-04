@@ -1,0 +1,26 @@
+[
+  {
+    "name": "HDMI-A-1",
+    "focused": false,
+    "power": false,
+    "current_workspace": "4",
+    "make": "MSI",
+    "model": "MP161",
+    "rect": { "x": 2560, "y": 0, "width": 1920, "height": 1080 }
+  },
+  {
+    "name": "DP-1",
+    "focused": true,
+    "power": true,
+    "current_workspace": "1",
+    "make": "Dell",
+    "model": "S2725DSM",
+    "rect": { "x": 0, "y": 0, "width": 2560, "height": 1440 }
+  },
+  {
+    "name": "bad name",
+    "focused": false,
+    "power": true,
+    "current_workspace": "2"
+  }
+]

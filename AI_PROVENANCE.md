@@ -28,7 +28,8 @@ CLI version was updated to `1.2.12` on 2026-09-28 and `1.2.16` on 2026-10-03.
 Codex CLI was checked again as `0.160.0` for the 2026-10-03 dependency planning
 session, using the logged model `gpt-6.1-sol`. Cursor was checked as `3.21.18`
 for the 2026-10-03 clock-shell candidate, and as `3.23.12` for the compositor
-contract, the shared UI slice, and the plugin facade reads the same day. Claude Code was checked as `2.1.288` (`claude-opus-5-5`)
+contract, the shared UI slice, the plugin facade reads the same day, and the
+Sway adapter on 2026-10-04. Claude Code was checked as `2.1.288` (`claude-opus-5-5`)
 for the 2026-10-03 workstation-package route.
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
@@ -47,6 +48,7 @@ for the 2026-10-03 workstation-package route.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Sway adapter, first slice** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The shell Sway adapter prefers ext-workspace workspaces, then i3 IPC, and reads bindings from a generated fragment. It loads only when selected. The Hyprland proof stays the default. No `swaymsg` process is started. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-04-sway-adapter.md). |
 | **Helper Hyprland commands use the named backend** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Workspace and monitor helpers call named compositor operations. Reads run. Mutations record unless the live flag is set. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-hyprland-command-ownership.md). |
 | **Plugin QML reads the compositor facade** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Weather, tides, sysinfo, keyboard, monitor DPMS, and workspaces QML read `bar.compositor`. Output snapshots include a bounded description. `tam-desktop-mode` and the monitor layout helpers still call Hyprland. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-compositor-facade.md). |
 | **Shared UI closure and typed actions** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The proof host now has the border, style, and control types the plugins bind, plus typed actions that record a request and do not start a process. `bar.run` stays refused. A fixture proves the types. The eight plugins are not rewritten, and the daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-shared-ui-closure.md). |

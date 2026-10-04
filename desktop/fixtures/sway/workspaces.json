@@ -1,0 +1,9 @@
+[
+  {
+    "num": 2,
+    "name": "2",
+    "focused": true,
+    "output": "DP-1",
+    "windows": [{ "app_id": "ignored", "name": "not-used" }]
+  }
+]

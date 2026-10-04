@@ -22,6 +22,7 @@ from compositor_commands import (  # noqa: E402
     CompositorCommandError,
     snapshot_from_monitors,
 )
+from sway_snapshot import snapshot_from_directory  # noqa: E402
 from ui_contract import proof_border_line, proof_token_line, proof_wheel_line  # noqa: E402
 from registry import RegistryError, validate_directories  # noqa: E402
 from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
@@ -31,6 +32,7 @@ SHELL_DIR = Path(__file__).resolve().parent / "shell"
 PATCH = Path(__file__).resolve().parent / "adapters" / "clock-step1.patch"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "panel"
 COMPOSITOR = Path(__file__).resolve().parent / "fixtures" / "compositor"
+SWAY_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sway"
 UI = Path(__file__).resolve().parent / "fixtures" / "ui"
 ALLOWED = {"fred.clock", "tamlinux.fixture"}
 ACTION_MARKERS = (
@@ -184,7 +186,7 @@ def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = No
     write_settings(config / "tamlinux-shell", {"version": 1, "entries": entries}, allowed)
 
 
-def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False) -> dict:
+def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland") -> dict:
     home = state / "home"
     config = home / ".config"
     plugin = state / "plugin"
@@ -193,6 +195,8 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     extra_records = stage_extras(state) if extras else []
     if reset or not plugin.exists():
         _seed(home, config, plugin, extra_records)
+    if compositor not in {"hyprland", "sway"}:
+        raise SystemExit(f"unknown compositor: {compositor}")
     if not os.environ.get("XDG_RUNTIME_DIR"):
         raise SystemExit("XDG_RUNTIME_DIR is required; the proof does not use /tmp")
     try:
@@ -205,6 +209,8 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     env.pop("OMARCHY_PATH", None)
     env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
     env.pop("TAMLINUX_HOST_ACTIONS", None)
+    env.pop("TAMLINUX_COMPOSITOR", None)
+    env.pop("TAMLINUX_SWAY_FIXTURE", None)
     env.update({
         "HOME": str(home),
         "XDG_CONFIG_HOME": str(config),
@@ -223,8 +229,11 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "TAMLINUX_HOST_COPIES": copies,
         "TAMLINUX_UI_SCALE": scale,
         "TAMLINUX_OUTPUT": output,
+        "TAMLINUX_COMPOSITOR": compositor,
         "QT_QPA_PLATFORM": "wayland",
     })
+    if compositor == "sway":
+        env["TAMLINUX_SWAY_FIXTURE"] = str(SWAY_FIXTURE)
     return {"env": env, "home": home, "plugin": plugin, "record": records[0]}
 
 
@@ -308,8 +317,8 @@ def helper_leaks(plugin: Path) -> list[str]:
     ]
 
 
-def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False) -> str:
-    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras)
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland") -> str:
+    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor)
     process = spawn(prepared["env"])
     try:
         ready = wait_for(
@@ -659,6 +668,92 @@ def drive_plugins(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("an Omarchy shell import appeared while loading plugins")
 
 
+def sway_process_lines() -> list[str]:
+    try:
+        listing = subprocess.run(
+            ["ps", "-u", str(os.getuid()), "-o", "args="],
+            capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        return []
+    return [line.strip() for line in listing.stdout.splitlines() if "swaymsg" in line]
+
+
+def drive_sway(env: dict, process: subprocess.Popen) -> None:
+    snapshot = snapshot_from_directory(SWAY_FIXTURE)
+
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
+    def require(predicate, message: str) -> None:
+        if not wait_for(predicate, 8):
+            raise SystemExit(message + "\n" + read_log(process)[-2500:])
+
+    def matched() -> bool:
+        text = lines()
+        outputs = last_suffix(text, "compositor-outputs ")
+        focused = last_suffix(text, "compositor-focused-output ")
+        workspaces = last_suffix(text, "compositor-active-workspaces ")
+        keymap = last_suffix(text, "compositor-keymap ")
+        bindings = last_suffix(text, "compositor-bindings-bytes ")
+        windows = last_suffix(text, "compositor-windows ")
+        expected_names = [item["name"] for item in snapshot["outputs"]]
+        expected_active = sorted(
+            {int(item["activeWorkspaceId"]) for item in snapshot["outputs"] if int(item["activeWorkspaceId"]) > 0}
+        )
+        expected_windows = sum(len(space["windows"]) for space in snapshot["workspaces"])
+        return (
+            outputs == ",".join(expected_names)
+            and focused == snapshot["focusedOutputName"]
+            and workspaces == ",".join(str(item) for item in expected_active)
+            and keymap == snapshot["activeKeymap"]
+            and bindings == str(len(snapshot["bindingsText"]))
+            and windows == str(expected_windows)
+        )
+
+    require(lambda: "compositor-backend sway" in lines(), "sway adapter did not load:")
+    if any(line.startswith("compositor-backend hyprland") for line in lines()):
+        raise SystemExit("hyprland adapter loaded during the sway proof")
+    require(matched, "sway fixture snapshot did not match:")
+    name = next(item["name"] for item in snapshot["outputs"] if item["name"])
+    ipc(env, "tamlinux-shell", "compositorFocusWorkspace", ["1"])
+    ipc(env, "tamlinux-shell", "compositorFocusOutput", [name])
+    ipc(env, "tamlinux-shell", "compositorSetDpms", [name, "off"])
+    ipc(env, "tamlinux-shell", "compositorFocusWorkspace", ["99"])
+    ipc(env, "tamlinux-shell", "compositorFocusOutput", ["../x"])
+    ipc(env, "tamlinux-shell", "compositorSetDpms", [name, "maybe"])
+    require(lambda: "compositor-action recorded focus-workspace 1" in lines(), "workspace focus was not recorded:")
+    require(lambda: f"compositor-action recorded focus-output {name}" in lines(), "output focus was not recorded:")
+    require(lambda: f"compositor-action recorded set-dpms {name} off" in lines(), "dpms was not recorded:")
+    require(lambda: "compositor-action rejected focus-workspace" in lines(), "bad workspace id was not rejected:")
+    require(lambda: "compositor-action rejected focus-output" in lines(), "bad output name was not rejected:")
+    require(lambda: "compositor-action rejected set-dpms" in lines(), "bad dpms action was not rejected:")
+    if any(line.startswith("compositor-action live ") for line in lines()):
+        raise SystemExit("live compositor action ran during the sway proof")
+    log = read_log(process)
+    if "swaymsg" in log or "hyprctl" in log:
+        raise SystemExit("sway proof started a compositor command")
+    if sway_process_lines():
+        raise SystemExit("swaymsg is running")
+
+
+def sway_selftest(scale: str, output: str, state_root: Path) -> None:
+    log = run_session(state_root / "sway", scale, output, drive_sway, copies="1", compositor="sway")
+    lines = evidence_lines(log)
+    expect(lines, "compositor-backend sway")
+    expect(lines, "compositor-action recorded focus-workspace 1")
+    expect_prefix(lines, "compositor-action recorded focus-output ")
+    expect_prefix(lines, "compositor-action recorded set-dpms ")
+    expect_prefix(lines, "compositor-keymap ")
+    expect_prefix(lines, "compositor-bindings-bytes ")
+    if any(line.startswith("compositor-action live ") for line in lines):
+        raise SystemExit("live compositor action ran during the sway proof")
+    if "swaymsg" in log or "hyprctl" in log:
+        raise SystemExit("sway proof started a compositor command")
+    print("sway fixture ok")
+    print(f"scale {scale}")
+
+
 def selftest(scale: str, output: str, state_root: Path) -> None:
     primary = state_root / "primary"
     log = run_session(primary, scale, output, drive_primary, copies="2")
@@ -678,9 +773,12 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     expect_prefix(lines, "compositor-action recorded focus-output ")
     expect_prefix(lines, "compositor-action recorded set-dpms ")
     expect(lines, "compositor-action rejected focus-workspace")
+    expect(lines, "compositor-backend hyprland")
     expect(lines, "compositor-adapter hyprctl binds ")
     expect(lines, "compositor-adapter hyprctl devices ")
     expect(lines, "compositor-adapter hyprctl monitors ")
+    if any(line.startswith("compositor-backend sway") for line in lines):
+        raise SystemExit("sway adapter loaded during the hyprland proof")
     expect(lines, proof_border_line())
     expect(lines, proof_wheel_line())
     expect(lines, proof_token_line(scale))
@@ -735,6 +833,7 @@ def main() -> None:
     parser.add_argument("--plugins", action="store_true", help="load the seven plugins beside the clock")
     parser.add_argument("--scale", default="1")
     parser.add_argument("--output", default="")
+    parser.add_argument("--compositor", choices=("hyprland", "sway"), default="hyprland")
     parser.add_argument("--timeout", type=int, default=120, help="seconds before the interactive proof stops; 0 waits until interrupted")
     args = parser.parse_args()
     runtime = os.environ.get("XDG_RUNTIME_DIR")
@@ -745,12 +844,15 @@ def main() -> None:
     os.chmod(state_root, 0o700)
     if args.selftest:
         try:
-            selftest(args.scale, args.output, state_root / f"selftest-{args.scale}")
+            if args.compositor == "sway":
+                sway_selftest(args.scale, args.output, state_root / f"sway-{args.scale}")
+            else:
+                selftest(args.scale, args.output, state_root / f"selftest-{args.scale}")
         except SettingsError as exc:
             raise SystemExit(str(exc)) from exc
         return
     state = state_root / "interactive"
-    prepared = prepare(state, args.scale, args.output, extras=args.plugins)
+    prepared = prepare(state, args.scale, args.output, extras=args.plugins, compositor=args.compositor)
     if args.plugins:
         prepared["env"]["TAMLINUX_PLUGINS_ON_ALL"] = "1"
     process = spawn(prepared["env"])

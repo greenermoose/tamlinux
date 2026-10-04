@@ -1,0 +1,20 @@
+{
+  "windowsets": [
+    {
+      "id": "1",
+      "name": "1",
+      "active": true,
+      "output": "DP-1",
+      "occupied": true,
+      "windows": [{ "className": "foot", "title": "shell" }]
+    },
+    {
+      "id": "4",
+      "name": "4",
+      "active": false,
+      "output": "HDMI-A-1",
+      "occupied": false,
+      "windows": []
+    }
+  ]
+}

@@ -53,6 +53,11 @@ Shell UI and fixtures read `desktop/shell/host/Compositor.qml`.
 `hyprctl` argument list. `desktop/shell/host/compositor_commands.py` builds
 the argv and does not run it. `hyprland_backend.py` is the only Python that
 starts `/usr/bin/hyprctl`, and only for a named operation.
+`SwayAdapter.qml` is the only shell file that imports `Quickshell.WindowManager`
+or `Quickshell.I3`. It loads only when `TAMLINUX_COMPOSITOR=sway`. Workspaces
+prefer ext-workspace window sets, then i3 IPC. Bindings come from a generated
+`bindsym` fragment. `sway_commands.py` and `sway_snapshot.py` do not run
+commands, and this slice does not start `swaymsg`.
 
 The facade exposes plain data:
 
@@ -108,7 +113,10 @@ desktop/
   shell/host/                 # bar, settings writes, manifest checks
   shell/host/Compositor.qml   # facade the shell and fixtures read
   shell/host/HyprlandAdapter.qml
+  shell/host/SwayAdapter.qml      # loaded only when TAMLINUX_COMPOSITOR=sway
   shell/host/compositor_commands.py
+  shell/host/sway_commands.py     # swaymsg argv; does not run it
+  shell/host/sway_snapshot.py     # fixture snapshot; does not run commands
   shell/host/hyprland_backend.py  # the only Python that starts hyprctl
   shell/host/ui_contract.py   # border and wheel numbers; does not launch anything
   shell/modules/Tam/          # Commons and Ui
@@ -116,9 +124,11 @@ desktop/
   adapters/build_patch.py     # regenerates that patch from the pinned revision
   fixtures/panel/             # tamlinux.fixture, not a fred.* plugin
   fixtures/compositor/        # tamlinux.compositor, reads the facade only
+  fixtures/sway/              # ext-workspace, i3 IPC, inputs, bindsym fragment
   fixtures/ui/                # tamlinux.ui, constructs the shared controls
   tests/test_host.py
   tests/test_compositor.py
+  tests/test_sway.py
   tests/test_ui.py
 ```
 
@@ -136,6 +146,7 @@ From this repository, with a sibling checkout of `clock-fred-tamlinux` (or
 python3 desktop/launch-clock-proof --timeout 120
 python3 desktop/launch-clock-proof --selftest --scale 1
 python3 desktop/launch-clock-proof --selftest --scale 1.25
+python3 desktop/launch-clock-proof --selftest --compositor sway --scale 1
 ```
 
 The interactive bar sits on the bottom edge of the first screen and does not
@@ -266,6 +277,22 @@ Automated, on the development Wayland session:
   monitor state tests passed (3). `--plugins --selftest` at scale 1 and
   1.25 registered all eight plugins and rejected any live compositor action.
 
+## Checks recorded 2026-10-04, Sway adapter
+
+Automated, on the development Wayland session:
+
+- `desktop/tests/test_sway.py` passed (11). The ext-workspace fixture wins
+  over a different i3 workspace list. `exec`, `include`, and other bind
+  commands are dropped. The modules do not start a process.
+- `desktop/tests/test_compositor.py` still passed (17).
+- `--selftest --compositor sway` at scale 1 and 1.25 published the fixture
+  output names, workspace ids, keymap, and binding bytes. Focus and DPMS were
+  recorded. The log did not contain `hyprctl` or `swaymsg`, and no `swaymsg`
+  process was running.
+- `--selftest` at scale 1 and 1.25 still loaded the Hyprland adapter, checked
+  the physical outputs, and registered all eight plugins. The Sway adapter was
+  not loaded.
+
 ## Limits
 
 This is a Develop candidate. It does not install a package, switch the
@@ -274,10 +301,11 @@ the isolated host. They are not the running bar. Typed actions record the
 request during the proof. They start the existing programs only when
 `TAMLINUX_HOST_ACTIONS=1`, which `launch-daily-bar --replace` sets and the
 proof unsets. Plugin QML does not import Hyprland or start `hyprctl`.
-The develop workspace and monitor helpers call the named backend instead of
-building Hyprland commands. The shell's Hyprland adapter remains the only
-Hyprland import in `desktop/`. A Sway backend and the one-command
-install are later steps. Live compositor actions stay off unless
+The develop workspace and monitor helpers call the named Hyprland backend
+instead of building Hyprland commands. The shell's Hyprland adapter remains
+the only Hyprland import in `desktop/`. The Sway adapter fills the same
+facade from fixtures and does not start `swaymsg`. Those helpers do not have
+a Sway backend yet. Live compositor actions stay off unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
 Replacing the running bar is `desktop/launch-daily-bar --replace` after this
 candidate is accepted. That acceptance is Tamlinux 0.1.
