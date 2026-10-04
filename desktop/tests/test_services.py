@@ -14,6 +14,7 @@ CLIPBOARD = SERVICES / "clipboard"
 EMOJIS = SERVICES / "emojis"
 IMAGEPICKER = SERVICES / "imagepicker"
 REMINDERS = SERVICES / "reminders"
+MENU = SERVICES / "menu"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -44,6 +45,11 @@ class ServiceSourceTests(unittest.TestCase):
             REMINDERS / "Service.qml",
             REMINDERS / "ReminderFlowModel.js",
             REMINDERS / "reminder.sh",
+            MENU / "Service.qml",
+            MENU / "MenuModel.js",
+            MENU / "AppLibrary.qml",
+            MENU / "AppSearch.js",
+            MENU / "hidden-entries.sh",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -57,6 +63,8 @@ class ServiceSourceTests(unittest.TestCase):
             EMOJIS / "Service.qml",
             IMAGEPICKER / "Service.qml",
             REMINDERS / "Service.qml",
+            MENU / "Service.qml",
+            MENU / "AppLibrary.qml",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertIn("import Tam.Commons", text, path.name)
@@ -164,15 +172,44 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("busctl --user -- call", body)
         self.assertNotIn("notify-send", body)
 
+    def test_menu_target_files_and_actions(self):
+        text = (MENU / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-menu"', text)
+        self.assertIn('target: "menu"', text)
+        for method in ("toggle(route: string)", "summon(route: string)", "open(payloadJson: string)", "close()", "refresh()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn('Quickshell.env("TAMLINUX_MENU_DEFAULT")', text)
+        self.assertIn('Quickshell.env("TAMLINUX_MENU_EXTENSION")', text)
+        self.assertIn('"/tamlinux/menu"', text)
+        self.assertNotIn(".config/omarchy", text)
+        # Actions outlive a restart of the services unit.
+        self.assertIn('"systemd-run", "--user", "--scope"', text)
+        # Select/input answers are arguments, never shell text.
+        self.assertIn('\'printf "%s\\\\n" "$1" > "$2"; : > "$3"\', "sh", String(selection)', text)
+        self.assertNotIn("Util.shellQuote", text)
+        # The application library is loaded on demand and owned by the menu.
+        self.assertIn("id: appLibraryLoader", text)
+        self.assertIn("active: false", text)
+        library = (MENU / "AppLibrary.qml").read_text(encoding="utf-8")
+        self.assertIn('Quickshell.env("TAMLINUX_MENU_HIDES")', library)
+        self.assertIn('Quickshell.env("TAMLINUX_APP_REMOVER")', library)
+        self.assertIn('root.serviceDir + "/hidden-entries.sh"', library)
+        self.assertNotIn("omarchy-shell", library)
+        self.assertNotIn("omarchy-remove-launcher-entry", library)
+        helper = MENU / "hidden-entries.sh"
+        self.assertTrue(helper.stat().st_mode & 0o111, "hidden-entries.sh is not executable")
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
         self.assertIn('import "../services/notifications" as Notifications', text)
         self.assertIn('import "../services/osd" as Osd', text)
         self.assertIn('import "../services/reminders" as Reminders', text)
+        self.assertIn('import "../services/menu" as Menu', text)
+        self.assertIn("Menu.Service { osd: osdLoader.item }", text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 

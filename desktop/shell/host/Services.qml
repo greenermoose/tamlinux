@@ -3,6 +3,7 @@ import Quickshell
 import "../services/clipboard" as Clipboard
 import "../services/emojis" as Emojis
 import "../services/imagepicker" as ImagePicker
+import "../services/menu" as Menu
 import "../services/notifications" as Notifications
 import "../services/osd" as Osd
 import "../services/reminders" as Reminders
@@ -10,12 +11,12 @@ import "../services/reminders" as Reminders
 // Session services the host owns. TAMLINUX_SERVICES names them,
 // comma-separated; unknown names are ignored. Each one is vendored under
 // ../services/. Notifications gets the shell injected for the compositor
-// facade and the bar position.
+// facade and the bar position; the menu gets the OSD for launch feedback.
 Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -41,6 +42,7 @@ Item {
   }
 
   Loader {
+    id: osdLoader
     active: services.enabled.indexOf("osd") !== -1
     sourceComponent: Component {
       Osd.Service {}
@@ -83,6 +85,15 @@ Item {
     }
     onLoaded: services.note("service-loaded reminders")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed reminders")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("menu") !== -1
+    sourceComponent: Component {
+      Menu.Service { osd: osdLoader.item }
+    }
+    onLoaded: services.note("service-loaded menu")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed menu")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))
