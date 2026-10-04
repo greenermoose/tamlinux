@@ -1,6 +1,6 @@
 # Agents Token Usage Reporter (`fred.agents`)
 
-Fred's [Tamlinux](https://github.com/greenermoose/tamlinux) agents plugin: a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
+Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment): a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
 panel in place via `omarchy.clonedFrom` routing.
 
 Version 1.1.2 is the first tagged release. This plugin is not submitted to the
