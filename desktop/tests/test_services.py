@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,7 @@ SERVICES = DESKTOP / "shell" / "services"
 NOTIFICATIONS = SERVICES / "notifications"
 OSD = SERVICES / "osd"
 CLIPBOARD = SERVICES / "clipboard"
+EMOJIS = SERVICES / "emojis"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -31,6 +33,9 @@ class ServiceSourceTests(unittest.TestCase):
             CLIPBOARD / "open.sh",
             CLIPBOARD / "components" / "ConfirmDialog.qml",
             CLIPBOARD / "components" / "PointerMoveGate.qml",
+            EMOJIS / "Service.qml",
+            EMOJIS / "EmojiSearch.js",
+            EMOJIS / "insert.sh",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -41,6 +46,7 @@ class ServiceSourceTests(unittest.TestCase):
             OSD / "Service.qml",
             CLIPBOARD / "Service.qml",
             CLIPBOARD / "components" / "ConfirmDialog.qml",
+            EMOJIS / "Service.qml",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertIn("import Tam.Commons", text, path.name)
@@ -92,10 +98,29 @@ class ServiceSourceTests(unittest.TestCase):
         # Opened programs run in their own scope, not the services unit.
         self.assertEqual((CLIPBOARD / "open.sh").read_text(encoding="utf-8").count("exec setsid uwsm-app --"), 3)
 
+    def test_emojis_target_data_and_helper(self):
+        text = (EMOJIS / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-emojis"', text)
+        self.assertIn('target: "emojis"', text)
+        for method in ("toggle()", "open()", "close()", "count()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn('Quickshell.shellDir + "/services/emojis"', text)
+        self.assertIn('root.serviceDir + "/emojis.json"', text)
+        emojis = json.loads((EMOJIS / "emojis.json").read_text(encoding="utf-8"))
+        self.assertGreater(len(emojis), 1000)
+        self.assertTrue(all(isinstance(item.get("e"), str) and item["e"] for item in emojis))
+        helper = EMOJIS / "insert.sh"
+        self.assertTrue(helper.stat().st_mode & 0o111, "insert.sh is not executable")
+        body = helper.read_text(encoding="utf-8")
+        self.assertNotIn("omarchy-", body.split("\n\n", 2)[-1])
+        # Offered as sensitive, so the clipboard history never records it.
+        self.assertIn("wl-copy --type text/plain --sensitive --foreground", body)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
+        self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/notifications" as Notifications', text)
         self.assertIn('import "../services/osd" as Osd', text)
         self.assertIn("TAMLINUX_SERVICES", text)
