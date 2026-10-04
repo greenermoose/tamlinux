@@ -683,13 +683,18 @@ Panel {
   }
 
   // --- DPMS Controls & Safety Timer ---
+  function requestDpms(name, on) {
+    var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
+    if (!comp || !comp.setDpms) return
+    comp.setDpms(name, on)
+    root.refresh()
+  }
+
   function setDpmsOffWithSafety(name) {
     if (!name || !Model.isValidOutputName(name)) return
     root.dpmsSafetyMonitor = name
     root.dpmsCountdown = 10
-    actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["eval", 'hl.dispatch(hl.dsp.dpms({ action = "disable", monitor = "' + name + '" }))']
-    actionProc.launch()
+    root.requestDpms(name, false)
   }
 
   function confirmDpmsOff() {
@@ -701,11 +706,7 @@ Panel {
     var mon = root.dpmsSafetyMonitor
     root.dpmsSafetyMonitor = ""
     dpmsSafetyTimer.stop()
-    if (mon) {
-      actionProc.exe = "/usr/bin/hyprctl"
-      actionProc.args = ["eval", 'hl.dispatch(hl.dsp.dpms({ action = "enable", monitor = "' + mon + '" }))']
-      actionProc.launch()
-    }
+    if (mon) root.requestDpms(mon, true)
   }
 
   function setDpmsOn(name) {
@@ -714,9 +715,7 @@ Panel {
       root.dpmsSafetyMonitor = ""
       dpmsSafetyTimer.stop()
     }
-    actionProc.exe = "/usr/bin/hyprctl"
-    actionProc.args = ["eval", 'hl.dispatch(hl.dsp.dpms({ action = "enable", monitor = "' + name + '" }))']
-    actionProc.launch()
+    root.requestDpms(name, true)
   }
 
   Timer {

@@ -70,3 +70,9 @@ provenance standard. Documentation only.
 Cursor `3.23.12` (`composer`) rewrote `fred.monitor` to 2.0.0 on
 `develop/2.0.0`. The IPC target is `fred.monitor`. Not tagged or released.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.monitor 2.0.0 QML at the Tamlinux
+compositor facade. The three DPMS controls call `bar.compositor.setDpms`. Layout, state, and reset helpers still call Hyprland. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).
