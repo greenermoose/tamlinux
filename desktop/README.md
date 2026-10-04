@@ -1,9 +1,9 @@
 # Tamlinux shell proof
 
 Develop-stage host for pinned `fred.clock` 1.3.3, with a read-only calendar,
-plus a small fixture widget that is not a `fred.*` plugin. It runs outside
-the Omarchy shell and does not replace the running desktop. Stopping the
-proof process and deleting its isolated state is the recovery path.
+plus fixture widgets that are not `fred.*` plugins. It runs outside the
+Omarchy shell and does not replace the running desktop. Stopping the proof
+process and deleting its isolated state is the recovery path.
 
 Pinned clock revision: `ed5140ccefc83c0a2fdd5f899bbd290acc35d88a`.
 Development closure checked here: Quickshell 0.3.1, Qt 6.11.2.
@@ -28,12 +28,19 @@ is not copied into this directory.
 | `setCenterHoverRevealSuppressed` | weather, tides | Stored on that bar. |
 | `showTooltip` / `hideTooltip` | sysinfo, monitor, and the shared buttons | Separate overlay. Size follows `TAMLINUX_UI_SCALE`. |
 | `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the first registered panel widget. `omarchy.osd` is refused. |
-| `bar.run` | agents, sysinfo, weather, clock | Logged and not executed. The call sites are `omarchy-agent --pick`, `omarchy-launch-terminal btop`, `omarchy-notification-send`, and `omarchy-menu-timezone`. |
+| `bar.run` | agents, sysinfo, weather, clock | Logged and not executed. The string is not interpreted. |
+| `pickAgent()` | agents | Recorded. Does not start `omarchy-agent`. |
+| `openTerminal(program)` | sysinfo | Records `btop` only. Any other program is refused. |
+| `notify(text)` | weather | Records the length of a plain notice up to 512 characters. Shell characters are refused. |
+| `openTimezoneMenu()` | clock | Recorded. Does not open a menu. |
 
-`Tam.Commons` and `Tam.Ui` still cover only the types the clock constructs.
-These shared types are used by the other plugins and are not built yet:
+`Tam.Commons` and `Tam.Ui` include the shared types the eight plugins construct:
 `Border`, `BarIconButton`, `BorderSurface`, `CursorSurface`, `Dropdown`,
-`PanelHero`, `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`.
+`PanelHero`, `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`, plus the
+type and spacing tokens those plugins read. `Border.surfaceSpec` and
+`Border.controlSpec` use the fallback color and a uniform width. They do not
+read a theme file. `Util.wheelSteps` accumulates wheel notches. There is no
+`execDetached`. The seven plugins are not loaded here and still import `qs.*`.
 
 ## Compositor contract
 
@@ -90,13 +97,16 @@ desktop/
   shell/host/Compositor.qml   # facade the shell and fixtures read
   shell/host/HyprlandAdapter.qml
   shell/host/compositor_commands.py
+  shell/host/ui_contract.py   # border and wheel numbers; does not launch anything
   shell/modules/Tam/          # Commons and Ui
   adapters/clock-step1.patch  # imports, identity, offline gate, disabled edits
   adapters/build_patch.py     # regenerates that patch from the pinned revision
   fixtures/panel/             # tamlinux.fixture, not a fred.* plugin
   fixtures/compositor/        # tamlinux.compositor, reads the facade only
+  fixtures/ui/                # tamlinux.ui, constructs the shared controls
   tests/test_host.py
   tests/test_compositor.py
+  tests/test_ui.py
 ```
 
 The launcher exports the pinned clock with `git archive`, applies the patch,
@@ -198,11 +208,34 @@ Automated, on the development Wayland session, after the host-contract checks:
   appeared. Live action lines did not. The proof log mentioned `hyprctl` only
   on the adapter's binds, devices, and monitors read lines.
 
+## Checks recorded 2026-10-03, shared UI
+
+Automated, on the development Wayland session, after the compositor checks:
+
+- `desktop/tests/test_ui.py` passed (8 tests). Border specs use the fallback
+  color and a uniform width, including when the section name is not a theme
+  token. Wheel notches match `1,0 0,60 1,0 0,-20`. The action source does not
+  start a process, and `Util` has `wheelSteps` without `execDetached`.
+- `desktop/tests/test_host.py` still passed (11 tests).
+  `desktop/tests/test_compositor.py` still passed (9 tests).
+- `--selftest --scale 1` and `--scale 1.25` kept the clock, host, and
+  compositor results, including tooltip sizes 132×42 at 11px and 168×54 at 14px.
+- The same runs built every shared control on both host copies. Border evidence
+  was `flat-top=2 surface-top=1 control-top=1 focus-accent=true
+  normal-foreground=true overlay=false`. At scale 1 the tokens were display 24,
+  large 28, subtitle 13, base 12, control 28, and status slot 21.
+- `pickAgent`, `openTerminal("btop")`, `notify("status")`, and
+  `openTimezoneMenu` were recorded. `openTerminal("sh")`, a shell-like notice,
+  an over-long notice, and `bar.run("omarchy-agent --pick")` were refused.
+  No new `omarchy-agent`, terminal, notification, timezone, or `btop` process
+  appeared.
+
 ## Limits
 
 This is a Develop candidate. It does not install a package, switch the
 production shell, or prove a Void target session. The other seven plugins are
-not loaded and are not pointed at the facade yet. The Hyprland adapter is the
-only new Hyprland import in this tree. A Sway backend and the one-command
-install are later steps. Live compositor actions stay off unless
-`TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
+not loaded, are not pointed at the facade, and have not been rewritten. The
+typed actions record the request and do not launch the old helpers. The
+Hyprland adapter is the only new Hyprland import in this tree. A Sway backend
+and the one-command install are later steps. Live compositor actions stay off
+unless `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.

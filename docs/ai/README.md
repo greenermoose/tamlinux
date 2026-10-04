@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Shared UI closure and typed actions | Cursor `3.23.12` | `composer` | [`2026-10-03-shared-ui-closure.md`](2026-10-03-shared-ui-closure.md) |
 | 2026-10-03 | Workstation package route and version series | Claude Code `2.1.288` | `claude-opus-5-5` | [`2026-10-03-workstation-package-route-and-versions.md`](2026-10-03-workstation-package-route-and-versions.md) |
 | 2026-10-03 | Compositor contract and Hyprland adapter | Cursor `3.23.12` | `composer` | [`2026-10-03-compositor-contract.md`](2026-10-03-compositor-contract.md) |
 | 2026-10-03 | Void-first target base and repository alignment | Codex CLI `0.160.0` | `gpt-6.1-sol` | [2026-10-03-void-first-target-base.md](2026-10-03-void-first-target-base.md)

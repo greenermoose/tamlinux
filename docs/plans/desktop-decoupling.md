@@ -1,9 +1,9 @@
 # Desktop decoupling toward Void Linux
 
-**Status:** Step 3 candidate is in `desktop/` as of 2026-10-03. The clock
-proof and the host contract remain, and the compositor facade checks passed
-the same day. Product remains 0.0.1. Not promoted past Develop. The seven
-plugins are unchanged. Step 4 has not started. The milestone order was
+**Status:** Step 4's first slice is in `desktop/` as of 2026-10-03. The shared
+UI closure and typed actions checked the same day. Product remains 0.0.1. Not
+promoted past Develop. The seven plugins are unchanged and have not been
+rewritten. The daily bar has not been replaced. The milestone order was
 updated on 2026-10-03: the workstation package replaces Omarchy on the
 development workstation (1.0.0) before the Void pilot.
 **First implementation:** a standalone Quickshell host running `fred.clock`
@@ -125,8 +125,8 @@ distributions and as native `xbps-src` packages on Void.
 | 0 | Current dependency inventory and source baseline | Completed reconnaissance | Classified matrix, source revisions, recorded unknowns. Prepared 2026-10-03. |
 | 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only. |
 | 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only. |
-| 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only; Step 4 has not started. |
-| 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | `Tam.Commons`/`Tam.Ui` cover every plugin; a typed action API replaces `bar.run`; each plugin is rewritten in its own repository as `fred.<id>` 2.0.0; the independent bar replaces Omarchy's in daily use. |
+| 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only. |
+| 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | First slice checked 2026-10-03: `Tam.Commons`/`Tam.Ui` cover the shared types, and typed actions record requests without launching them. Plugin rewrites and the daily bar replacement have not started. |
 | 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | No plugin reads raw Hyprland state; parity tests pass against the Hyprland and Sway adapters (`ext-workspace-v1` first, `Quickshell.I3` second); bindings come from generated configuration. |
 | 6 | Remaining inherited desktop functions (0.3) | 4 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. |
 | 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the inherited one; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
@@ -249,9 +249,10 @@ Recorded needs, from the pinned revisions in the source baseline:
 - `bar.run` stays refused. The commands are `omarchy-agent --pick`,
   `omarchy-launch-terminal btop`, `omarchy-notification-send`, and
   `omarchy-menu-timezone`.
-- Shared UI not built in this slice: `Border`, `BarIconButton`,
+- Shared UI not built in the Step 2 slice: `Border`, `BarIconButton`,
   `BorderSurface`, `CursorSurface`, `Dropdown`, `PanelHero`,
-  `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`.
+  `PanelSectionHeader`, `PanelSlider`, and `ToggleSwitch`. Those types are
+  in the Step 4 slice.
 - Hyprland imports and `hyprctl` in this tree now live only in
   `HyprlandAdapter.qml` (Step 3). The seven plugins still talk to Hyprland
   themselves. Keyboard already disables its
@@ -287,6 +288,26 @@ clock checks still pass. Live focus and DPMS lines are absent from the proof
 log. Layout rewrite, `hyprctl reload`, and monitor reset stay with the later
 plugin backends. A Sway backend is Step 5.
 
+## Step 4 shared UI, first slice
+
+`Tam.Commons` and `Tam.Ui` now include the controls and tokens the eight
+plugins construct. `Border.flat`, `surfaceSpec`, and `controlSpec` return a
+uniform width from the caller's fallback color. Section names are ignored.
+`desktop/shell/host/ui_contract.py` holds the same numbers for tests and does
+not launch anything.
+
+`BarApi` adds `pickAgent`, `openTerminal`, `notify`, and `openTimezoneMenu`.
+`openTerminal` accepts only `btop`. `notify` accepts a plain string of at most
+512 characters and records its length. `bar.run` still logs the string and
+does not execute it. `Util.wheelSteps` is the pure notch helper. There is no
+`execDetached`.
+
+`desktop/fixtures/ui/` is `tamlinux.ui`. It constructs the new controls and is
+not a `fred.*` plugin. Checked on 2026-10-03 with the existing clock, host,
+and compositor selftests at scale 1 and 1.25. The seven plugins are unchanged.
+Rewriting each one as `fred.<id>` 2.0.0, and replacing the daily bar, are the
+rest of this step.
+
 ## Boundaries and recovery
 
 This task is Develop-stage work. Do not restart or replace the production shell,
@@ -303,8 +324,9 @@ hardened.
 
 ## Next handoff
 
-The Step 3 candidate is in `desktop/`. Shell UI in that tree reads the
-compositor facade. The seven plugins still read Hyprland directly; moving
-them is Steps 4 and 5. Promotion to Test is a separate decision. Steps 4–11
-define the subsequent project order; they are not claimed complete by this
+The shared UI slice is in `desktop/`. Shell UI in that tree reads the
+compositor facade, and `tamlinux.ui` constructs the shared controls. The seven
+plugins still read Hyprland directly and still call `bar.run`. Rewriting them
+is the rest of Step 4; pointing them at the facade is Step 5. Promotion to
+Test is a separate decision. Steps 4–11 are not claimed complete by this
 prototype.

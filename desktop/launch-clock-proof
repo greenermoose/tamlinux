@@ -22,6 +22,7 @@ from compositor_commands import (  # noqa: E402
     CompositorCommandError,
     snapshot_from_monitors,
 )
+from ui_contract import proof_border_line, proof_token_line, proof_wheel_line  # noqa: E402
 from registry import RegistryError, validate_directories  # noqa: E402
 from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
 
@@ -30,7 +31,14 @@ SHELL_DIR = Path(__file__).resolve().parent / "shell"
 PATCH = Path(__file__).resolve().parent / "adapters" / "clock-step1.patch"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "panel"
 COMPOSITOR = Path(__file__).resolve().parent / "fixtures" / "compositor"
+UI = Path(__file__).resolve().parent / "fixtures" / "ui"
 ALLOWED = {"fred.clock", "tamlinux.fixture"}
+ACTION_MARKERS = (
+    "omarchy-agent",
+    "omarchy-launch-terminal",
+    "omarchy-notification-send",
+    "omarchy-menu-timezone",
+)
 
 
 def clock_repo() -> Path:
@@ -143,7 +151,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     if not os.environ.get("XDG_RUNTIME_DIR"):
         raise SystemExit("XDG_RUNTIME_DIR is required; the proof does not use /tmp")
     try:
-        records = validate_directories([plugin, FIXTURE, COMPOSITOR])
+        records = validate_directories([plugin, FIXTURE, COMPOSITOR, UI])
     except RegistryError as exc:
         raise SystemExit(f"registry rejected a staged plugin: {exc}") from exc
     by_id = {record["id"]: record for record in records}
@@ -161,6 +169,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "TAMLINUX_CLOCK_ENTRY": by_id["fred.clock"]["entry"],
         "TAMLINUX_PANEL_ENTRY": by_id["tamlinux.fixture"]["entry"],
         "TAMLINUX_COMPOSITOR_ENTRY": by_id["tamlinux.compositor"]["entry"],
+        "TAMLINUX_UI_ENTRY": by_id["tamlinux.ui"]["entry"],
         "TAMLINUX_PLUGIN_IDS": "fred.clock,tamlinux.fixture",
         "TAMLINUX_HOST_COPIES": copies,
         "TAMLINUX_UI_SCALE": scale,
@@ -211,6 +220,28 @@ def stop(process: subprocess.Popen) -> None:
     handle = getattr(process, "_log_handle", None)
     if handle:
         handle.close()
+
+
+def action_pids() -> set[str]:
+    """Pids of the shell commands the typed actions must not start."""
+    try:
+        listing = subprocess.run(
+            ["ps", "-u", str(os.getuid()), "-o", "pid=,args="],
+            capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        return set()
+    found = set()
+    for line in listing.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        pid, _, args = stripped.partition(" ")
+        if any(marker in args for marker in ACTION_MARKERS):
+            found.add(pid)
+        if args == "btop" or args.endswith("/btop"):
+            found.add(pid)
+    return found
 
 
 def helper_leaks(plugin: Path) -> list[str]:
@@ -292,6 +323,16 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
         if not wait_for(predicate, 5):
             raise SystemExit(message + "\n" + read_log(process)[-2500:])
 
+    require(lambda: proof_border_line() in lines(), "shared UI border evidence did not match:")
+    require(lambda: proof_wheel_line() in lines(), "wheel step evidence did not match:")
+    require(lambda: proof_token_line(env["TAMLINUX_UI_SCALE"]) in lines(), "style token evidence did not match:")
+    for name in (
+        "Border", "BarIconButton", "BorderSurface", "CursorSurface", "Dropdown",
+        "PanelHero", "PanelSectionHeader", "PanelSlider", "ToggleSwitch", "Button",
+    ):
+        require(lambda name=name: sum(1 for line in lines() if line == f"ui-built {name}") >= 2, f"{name} was not built on both hosts:")
+    if any(line.startswith("ui-load-failed") for line in lines()):
+        raise SystemExit("shared UI fixture failed to load:\n" + read_log(process)[-2500:])
     opened = ipc(env, "tamlinux.clock", "open")
     if opened.returncode != 0:
         raise SystemExit(opened.stderr or opened.stdout or "open ipc failed")
@@ -340,6 +381,19 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
     ipc(env, "tamlinux-shell", "rejectSettings")
     require(lambda: "settings-rejected omarchy.osd" in lines(), "unknown settings id was not rejected:")
     drive_compositor(env, process, lines, require)
+    before_actions = action_pids()
+    ipc(env, "tamlinux-shell", "probeActions")
+    require(lambda: "action-recorded pick-agent" in lines(), "pick-agent was not recorded:")
+    require(lambda: "action-recorded open-terminal btop" in lines(), "terminal action was not recorded:")
+    require(lambda: "unsupported open-terminal" in lines(), "rejected terminal was not refused:")
+    require(lambda: "action-recorded notify 6" in lines(), "notice was not recorded:")
+    require(lambda: sum(1 for line in lines() if line == "unsupported notify") >= 2, "unsafe notices were not refused:")
+    require(lambda: "action-recorded timezone-menu" in lines(), "timezone menu was not recorded:")
+    require(lambda: "unsupported omarchy-agent --pick" in lines(), "bar.run was not refused:")
+    require(lambda: "actions-probed" in lines(), "action probe did not finish:")
+    started = action_pids() - before_actions
+    if started:
+        raise SystemExit("typed actions started a process: " + ", ".join(sorted(started)))
     ipc(env, "tamlinux-shell", "dropHost", [keys[1]])
     require(lambda: contains(f"bar-destroyed host={keys[1]}"), "dropped host was not destroyed:")
     require(lambda: live_hosts() == 1, "surviving host was not kept:")
@@ -547,6 +601,17 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     expect(lines, "compositor-adapter hyprctl binds ")
     expect(lines, "compositor-adapter hyprctl devices ")
     expect(lines, "compositor-adapter hyprctl monitors ")
+    expect(lines, proof_border_line())
+    expect(lines, proof_wheel_line())
+    expect(lines, proof_token_line(scale))
+    expect(lines, "action-recorded pick-agent")
+    expect(lines, "action-recorded open-terminal btop")
+    expect(lines, "unsupported open-terminal")
+    expect(lines, "action-recorded notify 6")
+    expect(lines, "unsupported notify")
+    expect(lines, "action-recorded timezone-menu")
+    expect(lines, "unsupported omarchy-agent --pick")
+    expect(lines, "actions-probed")
     if any(line.startswith("compositor-action live ") for line in lines):
         raise SystemExit("live compositor action ran during the proof")
     leaked = proof_log_is_adapter_only(log)

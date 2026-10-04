@@ -8,8 +8,9 @@ ShellRoot {
   id: proof
 
   property string clockEntry: Quickshell.env("TAMLINUX_CLOCK_ENTRY") || ""
-  property string fixtureEntry: Quickshell.env("TAM LINUX_PANEL_ENTRY") || ""
+  property string fixtureEntry: Quickshell.env("TAMLINUX_PANEL_ENTRY") || ""
   property string compositorEntry: Quickshell.env("TAMLINUX_COMPOSITOR_ENTRY") || ""
+  property string uiEntry: Quickshell.env("TAMLINUX_UI_ENTRY") || ""
   property alias compositor: compositorFacade
   property string pluginIds: Quickshell.env("TAMLINUX_PLUGIN_IDS") || "fred.clock"
   property bool outputDropped: false
@@ -282,6 +283,26 @@ ShellRoot {
     evidence("switch-result " + (ok ? "true" : "false"))
   }
 
+  function probeActions() {
+    var bar = clockHost()
+    if (!bar || !bar.surface) {
+      evidence("actions-missing")
+      return
+    }
+    var api = bar.surface
+    api.pickAgent()
+    api.openTerminal("btop")
+    api.openTerminal("sh")
+    api.notify("status")
+    api.notify("$(bad)")
+    var longText = ""
+    for (var i = 0; i < 513; i++) longText += "a"
+    api.notify(longText)
+    api.openTimezoneMenu()
+    api.run("omarchy-agent --pick")
+    evidence("actions-probed")
+  }
+
   function probeClick() {
     if (hosts.length < 2) {
       evidence("click-same false click-other false")
@@ -356,6 +377,7 @@ ShellRoot {
     function compositorSetDpms(name: string, on: string): void {
       if (proof.compositor) proof.compositor.setDpms(name, on)
     }
+    function probeActions(): void { proof.probeActions() }
   }
 
   Compositor {
@@ -368,9 +390,11 @@ ShellRoot {
     evidence("scale " + Style.uiScale)
     evidence("omarchy " + (Quickshell.env("OMARCHY_PATH") ? "set" : "unset"))
     var panelPath = String(Quickshell.env("TAMLINUX_PANEL_ENTRY") || "")
-    var compositorPath = String(Quickshell.env("TAM LINUX_COMPOSITOR_ENTRY") || "")
+    var compositorPath = String(Quickshell.env("TAMLINUX_COMPOSITOR_ENTRY") || "")
+    var uiPath = String(Quickshell.env("TAMLINUX_UI_ENTRY") || "")
     if (panelPath !== "") fixtureEntry = panelPath
     if (compositorPath !== "") compositorEntry = compositorPath
+    if (uiPath !== "") uiEntry = uiPath
     evidence("clock-entry " + clockEntry)
     evidence("host-copies " + hostCopies)
     evidence("screens " + (Quickshell.screens ? Quickshell.screens.length : 0))

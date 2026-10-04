@@ -28,7 +28,7 @@ CLI version was updated to `1.2.12` on 2026-09-28 and `1.2.16` on 2026-10-03.
 Codex CLI was checked again as `0.160.0` for the 2026-10-03 dependency planning
 session, using the logged model `gpt-6.1-sol`. Cursor was checked as `3.21.18`
 for the 2026-10-03 clock-shell candidate, and as `3.23.12` for the compositor
-contract the same day. Claude Code was checked as `2.1.288` (`claude-opus-5-5`)
+contract and the shared UI slice the same day. Claude Code was checked as `2.1.288` (`claude-opus-5-5`)
 for the 2026-10-03 workstation-package route.
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
@@ -47,6 +47,7 @@ for the 2026-10-03 workstation-package route.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Shared UI closure and typed actions** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The proof host now has the border, style, and control types the plugins bind, plus typed actions that record a request and do not start a process. `bar.run` stays refused. A fixture proves the types. The eight plugins are not rewritten, and the daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-shared-ui-closure.md). |
 | **Workstation package route and version series** | 0.0.1 planning | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's route: the workstation package installs on existing distributions first (Nix flake + host adapter), Fred's Arch workstation reaches 1.0.0 when Omarchy and Hyprland are removed, then a second distribution and the Void base (native `xbps-src`). Set the 0.0.x–1.3 version series and renumbered the desktop milestones. Documentation only. [Session record](docs/ai/2026-10-03-workstation-package-route-and-versions.md). |
 | **Compositor contract and Hyprland adapter** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Shell UI in `desktop/` reads a compositor facade. The Hyprland adapter is the only new file that imports Hyprland or starts hyprctl. Focus and DPMS stay record-only in the proof. The seven plugins are unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-compositor-contract.md). |
 | **runit for init and service management** | 0.0.1 planning | Antigravity CLI (`agy`) `1.2.16` (`gemini-3.8-flash-high`) | Recorded Fred's decision to use runit for system initialization (PID 1) and service supervision on the target workstation, aligning with antiX Linux Core's default runit base. Documentation only. [Session record](docs/ai/2026-10-03-runit-system-initialization-and-service-management.md). |

@@ -129,6 +129,47 @@ QtObject {
     reportUnsupported(String(command || "run"))
   }
 
+  function pickAgent() {
+    recordAction("pick-agent")
+  }
+
+  function openTerminal(program) {
+    if (String(program || "") === "btop") {
+      recordAction("open-terminal btop")
+      return true
+    }
+    reportUnsupported("open-terminal")
+    return false
+  }
+
+  function notify(text) {
+    var body = String(text === undefined || text === null ? "" : text)
+    if (!plainNotice(body)) {
+      reportUnsupported("notify")
+      return false
+    }
+    recordAction("notify " + body.length)
+    return true
+  }
+
+  function openTimezoneMenu() {
+    recordAction("timezone-menu")
+  }
+
+  function plainNotice(body) {
+    if (body.length < 1 || body.length > 512) return false
+    for (var i = 0; i < body.length; i++) {
+      var code = body.charCodeAt(i)
+      if (code < 32 || code === 36 || code === 38 || code === 59 || code === 92 || code === 96 || code === 124)
+        return false
+    }
+    return true
+  }
+
+  function recordAction(name) {
+    console.log("TAMLINUX_EVIDENCE action-recorded " + name)
+  }
+
   function reportUnsupported(action) {
     console.log("TAMLINUX_EVIDENCE unsupported " + String(action || "action"))
   }

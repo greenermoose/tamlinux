@@ -16,9 +16,12 @@ Item {
   property bool labelVisible: true
   property bool hasVisualContent: text !== ""
   property string tooltipText: ""
+  property bool hovered: false
+  property bool tooltipHovered: false
   property var registeredBar: null
 
   signal pressed(int button)
+  signal wheelMoved(real delta)
 
   function triggerPress(button) {
     if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
@@ -63,8 +66,17 @@ Item {
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onEntered: if (root.bar && root.bar.showTooltip) root.bar.showTooltip(root, root.tooltipText)
-    onExited: if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
+    onEntered: {
+      root.hovered = true
+      root.tooltipHovered = root.tooltipText !== ""
+      if (root.bar && root.bar.showTooltip) root.bar.showTooltip(root, root.tooltipText)
+    }
+    onExited: {
+      root.hovered = false
+      root.tooltipHovered = false
+      if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
+    }
     onClicked: function(mouse) { root.triggerPress(mouse.button) }
+    onWheel: function(wheel) { root.wheelMoved(wheel.angleDelta.y) }
   }
 }
