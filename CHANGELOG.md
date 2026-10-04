@@ -10,6 +10,15 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- **Omarchy is removed before Hyprland** (2026-10-04). **0.3** now means
+  Omarchy is gone from the workstation while Hyprland keeps running: its
+  functions are replaced, its packages, package mirror, and kernel are removed,
+  and the desktop carries Tamlinux's own name and look. 0.4 installs the Sway
+  session beside the Hyprland session, 0.5–0.9 fall back to Hyprland, and
+  1.0.0 removes Hyprland. Updated [`VERSIONING.md`](VERSIONING.md), the
+  [README](README.md), and the
+  [desktop decoupling plan](docs/plans/desktop-decoupling.md).
+
 - Set the **route and version series** in [`VERSIONING.md`](VERSIONING.md):
   0.1 owned shell with the eight rewritten plugins, 0.2 compositor contract,
   0.3 remaining Omarchy functions replaced, 0.4 workstation package beside

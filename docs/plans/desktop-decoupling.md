@@ -7,7 +7,9 @@ only when `TAMLINUX_COMPOSITOR=sway`; the Hyprland proof stays the default.
 backend. Product remains 0.0.1. Not promoted past Develop. The daily bar has
 not been replaced.
 The milestone order was updated on 2026-10-03: the workstation package
-replaces Omarchy on the development workstation (1.0.0) before the Void pilot.
+replaces the inherited desktop on the development workstation (1.0.0) before
+the Void pilot. On 2026-10-04 it changed again: Omarchy is removed at Step 6
+(0.3) while Hyprland stays, and Step 8 (1.0.0) removes Hyprland.
 **First implementation:** a standalone Quickshell host running `fred.clock`
 with Tamlinux-owned shared modules and isolated data. The candidate lives in
 `desktop/`; see that README for the launch command and the 2026-10-03 check
@@ -132,9 +134,9 @@ distributions and as native `xbps-src` packages on Void.
 | 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only. |
 | 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | Shared UI checked 2026-10-03. The eight plugins are rewritten as `fred.<id>` 2.0.0 on `develop/2.0.0` and load in the isolated host. The daily bar replacement waits for acceptance; that acceptance is Tamlinux 0.1. |
 | 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment. Fixture proof passed. Helper Hyprland commands stay on the named backend. Exit for 0.2 still needs those helpers on Sway and daily use of the Hyprland adapter. |
-| 6 | Remaining inherited desktop functions (0.3) | 4 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. |
-| 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the inherited one; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
-| 8 | Inherited desktop removed from the development workstation (1.0.0) | 7 | Omarchy and Hyprland removed after a backup and recorded rollback route; carried patches for dropped components retired. |
+| 6 | Omarchy removed; Hyprland stays (0.3) | 4 + 5 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. The Hyprland configuration, shell environment, session entry, memory and boot settings are owned; Omarchy's packages, package mirror, repository and kernel are removed; visible names and the look are Tamlinux's. |
+| 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the Hyprland session; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
+| 8 | Hyprland removed from the development workstation (1.0.0) | 7 | Hyprland removed after a backup and recorded rollback route; carried patches for dropped components retired. |
 | 9 | Second distribution (1.1) | 8 | Same package installed and verified on a different distribution with systemd; host-adapter differences recorded. |
 | 10 | Void hardware pilot with Sway, runit, Btrfs and libc comparison (1.2) | 8; hardware/disk selection | Native `xbps-src` packages from the same sources; unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
 | 11 | Repeatable installation (1.3) | 10 | Live-media base install, single-command activation, terminal-only profile, and demonstrated recovery on more than one machine. |

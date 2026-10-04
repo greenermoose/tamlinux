@@ -10,18 +10,21 @@ machine and this explainer agree.
 Two anchors were set with 0.0.1: **0.x** is Tamlinux running on
 [Omarchy](https://omarchy.com) plus Fred's patches and `fred.*` plugins, and
 **1.x** means the Omarchy and Hyprland dependencies are gone. The steps in
-between were set on 2026-10-03. A minor version is a milestone Fred accepts
-into daily use on his workstation, not a merged development candidate.
+between were set on 2026-10-03. On 2026-10-04 the order changed: Omarchy is
+removed at **0.3** while Hyprland keeps running, so from 0.3 on, Tamlinux runs
+on Hyprland without Omarchy, and 1.0.0 removes Hyprland. A minor version is a
+milestone Fred accepts into daily use on his workstation, not a merged
+development candidate.
 
 | Version | Milestone | Base | Desktop |
 | :-- | :-- | :-- | :-- |
 | **0.0.x** | Today's workstation snapshot: Omarchy, Fred's patches, and the released `fred.*` 1.x plugins. Patch bumps for fixes only. | Arch | Omarchy shell on Hyprland |
 | **0.1** | The independent Tamlinux shell replaces Omarchy's bar in daily use, carrying all eight rewritten plugins. | Arch | Tamlinux shell on Hyprland |
 | **0.2** | Plugins reach the compositor only through the compositor contract; the Hyprland adapter is in daily use and the Sway adapter passes its tests. | Arch | Tamlinux shell on Hyprland |
-| **0.3** | The remaining Omarchy functions (menus, launcher, notifications, lock, idle, themes, sleep hooks, bindings) are replaced by owned code or selected third-party tools. | Arch | Tamlinux shell on Hyprland |
-| **0.4** | The `tamlinux` workstation package exists and installs a Sway session beside the Omarchy session. | Arch | Both sessions available |
-| **0.5–0.9** | Release candidates: the Sway session is the daily driver while Omarchy remains the fallback session. | Arch | Tamlinux on Sway |
-| **1.0.0** | Omarchy and Hyprland are removed from the workstation. The first installation of the workstation package on an existing distribution. | Arch | Tamlinux on Sway |
+| **0.3** | Omarchy is removed; Hyprland stays. Its functions (menus, launcher, notifications, lock, idle, themes, sleep hooks, bindings) are replaced by owned code or selected third-party tools; its packages, package mirror, and kernel are removed; and the desktop carries Tamlinux's own name and look. | Arch | Tamlinux on Hyprland |
+| **0.4** | The `tamlinux` workstation package exists and installs a Sway session beside the Hyprland session. | Arch | Both sessions available |
+| **0.5–0.9** | Release candidates: the Sway session is the daily driver while the Hyprland session remains the fallback. | Arch | Tamlinux on Sway |
+| **1.0.0** | Hyprland is removed from the workstation (Omarchy left at 0.3). The first installation of the workstation package on an existing distribution. | Arch | Tamlinux on Sway |
 | **1.1** | The same package installs on a second, different distribution on another machine. | Arch + one other | Tamlinux on Sway |
 | **1.2** | Void pilot: the same sources as native `xbps-src` packages on Void + runit + Btrfs + seatd, with complete recovery proved. antiX Core + runit only if Void has a showstopper. | + Void pilot | Tamlinux on Sway |
 | **1.3** | Repeatable live-media base install, single-command workstation activation, and the terminal-only profile. | + Void pilot | + terminal-only |
@@ -74,5 +77,6 @@ cat ~/.config/tamlinux/generation        # this machine's Home Manager generatio
 home-manager generations                 # full local rollback list
 ```
 
-`$OMARCHY_CONFIG_VERSION` and `~/.config/omarchy/version` remain as 0.x
-compatibility aliases of `$TAMLINUX_VERSION`. They are not a second product.
+`$OMARCHY_CONFIG_VERSION` and `~/.config/omarchy/version` remain as
+compatibility aliases of `$TAMLINUX_VERSION` until 0.3 removes them. They are
+not a second product.

@@ -49,15 +49,17 @@ package repository yet.
 
 ## Current base
 
-Tamlinux 0.x is built on Omarchy, plus Fred's patches and the `fred.*`
-plugins. The roadmap decouples top-down from Omarchy in two moves:
+Tamlinux 0.0.x is built on Omarchy, plus Fred's patches and the `fred.*`
+plugins. Omarchy comes off Fred's Arch workstation first, piece by piece,
+while Hyprland keeps running and the machine stays in daily use: that is
+**Tamlinux 0.3**. Then the roadmap continues in two moves:
 
 1. **A workstation package for existing distributions.** Sway, the
    independent Quickshell shell, the rewritten `fred.*` plugins, selected
    third-party tools, and the `tamlinux` command, delivered as a Nix flake
    with a small native host adapter. Fred's Arch workstation installs it,
-   then removes Omarchy and Hyprland: that is **Tamlinux 1.0.0**. A second,
-   different distribution follows.
+   then removes Hyprland: that is **Tamlinux 1.0.0**. A second, different
+   distribution follows.
 2. **A minimal base for the same package.** **Void Linux with runit, seatd,
    Wayland, Sway, and Btrfs**, with the package built from the same sources as
    native `xbps-src` packages. If Void has a showstopper, we will try

@@ -30,12 +30,13 @@ session, using the logged model `gpt-6.1-sol`. Cursor was checked as `3.21.18`
 for the 2026-10-03 clock-shell candidate, and as `3.23.12` for the compositor
 contract, the shared UI slice, the plugin facade reads the same day, and the
 Sway adapter on 2026-10-04. Claude Code was checked as `2.1.288` (`claude-opus-5-5`)
-for the 2026-10-03 workstation-package route.
+for the 2026-10-03 workstation-package route, and as `2.1.289` for the
+2026-10-04 milestone change that removes Omarchy before Hyprland.
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
 | **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
-| **Claude Code** (`claude`) | `2.1.288` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
+| **Claude Code** (`claude`) | `2.1.289` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
 | **Codex CLI** (`codex`) | `0.160.0` | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
 | **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
 | **Cursor** (`cursor`) | `3.21.16` | composer | **Implementation in this repository**: public explainer, suite branding, and 0.0.1 versioning. |
@@ -48,6 +49,7 @@ for the 2026-10-03 workstation-package route.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Omarchy removed before Hyprland** | 0.0.1 planning | Claude Code `2.1.289` (`claude-opus-5-5`) | Recorded Fred's change of order: 0.3 now means Omarchy is gone while Hyprland stays (functions replaced; packages, package mirror and kernel removed; Tamlinux's own name and look), 0.4–0.9 fall back to Hyprland, and 1.0.0 removes Hyprland. Fred chose Arch's stock kernel after a comparison. Documentation only. [Session record](docs/ai/2026-10-04-omarchy-before-hyprland.md). |
 | **Sway adapter, first slice** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The shell Sway adapter prefers ext-workspace workspaces, then i3 IPC, and reads bindings from a generated fragment. It loads only when selected. The Hyprland proof stays the default. No `swaymsg` process is started. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-04-sway-adapter.md). |
 | **Helper Hyprland commands use the named backend** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Workspace and monitor helpers call named compositor operations. Reads run. Mutations record unless the live flag is set. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-hyprland-command-ownership.md). |
 | **Plugin QML reads the compositor facade** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Weather, tides, sysinfo, keyboard, monitor DPMS, and workspaces QML read `bar.compositor`. Output snapshots include a bounded description. `tam-desktop-mode` and the monitor layout helpers still call Hyprland. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-compositor-facade.md). |
