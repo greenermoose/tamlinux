@@ -1,8 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
+import "."
 
 // fred.keyboard's panel window: a clone of the stock Ui/KeyboardPanel.qml
 // (Omarchy 4.0.4-1, MIT; see UPSTREAM.md) with one change. The stock panel

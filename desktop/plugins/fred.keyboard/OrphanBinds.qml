@@ -1,5 +1,6 @@
 import QtQuick
-import qs.Commons
+import Tam.Commons
+import "."
 
 // Binds whose key is not on the attached keyboard: a one-line header that
 // expands into "chord - what it does" rows. Fred's config carries binds

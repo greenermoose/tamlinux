@@ -1,7 +1,8 @@
 import QtQuick
 import Quickshell.Wayland
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
+import "."
 
 // Capture mode: a ShortcutInhibitor wrapped in the box that turns it on and
 // explains, inside the same box, what that means.

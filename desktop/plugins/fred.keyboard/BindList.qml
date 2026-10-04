@@ -1,5 +1,6 @@
 import QtQuick
-import qs.Commons
+import Tam.Commons
+import "."
 
 // A list of binds as "chord   what it does" rows, laid out in two columns
 // filled top to bottom (column-major, so reading order is natural), inside

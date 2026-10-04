@@ -1,7 +1,8 @@
 import QtQuick
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
 import "KeyboardModel.js" as KM
+import "."
 
 // Draws a resolved keyboard layout as schematic keycaps.
 //

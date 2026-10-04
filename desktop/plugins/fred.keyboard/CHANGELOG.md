@@ -3,6 +3,12 @@
 All notable changes to `fred.keyboard` are documented here.
 Format follows Keep a Changelog; this project uses SemVer.
 
+## [2.0.0] - Unreleased
+
+### Changed
+- The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.
+- Omarchy shell IPC targets are gone. Hyprland reads that this plugin already had stay in the plugin until the compositor contract.
+
 ## [1.0.0] - 2026-09-20
 
 First release. Everything below was built and tested on Fred's workstation

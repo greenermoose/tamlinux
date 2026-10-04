@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "Model.js" as Model
+import "."
 
 // Every process the plugin starts goes through here: absolute executable,
 // closed environment built from an allowlist, and a watchdog that TERMs

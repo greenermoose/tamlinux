@@ -1,13 +1,14 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
 import "Model.js" as Model
 import "Device.js" as Device
 import "LayoutResolver.js" as Resolver
 import "KeyboardModel.js" as KM
 import "Bindings.js" as Bindings
+import "."
 
 // fred.keyboard - keyboard shortcut explorer.
 //
@@ -42,7 +43,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "1.0.0"
+  readonly property string pluginVersion: "2.0.0"
   readonly property string repoUrl: "https://github.com/greenermoose/keyboard-fred-tamlinux"
 
   // Closed environment: only these names reach a child process.

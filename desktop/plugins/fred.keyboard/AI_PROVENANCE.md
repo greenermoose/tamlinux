@@ -90,3 +90,9 @@ Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
 [Session record](docs/ai/2026-09-28-private-session-ids.md).
+
+## 2026-10-03 shell-independent 2.0.0
+
+Cursor `3.23.12` (`composer`) rewrote `fred.keyboard` to 2.0.0 on
+`develop/2.0.0`. Hyprland reads stay in the plugin. Not tagged or released.
+[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).

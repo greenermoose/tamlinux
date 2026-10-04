@@ -1,6 +1,7 @@
 import QtQuick
-import qs.Ui
-import qs.Commons
+import Tam.Ui
+import Tam.Commons
+import "."
 
 // Reverse lookup: type part of a command, see the chords that run it. The
 // matching keys are marked on the board by the owner (via `results`).
