@@ -13,6 +13,7 @@ OSD = SERVICES / "osd"
 CLIPBOARD = SERVICES / "clipboard"
 EMOJIS = SERVICES / "emojis"
 IMAGEPICKER = SERVICES / "imagepicker"
+REMINDERS = SERVICES / "reminders"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -40,6 +41,9 @@ class ServiceSourceTests(unittest.TestCase):
             IMAGEPICKER / "Service.qml",
             IMAGEPICKER / "ImagePickerModel.js",
             IMAGEPICKER / "list.sh",
+            REMINDERS / "Service.qml",
+            REMINDERS / "ReminderFlowModel.js",
+            REMINDERS / "reminder.sh",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -52,6 +56,7 @@ class ServiceSourceTests(unittest.TestCase):
             CLIPBOARD / "components" / "ConfirmDialog.qml",
             EMOJIS / "Service.qml",
             IMAGEPICKER / "Service.qml",
+            REMINDERS / "Service.qml",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertIn("import Tam.Commons", text, path.name)
@@ -139,14 +144,35 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("/tamlinux/image-picker", body)
         self.assertNotIn("omarchy", body.split("\n\n", 2)[-1])
 
+    def test_reminders_target_and_helper(self):
+        text = (REMINDERS / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-reminders"', text)
+        self.assertIn('target: "reminders"', text)
+        for method in ("toggle()", "open()", "close()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn('Quickshell.shellDir + "/services/reminders"', text)
+        self.assertIn('root.serviceDir + "/reminder.sh"', text)
+        self.assertNotIn("OMARCHY_", text)
+        helper = REMINDERS / "reminder.sh"
+        self.assertTrue(helper.stat().st_mode & 0o111, "reminder.sh is not executable")
+        body = helper.read_text(encoding="utf-8").split("\n\n", 2)[-1]
+        for command in ("omarchy-reminder", "omarchy-shell", "omarchy-notification"):
+            self.assertNotIn(command, body)
+        self.assertIn('"tamlinux-reminder-*.timer"', body)
+        self.assertIn('/tamlinux-reminders"', body)
+        # Toasts are typed D-Bus values, never notify-send arguments.
+        self.assertIn("busctl --user -- call", body)
+        self.assertNotIn("notify-send", body)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
         self.assertIn('import "../services/notifications" as Notifications', text)
         self.assertIn('import "../services/osd" as Osd', text)
+        self.assertIn('import "../services/reminders" as Reminders', text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 

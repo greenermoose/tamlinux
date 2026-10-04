@@ -15,6 +15,7 @@ explicitly.
 | 2026-10-04 | Notifications service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-notifications-service.md`](2026-10-04-notifications-service.md) |
 | 2026-10-04 | OSD service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-osd-service.md`](2026-10-04-osd-service.md) |
 | 2026-10-04 | Clipboard service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-clipboard-service.md`](2026-10-04-clipboard-service.md) |
+| 2026-10-04 | Reminders in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-reminders.md`](2026-10-04-reminders.md) |
 | 2026-10-04 | Image picker in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-image-picker.md`](2026-10-04-image-picker.md) |
 | 2026-10-04 | Emoji picker in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-emoji-picker.md`](2026-10-04-emoji-picker.md) |
 | 2026-10-04 | Omarchy removed before Hyprland (0.3) | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-omarchy-before-hyprland.md`](2026-10-04-omarchy-before-hyprland.md) |

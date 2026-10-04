@@ -5,6 +5,7 @@ import "../services/emojis" as Emojis
 import "../services/imagepicker" as ImagePicker
 import "../services/notifications" as Notifications
 import "../services/osd" as Osd
+import "../services/reminders" as Reminders
 
 // Session services the host owns. TAMLINUX_SERVICES names them,
 // comma-separated; unknown names are ignored. Each one is vendored under
@@ -14,7 +15,7 @@ Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -73,6 +74,15 @@ Item {
     }
     onLoaded: services.note("service-loaded imagepicker")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed imagepicker")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("reminders") !== -1
+    sourceComponent: Component {
+      Reminders.Service {}
+    }
+    onLoaded: services.note("service-loaded reminders")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed reminders")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))
