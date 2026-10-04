@@ -1,6 +1,6 @@
 # System Information & Hardware Monitor (`fred.sysinfo`)
 
-Comprehensive hardware telemetry, thermal sensors, and system information bar plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Hyprland + Quickshell).
+Comprehensive hardware telemetry, thermal sensors, and system information bar plugin for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment; Hyprland + Quickshell).
 
 ![Resource summary hover](assets/hover.png)
 
@@ -47,7 +47,7 @@ Each write creates an unpredictable `0600` temporary file using `O_EXCL` and `O_
 
 ## Requirements
 
-- Tamlinux (or Arch Linux base with Hyprland and Quickshell)
+- Tamlinux personal workstation environment (or Arch Linux base with Hyprland and Quickshell)
 - Python 3 (`python3`, standard library only)
 - `pciutils` (`/usr/bin/lspci` for hardware bus controller identification)
 - `power-profiles-daemon` (`powerprofilesctl` for platform power management)
