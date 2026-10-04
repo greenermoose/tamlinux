@@ -13,6 +13,7 @@ architectural decisions for `workspaces-fred-tamlinux`.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-03 | Shell-independent 2.0.0 | Cursor `3.23.12` | `composer` | [`2026-10-03-shell-independent-2.0.0.md`](2026-10-03-shell-independent-2.0.0.md) |
 | 2026-09-11 | Workspace Indicator & Multi-Monitor Desktop Modes (v1.0.0) | `agy` | Gemini 3.8 Flash (High) | [`2026-09-11-workspace-indicator-desktop-modes-v1.0.0.md`](2026-09-11-workspace-indicator-desktop-modes-v1.0.0.md) |
 | 2026-09-12 | `clonedFrom` Integration & Upstream Provenance (v1.1.0) | `agy` | Gemini 3.8 Flash (High) | [`2026-09-12-clonedfrom-integration-upstream-provenance-v1.1.0.md`](2026-09-12-clonedfrom-integration-upstream-provenance-v1.1.0.md) |
 | 2026-09-12 | Marketplace Security Hardening & Official Listing (v1.2.0, v1.2.1) | `agy` + `claude` (audit) | Gemini 3.8 Flash (High) + Claude Opus 5 | [`2026-09-12-marketplace-security-hardening-v1.2.0.md`](2026-09-12-marketplace-security-hardening-v1.2.0.md) |

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.workspaces",
   "name": "Workspaces with Desktop Mode",
-  "version": "1.5.2",
+  "version": "2.0.0",
   "author": "Fred (@greenermoose)",
   "description": "Workspace numbers with clickable desktop modes, dynamic Windows sets, and unused monitor idle blanking",
   "repository": "https://github.com/greenermoose/workspaces-fred-tamlinux",
@@ -40,8 +40,5 @@
         "description": "Seconds of inactivity before powering down an unused monitor (no visible windows and no cursor focus). Set to 0 to disable per-monitor idle blanking."
       }
     ]
-  },
-  "omarchy": {
-    "clonedFrom": "omarchy.workspaces"
   }
 }

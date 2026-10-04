@@ -3,14 +3,15 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
-import qs.Commons
-import qs.Ui
+import Tam.Commons
+import Tam.Ui
+import "."
 
 BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "1.5.2"
+  readonly property string pluginVersion: "2.0.0"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -478,7 +479,7 @@ BarWidget {
 
   function siblingWidgets() {
     var fn = bar ? (bar.moduleWidgets || bar._moduleWidgets) : null
-    var candidates = [root.moduleName, "fred.workspaces", "omarchy.workspaces"]
+    var candidates = [root.moduleName, "fred.workspaces"]
     for (var c = 0; c < candidates.length; c++) {
       if (typeof fn === "function") {
         var found = fn(candidates[c])
@@ -1071,12 +1072,6 @@ BarWidget {
 
   IpcHandler {
     target: "fred.workspaces"
-
-    function resetIdle(): void { root.broadcastWorkspaces("resetIdle") }
-  }
-
-  IpcHandler {
-    target: "omarchy.workspaces"
 
     function resetIdle(): void { root.broadcastWorkspaces("resetIdle") }
   }
