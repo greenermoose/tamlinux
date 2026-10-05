@@ -33,27 +33,25 @@ showstopper. The aim is a sustainable workstation environment that runs well
 on a wide variety of hardware.
 
 Simplifying and minimizing resource use is not merely an accommodation for
-older computers: it is a universal virtue. Removing bloat, resident daemons,
-and polling loops allows Linux to run faster and use less energy on modern
-hardware, too. On older hardware, it keeps viable machines in service; on modern
-hardware, it unlocks blistering speed, cooler operation, and lower energy
-consumption.
+older computers: it is a virtue. Removing bloat, resident daemons, and polling
+loops allows Linux to run faster and use less energy on modern hardware, too.
+On older hardware, it keeps viable machines in service; on modern hardware, it
+unlocks blistering speed, cooler operation, and lower energy consumption.
 
-It is a Wayland-based system. Arch's rolling updates, AntiX's non-systemd
-efficiency and hardware longevity, and Nix's atomic package rollbacks are core
-technical inspirations. Quickshell powers the desktop. The target is a tiling
-Wayland window system inspired by the UI Omarchy provides, built
-on Sway and targeting Void Linux. The `fred.*` plugin IDs stay `fred.*`.
+Arch's rolling updates, AntiX's non-systemd efficiency and hardware longevity,
+and Nix's atomic package rollbacks are core technical inspirations. Wayland
+and Quickshell power the desktop. The target is a tiling window system
+inspired by the UI Omarchy provides, built on Sway and Void Linux.
 
-This repository is the public explainer. It is not an ISO, installer, or
-package repository yet.
+This repository is a public explainer, not an ISO, installer, or package
+repository yet.
 
 ## Current base
 
-Tamlinux 0.0.x is built on Omarchy, plus Fred's patches and the `fred.*`
-plugins. Omarchy comes off Fred's Arch workstation first, piece by piece,
-while Hyprland keeps running and the machine stays in daily use: that is
-**Tamlinux 0.6**. Then the roadmap continues in two moves:
+Tamlinux 0.0 through 0.6 is built on Omarchy, plus Fred's patches and plugins.
+We are porting some Omarchy code piece by piece, while Hyprland keeps running
+and the machine stays in daily use. Once we have ported over all the Omarchy
+code, then the roadmap continues in two moves:
 
 1. **A workstation package for existing distributions.** Sway, the
    independent Quickshell shell, the rewritten `fred.*` plugins, selected
@@ -66,9 +64,10 @@ while Hyprland keeps running and the machine stays in daily use: that is
    **antiX Linux Core with runit**. Compare musl and glibc. See the
    [base operating system plan](docs/plans/base-operating-system.md).
 
-0.0.1 was the first workstation snapshot. 0.0.2 (2026-10-04) owns the
-foundation: Arch's own package mirror and stock kernel, the Hyprland
-configuration, the shell environment, and the session entry and login screen.
+0.0.1 was the first workstation snapshot.
+0.0.2 (2026-10-04) owns the foundation: Arch's own package mirror and stock
+kernel, the Hyprland configuration, the shell environment, and the session
+entry and login screen.
 Since then every step Fred accepts is a version: 0.1.0–0.1.22 moved the
 desktop's session services into the Tamlinux shell. The stages and their
 rules are in [`VERSIONING.md`](VERSIONING.md).
