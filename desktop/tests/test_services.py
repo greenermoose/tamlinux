@@ -16,6 +16,7 @@ IMAGEPICKER = SERVICES / "imagepicker"
 REMINDERS = SERVICES / "reminders"
 MENU = SERVICES / "menu"
 BACKGROUND = SERVICES / "background"
+POLKIT = SERVICES / "polkit"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -53,6 +54,8 @@ class ServiceSourceTests(unittest.TestCase):
             MENU / "hidden-entries.sh",
             BACKGROUND / "Service.qml",
             BACKGROUND / "components" / "ScreenMoveRemap.qml",
+            POLKIT / "Service.qml",
+            POLKIT / "PolkitModel.js",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -68,6 +71,7 @@ class ServiceSourceTests(unittest.TestCase):
             REMINDERS / "Service.qml",
             MENU / "Service.qml",
             MENU / "AppLibrary.qml",
+            POLKIT / "Service.qml",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertIn("import Tam.Commons", text, path.name)
@@ -222,9 +226,29 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertNotIn("omarchy-", text.split("\n\n", 1)[-1])
         self.assertNotIn("qs.Commons", text)
 
+    def test_polkit_agent_path_layer_and_target(self):
+        text = (POLKIT / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-polkit"', text)
+        self.assertIn("WlrKeyboardFocus.Exclusive", text)
+        self.assertIn('path: "/org/tamlinux/PolkitAgent"', text)
+        self.assertIn('target: "polkit"', text)
+        for method in ("state()", "ping()"):
+            self.assertIn("function " + method, text)
+        # The IPC target only reports; it cannot submit or cancel a request.
+        ipc = text.split('target: "polkit"', 1)[1].split("PanelWindow", 1)[0]
+        self.assertNotIn("submit", ipc)
+        self.assertNotIn("cancel", ipc)
+        # The lid check is a fixed script that reads /proc, with no helper command.
+        self.assertIn("/proc/acpi/button/lid/*/state", text)
+        self.assertNotIn("omarchy-", text.split("\n\n", 1)[-1])
+        self.assertIn('path: "/etc/pam.d/polkit-1"', text)
+        model = (POLKIT / "PolkitModel.js").read_text(encoding="utf-8")
+        for name in ("promptLooksFingerprint", "fingerprintConfiguredFromPamConfig", "authorizationLabel"):
+            self.assertIn("function " + name, model)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
@@ -235,6 +259,8 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("Menu.Service { osd: osdLoader.item }", text)
         self.assertIn('import "../services/background" as Background', text)
         self.assertIn("Background.Service { menu: menuLoader.item }", text)
+        self.assertIn('import "../services/polkit" as Polkit', text)
+        self.assertIn("Polkit.Service {}", text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 

@@ -7,18 +7,21 @@ import "../services/imagepicker" as ImagePicker
 import "../services/menu" as Menu
 import "../services/notifications" as Notifications
 import "../services/osd" as Osd
+import "../services/polkit" as Polkit
 import "../services/reminders" as Reminders
 
 // Session services the host owns. TAMLINUX_SERVICES names them,
 // comma-separated; unknown names are ignored. Each one is vendored under
 // ../services/. Notifications gets the shell injected for the compositor
 // facade and the bar position; the menu gets the OSD for launch feedback,
-// and the background gets the menu for its desktop double-clicks.
+// and the background gets the menu for its desktop double-clicks. Polkit
+// needs nothing; only one agent per session registers, so it stays out of
+// TAMLINUX_SERVICES while another agent holds the session.
 Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -106,6 +109,15 @@ Item {
     }
     onLoaded: services.note("service-loaded background")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed background")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("polkit") !== -1
+    sourceComponent: Component {
+      Polkit.Service {}
+    }
+    onLoaded: services.note("service-loaded polkit")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed polkit")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))
