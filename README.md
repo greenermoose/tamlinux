@@ -1,8 +1,8 @@
 # Tamlinux
 
-Fred's Tamlinux is a bespoke personal Linux workstation environment aimed at getting the best
-possible performance from the computing resources you already own. It is
-inspired by the rolling updates of Arch Linux, AntiX Linux's commitment to
+Fred's Tamlinux is a bespoke personal Linux workstation environment aimed at
+getting the best possible performance from the computing resources you already own.
+It is inspired by the rolling updates of Arch Linux, AntiX Linux's commitment to
 ensuring Linux runs on older hardware, the declarative reproducibility and atomic
 rollbacks of Nix, and modern desktop ideas from Wayland, River, Hyprland,
 Quickshell, and Omarchy.
@@ -19,16 +19,16 @@ Quickshell, and Omarchy.
 
 ## What Tamlinux is
 
-Tamlinux is Fred's personal Linux workstation environment (or a workstation environment for Linux). Its job is to get the most
-from hardware that already exists: workstations, mini PCs, and older laptops
-that still have years of useful silicon left.
+Tamlinux is a resource-efficient, high-performance workstation environment
+for Linux. Its job is to get the most from hardware that already exists:
+desktop systems, mini PCs, and laptops that have decades of useful life.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
 max**. Like the tamarack's needles, Tamlinux is meant to be temporary. Its
-vision is to work from Omarchy toward one installable workstation package that
-turns an existing Linux distribution into a lean, high-efficiency workstation environment,
-and then toward a minimal Void base for that package, with antiX Core as the
-fallback if Void has a showstopper. The aim is a sustainable workstation
+vision is to work from Omarchy toward an installation package that turns an
+existing Linux distribution into a lean, high-efficiency workstation environment,
+and then toward a system that builds on a minimal Void base, with antiX Core
+as the fallback if Void has a showstopper. The aim is a sustainable workstation
 environment that runs on a wide variety of hardware.
 
 Simplifying and minimizing resource use is not merely an accommodation for
@@ -40,8 +40,8 @@ consumption.
 
 It is a Wayland-based system. Arch's rolling updates, AntiX's non-systemd
 efficiency and hardware longevity, and Nix's atomic package rollbacks are core
-technical inspirations. Hyprland and Quickshell power the initial desktop. The
-target is a tiling Wayland desktop inspired by the UI Omarchy provides, built
+technical inspirations. Quickshell powers the desktop. The target is a tiling
+Wayland window system inspired by the UI Omarchy provides, built
 on Sway and targeting Void Linux. The `fred.*` plugin IDs stay `fred.*`.
 
 This repository is the public explainer. It is not an ISO, installer, or
@@ -58,8 +58,7 @@ while Hyprland keeps running and the machine stays in daily use: that is
    independent Quickshell shell, the rewritten `fred.*` plugins, selected
    third-party tools, and the `tamlinux` command, delivered as a Nix flake
    with a small native host adapter. Fred's Arch workstation installs it,
-   then removes Hyprland: that is **Tamlinux 1.0.0**. A second, different
-   distribution follows.
+   then removes Hyprland: that is **Tamlinux 1.0.0**.
 2. **A minimal base for the same package.** **Void Linux with runit, seatd,
    Wayland, Sway, and Btrfs**, with the package built from the same sources as
    native `xbps-src` packages. If Void has a showstopper, we will try
