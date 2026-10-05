@@ -46,6 +46,8 @@
   > I want both. Lets use the word "port" to describe what we're doing: we're
   > porting packages from the omarchy shell to the tamlinux shell.
 
+  > All 7 pass; I accept 0.1.23.
+
 ## Key decisions and implementation notes
 
 - Fred chose, from options the agent offered: the **minor version is a stage
@@ -81,6 +83,9 @@
   note).
 
 ## Verification
+
+- **0.1.23** released after Fred's seven desktop tests passed: `VERSION`,
+  the changelog entry, and the status lines.
 
 - Every retroactive number follows the order of Fred's recorded acceptances.
 - The `omarchy-*` command inventory after 0.1.23's code assigns each of its

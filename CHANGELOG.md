@@ -29,6 +29,20 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.1.23 - 2026-10-05
+
+The last step of stage 0.1: the desktop's session services run in the
+Tamlinux shell, and the remaining commands its keys and menus call are
+Tamlinux's own.
+
+### Changed
+
+- **Update menu and keys use Tamlinux's own commands.** Time sync, the
+  timezone picker (now through `timedatectl` and the polkit prompt), the
+  Wi-Fi, Bluetooth, and trackpad restarts, drive encryption, the time
+  notification, and the window keys for pop-out, tiled full screen,
+  transparency, saved width, and monitor scaling.
+
 ## 0.1.0 to 0.1.22 - 2026-10-04 to 2026-10-05
 
 Numbered on 2026-10-05, in the order each step was accepted into daily use.
