@@ -8,6 +8,13 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Media keys in the Tamlinux host** (2026-10-04, toward 0.0.3). The
+  [desktop host](desktop/README.md) runs a media service that picks the
+  playing MPRIS player for play, pause, next, previous, and the source
+  switch, and shows each action on the host's on-screen display.
+
 ### Fixed
 
 - **`$TAMLINUX_VERSION` is set again** (2026-10-04). It was declared but

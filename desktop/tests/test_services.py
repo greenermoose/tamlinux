@@ -17,6 +17,7 @@ REMINDERS = SERVICES / "reminders"
 MENU = SERVICES / "menu"
 BACKGROUND = SERVICES / "background"
 POLKIT = SERVICES / "polkit"
+MEDIA = SERVICES / "media"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -56,6 +57,8 @@ class ServiceSourceTests(unittest.TestCase):
             BACKGROUND / "components" / "ScreenMoveRemap.qml",
             POLKIT / "Service.qml",
             POLKIT / "PolkitModel.js",
+            MEDIA / "Service.qml",
+            MEDIA / "MediaModel.js",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -246,9 +249,27 @@ class ServiceSourceTests(unittest.TestCase):
         for name in ("promptLooksFingerprint", "fingerprintConfiguredFromPamConfig", "authorizationLabel"):
             self.assertIn("function " + name, model)
 
+    def test_media_target_and_osd(self):
+        text = (MEDIA / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('target: "media"', text)
+        for method in (
+            "status()", "playPause()", "next()", "previous()", "play()", "pause()",
+            "sourceNext()", "sourcePrevious()", "sourceSwitch()", "sourceSwitchPrevious()", "ping()",
+        ):
+            self.assertIn("function " + method, text)
+        # Each action goes to the injected host OSD, not a shell summon.
+        self.assertIn("property var osd: null", text)
+        self.assertIn("osd.open(JSON.stringify(", text)
+        body = text.split("\n\n", 1)[-1]
+        self.assertNotIn("summon", body)
+        self.assertNotIn("omarchy", body)
+        model = (MEDIA / "MediaModel.js").read_text(encoding="utf-8")
+        for name in ("isProxyPlayer", "playerHasPlaybackStream", "trackChanged", "osdMessage"):
+            self.assertIn("function " + name, model)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
@@ -261,6 +282,8 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("Background.Service { menu: menuLoader.item }", text)
         self.assertIn('import "../services/polkit" as Polkit', text)
         self.assertIn("Polkit.Service {}", text)
+        self.assertIn('import "../services/media" as Media', text)
+        self.assertIn("Media.Service { osd: osdLoader.item }", text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 

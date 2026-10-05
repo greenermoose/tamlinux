@@ -4,6 +4,7 @@ import "../services/background" as Background
 import "../services/clipboard" as Clipboard
 import "../services/emojis" as Emojis
 import "../services/imagepicker" as ImagePicker
+import "../services/media" as Media
 import "../services/menu" as Menu
 import "../services/notifications" as Notifications
 import "../services/osd" as Osd
@@ -14,14 +15,15 @@ import "../services/reminders" as Reminders
 // comma-separated; unknown names are ignored. Each one is vendored under
 // ../services/. Notifications gets the shell injected for the compositor
 // facade and the bar position; the menu gets the OSD for launch feedback,
-// and the background gets the menu for its desktop double-clicks. Polkit
+// the media service gets it for each media-key action, and the background
+// gets the menu for its desktop double-clicks. Polkit
 // needs nothing; only one agent per session registers, so it stays out of
 // TAMLINUX_SERVICES while another agent holds the session.
 Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -118,6 +120,15 @@ Item {
     }
     onLoaded: services.note("service-loaded polkit")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed polkit")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("media") !== -1
+    sourceComponent: Component {
+      Media.Service { osd: osdLoader.item }
+    }
+    onLoaded: services.note("service-loaded media")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed media")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))
