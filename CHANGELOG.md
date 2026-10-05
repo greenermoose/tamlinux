@@ -8,39 +8,78 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Every accepted step is a version** (2026-10-05). The minor version names
+  a stage and the patch a step, so each change Fred accepts into daily use
+  raises the version. The stages after 0.1 are re-planned: 0.2 moves every key
+  binding and menu entry to Tamlinux's own commands, 0.3 is the Tamlinux bar,
+  0.4 the compositor contract, 0.5 Tamlinux's own look and name, 0.6 Omarchy
+  removed, 0.7 the workstation package beside Hyprland, and 0.8 the Sway
+  session as the daily driver; 1.0.0 still removes Hyprland.
+  [`VERSIONING.md`](VERSIONING.md) has the rules and the table. The planned
+  0.0.3 was never issued; its work is 0.1.0–0.1.22 below.
+
+## 0.1.0 to 0.1.22 - 2026-10-04 to 2026-10-05
+
+Numbered on 2026-10-05, in the order each step was accepted into daily use.
+Not tagged.
+
+| Version | Accepted | Step |
+| :-- | :-- | :-- |
+| 0.1.0 | 2026-10-04 | Notifications in the Tamlinux host |
+| 0.1.1 | 2026-10-04 | On-screen display; a microphone-mute key for the Calliope keyboard |
+| 0.1.2 | 2026-10-04 | Clipboard history |
+| 0.1.3 | 2026-10-04 | Emoji picker |
+| 0.1.4 | 2026-10-04 | Image picker for theme, background, and unlock screen |
+| 0.1.5 | 2026-10-04 | Reminders |
+| 0.1.6 | 2026-10-04 | The command menu |
+| 0.1.7 | 2026-10-04 | Desktop background |
+| 0.1.8 | 2026-10-04 | Screenshots |
+| 0.1.9 | 2026-10-04 | Polkit agent |
+| 0.1.10 | 2026-10-04 | Screen recording, text and QR-code capture, webcam overlay |
+| 0.1.11 | 2026-10-04 | Media keys, idle and Stay Awake, battery warnings and power profiles |
+| 0.1.12 | 2026-10-04 | Browser extensions |
+| 0.1.13 | 2026-10-04 | Monitor watch |
+| 0.1.14 | 2026-10-05 | Audio and brightness commands |
+| 0.1.15 | 2026-10-05 | Update and recovery commands |
+| 0.1.16 | 2026-10-05 | Lock screen with `hyprlock` |
+| 0.1.17 | 2026-10-05 | Shared menu terminal and helpers |
+| 0.1.18 | 2026-10-05 | System menu, crash capture, and session units |
+| 0.1.19 | 2026-10-05 | Trigger menu |
+| 0.1.20 | 2026-10-05 | Menu entries for dropped features removed |
+| 0.1.21 | 2026-10-05 | Setup menu: defaults, DNS, security |
+| 0.1.22 | 2026-10-05 | App install and remove, launchers, and app keys |
+
 ### Added
 
-- **Media keys in the Tamlinux host** (2026-10-04, toward 0.0.3). The
+- **Media keys in the Tamlinux host** (2026-10-04). The
   [desktop host](desktop/README.md) runs a media service that picks the
   playing MPRIS player for play, pause, stop, next, previous, and the source
   switch, and shows each action on the host's on-screen display.
-- **Stay Awake and the idle cycle in the Tamlinux host** (2026-10-04, toward
-  0.0.3). The [desktop host](desktop/README.md) runs an idle service with the
-  Stay Awake switch, kept in one state file that idle suspend can honour, and
+- **Stay Awake and the idle cycle in the Tamlinux host** (2026-10-04). The
+  [desktop host](desktop/README.md) runs an idle service with the Stay Awake
+  switch, kept in one state file that idle suspend can honour, and
   an idle cycle that starts the screensaver and then the lock. Each stage is
   off unless its timeout is set.
 - **Low-battery warning and power profiles in the Tamlinux host**
-  (2026-10-04, toward 0.0.3). The [desktop host](desktop/README.md) runs a
+  (2026-10-04). The [desktop host](desktop/README.md) runs a
   battery service that warns once when a draining battery reaches 10% and
   sets the power profile for battery or mains power when the source
   changes. On a machine without a battery it does nothing.
 
 ### Changed
 
-- **Browser extensions are Tamlinux's own** (2026-10-04, toward 0.0.3). The
+- **Browser extensions are Tamlinux's own** (2026-10-04). The
   three Chromium extensions (copy URL, download video, and the slim WhatsApp
   window) and their two native-messaging helpers load from Tamlinux's
   configuration.
-- **The monitor watch is Tamlinux's own** (2026-10-04, toward 0.0.3). The
+- **The monitor watch is Tamlinux's own** (2026-10-04). The
   service that reacts to displays appearing and disappearing, and the helpers
   it calls, run from Tamlinux's configuration; the display recovery hooks still
   fire after resume.
-- **Night light moves to 0.2** (2026-10-04). [`VERSIONING.md`](VERSIONING.md)
-  no longer lists it for 0.0.3. It arrives with the compositor contract in
-  0.2, together with a night-light indicator in the bar.
-- **0.0.3 also waits for the lock screen** (2026-10-04).
-  [`VERSIONING.md`](VERSIONING.md) now lists it: the lock key and menu entry
-  use Tamlinux's own command, which starts `hyprlock`.
+- **The lock screen is Tamlinux's own** (2026-10-05, 0.1.16). The lock key
+  and menu entry use Tamlinux's own command, which starts `hyprlock`.
 
 ### Fixed
 
@@ -59,15 +98,12 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   the workstation boots the stock Arch `linux` kernel. Tamlinux owns the
   Hyprland configuration, the shell environment, the session entry and
   session units, and the login screen (theme, greeter, and autologin).
-- **Session services in the Tamlinux host**, toward 0.0.3. The
-  [desktop host](desktop/README.md) runs notifications, the on-screen
-  display, clipboard history, the emoji and image pickers, reminders, the
-  command menu, the desktop background, and the polkit agent as session
-  services beside the existing bar. Screenshots use Tamlinux's own commands.
-  Before 0.0.3: screen recording and text and QR-code capture; media
-  controls, night light, idle and Stay Awake, and low-battery warnings; the
-  browser extensions; the monitor watch; and every other command the desktop
-  calls.
+- **Session services in the Tamlinux host** (2026-10-04; numbered 0.1.0–0.1.8
+  on 2026-10-05). The [desktop host](desktop/README.md) runs notifications,
+  the on-screen display, clipboard history, the emoji and image pickers,
+  reminders, the command menu, the desktop background, and the polkit agent
+  as session services beside the existing bar. Screenshots use Tamlinux's own
+  commands.
 
 ### Changed
 

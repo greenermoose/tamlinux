@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-05 | Every accepted step is a version | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-05-version-keyed-plan.md`](2026-10-05-version-keyed-plan.md) |
 | 2026-10-04 | Notifications service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-notifications-service.md`](2026-10-04-notifications-service.md) |
 | 2026-10-04 | OSD service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-osd-service.md`](2026-10-04-osd-service.md) |
 | 2026-10-04 | Clipboard service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-clipboard-service.md`](2026-10-04-clipboard-service.md) |

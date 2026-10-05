@@ -1,18 +1,16 @@
 # Desktop decoupling toward Void Linux
 
-**Status:** Step 5's Sway adapter slice is in `desktop/` as of 2026-10-04.
-Plugin QML reads the compositor facade. The shell loads `SwayAdapter.qml`
-only when `TAMLINUX_COMPOSITOR=sway`; the Hyprland proof stays the default.
-`tam-desktop-mode` and the monitor helpers still call the named Hyprland
-backend. Product is 0.0.2. The host's session services (notifications,
+**Status:** Tamlinux 0.1.22. The host's session services (notifications,
 on-screen display, clipboard, pickers, reminders, menu, background, polkit,
-media, idle, and battery) run in daily use beside the existing bar, toward
-0.0.3. The bar and plugin host are not promoted past Develop, and the daily
-bar has not been replaced.
-The milestone order was updated on 2026-10-03: the workstation package
-replaces the inherited desktop on the development workstation (1.0.0) before
-the Void pilot. On 2026-10-04 it changed again: Omarchy is removed at Step 6
-(0.3) while Hyprland stays, and Step 8 (1.0.0) removes Hyprland.
+media, idle, battery, and lock) run in daily use beside the existing bar, and
+the desktop's commands are Tamlinux's own. Stage 0.2 moves every key binding
+and menu entry next; stage 0.3 replaces the daily bar with the Tamlinux shell
+and the eight rewritten plugins, which are Develop candidates. Plugin QML
+reads the compositor facade; the shell loads `SwayAdapter.qml` only when
+`TAMLINUX_COMPOSITOR=sway`, and the Hyprland proof stays the default.
+`tam-desktop-mode` and the monitor helpers still call the named Hyprland
+backend (stage 0.4). On 2026-10-05 the milestones were re-keyed by version:
+each accepted step is a patch release (see "Ordered milestones").
 **First implementation:** a standalone Quickshell host running `fred.clock`
 with Tamlinux-owned shared modules and isolated data. The candidate lives in
 `desktop/`; see that README for the launch command and the 2026-10-03 check
@@ -129,24 +127,32 @@ distributions and as native `xbps-src` packages on Void.
 
 ## Ordered milestones
 
-| Step | Deliverable | Depends on | Exit evidence |
-| --- | --- | --- | --- |
-| 0 | Current dependency inventory and source baseline | Completed reconnaissance | Classified matrix, source revisions, recorded unknowns. Prepared 2026-10-03. |
-| 1 | Independent shell + clock proof | 0 | Candidate in `desktop/`. Automated checks passed and Fred accepted the visible bar on 2026-10-03. Develop only. |
-| 2 | Host contract and incremental shared UI | 1 | Candidate in `desktop/`. Settings, manifests, per-output popout and cleanup, tooltips, panel focus, and IPC checks passed on 2026-10-03. Other plugins' API needs are recorded. Develop only. |
-| 3 | Compositor contract and Hyprland adapter | 2 | Candidate in `desktop/`. Facade plus Hyprland adapter checked 2026-10-03. Shell UI reads the facade. Focus and DPMS stay record-only in the proof. Plugins are unchanged. Develop only. |
-| 4 | Full shared UI closure and the eight rewritten plugins (0.1) | 2 + 3 | Shared UI checked 2026-10-03. The eight plugins are rewritten as `fred.<id>` 2.0.0 on `develop/2.0.0` and load in the isolated host. The daily bar replacement waits for acceptance; that acceptance is Tamlinux 0.1. |
-| 5 | Plugin backends on the compositor contract and a Sway adapter (0.2) | 3 + 4 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment. Fixture proof passed. Helper Hyprland commands stay on the named backend. Exit for 0.2 still needs those helpers on Sway and daily use of the Hyprland adapter. |
-| 6 | Omarchy removed; Hyprland stays (0.3) | 4 + 5 | Menus, launcher, notifications, tray, OSD, lock/idle, themes, capture, clipboard, portals, sleep hooks and validated binding generation come from owned code or selected third-party tools; host services stay with the host. The Hyprland configuration, shell environment, session entry, memory and boot settings are owned; Omarchy's packages, package mirror, repository and kernel are removed; visible names and the look are Tamlinux's. |
-| 7 | Workstation package on an existing distribution (0.4–0.9) | 5 + 6 | Nix flake and Arch host adapter install a Sway session beside the Hyprland session; `install verify` passes; daily use and parity checks for all eight plugins and required workflows. |
-| 8 | Hyprland removed from the development workstation (1.0.0) | 7 | Hyprland removed after a backup and recorded rollback route; carried patches for dropped components retired. |
-| 9 | Second distribution (1.1) | 8 | Same package installed and verified on a different distribution with systemd; host-adapter differences recorded. |
-| 10 | Void hardware pilot with Sway, runit, Btrfs and libc comparison (1.2) | 8; hardware/disk selection | Native `xbps-src` packages from the same sources; unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
-| 11 | Repeatable installation (1.3) | 10 | Live-media base install, single-command activation, terminal-only profile, and demonstrated recovery on more than one machine. |
+Since 2026-10-05 each milestone is a Tamlinux version: the minor version is a
+stage and each accepted step within it is a patch
+([VERSIONING.md](../../VERSIONING.md)). The proof work below this table keeps
+its original names (Step 1–5), which were Develop candidates feeding stages
+0.3 and 0.4.
 
-The pilot machine can be selected in parallel with Steps 4–8. The development
-workstation keeps Arch as its base through Step 8; moving its base is a separate
-later decision.
+| Stage | Deliverable | Depends on | Exit evidence |
+| --- | --- | --- | --- |
+| Proof (Steps 0–3) | Dependency inventory; independent shell + clock; host contract and shared UI; compositor contract with the Hyprland adapter | — | Classified matrix and source baseline; candidates in `desktop/` checked 2026-10-03. Develop only. |
+| 0.0 | The foundation owned: package mirror and kernel, Hyprland configuration, shell environment, session entry, login screen | — | 0.0.1 and 0.0.2, 2026-09-22 and 2026-10-04. |
+| 0.1 | Session services in the host beside the existing bar; the desktop's commands owned | Proof | 0.1.0–0.1.22 accepted 2026-10-04 and 2026-10-05: notifications, OSD, clipboard, pickers, reminders, menu, background, screenshots, polkit, capture, media, idle, battery, browser extensions, monitor watch, lock, and the menus' commands. |
+| 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the host | 0.1 | Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
+| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | The plugins load in the isolated host and call only Tamlinux commands; then the daily bar is replaced and the inherited shell stops. |
+| 0.4 | Plugin backends and helpers on the compositor contract; Sway adapter | 0.3 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment; fixture proof passed. Still needed: Sway backends for the monitor and desktop-mode helpers, night light, and capture through the contract; daily use of the Hyprland adapter. |
+| 0.5 | Tamlinux's own look and name | 0.3 | One theme source generates every application's colours; owned fonts; the name on the login screen, menus, and About. |
+| 0.6 | The inherited desktop removed; Hyprland stays | 0.2–0.5 | Its system files, session environment, and every package it built are owned; its packages, package mirror, repository, and kernel are removed. |
+| 0.7 | Workstation package beside the Hyprland session | 0.4 + 0.6 | Nix flake and Arch host adapter install a Sway session; `install verify` passes. |
+| 0.8 | Sway session as the daily driver | 0.7 | Daily use; parity checks for all eight plugins and the required workflows, one step per milestone. |
+| 1.0 | Hyprland removed from the development workstation | 0.8 | Removed after a backup and recorded rollback route; carried patches for dropped components retired. |
+| 1.1 | Second distribution | 1.0 | Same package installed and verified on a different distribution with systemd; host-adapter differences recorded. |
+| 1.2 | Void hardware pilot with Sway, runit, Btrfs and libc comparison | 1.0; hardware/disk selection | Native `xbps-src` packages from the same sources; unprivileged desktop, driver boundary, network/audio/session bus, native sleep/logging and coordinated system recovery proved; Chrome, VS Code and terminal workflows exercised on floor-representative hardware. |
+| 1.3 | Repeatable installation | 1.2 | Live-media base install, single-command activation, terminal-only profile, and demonstrated recovery on more than one machine. |
+
+The pilot machine can be selected in parallel with stages 0.2–0.8. The
+development workstation keeps Arch as its base through 1.0; moving its base is
+a separate later decision.
 
 ## Step 1 implementation specification
 
@@ -319,8 +325,8 @@ request in the proof. They start the existing programs only when
 `TAM LINUX_HOST_ACTIONS=1`, which the proof unsets. Plugin QML reads the
 compositor facade; the remaining Hyprland commands are in `tam-desktop-mode`
 and the monitor helpers. Replacing the running bar is
-`desktop/launch-daily-bar --replace` after that bar is accepted, and that
-acceptance is Tamlinux 0.1.
+`desktop/launch-daily-bar --replace` after that bar is accepted, at step
+0.3.2.
 
 ## Boundaries and recovery
 
@@ -350,7 +356,7 @@ workspaces, focus, and `dpmsOn`, and reacts to `revision`.
 Command text stays in `compositor_commands.py`. Reads run. Mutations,
 including the `monitors.lua` write, record unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`. Brightness still uses the Omarchy
-helper. Replacing the running bar remains the 0.1 acceptance.
+helper. Replacing the running bar remains step 0.3.2.
 
 ## Step 5 Sway adapter
 
@@ -385,6 +391,6 @@ Point `tam-desktop-mode`, `fred-monitor-layout`, `fred-monitor-state`, and
 `fred-monitor-reset` at a Sway backend with the same named operations. Layout
 must stop writing `monitors.lua`. A live Sway session is still required before
 those mutations can be more than recorded commands. Replacing the running bar
-is the 0.1 acceptance, not a side effect of this develop candidate. Promotion
-to Test is a separate decision. Steps 5–11 are not claimed complete by this
-prototype.
+is step 0.3.2, not a side effect of this develop candidate. Promotion
+to Test is a separate decision. Stages 0.4 and later are not claimed complete
+by this prototype.

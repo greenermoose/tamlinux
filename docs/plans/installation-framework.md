@@ -20,10 +20,10 @@ Version numbers are in [VERSIONING.md](../../VERSIONING.md).
 
 1. **Omarchy 0.x development system.** Keep the working workstation productive
    while decoupling plugins, configuration, and services from Omarchy/Hyprland
-   (0.1–0.3).
+   (0.1–0.6).
 2. **Workstation package on an existing distribution.** Install the package on
-   Fred's Arch workstation beside the Omarchy session (0.4), daily-drive it
-   (0.5–0.9), then remove Omarchy and Hyprland (1.0.0). Arch and pacman remain
+   Fred's Arch workstation beside the Hyprland session (0.7), daily-drive it
+   (0.8), then remove Hyprland (1.0.0). Arch and pacman remain
    the base.
 3. **A second distribution.** Install the same package on another machine
    running a different distribution with systemd, to exercise the host adapter
@@ -143,7 +143,7 @@ Snapshots supplement an external backup.
 | :-- | :-- | :-- |
 | A. Inventory | Current component/owner manifest and dependency classification | Recorded source revisions and ownership. |
 | B. Framework | Inspect, plan, bounded apply, verify on the current base | Plans, step results, versions, recovery route. |
-| C. Package on this workstation | Workstation flake and Arch host adapter; Sway session beside Omarchy, then Omarchy and Hyprland removed (0.4–1.0.0) | `install verify` passes; required workflows and parity checks; rollback route recorded before removal. |
+| C. Package on this workstation | Workstation flake and Arch host adapter; Sway session beside Hyprland, then Hyprland removed (0.7–1.0.0) | `install verify` passes; required workflows and parity checks; rollback route recorded before removal. |
 | D. Second distribution | Same package on a different distribution (1.1) | Install, verify, and a recorded list of host-adapter differences. |
 | E. Void pilot | Minimal runit/Btrfs base, native `xbps-src` packages, libc comparison on secondary hardware (1.2) | BIOS/UEFI installation, hardware checks, resource measurements; Chrome, VS Code, terminal workflow, kernel/userspace update and full recovery. |
 | F. Distribution | Repeatable media, single-command activation, terminal-only profile (1.3) | Multi-hardware installation and recovery verification. |

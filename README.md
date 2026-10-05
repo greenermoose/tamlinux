@@ -13,7 +13,7 @@ Quickshell, and Omarchy.
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.0.2 — the foundation is owned; working toward 0.0.3 (session services in the Tamlinux host). Not an installable image yet |
+| **Status** | 0.1.22 — the session services run in the Tamlinux host; next, every key binding and menu entry on Tamlinux's own commands (0.2). Not an installable image yet |
 
 ---
 
@@ -52,7 +52,7 @@ package repository yet.
 Tamlinux 0.0.x is built on Omarchy, plus Fred's patches and the `fred.*`
 plugins. Omarchy comes off Fred's Arch workstation first, piece by piece,
 while Hyprland keeps running and the machine stays in daily use: that is
-**Tamlinux 0.3**. Then the roadmap continues in two moves:
+**Tamlinux 0.6**. Then the roadmap continues in two moves:
 
 1. **A workstation package for existing distributions.** Sway, the
    independent Quickshell shell, the rewritten `fred.*` plugins, selected
@@ -68,11 +68,13 @@ while Hyprland keeps running and the machine stays in daily use: that is
 0.0.1 was the first workstation snapshot. 0.0.2 (2026-10-04) owns the
 foundation: Arch's own package mirror and stock kernel, the Hyprland
 configuration, the shell environment, and the session entry and login screen.
-The version series for each step is in [`VERSIONING.md`](VERSIONING.md).
+Since then every step Fred accepts is a version: 0.1.0–0.1.22 moved the
+desktop's session services into the Tamlinux host. The stages and their
+rules are in [`VERSIONING.md`](VERSIONING.md).
 
 The [development plans](docs/plans/README.md) track the reviewed installation
 direction and the approved first slice of the `tamlinux` command. Neither is
-part of the 0.0.2 installation yet.
+part of the installation yet.
 
 ## Targets
 

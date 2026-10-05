@@ -342,4 +342,4 @@ facade from fixtures and does not start `swaymsg`. Those helpers do not have
 a Sway backend yet. Live compositor actions stay off unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
 Replacing the running bar is `desktop/launch-daily-bar --replace` after this
-candidate is accepted. That acceptance is Tamlinux 0.1.
+candidate is accepted. That cutover is Tamlinux step 0.3.2.
