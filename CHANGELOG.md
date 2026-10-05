@@ -25,6 +25,9 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 - **Night light moves to 0.2** (2026-10-04). [`VERSIONING.md`](VERSIONING.md)
   no longer lists it for 0.0.3. It arrives with the compositor contract in
   0.2, together with a night-light indicator in the bar.
+- **0.0.3 also waits for the lock screen** (2026-10-04).
+  [`VERSIONING.md`](VERSIONING.md) now lists it: the lock key and menu entry
+  use Tamlinux's own command, which starts `hyprlock`.
 
 ### Fixed
 
