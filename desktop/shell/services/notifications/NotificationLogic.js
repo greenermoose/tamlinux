@@ -1,6 +1,6 @@
 // Vendored from omarchy 4.0.4 shell/plugins/notifications (MIT; see
 // ../LICENSE-omarchy). Unchanged; the omarchy-* hint names are the wire
-// format omarchy-notification-send still uses.
+// format tam-notification-send still uses.
 function isChromiumDerived(app, appIcon) {
   var source = (String(app || "") + "\n" + String(appIcon || "")).toLowerCase()
   return source.indexOf("chrom") >= 0 || source.indexOf("brave") >= 0 ||
@@ -144,7 +144,7 @@ function glyphFromHints(hints) {
   return stringHint(hints, "omarchy-glyph")
 }
 
-// The click action: a JSON argv string from omarchy-notification-send
+// The click action: a JSON argv string from tam-notification-send
 // --exec. Carried as data so a toast restored after a shell restart stays
 // clickable (a libnotify action can't — its sender is gone). Run via
 // Util.execArgv as bash positional parameters, never a shell string, so

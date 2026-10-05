@@ -1,7 +1,8 @@
 // Menu tree, routing, search, and guard batching for the Tamlinux menu.
 //
 // Vendored from omarchy 4.0.4 shell/plugins/menu/MenuModel.js (MIT,
-// Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged.
+// Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changed: the
+// guard batch answers the tam-* package and command checks itself.
 
 function stripJsonc(raw) {
   return String(raw || "")
@@ -386,7 +387,6 @@ function displayRow(items, itemOrder, checkedResults, entry, detail, score, sect
 // cached while one expression runs lives in that subshell only, so a lazy
 // memo never survives to the expression after it.
 var GUARD_READERS = [
-  "omarchy-channel-current",
   "omarchy-default-agent",
   "omarchy-default-browser",
   "omarchy-default-editor",
@@ -413,18 +413,17 @@ var GUARD_READERS = [
 // parser follows the indented lines rather than reading the first one and
 // dropping half of what is installed.
 function guardHelpers() {
-  return 'declare -A __omarchy_pkgs=()\n'
-    + 'mapfile -t __omarchy_pkg_names < <({ pacman -Qq; LC_ALL=C pacman -Qi'
+  return 'declare -A __tam_pkgs=()\n'
+    + 'mapfile -t __tam_pkg_names < <({ pacman -Qq; LC_ALL=C pacman -Qi'
     + " | awk '/^[A-Za-z]/ { provides = ($0 ~ /^Provides/); sub(/^[^:]*: /, \"\") }"
     + ' provides && $0 != "None" { n = split($0, p, " ");'
     + ' for (i = 1; i <= n; i++) { sub(/[<>=].*/, "", p[i]); print p[i] } }\'; } 2>/dev/null)\n'
-    + 'for __omarchy_pkg in "${__omarchy_pkg_names[@]}"; do __omarchy_pkgs[$__omarchy_pkg]=1; done\n'
-    + '__omarchy_pkg_has() { [[ -n ${__omarchy_pkgs[$1]-} ]] && return 0; '
+    + 'for __tam_pkg in "${__tam_pkg_names[@]}"; do __tam_pkgs[$__tam_pkg]=1; done\n'
+    + '__tam_pkg_has() { [[ -n ${__tam_pkgs[$1]-} ]] && return 0; '
     + '[[ $1 == *[\\<\\>=]* ]] && { pacman -Q "$1" &>/dev/null; return; }; return 1; }\n'
-    + 'omarchy-pkg-present() { local p; for p in "$@"; do __omarchy_pkg_has "$p" || return 1; done; return 0; }\n'
-    + 'omarchy-pkg-missing() { local p; for p in "$@"; do __omarchy_pkg_has "$p" || return 0; done; return 1; }\n'
-    + 'omarchy-cmd-present() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 1; done; return 0; }\n'
-    + 'omarchy-cmd-missing() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 0; done; return 1; }\n'
+    + 'tam-pkg-present() { local p; for p in "$@"; do __tam_pkg_has "$p" || return 1; done; return 0; }\n'
+    + 'tam-pkg-missing() { local p; for p in "$@"; do __tam_pkg_has "$p" || return 0; done; return 1; }\n'
+    + 'tam-cmd-present() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 1; done; return 0; }\n'
 }
 
 // Substitute the captured answer into the expression rather than shadowing
@@ -442,14 +441,14 @@ function guardPrelude(guards) {
     if (guards.indexOf(guardReaderSlot(i)) < 0) continue
     // `|| :` so a reader that exits nonzero cannot take the batch down with
     // it under a login shell that turned on errexit.
-    prelude += "__omarchy_read_" + i + "=$(" + GUARD_READERS[i] + " 2>/dev/null) || :\n"
+    prelude += "__tam_read_" + i + "=$(" + GUARD_READERS[i] + " 2>/dev/null) || :\n"
   }
 
   return prelude
 }
 
 function guardReaderSlot(index) {
-  return "${__omarchy_read_" + index + "}"
+  return "${__tam_read_" + index + "}"
 }
 
 function substituteGuardReaders(expression) {
