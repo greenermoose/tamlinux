@@ -28,9 +28,12 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 - **Session services in the Tamlinux host**, toward 0.0.3. The
   [desktop host](desktop/README.md) runs notifications, the on-screen
   display, clipboard history, the emoji and image pickers, reminders, the
-  command menu, and the desktop background as session services beside the
-  existing bar. Screenshots use Tamlinux's own commands. The polkit agent,
-  then screen recording and text and QR-code capture, remain before 0.0.3.
+  command menu, the desktop background, and the polkit agent as session
+  services beside the existing bar. Screenshots use Tamlinux's own commands.
+  Before 0.0.3: screen recording and text and QR-code capture; media
+  controls, night light, idle and Stay Awake, and low-battery warnings; the
+  browser extensions; the monitor watch; and every other command the desktop
+  calls.
 
 ### Changed
 
