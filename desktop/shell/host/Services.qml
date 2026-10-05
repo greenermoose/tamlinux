@@ -3,6 +3,7 @@ import Quickshell
 import "../services/background" as Background
 import "../services/clipboard" as Clipboard
 import "../services/emojis" as Emojis
+import "../services/idle" as Idle
 import "../services/imagepicker" as ImagePicker
 import "../services/media" as Media
 import "../services/menu" as Menu
@@ -16,14 +17,14 @@ import "../services/reminders" as Reminders
 // ../services/. Notifications gets the shell injected for the compositor
 // facade and the bar position; the menu gets the OSD for launch feedback,
 // the media service gets it for each media-key action, and the background
-// gets the menu for its desktop double-clicks. Polkit
-// needs nothing; only one agent per session registers, so it stays out of
+// gets the menu for its desktop double-clicks. Polkit and idle
+// need nothing; only one agent per session registers, so it stays out of
 // TAMLINUX_SERVICES while another agent holds the session.
 Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -129,6 +130,15 @@ Item {
     }
     onLoaded: services.note("service-loaded media")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed media")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("idle") !== -1
+    sourceComponent: Component {
+      Idle.Service {}
+    }
+    onLoaded: services.note("service-loaded idle")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed idle")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))

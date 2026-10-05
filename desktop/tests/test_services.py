@@ -18,6 +18,7 @@ MENU = SERVICES / "menu"
 BACKGROUND = SERVICES / "background"
 POLKIT = SERVICES / "polkit"
 MEDIA = SERVICES / "media"
+IDLE = SERVICES / "idle"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -59,6 +60,8 @@ class ServiceSourceTests(unittest.TestCase):
             POLKIT / "PolkitModel.js",
             MEDIA / "Service.qml",
             MEDIA / "MediaModel.js",
+            IDLE / "Service.qml",
+            IDLE / "IdleModel.js",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -271,9 +274,35 @@ class ServiceSourceTests(unittest.TestCase):
         for name in ("isProxyPlayer", "playerHasPlaybackStream", "trackChanged", "osdMessage"):
             self.assertIn("function " + name, model)
 
+    def test_idle_target_state_and_commands(self):
+        text = (IDLE / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('target: "idle"', text)
+        for method in ("status()", "debug()", "enable()", "disable()", "toggle()", "ping()"):
+            self.assertIn("function " + method, text)
+        # Stay Awake is one file, named by the environment, written by argument.
+        self.assertIn('Quickshell.env("TAMLINUX_STAY_AWAKE_FILE")', text)
+        self.assertIn('"/.local/state/tamlinux/stay-awake"', text)
+        self.assertIn('\'mkdir -p -- "$1" && touch -- "$2"\', "bash", root.stayAwakeStateDir, root.stayAwakeStatePath]', text)
+        self.assertIn('["rm", "-f", "--", root.stayAwakeStatePath]', text)
+        # The timeouts are off unless configured.
+        self.assertIn('Quickshell.env("TAMLINUX_IDLE_SCREENSAVER")', text)
+        self.assertIn('Quickshell.env("TAMLINUX_IDLE_LOCK")', text)
+        self.assertIn("enabled: root.idleEnabled && root.plan.enabled", text)
+        # Screensaver windows come from Wayland toplevels, not compositor events.
+        self.assertIn("ToplevelManager.toplevels", text)
+        self.assertIn('screensaverClass: "org.tamlinux.screensaver"', text)
+        for command in ('"tam-launch-screensaver"', '"tam-system-lock"', '"tam-system-wake"'):
+            self.assertIn(command, text)
+        body = text.split("\n\n", 1)[-1]
+        self.assertNotIn("omarchy", body)
+        self.assertNotIn("Hyprland", body)
+        model = (IDLE / "IdleModel.js").read_text(encoding="utf-8")
+        for name in ("secondsFromConfig", "cyclePlan", "screensaverWindowCount"):
+            self.assertIn("function " + name, model)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
@@ -288,6 +317,8 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("Polkit.Service {}", text)
         self.assertIn('import "../services/media" as Media', text)
         self.assertIn("Media.Service { osd: osdLoader.item }", text)
+        self.assertIn('import "../services/idle" as Idle', text)
+        self.assertIn("Idle.Service {}", text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 

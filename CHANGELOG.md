@@ -14,6 +14,11 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   [desktop host](desktop/README.md) runs a media service that picks the
   playing MPRIS player for play, pause, stop, next, previous, and the source
   switch, and shows each action on the host's on-screen display.
+- **Stay Awake and the idle cycle in the Tamlinux host** (2026-10-04, toward
+  0.0.3). The [desktop host](desktop/README.md) runs an idle service with the
+  Stay Awake switch, kept in one state file that idle suspend can honour, and
+  an idle cycle that starts the screensaver and then the lock. Each stage is
+  off unless its timeout is set.
 
 ### Changed
 
