@@ -25,7 +25,7 @@ desktop systems, mini PCs, and laptops that have decades of useful life.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
 max**. Like the tamarack's needles, Tamlinux sheds old packages to make room
-for new. In its transitional phase, we are moving from Omarchy toward an
+for new. In the transitional phase, we are moving from Omarchy toward an
 installation package that turns an existing Linux distribution into a lean,
 high-efficiency workstation environment, and then utlimately a system grafted
 onto a minimal Void base, with antiX Core as the fallback if Void has a
