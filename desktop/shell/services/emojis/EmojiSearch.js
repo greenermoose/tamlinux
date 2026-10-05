@@ -1,6 +1,6 @@
 // Emoji search for the Tamlinux emoji picker.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/emojis/EmojiSearch.js (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/emojis/EmojiSearch.js (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged.
 
 function parseEmojis(raw) {

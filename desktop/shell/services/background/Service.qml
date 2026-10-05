@@ -3,7 +3,7 @@
 // A double-click on the bare desktop opens the menu's background (left) or
 // theme (right) route.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/background/Background.qml (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/background/Background.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // the link is TAMLINUX_BACKGROUND_LINK and is watched, so any command that
 // repoints it changes the background; the double-clicks run menu routes

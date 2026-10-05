@@ -2,7 +2,7 @@
 // directory of images (backgrounds, theme previews, boot-splash previews) and
 // writes the chosen path for the command that asked.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/image-picker/ImagePicker.qml and
+// Ported from omarchy 4.0.4 shell/plugins/image-picker/ImagePicker.qml and
 // the shell's image-selector IPC handler (MIT, Copyright (c) David Heinemeier
 // Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons; Color.imagePicker
 // tokens; the list helper lives beside this file and caches under

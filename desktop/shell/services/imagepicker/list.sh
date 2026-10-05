@@ -5,7 +5,7 @@
 #
 #   list.sh <dirs, one per line>
 #
-# Vendored from omarchy 4.0.4 shell/plugins/image-picker/list.sh (MIT,
+# Ported from omarchy 4.0.4 shell/plugins/image-picker/list.sh (MIT,
 # Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changed:
 # the cache directory, and the fallback for thumbnails keyed by file content
 # (an older cache layout this cache never had) is gone.

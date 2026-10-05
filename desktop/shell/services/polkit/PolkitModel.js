@@ -1,7 +1,7 @@
 // Pure helpers for the polkit service: fingerprint detection and the
 // authorization label.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/polkit/PolkitModel.js (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/polkit/PolkitModel.js (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged
 // apart from this header.
 

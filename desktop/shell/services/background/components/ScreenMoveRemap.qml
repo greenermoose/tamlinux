@@ -1,6 +1,6 @@
 import QtQuick
 
-// Vendored from omarchy 4.0.4 shell/Ui/ScreenMoveRemap.qml (MIT, Copyright (c)
+// Ported from omarchy 4.0.4 shell/Ui/ScreenMoveRemap.qml (MIT, Copyright (c)
 // David Heinemeier Hansson; see ../../LICENSE-omarchy). Unchanged.
 //
 // Hyprland leaves an already-mapped layer surface at its old global position

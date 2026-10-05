@@ -1,4 +1,4 @@
-// Vendored from omarchy 4.0.4 (MIT; see ../../LICENSE-omarchy).
+// Ported from omarchy 4.0.4 (MIT; see ../../LICENSE-omarchy).
 // Notification card. Pure presentational — no service, Notification, or
 // ListModel references. The popup container drives lifetime; the history
 // panel drives static rendering. Both use the same component.

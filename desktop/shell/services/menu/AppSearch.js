@@ -1,6 +1,6 @@
 // Desktop-entry names, search text, and ordering for the menu's Apps list.
 //
-// Vendored from omarchy 4.0.4 shell/services/AppSearch.js (MIT,
+// Ported from omarchy 4.0.4 shell/services/AppSearch.js (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged.
 
 function entryName(entry) {

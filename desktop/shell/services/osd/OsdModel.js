@@ -1,6 +1,6 @@
 // On-screen display model for the Tamlinux host.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/osd/OsdModel.js (MIT, Copyright
+// Ported from omarchy 4.0.4 shell/plugins/osd/OsdModel.js (MIT, Copyright
 // (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes: a media-stop icon.
 
 function clamp(value, min, max) {

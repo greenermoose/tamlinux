@@ -1,7 +1,7 @@
 // Polkit authentication agent for the Tamlinux host: the password (or
 // fingerprint) prompt behind pkexec and every other privileged action.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/polkit/PolkitAgent.qml (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/polkit/PolkitAgent.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // Tam.Commons and Tam.Ui, the agent object path /org/tamlinux/PolkitAgent,
 // the lid check reads /proc itself, the tamlinux-polkit layer namespace, and

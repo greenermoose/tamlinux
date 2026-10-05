@@ -1,7 +1,7 @@
 // Emoji picker for the Tamlinux host: type to search about 1,900 emojis by
 // keyword, then Enter or a click types the emoji into the focused window.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/emojis/Emojis.qml (MIT, Copyright
+// Ported from omarchy 4.0.4 shell/plugins/emojis/Emojis.qml (MIT, Copyright
 // (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons
 // and Tam.Ui; the emoji list and the insert helper live beside this file; the
 // IPC target emojis; and the tamlinux-emojis layer namespace.

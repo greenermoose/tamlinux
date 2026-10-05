@@ -3,7 +3,7 @@
 # Print the ids of desktop entries the session should not list (NoDisplay,
 # Hidden, OnlyShowIn/NotShowIn for the desktop names in $1).
 #
-# Vendored from omarchy 4.0.4 shell/services/hidden-entries.sh (MIT,
+# Ported from omarchy 4.0.4 shell/services/hidden-entries.sh (MIT,
 # Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged.
 
 desktop_names=${1:-}

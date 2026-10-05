@@ -1,7 +1,7 @@
 // Pure helpers for the battery service: the charge level, whether the
 // battery is draining, and when to warn that it is low.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/services/battery/BatteryModel.js
+// Ported from omarchy 4.0.4 shell/plugins/services/battery/BatteryModel.js
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy).
 // Changes: powerSource() names the profile key ("battery" or "ac") for the
 // power-source change, and statusOf() builds the IPC status.

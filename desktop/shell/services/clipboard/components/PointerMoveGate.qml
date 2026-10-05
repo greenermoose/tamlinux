@@ -1,4 +1,4 @@
-// Vendored from omarchy 4.0.4 shell/Ui/PointerMoveGate.qml (MIT, Copyright (c)
+// Ported from omarchy 4.0.4 shell/Ui/PointerMoveGate.qml (MIT, Copyright (c)
 // David Heinemeier Hansson; see ../../LICENSE-omarchy). Unchanged apart from
 // this header.
 

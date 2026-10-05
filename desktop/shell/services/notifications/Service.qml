@@ -1,6 +1,6 @@
 // Notification service for the Tamlinux host.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/notifications (MIT, Copyright (c)
+// Ported from omarchy 4.0.4 shell/plugins/notifications (MIT, Copyright (c)
 // David Heinemeier Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons,
 // state under ~/.local/state/tamlinux, focus through the compositor facade,
 // and a local execArgv.

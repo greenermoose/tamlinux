@@ -38,6 +38,14 @@
 
   > Yes, do the Tamlinux shell sweep now. Explain the change in terminology.
 
+  > Explain the verb "to vendor." You use that in an unusual way in the plan.
+  > Where did that usage come from? Is there a more common way to describe
+  > porting over code from working in the omarchy shell to working in the
+  > tamlinux shell? To "vendor" something isn't clear to me what that means.
+
+  > I want both. Lets use the word "port" to describe what we're doing: we're
+  > porting packages from the omarchy shell to the tamlinux shell.
+
 ## Key decisions and implementation notes
 
 - Fred chose, from options the agent offered: the **minor version is a stage
@@ -62,6 +70,10 @@
   contract and, for the workstation package, the host distribution and host
   adapter. Current docs were swept; dated records keep the old word, and
   `desktop/README.md` says so.
+- **"Port" for code taken over.** The agent explained that "vendoring"
+  usually means keeping an unchanged copy of a dependency, which hides the
+  adapting and owning. Fred chose "port": the shell's file headers, the
+  service table in `desktop/README.md`, and its names note now say "ported".
 - Changed: `VERSIONING.md` (rules and stage table), `CHANGELOG.md` (the
   0.1.0–0.1.22 table), `VERSION` (0.1.22), `README.md` status, the desktop
   decoupling milestone table and status, the plans index, the installation

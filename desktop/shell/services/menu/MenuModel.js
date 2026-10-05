@@ -1,6 +1,6 @@
 // Menu tree, routing, search, and guard batching for the Tamlinux menu.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/menu/MenuModel.js (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/menu/MenuModel.js (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changed: the
 // guard batch answers the tam-* package and command checks itself.
 

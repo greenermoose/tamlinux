@@ -4,7 +4,7 @@
 #
 #   paste-text.sh [--shift-insert] [--copy-only] [--history-index <index>|<text>]
 #
-# Vendored from omarchy 4.0.4 bin/omarchy-clipboard-paste-text (MIT, Copyright
+# Ported from omarchy 4.0.4 bin/omarchy-clipboard-paste-text (MIT, Copyright
 # (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changed: the history
 # file is the Tamlinux one.
 

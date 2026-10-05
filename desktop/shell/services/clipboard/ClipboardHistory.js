@@ -1,7 +1,7 @@
 // Clipboard history model: normalising, de-duplicating, and the rows the
 // picker shows.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/clipboard/ClipboardHistory.js
+// Ported from omarchy 4.0.4 shell/plugins/clipboard/ClipboardHistory.js
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy).
 // Unchanged apart from this header.
 

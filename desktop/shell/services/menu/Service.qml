@@ -2,7 +2,7 @@
 // actions read from JSONC, an Apps list from the desktop entries, and a
 // select/input mode that answers the command that asked.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/menu/Menu.qml (MIT, Copyright (c)
+// Ported from omarchy 4.0.4 shell/plugins/menu/Menu.qml (MIT, Copyright (c)
 // David Heinemeier Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons and
 // Tam.Ui; the menu files are TAMLINUX_MENU_DEFAULT and TAMLINUX_MENU_EXTENSION;
 // the menu owns its application library, loaded the first time the Apps list

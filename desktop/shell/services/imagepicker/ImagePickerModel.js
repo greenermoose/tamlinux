@@ -1,6 +1,6 @@
 // Row parsing, filtering, and selection helpers for the image picker.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/image-picker/ImagePickerModel.js
+// Ported from omarchy 4.0.4 shell/plugins/image-picker/ImagePickerModel.js
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy).
 // Unchanged apart from this comment.
 

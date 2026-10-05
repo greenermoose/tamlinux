@@ -4,7 +4,7 @@
 #
 #   insert.sh <emoji>
 #
-# Vendored from omarchy 4.0.4 bin/omarchy-menu-emoji-insert (MIT, Copyright (c)
+# Ported from omarchy 4.0.4 bin/omarchy-menu-emoji-insert (MIT, Copyright (c)
 # David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged apart from these
 # comments. The emoji is offered as a sensitive selection, so the clipboard
 # history does not record it, and only for as long as the paste takes.

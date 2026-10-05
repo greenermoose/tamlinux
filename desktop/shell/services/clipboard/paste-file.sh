@@ -5,7 +5,7 @@
 #
 #   paste-file.sh [--copy-only] <mime-type> <path>
 #
-# Vendored from omarchy 4.0.4 bin/omarchy-clipboard-paste-file (MIT, Copyright
+# Ported from omarchy 4.0.4 bin/omarchy-clipboard-paste-file (MIT, Copyright
 # (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged apart from
 # this header.
 

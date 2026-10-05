@@ -8,7 +8,7 @@
 # Each program starts in its own session scope (uwsm-app), so it outlives a
 # restart of the shell services that launched it.
 #
-# Vendored from omarchy 4.0.4 bin/omarchy-clipboard-open (MIT, Copyright (c)
+# Ported from omarchy 4.0.4 bin/omarchy-clipboard-open (MIT, Copyright (c)
 # David Heinemeier Hansson; see ../LICENSE-omarchy). Changed: the Tamlinux
 # history and state paths; the browser is xdg-open and the editor runs through
 # xdg-terminal-exec.

@@ -2,7 +2,7 @@
 // control, runs play/pause/next/previous and source switches on it, and shows
 // each action on the host OSD.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/services/media/Service.qml (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/services/media/Service.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // the host injects its OSD service, which shows each action in place of a
 // shell summon (without the OSD service there is no card); and a stop action

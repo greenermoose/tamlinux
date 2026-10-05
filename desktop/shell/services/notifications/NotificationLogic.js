@@ -1,4 +1,4 @@
-// Vendored from omarchy 4.0.4 shell/plugins/notifications (MIT; see
+// Ported from omarchy 4.0.4 shell/plugins/notifications (MIT; see
 // ../LICENSE-omarchy). Unchanged; the omarchy-* hint names are the wire
 // format tam-notification-send still uses.
 function isChromiumDerived(app, appIcon) {

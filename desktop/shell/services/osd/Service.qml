@@ -1,7 +1,7 @@
 // On-screen display service for the Tamlinux host: volume, brightness, and
 // status overlays shown bottom-centre over everything.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/osd/Osd.qml (MIT, Copyright (c)
+// Ported from omarchy 4.0.4 shell/plugins/osd/Osd.qml (MIT, Copyright (c)
 // David Heinemeier Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons and
 // Tam.Ui, and the tamlinux-osd layer namespace.
 

@@ -1,7 +1,7 @@
 // Pure helpers for the idle service: timeout parsing, the idle-cycle plan,
 // and the screensaver window count.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/services/idle/IdleModel.js (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/services/idle/IdleModel.js (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // a timeout of 0, a negative or non-numeric value, or no value means off
 // (the source fell back to a default, and read 0 as at once), and a timeout

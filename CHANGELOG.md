@@ -25,6 +25,9 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   talk to (the host contract) and, for the workstation package, the
   distribution it is installed on and its host adapter. Earlier records say
   "the Tamlinux host" for the shell. See [`desktop/README.md`](desktop/README.md).
+- **"Ported"** (2026-10-05). Code taken over from Omarchy is *ported*:
+  copied with its MIT notice, adapted to Tamlinux, and maintained here.
+  Headers and docs say "Ported from"; earlier records say "vendored".
 
 ## 0.1.0 to 0.1.22 - 2026-10-04 to 2026-10-05
 

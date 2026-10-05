@@ -4,7 +4,7 @@
 # wl-paste invokes this with the payload on stdin and the mime as $1. Without
 # arguments, it snapshots the current selection itself.
 #
-# Vendored from omarchy 4.0.4 shell/plugins/clipboard/capture.sh (MIT,
+# Ported from omarchy 4.0.4 shell/plugins/clipboard/capture.sh (MIT,
 # Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changed:
 # images are stored under the Tamlinux state directory, which only the user
 # can read.

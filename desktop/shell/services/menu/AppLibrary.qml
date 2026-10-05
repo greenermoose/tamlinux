@@ -2,7 +2,7 @@
 // with hidden-entry filtering, the icon fallback index, launch feedback, and
 // entry removal.
 //
-// Vendored from omarchy 4.0.4 shell/services/AppLibrary.qml (MIT, Copyright
+// Ported from omarchy 4.0.4 shell/services/AppLibrary.qml (MIT, Copyright
 // (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons;
 // owned by the menu service rather than shared; the hidden-entry scan beside
 // this file runs by argv; the configured hides file is TAMLINUX_MENU_HIDES;

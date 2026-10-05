@@ -2,7 +2,7 @@
 // idle cycle that starts the screensaver and then the lock when the session
 // has been idle long enough.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/services/idle/Service.qml (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/services/idle/Service.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // - The timeouts come from TAMLINUX_IDLE_SCREENSAVER and TAMLINUX_IDLE_LOCK
 //   (seconds). Unset or 0 turns that stage off, and with both off there is no

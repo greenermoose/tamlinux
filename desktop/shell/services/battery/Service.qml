@@ -2,7 +2,7 @@
 // low while draining, and switches the power profile when the machine moves
 // between battery and mains power. Without a battery it does nothing.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/services/battery/Service.qml
+// Ported from omarchy 4.0.4 shell/plugins/services/battery/Service.qml
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy).
 // Changes:
 // - The warning runs tam-battery-low <level> and the profile switch runs

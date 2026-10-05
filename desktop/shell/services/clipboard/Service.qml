@@ -2,7 +2,7 @@
 // is copied, and a full-screen picker searches, pastes, copies, opens, and
 // deletes entries.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/clipboard/Clipboard.qml (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/clipboard/Clipboard.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // Tam.Commons and Tam.Ui; history and images under
 // ~/.local/state/tamlinux/clipboard/; the paste and open helpers live beside

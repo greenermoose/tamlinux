@@ -1,7 +1,7 @@
 // Reminder card for the Tamlinux host: type the minutes, Enter, then an
 // optional message, Enter. reminder.sh beside this file sets the timer.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/reminders/ReminderFlow.qml (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/reminders/ReminderFlow.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // Tam.Commons and Tam.Ui; the reminder helper lives beside this file; the
 // IPC target reminders; and the tamlinux-reminders layer namespace.

@@ -27,7 +27,7 @@ desktop systems, mini PCs, and laptops that have decades of useful life.
 max**. Like the tamarack's needles, Tamlinux sheds old packages to make room
 for new. In the transitional phase, we are moving from Omarchy toward an
 installation package that turns an existing Linux distribution into a lean,
-high-efficiency workstation environment, and then utlimately a system grafted
+high-efficiency workstation environment, and then ultimately a system grafted
 onto a minimal Void base, with antiX Core as the fallback if Void has a
 showstopper. The aim is a sustainable workstation environment that runs well
 on a wide variety of hardware.

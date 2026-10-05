@@ -1,6 +1,6 @@
 // Minutes validation and argv for the Tamlinux reminder card.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/reminders/ReminderFlowModel.js
+// Ported from omarchy 4.0.4 shell/plugins/reminders/ReminderFlowModel.js
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy).
 // Unchanged.
 

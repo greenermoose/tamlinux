@@ -12,7 +12,7 @@
 #   reminder.sh toast <headline> [body]
 #   reminder.sh due <message> <message-file>
 #
-# Vendored from omarchy 4.0.4 bin/omarchy-reminder (MIT, Copyright (c) David
+# Ported from omarchy 4.0.4 bin/omarchy-reminder (MIT, Copyright (c) David
 # Heinemeier Hansson; see ../LICENSE-omarchy). Changes: the timer and message
 # names; notifications go straight to D-Bus; minutes are read as decimal and
 # capped at 99999; a reminder set in the same second as another gets its own

@@ -14,7 +14,7 @@ import "../services/polkit" as Polkit
 import "../services/reminders" as Reminders
 
 // Session services the host owns. TAMLINUX_SERVICES names them,
-// comma-separated; unknown names are ignored. Each one is vendored under
+// comma-separated; unknown names are ignored. Each one is ported to
 // ../services/. Notifications gets the shell injected for the compositor
 // facade and the bar position; the menu gets the OSD for launch feedback,
 // the media service gets it for each media-key action, and the background

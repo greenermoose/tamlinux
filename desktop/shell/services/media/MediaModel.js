@@ -1,7 +1,7 @@
 // Pure helpers for the media service: player identity, capability checks,
 // playback-stream matching, and OSD labels.
 //
-// Vendored from omarchy 4.0.4 shell/plugins/services/media/MediaModel.js (MIT,
+// Ported from omarchy 4.0.4 shell/plugins/services/media/MediaModel.js (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged
 // apart from this header.
 
