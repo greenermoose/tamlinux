@@ -81,11 +81,18 @@ the Home Manager generation.
 On a running workstation:
 
 ```bash
-echo "$TAMLINUX_VERSION"                 # product version (0.0.2)
-cat ~/.config/tamlinux/version           # same number
+cat ~/.config/tamlinux/version           # product version (0.0.2) of the active generation
+echo "$TAMLINUX_VERSION"                 # the same number, as this process saw it
 cat ~/.config/tamlinux/generation        # this machine's Home Manager generation
 home-manager generations                 # full local rollback list
 ```
+
+The file is the source of truth: activation writes it with every generation.
+`$TAMLINUX_VERSION` is copied from it in three places. Every new bash shell
+reads the file, the systemd user manager loads it at login (`environment.d`),
+and each activation also sets it in the running user manager, so services
+and applications started after a switch see the new number without a new
+login. A process that was already running keeps the number it started with.
 
 `$OMARCHY_CONFIG_VERSION` and `~/.config/omarchy/version` remain as
 compatibility aliases of `$TAMLINUX_VERSION` until 0.3 removes them. They are

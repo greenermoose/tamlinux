@@ -8,6 +8,14 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`$TAMLINUX_VERSION` is set again** (2026-10-04). It was declared but
+  never reached a shell or the session. Each new bash shell now reads it from
+  `~/.config/tamlinux/version`, the user manager loads it at login, and each
+  activation updates the running session. [`VERSIONING.md`](VERSIONING.md)
+  says which surface to trust.
+
 ## [0.0.2] - 2026-10-04
 
 ### Added
