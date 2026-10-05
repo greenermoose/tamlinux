@@ -15,6 +15,12 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   playing MPRIS player for play, pause, stop, next, previous, and the source
   switch, and shows each action on the host's on-screen display.
 
+### Changed
+
+- **Night light moves to 0.2** (2026-10-04). [`VERSIONING.md`](VERSIONING.md)
+  no longer lists it for 0.0.3. It arrives with the compositor contract in
+  0.2, together with a night-light indicator in the bar.
+
 ### Fixed
 
 - **`$TAMLINUX_VERSION` is set again** (2026-10-04). It was declared but
