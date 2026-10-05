@@ -14,11 +14,14 @@ between were set on 2026-10-03. On 2026-10-04 the order changed: Omarchy is
 removed at **0.3** while Hyprland keeps running, so from 0.3 on, Tamlinux runs
 on Hyprland without Omarchy, and 1.0.0 removes Hyprland. A minor version is a
 milestone Fred accepts into daily use on his workstation, not a merged
-development candidate.
+development candidate. On 2026-10-04 the road to 0.1 was split into smaller
+0.0.x steps, so that progress toward the first minor shows in the number.
 
 | Version | Milestone | Base | Desktop |
 | :-- | :-- | :-- | :-- |
-| **0.0.x** | Today's workstation snapshot: Omarchy, Fred's patches, and the released `fred.*` 1.x plugins. Patch bumps for fixes only. | Arch | Omarchy shell on Hyprland |
+| **0.0.1** | The first workstation snapshot: Omarchy, Fred's patches, and the released `fred.*` 1.x plugins. | Arch | Omarchy shell on Hyprland |
+| **0.0.2** | Tamlinux owns the foundation: Arch's own package mirror and the stock Arch `linux` kernel, the Hyprland configuration, the shell environment, the session entry and session units, and the login screen. | Arch | Omarchy shell on Hyprland |
+| **0.0.3** | The shell's session services run in the Tamlinux host beside the existing bar: notifications, on-screen display, clipboard history, the emoji and image pickers, reminders, the command menu, the desktop background, screenshots, and the polkit agent. Only the bar is left to replace. | Arch | Existing bar and Tamlinux services on Hyprland |
 | **0.1** | The independent Tamlinux shell replaces Omarchy's bar in daily use, carrying all eight rewritten plugins. | Arch | Tamlinux shell on Hyprland |
 | **0.2** | Plugins reach the compositor only through the compositor contract; the Hyprland adapter is in daily use and the Sway adapter passes its tests. | Arch | Tamlinux shell on Hyprland |
 | **0.3** | Omarchy is removed; Hyprland stays. Its functions (menus, launcher, notifications, lock, idle, themes, sleep hooks, bindings) are replaced by owned code or selected third-party tools; its packages, package mirror, and kernel are removed; and the desktop carries Tamlinux's own name and look. | Arch | Tamlinux on Hyprland |
@@ -40,6 +43,13 @@ versions in its manifest.
 **0.0.1** is the first workstation snapshot: this daily driver, working as
 Tamlinux. Installing on a second computer comes at 1.1, after the
 workstation package has replaced Omarchy on this machine.
+
+**Patch numbers.** Before 0.1, each 0.0.x patch is a named milestone on the
+way to 0.1 (the table above), and Fred accepts it the same way as a minor.
+Fixes made inside a 0.0.x step do not bump the number; they ship with the
+next milestone. From 0.1 on, patch bumps are for fixes within a milestone. If
+the road to 0.1 needs another step, it takes the next 0.0.x number, and the
+milestones after it keep their order.
 
 Bump the product version when Fred decides Tamlinux itself changed, not on
 every Home Manager switch. Write the new number in both `VERSION` files, log

@@ -10,6 +10,13 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- **Smaller steps to 0.1** (2026-10-04). [`VERSIONING.md`](VERSIONING.md)
+  now names two milestones before 0.1. **0.0.2**: Tamlinux owns the
+  foundation (Arch's own package mirror and stock kernel, the Hyprland
+  configuration, the shell environment, the session entry, and the login
+  screen). **0.0.3**: the shell's session services run in the Tamlinux host
+  and only the bar is left to replace. Before 0.1, a 0.0.x patch number marks
+  a milestone, not a fix.
 - **Omarchy is removed before Hyprland** (2026-10-04). **0.3** now means
   Omarchy is gone from the workstation while Hyprland keeps running: its
   functions are replaced, its packages, package mirror, and kernel are removed,
