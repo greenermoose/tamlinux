@@ -33,7 +33,7 @@ planned but never issued.
 | Stage | Tamlinux is there when | Base | Desktop |
 | :-- | :-- | :-- | :-- |
 | **0.0** | 0.0.1: the first workstation snapshot (Omarchy, Fred's patches, and the released `fred.*` 1.x plugins). 0.0.2: the foundation is owned: Arch's own package mirror and stock `linux` kernel, the Hyprland configuration, the shell environment, the session entry and units, and the login screen. | Arch | Omarchy shell on Hyprland |
-| **0.1** | The desktop's session services run in the Tamlinux host beside the existing bar: notifications, on-screen display, clipboard history, emoji and image pickers, reminders, the command menu, the background, screenshots and screen capture, the polkit agent, media keys, idle and Stay Awake, battery warnings, and the lock screen; and the commands the desktop calls are Tamlinux's own. | Arch | Existing bar, Tamlinux services |
+| **0.1** | The desktop's session services run in the Tamlinux shell beside the existing bar: notifications, on-screen display, clipboard history, emoji and image pickers, reminders, the command menu, the background, screenshots and screen capture, the polkit agent, media keys, idle and Stay Awake, battery warnings, and the lock screen; and the commands the desktop calls are Tamlinux's own. | Arch | Existing bar, Tamlinux services |
 | **0.2** | Every key binding and menu entry runs Tamlinux's own commands, including the keybinding viewer, night light, and the audio, Bluetooth, network, and power panels. Only the keys that open the bar's own panels wait for 0.3. | Arch | Existing bar, Tamlinux services and panels |
 | **0.3** | The Tamlinux shell, with all eight rewritten plugins and its own tray, indicators, and status widgets, is the daily bar. | Arch | Tamlinux shell on Hyprland |
 | **0.4** | Plugins and helpers reach the compositor only through the compositor contract; the Hyprland adapter is in daily use and the Sway adapter passes its tests. | Arch | Tamlinux shell on Hyprland |
@@ -50,7 +50,7 @@ There is no planned 2.x. Tamlinux is a temporary testbed: after its last 1.x
 it freezes, and anything that follows is a separate announcement.
 
 Plugins version separately. Each rewritten plugin becomes `fred.<id>` 2.0.0,
-because it drops the Omarchy host API; the 1.x lines remain as released. The
+because it drops the Omarchy shell's plugin API; the 1.x lines remain as released. The
 workstation package carries the Tamlinux version and records its component
 versions in its manifest.
 

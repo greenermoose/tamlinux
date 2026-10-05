@@ -1,6 +1,6 @@
 # Desktop decoupling toward Void Linux
 
-**Status:** Tamlinux 0.1.22. The host's session services (notifications,
+**Status:** Tamlinux 0.1.22. The Tamlinux shell's session services (notifications,
 on-screen display, clipboard, pickers, reminders, menu, background, polkit,
 media, idle, battery, and lock) run in daily use beside the existing bar, and
 the desktop's commands are Tamlinux's own. Stage 0.2 moves every key binding
@@ -11,7 +11,7 @@ reads the compositor facade; the shell loads `SwayAdapter.qml` only when
 `tam-desktop-mode` and the monitor helpers still call the named Hyprland
 backend (stage 0.4). On 2026-10-05 the milestones were re-keyed by version:
 each accepted step is a patch release (see "Ordered milestones").
-**First implementation:** a standalone Quickshell host running `fred.clock`
+**First implementation:** a standalone Tamlinux shell running `fred.clock`
 with Tamlinux-owned shared modules and isolated data. The candidate lives in
 `desktop/`; see that README for the launch command and the 2026-10-03 check
 record.
@@ -137,9 +137,9 @@ its original names (Step 1–5), which were Develop candidates feeding stages
 | --- | --- | --- | --- |
 | Proof (Steps 0–3) | Dependency inventory; independent shell + clock; host contract and shared UI; compositor contract with the Hyprland adapter | — | Classified matrix and source baseline; candidates in `desktop/` checked 2026-10-03. Develop only. |
 | 0.0 | The foundation owned: package mirror and kernel, Hyprland configuration, shell environment, session entry, login screen | — | 0.0.1 and 0.0.2, 2026-09-22 and 2026-10-04. |
-| 0.1 | Session services in the host beside the existing bar; the desktop's commands owned | Proof | 0.1.0–0.1.22 accepted 2026-10-04 and 2026-10-05: notifications, OSD, clipboard, pickers, reminders, menu, background, screenshots, polkit, capture, media, idle, battery, browser extensions, monitor watch, lock, and the menus' commands. |
-| 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the host | 0.1 | Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
-| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | The plugins load in the isolated host and call only Tamlinux commands; then the daily bar is replaced and the inherited shell stops. |
+| 0.1 | Session services in the Tamlinux shell beside the existing bar; the desktop's commands owned | Proof | 0.1.0–0.1.22 accepted 2026-10-04 and 2026-10-05: notifications, OSD, clipboard, pickers, reminders, menu, background, screenshots, polkit, capture, media, idle, battery, browser extensions, monitor watch, lock, and the menus' commands. |
+| 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the Tamlinux shell | 0.1 | Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
+| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | The plugins load in the isolated shell and call only Tamlinux commands; then the daily bar is replaced and the inherited shell stops. |
 | 0.4 | Plugin backends and helpers on the compositor contract; Sway adapter | 0.3 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment; fixture proof passed. Still needed: Sway backends for the monitor and desktop-mode helpers, night light, and capture through the contract; daily use of the Hyprland adapter. |
 | 0.5 | Tamlinux's own look and name | 0.3 | One theme source generates every application's colours; owned fonts; the name on the login screen, menus, and About. |
 | 0.6 | The inherited desktop removed; Hyprland stays | 0.2–0.5 | Its system files, session environment, and every package it built are owned; its packages, package mirror, repository, and kernel are removed. |

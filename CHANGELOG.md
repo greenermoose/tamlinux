@@ -19,6 +19,12 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   session as the daily driver; 1.0.0 still removes Hyprland.
   [`VERSIONING.md`](VERSIONING.md) has the rules and the table. The planned
   0.0.3 was never issued; its work is 0.1.0–0.1.22 below.
+- **"The Tamlinux shell"** (2026-10-05). The program that draws the bar and
+  runs the session services is called the Tamlinux shell, as its
+  predecessor was the Omarchy shell. "Host" now names only the part plugins
+  talk to (the host contract) and, for the workstation package, the
+  distribution it is installed on and its host adapter. Earlier records say
+  "the Tamlinux host" for the shell. See [`desktop/README.md`](desktop/README.md).
 
 ## 0.1.0 to 0.1.22 - 2026-10-04 to 2026-10-05
 
@@ -27,7 +33,7 @@ Not tagged.
 
 | Version | Accepted | Step |
 | :-- | :-- | :-- |
-| 0.1.0 | 2026-10-04 | Notifications in the Tamlinux host |
+| 0.1.0 | 2026-10-04 | Notifications in the Tamlinux shell |
 | 0.1.1 | 2026-10-04 | On-screen display; a microphone-mute key for the Calliope keyboard |
 | 0.1.2 | 2026-10-04 | Clipboard history |
 | 0.1.3 | 2026-10-04 | Emoji picker |
@@ -53,17 +59,17 @@ Not tagged.
 
 ### Added
 
-- **Media keys in the Tamlinux host** (2026-10-04). The
-  [desktop host](desktop/README.md) runs a media service that picks the
+- **Media keys in the Tamlinux shell** (2026-10-04). The
+  [Tamlinux shell](desktop/README.md) runs a media service that picks the
   playing MPRIS player for play, pause, stop, next, previous, and the source
-  switch, and shows each action on the host's on-screen display.
-- **Stay Awake and the idle cycle in the Tamlinux host** (2026-10-04). The
-  [desktop host](desktop/README.md) runs an idle service with the Stay Awake
+  switch, and shows each action on the shell's on-screen display.
+- **Stay Awake and the idle cycle in the Tamlinux shell** (2026-10-04). The
+  [Tamlinux shell](desktop/README.md) runs an idle service with the Stay Awake
   switch, kept in one state file that idle suspend can honour, and
   an idle cycle that starts the screensaver and then the lock. Each stage is
   off unless its timeout is set.
-- **Low-battery warning and power profiles in the Tamlinux host**
-  (2026-10-04). The [desktop host](desktop/README.md) runs a
+- **Low-battery warning and power profiles in the Tamlinux shell**
+  (2026-10-04). The [Tamlinux shell](desktop/README.md) runs a
   battery service that warns once when a draining battery reaches 10% and
   sets the power profile for battery or mains power when the source
   changes. On a machine without a battery it does nothing.
@@ -98,8 +104,8 @@ Not tagged.
   the workstation boots the stock Arch `linux` kernel. Tamlinux owns the
   Hyprland configuration, the shell environment, the session entry and
   session units, and the login screen (theme, greeter, and autologin).
-- **Session services in the Tamlinux host** (2026-10-04; numbered 0.1.0–0.1.8
-  on 2026-10-05). The [desktop host](desktop/README.md) runs notifications,
+- **Session services in the Tamlinux shell** (2026-10-04; numbered 0.1.0–0.1.8
+  on 2026-10-05). The [Tamlinux shell](desktop/README.md) runs notifications,
   the on-screen display, clipboard history, the emoji and image pickers,
   reminders, the command menu, the desktop background, and the polkit agent
   as session services beside the existing bar. Screenshots use Tamlinux's own

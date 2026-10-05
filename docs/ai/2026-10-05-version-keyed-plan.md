@@ -31,6 +31,13 @@
 
   > 2 commit the private plans and public drafts
 
+  > I do have one question for you: why do you call it the "omarchy shell" but
+  > the "tamlinux host"? What is the difference? It seems like functionality
+  > the Omarchy "shell" was providing is now being povided by the tamlinux
+  > "host". Why call it a "host"?
+
+  > Yes, do the Tamlinux shell sweep now. Explain the change in terminology.
+
 ## Key decisions and implementation notes
 
 - Fred chose, from options the agent offered: the **minor version is a stage
@@ -48,10 +55,18 @@
 - The planned 0.0.3 was never issued. The four earlier numbering schemes for
   the same journey (phases, desktop-decoupling steps, a working plan's step
   names, fixed-meaning versions) are retired.
+- **Terminology.** The agent answered that there is no difference: "host"
+  came from the first proof, whose only job was to host one plugin, and
+  stuck as the program grew into a full shell. Fred asked for the sweep: the
+  program is now *the Tamlinux shell*, and "host" means only the plugin-host
+  contract and, for the workstation package, the host distribution and host
+  adapter. Current docs were swept; dated records keep the old word, and
+  `desktop/README.md` says so.
 - Changed: `VERSIONING.md` (rules and stage table), `CHANGELOG.md` (the
   0.1.0–0.1.22 table), `VERSION` (0.1.22), `README.md` status, the desktop
   decoupling milestone table and status, the plans index, the installation
-  framework's version references, and `desktop/README.md`.
+  framework's version references, and `desktop/README.md` (also its names
+  note).
 
 ## Verification
 
