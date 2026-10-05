@@ -253,13 +253,17 @@ class ServiceSourceTests(unittest.TestCase):
         text = (MEDIA / "Service.qml").read_text(encoding="utf-8")
         self.assertIn('target: "media"', text)
         for method in (
-            "status()", "playPause()", "next()", "previous()", "play()", "pause()",
+            "status()", "playPause()", "next()", "previous()", "play()", "pause()", "stop()",
             "sourceNext()", "sourcePrevious()", "sourceSwitch()", "sourceSwitchPrevious()", "ping()",
         ):
             self.assertIn("function " + method, text)
         # Each action goes to the injected host OSD, not a shell summon.
         self.assertIn("property var osd: null", text)
         self.assertIn("osd.open(JSON.stringify(", text)
+        # The stop key acts through MPRIS Stop and shows the stop icon.
+        self.assertIn("player.stop()", text)
+        self.assertIn('iconName = "media-stop"', text)
+        self.assertIn('n === "media-stop"', (OSD / "OsdModel.js").read_text(encoding="utf-8"))
         body = text.split("\n\n", 1)[-1]
         self.assertNotIn("summon", body)
         self.assertNotIn("omarchy", body)

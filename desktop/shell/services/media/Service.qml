@@ -5,8 +5,9 @@
 // Vendored from omarchy 4.0.4 shell/plugins/services/media/Service.qml (MIT,
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
 // the host injects its OSD service, which shows each action in place of a
-// shell summon (without the OSD service there is no card). The IPC target
-// media is unchanged.
+// shell summon (without the OSD service there is no card); and a stop action
+// (IPC stop) for the stop key, which acts on the player that pause would.
+// The IPC target media is otherwise unchanged.
 
 import QtQuick
 import Quickshell
@@ -363,7 +364,7 @@ Item {
     var targeted = playerForKey(targetKey)
     if (targeted) return targeted
 
-    if (action === "pause" || action === "playPause") {
+    if (action === "pause" || action === "playPause" || action === "stop") {
       var oldest = oldestPlayingPlayer(true) || oldestPlayingPlayer(false)
       if (oldest) return oldest
     }
@@ -418,6 +419,13 @@ Item {
         handled = true
       } else if (player && player.canTogglePlaying && player.isPlaying) {
         player.togglePlaying()
+        handled = true
+      }
+    } else if (action === "stop") {
+      actionLabel = "Stop"
+      iconName = "media-stop"
+      if (player && player.canControl) {
+        player.stop()
         handled = true
       }
     } else if (action === "playPause") {
@@ -509,6 +517,10 @@ Item {
 
     function pause(): string {
       return root.runAction("pause", true) ? "ok" : "unhandled"
+    }
+
+    function stop(): string {
+      return root.runAction("stop", true) ? "ok" : "unhandled"
     }
 
     function sourceNext(): string {
