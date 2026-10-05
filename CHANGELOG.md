@@ -27,6 +27,14 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ### Changed
 
+- **Browser extensions are Tamlinux's own** (2026-10-04, toward 0.0.3). The
+  three Chromium extensions (copy URL, download video, and the slim WhatsApp
+  window) and their two native-messaging helpers load from Tamlinux's
+  configuration.
+- **The monitor watch is Tamlinux's own** (2026-10-04, toward 0.0.3). The
+  service that reacts to displays appearing and disappearing, and the helpers
+  it calls, run from Tamlinux's configuration; the display recovery hooks still
+  fire after resume.
 - **Night light moves to 0.2** (2026-10-04). [`VERSIONING.md`](VERSIONING.md)
   no longer lists it for 0.0.3. It arrives with the compositor contract in
   0.2, together with a night-light indicator in the bar.

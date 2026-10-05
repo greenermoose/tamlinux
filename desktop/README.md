@@ -4,6 +4,8 @@ Develop-stage host for `fred.clock` 2.0.0 and the other seven `fred.*` 2.0.0
 plugins. The proof still uses an isolated home and a read-only calendar.
 It runs outside the Omarchy shell and does not replace the running desktop.
 Stopping the proof process and deleting its isolated state is the recovery path.
+The host's [session services](#session-services) are the exception: they run
+in daily use, without a bar, beside the existing one.
 
 Clock source is the `develop/2.0.0` working tree. The 1.3.3 pin
 `ed5140ccefc83c0a2fdd5f899bbd290acc35d88a` remains the baseline the adapter

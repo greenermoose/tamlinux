@@ -9,11 +9,11 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.0.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | [0.0.2](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.0.1 — first workstation snapshot; not an installable image yet |
+| **Status** | 0.0.2 — the foundation is owned; working toward 0.0.3 (session services in the Tamlinux host). Not an installable image yet |
 
 ---
 
@@ -65,12 +65,14 @@ while Hyprland keeps running and the machine stays in daily use: that is
    **antiX Linux Core with runit**. Compare musl and glibc. See the
    [base operating system plan](docs/plans/base-operating-system.md).
 
-0.0.1 is the first workstation snapshot. The version series for each step is
-in [`VERSIONING.md`](VERSIONING.md).
+0.0.1 was the first workstation snapshot. 0.0.2 (2026-10-04) owns the
+foundation: Arch's own package mirror and stock kernel, the Hyprland
+configuration, the shell environment, and the session entry and login screen.
+The version series for each step is in [`VERSIONING.md`](VERSIONING.md).
 
 The [development plans](docs/plans/README.md) track the reviewed installation
 direction and the approved first slice of the `tamlinux` command. Neither is
-part of the 0.0.1 installation yet.
+part of the 0.0.2 installation yet.
 
 ## Targets
 

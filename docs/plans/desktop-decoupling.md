@@ -4,8 +4,11 @@
 Plugin QML reads the compositor facade. The shell loads `SwayAdapter.qml`
 only when `TAMLINUX_COMPOSITOR=sway`; the Hyprland proof stays the default.
 `tam-desktop-mode` and the monitor helpers still call the named Hyprland
-backend. Product remains 0.0.1. Not promoted past Develop. The daily bar has
-not been replaced.
+backend. Product is 0.0.2. The host's session services (notifications,
+on-screen display, clipboard, pickers, reminders, menu, background, polkit,
+media, idle, and battery) run in daily use beside the existing bar, toward
+0.0.3. The bar and plugin host are not promoted past Develop, and the daily
+bar has not been replaced.
 The milestone order was updated on 2026-10-03: the workstation package
 replaces the inherited desktop on the development workstation (1.0.0) before
 the Void pilot. On 2026-10-04 it changed again: Omarchy is removed at Step 6
