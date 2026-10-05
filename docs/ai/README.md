@@ -16,6 +16,7 @@ explicitly.
 | 2026-10-04 | OSD service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-osd-service.md`](2026-10-04-osd-service.md) |
 | 2026-10-04 | Clipboard service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-clipboard-service.md`](2026-10-04-clipboard-service.md) |
 | 2026-10-04 | Reminders in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-reminders.md`](2026-10-04-reminders.md) |
+| 2026-10-04 | Desktop background in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-background.md`](2026-10-04-background.md) |
 | 2026-10-04 | Command menu in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-menu.md`](2026-10-04-menu.md) |
 | 2026-10-04 | Image picker in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-image-picker.md`](2026-10-04-image-picker.md) |
 | 2026-10-04 | Emoji picker in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-emoji-picker.md`](2026-10-04-emoji-picker.md) |

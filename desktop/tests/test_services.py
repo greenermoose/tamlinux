@@ -15,6 +15,7 @@ EMOJIS = SERVICES / "emojis"
 IMAGEPICKER = SERVICES / "imagepicker"
 REMINDERS = SERVICES / "reminders"
 MENU = SERVICES / "menu"
+BACKGROUND = SERVICES / "background"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -50,6 +51,8 @@ class ServiceSourceTests(unittest.TestCase):
             MENU / "AppLibrary.qml",
             MENU / "AppSearch.js",
             MENU / "hidden-entries.sh",
+            BACKGROUND / "Service.qml",
+            BACKGROUND / "components" / "ScreenMoveRemap.qml",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -199,9 +202,29 @@ class ServiceSourceTests(unittest.TestCase):
         helper = MENU / "hidden-entries.sh"
         self.assertTrue(helper.stat().st_mode & 0o111, "hidden-entries.sh is not executable")
 
+    def test_background_link_watch_and_routes(self):
+        text = (BACKGROUND / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('WlrLayershell.namespace: "tamlinux-background"', text)
+        self.assertIn("WlrLayershell.layer: WlrLayer.Background", text)
+        self.assertIn('target: "background"', text)
+        for method in ("refresh()", "set(path: string)", "setInstant(path: string)",
+                       "transition(fromPath: string, path: string)", "current()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn("function themeTransition(fromPath: string, path: string, finalPath: string, colorsB64: string, shellB64: string)", text)
+        self.assertIn('Quickshell.env("TAMLINUX_BACKGROUND_LINK")', text)
+        self.assertIn('"/tamlinux/background"', text)
+        # The link is watched by a child that dies with the host, and read by argument.
+        self.assertIn('["setpriv", "--pdeathsig", "TERM", "inotifywait"', text)
+        self.assertIn('["readlink", "-f", root.currentBackgroundLink]', text)
+        # Double-clicks open menu routes; nothing runs a shell string here.
+        self.assertIn('root.openRoute(mouse.button === Qt.RightButton ? "theme" : "background")', text)
+        self.assertNotIn('"bash"', text)
+        self.assertNotIn("omarchy-", text.split("\n\n", 1)[-1])
+        self.assertNotIn("qs.Commons", text)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
@@ -210,6 +233,8 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn('import "../services/reminders" as Reminders', text)
         self.assertIn('import "../services/menu" as Menu', text)
         self.assertIn("Menu.Service { osd: osdLoader.item }", text)
+        self.assertIn('import "../services/background" as Background', text)
+        self.assertIn("Background.Service { menu: menuLoader.item }", text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 
