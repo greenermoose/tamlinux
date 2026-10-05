@@ -19,6 +19,7 @@ BACKGROUND = SERVICES / "background"
 POLKIT = SERVICES / "polkit"
 MEDIA = SERVICES / "media"
 IDLE = SERVICES / "idle"
+BATTERY = SERVICES / "battery"
 
 
 class ServiceSourceTests(unittest.TestCase):
@@ -62,6 +63,8 @@ class ServiceSourceTests(unittest.TestCase):
             MEDIA / "MediaModel.js",
             IDLE / "Service.qml",
             IDLE / "IdleModel.js",
+            BATTERY / "Service.qml",
+            BATTERY / "BatteryModel.js",
         ):
             self.assertIn("LICENSE-omarchy", path.read_text(encoding="utf-8"), path.name)
 
@@ -300,9 +303,32 @@ class ServiceSourceTests(unittest.TestCase):
         for name in ("secondsFromConfig", "cyclePlan", "screensaverWindowCount"):
             self.assertIn("function " + name, model)
 
+    def test_battery_target_and_commands(self):
+        text = (BATTERY / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn('target: "battery"', text)
+        for method in ("status()", "ping()"):
+            self.assertIn("function " + method, text)
+        self.assertIn("import Quickshell.Services.UPower", text)
+        # The warning and the profile switch run owned commands by argument.
+        self.assertIn('["tam-battery-low", String(level)]', text)
+        self.assertIn('["tam-powerprofiles-set", pendingPowerSource]', text)
+        self.assertIn("readonly property int batteryThreshold: 10", text)
+        body = text.split("\n\n", 1)[-1]
+        self.assertNotIn("omarchy", body)
+        self.assertNotIn("Hyprland", body)
+        model = (BATTERY / "BatteryModel.js").read_text(encoding="utf-8")
+        for name in ("batteryPercentage", "isDischarging", "shouldWarnLowBattery", "powerSource", "statusOf"):
+            self.assertIn("function " + name, model)
+
+    def test_menu_power_profiles_use_owned_commands(self):
+        text = (MENU / "Service.qml").read_text(encoding="utf-8")
+        self.assertIn("tam-powerprofiles-list 2>/dev/null", text)
+        self.assertIn('"tam-powerprofiles-set autodetect "', text)
+        self.assertNotIn("omarchy-powerprofiles", text)
+
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)
@@ -319,6 +345,8 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn("Media.Service { osd: osdLoader.item }", text)
         self.assertIn('import "../services/idle" as Idle', text)
         self.assertIn("Idle.Service {}", text)
+        self.assertIn('import "../services/battery" as Battery', text)
+        self.assertIn("Battery.Service {}", text)
         self.assertIn("TAMLINUX_SERVICES", text)
         self.assertNotIn("Qt.resolvedUrl", text)
 

@@ -19,6 +19,11 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   Stay Awake switch, kept in one state file that idle suspend can honour, and
   an idle cycle that starts the screensaver and then the lock. Each stage is
   off unless its timeout is set.
+- **Low-battery warning and power profiles in the Tamlinux host**
+  (2026-10-04, toward 0.0.3). The [desktop host](desktop/README.md) runs a
+  battery service that warns once when a draining battery reaches 10% and
+  sets the power profile for battery or mains power when the source
+  changes. On a machine without a battery it does nothing.
 
 ### Changed
 

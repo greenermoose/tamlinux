@@ -17,6 +17,7 @@ explicitly.
 | 2026-10-04 | Clipboard service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-clipboard-service.md`](2026-10-04-clipboard-service.md) |
 | 2026-10-04 | Reminders in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-reminders.md`](2026-10-04-reminders.md) |
 | 2026-10-04 | Milestones before 0.1 | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-milestones-before-0.1.md`](2026-10-04-milestones-before-0.1.md) |
+| 2026-10-04 | Battery warning in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-battery.md`](2026-10-04-battery.md) |
 | 2026-10-04 | Stay Awake in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-idle.md`](2026-10-04-idle.md) |
 | 2026-10-04 | Media keys in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-media.md`](2026-10-04-media.md) |
 | 2026-10-04 | Polkit agent in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-polkit.md`](2026-10-04-polkit.md) |
