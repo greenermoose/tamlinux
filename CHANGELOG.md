@@ -8,6 +8,21 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-10-04
+
+### Added
+
+- **Tamlinux owns the foundation** (the 0.0.2 milestone in
+  [`VERSIONING.md`](VERSIONING.md)). Packages come from Arch's own mirrors and
+  the workstation boots the stock Arch `linux` kernel. Tamlinux owns the
+  Hyprland configuration, the shell environment, the session entry and
+  session units, and the login screen (theme, greeter, and autologin).
+- **Session services in the Tamlinux host**, toward 0.0.3. The
+  [desktop host](desktop/README.md) runs notifications, the on-screen
+  display, clipboard history, the emoji and image pickers, reminders, the
+  command menu, and the desktop background as session services beside the
+  existing bar. Screenshots and the polkit agent remain before 0.0.3.
+
 ### Changed
 
 - **Smaller steps to 0.1** (2026-10-04). [`VERSIONING.md`](VERSIONING.md)
@@ -88,4 +103,6 @@ The following entries record earlier directions that led to this target:
   workstation-then-installer order, and that Home Manager generations are a
   local rollback handle, not the product number.
 
+[Unreleased]: https://github.com/greenermoose/tamlinux/compare/v0.0.2...HEAD
+[0.0.2]: https://github.com/greenermoose/tamlinux/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/greenermoose/tamlinux/releases/tag/v0.0.1

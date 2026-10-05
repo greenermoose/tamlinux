@@ -81,7 +81,7 @@ the Home Manager generation.
 On a running workstation:
 
 ```bash
-echo "$TAMLINUX_VERSION"                 # product version (0.0.1)
+echo "$TAMLINUX_VERSION"                 # product version (0.0.2)
 cat ~/.config/tamlinux/version           # same number
 cat ~/.config/tamlinux/generation        # this machine's Home Manager generation
 home-manager generations                 # full local rollback list
