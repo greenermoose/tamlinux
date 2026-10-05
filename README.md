@@ -24,12 +24,13 @@ for Linux. Its job is to get the most from hardware that already exists:
 desktop systems, mini PCs, and laptops that have decades of useful life.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
-max**. Like the tamarack's needles, Tamlinux is meant to be temporary. Its
-vision is to work from Omarchy toward an installation package that turns an
-existing Linux distribution into a lean, high-efficiency workstation environment,
-and then toward a system that builds on a minimal Void base, with antiX Core
-as the fallback if Void has a showstopper. The aim is a sustainable workstation
-environment that runs on a wide variety of hardware.
+max**. Like the tamarack's needles, Tamlinux sheds old packages to make room
+for new. In its transitional phase, we are moving from Omarchy toward an
+installation package that turns an existing Linux distribution into a lean,
+high-efficiency workstation environment, and then utlimately a system grafted
+onto a minimal Void base, with antiX Core as the fallback if Void has a
+showstopper. The aim is a sustainable workstation environment that runs well
+on a wide variety of hardware.
 
 Simplifying and minimizing resource use is not merely an accommodation for
 older computers: it is a universal virtue. Removing bloat, resident daemons,
