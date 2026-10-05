@@ -29,6 +29,19 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.0 - 2026-10-05
+
+The first step of stage 0.2: nothing Omarchy ships changes underneath the
+workstation while Tamlinux replaces it.
+
+### Changed
+
+- **Omarchy's package repository is frozen.** It is no longer in
+  `pacman.conf`, so its packages stay installed and get no updates until
+  Tamlinux gives each one an owner or removes it. Arch updates continue
+  through `tam-update`, which also keeps the AUR from replacing the frozen
+  packages, among them the boot loader's hooks.
+
 ## 0.1.23 - 2026-10-05
 
 The last step of stage 0.1: the desktop's session services run in the
