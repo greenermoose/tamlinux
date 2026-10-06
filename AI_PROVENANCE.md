@@ -119,12 +119,14 @@ completed font-provider routing. Fred tested all four Style controls and
 accepted 0.2.1. Automated and live installation checks pass.
 [Session record](docs/ai/2026-10-05-style-theme-integration.md).
 
-### Keybinding viewer and night light — 0.2.2 and 0.2.3 accepted, 2026-10-05
+### Keybinding viewer, night light, audio and Bluetooth — 0.2.2 to 0.2.4 accepted, 2026-10-05
 
 Claude Code `2.1.290` (`claude-opus-5-5`) wrote the shell's keybinding
 service and model, the configuration-reload re-read, and the fixtures; Fred
 chose the behaviour (Enter runs the binding; alphabetical order) and tested
 and accepted 0.2.2; opencode (`big-pickle`) wrote the model tests, reviewed
 and merged by Claude. Claude then ported the night-light commands; Fred
-accepted 0.2.3.
+accepted 0.2.3. For 0.2.4, agy (`gemini-3.8-flash-high`) ported the seven
+panels from Claude's brief; Claude wrote the panel host and the shared
+control additions, reviewed and merged; Fred accepted 0.2.4.
 [Session record](docs/ai/2026-10-05-keybinding-viewer.md).

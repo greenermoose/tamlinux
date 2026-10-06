@@ -29,6 +29,26 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.4 - 2026-10-05
+
+### Changed
+
+- **Audio and Bluetooth panels in the Tamlinux shell.** `SUPER + CTRL + A` and
+  `SUPER + CTRL + B` open them as cards at the top of the focused output:
+  output and input devices, volume, per-application mixer, and Bluetooth
+  power, pairing, connection and forgetting (x). A panel host gives the
+  ported panels their bar services without the Tamlinux bar; the shared
+  controls gained the keyboard-cursor, password and spacing features the
+  panels use.
+
+### Verification
+
+- Fred opened both panels from their keys, changed the output and volume,
+  changed a Bluetooth connection and closed them with Escape, then accepted
+  this step. Automated checks: 306 configuration tests, 101 desktop tests,
+  12 real QML checks, and all seven ported panels loading in a headless
+  compositor.
+
 ## 0.2.3 - 2026-10-05
 
 ### Changed

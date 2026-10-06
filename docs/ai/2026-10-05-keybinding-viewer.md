@@ -41,3 +41,18 @@ Claude reviewed, merged, and added the missing final newline. Prompt:
 The night-light commands were ported in the configuration repository. Fred
 chose to drop the reset-to-default row ("Drop it"), tested the key and the
 menu rows, and accepted 0.2.3.
+
+## Follow-up: audio and Bluetooth panels (0.2.4)
+
+Prompts:
+
+> Is there anything you can do while we wait for agy to finish T9?
+
+> 0.2.4 works; I accept it
+
+agy (agy 1.2.17, `gemini-3.8-flash-high`) ported the audio, Bluetooth,
+network, Wi-Fi QR, power and speed-test panels byte-for-byte from Claude's
+substitution table. Claude wrote `PanelHost.qml`, added the shared-control
+members the panels use (defaults unchanged for existing plugins), renamed
+the disk speed-test directory to an importable name, and added
+`desktop/check-panels`, which loads every panel in a private headless Sway.
