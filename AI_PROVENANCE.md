@@ -37,7 +37,7 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 | :-- | :-- | :-- | :-- |
 | **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
 | **Claude Code** (`claude`) | `2.1.289` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
-| **Codex CLI** (`codex`) | `0.160.0` | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
+| **Codex CLI** (`codex`) | `0.160.1` (active session; installed CLI `0.160.0`) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
 | **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
 | **Cursor** (`cursor`) | `3.21.16` | composer | **Implementation in this repository**: public explainer, suite branding, and 0.0.1 versioning. |
 | **OpenCode** (`opencode`) | `1.18.31` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux package specifics and shell configuration. |
@@ -110,3 +110,10 @@ Cursor `3.23.12` (`composer`) taught the proof host to load the eight
 `fred.*` 2.0.0 checkouts and to start typed actions only when that flag is
 set. The daily shell was not replaced. Product version stays 0.0.1.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+### Shared theme integration — Develop, 2026-10-05
+
+Codex CLI `0.160.1` (`gpt-6.1-sol`) added palette reloads and responsive
+type sizing to the shared shell tokens. Desktop tests and isolated QML proofs
+pass; helper integration and daily use acceptance remain pending.
+[Session record](docs/ai/2026-10-05-style-theme-integration.md).

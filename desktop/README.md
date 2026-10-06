@@ -358,3 +358,22 @@ a Sway backend yet. Live compositor actions stay off unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
 Replacing the running bar is `desktop/launch-daily-bar --replace` after this
 candidate is accepted. That cutover is Tamlinux step 0.3.2.
+
+## Theme integration (Develop)
+
+The optional `theme` session service loads the selected palette at startup
+and through `tam-shell theme reload`. It applies validated colors and
+surface roles to `Tam.Commons` without polling or restarting the shell.
+`tam-shell theme current` reports the active palette and type settings.
+
+Theme font size and spacing settings grow control and bar dimensions with
+the text. The shared defaults remain available to isolated proofs. The
+full Tamarack design and typeface change are a separate milestone.
+
+Run `python3 desktop/check-theme` for headless Quickshell checks at 1× and
+1.25× scale. They
+use offscreen Qt, temporary home/runtime directories and a stub adapter;
+they create no desktop windows. They cover palette changes, removed surface
+overrides, invalid inputs, growing controls, coalesced reloads, failed helpers
+and recovery after a bounded timeout. The actual
+palette adapter and daily use verification are still pending integration.

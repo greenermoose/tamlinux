@@ -12,6 +12,7 @@ explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-05 | Shared theme and typography integration (Develop) | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-05-style-theme-integration.md](2026-10-05-style-theme-integration.md) |
 | 2026-10-05 | Omarchy's packages frozen (0.2.0) | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-05-freeze-omarchy-packages.md`](2026-10-05-freeze-omarchy-packages.md) |
 | 2026-10-05 | Every accepted step is a version | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-05-version-keyed-plan.md`](2026-10-05-version-keyed-plan.md) |
 | 2026-10-04 | Notifications service in the host | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-04-notifications-service.md`](2026-10-04-notifications-service.md) |

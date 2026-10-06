@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Check real QML theme bindings and reloads with no desktop windows."""
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+DESKTOP = Path(__file__).resolve().parent
+
+ADAPTER = '''#!/usr/bin/env python3
+import json, os, sys, time
+from pathlib import Path
+p = Path(os.environ["HOME"]) / "adapter-calls"
+n = int(p.read_text()) + 1 if p.exists() else 1
+p.write_text(str(n))
+time.sleep(0.05)
+mode = os.environ.get("TAMLINUX_THEME_CHECK_MODE", "success")
+payload = {"palette": {"foreground": "#e4e6d8",
+  "background": "#0f1410" if n == 1 else "#102030", "accent": "#86b86a",
+  "accentText": "#e4e6d8", "urgent": "#e07a5f", "muted": "#9aa391"},
+  "surfaces": {"menu.background": "#123456"} if n == 1 else {},
+  "style": {"fontBaseSize": 24} if n == 1 else {}}
+if n == 2 and mode == "malformed":
+    print("invalid JSON")
+elif n == 2 and mode == "timeout":
+    time.sleep(30)
+elif n == 2 and mode == "failed-output":
+    print(json.dumps(payload), flush=True)
+    os.close(sys.stdout.fileno())
+    time.sleep(0.2)
+    os._exit(7)
+else:
+    print(json.dumps(payload))
+    if n == 2 and mode == "early-output":
+        sys.stdout.flush()
+        os.close(sys.stdout.fileno())
+        time.sleep(0.2)
+        os._exit(0)
+'''
+
+
+def check(fixture, marker, mode="success", scale="1"):
+    with tempfile.TemporaryDirectory(prefix="tamlinux-theme-check-") as temporary:
+        base = Path(temporary)
+        runtime = base / "runtime"
+        runtime.mkdir(mode=0o700)
+        config = base / "config"
+        config.mkdir()
+        source = (DESKTOP / "fixtures" / fixture / "shell.qml").read_text()
+        if fixture == "theme-service":
+            # Quickshell scans relative imports only inside its config root.
+            source = source.replace('"../../shell/services/theme"', '"theme"')
+            shutil.copytree(DESKTOP / "shell/services/theme", config / "theme")
+        (config / "shell.qml").write_text(source)
+        adapter = base / "tam-theme-payload"
+        adapter.write_text(ADAPTER)
+        adapter.chmod(0o755)
+        env = dict(os.environ, HOME=temporary, XDG_RUNTIME_DIR=str(runtime),
+                   XDG_CACHE_HOME=str(base / "cache"), QT_QPA_PLATFORM="offscreen",
+                   QML_DISABLE_DISK_CACHE="1", TAMLINUX_UI_SCALE=scale,
+                   TAMLINUX_THEME_CHECK_MODE=mode,
+                   PATH=f"{base}:/usr/bin:/bin",
+                   QML_IMPORT_PATH=str(DESKTOP / "shell/modules"))
+        env.pop("WAYLAND_DISPLAY", None)
+        result = subprocess.run(["/usr/bin/quickshell", "-p", str(config)],
+                                env=env, stdin=subprocess.DEVNULL,
+                                capture_output=True, text=True, timeout=20)
+        output = result.stdout + result.stderr
+        if result.returncode or f"{marker} PASS" not in output or f"{marker} FAIL" in output:
+            raise SystemExit(output)
+        if fixture == "theme-service":
+            calls = int((base / "adapter-calls").read_text())
+            if calls != 3:
+                raise SystemExit(f"reload requests did not coalesce: {calls} reads")
+        print(f"{fixture} ({mode}, scale {scale}): PASS")
+
+
+if __name__ == "__main__":
+    for scale in ("1", "1.25"):
+        check("theme", "TAMLINUX_THEME_PROOF", scale=scale)
+        for mode in ("success", "early-output", "failed-output", "malformed", "timeout"):
+            check("theme-service", "TAMLINUX_THEME_SERVICE_PROOF", mode, scale)

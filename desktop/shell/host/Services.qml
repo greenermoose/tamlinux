@@ -12,9 +12,10 @@ import "../services/notifications" as Notifications
 import "../services/osd" as Osd
 import "../services/polkit" as Polkit
 import "../services/reminders" as Reminders
+import "../services/theme" as Theme
 
 // Session services the host owns. TAMLINUX_SERVICES names them,
-// comma-separated; unknown names are ignored. Each one is ported to
+// comma-separated; unknown names are ignored. Implementations live in
 // ../services/. Notifications gets the shell injected for the compositor
 // facade and the bar position; the menu gets the OSD for launch feedback,
 // the media service gets it for each media-key action, and the background
@@ -25,7 +26,7 @@ Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -41,6 +42,13 @@ Item {
   }
 
   // Static imports, not URLs: Quickshell only scans files it reaches by import.
+  Loader {
+    active: services.enabled.indexOf("theme") !== -1
+    sourceComponent: Component { Theme.Service {} }
+    onLoaded: services.note("service-loaded theme")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed theme")
+  }
+
   Loader {
     active: services.enabled.indexOf("notifications") !== -1
     sourceComponent: Component {

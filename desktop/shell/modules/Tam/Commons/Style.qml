@@ -3,7 +3,8 @@ import QtQuick
 import Quickshell
 
 // Spacing and type scale. TAMLINUX_UI_SCALE multiplies the 12px root.
-// Token formulas match shell/host/ui_contract.py. This does not read a theme.
+// Defaults match shell/host/ui_contract.py. The theme service may supply a
+// base size and spacing multiplier; the scale still applies to both.
 QtObject {
   id: root
 
@@ -15,9 +16,19 @@ QtObject {
 
   property int cornerRadius: 8
   property int gapsOut: 8
-  property int fontBaseSize: Math.max(1, Math.round(12 * uiScale))
-  property real spacingScale: uiScale
+  property real themeFontBaseSize: 12
+  property real themeSpacingScale: 1
+  property int fontBaseSize: Math.max(1, Math.round(themeFontBaseSize * uiScale))
+  property real spacingScale: themeSpacingScale * themeFontBaseSize / 12 * uiScale
   property string fontFamily: "monospace"
+
+  function applyThemeStyle(values) {
+    values = values || {}
+    var base = values.fontBaseSize
+    var spacing = values.spacingScale
+    themeFontBaseSize = (typeof base === "number" && isFinite(base) && base >= 6 && base <= 48) ? base : 12
+    themeSpacingScale = (typeof spacing === "number" && isFinite(spacing) && spacing >= 0.5 && spacing <= 3) ? spacing : 1
+  }
 
   function spaceReal(px) {
     var n = Number(px)
@@ -97,10 +108,10 @@ QtObject {
   }
 
   readonly property QtObject bar: QtObject {
-    readonly property int sizeHorizontal: Math.max(1, Math.round(26 * root.uiScale))
-    readonly property int iconSlot: Math.max(1, Math.round(27 * root.uiScale))
-    readonly property int iconCanvas: Math.max(1, Math.round(16 * root.uiScale))
-    readonly property int iconFont: Math.max(1, Math.round(13 * root.uiScale))
-    readonly property int statusSlot: Math.max(1, Math.round(21 * root.uiScale))
+    readonly property int sizeHorizontal: Math.max(1, Math.round(26 * root.themeFontBaseSize / 12 * root.uiScale))
+    readonly property int iconSlot: Math.max(1, Math.round(27 * root.themeFontBaseSize / 12 * root.uiScale))
+    readonly property int iconCanvas: Math.max(1, Math.round(16 * root.themeFontBaseSize / 12 * root.uiScale))
+    readonly property int iconFont: Math.max(1, Math.round(13 * root.themeFontBaseSize / 12 * root.uiScale))
+    readonly property int statusSlot: Math.max(1, Math.round(21 * root.themeFontBaseSize / 12 * root.uiScale))
   }
 }
