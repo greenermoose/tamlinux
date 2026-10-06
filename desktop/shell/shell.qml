@@ -20,7 +20,19 @@ ShellRoot {
   readonly property bool barEnabled: Quickshell.env("TAMLINUX_BAR") !== "0"
   // The bar's edge, from the layout document's "position": "top" (the
   // default) or "bottom". Services-only mode sits beside Omarchy's top bar.
-  readonly property string barPosition: barEnabled && barLayout ? barLayout.position : "top"
+  readonly property string barPosition: barEnabled && barLayout ? barPositionSetting : "top"
+  property string barPositionSetting: "top"
+  property bool barTransparent: false
+  // Hidden is the flag file ~/.local/state/tamlinux/toggles/bar-off, as
+  // Omarchy keeps its own, so it survives a restart. The shell writes it
+  // (toggleBar); a flag set from outside is read at the next start.
+  property bool barHidden: false
+  property bool barFlagReady: false
+  property bool barFlagWritten: false
+  readonly property string barFlagPath: (Quickshell.env("HOME") || "") + "/.local/state/tamlinux/toggles/bar-off"
+  // The layout document as read, kept to write position and transparency
+  // back without dropping keys this shell does not know.
+  property var barLayoutDoc: null
   property string outputName: Quickshell.env("TAMLINUX_OUTPUT") || ""
   property string droppedHosts: ""
   property var settingsDoc: ({ "version": 1, "entries": {} })
@@ -99,9 +111,12 @@ ShellRoot {
     }
     var anchor = parsed && typeof parsed.centerAnchor === "string" ? parsed.centerAnchor : ""
     var position = readPosition(parsed ? parsed.position : undefined)
-    barLayout = { "centerAnchor": anchor, "layout": clean, "position": position }
+    barLayoutDoc = layout ? parsed : null
+    barPositionSetting = position
+    barTransparent = !!parsed && parsed.transparent === true
+    barLayout = { "centerAnchor": anchor, "layout": clean }
     evidence("bar-layout left=" + clean.left.length + " center=" + clean.center.length + " right=" + clean.right.length
-      + " position=" + position)
+      + " position=" + position + " transparent=" + barTransparent)
   }
 
   // No vertical bar (D89): left, right, and anything else read as top.
@@ -110,6 +125,73 @@ ShellRoot {
     if (value === "bottom") return "bottom"
     evidence("bar-position-unsupported " + JSON.stringify(value).slice(0, 40))
     return "top"
+  }
+
+  // Position and transparency live in the layout document beside the
+  // layout. An unreadable document is never overwritten.
+  function saveBarLayout() {
+    if (!barLayoutDoc || barLayoutPath === "") {
+      evidence("bar-layout-not-saved")
+      return false
+    }
+    var doc = {}
+    for (var key in barLayoutDoc) doc[key] = barLayoutDoc[key]
+    doc.position = barPositionSetting
+    doc.transparent = barTransparent
+    barLayoutDoc = doc
+    barLayoutFile.setText(JSON.stringify(doc, null, 2) + "\n")
+    evidence("bar-layout-saved position=" + barPositionSetting + " transparent=" + barTransparent)
+    return true
+  }
+
+  function setBarPosition(value) {
+    var next = String(value || "")
+    if (next !== "top" && next !== "bottom") {
+      evidence("bar-position-unsupported " + JSON.stringify(next.slice(0, 40)))
+      return "unknown"
+    }
+    barPositionSetting = next
+    saveBarLayout()
+    return next
+  }
+
+  function toggleBarTransparency() {
+    barTransparent = !barTransparent
+    saveBarLayout()
+    return barTransparent ? "transparent" : "opaque"
+  }
+
+  // on shows the bar, off hides it, toggle flips it.
+  function toggleBar(mode) {
+    var wanted = String(mode || "toggle")
+    if (wanted !== "on" && wanted !== "off" && wanted !== "toggle") {
+      evidence("bar-toggle-unsupported " + JSON.stringify(wanted.slice(0, 16)))
+      return "unknown"
+    }
+    barHidden = wanted === "toggle" ? !barHidden : wanted === "off"
+    writeBarFlag()
+    evidence("bar-hidden " + barHidden)
+    return barHidden ? "hidden" : "shown"
+  }
+
+  function writeBarFlag() {
+    if (barFlagProc.running) return
+    barFlagWritten = barHidden
+    barFlagProc.command = barHidden
+      ? ["/usr/bin/install", "-D", "-m", "600", "/dev/null", barFlagPath]
+      : ["/usr/bin/rm", "-f", barFlagPath]
+    barFlagProc.running = true
+  }
+
+  // Every screen's indicators, not the one copy the per-widget target
+  // reaches (G8). Returns how many copies refreshed.
+  function refreshIndicators() {
+    var items = moduleWidgets("tamlinux.indicators")
+    for (var i = 0; i < items.length; i++) {
+      if (typeof items[i].refresh === "function") items[i].refresh()
+    }
+    evidence("indicators-refreshed " + items.length)
+    return items.length
   }
 
   function ingestPluginEntries(raw) {
@@ -594,7 +676,8 @@ ShellRoot {
     path: proof.barLayoutPath
     printErrors: false
     onLoaded: {
-      if (proof.barLayoutPath === "") return
+      // Read once; later loads follow the shell's own writes.
+      if (proof.barLayoutPath === "" || proof.barLayoutReady) return
       proof.ingestBarLayout(text())
       proof.barLayoutReady = true
     }
@@ -603,6 +686,25 @@ ShellRoot {
       proof.ingestBarLayout("")
       proof.barLayoutReady = true
     }
+  }
+
+  FileView {
+    path: proof.barFlagPath
+    printErrors: false
+    onLoaded: {
+      proof.evidence("bar-flag hidden")
+      proof.barHidden = true
+      proof.barFlagWritten = true
+      proof.barFlagReady = true
+    }
+    onLoadFailed: proof.barFlagReady = true
+  }
+
+  Process {
+    id: barFlagProc
+    clearEnvironment: true
+    // A toggle that landed while the flag was being written is written next.
+    onExited: if (proof.barFlagWritten !== proof.barHidden) proof.writeBarFlag()
   }
 
   IpcHandler {
@@ -637,6 +739,14 @@ ShellRoot {
     function call(id: string, method: string): string { return proof.callPanel(id, method) }
     function togglePanelAt(section: string, index: string): string { return proof.togglePanelAt(section, index) }
     function probePanels(section: string): void { proof.probePanels(section) }
+    // The bar itself: on, off, or toggle; top or bottom; transparency.
+    // IPC arguments are not optional: toggleBar flips the bar (the key),
+    // setBar on|off sets it.
+    function toggleBar(): string { return proof.toggleBar("toggle") }
+    function setBar(mode: string): string { return proof.toggleBar(mode) }
+    function setBarPosition(position: string): string { return proof.setBarPosition(position) }
+    function toggleBarTransparency(): string { return proof.toggleBarTransparency() }
+    function refreshIndicators(): string { return String(proof.refreshIndicators()) }
     function setRouteFocus(name: string): void {
       proof.routeFocus = String(name || "").slice(0, 64)
       proof.evidence("route-focus " + proof.routeFocus)
@@ -700,7 +810,7 @@ ShellRoot {
   }
 
   Variants {
-    model: proof.settingsReady && proof.barLayoutReady && proof.barEnabled ? proof.hostKeys : []
+    model: proof.settingsReady && proof.barLayoutReady && proof.barFlagReady && proof.barEnabled ? proof.hostKeys : []
     delegate: BarWindow {
       id: barWindow
       required property var modelData

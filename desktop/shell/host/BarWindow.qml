@@ -31,10 +31,14 @@ PanelWindow {
   // "top" or "bottom", from the layout document (shell.barPosition).
   readonly property string position: shell.barPosition
   readonly property bool atBottom: position === "bottom"
+  // Hidden stays mapped but parks off screen and gives up its exclusive
+  // zone, as Omarchy's bar does (~/.local/state/tamlinux/toggles/bar-off).
+  readonly property bool hidden: shell.barHidden
+  readonly property bool transparent: shell.barTransparent
 
   screen: screenRef
-  color: Color.bar.background
-  exclusionMode: Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Normal : ExclusionMode.Ignore
+  color: transparent ? "transparent" : Color.bar.background
+  exclusionMode: !hidden && Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Normal : ExclusionMode.Ignore
   implicitHeight: Style.bar.sizeHorizontal
   WlrLayershell.namespace: "tamlinux-bar-" + hostKey.replace("#", "-")
   WlrLayershell.layer: WlrLayer.Top
@@ -46,6 +50,9 @@ PanelWindow {
     top: !win.atBottom
     bottom: win.atBottom
   }
+  margins.top: hidden && !atBottom ? -implicitHeight : 0
+  margins.bottom: hidden && atBottom ? -implicitHeight : 0
+  onHiddenChanged: if (hidden) tooltipText = ""
 
   BarApi {
     id: api
@@ -54,6 +61,8 @@ PanelWindow {
     hostKey: win.hostKey
     screen: win.screenRef
     position: win.position
+    transparent: win.transparent
+    hidden: win.hidden
     barSize: win.implicitHeight
     layoutConfig: win.layoutMode ? shell.barLayout.layout : ({ "left": [], "center": [], "right": [] })
   }
@@ -212,6 +221,8 @@ PanelWindow {
     console.log("TAMLINUX_EVIDENCE bar-created host=" + hostKey + " screen=" + (screenRef ? screenRef.name || "" : "")
       + " position=" + position)
   }
+
+  onPositionChanged: console.log("TAMLINUX_EVIDENCE bar-moved host=" + hostKey + " position=" + position)
 
   Component.onDestruction: {
     api.clearSurface()

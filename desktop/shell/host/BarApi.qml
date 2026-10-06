@@ -14,6 +14,8 @@ QtObject {
   property string hostKey: ""
   property var screen: null
   property string position: "bottom"
+  property bool transparent: false
+  property bool hidden: false
   property bool vertical: false
   property int barSize: Style.bar.sizeHorizontal
   property color foreground: Color.foreground

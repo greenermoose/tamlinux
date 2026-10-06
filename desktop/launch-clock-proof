@@ -748,6 +748,7 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit(f"bars not at the {expected}:\n" + "\n".join(created))
     if expected == "top":
         drive_routes(env, process)
+        drive_bar_controls(env, process)
 
 
 # The focused-screen routes (plan 18 0.3.2 item 2) and the overlay-only panel
@@ -809,6 +810,94 @@ def drive_routes(env: dict, process: subprocess.Popen) -> None:
     if absent.stdout.strip() != "unknown":
         raise SystemExit("a call to a missing method was not refused")
     print(f"routes checked on {len(screens)} screen(s): {','.join(screens)}")
+
+
+def bar_layers() -> dict[str, dict]:
+    """Each tamlinux-bar-* layer: its monitor's and its own geometry."""
+    try:
+        layers = json.loads(subprocess.run(
+            ["/usr/bin/hyprctl", "-j", "layers"], capture_output=True, text=True, timeout=3, check=True,
+        ).stdout)
+        monitors = json.loads(subprocess.run(
+            ["/usr/bin/hyprctl", "-j", "monitors"], capture_output=True, text=True, timeout=3, check=True,
+        ).stdout)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"hyprctl layers failed: {exc}") from exc
+    tops = {}
+    for monitor in monitors:
+        scale = float(monitor.get("scale") or 1)
+        tops[monitor["name"]] = (int(monitor["y"]), int(round(int(monitor["height"]) / scale)))
+    found = {}
+    for name, data in layers.items():
+        for level in data.get("levels", {}).values():
+            for layer in level:
+                if layer.get("namespace", "").startswith("tamlinux-bar-"):
+                    top, height = tops[name]
+                    found[layer["namespace"]] = {"y": layer["y"] - top, "h": layer["h"], "screen": height}
+    return found
+
+
+# Hide and show, top and bottom, transparency, and the indicator refresh
+# (plan 18 0.3.2 items 4 and 5), checked on the compositor's own geometry.
+def drive_bar_controls(env: dict, process: subprocess.Popen) -> None:
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
+    def answer(function: str, args: list[str] | None = None) -> str:
+        return ipc(env, "tamlinux-shell", function, args).stdout.strip()
+
+    def placed(where: str) -> bool:
+        layers = bar_layers()
+        if not layers:
+            return False
+        for layer in layers.values():
+            if where == "top" and layer["y"] != 0:
+                return False
+            if where == "bottom" and layer["y"] + layer["h"] != layer["screen"]:
+                return False
+            if where == "hidden" and 0 <= layer["y"] < layer["screen"] and layer["y"] + layer["h"] > 0:
+                return False
+        return True
+
+    def require(predicate, message: str) -> None:
+        if not wait_for(predicate, 5):
+            raise SystemExit(message + "\n" + json.dumps(bar_layers()) + "\n" + read_log(process)[-3000:])
+
+    home = Path(env["HOME"])
+    flag = home / ".local" / "state" / "tamlinux" / "toggles" / "bar-off"
+    document = Path(env["TAMLINUX_BAR_LAYOUT"])
+    screens = len(host_keys(lines()))
+    require(lambda: placed("top"), "the bars are not at the top:")
+    count = answer("refreshIndicators")
+    if count != str(screens):
+        raise SystemExit(f"refreshIndicators reached {count!r} copies, not {screens}")
+    ipc(env, "tamlinux.indicators", "refresh")
+    if "TypeError" in read_log(process):
+        raise SystemExit("the per-widget indicator refresh threw:\n" + read_log(process)[-3000:])
+    if answer("setBarPosition", ["bottom"]) != "bottom":
+        raise SystemExit("setBarPosition bottom was refused")
+    require(lambda: placed("bottom"), "the bars did not move to the bottom:")
+    if json.loads(document.read_text(encoding="utf-8")).get("position") != "bottom":
+        raise SystemExit("the bottom position was not saved")
+    if answer("setBarPosition", ["left"]) != "unknown":
+        raise SystemExit("setBarPosition left was not refused")
+    answer("setBarPosition", ["top"])
+    require(lambda: placed("top"), "the bars did not return to the top:")
+    if answer("toggleBarTransparency") != "transparent" or json.loads(document.read_text(encoding="utf-8")).get("transparent") is not True:
+        raise SystemExit("transparency was not turned on and saved")
+    if answer("toggleBarTransparency") != "opaque":
+        raise SystemExit("transparency was not turned off")
+    if answer("setBar", ["off"]) != "hidden":
+        raise SystemExit("setBar off did not hide the bar")
+    require(lambda: placed("hidden") and flag.exists(), "the hidden bars stayed on screen, or no flag was written:")
+    if answer("toggleBar") != "shown":
+        raise SystemExit("toggleBar did not show the bar")
+    require(lambda: placed("top") and not flag.exists(), "the bar did not come back, or the flag stayed:")
+    if answer("setBar", ["sideways"]) != "unknown":
+        raise SystemExit("setBar sideways was not refused")
+    answer("setBar", ["off"])
+    require(lambda: flag.exists(), "the flag was not written for the restart check:")
+    print("bar controls checked")
 
 
 def sway_process_lines() -> list[str]:
@@ -966,6 +1055,19 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     layout_output = "all" if len(names) >= 2 and output in ("", "all") else output
     run_session(state_root / "layout", scale, layout_output, drive_layout, copies="1", extras=True, layout=True)
     print("layout registered")
+
+    def drive_hidden_restart(env: dict, process: subprocess.Popen) -> None:
+        def hidden() -> bool:
+            text = evidence_lines(read_log(process))
+            return "bar-flag hidden" in text and any(line.startswith("bar-created ") for line in text)
+
+        if not wait_for(hidden, 10):
+            raise SystemExit("the bar did not start hidden from its flag:\n" + read_log(process)[-3000:])
+        if ipc(env, "tamlinux-shell", "setBar", ["on"]).stdout.strip() != "shown":
+            raise SystemExit("the restarted bar did not come back")
+
+    run_session(state_root / "layout", scale, layout_output, drive_hidden_restart, reset=False, copies="1", extras=True, layout=True)
+    print("hidden bar survived a restart")
     run_session(state_root / "layout-bottom", scale, output, drive_layout, copies="1", extras=True, layout=True, position="bottom")
     print("bottom bar checked")
     def drive_unsupported(env: dict, process: subprocess.Popen) -> None:
