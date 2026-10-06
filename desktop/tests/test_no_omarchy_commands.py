@@ -61,6 +61,9 @@ def _regex_starts(text: str, index: int) -> bool:
     if previous < 0:
         return True
     char = text[previous]
+    if char in "+-" and previous > 0 and text[previous - 1] == char:
+        # `i++ / 2` and `i-- / 2` divide; only a lone + or - opens one.
+        return False
     if char in REGEX_PUNCT:
         return True
     if char.isalnum() or char in "_$":
@@ -271,6 +274,12 @@ class Scanner(unittest.TestCase):
             {"a.js": 'var w = a / b; var v = c / d; var s = "omarchy-div"'}
         )
         self.assertEqual(found, [("a.js", 1, "omarchy-div")])
+
+    def test_s10b_division_after_increment_or_decrement(self) -> None:
+        found = self.scan(
+            {"a.js": 'var n = i++ / 2; var s = "omarchy-inc"\nvar m = j-- / 2; var t = "omarchy-dec"'}
+        )
+        self.assertEqual(found, [("a.js", 1, "omarchy-inc"), ("a.js", 2, "omarchy-dec")])
 
     def test_s11_regular_expression_after_return(self) -> None:
         found = self.scan(
