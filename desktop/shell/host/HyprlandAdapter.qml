@@ -15,6 +15,7 @@ QtObject {
   property string publishedKey: ""
   property bool ingested: false
   property var doneReads: ({})
+  property int bindsReads: 0
   property string bindingsText: ""
   property string activeKeymap: ""
   readonly property bool liveActions: Quickshell.env("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") === "1"
@@ -199,12 +200,20 @@ QtObject {
     return raw
   }
 
+  // Reads run once each; only the bindings are read again, after a reload.
+  function rereadBinds() {
+    if (bindsProc.running) return
+    doneReads.binds = false
+    bindsProc.running = true
+  }
+
   function finishRead(label, text) {
     if (doneReads[label]) return
     doneReads[label] = true
     var body = String(text || "")
     if (label === "binds") {
       bindingsText = bounded(body, bindsLimit)
+      bindsReads = bindsReads + 1
       note("compositor-adapter hyprctl binds bytes=" + bindingsText.length)
       if (body.length > bindsLimit) note("compositor-adapter capped binds")
     } else if (label === "devices") {
@@ -352,7 +361,7 @@ QtObject {
       })
     }
     workspaces.sort(function(a, b) { return a.id - b.id })
-    var key = focused + "#" + focusedWorkspace + "#" + bindingsText.length + "#" + activeKeymap
+    var key = focused + "#" + focusedWorkspace + "#" + bindsReads + "#" + bindingsText.length + "#" + activeKeymap
     for (var n = 0; n < outputs.length; n++) {
       key += "|" + outputs[n].name + ":" + outputs[n].activeWorkspaceId + ":" + (outputs[n].dpmsOn ? "1" : "0")
       key += ":" + (outputs[n].special ? "s" : "") + ":" + outputs[n].x + "," + outputs[n].y + ":" + outputs[n].description
@@ -464,7 +473,7 @@ QtObject {
     // Re-read the bindings after the config reloads, so the keybinding
     // viewer never shows stale ones.
     function onRawEvent(event) {
-      if (event && event.name === "configreloaded" && !bindsProc.running) bindsProc.running = true
+      if (event && event.name === "configreloaded") adapter.rereadBinds()
     }
   }
 
