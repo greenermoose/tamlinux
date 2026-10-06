@@ -71,3 +71,8 @@ or released.
 Cursor `3.23.12` (`composer`) pointed fred.sysinfo 2.0.0 QML at the Tamlinux
 compositor facade. IPC uses the facade's focused output name. `SysinfoPanel` takes keyboard focus only when that output is the panel's screen. Not tagged or released.
 [Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. The panel layer is `tamlinux-sysinfo-panel`. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).

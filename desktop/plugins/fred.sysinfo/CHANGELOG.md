@@ -5,6 +5,8 @@
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.
 - Omarchy shell IPC targets are gone. Hyprland reads that this plugin already had stay in the plugin until the compositor contract.
+- The panel's layer is `tamlinux-sysinfo-panel`.
+- `tests/test_no_omarchy.py` fails on any `omarchy-*` command or layer name, `/usr/share/omarchy` path, or `OMARCHY_*` variable outside comments, documentation, and tests.
 
 ## [1.1.2] - 2026-09-22
 
