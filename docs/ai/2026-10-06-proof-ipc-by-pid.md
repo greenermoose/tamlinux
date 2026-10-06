@@ -28,3 +28,16 @@ stopped at its first check, after one `tamlinux.clock open` call.
 - `--selftest --scale 1` and `--scale 1.25` print `selftest ok`, with all
   eight `fred.*` 2.0.0 plugins registered from their `develop/2.0.0`
   working trees.
+
+## Follow-up: `TAMLINUX_BIN` in the proof
+
+Fred's interactive test found that right-clicking the tides widget did
+nothing, and a weather search result could not be selected. The proof runs
+with an isolated `HOME` and did not pass `TAMLINUX_BIN`, so the plugins'
+fallback pointed at the isolated `~/.local/bin`, where nothing is installed.
+The launcher now passes `TAMLINUX_BIN`, taken from its own environment or the
+real home's `~/.local/bin`. The selftest still passes at scale 1.
+
+> Right clicking the tides widget does nothing.
+
+> I can't select the location in the weather widget. I get a list of locations that match my search, but clicking on them doesn't select them.

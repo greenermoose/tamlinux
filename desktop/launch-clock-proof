@@ -206,6 +206,9 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     by_id = {record["id"]: record for record in records}
     plugin_ids = ["fred.clock", "tamlinux.fixture"] + [record["id"] for record in extra_records]
     env = os.environ.copy()
+    # The plugins run Tamlinux's commands from TAMLINUX_BIN. Their fallback,
+    # ~/.local/bin, would be the isolated home's, where nothing is installed.
+    tam_bin = os.environ.get("TAMLINUX_BIN") or str(Path.home() / ".local" / "bin")
     env.pop("OMARCHY_PATH", None)
     env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
     env.pop("TAMLINUX_HOST_ACTIONS", None)
@@ -230,6 +233,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "TAMLINUX_UI_SCALE": scale,
         "TAMLINUX_OUTPUT": output,
         "TAMLINUX_COMPOSITOR": compositor,
+        "TAMLINUX_BIN": tam_bin,
         "QT_QPA_PLATFORM": "wayland",
     })
     if compositor == "sway":
