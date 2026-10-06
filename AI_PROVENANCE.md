@@ -118,3 +118,11 @@ type sizing to the shared shell tokens, reviewed delegated helpers and
 completed font-provider routing. Fred tested all four Style controls and
 accepted 0.2.1. Automated and live installation checks pass.
 [Session record](docs/ai/2026-10-05-style-theme-integration.md).
+
+### Keybinding viewer — 0.2.2 accepted, 2026-10-05
+
+Claude Code `2.1.290` (`claude-opus-5-5`) wrote the shell's keybinding
+service and model, the configuration-reload re-read, and the fixtures; Fred
+chose the behaviour (Enter runs the binding; alphabetical order) and tested
+and accepted 0.2.2. Delegated model tests follow separately.
+[Session record](docs/ai/2026-10-05-keybinding-viewer.md).

@@ -29,6 +29,23 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.2 - 2026-10-05
+
+### Changed
+
+- **Keybinding viewer in the Tamlinux shell.** `SUPER + K` and Learn →
+  Keybindings list every binding from the compositor facade, searchable,
+  alphabetical by what each binding does (numbers in number order). Enter
+  runs the chosen binding's command. The facade reads the bindings again
+  whenever Hyprland reloads its configuration.
+
+### Verification
+
+- Fred opened the viewer from the key and the menu, searched, closed it with
+  Escape, and ran a binding with Enter, then accepted this step. The live
+  rows match the inherited viewer's 252, commands included. Automated
+  checks: 301 configuration tests and 66 desktop tests.
+
 ## 0.2.1 - 2026-10-05
 
 ### Changed
