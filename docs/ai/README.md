@@ -8,10 +8,16 @@ Tool and model versions are verified against local transcript stores. An entry
 whose attribution has not been checked against a local transcript says so
 explicitly.
 
+## Delegated work
+
+Tasks one AI agent assigned to another, with the harness and model on each
+side and any rework: [`delegations.md`](delegations.md).
+
 ## Session Records
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-05 | Bar widget ports merged; provenance for delegated work | Claude Code `2.1.290` | `claude-opus-5-5` | [`2026-10-05-delegation-provenance.md`](2026-10-05-delegation-provenance.md) |
 | 2026-10-05 | Shared theme and typography integration (Develop) | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-05-style-theme-integration.md](2026-10-05-style-theme-integration.md) |
 | 2026-10-05 | Omarchy's packages frozen (0.2.0) | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-05-freeze-omarchy-packages.md`](2026-10-05-freeze-omarchy-packages.md) |
 | 2026-10-05 | Every accepted step is a version | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-05-version-keyed-plan.md`](2026-10-05-version-keyed-plan.md) |

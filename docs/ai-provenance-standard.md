@@ -16,6 +16,7 @@ deliberately left out. It applies to this repository and every
 | **Commit trailers** | A commit made with AI help carries `AI-Tool: <tool> <version>`, `AI-Model: <model-id>`, and a `Co-authored-by:` line for the assistant. |
 | **`AI_PROVENANCE.md`** | The AI tools Fred uses and what each is for, plus a table of the repository's milestones and which AI partner worked on each. |
 | **`docs/ai/`** | One record per working session, indexed in `docs/ai/README.md`. Some older repositories still keep these in a single `docs/ai/sessions.md`. |
+| **`docs/ai/delegations.md`** | Work one AI agent assigned to another: who assigned it, which harness and model did it, and whether it had to be corrected or redone. |
 | **The commits and diffs themselves** | The ground truth. Every record cites the commits it produced, so you can check its claims against the code. |
 
 Each session record gives:
@@ -36,6 +37,32 @@ Each session record gives:
    and AI trailers.
 3. Find the `docs/ai/` record for that date or commit. It shows the prompt that
    led to the change and the decisions behind it.
+
+## Work one AI assigned to another
+
+Some work is delegated. An **orchestrating** agent (for example Claude Code)
+writes a task brief, and a **delegate** agent (for example Antigravity or
+OpenCode) does the task in its own branch and makes one commit. The
+orchestrator reviews it, merges it with `git cherry-pick`, and puts any
+corrections in separate commits. A delegate's commit is never amended, so it
+stays labelled with the harness and model that produced it.
+
+- **The delegate's commit** carries the delegate's own `AI-Tool:` (the
+  harness and its version) and `AI-Model:`, plus:
+  - `AI-Role: delegate`
+  - `AI-Assigned-By: <harness> <version> (<model-id>)`, the orchestrator
+  - `AI-Task: T<n>`, the task number (the brief itself is retained
+    privately)
+- **An orchestrator commit that corrects or redoes delegated work** carries
+  `AI-Reworks: <commit> (<what was redone>)`. Corrections caused by an error
+  in the brief, rather than in the delegate's work, say so.
+- **`docs/ai/delegations.md`** lists every delegated task that landed in the
+  repository: who assigned it, who did it, the delegate's commit and its merged
+  copy, and the outcome (merged unchanged, corrected, partly redone, or
+  discarded), with the rework commits. Tasks delegated before these trailers
+  existed (2026-10-05) are recorded there only.
+
+To list delegated commits: `git log --format='%h %s%n  %(trailers:key=AI-Tool)%(trailers:key=AI-Assigned-By)' --grep='AI-Role: delegate'`.
 
 ## Human-authored work
 

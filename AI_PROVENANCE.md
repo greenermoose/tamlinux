@@ -15,6 +15,13 @@ model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
 
+Some work is delegated: one agent assigns a task and another does it. The
+delegate's commit names its own harness and model, plus `AI-Role: delegate`
+and `AI-Assigned-By:` for the orchestrator; a commit that corrects or redoes
+delegated work carries `AI-Reworks:`. [`docs/ai/delegations.md`](docs/ai/delegations.md)
+lists every delegated task, who assigned it, who did it, and whether it had to
+be redone.
+
 ---
 
 ## 1. Fred's Multi-Agent AI Toolchain
