@@ -59,7 +59,9 @@ ShellRoot {
     return Math.round(n)
   }
 
-  readonly property string settingsPath: (Quickshell.env("HOME") || "") + "/.config/tamlinux-shell/settings.json"
+  // Each widget's settings, beside the layout document (plan 18 step 0.3.2
+  // item 6). In the session both are live-linked to the config checkout.
+  readonly property string settingsPath: (Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "") + "/.config")) + "/tamlinux/shell/settings.json"
 
   function evidence(message) {
     console.log("TAMLINUX_EVIDENCE " + message)

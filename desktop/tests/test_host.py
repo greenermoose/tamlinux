@@ -16,6 +16,7 @@ sys.path.insert(0, str(DESKTOP / "adapters"))
 
 import build_patch  # noqa: E402
 import registry  # noqa: E402
+import session_start  # noqa: E402
 import settings_store  # noqa: E402
 
 
@@ -100,6 +101,112 @@ class RegistryTests(unittest.TestCase):
             _manifest(root, entry="sub/jump")
             with self.assertRaises(registry.RegistryError):
                 registry.validate_directory(root)
+
+
+class RegistryCommandTests(unittest.TestCase):
+    """registry.py as a command: validate one plugin, map a plugins directory."""
+
+    SCRIPT = DESKTOP / "shell" / "host" / "registry.py"
+
+    def run_registry(self, *args):
+        import subprocess
+        return subprocess.run([sys.executable, "-I", str(self.SCRIPT), *args],
+                              capture_output=True, text=True, timeout=20)
+
+    def test_validate_prints_the_record_or_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "fred.clock"
+            root.mkdir()
+            _manifest(root)
+            done = self.run_registry("validate", str(root))
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(json.loads(done.stdout)["id"], "fred.clock")
+            (root / "BarWidget.qml").unlink()
+            done = self.run_registry("validate", str(root))
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("entry point does not exist", done.stderr)
+            self.assertEqual(done.stdout, "")
+
+    def test_entries_leave_a_bad_plugin_off_and_say_so(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            for name in ("fred.clock", "fred.weather", "fred.broken", "fred.misnamed"):
+                (base / name).mkdir()
+            _manifest(base / "fred.clock", "fred.clock")
+            _manifest(base / "fred.weather", "fred.weather")
+            _manifest(base / "fred.broken", "fred.broken", entry="Missing.qml")
+            _manifest(base / "fred.misnamed", "fred.other")
+            (base / ".fred.clock.test.1").mkdir()
+            (base / "README").write_text("not a plugin\n", encoding="utf-8")
+            done = self.run_registry("entries", str(base))
+            self.assertEqual(done.returncode, 0, done.stderr)
+            entries = json.loads(done.stdout)
+            self.assertEqual(sorted(entries), ["fred.clock", "fred.weather"])
+            self.assertTrue(entries["fred.clock"].endswith("/fred.clock/BarWidget.qml"))
+            self.assertIn("left off the bar: fred.broken: entry point does not exist", done.stderr)
+            self.assertIn("left off the bar: fred.misnamed: manifest id 'fred.other'", done.stderr)
+
+    def test_entries_follow_a_linked_plugin_directory(self):
+        # Home Manager links each deployed plugin directory into the store.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            store = base / "store-fred.clock"
+            store.mkdir()
+            _manifest(store, "fred.clock")
+            plugins = base / "plugins"
+            plugins.mkdir()
+            (plugins / "fred.clock").symlink_to(store)
+            entries, problems = registry.plugin_entries(plugins)
+            self.assertEqual(problems, [])
+            self.assertEqual(entries, {"fred.clock": str((store / "BarWidget.qml").resolve())})
+
+    def test_usage_and_missing_directory(self):
+        self.assertEqual(self.run_registry().returncode, 2)
+        done = self.run_registry("entries", "/nonexistent/plugins")
+        self.assertEqual(done.returncode, 0)
+        self.assertEqual(json.loads(done.stdout), {})
+        self.assertIn("not a directory", done.stderr)
+
+
+class SessionStartTests(unittest.TestCase):
+    """The session unit's start script: plugin map and layout path."""
+
+    def test_services_only_adds_nothing_but_the_import_path(self):
+        env, notes = session_start.session_environment({"HOME": "/home/u", "TAMLINUX_BAR": "0"})
+        self.assertEqual(notes, [])
+        self.assertEqual(env["QML_IMPORT_PATH"], str(DESKTOP / "shell" / "modules"))
+        self.assertNotIn("TAMLINUX_PLUGIN_ENTRIES", env)
+        self.assertNotIn("TAMLINUX_BAR_LAYOUT", env)
+
+    def test_bar_maps_the_deployed_plugins_and_names_the_layout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / "config"
+            plugins = config / "tamlinux" / "plugins"
+            (plugins / "fred.clock").mkdir(parents=True)
+            (plugins / "fred.broken").mkdir()
+            _manifest(plugins / "fred.clock", "fred.clock")
+            _manifest(plugins / "fred.broken", "fred.broken", entry="Missing.qml")
+            env, notes = session_start.session_environment(
+                {"HOME": "/home/u", "XDG_CONFIG_HOME": str(config)})
+            self.assertEqual(env["TAMLINUX_BAR_LAYOUT"], str(config / "tamlinux" / "shell" / "layout.json"))
+            entries = json.loads(env["TAMLINUX_PLUGIN_ENTRIES"])
+            self.assertEqual(list(entries), ["fred.clock"])
+            self.assertIn("left off the bar: fred.broken: entry point does not exist: Missing.qml", notes)
+            self.assertIn("plugins: fred.clock", notes)
+
+    def test_the_environment_wins(self):
+        env, notes = session_start.session_environment({
+            "HOME": "/home/u", "QML_IMPORT_PATH": "/x", "TAMLINUX_BAR_LAYOUT": "/l.json",
+            "TAMLINUX_PLUGIN_ENTRIES": "{}"})
+        self.assertEqual((env["QML_IMPORT_PATH"], env["TAMLINUX_BAR_LAYOUT"], env["TAMLINUX_PLUGIN_ENTRIES"]),
+                         ("/x", "/l.json", "{}"))
+        self.assertEqual(notes, [])
+
+    def test_no_plugins_directory_is_not_fatal(self):
+        env, notes = session_start.session_environment(
+            {"HOME": "/nonexistent-home", "TAMLINUX_PLUGINS_DIR": "/nonexistent/plugins"})
+        self.assertEqual(json.loads(env["TAMLINUX_PLUGIN_ENTRIES"]), {})
+        self.assertIn("plugins: none", notes)
 
 
 class SettingsTests(unittest.TestCase):

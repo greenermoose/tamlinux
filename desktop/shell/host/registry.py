@@ -1,8 +1,19 @@
-"""Validate plugin manifests before the clock proof loads them."""
+"""Validate plugin manifests before the shell loads them.
+
+As a command (plan 18 step 0.3.2 items 6 and 10):
+
+    registry.py validate <plugin-dir>   print the load record, or fail
+    registry.py entries <plugins-dir>   print {id: entry file} for every
+                                        plugin there that validates
+
+`entries` leaves a plugin that fails off the map and names it on stderr;
+it never fails the shell for one bad plugin.
+"""
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 
@@ -79,3 +90,52 @@ def validate_directories(roots: list[Path]) -> list[dict]:
     """Validate plugins in order, rejecting an id that appears twice."""
     seen: set[str] = set()
     return [validate_directory(Path(root), seen) for root in roots]
+
+
+def plugin_entries(plugins_dir: Path) -> tuple[dict[str, str], list[str]]:
+    """Each plugin directory under plugins_dir, by name, that validates and
+    whose manifest id is its directory name; and why each other one was left
+    out."""
+    entries: dict[str, str] = {}
+    problems: list[str] = []
+    seen: set[str] = set()
+    base = Path(plugins_dir)
+    if not base.is_dir():
+        return entries, [f"{base}: not a directory"]
+    for child in sorted(base.iterdir()):
+        if child.name.startswith(".") or not child.is_dir():
+            continue
+        try:
+            record = validate_directory(child, seen)
+        except RegistryError as exc:
+            problems.append(f"{child.name}: {exc}")
+            continue
+        if record["id"] != child.name:
+            seen.discard(record["id"])
+            problems.append(f"{child.name}: manifest id {record['id']!r} is not the directory name")
+            continue
+        entries[record["id"]] = record["entry"]
+    return entries, problems
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 3 or argv[1] not in ("validate", "entries"):
+        print("usage: registry.py validate <plugin-dir> | entries <plugins-dir>", file=sys.stderr)
+        return 2
+    if argv[1] == "validate":
+        try:
+            record = validate_directory(Path(argv[2]))
+        except RegistryError as exc:
+            print(f"registry: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps(record))
+        return 0
+    entries, problems = plugin_entries(Path(argv[2]))
+    for problem in problems:
+        print(f"registry: left off the bar: {problem}", file=sys.stderr)
+    print(json.dumps(entries, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

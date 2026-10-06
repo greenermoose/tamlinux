@@ -141,7 +141,7 @@ def stage_extras(state: Path) -> list[dict]:
 
 def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = None) -> None:
     _private(config / "fred.clock")
-    _private(config / "tamlinux-shell")
+    _private(config / "tamlinux" / "shell")
     _private(home / ".cache" / "fred.clock")
     _private(home)
     stage_clock(plugin)
@@ -197,7 +197,7 @@ def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = No
     for record in extras or []:
         entries[record["id"]] = {"id": record["id"]}
         allowed.add(record["id"])
-    write_settings(config / "tamlinux-shell", {"version": 1, "entries": entries}, allowed)
+    write_settings(config / "tamlinux" / "shell", {"version": 1, "entries": entries}, allowed)
 
 
 def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None) -> dict:
@@ -257,7 +257,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         # eight plugins, each plugin from its staged entry file.
         if not extras:
             raise SystemExit("--layout needs the plugins")
-        target = config / "tamlinux-shell" / "bar-layout.json"
+        target = config / "tamlinux" / "shell" / "layout.json"
         document = json.loads(LAYOUT.read_text(encoding="utf-8"))
         if position is not None:
             document["position"] = position
@@ -1042,7 +1042,7 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
         raise SystemExit("compositor detail escaped the adapter:\n" + leaked)
     if "/usr/share/omarchy" in log:
         raise SystemExit("proof log references the Omarchy shell tree")
-    settings = read_settings(primary / "home" / ".config" / "tamlinux-shell" / "settings.json", ALLOWED)
+    settings = read_settings(primary / "home" / ".config" / "tamlinux" / "shell" / "settings.json", ALLOWED)
     if settings["entries"]["fred.clock"]["format"] != "dddd h:mm AP":
         raise SystemExit("format was not persisted")
     restarted = run_session(primary, scale, output, None, reset=False, copies="2")
