@@ -10,6 +10,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 DESKTOP = Path(__file__).resolve().parents[1]
+# The plugin repositories sit beside the checkout, or above a worktree.
+WORKSPACE = Path(os.environ.get("TAMLINUX_WORKSPACE") or next(
+    (p for p in DESKTOP.parents if (p / "clock-fred-tamlinux").is_dir()), DESKTOP.parents[1]
+))
 sys.path.insert(0, str(DESKTOP / "shell" / "host"))
 
 import compositor_commands as commands  # noqa: E402
@@ -309,7 +313,7 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertTrue(seen)
 
     def test_helpers_do_not_build_hyprland_commands(self):
-        root = DESKTOP.parents[1]
+        root = WORKSPACE
         helpers = (
             root / "workspaces-fred-tamlinux" / "tam-desktop-mode",
             root / "monitor-fred-tamlinux" / "fred-monitor-layout",
@@ -322,7 +326,7 @@ class SourceBoundaryTests(unittest.TestCase):
                 self.assertNotIn(banned, text, path.name)
 
     def test_plugin_qml_reads_the_facade(self):
-        root = DESKTOP.parents[1]
+        root = WORKSPACE
         names = (
             "clock", "agents", "sysinfo", "weather", "tides",
             "keyboard", "monitor", "workspaces",

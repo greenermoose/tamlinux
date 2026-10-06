@@ -48,7 +48,20 @@ def clock_repo() -> Path:
     override = os.environ.get("TAMLINUX_CLOCK_SOURCE")
     if override:
         return Path(override)
-    return Path(__file__).resolve().parents[1].parent / "clock-fred-tamlinux"
+    return workspace() / "clock-fred-tamlinux"
+
+
+def workspace() -> Path:
+    """The directory holding the plugin repositories: the checkout's parent,
+    or the nearest ancestor that has them when run from a worktree."""
+    override = os.environ.get("TAMLINUX_WORKSPACE")
+    if override:
+        return Path(override)
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "clock-fred-tamlinux").is_dir():
+            return parent
+    return here.parents[2]
 
 
 def evidence_lines(text: str) -> list[str]:
