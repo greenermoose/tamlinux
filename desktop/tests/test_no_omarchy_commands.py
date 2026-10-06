@@ -23,16 +23,6 @@ if not SCRATCH:
         if f"worktrees/{agent}" in str(worktree) and agent_scratch.is_dir():
             SCRATCH = str(agent_scratch)
 
-# Omarchy commands the shell still runs until plan 18 step 0.3.2 item 7.
-# Item 7 deletes each entry as it moves the call to tam-*; when the set is
-# empty, delete it.
-PENDING_0_3_2 = {
-    ("host/BarApi.qml", "omarchy-agent"),
-    ("host/BarApi.qml", "omarchy-launch-terminal"),
-    ("host/BarApi.qml", "omarchy-menu-timezone"),
-    ("host/BarApi.qml", "omarchy-notification-send"),
-    ("shell.qml", "omarchy-agent"),
-}
 
 TOKEN_RE = re.compile(r"(?<![A-Za-z0-9._-])omarchy-[A-Za-z0-9-]*[A-Za-z0-9]")
 WIRE_NAMES = frozenset({"omarchy-action", "omarchy-glyph", "omarchy-exec-argv"})
@@ -192,10 +182,8 @@ class RealTree(unittest.TestCase):
     """The rule over the real shell directory."""
 
     def test_k1_shell_matches_pending_set(self) -> None:
-        new, stale = check(find_commands(SHELL), PENDING_0_3_2)
-        hint = (
-            "new ones must use tam-*; stale ones are deleted from PENDING_0_3_2"
-        )
+        new, stale = check(find_commands(SHELL), set())
+        hint = "the shell must run tam-* commands, not Omarchy's"
         self.assertEqual(
             (new, stale), ([], []), "\n".join(new + stale + [hint])
         )

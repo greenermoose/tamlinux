@@ -628,7 +628,7 @@ ShellRoot {
     for (var i = 0; i < 513; i++) longText += "a"
     api.notify(longText)
     api.openTimezoneMenu()
-    api.run("omarchy-agent --pick")
+    api.run("tam-agent --pick")
     evidence("actions-probed")
   }
 

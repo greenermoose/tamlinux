@@ -37,10 +37,10 @@ UI = Path(__file__).resolve().parent / "fixtures" / "ui"
 ALLOWED = {"fred.clock", "tamlinux.fixture"}
 LAYOUT = SHELL_DIR / "bar" / "default-layout.json"
 ACTION_MARKERS = (
-    "omarchy-agent",
-    "omarchy-launch-terminal",
-    "omarchy-notification-send",
-    "omarchy-menu-timezone",
+    "tam-agent",
+    "tam-launch-terminal",
+    "tam-notification-send",
+    "tam-menu-timezone",
 )
 
 
@@ -498,7 +498,7 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
     require(lambda: "action-recorded notify 6" in lines(), "notice was not recorded:")
     require(lambda: sum(1 for line in lines() if line == "unsupported notify") >= 2, "unsafe notices were not refused:")
     require(lambda: "action-recorded timezone-menu" in lines(), "timezone menu was not recorded:")
-    require(lambda: "unsupported omarchy-agent --pick" in lines(), "bar.run was not refused:")
+    require(lambda: "unsupported tam-agent --pick" in lines(), "bar.run was not refused:")
     require(lambda: "actions-probed" in lines(), "action probe did not finish:")
     started = action_pids() - before_actions
     if started:
@@ -1033,7 +1033,7 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     expect(lines, "action-recorded notify 6")
     expect(lines, "unsupported notify")
     expect(lines, "action-recorded timezone-menu")
-    expect(lines, "unsupported omarchy-agent --pick")
+    expect(lines, "unsupported tam-agent --pick")
     expect(lines, "actions-probed")
     if any(line.startswith("compositor-action live ") for line in lines):
         raise SystemExit("live compositor action ran during the proof")

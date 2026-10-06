@@ -166,7 +166,7 @@ QtObject {
 
   function pickAgent() {
     recordAction("pick-agent")
-    return startAction(["/usr/bin/omarchy-agent", "--pick"], 600000)
+    return startAction([tamlinuxBin + "/tam-agent", "--pick"], 600000, true)
   }
 
   // The menu button: tam-menu toggles the Tamlinux shell's menu (the root
@@ -190,7 +190,7 @@ QtObject {
     }
     if (String(program || "") === "btop") {
       recordAction("open-terminal btop")
-      return startAction(["/usr/bin/omarchy-launch-terminal", "btop"], 600000)
+      return startAction([tamlinuxBin + "/tam-launch-terminal", "btop"], 600000, true)
     }
     reportUnsupported("open-terminal")
     return false
@@ -203,12 +203,12 @@ QtObject {
       return false
     }
     recordAction("notify " + body.length)
-    return startAction(["/usr/bin/omarchy-notification-send", body], 15000)
+    return startAction([tamlinuxBin + "/tam-notification-send", body], 15000, true)
   }
 
   function openTimezoneMenu() {
     recordAction("timezone-menu")
-    return startAction(["/usr/bin/omarchy-menu-timezone"], 600000)
+    return startAction([tamlinuxBin + "/tam-menu-timezone"], 600000, true)
   }
 
   readonly property HostActions actionRunner: HostActions {
