@@ -43,10 +43,20 @@ if [[ -z $socket ]]; then
   exit 1
 fi
 
-log=$(env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin \
-  WAYLAND_DISPLAY="$socket" QT_QPA_PLATFORM=wayland \
-  QML_IMPORT_PATH="$work/shell/modules" TAMLINUX_PANELS="$panels" \
-  timeout 20 quickshell -p "$work/shell/check-panels.qml" 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
+shell_env=(env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin
+  WAYLAND_DISPLAY="$socket" QT_QPA_PLATFORM=wayland
+  QML_IMPORT_PATH="$work/shell/modules" TAMLINUX_PANELS="$panels")
+"${shell_env[@]}" timeout 20 quickshell -p "$work/shell/check-panels.qml" >"$work/shell.log" 2>&1 &
+shell_pid=$!
+# While the shell runs, ask the host's IPC route for a panel it does not have:
+# it must answer false and log the miss, without opening anything.
+for _ in $(seq 25); do
+  ipc=$("${shell_env[@]}" timeout 2 qs ipc -p "$work/shell/check-panels.qml" call tamlinux.panels summon tamlinux.check-missing 2>/dev/null)
+  [[ $ipc == true || $ipc == false ]] && break
+  sleep 0.1
+done
+wait "$shell_pid"
+log=$(sed 's/\x1b\[[0-9;]*m//g' "$work/shell.log")
 
 status=0
 IFS=, read -ra wanted <<<"$panels"
@@ -58,6 +68,12 @@ for panel in "${wanted[@]}"; do
     status=1
   fi
 done
+if [[ $ipc == false ]] && grep -q "TAMLINUX_EVIDENCE panel-missing tamlinux.check-missing$" <<<"$log"; then
+  echo "summon route: PASS"
+else
+  echo "summon route: FAIL (${ipc:-no answer})"
+  status=1
+fi
 grep -E "WARN scene" <<<"$log" | sed 's/^ */warning: /' >&2
 if grep -E "ERROR: |caused by" <<<"$log" | grep -v pipewire >&2; then
   status=1
