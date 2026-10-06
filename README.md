@@ -9,11 +9,11 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.2.2](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | [0.2.3](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.2.2 — Style, font and keybinding-viewer controls use the Tamlinux shell; stage 0.2 continues with the remaining keys and menu entries. Not an installable image yet |
+| **Status** | 0.2.3 — Style, font, keybinding-viewer and night-light controls use Tamlinux; stage 0.2 continues with the remaining keys and menu entries. Not an installable image yet |
 
 ---
 
@@ -71,7 +71,7 @@ entry and login screen.
 Since then every step Fred accepts is a version: 0.1.0–0.1.23 moved the
 desktop's session services into the Tamlinux shell, and 0.2.0 froze
 Omarchy's packages. 0.2.1 moves Style and font controls onto the Tamlinux
-shell, and 0.2.2 adds its keybinding viewer. The stages and their
+shell, 0.2.2 adds its keybinding viewer, and 0.2.3 owns the night light. The stages and their
 rules are in [`VERSIONING.md`](VERSIONING.md).
 
 The [development plans](docs/plans/README.md) track the reviewed installation

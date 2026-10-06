@@ -29,3 +29,15 @@
 Desktop tests: 66 passed; configuration tests: 301 passed. Live rows matched
 the inherited viewer's 252 rows, commands included. Fred tested the key, the
 menu entry, search, Escape and Enter, and accepted 0.2.2.
+
+## Follow-up: model tests and night light (0.2.3)
+
+opencode (`big-pickle`, opencode 1.18.31) wrote 27 model tests from Claude's
+brief, including a parity check against the inherited viewer's rows;
+Claude reviewed, merged, and added the missing final newline. Prompt:
+
+> Yes, start 0.2.3 now.
+
+The night-light commands were ported in the configuration repository. Fred
+chose to drop the reset-to-default row ("Drop it"), tested the key and the
+menu rows, and accepted 0.2.3.

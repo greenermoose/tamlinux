@@ -29,6 +29,22 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.3 - 2026-10-05
+
+### Changed
+
+- **Night light on Tamlinux commands.** `SUPER + CTRL + N` and Trigger →
+  Toggle → Nightlight toggle the screen temperature through Hyprland's
+  `hyprsunset`; Setup → Config → Hyprsunset and Update → Process →
+  Hyprsunset restart it. The reset-to-default row is dropped: the
+  configuration file is under version control.
+
+### Verification
+
+- Fred toggled the night light from the key and the menu, edited and
+  restarted it from Setup and Update, and accepted this step. Automated
+  checks: 301 configuration tests and 93 desktop tests.
+
 ## 0.2.2 - 2026-10-05
 
 ### Changed
