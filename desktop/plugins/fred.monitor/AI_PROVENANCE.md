@@ -81,3 +81,8 @@ Cursor `3.23.12` (`composer`) pointed the layout, state, and reset helpers on `d
 Cursor `3.23.12` (`composer`) pointed fred.monitor 2.0.0 QML at the Tamlinux
 compositor facade. The three DPMS controls call `bar.compositor.setDpms`. Layout, state, and reset helpers still call Hyprland. Not tagged or released.
 [Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Text Size runs `tam-display-text-size` and the brightness helper runs `tam-brightness-display`, both by absolute path from `TAMLINUX_BIN` (fallback `~/.local/bin`). Those commands call other Tamlinux commands by name, so the closed `PATH` is `TAMLINUX_BIN:/usr/bin`, as it was Omarchy's command directory before. A new state test pins both resolutions. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).

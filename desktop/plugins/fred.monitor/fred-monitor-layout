@@ -594,9 +594,11 @@ def spawn_guard(token):
         "XDG_CONFIG_HOME",
         "TAMLINUX_COMPOSITOR_COMMANDS",
         "TAMLINUX_COMPOSITOR_LIVE_ACTIONS",
+        "TAMLINUX_BIN",
     ]
     env = {key: os.environ[key] for key in allowed if os.environ.get(key)}
-    env["PATH"] = "/usr/share/omarchy/bin:/usr/bin"
+    tam_bin = os.environ.get("TAMLINUX_BIN") or os.path.join(os.path.expanduser("~"), ".local", "bin")
+    env["PATH"] = tam_bin + ":/usr/bin"
     subprocess.Popen(
         [sys.executable, os.path.realpath(__file__), "_guard", token],
         stdin=subprocess.DEVNULL,

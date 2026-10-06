@@ -16,7 +16,10 @@ Panel {
   manageIpc: false
 
   readonly property string pluginVersion: "2.0.0"
-  readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "TAMLINUX_COMPOSITOR_COMMANDS", "TAMLINUX_COMPOSITOR_LIVE_ACTIONS"]
+  readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "TAMLINUX_COMPOSITOR_COMMANDS", "TAMLINUX_COMPOSITOR_LIVE_ACTIONS", "TAMLINUX_BIN"]
+  // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
+  readonly property string textSizeHelper:
+    (Quickshell.env("TAMLINUX_BIN") || (Quickshell.env("HOME") + "/.local/bin")) + "/tam-display-text-size"
 
   property int brightnessPercent: 0
   property int pendingBrightnessPercent: 0
@@ -776,7 +779,7 @@ Panel {
   }
 
   function setTextSize(px) {
-    textScaleProc.exe = "/usr/share/omarchy/bin/omarchy-display-text-size"
+    textScaleProc.exe = root.textSizeHelper
     textScaleProc.args = [String(px)]
     textScaleProc.launch()
   }
@@ -1173,7 +1176,7 @@ Panel {
 
   Launch {
     id: textScaleProc
-    exe: "/usr/share/omarchy/bin/omarchy-display-text-size"
+    exe: root.textSizeHelper
     envKeys: root.monitorEnv
     deadlineMs: 5000
     stdout: StdioCollector { waitForEnd: true }

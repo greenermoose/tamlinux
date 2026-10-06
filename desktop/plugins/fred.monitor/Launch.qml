@@ -16,7 +16,9 @@ Process {
   property string stdinText: ""
   command: exe !== "" ? [exe].concat(args) : []
   clearEnvironment: true
-  environment: Model.pickEnv(envKeys, { PATH: "/usr/share/omarchy/bin:/usr/bin" }, function (name) { return Quickshell.env(name) })
+  // Tamlinux commands the helpers run call other Tamlinux commands by name.
+  readonly property string tamBin: Quickshell.env("TAMLINUX_BIN") || (Quickshell.env("HOME") + "/.local/bin")
+  environment: Model.pickEnv(envKeys, { PATH: tamBin + ":/usr/bin" }, function (name) { return Quickshell.env(name) })
   stdinEnabled: stdinText !== ""
   function launch() {
     if (!running && exe !== "") {

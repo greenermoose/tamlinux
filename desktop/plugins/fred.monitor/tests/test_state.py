@@ -76,6 +76,31 @@ class StateCacheTests(unittest.TestCase):
                 else:
                     os.environ["XDG_RUNTIME_DIR"] = previous_runtime
 
+    def test_brightness_runs_the_owned_helper_from_tamlinux_bin(self):
+        calls = []
+        original_command = STATE.command_output
+        saved = {name: os.environ.get(name) for name in ("XDG_RUNTIME_DIR", "TAMLINUX_BIN", "HOME")}
+        with tempfile.TemporaryDirectory() as temp:
+            try:
+                os.environ["XDG_RUNTIME_DIR"] = temp
+                STATE.command_output = lambda argv, _timeout: calls.append(argv) or ""
+                os.environ["TAMLINUX_BIN"] = "/opt/tamlinux/bin"
+                STATE.set_brightness("HDMI-A-1", "90")
+                os.environ.pop("TAMLINUX_BIN")
+                os.environ["HOME"] = "/home/someone"
+                STATE.set_brightness("HDMI-A-1", "80")
+            finally:
+                STATE.command_output = original_command
+                for name, value in saved.items():
+                    if value is None:
+                        os.environ.pop(name, None)
+                    else:
+                        os.environ[name] = value
+        self.assertEqual(calls, [
+            ["/opt/tamlinux/bin/tam-brightness-display", "--no-osd", "--monitor", "HDMI-A-1", "90%"],
+            ["/home/someone/.local/bin/tam-brightness-display", "--no-osd", "--monitor", "HDMI-A-1", "80%"],
+        ])
+
     def test_set_brightness_accepts_silent_success_and_updates_cache(self):
         with tempfile.TemporaryDirectory() as temp:
             previous_runtime = os.environ.get("XDG_RUNTIME_DIR")

@@ -67,6 +67,12 @@ def read_monitors():
     return text.strip()
 
 
+def tam_command(name):
+    """A Tamlinux command by absolute path: TAMLINUX_BIN, else ~/.local/bin."""
+    base = os.environ.get("TAMLINUX_BIN") or os.path.join(os.path.expanduser("~"), ".local", "bin")
+    return os.path.join(base, name)
+
+
 def command_output(argv, timeout):
     result = subprocess.run(
         argv,
@@ -217,7 +223,7 @@ def get_brightness(monitor_name, runtime_fd, allow_probe=True):
 
     try:
         out = command_output(
-            ["/usr/share/omarchy/bin/omarchy-brightness-display", "--monitor", monitor_name],
+            [tam_command("tam-brightness-display"), "--monitor", monitor_name],
             3.0,
         )
         val = int(out)
@@ -261,7 +267,7 @@ def set_brightness(monitor_name, percent):
     try:
         command_output(
             [
-                "/usr/share/omarchy/bin/omarchy-brightness-display",
+                tam_command("tam-brightness-display"),
                 "--no-osd",
                 "--monitor",
                 monitor_name,
@@ -269,7 +275,7 @@ def set_brightness(monitor_name, percent):
             ],
             12.0,
         )
-        # Omarchy deliberately emits no value for a successful --no-osd set.
+        # The helper deliberately emits no value for a successful --no-osd set.
         # Cache the validated requested percentage so all panel instances can
         # reuse it without immediately contending for another DDC read.
         applied = value
