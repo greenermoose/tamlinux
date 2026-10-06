@@ -417,3 +417,8 @@ plugin entries from `~/.config/tamlinux/plugins/` and reads
 configuration once, run `desktop/adapters/omarchy_shell_import.py` with the
 source shell.json and output directory; existing files are refused.
 The daily bar switches separately at 0.3.3.
+
+Interactive `--layout` copies deployed widget settings into the isolated
+home when available, so the clock displays the converted formats while
+calendar data remains the local fixture. `--settings-file <file>` selects
+another settings document. The selftest always uses its synthetic fixture.

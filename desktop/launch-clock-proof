@@ -26,7 +26,7 @@ from sway_snapshot import snapshot_from_directory  # noqa: E402
 from ui_contract import proof_border_line, proof_token_line, proof_wheel_line  # noqa: E402
 from registry import RegistryError, validate_directories  # noqa: E402
 from session_start import session_environment  # noqa: E402
-from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
+from settings_store import SettingsError, read_settings, write_settings, validate_document  # noqa: E402
 
 PINNED_REVISION = "ed5140ccefc83c0a2fdd5f899bbd290acc35d88a"
 SHELL_DIR = Path(__file__).resolve().parent / "shell"
@@ -273,6 +273,16 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
             document = json.loads(target.read_text(encoding="utf-8"))
         target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
         os.chmod(target, 0o600)
+        if readiness:
+            # Model Home Manager's live links, including a writable checkout
+            # target. The driver's writes must retain links and reach targets.
+            live_source = target.parent / "live-source"
+            _private(live_source)
+            for name in ("layout.json", "settings.json"):
+                source = target.parent / name
+                destination = live_source / name
+                source.rename(destination)
+                source.symlink_to(destination)
         entries = {"fred.clock": by_id["fred.clock"]["entry"]}
         entries.update({record["id"]: record["entry"] for record in extra_records})
         env["TAMLINUX_BAR_LAYOUT"] = str(target)
@@ -769,7 +779,7 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
         ready = next((line for line in lines() if line.startswith("ready ")), "")
         if "format=dddd HH:mm" not in ready:
             raise SystemExit("converted clock format was not loaded: " + ready)
-        settings = read_settings(Path(env["XDG_CONFIG_HOME"]) / "tamlinux/shell/settings.json", set(layout_ids()))
+        settings = read_settings((Path(env["XDG_CONFIG_HOME"]) / "tamlinux/shell/settings.json").resolve(), set(layout_ids()))
         if settings["entries"]["fred.clock"].get("birthYear") != 1970:
             raise SystemExit("converted clock settings were not preserved")
         if any("widget-registered fred.broken " in line for line in lines()):
@@ -797,6 +807,19 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
     if expected == "top":
         drive_routes(env, process)
         drive_bar_controls(env, process)
+    if env.get("TAMLINUX_PROOF_CONVERTED") == "1":
+        ipc(env, "tamlinux.clock", "cycleFormat")
+        directory = Path(env["XDG_CONFIG_HOME"]) / "tamlinux/shell"
+        def persisted() -> bool:
+            source = directory / "live-source/settings.json"
+            settings = read_settings(source, set(layout_ids()))
+            return settings["entries"]["fred.clock"]["format"] == "dddd h:mm AP"
+        if not wait_for(persisted, 5):
+            raise SystemExit("clock write did not reach the live settings target")
+        for name in ("layout.json", "settings.json"):
+            if not (directory / name).is_symlink():
+                raise SystemExit(f"shell write replaced the live {name} link")
+        print("live layout and settings writes preserved their links")
 
 
 # The focused-screen routes (plan 18 0.3.2 item 2) and the overlay-only panel
@@ -1145,6 +1168,7 @@ def main() -> None:
     parser.add_argument("--scale", default="1")
     parser.add_argument("--output", default="")
     parser.add_argument("--position", choices=("top", "bottom"), default=None, help="with --layout, the bar's edge (default top)")
+    parser.add_argument("--settings-file", type=Path, help="with --layout, copy settings into the isolated home (default: deployed settings if present)")
     parser.add_argument("--compositor", choices=("hyprland", "sway"), default="hyprland")
     parser.add_argument("--timeout", type=int, default=120, help="seconds before the interactive proof stops; 0 waits until interrupted")
     args = parser.parse_args()
@@ -1166,6 +1190,25 @@ def main() -> None:
     state = state_root / "interactive"
     extras = args.plugins or args.layout
     prepared = prepare(state, args.scale, args.output, extras=extras, compositor=args.compositor, layout=args.layout, position=args.position)
+    if args.layout:
+        real_config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+        settings_file = args.settings_file or real_config / "tamlinux/shell/settings.json"
+        if args.settings_file or settings_file.is_file():
+            allowed = set(layout_ids()) | ALLOWED
+            destination = Path(prepared["env"]["XDG_CONFIG_HOME"]) / "tamlinux/shell"
+            try:
+                document = read_settings(destination / "settings.json", allowed)
+                # The deployed document is a managed live link, not the
+                # private proof document read_settings normally handles.
+                with settings_file.open("rb") as stream:
+                    payload = stream.read(64 * 1024 + 1)
+                if len(payload) > 64 * 1024:
+                    raise SettingsError("settings file is too large")
+                document["entries"].update(validate_document(json.loads(payload), allowed)["entries"])
+                write_settings(destination, document, allowed)
+            except (OSError, ValueError, SettingsError) as exc:
+                raise SystemExit(f"proof settings: {exc}") from exc
+            print(f"copied widget settings from {settings_file}; source is unchanged")
     if args.plugins and not args.layout:
         prepared["env"]["TAMLINUX_PLUGINS_ON_ALL"] = "1"
     process = spawn(prepared["env"])
