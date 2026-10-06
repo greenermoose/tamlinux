@@ -70,8 +70,8 @@ Item {
     target: "theme"
     function reload(): void { root.reloadTheme() }
     function current(): string {
-      return JSON.stringify({foreground: Color.foreground, background: Color.background,
-        accent: Color.accent, muted: Color.muted, fontFamily: Style.font.family,
+      return JSON.stringify({foreground: String(Color.foreground), background: String(Color.background),
+        accent: String(Color.accent), muted: String(Color.muted), fontFamily: Style.font.family,
         fontBaseSize: Style.font.baseSize})
     }
   }

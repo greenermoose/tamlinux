@@ -4,8 +4,8 @@
   `codex --version` reports `0.160.0`).
 - **Model**: `gpt-6.1-sol` (verified in the active turn metadata).
 - **Transcript**: Retained privately by the author.
-- **Stage**: Develop; shared implementation written, helper integration and
-  deployment pending. The accepted version remains 0.2.0.
+- **Stage**: Test on the development workstation; integrated and installed,
+  awaiting desktop acceptance. The accepted version remains 0.2.0.
 - **Prompts** (excerpt):
   > The next step in the project is 0.2.1, the style and fonts for tamlinux. Make sure you use all the skills at your disposal for front-end design, typography, style, visual graphics, and user interface to make tamlinux beautiful and functional and sustainable. Ask if you have questions.
 - **Scope clarification**:
@@ -57,3 +57,16 @@ restart notifications, and extreme TOML inputs. The configuration suite passes
 301 tests and the desktop suite passes 66. The adapter reads the active theme's
 generated surface colors and the existing font-size preference correctly.
 Home Manager deployment and Fred's desktop acceptance remain pending.
+
+## Installed verification
+
+Verified all nine installed helpers against their reviewed source. A separate
+session switched Home Manager while this work continued; verified that result
+and completed the font-provider routing. Restarted only the existing Tamlinux
+services host and refreshed its menu. Live IPC confirms the active palette and
+11px base size. One Tamlinux host and one existing bar process remain.
+
+Configuration tests: 301 passed. Desktop tests: 66 passed. Real offscreen QML
+checks: 12 passed. The theme diagnostic returns hex strings for its colors.
+Fred's Theme/Background/Unlock/Font checks remain pending; no version bump,
+public push or release has occurred.

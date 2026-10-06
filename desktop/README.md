@@ -359,7 +359,7 @@ a Sway backend yet. Live compositor actions stay off unless
 Replacing the running bar is `desktop/launch-daily-bar --replace` after this
 candidate is accepted. That cutover is Tamlinux step 0.3.2.
 
-## Theme integration (Develop)
+## Theme integration
 
 The optional `theme` session service loads the selected palette at startup
 and through `tam-shell theme reload`. It applies validated colors and
@@ -376,4 +376,8 @@ use offscreen Qt, temporary home/runtime directories and a stub adapter;
 they create no desktop windows. They cover palette changes, removed surface
 overrides, invalid inputs, growing controls, coalesced reloads, failed helpers
 and recovery after a bounded timeout. The actual
-palette adapter and daily use verification are still pending integration.
+palette adapter is installed on the development workstation; desktop
+acceptance is pending. Style routes theme, background and unlock pickers
+through Tamlinux. Font selection uses the installed Tamlinux helpers and
+restarts only the existing services host. The application theme engine remains
+inherited until the separately planned migration.
