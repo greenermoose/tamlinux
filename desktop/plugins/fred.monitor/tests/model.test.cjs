@@ -189,3 +189,11 @@ test("moveDisplay swaps columns before recalculating geometry", () => {
   assert.equal(moved.find(d => d.name === "DP-1").x, 0);
   assert.equal(moved.find(d => d.name === "DP-2").x, 2560);
 });
+
+test("textSizeFromStatus reads the helper's first status line", () => {
+  assert.equal(Model.textSizeFromStatus("text size: 14 px\ngtk text-scaling-factor: 1.1818\nterminal font: 11 pt\n"), 14);
+  assert.equal(Model.textSizeFromStatus("text size: 12 (default) px\ngtk text-scaling-factor: 1.0\n"), 12);
+  assert.equal(Model.textSizeFromStatus(""), -1);
+  assert.equal(Model.textSizeFromStatus("text size: big px"), -1);
+  assert.equal(Model.textSizeFromStatus("gtk text-scaling-factor: 1.0\ntext size: 14 px"), -1);
+});

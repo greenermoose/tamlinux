@@ -102,6 +102,10 @@ Panel {
   // Text size slider — curated macOS-style notches (px)
   readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
   property int textSizePreviewIndex: -1
+  // The size tam-display-text-size reports, -1 until read. The Tamlinux
+  // shell's own font size does not follow Text Size yet, so the slider and
+  // label read this instead.
+  property int appliedTextPx: -1
   property bool reflowingText: false
 
   function markReflowing() {
@@ -770,18 +774,26 @@ Panel {
     return best
   }
 
+  function textSizeBasePx() {
+    return appliedTextPx > 0 ? appliedTextPx : Style.font.baseSize
+  }
+
   function currentTextIndex() {
-    return textSizePreviewIndex >= 0 ? textSizePreviewIndex : nearestTextStop(Style.font.baseSize)
+    return textSizePreviewIndex >= 0 ? textSizePreviewIndex : nearestTextStop(textSizeBasePx())
   }
 
   function displayedTextPx() {
-    return textSizePreviewIndex >= 0 ? textSizeStops[textSizePreviewIndex] : Style.font.baseSize
+    return textSizePreviewIndex >= 0 ? textSizeStops[textSizePreviewIndex] : textSizeBasePx()
   }
 
   function setTextSize(px) {
     textScaleProc.exe = root.textSizeHelper
     textScaleProc.args = [String(px)]
     textScaleProc.launch()
+  }
+
+  function readTextSize() {
+    if (!textStatusProc.running) textStatusProc.launch()
   }
 
   function adjustTextSize(deltaSteps) {
@@ -841,6 +853,7 @@ Panel {
   onOpenedChanged: {
     if (opened) {
       refresh()
+      readTextSize()
       layoutStatusProc.launch()
       refreshProfiles()
       if (displays.length > 0) {
@@ -1179,7 +1192,30 @@ Panel {
     exe: root.textSizeHelper
     envKeys: root.monitorEnv
     deadlineMs: 5000
-    stdout: StdioCollector { waitForEnd: true }
+    // The helper's exit code is not a reliable success signal, so read the
+    // size it now reports once it has finished, either way.
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.readTextSize()
+    }
+  }
+
+  Launch {
+    id: textStatusProc
+    exe: root.textSizeHelper
+    envKeys: root.monitorEnv
+    deadlineMs: 5000
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var px = Model.textSizeFromStatus(text)
+        if (px > 0) {
+          root.appliedTextPx = px
+          if (root.textSizePreviewIndex >= 0 && root.nearestTextStop(px) === root.textSizePreviewIndex)
+            root.textSizePreviewIndex = -1
+        }
+      }
+    }
   }
 
   Timer {

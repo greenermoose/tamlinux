@@ -28,3 +28,17 @@ Plugins find Tamlinux's own commands as `TAMLINUX_BIN + "/tam-..."`, never by ba
 ## Verification
 
 - Boundary test passes, and fails on the previous tree. Python suite 17 tests OK; `tests/model.test.cjs` 10 pass.
+
+## Follow-up: the Text Size label
+
+Fred's test of the isolated Tamlinux shell:
+
+> Changing the text size in monitor works, but the slider always says 12px and doesn't change so I don't know what pixel size I'm actually at.
+
+The slider and label read the shell's own font size, which followed Omarchy's
+`shell.toml` in 1.x but does not follow Text Size in the Tamlinux shell yet.
+They now read the size `tam-display-text-size` reports with no arguments,
+when the panel opens and after each change. `Model.textSizeFromStatus`
+parses its first line; `tests/model.test.cjs` covers it (11 pass). The
+isolated selftest still registers all eight plugins.
+

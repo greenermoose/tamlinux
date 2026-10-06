@@ -8,6 +8,7 @@ All notable changes to `fred.monitor` are documented here.
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.
 - Omarchy shell IPC targets are gone. Hyprland reads that this plugin already had stay in the plugin until the compositor contract.
 - Text Size runs `tam-display-text-size`, and brightness runs `tam-brightness-display`, both through `TAMLINUX_BIN` (default `~/.local/bin`). Helpers run with `PATH=$TAMLINUX_BIN:/usr/bin` instead of Omarchy's command directory.
+- The Text Size slider and its px label show the size `tam-display-text-size` reports, read when the panel opens and after each change. They used to show the shell's own font size, which stays at 12 px until the shell follows Text Size.
 - `tests/test_no_omarchy.py` fails on any `omarchy-*` command or layer name, `/usr/share/omarchy` path, or `OMARCHY_*` variable outside comments, documentation, and tests.
 
 ## [1.2.3] - 2026-09-23

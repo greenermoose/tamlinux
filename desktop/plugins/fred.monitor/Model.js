@@ -300,8 +300,17 @@ function layoutSignature(displays) {
   }).join(";")
 }
 
+// The size tam-display-text-size reports with no arguments: its first line is
+// "text size: 14 px" or "text size: 12 (default) px". -1 when unreadable.
+function textSizeFromStatus(raw) {
+  var first = String(raw || "").split("\n")[0]
+  var m = /^text size: ([0-9]{1,3})(?: \(default\))? px$/.exec(first)
+  return m ? Number(m[1]) : -1
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
+    textSizeFromStatus: textSizeFromStatus,
     clampBrightness: clampBrightness,
     normalizeScale: normalizeScale,
     cleanScale: cleanScale,
