@@ -16,6 +16,9 @@ Item {
   signal toggled()
   signal hovered(bool isHovered)
 
+  // Ported panels show a tooltip while the pointer is over the switch.
+  readonly property alias containsMouse: switchMouse.containsMouse
+
   property int trackHeight: Math.max(22, Math.round(Style.spacing.controlHeight * 0.55))
   property int trackWidth: Math.round(trackHeight * 1.9)
   property int knobSize: Math.max(6, Math.round(trackHeight * 0.72))
@@ -42,6 +45,7 @@ Item {
   }
 
   MouseArea {
+    id: switchMouse
     anchors.fill: parent
     hoverEnabled: true
     enabled: root.interactive && !root.busy

@@ -80,6 +80,24 @@ def port(text: str) -> str:
     return "".join(out)
 
 
+# Changes made after the mechanical port, while wiring each panel. Each is
+# (old, new) applied once to the ported body.
+ADAPTATIONS = {
+    # x forgets a device; Tam.Ui's key catcher makes that opt-in (0.2.4).
+    "desktop/shell/panels/bluetooth/Panel.qml": [
+        ("    PanelKeyCatcher {\n      id: keyCatcher\n",
+         "    PanelKeyCatcher {\n      id: keyCatcher\n      deleteOnX: true\n"),
+    ],
+}
+
+
+def adapt(new_path: str, body: str) -> str:
+    for old, new in ADAPTATIONS.get(new_path, []):
+        assert body.count(old) == 1, (new_path, old)
+        body = body.replace(old, new)
+    return body
+
+
 def expected_header(new_path: str, orig_path: str, unchanged: bool) -> list[str]:
     lic = (
         "../../../services/LICENSE-omarchy"
@@ -126,7 +144,7 @@ class PanelPortTests(unittest.TestCase):
             self.skipTest(f"Omarchy root {OMARCHY} not present")
         for new_path, orig_path, _ in PANEL_FILES:
             orig_text = (OMARCHY / orig_path).read_text(encoding="utf-8")
-            expected_body = port(orig_text)
+            expected_body = adapt(new_path, port(orig_text))
             lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
             actual_body = "".join(lines[4:])
             self.assertEqual(actual_body, expected_body, f"Ported body mismatch in {new_path}")

@@ -58,6 +58,7 @@ for panel in "${wanted[@]}"; do
     status=1
   fi
 done
+grep -E "WARN scene" <<<"$log" | sed 's/^ */warning: /' >&2
 if grep -E "ERROR: |caused by" <<<"$log" | grep -v pipewire >&2; then
   status=1
 fi

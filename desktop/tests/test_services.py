@@ -328,7 +328,7 @@ class ServiceSourceTests(unittest.TestCase):
 
     def test_services_are_named_and_statically_imported(self):
         text = (DESKTOP / "shell" / "host" / "Services.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme", "keybindings"]', text)
+        self.assertIn('readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme", "keybindings", "panels"]', text)
         self.assertIn('import "../services/clipboard" as Clipboard', text)
         self.assertIn('import "../services/emojis" as Emojis', text)
         self.assertIn('import "../services/imagepicker" as ImagePicker', text)

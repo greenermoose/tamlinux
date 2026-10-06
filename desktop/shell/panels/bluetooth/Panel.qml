@@ -675,6 +675,7 @@ Panel {
 
     PanelKeyCatcher {
       id: keyCatcher
+      deleteOnX: true
       anchors.fill: parent
       onMoveRequested: function(dx, dy) {
         if (!root.cursorActive) { root.cursorActive = true; return }

@@ -19,7 +19,8 @@ import "../services/theme" as Theme
 // comma-separated; unknown names are ignored. Implementations live in
 // ../services/. Notifications gets the shell injected for the compositor
 // facade and the bar position, and the keybinding viewer gets it for the
-// facade's bindings; the menu gets the OSD for launch feedback,
+// facade's bindings; the panel host (PanelHost.qml, the ported panels)
+// gets the shell, the OSD, and the media service; the menu gets the OSD for launch feedback,
 // the media service gets it for each media-key action, and the background
 // gets the menu for its desktop double-clicks. Polkit, idle, and battery
 // need nothing. Only one polkit agent per session registers, so polkit stays
@@ -28,7 +29,7 @@ Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme", "keybindings"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme", "keybindings", "panels"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -135,6 +136,7 @@ Item {
   }
 
   Loader {
+    id: mediaLoader
     active: services.enabled.indexOf("media") !== -1
     sourceComponent: Component {
       Media.Service { osd: osdLoader.item }
@@ -168,6 +170,15 @@ Item {
     }
     onLoaded: services.note("service-loaded keybindings")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed keybindings")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("panels") !== -1
+    sourceComponent: Component {
+      PanelHost { shell: services.shell; osd: osdLoader.item; media: mediaLoader.item }
+    }
+    onLoaded: services.note("service-loaded panels")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed panels")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))
