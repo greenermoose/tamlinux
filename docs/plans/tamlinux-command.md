@@ -1,5 +1,12 @@
 # The `tamlinux` command and offline guide
 
+**Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
+workstation environment aimed at the best possible user experience on any
+hardware. The package and command retain the Tamlinux name. Existing-distribution
+Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
+profiles are capability-based; circa-2006 machines are validation examples,
+not a universal age cutoff.
+
 **Status:** First command slice approved by Fred on 2026-09-23;
 implementation has not started. Later slices remain proposals.
 

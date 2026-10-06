@@ -1,5 +1,9 @@
 # AI Session: 2026-09-28 AntiX Base Layer, Arch Rolling Updates, and Product Vision
 
+> **Historical product framing superseded 2026-10-06.** Temporary-project,
+> graduation, and final-1.x assumptions in this record are no longer current.
+> Original prompts and dated actions are preserved. Read [the current direction](../../README.md).
+
 - **Date:** 2026-09-28
 - **CLI tool:** Antigravity CLI (`agy`) `1.2.12`
 - **Model:** Gemini 3.8 Flash (High)

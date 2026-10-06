@@ -1,5 +1,9 @@
 # Session: 2026-10-03 — Workstation package route and version series
 
+> **Historical product framing superseded 2026-10-06.** Temporary-project,
+> graduation, and final-1.x assumptions in this record are no longer current.
+> Original prompts and dated actions are preserved. Read [the current direction](../../README.md).
+
 - **Date:** 2026-10-03
 - **CLI tool:** Claude Code `2.1.288` (`claude --version`, checked live)
 - **Model:** Claude Opus 5.5 (`claude-opus-5-5`)

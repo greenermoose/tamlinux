@@ -1,5 +1,12 @@
 # Development plans
 
+**Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
+workstation environment aimed at the best possible user experience on any
+hardware. The package and command retain the Tamlinux name. Existing-distribution
+Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
+profiles are capability-based; circa-2006 machines are validation examples,
+not a universal age cutoff.
+
 These plans track work being developed in Tamlinux. A plan is a design for
 review, not an installed component or a promise that a feature already works.
 The [project README](../../README.md) describes the current released state.

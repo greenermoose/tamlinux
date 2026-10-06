@@ -46,8 +46,9 @@ planned but never issued.
 | **1.2** | Void pilot: the same sources as native `xbps-src` packages on Void + runit + Btrfs + seatd, with complete recovery proved. antiX Core + runit only if Void has a showstopper. | + Void pilot | Tamlinux on Sway |
 | **1.3** | Repeatable live-media base install, single-command workstation activation, and the terminal-only profile. | + Void pilot | + terminal-only |
 
-There is no planned 2.x. Tamlinux is a temporary testbed: after its last 1.x
-it freezes, and anything that follows is a separate announcement.
+Tamlinux is an independent, continuing project. These milestones do not define
+an end date or a final 1.x release. Later stages and major versions will follow
+the project's needs and compatibility rules; there is no planned retirement.
 
 Plugins version separately. Each rewritten plugin becomes `fred.<id>` 2.0.0,
 because it drops the Omarchy shell's plugin API; the 1.x lines remain as released. The

@@ -1,5 +1,12 @@
 # Installation framework
 
+**Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
+workstation environment aimed at the best possible user experience on any
+hardware. The package and command retain the Tamlinux name. Existing-distribution
+Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
+profiles are capability-based; circa-2006 machines are validation examples,
+not a universal age cutoff.
+
 **Status:** Installation contract approved on 2026-09-23; target updated on
 2026-10-03 to Void first, antiX Core fallback; route updated on 2026-10-03 to
 install the workstation package on existing distributions first. No installer

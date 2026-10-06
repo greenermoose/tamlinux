@@ -85,7 +85,7 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 | **Public explainer (first version)** | first description | Cursor `3.21.16` (`composer`) | Public one-liner, etymology, values, plugin-suite links, GPL-3.0-or-later. Not an installable image. [Session record](docs/ai/2026-09-22-public-explainer.md). |
 | **Product version 0.0.1** | 0.0.1 | Cursor `3.21.16` (`composer`) | First Tamlinux version. 0.x is Omarchy-based; 1.x is independent. Home Manager generation is recorded separately. [Session record](docs/ai/2026-09-22-version-0.0.1.md). |
 | **Installation and command plans** | 0.0.1 planning | Codex CLI `0.156.1` (`gpt-6-sol`), with Fred's direct edits and review | Omarchy first installation profile; NixOS pilot next; approved first `tamlinux` command slice, first-use welcome, and Lynx fallback. No installer or command implementation yet. [Session record](docs/ai/2026-09-23-installation-and-command-plans.md). |
-| **AntiX base layer & product vision** | 0.0.1 refinement | Antigravity CLI (`agy`) `1.2.12`, Gemini 3.8 Flash (High) | Clarified Arch rolling update appeal, AntiX older hardware commitment, universal resource minimization, AntiX Core + River target base layer, and a temporary-testbed graduation path. [Session record](docs/ai/2026-09-28-antix-base-and-product-vision.md). |
+| **AntiX base layer & product vision** | 0.0.1 refinement | Antigravity CLI (`agy`) `1.2.12`, Gemini 3.8 Flash (High) | Clarified Arch rolling update appeal, AntiX older hardware commitment, universal resource minimization, AntiX Core + River target base layer, and a then-proposed temporary-testbed graduation path (**superseded 2026-10-06**; see [current record](docs/ai/2026-10-06-independent-continuing-project.md)). [Session record](docs/ai/2026-09-28-antix-base-and-product-vision.md). |
 
 Detailed session records are indexed in [`docs/ai/README.md`](docs/ai/README.md).
 
@@ -155,3 +155,10 @@ Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies 
 
 Claude Code `2.1.291` (`claude-opus-5-5`) gave the Tamlinux shell a layout-driven bar with its own menu, indicators, keyboard layout, tray, and panel icons, and fixed the tooltip placement Fred's test found; Fred accepted 0.3.1. agy and opencode wrote test suites for it from Claude's briefs.
 [Session record](docs/ai/2026-10-06-tamlinux-bar-widgets.md).
+
+## 2026-10-06 independent, continuing project
+
+Codex CLI `0.160.1` (`gpt-6.1-sol`) reconciled public identity, versioning,
+and engineering-plan scope around Fred's independent continuing Tamlinux
+direction. Earlier temporary-project and final-1.x assumptions are superseded.
+Documentation only. [Session record](docs/ai/2026-10-06-independent-continuing-project.md).

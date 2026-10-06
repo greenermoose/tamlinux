@@ -1,7 +1,8 @@
 # Tamlinux
 
-Fred's Tamlinux is a bespoke personal Linux workstation environment aimed at
-getting the best possible performance from the computing resources you already own.
+Tamlinux is an independent workstation environment for Linux, aimed at
+providing the best possible user experience on any hardware. It is a continuing
+project for modern and older computers, developed first on Fred's own machines.
 It is inspired by the rolling updates of Arch Linux, AntiX Linux's commitment to
 ensuring Linux runs on older hardware, the declarative reproducibility and atomic
 rollbacks of Nix, and modern desktop ideas from Wayland, River, Hyprland,
@@ -20,12 +21,13 @@ Quickshell, and Omarchy.
 ## What Tamlinux is
 
 Tamlinux is a resource-efficient, high-performance workstation environment
-for Linux. Its job is to get the most from hardware that already exists:
+for Linux. Its purpose is a responsive, reliable, accessible daily experience
+that gets the most from hardware that already exists:
 desktop systems, mini PCs, and laptops that have decades of useful life.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
 max**. Like the tamarack's needles, Tamlinux sheds old packages to make room
-for new. In the transitional phase, we are moving from Omarchy toward an
+for new while the project continues improving. We are moving from Omarchy toward an
 installation package that turns an existing Linux distribution into a lean,
 high-efficiency workstation environment, and then ultimately a system grafted
 onto a minimal Void base, with antiX Core as the fallback if Void has a
@@ -80,17 +82,19 @@ part of the installation yet.
 
 ## Targets
 
-Set on 2026-10-03 for Tamlinux:
+Engineering targets set on 2026-10-03; project identity and hardware scope
+updated on 2026-10-06:
 
-- **Hardware from circa 2006 onward.** Computers up to about 20 years old are
-  in scope; older ones are not. That floor is what makes Wayland, rather than
-  X11, a realistic display stack.
+- **Best possible experience on any hardware.** Broad hardware support is the
+  goal; actual supported architectures, drivers, and workloads require testing.
+  Circa-2006 machines remain useful validation examples. Select a graphical or
+  terminal profile by capability rather than excluding a machine by age alone.
 - **Void Linux first; antiX Core fallback.** Try Void as the base distribution.
   If it has a showstopper, try antiX Core. Btrfs is the preferred pilot filesystem.
 - **Sway plus seatd.** Provide a keyboard-driven tiling Wayland desktop inspired
   by the UI Omarchy provides. Sway remains the selected compositor after the
   [field survey](upstream/2026-10-03-compositor.md); test its rendering paths
-  on the oldest supported graphics hardware.
+  on representative older graphics hardware.
 - **runit for init and service supervision.** The target workstation uses runit
   for PID 1 and native services, without systemd.
 - **One workstation package, two deliveries.** On existing distributions,
@@ -147,6 +151,8 @@ should help diagnose and repair itself.
   through rolling updates, avoiding destructive full-system upgrade cycles.
 - **Repairability.** Patches declare how they retire; nothing becomes
   permanent by neglect.
+- **User experience.** Responsive, reliable, accessible tools and a coherent
+  daily workflow on each supported hardware profile.
 - **Fleet standardization.** One desktop on every machine Fred runs.
 - **Community publishing.** The `fred.*` plugins and this description are
   public so others can learn from the work.

@@ -1,5 +1,9 @@
 # Session: 2026-09-22 — Tamlinux public explainer and suite branding
 
+> **Historical product framing superseded 2026-10-06.** Temporary-project,
+> graduation, and final-1.x assumptions in this record are no longer current.
+> Original prompts and dated actions are preserved. Read [the current direction](../../README.md).
+
 - **CLI Tool**: Cursor `3.21.16`
 - **Model**: `composer`
 - **Commit**: `31e0fff` (initial explainer) plus the branding commits in the `*-fred-tamlinux` repos

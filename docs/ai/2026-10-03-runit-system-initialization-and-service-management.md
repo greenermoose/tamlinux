@@ -1,5 +1,9 @@
 # Session: 2026-10-03 — runit for system initialization and service management
 
+> **Historical product framing superseded 2026-10-06.** Temporary-project,
+> graduation, and final-1.x assumptions in this record are no longer current.
+> Original prompts and dated actions are preserved. Read [the current direction](../../README.md).
+
 - **Date:** 2026-10-03
 - **CLI tool:** Antigravity CLI (`agy`) `1.2.16` (`agy --version`, checked live)
 - **Model:** Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`)

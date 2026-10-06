@@ -1,5 +1,12 @@
 # Target base operating system
 
+**Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
+workstation environment aimed at the best possible user experience on any
+hardware. The package and command retain the Tamlinux name. Existing-distribution
+Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
+profiles are capability-based; circa-2006 machines are validation examples,
+not a universal age cutoff.
+
 **Decided:** 2026-10-03. **State:** pilot target; installation and hardware validation pending.
 
 ## Target and fallback
@@ -76,8 +83,8 @@ across repeated upgrades.
 
 Prove installation, unprivileged Sway/seatd startup, required applications,
 network/audio, graphics, sleep, native services, and offline recovery after a
-failed kernel/userspace update. Test older BIOS hardware near the circa-2006
-floor and modern UEFI hardware. Measure terminal-only and graphical profiles.
+failed kernel/userspace update. Test older BIOS hardware from the circa-2006
+validation cohort and modern UEFI hardware. Measure terminal-only and graphical profiles.
 The fallback decision follows this evidence, not a first configuration error.
 
 The [installation framework](installation-framework.md) and
