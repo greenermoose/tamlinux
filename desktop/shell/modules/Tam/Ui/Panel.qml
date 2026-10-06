@@ -15,8 +15,10 @@ Item {
   property bool manageIpc: true
   property alias controller: panelController
   property bool popoutSwitchClosing: false
+  property bool popoutSwitching: false
 
   readonly property bool opened: panelController.open
+  readonly property color barForeground: bar ? bar.barForeground : Color.foreground
 
   function open() { panelController.show() }
   function close() { panelController.hide() }
@@ -26,6 +28,10 @@ Item {
     Qt.callLater(function() { popoutSwitchClosing = false })
   }
   function toggle() { opened ? close() : open() }
+  function switchPanel(direction) {
+    if (bar && typeof bar.switchPanelFrom === "function") return bar.switchPanelFrom(root, direction)
+    return false
+  }
 
   function setting(name, fallback) {
     var value = settings ? settings[name] : undefined

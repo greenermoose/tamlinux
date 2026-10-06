@@ -12,6 +12,8 @@ Rectangle {
   property real fontSize: Style.font.icon
   property real size: Math.max(Style.space(22), fontSize + Style.spacing.sm * 2)
   property bool focusable: false
+  // The panel's keyboard cursor is on this button: paint it as hovered.
+  property bool hasCursor: false
 
   signal clicked()
   signal hovered(bool isHovered)
@@ -19,7 +21,7 @@ Rectangle {
   implicitWidth: size
   implicitHeight: size
   radius: Style.cornerRadius
-  color: mouse.containsMouse && enabled ? Style.hoverFillFor(hoverColor, hoverColor) : "transparent"
+  color: (mouse.containsMouse || hasCursor) && enabled ? Style.hoverFillFor(hoverColor, hoverColor) : "transparent"
 
   Text {
     anchors.centerIn: parent

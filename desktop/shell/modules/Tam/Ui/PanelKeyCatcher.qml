@@ -13,6 +13,10 @@ Item {
   signal returnRequested()
   signal tabRequested(int direction)
   signal textKey(string text)
+  signal deleteRequested()
+
+  // Ported panels (Bluetooth) use x for "forget"; plugins type it as text.
+  property bool deleteOnX: false
 
   focus: true
   Keys.priority: Keys.BeforeItem
@@ -40,6 +44,11 @@ Item {
     }
     if (event.key === Qt.Key_Space) {
       activateRequested()
+      event.accepted = true
+      return
+    }
+    if (deleteOnX && (event.text === "x" || event.text === "X")) {
+      deleteRequested()
       event.accepted = true
       return
     }

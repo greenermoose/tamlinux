@@ -8,15 +8,17 @@ Item {
   property bool busy: false
   property bool interactive: true
   property bool hasCursor: false
+  // Accepted for ported panels; this switch draws no cursor ring to pad.
+  property int cursorPad: Style.space(6)
   property color foreground: Color.foreground
   property color accent: Color.accent
 
   signal toggled()
   signal hovered(bool isHovered)
 
-  readonly property int trackHeight: Math.max(22, Math.round(Style.spacing.controlHeight * 0.55))
-  readonly property int trackWidth: Math.round(trackHeight * 1.9)
-  readonly property int knobSize: Math.max(6, Math.round(trackHeight * 0.72))
+  property int trackHeight: Math.max(22, Math.round(Style.spacing.controlHeight * 0.55))
+  property int trackWidth: Math.round(trackHeight * 1.9)
+  property int knobSize: Math.max(6, Math.round(trackHeight * 0.72))
 
   implicitWidth: trackWidth
   implicitHeight: trackHeight

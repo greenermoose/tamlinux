@@ -67,7 +67,8 @@ PanelWindow {
     return Qt.point(Math.round(x), Math.round(y))
   }
 
-  screen: anchorWindow ? anchorWindow.screen : null
+  // A panel opened without a bar icon (the panel host) uses the bar's screen.
+  screen: anchorWindow ? anchorWindow.screen : (bar && bar.screen ? bar.screen : null)
   visible: open
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore

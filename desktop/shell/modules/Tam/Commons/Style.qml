@@ -58,6 +58,10 @@ QtObject {
     return foreground || Color.foreground
   }
 
+  function normalFillFor(foreground, accent) {
+    return Util.alpha(normalStateColor(foreground, accent), 0.04)
+  }
+
   function hoverFillFor(foreground, accent) {
     return Util.alpha(hoverStateColor(foreground, accent), 0.12)
   }
