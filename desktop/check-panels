@@ -1,0 +1,64 @@
+#!/bin/bash
+# Load every ported panel through PanelHost in a private headless Sway and
+# report each one. No window reaches the desktop: Sway runs on the headless
+# backend with its own runtime directory, and the shell copy is temporary.
+#
+#   desktop/check-panels [panel,...]
+set -uo pipefail
+
+desktop=$(cd "$(dirname "$0")" && pwd)
+panels=${1:-audio,bluetooth,network,wifiqr,power,speedtest,disk-speedtest}
+work=$(mktemp -d)
+# Wayland socket paths are limited to 108 bytes, so keep the runtime short.
+runtime=$(mktemp -d "/run/user/$(id -u)/tqp.XXXX")
+trap 'kill "${sway_pid:-}" 2>/dev/null; rm -rf "$work" "$runtime"' EXIT
+
+cp -r "$desktop/shell" "$work/shell"
+cat >"$work/shell/check-panels.qml" <<'QML'
+import QtQuick
+import Quickshell
+import "host"
+
+ShellRoot {
+  PanelHost {}
+  Timer { interval: 3000; running: true; onTriggered: Qt.quit() }
+}
+QML
+printf 'output HEADLESS-1 resolution 1920x1080\n' >"$work/sway.conf"
+mkdir -p "$work/home"
+
+env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin \
+  WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
+  sway -c "$work/sway.conf" >"$work/sway.log" 2>&1 &
+sway_pid=$!
+socket=""
+for _ in $(seq 50); do
+  socket=$(ls "$runtime" 2>/dev/null | grep -E '^wayland-[0-9]+$' | head -1)
+  [[ -n $socket ]] && break
+  sleep 0.1
+done
+if [[ -z $socket ]]; then
+  echo "FAIL: the headless Sway did not start" >&2
+  cat "$work/sway.log" >&2
+  exit 1
+fi
+
+log=$(env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin \
+  WAYLAND_DISPLAY="$socket" QT_QPA_PLATFORM=wayland \
+  QML_IMPORT_PATH="$work/shell/modules" TAMLINUX_PANELS="$panels" \
+  timeout 20 quickshell -p "$work/shell/check-panels.qml" 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
+
+status=0
+IFS=, read -ra wanted <<<"$panels"
+for panel in "${wanted[@]}"; do
+  if grep -q "TAMLINUX_EVIDENCE panel-loaded $panel\$" <<<"$log"; then
+    echo "$panel: PASS"
+  else
+    echo "$panel: FAIL"
+    status=1
+  fi
+done
+if grep -E "ERROR: |caused by" <<<"$log" | grep -v pipewire >&2; then
+  status=1
+fi
+exit $status
