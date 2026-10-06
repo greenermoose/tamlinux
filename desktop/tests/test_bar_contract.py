@@ -437,7 +437,9 @@ def collect_gaps(desktop: Path, omarchy_ui: Path | None) -> tuple[list[str], lis
     files = scanned_files(shell)
     for rel in files:
         raw = (shell / rel).read_text(encoding="utf-8")
-        stripped = strip_text(raw)
+        # `bar?.shell?.x` reaches the same names as `bar.shell.x`; strings are
+        # already emptied, so this cannot touch a literal.
+        stripped = strip_text(raw).replace("?.", ".")
         if rel.startswith("bar/"):
             shell_names = lk.bar_shell
         else:
@@ -592,6 +594,17 @@ class RuleTests(unittest.TestCase):
         )
         self.assertEqual(gaps, ["bar/widgets/W.qml: shell.hide"])
 
+    def test_c15_optional_chaining_is_seen(self):
+        gaps = self.run_contract(
+            "bar/widgets/W.qml",
+            "Item {\n"
+            "  x: bar?.shell?.summon()\n"
+            "  y: bar?.shell?.nope()\n"
+            "  z: root.bar?.nope2\n"
+            "}\n",
+        )
+        self.assertEqual(gaps, ["bar/widgets/W.qml: bar.nope2", "bar/widgets/W.qml: bar.shell.nope"])
+
     def test_c6_omarchy_only_type(self):
         gaps = self.run_contract(
             "bar/widgets/W.qml",
@@ -732,9 +745,10 @@ class RuleTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     """The real tree under DESKTOP."""
 
-    @unittest.skipUnless(OMARCHY_UI.is_dir(), OMARCHY_UI_GONE)
     def test_k1_real_tree_gap_list_is_empty(self):
-        gaps, _ = collect_gaps(DESKTOP, OMARCHY_UI)
+        # Without Omarchy's Ui directory (stage 0.6) only R6 and R8 stop.
+        omarchy = OMARCHY_UI if OMARCHY_UI.is_dir() else None
+        gaps, _ = collect_gaps(DESKTOP, omarchy)
         if gaps:
             self.fail("\n".join(gaps))
 
