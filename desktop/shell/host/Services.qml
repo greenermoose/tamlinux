@@ -6,6 +6,7 @@ import "../services/clipboard" as Clipboard
 import "../services/emojis" as Emojis
 import "../services/idle" as Idle
 import "../services/imagepicker" as ImagePicker
+import "../services/keybindings" as Keybindings
 import "../services/media" as Media
 import "../services/menu" as Menu
 import "../services/notifications" as Notifications
@@ -17,7 +18,8 @@ import "../services/theme" as Theme
 // Session services the host owns. TAMLINUX_SERVICES names them,
 // comma-separated; unknown names are ignored. Implementations live in
 // ../services/. Notifications gets the shell injected for the compositor
-// facade and the bar position; the menu gets the OSD for launch feedback,
+// facade and the bar position, and the keybinding viewer gets it for the
+// facade's bindings; the menu gets the OSD for launch feedback,
 // the media service gets it for each media-key action, and the background
 // gets the menu for its desktop double-clicks. Polkit, idle, and battery
 // need nothing. Only one polkit agent per session registers, so polkit stays
@@ -26,7 +28,7 @@ Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme", "keybindings"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -157,6 +159,15 @@ Item {
     }
     onLoaded: services.note("service-loaded battery")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed battery")
+  }
+
+  Loader {
+    active: services.enabled.indexOf("keybindings") !== -1
+    sourceComponent: Component {
+      Keybindings.Service { shell: services.shell }
+    }
+    onLoaded: services.note("service-loaded keybindings")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed keybindings")
   }
 
   Component.onCompleted: note("services " + (enabled.length > 0 ? enabled.join(",") : "none"))

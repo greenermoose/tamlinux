@@ -1,0 +1,293 @@
+0	Volume up	XF86AudioRaiseVolume	exec	tam-audio-output-volume raise
+0	Volume down	XF86AudioLowerVolume	exec	tam-audio-output-volume lower
+0	Mute	XF86AudioMute	exec	tam-audio-output-volume mute-toggle
+0	Mute microphone	XF86AudioMicMute	exec	tam-audio-input-mute
+0	Brightness up	XF86MonBrightnessUp	exec	tam-brightness-display +5%
+0	Brightness down	XF86MonBrightnessDown	exec	tam-brightness-display 5%-
+1	Brightness maximum	XF86MonBrightnessUp	exec	tam-brightness-display 100%
+1	Brightness minimum	XF86MonBrightnessDown	exec	tam-brightness-display 1%
+0	Keyboard brightness up	XF86KbdBrightnessUp	exec	tam-brightness-keyboard up
+0	Keyboard brightness down	XF86KbdBrightnessDown	exec	tam-brightness-keyboard down
+0	Keyboard backlight cycle	XF86KbdLightOnOff	exec	tam-brightness-keyboard cycle
+0	Toggle touchpad	XF86TouchpadToggle	exec	tam-toggle-input-device touchpad
+0	Enable touchpad	XF86TouchpadOn	exec	tam-toggle-input-device touchpad on
+0	Disable touchpad	XF86TouchpadOff	exec	tam-toggle-input-device touchpad off
+8	Volume up precise	XF86AudioRaiseVolume	exec	tam-audio-output-volume +1
+8	Volume down precise	XF86AudioLowerVolume	exec	tam-audio-output-volume -1
+8	Brightness up precise	XF86MonBrightnessUp	exec	tam-brightness-display +1%
+8	Brightness down precise	XF86MonBrightnessDown	exec	tam-brightness-display 1%-
+0	Next track	XF86AudioNext	exec	tam-shell media next
+8	Next track	XF86AudioPlay	exec	tam-shell media next
+0	Pause	XF86AudioPause	exec	tam-shell media playPause
+0	Play	XF86AudioPlay	exec	tam-shell media playPause
+0	Previous track	XF86AudioPrev	exec	tam-shell media previous
+0	Stop	XF86AudioStop	exec	tam-shell media stop
+9	Previous track	XF86AudioPlay	exec	tam-shell media previous
+0	Eject media	XF86Eject	exec	eject
+1	Switch audio output	XF86AudioMute	exec	tam-audio-output-switch
+1	Switch media source	XF86AudioPause	exec	tam-audio-source-switch
+1	Switch media source	XF86AudioPlay	exec	tam-audio-source-switch
+64	Universal copy	C		
+64	Universal paste	V		
+64	Universal cut	X		
+68	Clipboard manager	V	exec	tam-shell clipboard toggle
+64	Close window	W	lua	hl.dsp.window.close()
+12	Close all windows	DELETE	exec	tam-hyprland-window-close-all
+64	Toggle window split	J	lua	hl.dsp.layout("togglesplit")
+64	Pseudo window	P	lua	hl.dsp.window.pseudo()
+64	Toggle window floating/tiling	T	lua	hl.dsp.window.float({ action = "toggle" })
+64	Full screen	F	lua	hl.dsp.window.fullscreen({ mode = "fullscreen" })
+68	Tiled full screen	F	exec	tam-hyprland-window-tiled-fullscreen-toggle
+72	Full width	F	lua	hl.dsp.window.fullscreen({ mode = "maximized" })
+64	Pop window out (float & pin)	O	exec	tam-hyprland-window-pop
+72	Save window width	Home	exec	tam-hyprland-window-width save
+64	Restore window width	Home	exec	tam-hyprland-window-width restore
+64	Toggle workspace layout	L	exec	tam-hyprland-workspace-layout-toggle
+64	Focus on left window	LEFT	lua	hl.dsp.focus({ direction = "l" })
+64	Focus on right window	RIGHT	lua	hl.dsp.focus({ direction = "r" })
+64	Focus on above window	UP	lua	hl.dsp.focus({ direction = "u" })
+64	Focus on below window	DOWN	lua	hl.dsp.focus({ direction = "d" })
+64	Switch to workspace 1	code:10	lua	hl.dsp.focus({ workspace = "1" })
+65	Move window to workspace 1	code:10	lua	hl.dsp.window.move({ workspace = "1" })
+73	Move window silently to workspace 1	code:10	lua	hl.dsp.window.move({ follow = false, workspace = "1" })
+64	Switch to workspace 2	code:11	lua	hl.dsp.focus({ workspace = "2" })
+65	Move window to workspace 2	code:11	lua	hl.dsp.window.move({ workspace = "2" })
+73	Move window silently to workspace 2	code:11	lua	hl.dsp.window.move({ follow = false, workspace = "2" })
+64	Switch to workspace 3	code:12	lua	hl.dsp.focus({ workspace = "3" })
+65	Move window to workspace 3	code:12	lua	hl.dsp.window.move({ workspace = "3" })
+73	Move window silently to workspace 3	code:12	lua	hl.dsp.window.move({ follow = false, workspace = "3" })
+64	Switch to workspace 4	code:13	lua	hl.dsp.focus({ workspace = "4" })
+65	Move window to workspace 4	code:13	lua	hl.dsp.window.move({ workspace = "4" })
+73	Move window silently to workspace 4	code:13	lua	hl.dsp.window.move({ follow = false, workspace = "4" })
+64	Switch to workspace 5	code:14	lua	hl.dsp.focus({ workspace = "5" })
+65	Move window to workspace 5	code:14	lua	hl.dsp.window.move({ workspace = "5" })
+73	Move window silently to workspace 5	code:14	lua	hl.dsp.window.move({ follow = false, workspace = "5" })
+64	Switch to workspace 6	code:15	lua	hl.dsp.focus({ workspace = "6" })
+65	Move window to workspace 6	code:15	lua	hl.dsp.window.move({ workspace = "6" })
+73	Move window silently to workspace 6	code:15	lua	hl.dsp.window.move({ follow = false, workspace = "6" })
+64	Switch to workspace 7	code:16	lua	hl.dsp.focus({ workspace = "7" })
+65	Move window to workspace 7	code:16	lua	hl.dsp.window.move({ workspace = "7" })
+73	Move window silently to workspace 7	code:16	lua	hl.dsp.window.move({ follow = false, workspace = "7" })
+64	Switch to workspace 8	code:17	lua	hl.dsp.focus({ workspace = "8" })
+65	Move window to workspace 8	code:17	lua	hl.dsp.window.move({ workspace = "8" })
+73	Move window silently to workspace 8	code:17	lua	hl.dsp.window.move({ follow = false, workspace = "8" })
+64	Switch to workspace 9	code:18	lua	hl.dsp.focus({ workspace = "9" })
+65	Move window to workspace 9	code:18	lua	hl.dsp.window.move({ workspace = "9" })
+73	Move window silently to workspace 9	code:18	lua	hl.dsp.window.move({ follow = false, workspace = "9" })
+64	Switch to workspace 10	code:19	lua	hl.dsp.focus({ workspace = "10" })
+65	Move window to workspace 10	code:19	lua	hl.dsp.window.move({ workspace = "10" })
+73	Move window silently to workspace 10	code:19	lua	hl.dsp.window.move({ follow = false, workspace = "10" })
+64	Toggle scratchpad	S	lua	hl.dsp.workspace.toggle_special("scratchpad")
+72	Move window to scratchpad	S	lua	hl.dsp.window.move({ follow = false, workspace = "special:scratchpad" })
+64	Next workspace	TAB	lua	hl.dsp.focus({ workspace = "e+1" })
+65	Previous workspace	TAB	lua	hl.dsp.focus({ workspace = "e-1" })
+68	Former workspace	TAB	lua	hl.dsp.focus({ workspace = "previous" })
+73	Move workspace to left monitor	LEFT	lua	hl.dsp.workspace.move({ monitor = "l" })
+73	Move workspace to right monitor	RIGHT	lua	hl.dsp.workspace.move({ monitor = "r" })
+73	Move workspace to up monitor	UP	lua	hl.dsp.workspace.move({ monitor = "u" })
+73	Move workspace to down monitor	DOWN	lua	hl.dsp.workspace.move({ monitor = "d" })
+65	Swap window to the left	LEFT	lua	hl.dsp.window.swap({ direction = "l" })
+65	Swap window to the right	RIGHT	lua	hl.dsp.window.swap({ direction = "r" })
+65	Swap window up	UP	lua	hl.dsp.window.swap({ direction = "u" })
+65	Swap window down	DOWN	lua	hl.dsp.window.swap({ direction = "d" })
+8	Focus on next window	TAB	lua	hl.dsp.window.cycle_next()
+9	Focus on previous window	TAB	lua	hl.dsp.window.cycle_next({ next = false })
+8	Reveal active window on top	TAB	lua	hl.dsp.window.bring_to_top()
+9	Reveal active window on top	TAB	lua	hl.dsp.window.bring_to_top()
+12	Focus on next monitor	TAB	lua	hl.dsp.focus({ monitor = "+1" })
+13	Focus on previous monitor	TAB	lua	hl.dsp.focus({ monitor = "-1" })
+64	Expand window left	code:20	lua	hl.dsp.window.resize({ relative = true, x = -100, y = 0 })
+64	Shrink window left	code:21	lua	hl.dsp.window.resize({ relative = true, x = 100, y = 0 })
+65	Shrink window up	code:20	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -100 })
+65	Expand window down	code:21	lua	hl.dsp.window.resize({ relative = true, x = 0, y = 100 })
+72	Expand window left a little	code:20	lua	hl.dsp.window.resize({ relative = true, x = -25, y = 0 })
+72	Shrink window left a little	code:21	lua	hl.dsp.window.resize({ relative = true, x = 25, y = 0 })
+73	Shrink window up a little	code:20	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -25 })
+73	Expand window down a little	code:21	lua	hl.dsp.window.resize({ relative = true, x = 0, y = 25 })
+68	Expand window left a lot	code:20	lua	hl.dsp.window.resize({ relative = true, x = -300, y = 0 })
+68	Shrink window left a lot	code:21	lua	hl.dsp.window.resize({ relative = true, x = 300, y = 0 })
+69	Shrink window up a lot	code:20	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -300 })
+69	Expand window down a lot	code:21	lua	hl.dsp.window.resize({ relative = true, x = 0, y = 300 })
+64	Scroll active workspace forward	mouse_down	lua	hl.dsp.focus({ workspace = "e+1" })
+64	Scroll active workspace backward	mouse_up	lua	hl.dsp.focus({ workspace = "e-1" })
+64	Move window	mouse:272	lua	hl.dsp.window.drag()
+64	Resize window	mouse:273	lua	hl.dsp.window.resize()
+64	Toggle window grouping	G	lua	hl.dsp.group.toggle()
+72	Move active window out of group	G	lua	hl.dsp.window.move({ out_of_group = true })
+72	Move window to group on left	LEFT	lua	hl.dsp.window.move({ into_group = "l" })
+72	Move window to group on right	RIGHT	lua	hl.dsp.window.move({ into_group = "r" })
+72	Move window to group on top	UP	lua	hl.dsp.window.move({ into_group = "u" })
+72	Move window to group on bottom	DOWN	lua	hl.dsp.window.move({ into_group = "d" })
+72	Next window in group	TAB	lua	hl.dsp.group.next()
+73	Previous window in group	TAB	lua	hl.dsp.group.prev()
+68	Move grouped window focus left	LEFT	lua	hl.dsp.group.prev()
+68	Move grouped window focus right	RIGHT	lua	hl.dsp.group.next()
+72	Next window in group	mouse_down	lua	hl.dsp.group.next()
+72	Previous window in group	mouse_up	lua	hl.dsp.group.prev()
+72	Switch to group window 1	code:10	lua	hl.dsp.group.active({ index = 1 })
+72	Switch to group window 2	code:11	lua	hl.dsp.group.active({ index = 2 })
+72	Switch to group window 3	code:12	lua	hl.dsp.group.active({ index = 3 })
+72	Switch to group window 4	code:13	lua	hl.dsp.group.active({ index = 4 })
+72	Switch to group window 5	code:14	lua	hl.dsp.group.active({ index = 5 })
+64	Monitor scaling up	SLASH	exec	tam-hyprland-monitor-scaling up
+72	Monitor scaling down	SLASH	exec	tam-hyprland-monitor-scaling down
+64	Omarchy menu	SPACE	exec	tam-menu toggle
+72	Apps menu	SPACE	exec	tam-menu toggle apps
+68	Emojis	E	exec	tam-shell emojis toggle
+68	Capture menu	C	exec	tam-menu toggle capture
+68	Toggle menu	O	exec	tam-menu toggle toggle
+68	Hardware menu	H	exec	tam-menu toggle hardware
+65	Omarchy menu	code:201	exec	tam-menu toggle root
+64	System menu	ESCAPE	exec	tam-menu toggle system
+0	Power menu	XF86PowerOff	exec	tam-menu toggle system
+64	Keybindings	K	exec	omarchy-menu-keybindings
+72	Tmux keybindings	K	exec	tam-menu-tmux-keybindings
+68	Herdr keybindings	K	exec	tam-menu-herdr-keybindings
+68	Calculator	Q	exec	omacalc
+0	Calculator	XF86Calculator	exec	omacalc
+65	Toggle top bar	SPACE	exec	omarchy-toggle-bar
+68	Background switcher	SPACE	exec	tam-menu toggle background
+69	Theme menu	SPACE	exec	tam-menu toggle theme
+64	Toggle window transparency	BACKSPACE	exec	tam-hyprland-window-transparency-toggle
+65	Toggle window gaps	BACKSPACE	exec	tam-hyprland-window-gaps-toggle
+68	Toggle single-window square aspect	BACKSPACE	exec	tam-hyprland-window-single-square-aspect-toggle
+64	Dismiss last notification	comma	exec	tam-shell notifications dismissOne
+65	Dismiss all notifications	comma	exec	tam-shell notifications dismissAll
+68	Toggle silencing notifications	comma	exec	tam-toggle-notification-silencing
+72	Invoke last notification	comma	exec	tam-shell notifications invokeLast
+73	Open notification history	comma	exec	tam-shell notifications showHistory
+68	Toggle locking on idle	I	exec	tam-toggle-idle
+68	Toggle nightlight	N	exec	omarchy-toggle-nightlight
+68	Toggle laptop display	Delete	exec	tam-hyprland-monitor-internal toggle
+76	Toggle laptop display mirroring	Delete	exec	tam-hyprland-monitor-internal-mirror toggle
+0	Screenshot	PRINT	exec	tam-capture-screenshot
+8	Screenrecording	PRINT	exec	tam-capture-screenrecording --stop-recording || tam-menu toggle trigger.capture.screenrecord
+72	Make webcam overlay smaller	code:34	exec	tam-capture-webcam-resize smaller
+72	Make webcam overlay larger	code:35	exec	tam-capture-webcam-resize larger
+64	Color picker	PRINT	exec	pkill hyprpicker || hyprpicker -a
+68	Extract text (OCR) from screenshot	PRINT	exec	tam-capture-text
+68	Share	S	exec	tam-menu toggle share
+68	Transcode	PERIOD	exec	tam-transcode
+68	Set reminder	R	exec	tam-reminder -i
+76	Show reminders	R	exec	tam-reminder show
+69	Clear reminders	R	exec	tam-reminder clear
+76	Show time	T	exec	tam-notification-time
+76	Show battery remaining	B	exec	tam-notification-battery
+76	Toggle weather	W	exec	omarchy-notification-weather
+69	Agent	A	exec	tam-agent --pick
+68	Audio	A	exec	omarchy-shell shell toggle omarchy.audio
+68	Bluetooth	B	exec	omarchy-shell shell toggle omarchy.bluetooth
+68	Display	D	exec	omarchy-shell shell toggle omarchy.monitor
+76	Calendar	D	exec	omarchy-shell shell toggle omarchy.clock
+68	Network	W	exec	omarchy-shell shell toggle omarchy.network
+68	Power	P	exec	omarchy-shell shell toggle omarchy.power
+68	Activity	T	exec	tam-launch-tui 'btop'
+68	Bar panel 1	code:10	exec	omarchy-shell -q shell togglePanelAt right 1
+68	Bar panel 2	code:11	exec	omarchy-shell -q shell togglePanelAt right 2
+68	Bar panel 3	code:12	exec	omarchy-shell -q shell togglePanelAt right 3
+68	Bar panel 4	code:13	exec	omarchy-shell -q shell togglePanelAt right 4
+68	Bar panel 5	code:14	exec	omarchy-shell -q shell togglePanelAt right 5
+68	Bar panel 6	code:15	exec	omarchy-shell -q shell togglePanelAt right 6
+68	Bar panel 7	code:16	exec	omarchy-shell -q shell togglePanelAt right 7
+68	Bar panel 8	code:17	exec	omarchy-shell -q shell togglePanelAt right 8
+68	Bar panel 9	code:18	exec	omarchy-shell -q shell togglePanelAt right 9
+68	Zoom in	Z		
+76	Reset zoom	Z		
+68	Lock system	L	exec	tam-system-lock
+64	Terminal	RETURN	exec	tam-launch-terminal
+65	Browser	RETURN	exec	tam-launch-browser
+65	File manager	F	exec	tam-launch-nautilus
+73	File manager (cwd)	F	exec	tam-launch-nautilus-cwd
+65	Browser	B	exec	tam-launch-browser
+73	Browser (private)	B	exec	tam-launch-browser --private
+65	Editor	N	exec	tam-launch-editor
+72	Tmux	RETURN	exec	tam-launch-terminal-tmux
+68	Herdr	RETURN	exec	tam-launch-terminal-herdr
+65	Music	M	exec	tam-launch-spotify
+73	Music TUI	M	exec	tam-launch-or-focus-tui 'cliamp'
+65	Docker	D	exec	tam-launch-tui 'tam-launch-docker-tui'
+65	Signal	G	exec	tam-launch-signal
+65	Obsidian	O	exec	tam-launch-or-focus '^obsidian$' 'uwsm-app -- obsidian'
+65	Micro	W	exec	tam-launch-tui 'micro'
+65	Passwords	SLASH	exec	tam-launch-1password
+65	ChatGPT	A	exec	tam-launch-webapp 'https://chatgpt.com'
+73	Grok	A	exec	tam-launch-webapp 'https://grok.com'
+65	Calendar	C	exec	tam-launch-webapp 'https://app.hey.com/calendar/weeks/'
+65	Email	E	exec	tam-launch-webapp 'https://app.hey.com'
+73	New email	E	exec	tam-launch-webapp 'https://app.hey.com/messages/new?display=standalone&new_window=true'
+65	YouTube	Y	exec	tam-launch-webapp 'https://youtube.com/'
+73	WhatsApp	G	exec	tam-launch-or-focus-webapp 'WhatsApp' 'https://web.whatsapp.com/'
+69	Google Messages	G	exec	tam-launch-or-focus-webapp 'Google Messages' 'https://messages.google.com/web/conversations'
+65	Google Photos	P	exec	tam-launch-or-focus-webapp 'Google Photos' 'https://photos.google.com/'
+65	Google Maps	S	exec	tam-launch-or-focus-webapp 'Google Maps' 'https://maps.google.com/'
+65	X	X	exec	tam-launch-webapp 'https://x.com/'
+73	X Post	X	exec	tam-launch-webapp 'https://x.com/compose/post'
+68	Toggle Mac/Windows desktop mode	M	exec	tam-desktop-mode toggle
+69	Retrain MSI display link	D	exec	msi-mp161-resume-workaround --manual
+64	Quick Launch menu	mouse:273	exec	tam-menu toggle quicklaunch
+64	Switch desktop 1	code:10	exec	tam-desktop-mode switch 1
+65	Move window to desktop 1	code:10	exec	tam-desktop-mode move 1
+73	Move window silently to desktop 1	code:10	exec	tam-desktop-mode move-silent 1
+64	Switch desktop 1	code:87	exec	tam-desktop-mode switch 1
+65	Move window to desktop 1	code:87	exec	tam-desktop-mode move 1
+73	Move window silently to desktop 1	code:87	exec	tam-desktop-mode move-silent 1
+64	Switch desktop 2	code:11	exec	tam-desktop-mode switch 2
+65	Move window to desktop 2	code:11	exec	tam-desktop-mode move 2
+73	Move window silently to desktop 2	code:11	exec	tam-desktop-mode move-silent 2
+64	Switch desktop 2	code:88	exec	tam-desktop-mode switch 2
+65	Move window to desktop 2	code:88	exec	tam-desktop-mode move 2
+73	Move window silently to desktop 2	code:88	exec	tam-desktop-mode move-silent 2
+64	Switch desktop 3	code:12	exec	tam-desktop-mode switch 3
+65	Move window to desktop 3	code:12	exec	tam-desktop-mode move 3
+73	Move window silently to desktop 3	code:12	exec	tam-desktop-mode move-silent 3
+64	Switch desktop 3	code:89	exec	tam-desktop-mode switch 3
+65	Move window to desktop 3	code:89	exec	tam-desktop-mode move 3
+73	Move window silently to desktop 3	code:89	exec	tam-desktop-mode move-silent 3
+64	Switch desktop 4	code:13	exec	tam-desktop-mode switch 4
+65	Move window to desktop 4	code:13	exec	tam-desktop-mode move 4
+73	Move window silently to desktop 4	code:13	exec	tam-desktop-mode move-silent 4
+64	Switch desktop 4	code:83	exec	tam-desktop-mode switch 4
+65	Move window to desktop 4	code:83	exec	tam-desktop-mode move 4
+73	Move window silently to desktop 4	code:83	exec	tam-desktop-mode move-silent 4
+64	Switch desktop 5	code:14	exec	tam-desktop-mode switch 5
+65	Move window to desktop 5	code:14	exec	tam-desktop-mode move 5
+73	Move window silently to desktop 5	code:14	exec	tam-desktop-mode move-silent 5
+64	Switch desktop 5	code:84	exec	tam-desktop-mode switch 5
+65	Move window to desktop 5	code:84	exec	tam-desktop-mode move 5
+73	Move window silently to desktop 5	code:84	exec	tam-desktop-mode move-silent 5
+64	Switch desktop 6	code:15	exec	tam-desktop-mode switch 6
+65	Move window to desktop 6	code:15	exec	tam-desktop-mode move 6
+73	Move window silently to desktop 6	code:15	exec	tam-desktop-mode move-silent 6
+64	Switch desktop 6	code:85	exec	tam-desktop-mode switch 6
+65	Move window to desktop 6	code:85	exec	tam-desktop-mode move 6
+73	Move window silently to desktop 6	code:85	exec	tam-desktop-mode move-silent 6
+64	Switch desktop 7	code:16	exec	tam-desktop-mode switch 7
+65	Move window to desktop 7	code:16	exec	tam-desktop-mode move 7
+73	Move window silently to desktop 7	code:16	exec	tam-desktop-mode move-silent 7
+64	Switch desktop 7	code:79	exec	tam-desktop-mode switch 7
+65	Move window to desktop 7	code:79	exec	tam-desktop-mode move 7
+73	Move window silently to desktop 7	code:79	exec	tam-desktop-mode move-silent 7
+64	Switch desktop 8	code:17	exec	tam-desktop-mode switch 8
+65	Move window to desktop 8	code:17	exec	tam-desktop-mode move 8
+73	Move window silently to desktop 8	code:17	exec	tam-desktop-mode move-silent 8
+64	Switch desktop 8	code:80	exec	tam-desktop-mode switch 8
+65	Move window to desktop 8	code:80	exec	tam-desktop-mode move 8
+73	Move window silently to desktop 8	code:80	exec	tam-desktop-mode move-silent 8
+64	Switch desktop 9	code:18	exec	tam-desktop-mode switch 9
+65	Move window to desktop 9	code:18	exec	tam-desktop-mode move 9
+73	Move window silently to desktop 9	code:18	exec	tam-desktop-mode move-silent 9
+64	Switch desktop 9	code:81	exec	tam-desktop-mode switch 9
+65	Move window to desktop 9	code:81	exec	tam-desktop-mode move 9
+73	Move window silently to desktop 9	code:81	exec	tam-desktop-mode move-silent 9
+64	Switch desktop 10	code:19	exec	tam-desktop-mode switch 10
+65	Move window to desktop 10	code:19	exec	tam-desktop-mode move 10
+73	Move window silently to desktop 10	code:19	exec	tam-desktop-mode move-silent 10
+64	Switch desktop 10	code:90	exec	tam-desktop-mode switch 10
+65	Move window to desktop 10	code:90	exec	tam-desktop-mode move 10
+73	Move window silently to desktop 10	code:90	exec	tam-desktop-mode move-silent 10
+64	Expand window left	less	lua	hl.dsp.window.resize({ relative = true, x = -100, y = 0 })
+65	Shrink window up	less	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -100 })
+72	Expand window left a little	less	lua	hl.dsp.window.resize({ relative = true, x = -25, y = 0 })
+73	Shrink window up a little	less	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -25 })
+68	Expand window left a lot	less	lua	hl.dsp.window.resize({ relative = true, x = -300, y = 0 })
+69	Shrink window up a lot	less	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -300 })

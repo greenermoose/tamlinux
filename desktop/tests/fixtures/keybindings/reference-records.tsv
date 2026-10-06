@@ -1,0 +1,252 @@
+SUPER + K                           → Keybindings	exec	omarchy-menu-keybindings
+SUPER + SPACE                       → Omarchy menu	exec	tam-menu toggle
+SUPER + RETURN                      → Terminal	exec	tam-launch-terminal
+SUPER SHIFT + RETURN                → Browser	exec	tam-launch-browser
+SUPER SHIFT + F                     → File manager	exec	tam-launch-nautilus
+SUPER + ESCAPE                      → System menu	exec	tam-menu toggle system
+SUPER SHIFT CTRL + SPACE            → Theme menu	exec	tam-menu toggle theme
+SUPER + F                           → Full screen	lua	hl.dsp.window.fullscreen({ mode = "fullscreen" })
+SUPER ALT + F                       → Full width	lua	hl.dsp.window.fullscreen({ mode = "maximized" })
+SUPER + W                           → Close window	lua	hl.dsp.window.close()
+CTRL ALT + DELETE                   → Close all windows	exec	tam-hyprland-window-close-all
+SUPER CTRL + L                      → Lock system	exec	tam-system-lock
+SUPER + T                           → Toggle window floating/tiling	lua	hl.dsp.window.float({ action = "toggle" })
+SUPER + J                           → Toggle window split	lua	hl.dsp.layout("togglesplit")
+SUPER + O                           → Pop window out (float & pin)	exec	tam-hyprland-window-pop
+SUPER + C                           → Universal copy		
+SUPER + V                           → Universal paste		
+SUPER + X                           → Universal cut		
+SUPER CTRL + V                      → Clipboard manager	exec	tam-shell clipboard toggle
+SUPER CTRL + E                      → Emojis	exec	tam-shell emojis toggle
+SUPER + PRINT                       → Color picker	exec	pkill hyprpicker || hyprpicker -a
+PRINT                               → Screenshot	exec	tam-capture-screenshot
+ALT + PRINT                         → Screenrecording	exec	tam-capture-screenrecording --stop-recording || tam-menu toggle trigger.capture.screenrecord
+SUPER ALT + RETURN                  → Tmux	exec	tam-launch-terminal-tmux
+SUPER CTRL + RETURN                 → Herdr	exec	tam-launch-terminal-herdr
+SUPER SHIFT ALT + B                 → Browser (private)	exec	tam-launch-browser --private
+SUPER SHIFT + B                     → Browser	exec	tam-launch-browser
+SUPER SHIFT ALT + F                 → File manager (cwd)	exec	tam-launch-nautilus-cwd
+SUPER CTRL + TAB                    → Former workspace	lua	hl.dsp.focus({ workspace = "previous" })
+SUPER SHIFT + TAB                   → Previous workspace	lua	hl.dsp.focus({ workspace = "e-1" })
+SUPER + TAB                         → Next workspace	lua	hl.dsp.focus({ workspace = "e+1" })
+SUPER SHIFT + DOWN                  → Swap window down	lua	hl.dsp.window.swap({ direction = "d" })
+SUPER SHIFT + LEFT                  → Swap window to the left	lua	hl.dsp.window.swap({ direction = "l" })
+SUPER SHIFT + RIGHT                 → Swap window to the right	lua	hl.dsp.window.swap({ direction = "r" })
+SUPER SHIFT + UP                    → Swap window up	lua	hl.dsp.window.swap({ direction = "u" })
+ALT + TAB                           → Focus on next window	lua	hl.dsp.window.cycle_next()
+CTRL ALT + TAB                      → Focus on next monitor	lua	hl.dsp.focus({ monitor = "+1" })
+SHIFT ALT + TAB                     → Focus on previous window	lua	hl.dsp.window.cycle_next({ next = false })
+SHIFT CTRL ALT + TAB                → Focus on previous monitor	lua	hl.dsp.focus({ monitor = "-1" })
+SUPER + DOWN                        → Focus on below window	lua	hl.dsp.focus({ direction = "d" })
+SUPER + LEFT                        → Focus on left window	lua	hl.dsp.focus({ direction = "l" })
+SUPER + RIGHT                       → Focus on right window	lua	hl.dsp.focus({ direction = "r" })
+SUPER + UP                          → Focus on above window	lua	hl.dsp.focus({ direction = "u" })
+SUPER + LEFT MOUSE BUTTON           → Move window	lua	hl.dsp.window.drag()
+SUPER + RIGHT MOUSE BUTTON          → Resize window	lua	hl.dsp.window.resize()
+SUPER ALT + less                    → Expand window left a little	lua	hl.dsp.window.resize({ relative = true, x = -25, y = 0 })
+SUPER CTRL + less                   → Expand window left a lot	lua	hl.dsp.window.resize({ relative = true, x = -300, y = 0 })
+SUPER + less                        → Expand window left	lua	hl.dsp.window.resize({ relative = true, x = -100, y = 0 })
+SUPER SHIFT ALT + less              → Shrink window up a little	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -25 })
+SUPER SHIFT CTRL + less             → Shrink window up a lot	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -300 })
+SUPER SHIFT + less                  → Shrink window up	lua	hl.dsp.window.resize({ relative = true, x = 0, y = -100 })
+SUPER ALT + S                       → Move window to scratchpad	lua	hl.dsp.window.move({ follow = false, workspace = "special:scratchpad" })
+SUPER + S                           → Toggle scratchpad	lua	hl.dsp.workspace.toggle_special("scratchpad")
+SUPER ALT + COMMA                   → Invoke last notification	exec	tam-shell notifications invokeLast
+SUPER + COMMA                       → Dismiss last notification	exec	tam-shell notifications dismissOne
+SUPER CTRL + COMMA                  → Toggle silencing notifications	exec	tam-toggle-notification-silencing
+SUPER SHIFT ALT + COMMA             → Open notification history	exec	tam-shell notifications showHistory
+SUPER SHIFT + COMMA                 → Dismiss all notifications	exec	tam-shell notifications dismissAll
+SUPER + BACKSPACE                   → Toggle window transparency	exec	tam-hyprland-window-transparency-toggle
+SUPER CTRL + N                      → Toggle nightlight	exec	omarchy-toggle-nightlight
+SUPER CTRL + I                      → Toggle locking on idle	exec	tam-toggle-idle
+SHIFT ALT + D                       → Download Video from Web App	sendshortcut	SHIFT ALT,D,
+SHIFT ALT + L                       → Copy URL from Web App	sendshortcut	SHIFT ALT,L,
+SUPER + 0                           → Switch desktop 10	exec	tam-desktop-mode switch 10
+SUPER + 1                           → Switch desktop 1	exec	tam-desktop-mode switch 1
+SUPER + 2                           → Switch desktop 2	exec	tam-desktop-mode switch 2
+SUPER + 3                           → Switch desktop 3	exec	tam-desktop-mode switch 3
+SUPER + 4                           → Switch desktop 4	exec	tam-desktop-mode switch 4
+SUPER + 5                           → Switch desktop 5	exec	tam-desktop-mode switch 5
+SUPER + 6                           → Switch desktop 6	exec	tam-desktop-mode switch 6
+SUPER + 7                           → Switch desktop 7	exec	tam-desktop-mode switch 7
+SUPER + 8                           → Switch desktop 8	exec	tam-desktop-mode switch 8
+SUPER + 9                           → Switch desktop 9	exec	tam-desktop-mode switch 9
+SUPER ALT + BRACKETLEFT             → Make webcam overlay smaller	exec	tam-capture-webcam-resize smaller
+SUPER ALT + BRACKETRIGHT            → Make webcam overlay larger	exec	tam-capture-webcam-resize larger
+SUPER ALT + Home                    → Save window width	exec	tam-hyprland-window-width save
+SUPER ALT + SLASH                   → Monitor scaling down	exec	tam-hyprland-monitor-scaling down
+SUPER ALT + SPACE                   → Apps menu	exec	tam-menu toggle apps
+SUPER CTRL + 1                      → Bar panel 1	exec	omarchy-shell -q shell togglePanelAt right 1
+SUPER CTRL + 2                      → Bar panel 2	exec	omarchy-shell -q shell togglePanelAt right 2
+SUPER CTRL + 3                      → Bar panel 3	exec	omarchy-shell -q shell togglePanelAt right 3
+SUPER CTRL + 4                      → Bar panel 4	exec	omarchy-shell -q shell togglePanelAt right 4
+SUPER CTRL + 5                      → Bar panel 5	exec	omarchy-shell -q shell togglePanelAt right 5
+SUPER CTRL + 6                      → Bar panel 6	exec	omarchy-shell -q shell togglePanelAt right 6
+SUPER CTRL + 7                      → Bar panel 7	exec	omarchy-shell -q shell togglePanelAt right 7
+SUPER CTRL + 8                      → Bar panel 8	exec	omarchy-shell -q shell togglePanelAt right 8
+SUPER CTRL + 9                      → Bar panel 9	exec	omarchy-shell -q shell togglePanelAt right 9
+SUPER CTRL + A                      → Audio	exec	omarchy-shell shell toggle omarchy.audio
+SUPER CTRL ALT + B                  → Show battery remaining	exec	tam-notification-battery
+SUPER CTRL ALT + D                  → Calendar	exec	omarchy-shell shell toggle omarchy.clock
+SUPER CTRL ALT + Delete             → Toggle laptop display mirroring	exec	tam-hyprland-monitor-internal-mirror toggle
+SUPER CTRL ALT + R                  → Show reminders	exec	tam-reminder show
+SUPER CTRL ALT + T                  → Show time	exec	tam-notification-time
+SUPER CTRL ALT + W                  → Toggle weather	exec	omarchy-notification-weather
+SUPER CTRL ALT + Z                  → Reset zoom		
+SUPER CTRL + BACKSPACE              → Toggle single-window square aspect	exec	tam-hyprland-window-single-square-aspect-toggle
+SUPER CTRL + B                      → Bluetooth	exec	omarchy-shell shell toggle omarchy.bluetooth
+SUPER CTRL + C                      → Capture menu	exec	tam-menu toggle capture
+SUPER CTRL + D                      → Display	exec	omarchy-shell shell toggle omarchy.monitor
+SUPER CTRL + Delete                 → Toggle laptop display	exec	tam-hyprland-monitor-internal toggle
+SUPER CTRL + F                      → Tiled full screen	exec	tam-hyprland-window-tiled-fullscreen-toggle
+SUPER CTRL + H                      → Hardware menu	exec	tam-menu toggle hardware
+SUPER CTRL + M                      → Toggle Mac/Windows desktop mode	exec	tam-desktop-mode toggle
+SUPER CTRL + O                      → Toggle menu	exec	tam-menu toggle toggle
+SUPER CTRL + PERIOD                 → Transcode	exec	tam-transcode
+SUPER CTRL + P                      → Power	exec	omarchy-shell shell toggle omarchy.power
+SUPER CTRL + PRINT                  → Extract text (OCR) from screenshot	exec	tam-capture-text
+SUPER CTRL + Q                      → Calculator	exec	omacalc
+SUPER CTRL + R                      → Set reminder	exec	tam-reminder -i
+SUPER CTRL + SPACE                  → Background switcher	exec	tam-menu toggle background
+SUPER CTRL + S                      → Share	exec	tam-menu toggle share
+SUPER CTRL + T                      → Activity	exec	tam-launch-tui 'btop'
+SUPER CTRL + W                      → Network	exec	omarchy-shell shell toggle omarchy.network
+SUPER CTRL + Z                      → Zoom in		
+SUPER + Home                        → Restore window width	exec	tam-hyprland-window-width restore
+SUPER + KP_BEGIN                    → Switch desktop 5	exec	tam-desktop-mode switch 5
+SUPER + KP_DOWN                     → Switch desktop 2	exec	tam-desktop-mode switch 2
+SUPER + KP_END                      → Switch desktop 1	exec	tam-desktop-mode switch 1
+SUPER + KP_HOME                     → Switch desktop 7	exec	tam-desktop-mode switch 7
+SUPER + KP_INSERT                   → Switch desktop 10	exec	tam-desktop-mode switch 10
+SUPER + KP_LEFT                     → Switch desktop 4	exec	tam-desktop-mode switch 4
+SUPER + KP_NEXT                     → Switch desktop 3	exec	tam-desktop-mode switch 3
+SUPER + KP_PRIOR                    → Switch desktop 9	exec	tam-desktop-mode switch 9
+SUPER + KP_RIGHT                    → Switch desktop 6	exec	tam-desktop-mode switch 6
+SUPER + KP_UP                       → Switch desktop 8	exec	tam-desktop-mode switch 8
+SUPER + L                           → Toggle workspace layout	exec	tam-hyprland-workspace-layout-toggle
+SUPER + P                           → Pseudo window	lua	hl.dsp.window.pseudo()
+SUPER + RIGHT MOUSE BUTTON          → Quick Launch menu	exec	tam-menu toggle quicklaunch
+SUPER SHIFT + 0                     → Move window to desktop 10	exec	tam-desktop-mode move 10
+SUPER SHIFT + 1                     → Move window to desktop 1	exec	tam-desktop-mode move 1
+SUPER SHIFT + 2                     → Move window to desktop 2	exec	tam-desktop-mode move 2
+SUPER SHIFT + 3                     → Move window to desktop 3	exec	tam-desktop-mode move 3
+SUPER SHIFT + 4                     → Move window to desktop 4	exec	tam-desktop-mode move 4
+SUPER SHIFT + 5                     → Move window to desktop 5	exec	tam-desktop-mode move 5
+SUPER SHIFT + 6                     → Move window to desktop 6	exec	tam-desktop-mode move 6
+SUPER SHIFT + 7                     → Move window to desktop 7	exec	tam-desktop-mode move 7
+SUPER SHIFT + 8                     → Move window to desktop 8	exec	tam-desktop-mode move 8
+SUPER SHIFT + 9                     → Move window to desktop 9	exec	tam-desktop-mode move 9
+SUPER SHIFT + A                     → ChatGPT	exec	tam-launch-webapp 'https://chatgpt.com'
+SUPER SHIFT ALT + 0                 → Move window silently to desktop 10	exec	tam-desktop-mode move-silent 10
+SUPER SHIFT ALT + 1                 → Move window silently to desktop 1	exec	tam-desktop-mode move-silent 1
+SUPER SHIFT ALT + 2                 → Move window silently to desktop 2	exec	tam-desktop-mode move-silent 2
+SUPER SHIFT ALT + 3                 → Move window silently to desktop 3	exec	tam-desktop-mode move-silent 3
+SUPER SHIFT ALT + 4                 → Move window silently to desktop 4	exec	tam-desktop-mode move-silent 4
+SUPER SHIFT ALT + 5                 → Move window silently to desktop 5	exec	tam-desktop-mode move-silent 5
+SUPER SHIFT ALT + 6                 → Move window silently to desktop 6	exec	tam-desktop-mode move-silent 6
+SUPER SHIFT ALT + 7                 → Move window silently to desktop 7	exec	tam-desktop-mode move-silent 7
+SUPER SHIFT ALT + 8                 → Move window silently to desktop 8	exec	tam-desktop-mode move-silent 8
+SUPER SHIFT ALT + 9                 → Move window silently to desktop 9	exec	tam-desktop-mode move-silent 9
+SUPER SHIFT ALT + A                 → Grok	exec	tam-launch-webapp 'https://grok.com'
+SUPER SHIFT ALT + DOWN              → Move workspace to down monitor	lua	hl.dsp.workspace.move({ monitor = "d" })
+SUPER SHIFT ALT + E                 → New email	exec	tam-launch-webapp 'https://app.hey.com/messages/new?display=standalone&new_window=true'
+SUPER SHIFT ALT + G                 → WhatsApp	exec	tam-launch-or-focus-webapp 'WhatsApp' 'https://web.whatsapp.com/'
+SUPER SHIFT ALT + KP_BEGIN          → Move window silently to desktop 5	exec	tam-desktop-mode move-silent 5
+SUPER SHIFT ALT + KP_DOWN           → Move window silently to desktop 2	exec	tam-desktop-mode move-silent 2
+SUPER SHIFT ALT + KP_END            → Move window silently to desktop 1	exec	tam-desktop-mode move-silent 1
+SUPER SHIFT ALT + KP_HOME           → Move window silently to desktop 7	exec	tam-desktop-mode move-silent 7
+SUPER SHIFT ALT + KP_INSERT         → Move window silently to desktop 10	exec	tam-desktop-mode move-silent 10
+SUPER SHIFT ALT + KP_LEFT           → Move window silently to desktop 4	exec	tam-desktop-mode move-silent 4
+SUPER SHIFT ALT + KP_NEXT           → Move window silently to desktop 3	exec	tam-desktop-mode move-silent 3
+SUPER SHIFT ALT + KP_PRIOR          → Move window silently to desktop 9	exec	tam-desktop-mode move-silent 9
+SUPER SHIFT ALT + KP_RIGHT          → Move window silently to desktop 6	exec	tam-desktop-mode move-silent 6
+SUPER SHIFT ALT + KP_UP             → Move window silently to desktop 8	exec	tam-desktop-mode move-silent 8
+SUPER SHIFT ALT + LEFT              → Move workspace to left monitor	lua	hl.dsp.workspace.move({ monitor = "l" })
+SUPER SHIFT ALT + M                 → Music TUI	exec	tam-launch-or-focus-tui 'cliamp'
+SUPER SHIFT ALT + RIGHT             → Move workspace to right monitor	lua	hl.dsp.workspace.move({ monitor = "r" })
+SUPER SHIFT ALT + UP                → Move workspace to up monitor	lua	hl.dsp.workspace.move({ monitor = "u" })
+SUPER SHIFT ALT + X                 → X Post	exec	tam-launch-webapp 'https://x.com/compose/post'
+SUPER SHIFT + BACKSPACE             → Toggle window gaps	exec	tam-hyprland-window-gaps-toggle
+SUPER SHIFT + C                     → Calendar	exec	tam-launch-webapp 'https://app.hey.com/calendar/weeks/'
+SUPER SHIFT CTRL + A                → Agent	exec	tam-agent --pick
+SUPER SHIFT CTRL + D                → Retrain MSI display link	exec	msi-mp161-resume-workaround --manual
+SUPER SHIFT CTRL + G                → Google Messages	exec	tam-launch-or-focus-webapp 'Google Messages' 'https://messages.google.com/web/conversations'
+SUPER SHIFT CTRL + R                → Clear reminders	exec	tam-reminder clear
+SUPER SHIFT + D                     → Docker	exec	tam-launch-tui 'tam-launch-docker-tui'
+SUPER SHIFT + E                     → Email	exec	tam-launch-webapp 'https://app.hey.com'
+SUPER SHIFT + G                     → Signal	exec	tam-launch-signal
+SUPER SHIFT + KP_BEGIN              → Move window to desktop 5	exec	tam-desktop-mode move 5
+SUPER SHIFT + KP_DOWN               → Move window to desktop 2	exec	tam-desktop-mode move 2
+SUPER SHIFT + KP_END                → Move window to desktop 1	exec	tam-desktop-mode move 1
+SUPER SHIFT + KP_HOME               → Move window to desktop 7	exec	tam-desktop-mode move 7
+SUPER SHIFT + KP_INSERT             → Move window to desktop 10	exec	tam-desktop-mode move 10
+SUPER SHIFT + KP_LEFT               → Move window to desktop 4	exec	tam-desktop-mode move 4
+SUPER SHIFT + KP_NEXT               → Move window to desktop 3	exec	tam-desktop-mode move 3
+SUPER SHIFT + KP_PRIOR              → Move window to desktop 9	exec	tam-desktop-mode move 9
+SUPER SHIFT + KP_RIGHT              → Move window to desktop 6	exec	tam-desktop-mode move 6
+SUPER SHIFT + KP_UP                 → Move window to desktop 8	exec	tam-desktop-mode move 8
+SUPER SHIFT + M                     → Music	exec	tam-launch-spotify
+SUPER SHIFT + N                     → Editor	exec	tam-launch-editor
+SUPER SHIFT + O                     → Obsidian	exec	tam-launch-or-focus '^obsidian$' 'uwsm-app -- obsidian'
+SUPER SHIFT + P                     → Google Photos	exec	tam-launch-or-focus-webapp 'Google Photos' 'https://photos.google.com/'
+SUPER SHIFT + S                     → Google Maps	exec	tam-launch-or-focus-webapp 'Google Maps' 'https://maps.google.com/'
+SUPER SHIFT + SLASH                 → Passwords	exec	tam-launch-1password
+SUPER SHIFT + SPACE                 → Toggle top bar	exec	omarchy-toggle-bar
+SUPER SHIFT + W                     → Micro	exec	tam-launch-tui 'micro'
+SUPER SHIFT + X                     → X	exec	tam-launch-webapp 'https://x.com/'
+SUPER SHIFT + Y                     → YouTube	exec	tam-launch-webapp 'https://youtube.com/'
+SUPER + SLASH                       → Monitor scaling up	exec	tam-hyprland-monitor-scaling up
+SUPER ALT + 1                       → Switch to group window 1	lua	hl.dsp.group.active({ index = 1 })
+SUPER ALT + 2                       → Switch to group window 2	lua	hl.dsp.group.active({ index = 2 })
+SUPER ALT + 3                       → Switch to group window 3	lua	hl.dsp.group.active({ index = 3 })
+SUPER ALT + 4                       → Switch to group window 4	lua	hl.dsp.group.active({ index = 4 })
+SUPER ALT + 5                       → Switch to group window 5	lua	hl.dsp.group.active({ index = 5 })
+SUPER ALT + DOWN                    → Move window to group on bottom	lua	hl.dsp.window.move({ into_group = "d" })
+SUPER ALT + G                       → Move active window out of group	lua	hl.dsp.window.move({ out_of_group = true })
+SUPER ALT + LEFT                    → Move window to group on left	lua	hl.dsp.window.move({ into_group = "l" })
+SUPER ALT + mouse_down              → Next window in group	lua	hl.dsp.group.next()
+SUPER ALT + mouse_up                → Previous window in group	lua	hl.dsp.group.prev()
+SUPER ALT + RIGHT                   → Move window to group on right	lua	hl.dsp.window.move({ into_group = "r" })
+SUPER ALT + TAB                     → Next window in group	lua	hl.dsp.group.next()
+SUPER ALT + UP                      → Move window to group on top	lua	hl.dsp.window.move({ into_group = "u" })
+SUPER CTRL + LEFT                   → Move grouped window focus left	lua	hl.dsp.group.prev()
+SUPER CTRL + RIGHT                  → Move grouped window focus right	lua	hl.dsp.group.next()
+SUPER + G                           → Toggle window grouping	lua	hl.dsp.group.toggle()
+SUPER SHIFT ALT + TAB               → Previous window in group	lua	hl.dsp.group.prev()
+SUPER + mouse_down                  → Scroll active workspace forward	lua	hl.dsp.focus({ workspace = "e+1" })
+SUPER + mouse_up                    → Scroll active workspace backward	lua	hl.dsp.focus({ workspace = "e-1" })
+ALT + TAB                           → Reveal active window on top	lua	hl.dsp.window.bring_to_top()
+SHIFT ALT + TAB                     → Reveal active window on top	lua	hl.dsp.window.bring_to_top()
+ALT + XF86AudioLowerVolume          → Volume down precise	exec	tam-audio-output-volume -1
+ALT + XF86AudioPlay                 → Next track	exec	tam-shell media next
+ALT + XF86AudioRaiseVolume          → Volume up precise	exec	tam-audio-output-volume +1
+ALT + XF86MonBrightnessDown         → Brightness down precise	exec	tam-brightness-display 1%-
+ALT + XF86MonBrightnessUp           → Brightness up precise	exec	tam-brightness-display +1%
+SHIFT ALT + XF86AudioPlay           → Previous track	exec	tam-shell media previous
+SHIFT + XF86AudioMute               → Switch audio output	exec	tam-audio-output-switch
+SHIFT + XF86AudioPause              → Switch media source	exec	tam-audio-source-switch
+SHIFT + XF86AudioPlay               → Switch media source	exec	tam-audio-source-switch
+SHIFT + XF86MonBrightnessDown       → Brightness minimum	exec	tam-brightness-display 1%
+SHIFT + XF86MonBrightnessUp         → Brightness maximum	exec	tam-brightness-display 100%
+XF86AudioLowerVolume                → Volume down	exec	tam-audio-output-volume lower
+XF86AudioMicMute                    → Mute microphone	exec	tam-audio-input-mute
+XF86AudioMute                       → Mute	exec	tam-audio-output-volume mute-toggle
+XF86AudioNext                       → Next track	exec	tam-shell media next
+XF86AudioPause                      → Pause	exec	tam-shell media playPause
+XF86AudioPlay                       → Play	exec	tam-shell media playPause
+XF86AudioPrev                       → Previous track	exec	tam-shell media previous
+XF86AudioRaiseVolume                → Volume up	exec	tam-audio-output-volume raise
+XF86AudioStop                       → Stop	exec	tam-shell media stop
+XF86Calculator                      → Calculator	exec	omacalc
+XF86Eject                           → Eject media	exec	eject
+XF86KbdBrightnessDown               → Keyboard brightness down	exec	tam-brightness-keyboard down
+XF86KbdBrightnessUp                 → Keyboard brightness up	exec	tam-brightness-keyboard up
+XF86KbdLightOnOff                   → Keyboard backlight cycle	exec	tam-brightness-keyboard cycle
+XF86MonBrightnessDown               → Brightness down	exec	tam-brightness-display 5%-
+XF86MonBrightnessUp                 → Brightness up	exec	tam-brightness-display +5%
+XF86PowerOff                        → Power menu	exec	tam-menu toggle system
+XF86TouchpadOff                     → Disable touchpad	exec	tam-toggle-input-device touchpad off
+XF86TouchpadOn                      → Enable touchpad	exec	tam-toggle-input-device touchpad on
+XF86TouchpadToggle                  → Toggle touchpad	exec	tam-toggle-input-device touchpad
+SUPER ALT + K                       → Tmux keybindings	exec	tam-menu-tmux-keybindings
+SUPER CTRL + K                      → Herdr keybindings	exec	tam-menu-herdr-keybindings

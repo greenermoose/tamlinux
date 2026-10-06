@@ -461,6 +461,11 @@ QtObject {
     target: Hyprland
     function onFocusedMonitorChanged() { adapter.refreshFromHyprland() }
     function onFocusedWorkspaceChanged() { adapter.refreshFromHyprland() }
+    // Re-read the bindings after the config reloads, so the keybinding
+    // viewer never shows stale ones.
+    function onRawEvent(event) {
+      if (event && event.name === "configreloaded" && !bindsProc.running) bindsProc.running = true
+    }
   }
 
   readonly property Timer refreshTimer: Timer {
