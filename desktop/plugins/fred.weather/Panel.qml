@@ -22,6 +22,9 @@ Panel {
 
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
+  // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
+  readonly property string weatherLocationHelper:
+    (Quickshell.env("TAMLINUX_BIN") || (Quickshell.env("HOME") + "/.local/bin")) + "/tam-weather-location"
 
   readonly property string screenName: {
     if (panel && panel.screen && panel.screen.name) return String(panel.screen.name)
@@ -377,7 +380,7 @@ Panel {
     savingLocation = true
     savingLocationQueryStarted = false
     locationError = ""
-    var cmd = ["omarchy-weather-location", "--set", name]
+    var cmd = [root.weatherLocationHelper, "--set", name]
     if (latitude !== null && longitude !== null && !isNaN(Number(latitude)) && !isNaN(Number(longitude))) {
       cmd.push(String(latitude) + "," + String(longitude))
     }
@@ -389,7 +392,7 @@ Panel {
     savingLocation = true
     savingLocationQueryStarted = false
     locationError = ""
-    locationClearProc.command = ["omarchy-weather-location", "--clear"]
+    locationClearProc.command = [root.weatherLocationHelper, "--clear"]
     locationClearProc.running = true
   }
 
@@ -603,7 +606,7 @@ Panel {
 
   Process {
     id: locationProc
-    command: ["omarchy-weather-location"]
+    command: [root.weatherLocationHelper]
     environment: Network.closedEnv
     stdout: StdioCollector {
       id: locationStdout

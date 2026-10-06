@@ -76,3 +76,8 @@ or released.
 Cursor `3.23.12` (`composer`) pointed fred.weather 2.0.0 QML at the Tamlinux
 compositor facade. Panel targeting uses `bar.compositor.focusedOutputName` and `outputs`. The store still matches a monitor by name or description. `WeatherPanelWindow` takes keyboard focus only on the focused output. Not tagged or released.
 [Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Location reads, saves, and clears run `tam-weather-location` by absolute path from `TAMLINUX_BIN`, falling back to `~/.local/bin`, instead of `omarchy-weather-location` by bare name. The location file is unchanged. The panel layer is `tamlinux-weather-panel`. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
