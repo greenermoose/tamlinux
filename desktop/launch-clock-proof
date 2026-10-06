@@ -237,7 +237,13 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     return {"env": env, "home": home, "plugin": plugin, "record": records[0]}
 
 
+# The proof instance that ipc() addresses. The session's own Tamlinux shell
+# runs from the same config directory, so `ipc -p` would reach it instead.
+_PROOF_PID: int | None = None
+
+
 def spawn(env: dict) -> subprocess.Popen:
+    global _PROOF_PID
     log = Path(env["HOME"]).parent / "quickshell.log"
     handle = log.open("w", encoding="utf-8")
     process = subprocess.Popen(
@@ -249,6 +255,7 @@ def spawn(env: dict) -> subprocess.Popen:
     )
     process._log_handle = handle  # type: ignore[attr-defined]
     process._log_path = log  # type: ignore[attr-defined]
+    _PROOF_PID = process.pid
     return process
 
 
@@ -261,7 +268,9 @@ def read_log(process: subprocess.Popen) -> str:
 
 
 def ipc(env: dict, target: str, function: str, args: list[str] | None = None) -> subprocess.CompletedProcess:
-    command = ["/usr/bin/quickshell", "ipc", "-p", str(SHELL_DIR), "call", target, function]
+    if _PROOF_PID is None:
+        raise SystemExit("no proof instance to address")
+    command = ["/usr/bin/quickshell", "ipc", "--pid", str(_PROOF_PID), "call", target, function]
     if args:
         command.extend(args)
     return subprocess.run(command, env=env, capture_output=True, text=True, timeout=10)

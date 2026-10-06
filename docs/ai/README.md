@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-06 | The proof launcher addresses its own instance | Claude Code `2.1.291` | `claude-opus-5-5` | [`2026-10-06-proof-ipc-by-pid.md`](2026-10-06-proof-ipc-by-pid.md) |
 | 2026-10-05 | Bar widget ports merged; provenance for delegated work | Claude Code `2.1.290` | `claude-opus-5-5` | [`2026-10-05-delegation-provenance.md`](2026-10-05-delegation-provenance.md) |
 | 2026-10-05 | Shared theme and typography integration (Develop) | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-05-style-theme-integration.md](2026-10-05-style-theme-integration.md) |
 | 2026-10-05 | Omarchy's packages frozen (0.2.0) | Claude Code `2.1.289` | `claude-opus-5-5` | [`2026-10-05-freeze-omarchy-packages.md`](2026-10-05-freeze-omarchy-packages.md) |

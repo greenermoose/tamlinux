@@ -140,3 +140,8 @@ the network and Wi-Fi QR panels; Fred accepted 0.2.5. Claude wired the power
 and speed-test panels, added the host's summon route, and, at Fred's choice,
 let the power panel open without a battery; Fred accepted 0.2.6.
 [Session record](docs/ai/2026-10-05-keybinding-viewer.md).
+
+### Proof IPC by PID — 2026-10-06
+
+Claude Code `2.1.291` (`claude-opus-5-5`) made `launch-clock-proof` send IPC to the instance it spawned (`quickshell ipc --pid`), because the session's own Tamlinux shell shares the config directory and was receiving the selftest's calls.
+[Session record](docs/ai/2026-10-06-proof-ipc-by-pid.md).
