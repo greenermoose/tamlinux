@@ -43,3 +43,15 @@ and pointed the key and the menu row at them in the configuration
 repository. Prompt:
 
 > I did tam-shell tamlinux.network showQr and saw the QR code. I accept 0.2.5.
+
+## Follow-up: 0.2.6 accepted
+
+Claude loaded the power and speed-test panels, added the panel host's
+`tamlinux.panels summon` route for the disk speed test, and pointed the key
+and both menu rows at them. Fred found the power key did nothing: the panel
+refused to open without a battery. Asked to choose, Fred had it open on
+desktops with only the profile picker. Prompts:
+
+> SUPER + Ctrl + P does not open the power panel.
+
+> All tests pass. I accept 0.2.6.

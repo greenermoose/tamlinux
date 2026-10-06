@@ -1,11 +1,12 @@
 # Desktop decoupling toward Void Linux
 
-**Status:** Tamlinux 0.1.23. The Tamlinux shell's session services (notifications,
+**Status:** Tamlinux 0.2.6. The Tamlinux shell's session services (notifications,
 on-screen display, clipboard, pickers, reminders, menu, background, polkit,
-media, idle, battery, and lock) run in daily use beside the existing bar, and
-the desktop's commands are Tamlinux's own. Stage 0.2 moves every key binding
-and menu entry next; stage 0.3 replaces the daily bar with the Tamlinux shell
-and the eight rewritten plugins, which are Develop candidates. Plugin QML
+media, idle, battery, and lock) and the inherited desktop's panels (audio,
+Bluetooth, network, Wi-Fi QR, power, and speed tests) run in daily use beside
+the existing bar, and every key binding and menu entry runs Tamlinux's own
+commands (stage 0.2, complete). Stage 0.3 replaces the daily bar with the
+Tamlinux shell and the eight rewritten plugins, which are Develop candidates. Plugin QML
 reads the compositor facade; the shell loads `SwayAdapter.qml` only when
 `TAMLINUX_COMPOSITOR=sway`, and the Hyprland proof stays the default.
 `tam-desktop-mode` and the monitor helpers still call the named Hyprland
@@ -138,7 +139,7 @@ its original names (Step 1–5), which were Develop candidates feeding stages
 | Proof (Steps 0–3) | Dependency inventory; independent shell + clock; host contract and shared UI; compositor contract with the Hyprland adapter | — | Classified matrix and source baseline; candidates in `desktop/` checked 2026-10-03. Develop only. |
 | 0.0 | The foundation owned: package mirror and kernel, Hyprland configuration, shell environment, session entry, login screen | — | 0.0.1 and 0.0.2, 2026-09-22 and 2026-10-04. |
 | 0.1 | Session services in the Tamlinux shell beside the existing bar; the desktop's commands owned | Proof | 0.1.0–0.1.23 accepted 2026-10-04 and 2026-10-05: notifications, OSD, clipboard, pickers, reminders, menu, background, screenshots, polkit, capture, media, idle, battery, browser extensions, monitor watch, lock, and the menus' and keys' remaining commands. |
-| 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the Tamlinux shell | 0.1 | Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
+| 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the Tamlinux shell | 0.1 | 0.2.0–0.2.6 accepted 2026-10-05. Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
 | 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | The plugins load in the isolated shell and call only Tamlinux commands; then the daily bar is replaced and the inherited shell stops. |
 | 0.4 | Plugin backends and helpers on the compositor contract; Sway adapter | 0.3 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment; fixture proof passed. Still needed: Sway backends for the monitor and desktop-mode helpers, night light, and capture through the contract; daily use of the Hyprland adapter. |
 | 0.5 | Tamlinux's own look and name | 0.3 | One theme source generates every application's colours; owned fonts; the name on the login screen, menus, and About. |

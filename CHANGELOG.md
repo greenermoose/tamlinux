@@ -29,6 +29,30 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.6 - 2026-10-05
+
+Stage 0.2 is complete: every key binding and menu entry runs Tamlinux's own
+commands, except the bar's own keys and settings (0.3), the theme and
+branding entries (0.5), and the boot-splash entries.
+
+### Changed
+
+- **Power panel and speed tests in the Tamlinux shell.** `SUPER + CTRL + P`
+  opens the power panel; Trigger → Speed Test → Network and Disk open the
+  speed-test cards, and the network panel's speed-test row now works.
+- The power panel opens on machines without a battery, showing only the
+  power-profile picker; the battery sections and the bar button still need a
+  battery.
+- The panel host answers `tam-shell tamlinux.panels summon <id>` and
+  `hide <id>`, for cards without an IPC target of their own.
+
+### Verification
+
+- Fred opened the power panel from its key, changed the profile and back,
+  ran both speed tests from the menu and the network test from the network
+  panel, and accepted this step. Automated checks: 110 desktop tests, and
+  all seven panels and the summon route in a headless compositor.
+
 ## 0.2.5 - 2026-10-05
 
 ### Changed
