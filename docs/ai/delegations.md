@@ -19,6 +19,7 @@ in the orchestrator's brief, not the delegate's work); *partly redone*;
 | 2026-10-05 | T10: test the keybinding viewer model | Claude Code `2.1.290` (`claude-opus-5-5`) | OpenCode `opencode 1.18.31` (`big-pickle`) | `4152613` → `54f917e` | Corrected | `4aca994` (Claude: the missing final newline) | [keybinding viewer](2026-10-05-keybinding-viewer.md) |
 | 2026-10-05 | T12: port the bar's indicators, keyboard layout and tray widgets | Claude Code `2.1.290` (`claude-opus-5-5`) | Antigravity `agy 1.2.17` (`gemini-3.8-flash-high`) | `242cc8a` → `0c617d9` | Follow-up, brief error | `2a26ea7` (Claude: a verbatim port the brief required breaks the compositor-boundary test until 0.3.1; the commit predates the `AI-Reworks` trailer) | — |
 | 2026-10-05 | T14: behaviour tests for the panel and bar-widget models | Claude Code `2.1.290` (`claude-opus-5-5`) | Antigravity `agy 1.2.17` (`gemini-3.8-flash-high`) | `b70e31a` → `fff2c93` | Corrected | `e060661` (Claude: three branches no case covered, found by mutation) | — |
+| 2026-10-06 | T17: the bar-widget contract test | Claude Code `2.1.291` (`claude-opus-5-5`) | OpenCode `opencode 1.18.31` (`big-pickle`) | `4871051` → `3814002` | Corrected, brief error | `fb65149` (Claude: optional chaining, which opencode's notes found; K1 skipped whole without Omarchy's Ui, where the brief was ambiguous) | — |
 
 These three delegate commits predate the `AI-Role`, `AI-Assigned-By` and
 `AI-Task` trailers, so this table is their only record of who assigned them.
