@@ -71,3 +71,8 @@ released.
 Cursor `3.23.12` (`composer`) pointed fred.tides 2.0.0 QML at the Tamlinux
 compositor facade. Both IPC targets pass the facade's focused output and output list into the store. `TidesPanelWindow` takes keyboard focus only on the focused output. Not tagged or released.
 [Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Notifications run `tam-notification-send` by absolute path from `TAMLINUX_BIN`, falling back to `~/.local/bin`. `OMARCHY_PATH` is no longer read or copied into the closed environment. The panel layer is `tamlinux-tides-panel`. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).

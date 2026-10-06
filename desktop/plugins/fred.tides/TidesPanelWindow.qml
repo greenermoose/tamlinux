@@ -55,7 +55,7 @@ PanelWindow {
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
-  WlrLayershell.namespace: "omarchy-tides-panel"
+  WlrLayershell.namespace: "tamlinux-tides-panel"
   WlrLayershell.layer: WlrLayer.Overlay
 
   // Focus isolation: Only take keyboard focus if the panel's screen is the focused monitor.

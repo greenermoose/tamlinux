@@ -11,10 +11,9 @@ BarWidget {
 
   readonly property string pluginVersion: "2.0.0"
   property bool hoverOpen: false
-  readonly property string notificationHelper: {
-    var base = Quickshell.env("OMARCHY_PATH") || ""
-    return base !== "" ? base + "/bin/omarchy-notification-send" : ""
-  }
+  // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
+  readonly property string notificationHelper:
+    (Quickshell.env("TAMLINUX_BIN") || (Quickshell.env("HOME") + "/.local/bin")) + "/tam-notification-send"
 
   Process {
     id: notificationProc
@@ -24,8 +23,7 @@ BarWidget {
       "HOME": Quickshell.env("HOME") || "",
       "XDG_RUNTIME_DIR": Quickshell.env("XDG_RUNTIME_DIR") || "",
       "WAYLAND_DISPLAY": Quickshell.env("WAYLAND_DISPLAY") || "",
-      "DBUS_SESSION_BUS_ADDRESS": Quickshell.env("DBUS_SESSION_BUS_ADDRESS") || "",
-      "OMARCHY_PATH": Quickshell.env("OMARCHY_PATH") || ""
+      "DBUS_SESSION_BUS_ADDRESS": Quickshell.env("DBUS_SESSION_BUS_ADDRESS") || ""
     })
     readonly property Timer watchdog: Timer {
       interval: 10000
