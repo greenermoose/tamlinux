@@ -88,6 +88,24 @@ ADAPTATIONS = {
         ("    PanelKeyCatcher {\n      id: keyCatcher\n",
          "    PanelKeyCatcher {\n      id: keyCatcher\n      deleteOnX: true\n"),
     ],
+    # The power panel opens without a battery: the card centres on the bar and
+    # shows only the power profiles; the bar button stays hidden (0.2.6).
+    "desktop/shell/panels/power/Panel.qml": [
+        ('  function refresh() {\n    if (!batteryPresent) return\n\n    if (!batteryProc.running) batteryProc.running = true\n',
+         '  function refresh() {\n    if (batteryPresent && !batteryProc.running) batteryProc.running = true\n'),
+        ('    if (opened) {\n      if (!batteryPresent) {\n        close()\n        return\n      }\n\n      refresh()\n',
+         '    if (opened) {\n      refresh()\n'),
+        ('  onBatteryPresentChanged: if (!batteryPresent) close()\n\n',
+         ''),
+        ('    open: root.opened && root.batteryPresent\n',
+         '    open: root.opened\n    // Without a battery there is no bar button to hang from (0.2.6).\n    centerOnBar: !root.batteryPresent\n'),
+        ('        Item {\n          width: parent.width\n          implicitHeight: Math.max(heroIcon',
+         '        Item {\n          visible: root.batteryPresent\n          width: parent.width\n          implicitHeight: Math.max(heroIcon'),
+        ('        Item {\n          width: parent.width\n          implicitHeight: Style.space(8)\n',
+         '        Item {\n          visible: root.batteryPresent\n          width: parent.width\n          implicitHeight: Style.space(8)\n'),
+        ('        PanelSeparator {\n          foreground: root.bar.foreground\n        }\n',
+         '        PanelSeparator {\n          visible: root.batteryPresent\n          foreground: root.bar.foreground\n        }\n'),
+    ],
 }
 
 

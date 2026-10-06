@@ -137,9 +137,7 @@ Panel {
   }
 
   function refresh() {
-    if (!batteryPresent) return
-
-    if (!batteryProc.running) batteryProc.running = true
+    if (batteryPresent && !batteryProc.running) batteryProc.running = true
     if (!profilesProc.running) profilesProc.running = true
     if (!systemProc.running) systemProc.running = true
   }
@@ -191,19 +189,12 @@ Panel {
 
   onOpenedChanged: {
     if (opened) {
-      if (!batteryPresent) {
-        close()
-        return
-      }
-
       refresh()
       var idx = profiles.indexOf(activeProfile)
       profileIndex = idx >= 0 ? idx : 0
       cursorActive = false
     }
   }
-
-  onBatteryPresentChanged: if (!batteryPresent) close()
 
   visible: batteryPresent
   implicitWidth: batteryPresent ? button.implicitWidth : 0
@@ -298,7 +289,9 @@ Panel {
     anchorItem: button
     owner: root
     bar: root.bar
-    open: root.opened && root.batteryPresent
+    open: root.opened
+    // Without a battery there is no bar button to hang from (0.2.6).
+    centerOnBar: !root.batteryPresent
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
@@ -324,6 +317,7 @@ Panel {
 
         // ---------- Hero: battery icon · title/status · percentage ----------
         Item {
+          visible: root.batteryPresent
           width: parent.width
           implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, heroPercent.implicitHeight)
 
@@ -390,6 +384,7 @@ Panel {
 
         // ---------- Battery progress bar ----------
         Item {
+          visible: root.batteryPresent
           width: parent.width
           implicitHeight: Style.space(8)
 
@@ -457,6 +452,7 @@ Panel {
 
         // ---------- Power profile picker ----------
         PanelSeparator {
+          visible: root.batteryPresent
           foreground: root.bar.foreground
         }
 
