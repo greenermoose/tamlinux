@@ -309,10 +309,10 @@ Item {
   // shell started shows up without restarting it.
   readonly property var providers: ({
     "fonts": {
-      script: "current=$(omarchy-font-current 2>/dev/null); omarchy-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
+      script: "current=$(tam-font-current 2>/dev/null); tam-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
       icon: "",
       volatile: true,
-      actionFor: function(value) { return "omarchy-font-set " + root.shellQuote(value) }
+      actionFor: function(value) { return "tam-font-set " + root.shellQuote(value) }
     },
     "power-profiles": {
       script: "current=$(powerprofilesctl get 2>/dev/null); tam-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
