@@ -17,7 +17,16 @@ PanelWindow {
   signal clockReady(var widget)
 
   property string tooltipText: ""
-  property real tooltipX: 0
+  // The hovered item's center along the bar; the tooltip centers on it and
+  // is kept a gap inside both screen edges, as Omarchy's bar does.
+  property real tooltipCenterX: 0
+  readonly property real tooltipGap: Style.space(6)
+  readonly property real tooltipX: {
+    var width = tipWindow.implicitWidth
+    var left = tooltipCenterX - width / 2
+    var right = win.width - width - tooltipGap
+    return Math.max(tooltipGap, Math.min(left, right))
+  }
   property var tooltipAnchor: null
 
   screen: screenRef
@@ -166,8 +175,8 @@ PanelWindow {
     tooltipAnchor = target
     tooltipText = String(text || "")
     if (target && target.mapToItem) {
-      var pos = target.mapToItem(contentItem, 0, 0)
-      tooltipX = Math.max(0, pos.x)
+      var pos = target.mapToItem(contentItem, target.width / 2, 0)
+      tooltipCenterX = pos.x
     }
     Qt.callLater(logTooltip)
   }
@@ -186,6 +195,8 @@ PanelWindow {
     console.log("TAMLINUX_EVIDENCE tooltip scale=" + Style.uiScale
       + " font=" + Style.font.bodySmall
       + " width=" + tipWindow.implicitWidth
+      + " x=" + Math.round(tooltipX)
+      + " barWidth=" + Math.round(win.width)
       + " height=" + tipWindow.implicitHeight
       + " text=" + JSON.stringify(tooltipText))
   }

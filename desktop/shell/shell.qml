@@ -432,6 +432,17 @@ ShellRoot {
       if (bar && bar.probeTooltip) bar.probeTooltip()
       else proof.evidence("tooltip-no-bar")
     }
+    // Hover text on the named widget, as a plugin would show it, to check
+    // where the tooltip lands. Logs the same tooltip evidence line.
+    function tooltipProbeFor(id: string): void {
+      var item = proof.firstWidget(id)
+      var bar = item && item.bar ? item.bar : null
+      if (!bar) {
+        proof.evidence("tooltip-no-widget " + id)
+        return
+      }
+      bar.showTooltip(item, "probe " + id + ": a long line of hover text that would run off the edge")
+    }
     function dropOutput(): void {
       proof.outputDropped = true
       proof.evidence("output-dropped")

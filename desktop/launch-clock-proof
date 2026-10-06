@@ -717,6 +717,19 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("the layout's widgets did not register:\n" + read_log(process)[-4000:])
     if failed():
         raise SystemExit("a layout entry failed:\n" + read_log(process)[-4000:])
+    # The rightmost plugin's tooltip must stay on screen (it once ran off).
+    ipc(env, "tamlinux-shell", "tooltipProbeFor", ["fred.sysinfo"])
+
+    def placed() -> str | None:
+        return next((line for line in lines() if line.startswith("tooltip ") and "probe fred.sysinfo" in line), None)
+
+    line = wait_for(placed, 10)
+    if not line:
+        raise SystemExit("the tooltip probe did not land:\n" + read_log(process)[-4000:])
+    fields = dict(part.split("=", 1) for part in line.split(" text=")[0].split()[1:])
+    right = int(fields["x"]) + int(fields["width"])
+    if int(fields["x"]) < 0 or right > int(fields["barWidth"]):
+        raise SystemExit(f"tooltip off screen: {line}")
 
 
 def sway_process_lines() -> list[str]:
