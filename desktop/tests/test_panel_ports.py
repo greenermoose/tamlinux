@@ -48,14 +48,14 @@ PANEL_FILES: list[tuple[str, str, bool]] = [
     ("desktop/shell/panels/power/Panel.qml", "plugins/panels/power/Panel.qml", False),
     ("desktop/shell/panels/power/Model.js", "plugins/panels/power/Model.js", True),
     ("desktop/shell/panels/speedtest/Panel.qml", "plugins/panels/speedtest/Panel.qml", False),
-    ("desktop/shell/panels/disk-speedtest/Panel.qml", "plugins/panels/disk-speedtest/Panel.qml", False),
+    ("desktop/shell/panels/diskspeedtest/Panel.qml", "plugins/panels/disk-speedtest/Panel.qml", False),
     ("desktop/shell/modules/Tam/Ui/SpeedTestOverlay.qml", "Ui/SpeedTestOverlay.qml", False),
 ]
 
 LAYER_NAMES: dict[str, str] = {
     "tamlinux-network-qr": "desktop/shell/panels/wifiqr/Panel.qml",
     "tamlinux-network-speedtest": "desktop/shell/panels/speedtest/Panel.qml",
-    "tamlinux-disk-speedtest": "desktop/shell/panels/disk-speedtest/Panel.qml",
+    "tamlinux-disk-speedtest": "desktop/shell/panels/diskspeedtest/Panel.qml",
     "tamlinux-speed-test": "desktop/shell/modules/Tam/Ui/SpeedTestOverlay.qml",
 }
 
