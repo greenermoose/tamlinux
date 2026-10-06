@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-06 | Complete 0.3.2 readiness | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-06-0.3.2-completion.md](2026-10-06-0.3.2-completion.md) |
 | 2026-10-06 | Independent, continuing Tamlinux identity | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-06-independent-continuing-project.md](2026-10-06-independent-continuing-project.md) |
 | 2026-10-06 | The proof launcher addresses its own instance | Claude Code `2.1.291` | `claude-opus-5-5` | [`2026-10-06-proof-ipc-by-pid.md`](2026-10-06-proof-ipc-by-pid.md) |
 | 2026-10-05 | Bar widget ports merged; provenance for delegated work | Claude Code `2.1.290` | `claude-opus-5-5` | [`2026-10-05-delegation-provenance.md`](2026-10-05-delegation-provenance.md) |

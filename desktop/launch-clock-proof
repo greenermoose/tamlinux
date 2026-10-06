@@ -25,6 +25,7 @@ from compositor_commands import (  # noqa: E402
 from sway_snapshot import snapshot_from_directory  # noqa: E402
 from ui_contract import proof_border_line, proof_token_line, proof_wheel_line  # noqa: E402
 from registry import RegistryError, validate_directories  # noqa: E402
+from session_start import session_environment  # noqa: E402
 from settings_store import SettingsError, read_settings, write_settings  # noqa: E402
 
 PINNED_REVISION = "ed5140ccefc83c0a2fdd5f899bbd290acc35d88a"
@@ -200,7 +201,7 @@ def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = No
     write_settings(config / "tamlinux" / "shell", {"version": 1, "entries": entries}, allowed)
 
 
-def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None) -> dict:
+def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None, readiness: bool = False) -> dict:
     home = state / "home"
     config = home / ".config"
     plugin = state / "plugin"
@@ -233,6 +234,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "XDG_CONFIG_HOME": str(config),
         "XDG_CACHE_HOME": str(home / ".cache"),
         "XDG_DATA_HOME": str(home / ".local" / "share"),
+        "XDG_STATE_HOME": str(home / ".local" / "state"),
         "PATH": "/usr/bin",
         "QML_IMPORT_PATH": str(SHELL_DIR / "modules"),
         "TAMLINUX_CLOCK_OFFLINE": "1",
@@ -263,6 +265,12 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
             document["position"] = position
             # What the driver expects; the shell reads only the document.
             env["TAMLINUX_PROOF_POSITION"] = position if position in ("top", "bottom") else "top"
+        if readiness:
+            target.parent.joinpath("settings.json").unlink()
+            subprocess.run([sys.executable, "-I", str(SHELL_DIR.parent / "adapters" / "omarchy_shell_import.py"),
+                            str(SHELL_DIR.parent / "fixtures" / "omarchy-shell" / "shell.json"),
+                            str(target.parent)], check=True)
+            document = json.loads(target.read_text(encoding="utf-8"))
         target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
         os.chmod(target, 0o600)
         entries = {"fred.clock": by_id["fred.clock"]["entry"]}
@@ -271,7 +279,25 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         # The shell's own widgets and panels run owned commands by name, as
         # they do in the session; the plugins keep using absolute paths.
         env["PATH"] = f"{tam_bin}:/usr/bin"
-        env["TAMLINUX_PLUGIN_ENTRIES"] = json.dumps(entries)
+        if readiness:
+            roots = state / "registry-plugins"
+            roots.mkdir()
+            for entry_id, entry_path in entries.items():
+                (roots / entry_id).symlink_to(Path(entry_path).parent)
+            bad = roots / "fred.broken"
+            bad.mkdir()
+            (bad / "manifest.json").write_text('{"schemaVersion":1,"id":"fred.broken","kinds":["bar-widget"],'
+                                               '"entryPoints":{"barWidget":"../escape.qml"}}')
+            env["TAMLINUX_PLUGINS_DIR"] = str(roots)
+            env, notes = session_environment(env)
+            if "fred.broken" in json.loads(env["TAMLINUX_PLUGIN_ENTRIES"]):
+                raise SystemExit("registry allowed a broken plugin")
+            if not any("fred.broken" in note and "left off the bar" in note for note in notes):
+                raise SystemExit("registry failed to report the rejected plugin")
+            print("\n".join(notes))
+            env["TAMLINUX_PROOF_CONVERTED"] = "1"
+        else:
+            env["TAMLINUX_PLUGIN_ENTRIES"] = json.dumps(entries)
         # The panel host, asked for every panel, must load only the overlays
         # beside a bar that draws the rest.
         env["TAMLINUX_SERVICES"] = "panels"
@@ -280,7 +306,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
 
 
 # The proof instance that ipc() addresses. The session's own Tamlinux shell
-# runs from the same config directory, so `ipc -p` would reach it instead.
+# uses its own deployed config path; --pid also isolates simultaneous proofs.
 _PROOF_PID: int | None = None
 
 
@@ -368,8 +394,8 @@ def helper_leaks(plugin: Path) -> list[str]:
     ]
 
 
-def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None) -> str:
-    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor, layout=layout, position=position)
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None, readiness: bool = False) -> str:
+    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor, layout=layout, position=position, readiness=readiness)
     process = spawn(prepared["env"])
     try:
         ready = wait_for(
@@ -739,6 +765,15 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("the layout's widgets did not register:\n" + read_log(process)[-4000:])
     if failed():
         raise SystemExit("a layout entry failed:\n" + read_log(process)[-4000:])
+    if env.get("TAMLINUX_PROOF_CONVERTED") == "1":
+        ready = next((line for line in lines() if line.startswith("ready ")), "")
+        if "format=dddd HH:mm" not in ready:
+            raise SystemExit("converted clock format was not loaded: " + ready)
+        settings = read_settings(Path(env["XDG_CONFIG_HOME"]) / "tamlinux/shell/settings.json", set(layout_ids()))
+        if settings["entries"]["fred.clock"].get("birthYear") != 1970:
+            raise SystemExit("converted clock settings were not preserved")
+        if any("widget-registered fred.broken " in line for line in lines()):
+            raise SystemExit("rejected plugin registered on the bar")
     # The rightmost plugin's tooltip must stay on screen (it once ran off).
     ipc(env, "tamlinux-shell", "tooltipProbeFor", ["fred.sysinfo"])
 
@@ -1001,7 +1036,8 @@ def sway_selftest(scale: str, output: str, state_root: Path) -> None:
 
 def selftest(scale: str, output: str, state_root: Path) -> None:
     primary = state_root / "primary"
-    log = run_session(primary, scale, output, drive_primary, copies="2")
+    primary_output = monitor_names()[0] if output == "all" else output
+    log = run_session(primary, scale, primary_output, drive_primary, copies="2")
     lines = evidence_lines(log)
     expect(lines, "omarchy unset")
     expect(lines, "fetch-suppressed")
@@ -1045,7 +1081,7 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     settings = read_settings(primary / "home" / ".config" / "tamlinux" / "shell" / "settings.json", ALLOWED)
     if settings["entries"]["fred.clock"]["format"] != "dddd h:mm AP":
         raise SystemExit("format was not persisted")
-    restarted = run_session(primary, scale, output, None, reset=False, copies="2")
+    restarted = run_session(primary, scale, primary_output, None, reset=False, copies="2")
     ready = next(line for line in evidence_lines(restarted) if line.startswith("ready "))
     if "format=dddd h:mm AP" not in ready:
         raise SystemExit(f"restart did not keep the format: {ready}")
@@ -1066,8 +1102,8 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     print("plugins registered")
     # Every screen, as the daily bar will run (plan 18 0.3.2 item 11).
     layout_output = "all" if len(names) >= 2 and output in ("", "all") else output
-    run_session(state_root / "layout", scale, layout_output, drive_layout, copies="1", extras=True, layout=True)
-    print("layout registered")
+    run_session(state_root / "layout", scale, layout_output, drive_layout, copies="1", extras=True, layout=True, readiness=True)
+    print("layout registered with converted settings; broken plugin left off")
 
     def drive_hidden_restart(env: dict, process: subprocess.Popen) -> None:
         def hidden() -> bool:

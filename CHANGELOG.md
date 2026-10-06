@@ -29,6 +29,30 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.3.2 - 2026-10-06
+
+Daily-bar readiness; the daily bar cutover is the separate 0.3.3 step.
+
+### Added
+
+- Top/bottom bars, focused-output IPC routes and numbered panel routes,
+  hide/show and saved transparency/position, and broadcast indicator refresh.
+- A validated plugin map and session starter. Rejected plugins are named
+  in the log and omitted while valid widgets continue to load.
+- A one-time shell.json converter for layout and per-widget settings at
+  `~/.config/tamlinux/shell/`.
+- The isolated selftest covers all three outputs, bar controls, converted
+  clock settings, and an invalid plugin at scales 1 and 1.25. Its two-copy
+  primary fixture stays on one output when `--output all` is requested.
+
+### Changed
+
+- Shell-owned actions invoke Tamlinux commands. Tests and proof launchers
+  find their sources when running from a Git worktree.
+- Session deployment pins a committed main revision in an immutable store
+  tree; checkout edits stay in Develop/Test. The launcher uses an isolated
+  state directory as well as home/config/cache directories.
+
 ## 0.3.1 - 2026-10-06
 
 The Tamlinux bar's own widgets.

@@ -7,7 +7,7 @@ Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
-**Status:** Tamlinux 0.3.1. The Tamlinux shell's session services (notifications,
+**Status:** Tamlinux 0.3.2 readiness implemented; manual acceptance of the complete bar remains before 0.3.3. The Tamlinux shell's session services (notifications,
 on-screen display, clipboard, pickers, reminders, menu, background, polkit,
 media, idle, battery, and lock) and the inherited desktop's panels (audio,
 Bluetooth, network, Wi-Fi QR, power, and speed tests) run in daily use beside
@@ -149,7 +149,7 @@ its original names (Step 1–5), which were Develop candidates feeding stages
 | 0.0 | The foundation owned: package mirror and kernel, Hyprland configuration, shell environment, session entry, login screen | — | 0.0.1 and 0.0.2, 2026-09-22 and 2026-10-04. |
 | 0.1 | Session services in the Tamlinux shell beside the existing bar; the desktop's commands owned | Proof | 0.1.0–0.1.23 accepted 2026-10-04 and 2026-10-05: notifications, OSD, clipboard, pickers, reminders, menu, background, screenshots, polkit, capture, media, idle, battery, browser extensions, monitor watch, lock, and the menus' and keys' remaining commands. |
 | 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the Tamlinux shell | 0.1 | 0.2.0–0.2.6 accepted 2026-10-05. Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
-| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | 0.3.0 and 0.3.1 accepted 2026-10-06: the plugins load in the isolated shell and call only Tamlinux commands, and the shell draws the whole bar with its own widgets. Next the daily bar is replaced and the inherited shell stops (0.3.2). |
+| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | 0.3.0 and 0.3.1 accepted 2026-10-06: the plugins load in the isolated shell and call only Tamlinux commands, and the shell draws the whole bar with its own widgets. 0.3.2 prepares multi-screen routing, bar controls, settings migration, and deployed copies. The daily bar is replaced and the inherited shell stops at 0.3.3. |
 | 0.4 | Plugin backends and helpers on the compositor contract; Sway adapter | 0.3 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment; fixture proof passed. Still needed: Sway backends for the monitor and desktop-mode helpers, night light, and capture through the contract; daily use of the Hyprland adapter. |
 | 0.5 | Tamlinux's own look and name | 0.3 | One theme source generates every application's colours; owned fonts; the name on the login screen, menus, and About. |
 | 0.6 | The inherited desktop removed; Hyprland stays | 0.2–0.5 | Its system files, session environment, and every package it built are owned; its packages, package mirror, repository, and kernel are removed. |
@@ -335,8 +335,7 @@ request in the proof. They start the existing programs only when
 `TAM LINUX_HOST_ACTIONS=1`, which the proof unsets. Plugin QML reads the
 compositor facade; the remaining Hyprland commands are in `tam-desktop-mode`
 and the monitor helpers. Replacing the running bar is
-`desktop/launch-daily-bar --replace` after that bar is accepted, at step
-0.3.2.
+the managed session cutover after that bar is accepted, at step 0.3.3.
 
 ## Boundaries and recovery
 
@@ -366,7 +365,7 @@ workspaces, focus, and `dpmsOn`, and reacts to `revision`.
 Command text stays in `compositor_commands.py`. Reads run. Mutations,
 including the `monitors.lua` write, record unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`. Brightness still uses the Omarchy
-helper. Replacing the running bar remains step 0.3.2.
+helper. Replacing the running bar remains step 0.3.3.
 
 ## Step 5 Sway adapter
 
@@ -401,6 +400,30 @@ Point `tam-desktop-mode`, `fred-monitor-layout`, `fred-monitor-state`, and
 `fred-monitor-reset` at a Sway backend with the same named operations. Layout
 must stop writing `monitors.lua`. A live Sway session is still required before
 those mutations can be more than recorded commands. Replacing the running bar
-is step 0.3.2, not a side effect of this develop candidate. Promotion
+is step 0.3.3, not a side effect of this develop candidate. Promotion
 to Test is a separate decision. Stages 0.4 and later are not claimed complete
 by this prototype.
+
+## Daily-bar readiness and deployed shell (0.3.2)
+
+The session shell is a committed `main` revision pinned by a non-flake Nix
+input and linked at `~/.local/share/tamlinux/shell`, with file watching off.
+The proof keeps using the checkout and isolated home/config/state paths.
+The deployment command's Test override creates a recoverable Home Manager
+generation without changing the normal lock; Run records the selected pin,
+and Back activates the previous generation. A configuration commit and its
+generation identify the shell plus the eight 2.0.0 plugin deployment copies.
+Widget layout and settings are live-linked, so their revisions also need
+Git history for complete recovery.
+
+The shell reads layout and widget settings from `~/.config/tamlinux/shell/`.
+`desktop/adapters/omarchy_shell_import.py` converts the former shell.json
+once without overwriting existing documents. The session starter validates
+`~/.config/tamlinux/plugins/`; failed manifests are logged and omitted.
+Both scale 1 and 1.25 selftests checked focused-output routes and bar
+controls on DP-1, DP-2, and HDMI-A-1, converted clock settings, and a plugin
+with an escaping entry path. No proof compositor mutations ran.
+
+The services-only unit still has `TAMLINUX_BAR=0`. Manual use of the complete
+isolated bar is owed before the separate 0.3.3 cutover; readiness tests do
+not assert daily-use acceptance.

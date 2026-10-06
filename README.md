@@ -14,7 +14,7 @@ Quickshell, and Omarchy.
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.3.1 — The Tamlinux shell draws a full bar, its own widgets beside the eight rewritten plugins, in the isolated shell; stage 0.2 is complete (every key binding and menu entry runs Tamlinux). Next, it becomes the daily bar (0.3.2). Not an installable image yet |
+| **Status** | 0.3.2 — Daily-bar readiness: multi-screen routes, bar controls, converted settings, validated plugin deployments, and a pinned shell deployment. The isolated shell draws the complete bar; session services run from a deployed copy. The daily bar cutover is 0.3.3. Not an installable image yet |
 
 ---
 

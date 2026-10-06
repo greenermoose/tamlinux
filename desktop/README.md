@@ -37,7 +37,7 @@ is not copied into this directory.
 
 | Call | Who uses it | Host behavior |
 | --- | --- | --- |
-| `foreground`, `fontFamily`, `position`, `urgent`, `barSize` | all eight plugins | Bottom bar, horizontal, owned palette and type scale. |
+| `foreground`, `fontFamily`, `position`, `urgent`, `barSize` | all eight plugins | Top or bottom bar, horizontal, owned palette and type scale. |
 | `bar.screen.name` | weather, tides | The output this bar was built for. |
 | `setting()` / `updateEntryInline` | clock | Scalar writes for a registered id. Unknown ids are refused. |
 | `moduleWidgets` | workspaces | Every live instance of that id, across outputs. |
@@ -46,7 +46,7 @@ is not copied into this directory.
 | `targetBelongsToWindow` | keyboard, monitor, sysinfo, weather, tides | True only when the click target belongs to that window. |
 | `setCenterHoverRevealSuppressed` | weather, tides | Stored on that bar. |
 | `showTooltip` / `hideTooltip` | sysinfo, monitor, and the shared buttons | Separate overlay. Size follows `TAMLINUX_UI_SCALE`. |
-| `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the first registered panel widget. `omarchy.osd` is refused. |
+| `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the registered panel on the focused output. `omarchy.osd` is refused. |
 | `bar.run` | none of the 2.0.0 plugins | Logged and not executed. The string is not interpreted. |
 | `layoutConfig` | the tray | The bar's `{ left, center, right }` entry lists. |
 | `centerSectionRevealHeld` | the indicators | True while the pointer is over a center widget. |
@@ -54,7 +54,7 @@ is not copied into this directory.
 | `openMenu(name)` | the menu button | Recorded. Runs `$TAMLINUX_BIN/tam-menu toggle [name]` only when the actions flag is set. |
 | `compositor.keyboards`, `.typedKeyboardName`, `.switchKeyboardLayout(name)`, `.refreshKeyboards()` | the keyboard layout widget | From the adapter's `hyprctl -j devices` read and `activelayout` events; the switch is recorded unless compositor live actions are on. |
 | `compositor.focusGrab` | `PopupCard` | Hyprland's focus grab as a component; null on Sway, where a popup does not close on an outside click. |
-| `pickAgent()` | agents | Recorded. Starts `/usr/bin/omarchy-agent --pick` only when `TAMLINUX_HOST_ACTIONS=1`. |
+| `pickAgent()` | agents | Recorded. Starts `$TAMLINUX_BIN/tam-agent --pick` only when `TAMLINUX_HOST_ACTIONS=1`. |
 | `openTerminal(program)` | sysinfo, the menu button | Records `btop`, or `""` for a plain terminal (`xdg-terminal-exec`). Any other program is refused. The launch uses the same actions flag. |
 | `notify(text)` | weather | Records the length of a plain notice up to 512 characters. Shell characters are refused. A plain notice is sent only when the actions flag is set. |
 | `openTimezoneMenu()` | clock | Recorded. Opens the timezone program only when the actions flag is set. |
@@ -375,7 +375,7 @@ facade from fixtures and does not start `swaymsg`. Those helpers do not have
 a Sway backend yet. Live compositor actions stay off unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
 Replacing the running bar is `desktop/launch-daily-bar --replace` after this
-candidate is accepted. That cutover is Tamlinux step 0.3.2.
+candidate is accepted. That cutover is Tamlinux step 0.3.3.
 
 ## Theme integration
 
@@ -399,3 +399,21 @@ acceptance is pending. Style routes theme, background and unlock pickers
 through Tamlinux. Font selection uses the installed Tamlinux helpers and
 restarts only the existing services host. The application theme engine remains
 inherited until the separately planned migration.
+
+## 0.3.2 readiness checks
+
+`python3 desktop/launch-clock-proof --selftest --output all` checks the
+layout on every connected display, each focused-output route without
+moving real focus, numbered panels, hide/show, top/bottom, transparency,
+and restart persistence. The conversion fixture supplies the clock's
+format and birth-year settings; the session registry rejects and reports
+a plugin with an escaping entry path while the full valid layout loads.
+The same checks pass with `--scale 1.25`.
+
+The daily session uses a pinned deployed shell copy, distinct from this
+checkout proof. Its starter is `shell/host/session_start.py`. It builds
+plugin entries from `~/.config/tamlinux/plugins/` and reads
+`~/.config/tamlinux/shell/{layout,settings}.json`. To import the old bar
+configuration once, run `desktop/adapters/omarchy_shell_import.py` with the
+source shell.json and output directory; existing files are refused.
+The daily bar switches separately at 0.3.3.
