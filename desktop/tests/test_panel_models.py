@@ -330,6 +330,10 @@ class KeyboardLayoutModelTests(unittest.TestCase):
     def test_event_keyboard_name_virtual_fcitx(self):
         self.assertEqual(self.run_expr("M.eventKeyboardName({ data: 'hl-virtual-keyboard,English' })"), "")
         self.assertEqual(self.run_expr("M.eventKeyboardName({ data: 'hl-virtual-keyboard-fcitx,English' })"), "")
+        self.assertEqual(
+            self.run_expr("M.eventKeyboardName({ data: 'usb-hl-virtual-keyboard,English' })"),
+            "usb-hl-virtual-keyboard",
+        )
 
     def test_is_typed_keyboard_untyped_prefixes(self):
         self.assertEqual(self.run_expr("M.isTypedKeyboard('hl-virtual-keyboard')"), False)
@@ -476,6 +480,14 @@ class PowerModelTests(unittest.TestCase):
             True,
         )
         # FullyCharged: fraction < 0.99 is true, >= 0.99 is false
+        self.assertEqual(
+            self.run_expr(f"M.chargeThresholdActive({{ isPresent: true, percentage: 0.989, state: 3 }}, false, {states})"),
+            True,
+        )
+        self.assertEqual(
+            self.run_expr(f"M.chargeThresholdActive({{ isPresent: true, percentage: 0.99, state: 3 }}, false, {states})"),
+            False,
+        )
         self.assertEqual(
             self.run_expr(f"M.chargeThresholdActive({{ isPresent: true, percentage: 0.8, state: 3 }}, false, {states})"),
             True,
@@ -729,6 +741,14 @@ class BluetoothModelTests(unittest.TestCase):
                 "connected": [{"name": "C1", "connected": True}],
                 "known": [{"name": "K1", "paired": True}],
                 "discovered": [{"name": "D1"}],
+            },
+        )
+        self.assertEqual(
+            self.run_expr("M.deviceLists([{ name: 'B1', bonded: true }, { name: 'T1', trusted: true }])"),
+            {
+                "connected": [],
+                "known": [{"name": "B1", "bonded": True}, {"name": "T1", "trusted": True}],
+                "discovered": [],
             },
         )
 
