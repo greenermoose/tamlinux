@@ -12,6 +12,7 @@ against a local transcript says so explicitly.
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-06 | Tamlinux-only dependencies | Claude Code `2.1.291` | `claude-opus-5-5` | [`2026-10-06-tamlinux-only-dependencies.md`](2026-10-06-tamlinux-only-dependencies.md) |
 | 2026-10-03 | Compositor facade reads | Cursor `3.23.12` | `composer` | [`2026-10-03-compositor-facade.md`](2026-10-03-compositor-facade.md) |
 | 2026-10-03 | Shell-independent 2.0.0 | Cursor `3.23.12` | `composer` | [`2026-10-03-shell-independent-2.0.0.md`](2026-10-03-shell-independent-2.0.0.md) |
 | 2026-09-19 | Reconnaissance (Omarchy internals, binds, marketplace); no code, stopped on an API quota limit | `agy` (Antigravity CLI `1.2.7`) | Gemini 3.8 Flash (High) | recorded within the session below |

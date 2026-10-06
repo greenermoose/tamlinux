@@ -16,7 +16,7 @@ Process {
   property string stdinText: ""
   command: exe !== "" ? [exe].concat(args) : []
   clearEnvironment: true
-  environment: Model.pickEnv(envKeys, { PATH: "/usr/share/omarchy/bin:/usr/bin" }, function (name) { return Quickshell.env(name) })
+  environment: Model.pickEnv(envKeys, { PATH: "/usr/bin" }, function (name) { return Quickshell.env(name) })
   stdinEnabled: stdinText !== ""
   function launch() {
     if (!running && exe !== "") {

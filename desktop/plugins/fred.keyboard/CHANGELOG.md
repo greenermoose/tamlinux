@@ -8,6 +8,8 @@ Format follows Keep a Changelog; this project uses SemVer.
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.
 - Omarchy shell IPC targets are gone. Hyprland reads that this plugin already had stay in the plugin until the compositor contract.
+- Helpers run with `PATH=/usr/bin`; Omarchy's command directory is no longer on it.
+- `tests/test_no_omarchy.py` fails on any `omarchy-*` command or layer name, `/usr/share/omarchy` path, or `OMARCHY_*` variable outside comments, documentation, and tests.
 
 ## [1.0.0] - 2026-09-20
 

@@ -102,3 +102,8 @@ Cursor `3.23.12` (`composer`) rewrote `fred.keyboard` to 2.0.0 on
 Cursor `3.23.12` (`composer`) pointed fred.keyboard 2.0.0 QML at the Tamlinux
 compositor facade. The panel no longer starts `hyprctl`. It parses `bindingsText` with `Bindings.parseBinds` and copies `activeKeymap` when the facade revision changes. Not tagged or released.
 [Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. The closed environment's `PATH` is `/usr/bin`; Omarchy's command directory is gone. Nothing the plugin runs needed it. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
