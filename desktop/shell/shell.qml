@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Tam.Commons
 import "host"
+import "bar/BarModel.js" as BarModel
 
 ShellRoot {
   id: proof
@@ -17,7 +18,9 @@ ShellRoot {
   property bool outputDropped: false
   // TAMLINUX_BAR=0 runs only the services, beside another shell's bar.
   readonly property bool barEnabled: Quickshell.env("TAMLINUX_BAR") !== "0"
-  readonly property string barPosition: barEnabled ? "bottom" : "top"
+  // The bar's edge, from the layout document's "position": "top" (the
+  // default) or "bottom". Services-only mode sits beside Omarchy's top bar.
+  readonly property string barPosition: barEnabled && barLayout ? barLayout.position : "top"
   property string outputName: Quickshell.env("TAMLINUX_OUTPUT") || ""
   property string droppedHosts: ""
   property var settingsDoc: ({ "version": 1, "entries": {} })
@@ -52,6 +55,7 @@ ShellRoot {
 
   function allowedId(id) {
     if (builtinWidgetIds.indexOf(id) !== -1) return true
+    if (typeof id === "string" && pluginEntries[id] !== undefined) return true
     var parts = pluginIds.split(",")
     for (var i = 0; i < parts.length; i++) {
       if (parts[i] === id) return true
@@ -94,8 +98,18 @@ ShellRoot {
       clean[sections[i]] = list.slice(0, 32)
     }
     var anchor = parsed && typeof parsed.centerAnchor === "string" ? parsed.centerAnchor : ""
-    barLayout = { "centerAnchor": anchor, "layout": clean }
-    evidence("bar-layout left=" + clean.left.length + " center=" + clean.center.length + " right=" + clean.right.length)
+    var position = readPosition(parsed ? parsed.position : undefined)
+    barLayout = { "centerAnchor": anchor, "layout": clean, "position": position }
+    evidence("bar-layout left=" + clean.left.length + " center=" + clean.center.length + " right=" + clean.right.length
+      + " position=" + position)
+  }
+
+  // No vertical bar (D89): left, right, and anything else read as top.
+  function readPosition(value) {
+    if (value === undefined || value === null || value === "top") return "top"
+    if (value === "bottom") return "bottom"
+    evidence("bar-position-unsupported " + JSON.stringify(value).slice(0, 40))
+    return "top"
   }
 
   function ingestPluginEntries(raw) {
@@ -252,27 +266,99 @@ ShellRoot {
     return items.length > 0 ? items[0] : null
   }
 
-  function summon(id) {
-    if (!allowedId(id)) {
+  // ------------------------------------------------------------ panel routes
+  //
+  // Every screen's bar holds its own copy of each panel, and each copy
+  // registers the same per-panel IPC target, which reaches only one of them.
+  // Keys go through these routes instead, as on Omarchy (findPanelWidget):
+  // an open copy wins, then the copy on the focused output (pickPanelSlot).
+  // The overlays (Wi-Fi QR, both speed tests) and the OSD are single
+  // windows in the services; the routes reach those too.
+
+  readonly property var overlayIds: ["tamlinux.wifiqr", "tamlinux.speedtest", "tamlinux.disk-speedtest"]
+
+  // The proof sets routeFocus (setRouteFocus) to check each screen's route
+  // without moving the session's real focus; empty means the compositor's.
+  property string routeFocus: ""
+
+  function focusedScreenName() {
+    if (routeFocus !== "") return routeFocus
+    return compositor ? String(compositor.focusedOutputName || "") : ""
+  }
+
+  function isPanel(item) {
+    return !!item && typeof item.open === "function" && typeof item.close === "function"
+      && item.opened !== undefined
+  }
+
+  // The copy a key acts on; null when no bar draws that panel.
+  function findPanelWidget(id) {
+    var wanted = String(id || "")
+    var candidates = []
+    for (var i = 0; i < liveWidgets.length; i++) {
+      var row = liveWidgets[i]
+      if (row.id !== wanted || !isPanel(row.widget)) continue
+      candidates.push({
+        slot: row.widget,
+        screenName: String(row.key).split("#")[0],
+        opened: row.widget.opened === true
+      })
+    }
+    return BarModel.pickPanelSlot(candidates, focusedScreenName())
+  }
+
+  function overlay(id) {
+    if (overlayIds.indexOf(String(id || "")) === -1) return null
+    var host = sessionServices.panels
+    return host && host.panel ? host.panel(id) : null
+  }
+
+  function knownRoute(id) {
+    return allowedId(id) || overlayIds.indexOf(id) !== -1 || id === "tamlinux.osd"
+  }
+
+  // Bar panels take no payload; the overlays and the OSD do (the network
+  // panel passes the Wi-Fi QR its interface, the audio panel the OSD its
+  // level). Panels call this as bar.shell.summon.
+  function summon(id, payloadJson) {
+    var payload = payloadJson === undefined || payloadJson === null ? "{}" : String(payloadJson)
+    if (!knownRoute(id)) {
       evidence("unsupported summon " + id)
       return false
     }
-    var item = firstWidget(id)
-    if (!item || typeof item.open !== "function") {
-      evidence("summon-missing " + id)
-      return false
+    if (id === "tamlinux.osd") {
+      var osd = sessionServices.osd
+      if (!osd) return false
+      osd.open(payload)
+      return true
     }
-    item.open()
-    evidence("summoned " + id)
-    return true
+    var item = findPanelWidget(id)
+    if (item) {
+      item.open()
+      evidence("summoned " + id + " screen=" + panelScreen(item))
+      return true
+    }
+    if (overlay(id)) {
+      sessionServices.panels.summon(id, payload)
+      evidence("summoned " + id + " overlay")
+      return true
+    }
+    item = firstWidget(id)
+    if (item && typeof item.open === "function") {
+      item.open()
+      evidence("summoned " + id)
+      return true
+    }
+    evidence("summon-missing " + id)
+    return false
   }
 
   function hidePlugin(id) {
-    if (!allowedId(id)) {
+    if (!knownRoute(id)) {
       evidence("unsupported hide " + id)
       return false
     }
-    var item = firstWidget(id)
+    var item = findPanelWidget(id) || overlay(id) || firstWidget(id)
     if (!item || typeof item.close !== "function") {
       evidence("hide-missing " + id)
       return false
@@ -283,11 +369,19 @@ ShellRoot {
   }
 
   function togglePlugin(id) {
-    if (!allowedId(id)) {
+    if (!knownRoute(id)) {
       evidence("unsupported toggle " + id)
       return false
     }
-    var item = firstWidget(id)
+    var item = findPanelWidget(id) || overlay(id)
+    if (item) {
+      if (item.opened === true) hidePlugin(id)
+      else summon(id, "{}")
+      evidence("toggled " + id)
+      return true
+    }
+    // A widget that is not a panel but toggles something of its own.
+    item = firstWidget(id)
     if (!item || typeof item.toggle !== "function") {
       evidence("toggle-missing " + id)
       return false
@@ -295,6 +389,93 @@ ShellRoot {
     item.toggle()
     evidence("toggled " + id)
     return true
+  }
+
+  // One method on the copy a key would reach, such as the network panel's
+  // showQr. Returns what it returned, "ok" for nothing, "unknown" when there
+  // is no such panel or method, "error" when it threw.
+  function callPanel(id, method) {
+    var name = String(method || "")
+    if (!knownRoute(id) || !/^[a-z][A-Za-z0-9]{0,63}$/.test(name)) {
+      evidence("unsupported call " + id + " " + name.slice(0, 64))
+      return "unknown"
+    }
+    var item = findPanelWidget(id) || overlay(id) || firstWidget(id)
+    if (!item || typeof item[name] !== "function") {
+      evidence("call-missing " + id + " " + name)
+      return "unknown"
+    }
+    try {
+      var result = item[name]()
+      evidence("called " + id + " " + name)
+      return result === undefined || result === null ? "ok" : String(result)
+    } catch (e) {
+      evidence("call-failed " + id + " " + name)
+      return "error"
+    }
+  }
+
+  // The bar that counts for togglePanelAt: the focused output's, or the
+  // first. Every bar is laid out from one layout, so any one would do; the
+  // focused one also answers which copies are drawn there.
+  function countingHostKey() {
+    var focused = focusedScreenName()
+    var first = ""
+    for (var i = 0; i < liveWidgets.length; i++) {
+      var key = String(liveWidgets[i].key)
+      if (key.split("#")[0] === focused) return key
+      if (first === "") first = key
+    }
+    return first
+  }
+
+  // The ids of the panels in one bar section, in layout order, counting only
+  // panels drawn on the counting bar: the tray, plain widgets, and a widget
+  // hiding itself are passed over, as on Omarchy.
+  function panelIdsIn(section) {
+    var name = String(section || "")
+    if (!barLayout || ["left", "center", "right"].indexOf(name) === -1) return []
+    var entries = barLayout.layout[name]
+    var key = countingHostKey()
+    var ids = []
+    for (var i = 0; i < entries.length; i++) {
+      var id = BarModel.entryId(entries[i])
+      for (var j = 0; j < liveWidgets.length; j++) {
+        var row = liveWidgets[j]
+        if (row.key !== key || row.id !== id) continue
+        var item = row.widget
+        if (!isPanel(item) || !BarModel.isDrawnSlot(item)) continue
+        ids.push(id)
+        break
+      }
+    }
+    return ids
+  }
+
+  // The Nth panel of a section (one-based, for SUPER + CTRL + 1-9), toggled
+  // on the focused screen. Returns the id it acted on, or "unknown".
+  function togglePanelAt(section, index) {
+    var ids = panelIdsIn(section)
+    var n = Math.round(Number(index))
+    var id = isFinite(n) && n >= 1 && n <= ids.length ? ids[n - 1] : ""
+    if (id === "") {
+      evidence("panel-at-missing " + String(section).slice(0, 16) + " " + String(index).slice(0, 8))
+      return "unknown"
+    }
+    evidence("panel-at " + section + " " + n + " " + id)
+    togglePlugin(id)
+    return id
+  }
+
+  function panelScreen(item) {
+    for (var i = 0; i < liveWidgets.length; i++) {
+      if (liveWidgets[i].widget === item) return String(liveWidgets[i].key).split("#")[0]
+    }
+    return ""
+  }
+
+  function probePanels(section) {
+    evidence("panels " + section + " " + panelIdsIn(section).join(","))
   }
 
   function openOn(key, id) {
@@ -449,9 +630,17 @@ ShellRoot {
     }
     function dropHost(key: string): void { proof.dropHost(key) }
     function openOn(key: string, id: string): void { proof.openOn(key, id) }
-    function summon(id: string): void { proof.summon(id) }
-    function hide(id: string): void { proof.hidePlugin(id) }
-    function toggle(id: string): void { proof.togglePlugin(id) }
+    // The routes keys use: each reaches the copy on the focused screen.
+    function summon(id: string): string { return proof.summon(id, "{}") ? "ok" : "unknown" }
+    function hide(id: string): string { return proof.hidePlugin(id) ? "ok" : "unknown" }
+    function toggle(id: string): string { return proof.togglePlugin(id) ? "ok" : "unknown" }
+    function call(id: string, method: string): string { return proof.callPanel(id, method) }
+    function togglePanelAt(section: string, index: string): string { return proof.togglePanelAt(section, index) }
+    function probePanels(section: string): void { proof.probePanels(section) }
+    function setRouteFocus(name: string): void {
+      proof.routeFocus = String(name || "").slice(0, 64)
+      proof.evidence("route-focus " + proof.routeFocus)
+    }
     function probeWidgets(): void { proof.probeWidgets() }
     function probeSwitch(): void { proof.probeSwitch() }
     function probeClick(): void { proof.probeClick() }

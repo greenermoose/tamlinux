@@ -16,6 +16,9 @@ import "../panels/diskspeedtest" as DiskSpeedTestPanel
 // `tam-shell tamlinux.audio toggle`; an overlay without a target of its own
 // opens through `tam-shell tamlinux.panels summon <id>`. TAMLINUX_PANELS
 // names the panels to load, comma-separated; unknown names are ignored.
+// When the Tamlinux bar runs, it draws the audio, Bluetooth, network, and
+// power panels itself, one per screen, so this host loads only the overlays
+// and the shell's routes (shell.qml) reach them through panel().
 Item {
   id: host
 
@@ -24,12 +27,16 @@ Item {
   property var media: null
 
   readonly property var known: ["audio", "bluetooth", "network", "wifiqr", "power", "speedtest", "disk-speedtest"]
+  readonly property var overlays: ["wifiqr", "speedtest", "disk-speedtest"]
+  readonly property bool barRuns: !!shell && shell.barEnabled === true
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_PANELS") || "").split(",")
     var picked = []
     for (var i = 0; i < wanted.length; i++) {
       var name = wanted[i].trim()
-      if (known.indexOf(name) !== -1 && picked.indexOf(name) === -1) picked.push(name)
+      if (known.indexOf(name) === -1 || picked.indexOf(name) !== -1) continue
+      if (barRuns && overlays.indexOf(name) === -1) continue
+      picked.push(name)
     }
     return picked
   }
@@ -82,6 +89,9 @@ Item {
     }
     return null
   }
+
+  function summon(id, payloadJson) { return panelShell.summon(id, payloadJson) }
+  function hide(id) { return panelShell.hide(id) }
 
   // What the panels call as bar.shell. Only the calls the ported panels make.
   QtObject {

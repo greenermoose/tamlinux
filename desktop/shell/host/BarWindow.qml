@@ -28,19 +28,23 @@ PanelWindow {
     return Math.max(tooltipGap, Math.min(left, right))
   }
   property var tooltipAnchor: null
+  // "top" or "bottom", from the layout document (shell.barPosition).
+  readonly property string position: shell.barPosition
+  readonly property bool atBottom: position === "bottom"
 
   screen: screenRef
   color: Color.bar.background
   exclusionMode: Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Normal : ExclusionMode.Ignore
   implicitHeight: Style.bar.sizeHorizontal
-  WlrLayershell.namespace: "tamlinux-proof-" + hostKey.replace("#", "-")
+  WlrLayershell.namespace: "tamlinux-bar-" + hostKey.replace("#", "-")
   WlrLayershell.layer: WlrLayer.Top
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
   anchors {
     left: true
     right: true
-    bottom: true
+    top: !win.atBottom
+    bottom: win.atBottom
   }
 
   BarApi {
@@ -49,6 +53,7 @@ PanelWindow {
     shell: win.shell
     hostKey: win.hostKey
     screen: win.screenRef
+    position: win.position
     barSize: win.implicitHeight
     layoutConfig: win.layoutMode ? shell.barLayout.layout : ({ "left": [], "center": [], "right": [] })
   }
@@ -197,13 +202,15 @@ PanelWindow {
       + " width=" + tipWindow.implicitWidth
       + " x=" + Math.round(tooltipX)
       + " barWidth=" + Math.round(win.width)
+      + " side=" + (win.atBottom ? "above" : "below")
       + " height=" + tipWindow.implicitHeight
       + " text=" + JSON.stringify(tooltipText))
   }
 
   Component.onCompleted: {
     shell.attachHost(win)
-    console.log("TAMLINUX_EVIDENCE bar-created host=" + hostKey + " screen=" + (screenRef ? screenRef.name || "" : ""))
+    console.log("TAMLINUX_EVIDENCE bar-created host=" + hostKey + " screen=" + (screenRef ? screenRef.name || "" : "")
+      + " position=" + position)
   }
 
   Component.onDestruction: {
@@ -222,9 +229,13 @@ PanelWindow {
     WlrLayershell.namespace: "tamlinux-tooltip-" + win.hostKey.replace("#", "-")
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    anchors.bottom: true
+    // On the side away from the screen edge: below a top bar, above a
+    // bottom one.
+    anchors.top: !win.atBottom
+    anchors.bottom: win.atBottom
     anchors.left: true
-    margins.bottom: win.implicitHeight + Style.space(6)
+    margins.top: win.atBottom ? 0 : win.implicitHeight + Style.space(6)
+    margins.bottom: win.atBottom ? win.implicitHeight + Style.space(6) : 0
     margins.left: Math.round(win.tooltipX)
     implicitWidth: tipLabel.implicitWidth + Style.spacing.controlPaddingX * 2
     implicitHeight: tipLabel.implicitHeight + Style.spacing.controlPaddingY * 2

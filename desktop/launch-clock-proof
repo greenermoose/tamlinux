@@ -187,7 +187,7 @@ def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = No
     write_settings(config / "tamlinux-shell", {"version": 1, "entries": entries}, allowed)
 
 
-def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False) -> dict:
+def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None) -> dict:
     home = state / "home"
     config = home / ".config"
     plugin = state / "plugin"
@@ -245,7 +245,12 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         if not extras:
             raise SystemExit("--layout needs the plugins")
         target = config / "tamlinux-shell" / "bar-layout.json"
-        target.write_text(LAYOUT.read_text(encoding="utf-8"), encoding="utf-8")
+        document = json.loads(LAYOUT.read_text(encoding="utf-8"))
+        if position is not None:
+            document["position"] = position
+            # What the driver expects; the shell reads only the document.
+            env["TAMLINUX_PROOF_POSITION"] = position if position in ("top", "bottom") else "top"
+        target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
         os.chmod(target, 0o600)
         entries = {"fred.clock": by_id["fred.clock"]["entry"]}
         entries.update({record["id"]: record["entry"] for record in extra_records})
@@ -254,6 +259,10 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         # they do in the session; the plugins keep using absolute paths.
         env["PATH"] = f"{tam_bin}:/usr/bin"
         env["TAMLINUX_PLUGIN_ENTRIES"] = json.dumps(entries)
+        # The panel host, asked for every panel, must load only the overlays
+        # beside a bar that draws the rest.
+        env["TAMLINUX_SERVICES"] = "panels"
+        env["TAMLINUX_PANELS"] = "audio,bluetooth,network,power,wifiqr,speedtest,disk-speedtest"
     return {"env": env, "home": home, "plugin": plugin, "record": records[0]}
 
 
@@ -346,8 +355,8 @@ def helper_leaks(plugin: Path) -> list[str]:
     ]
 
 
-def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False) -> str:
-    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor, layout=layout)
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False, position: str | None = None) -> str:
+    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor, layout=layout, position=position)
     process = spawn(prepared["env"])
     try:
         ready = wait_for(
@@ -730,6 +739,76 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
     right = int(fields["x"]) + int(fields["width"])
     if int(fields["x"]) < 0 or right > int(fields["barWidth"]):
         raise SystemExit(f"tooltip off screen: {line}")
+    expected = env.get("TAMLINUX_PROOF_POSITION", "top")
+    side = "above" if expected == "bottom" else "below"
+    if fields.get("side") != side:
+        raise SystemExit(f"tooltip on the wrong side of a {expected} bar: {line}")
+    created = [line for line in lines() if line.startswith("bar-created host=")]
+    if not created or any(not line.endswith(f" position={expected}") for line in created):
+        raise SystemExit(f"bars not at the {expected}:\n" + "\n".join(created))
+    if expected == "top":
+        drive_routes(env, process)
+
+
+# The focused-screen routes (plan 18 0.3.2 item 2) and the overlay-only panel
+# host (item 3), on every screen the proof draws a bar on.
+def drive_routes(env: dict, process: subprocess.Popen) -> None:
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
+    def require(predicate, message: str) -> None:
+        if not wait_for(predicate, 5):
+            raise SystemExit(message + "\n" + read_log(process)[-4000:])
+
+    def count(text: str) -> int:
+        return sum(1 for line in lines() if line == text)
+
+    require(lambda: "panels wifiqr,speedtest,disk-speedtest" in lines(), "the panel host did not keep to the overlays:")
+    ipc(env, "tamlinux-shell", "probePanels", ["right"])
+    listed = wait_for(lambda: next((line for line in lines() if line.startswith("panels right ")), None), 5)
+    if not listed:
+        raise SystemExit("no right-section panel census:\n" + read_log(process)[-4000:])
+    order = listed.split(" ", 2)[2].split(",")
+    builtin = [entry for entry in order if entry.startswith("tamlinux.")]
+    if builtin != ["tamlinux.bluetooth", "tamlinux.network", "tamlinux.audio"] or "tamlinux.tray" in order:
+        raise SystemExit(f"right-section panels out of layout order: {order}")
+    for number, panel_id in enumerate(order, start=1):
+        result = ipc(env, "tamlinux-shell", "togglePanelAt", ["right", str(number)])
+        if result.stdout.strip() != panel_id:
+            raise SystemExit(f"togglePanelAt right {number} answered {result.stdout.strip()!r}, not {panel_id}")
+        require(lambda panel_id=panel_id: f"toggled {panel_id}" in lines(), f"togglePanelAt did not toggle {panel_id}:")
+        ipc(env, "tamlinux-shell", "hide", [panel_id])
+    missing = ipc(env, "tamlinux-shell", "togglePanelAt", ["right", str(len(order) + 1)])
+    if missing.stdout.strip() != "unknown":
+        raise SystemExit("togglePanelAt past the last panel was not refused")
+    screens = []
+    for key in host_keys(lines()):
+        name = key.split("#", 1)[0]
+        if name not in screens:
+            screens.append(name)
+    for name in screens:
+        ipc(env, "tamlinux-shell", "setRouteFocus", [name])
+        require(lambda name=name: f"route-focus {name}" in lines(), "route focus was not set:")
+        for panel_id in ("tamlinux.audio", "fred.monitor"):
+            opened = f"summoned {panel_id} screen={name}"
+            closed = f"hidden {panel_id}"
+            before_open, before_close = count(opened), count(closed)
+            ipc(env, "tamlinux-shell", "toggle", [panel_id])
+            require(lambda: count(opened) > before_open, f"{panel_id} did not open on {name}:")
+            ipc(env, "tamlinux-shell", "toggle", [panel_id])
+            require(lambda: count(closed) > before_close, f"{panel_id} did not close on {name}:")
+    ipc(env, "tamlinux-shell", "setRouteFocus", [""])
+    called = ipc(env, "tamlinux-shell", "call", ["tamlinux.bluetooth", "toggle"])
+    if called.stdout.strip() != "ok":
+        raise SystemExit(f"call tamlinux.bluetooth toggle answered {called.stdout.strip()!r}")
+    ipc(env, "tamlinux-shell", "hide", ["tamlinux.bluetooth"])
+    refused = ipc(env, "tamlinux-shell", "call", ["tamlinux.network", "no such"])
+    if refused.stdout.strip() != "unknown":
+        raise SystemExit("a malformed call was not refused")
+    absent = ipc(env, "tamlinux-shell", "call", ["tamlinux.network", "notAMethod"])
+    if absent.stdout.strip() != "unknown":
+        raise SystemExit("a call to a missing method was not refused")
+    print(f"routes checked on {len(screens)} screen(s): {','.join(screens)}")
 
 
 def sway_process_lines() -> list[str]:
@@ -883,8 +962,22 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
         print("physical second output not checked")
     run_session(state_root / "plugins", scale, output, drive_plugins, copies="1", extras=True)
     print("plugins registered")
-    run_session(state_root / "layout", scale, output, drive_layout, copies="1", extras=True, layout=True)
+    # Every screen, as the daily bar will run (plan 18 0.3.2 item 11).
+    layout_output = "all" if len(names) >= 2 and output in ("", "all") else output
+    run_session(state_root / "layout", scale, layout_output, drive_layout, copies="1", extras=True, layout=True)
     print("layout registered")
+    run_session(state_root / "layout-bottom", scale, output, drive_layout, copies="1", extras=True, layout=True, position="bottom")
+    print("bottom bar checked")
+    def drive_unsupported(env: dict, process: subprocess.Popen) -> None:
+        def at_top() -> bool:
+            return any(line.startswith("bar-created ") and line.endswith(" position=top") for line in evidence_lines(read_log(process)))
+
+        if not wait_for(at_top, 10):
+            raise SystemExit("a left bar was not drawn at the top:\n" + read_log(process)[-4000:])
+
+    unsupported = run_session(state_root / "layout-left", scale, output, drive_unsupported, copies="1", extras=True, layout=True, position="left")
+    expect(evidence_lines(unsupported), 'bar-position-unsupported "left"')
+    print("unsupported position checked")
     print("selftest ok")
     print(f"scale {scale}")
     print(f"pinned {PINNED_REVISION}")
@@ -900,6 +993,7 @@ def main() -> None:
     parser.add_argument("--layout", action="store_true", help="draw the default bar layout (shell widgets and all eight plugins); implies --plugins")
     parser.add_argument("--scale", default="1")
     parser.add_argument("--output", default="")
+    parser.add_argument("--position", choices=("top", "bottom"), default=None, help="with --layout, the bar's edge (default top)")
     parser.add_argument("--compositor", choices=("hyprland", "sway"), default="hyprland")
     parser.add_argument("--timeout", type=int, default=120, help="seconds before the interactive proof stops; 0 waits until interrupted")
     args = parser.parse_args()
@@ -920,7 +1014,7 @@ def main() -> None:
         return
     state = state_root / "interactive"
     extras = args.plugins or args.layout
-    prepared = prepare(state, args.scale, args.output, extras=extras, compositor=args.compositor, layout=args.layout)
+    prepared = prepare(state, args.scale, args.output, extras=extras, compositor=args.compositor, layout=args.layout, position=args.position)
     if args.plugins and not args.layout:
         prepared["env"]["TAMLINUX_PLUGINS_ON_ALL"] = "1"
     process = spawn(prepared["env"])

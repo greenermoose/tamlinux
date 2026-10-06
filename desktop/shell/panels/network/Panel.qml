@@ -461,6 +461,11 @@ Panel {
   // enabled. The panel's own button pins the interface it is showing. The
   // IPC route forces self-detection instead: details polling stops while the
   // panel is closed, so its cached interface can be stale.
+  // What `tamlinux-shell call tamlinux.network showQr|speedTest` reaches on
+  // the focused screen's copy (the menu's Wi-Fi QR and speed-test rows).
+  function showQr() { summonWifiQr(true) }
+  function speedTest() { summonSpeedTest() }
+
   function summonWifiQr(forceDetect) {
     controller.hide()
     cancelPasswordPrompt()

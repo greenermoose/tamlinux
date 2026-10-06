@@ -27,7 +27,8 @@ import "../services/theme" as Theme
 // need nothing. Only one polkit agent per session registers, so polkit stays
 // out of TAMLINUX_SERVICES while another agent holds the session.
 // The bar's indicators reach notifications, night light, and idle through
-// firstPartyServiceFor (shell.qml), which reads the items below.
+// firstPartyServiceFor (shell.qml), which reads the items below; the shell's
+// panel routes reach the OSD and the panel host's overlays the same way.
 Item {
   id: services
 
@@ -47,6 +48,8 @@ Item {
   readonly property var media: mediaLoader.item
   readonly property var idle: idleLoader.item
   readonly property var nightlight: nightlightLoader.item
+  readonly property var osd: osdLoader.item
+  readonly property var panels: panelsLoader.item
 
   function note(message) {
     console.log("TAMLINUX_EVIDENCE " + message)
@@ -193,6 +196,7 @@ Item {
   }
 
   Loader {
+    id: panelsLoader
     active: services.enabled.indexOf("panels") !== -1
     sourceComponent: Component {
       PanelHost { shell: services.shell; osd: osdLoader.item; media: mediaLoader.item }

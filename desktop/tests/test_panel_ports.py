@@ -83,6 +83,17 @@ def port(text: str) -> str:
 # Changes made after the mechanical port, while wiring each panel. Each is
 # (old, new) applied once to the ported body.
 ADAPTATIONS = {
+    # The menu's Wi-Fi QR and speed-test rows reach the focused screen's copy
+    # through `tamlinux-shell call`, which calls the panel item (0.3.2).
+    "desktop/shell/panels/network/Panel.qml": [
+        ('  function summonWifiQr(forceDetect) {\n',
+         '  // What `tamlinux-shell call tamlinux.network showQr|speedTest` reaches on\n'
+         '  // the focused screen\'s copy (the menu\'s Wi-Fi QR and speed-test rows).\n'
+         '  function showQr() { summonWifiQr(true) }\n'
+         '  function speedTest() { summonSpeedTest() }\n'
+         '\n'
+         '  function summonWifiQr(forceDetect) {\n'),
+    ],
     # x forgets a device; Tam.Ui's key catcher makes that opt-in (0.2.4).
     "desktop/shell/panels/bluetooth/Panel.qml": [
         ("    PanelKeyCatcher {\n      id: keyCatcher\n",
