@@ -150,3 +150,8 @@ Claude Code `2.1.291` (`claude-opus-5-5`) made `launch-clock-proof` send IPC to 
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies from the eight plugins' 2.0.0 candidates and fixed the proof launcher Fred tested them in; Fred accepted 0.3.0.
 [Session record](docs/ai/2026-10-06-proof-ipc-by-pid.md).
+
+### The Tamlinux bar's own widgets — 0.3.1 accepted, 2026-10-06
+
+Claude Code `2.1.291` (`claude-opus-5-5`) gave the Tamlinux shell a layout-driven bar with its own menu, indicators, keyboard layout, tray, and panel icons, and fixed the tooltip placement Fred's test found; Fred accepted 0.3.1. agy and opencode wrote test suites for it from Claude's briefs.
+[Session record](docs/ai/2026-10-06-tamlinux-bar-widgets.md).

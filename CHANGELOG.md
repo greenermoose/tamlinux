@@ -29,6 +29,38 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.3.1 - 2026-10-06
+
+The Tamlinux bar's own widgets.
+
+### Added
+
+- **The bar draws a layout.** Left, center, and right sections with a center
+  anchor, as on Omarchy's bar, from `TAMLINUX_BAR_LAYOUT`. The default
+  layout is today's Omarchy bar order. Omarchy's layout model is ported
+  (`BarModel.js`).
+- **The shell's own widgets:** the menu button, the indicators (screen
+  recording, reminders, night light, Do Not Disturb, Stay Awake), the
+  keyboard layout, the tray, and the audio, Bluetooth, network, and power
+  icons that open the 0.2 panels.
+- **A night light session service** that reads and flips the night light
+  through `tam-toggle-nightlight`.
+- `Tam.Ui` gains `BarIndicator` and `PopupCard`.
+
+### Changed
+
+- The keyboard layout widget and the popups' outside-click grab go through
+  the compositor facade; no widget imports the compositor.
+- Panel settings (the tray's pins, the battery percentage) are saved.
+- Bar tooltips center on their item and stay inside the screen.
+
+### Verification
+
+- Fred checked the layout, hovers, every widget and panel, the center
+  reveal, one popup per screen, closing on an outside click, and scale
+  1.25, and accepted this step. Automated checks: the proof selftest with a
+  layout stage and a tooltip edge probe, and 260 desktop tests.
+
 ## 0.3.0 - 2026-10-06
 
 The first step of stage 0.3, the Tamlinux bar.
