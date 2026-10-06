@@ -15,6 +15,9 @@ QtObject {
   property string activeKeymap: ""
   property int revision: 0
   property var backend: null
+  // A component the bar's popups instantiate to close on an outside click,
+  // or null when the compositor has no focus grab (Sway).
+  readonly property var focusGrab: backend && backend.focusGrab ? backend.focusGrab : null
 
   readonly property string backendName: {
     var name = String(Quickshell.env("TAMLINUX_COMPOSITOR") || "hyprland")

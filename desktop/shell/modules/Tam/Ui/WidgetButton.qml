@@ -19,6 +19,16 @@ Item {
   property bool hovered: false
   property bool tooltipHovered: false
   property var registeredBar: null
+  // Bar indicators (BarIndicator) dim, conceal, and reveal their buttons.
+  // The defaults leave every other button as it was.
+  property real textRotation: 0
+  property bool keepSpace: false
+  property bool dimmed: false
+  property bool concealed: false
+  property bool interactive: true
+  property bool pressable: true
+  property bool maintainIndicatorReveal: false
+  property var revealHost: bar
 
   signal pressed(int button)
   signal wheelMoved(real delta)
@@ -36,7 +46,14 @@ Item {
       registeredBar.registerClickTarget(root)
   }
 
+  function hideOwnTooltip() {
+    if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
+  }
+
   onBarChanged: syncClickRegistration()
+  onVisibleChanged: if (!visible) hideOwnTooltip()
+  onInteractiveChanged: if (!interactive) hideOwnTooltip()
+  onConcealedChanged: if (concealed) hideOwnTooltip()
   Component.onCompleted: syncClickRegistration()
   Component.onDestruction: {
     if (registeredBar && registeredBar.unregisterClickTarget)
@@ -46,6 +63,12 @@ Item {
   readonly property bool vertical: bar ? bar.vertical : false
   readonly property int barSize: bar ? bar.barSize : Style.bar.sizeHorizontal
   readonly property real labelWidth: label.visible ? label.implicitWidth : 0
+
+  opacity: concealed ? 0 : (dimmed ? 0.45 : 1)
+
+  Behavior on opacity {
+    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+  }
 
   implicitWidth: fixedWidth > 0 ? fixedWidth : (vertical ? barSize : Math.max(12, label.implicitWidth + Style.spaceReal(horizontalMargin) * 2))
   implicitHeight: fixedHeight > 0 ? fixedHeight : (vertical ? Math.max(12, label.implicitHeight + Style.spaceReal(verticalPadding) * 2) : barSize)
@@ -58,25 +81,31 @@ Item {
     color: root.foreground
     font.family: root.fontFamily
     font.pixelSize: root.fontSize
+    rotation: root.textRotation
   }
 
   MouseArea {
     id: mouseArea
     anchors.fill: parent
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    enabled: root.interactive
     hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
+    cursorShape: root.pressable ? Qt.PointingHandCursor : Qt.ArrowCursor
     onEntered: {
       root.hovered = true
       root.tooltipHovered = root.tooltipText !== ""
       if (root.bar && root.bar.showTooltip) root.bar.showTooltip(root, root.tooltipText)
+      if (root.maintainIndicatorReveal && root.revealHost && root.revealHost.setIndicatorItemHovered)
+        root.revealHost.setIndicatorItemHovered(true)
     }
     onExited: {
       root.hovered = false
       root.tooltipHovered = false
       if (root.bar && root.bar.hideTooltip) root.bar.hideTooltip(root)
+      if (root.maintainIndicatorReveal && root.revealHost && root.revealHost.setIndicatorItemHovered)
+        root.revealHost.setIndicatorItemHovered(false)
     }
-    onClicked: function(mouse) { root.triggerPress(mouse.button) }
+    onClicked: function(mouse) { if (root.pressable) root.triggerPress(mouse.button) }
     onWheel: function(wheel) { root.wheelMoved(wheel.angleDelta.y) }
   }
 }

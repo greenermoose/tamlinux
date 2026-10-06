@@ -100,6 +100,16 @@ ShellRoot {
     return true
   }
 
+  // The session services a bar widget may ask for by name. Null when that
+  // service is not in TAMLINUX_SERVICES (the proof runs none).
+  function firstPartyServiceFor(id) {
+    if (id === "tamlinux.notifications") return sessionServices.notifications
+    if (id === "tamlinux.nightlight") return sessionServices.nightlight
+    if (id === "tamlinux.idle") return sessionServices.idle
+    if (id === "tamlinux.media") return sessionServices.media
+    return null
+  }
+
   function selectedScreens() {
     var listed = Quickshell.screens
     if (outputDropped || !listed || listed.length === 0) return []
@@ -391,6 +401,7 @@ ShellRoot {
   }
 
   Services {
+    id: sessionServices
     shell: proof
   }
 

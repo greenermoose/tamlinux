@@ -2,6 +2,22 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+  function isPlainObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+  }
+
+  // A module command's output: the last line as JSON, else the whole text.
+  function parseModuleJson(raw) {
+    var text = String(raw || "").trim()
+    if (!text) return {}
+    var lines = text.split("\n")
+    try {
+      return JSON.parse(lines[lines.length - 1])
+    } catch (e) {
+      return { text: text }
+    }
+  }
+
   function clamp(value, min, max) {
     var n = Number(value)
     if (!isFinite(n)) return min

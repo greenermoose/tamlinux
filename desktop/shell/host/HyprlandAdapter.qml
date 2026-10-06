@@ -9,6 +9,9 @@ QtObject {
   id: adapter
 
   property var host: null
+  // PopupCard creates one per popup: Hyprland's focus grab clears on a click
+  // outside the listed windows.
+  readonly property Component focusGrab: Component { HyprlandFocusGrab {} }
   property var queue: []
   property var dpmsByName: ({})
   property string currentLabel: ""

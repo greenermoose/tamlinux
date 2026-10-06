@@ -8,13 +8,14 @@ WidgetButton {
   property real slotSize: Style.bar.iconSlot
   property real opticalSize: Style.bar.iconCanvas
   property bool active: false
+  property bool useActiveColor: true
 
   labelVisible: false
   hasVisualContent: text !== "" || iconComponent !== null
   fontSize: Style.bar.iconFont
   fixedWidth: vertical ? -1 : slotSize
   fixedHeight: vertical ? slotSize : -1
-  foreground: active ? Color.accent : (bar ? bar.barForeground : Color.foreground)
+  foreground: active && useActiveColor ? Color.accent : (bar ? bar.barForeground : Color.foreground)
 
   Item {
     anchors.centerIn: parent
@@ -28,6 +29,7 @@ WidgetButton {
       fontFamily: root.fontFamily
       fontSize: root.fontSize
       color: root.foreground
+      rotation: root.textRotation
     }
 
     Loader {

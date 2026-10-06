@@ -9,6 +9,7 @@ import "../services/imagepicker" as ImagePicker
 import "../services/keybindings" as Keybindings
 import "../services/media" as Media
 import "../services/menu" as Menu
+import "../services/nightlight" as Nightlight
 import "../services/notifications" as Notifications
 import "../services/osd" as Osd
 import "../services/polkit" as Polkit
@@ -25,11 +26,13 @@ import "../services/theme" as Theme
 // gets the menu for its desktop double-clicks. Polkit, idle, and battery
 // need nothing. Only one polkit agent per session registers, so polkit stays
 // out of TAMLINUX_SERVICES while another agent holds the session.
+// The bar's indicators reach notifications, night light, and idle through
+// firstPartyServiceFor (shell.qml), which reads the items below.
 Item {
   id: services
 
   property var shell: null
-  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "battery", "theme", "keybindings", "panels"]
+  readonly property var known: ["notifications", "osd", "clipboard", "emojis", "imagepicker", "reminders", "menu", "background", "polkit", "media", "idle", "nightlight", "battery", "theme", "keybindings", "panels"]
   readonly property var enabled: {
     var wanted = String(Quickshell.env("TAMLINUX_SERVICES") || "").split(",")
     var picked = []
@@ -39,6 +42,11 @@ Item {
     }
     return picked
   }
+
+  readonly property var notifications: notificationsLoader.item
+  readonly property var media: mediaLoader.item
+  readonly property var idle: idleLoader.item
+  readonly property var nightlight: nightlightLoader.item
 
   function note(message) {
     console.log("TAMLINUX_EVIDENCE " + message)
@@ -53,6 +61,7 @@ Item {
   }
 
   Loader {
+    id: notificationsLoader
     active: services.enabled.indexOf("notifications") !== -1
     sourceComponent: Component {
       Notifications.Service { shell: services.shell }
@@ -146,12 +155,23 @@ Item {
   }
 
   Loader {
+    id: idleLoader
     active: services.enabled.indexOf("idle") !== -1
     sourceComponent: Component {
       Idle.Service {}
     }
     onLoaded: services.note("service-loaded idle")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed idle")
+  }
+
+  Loader {
+    id: nightlightLoader
+    active: services.enabled.indexOf("nightlight") !== -1
+    sourceComponent: Component {
+      Nightlight.Service {}
+    }
+    onLoaded: services.note("service-loaded nightlight")
+    onStatusChanged: if (status === Loader.Error) services.note("service-failed nightlight")
   }
 
   Loader {
