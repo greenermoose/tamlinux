@@ -21,6 +21,7 @@ in the orchestrator's brief, not the delegate's work); *partly redone*;
 | 2026-10-05 | T14: behaviour tests for the panel and bar-widget models | Claude Code `2.1.290` (`claude-opus-5-5`) | Antigravity `agy 1.2.17` (`gemini-3.8-flash-high`) | `b70e31a` → `fff2c93` | Corrected | `e060661` (Claude: three branches no case covered, found by mutation) | — |
 | 2026-10-06 | T17: the bar-widget contract test | Claude Code `2.1.291` (`claude-opus-5-5`) | OpenCode `opencode 1.18.31` (`big-pickle`) | `4871051` → `3814002` | Corrected, brief error | `fb65149` (Claude: optional chaining, which opencode's notes found; K1 skipped whole without Omarchy's Ui, where the brief was ambiguous) | — |
 | 2026-10-06 | T18: parity tests for the bar layout model | Claude Code `2.1.291` (`claude-opus-5-5`) | Antigravity `agy 1.3.0` (`gemini-3.8-flash-high`) | `645547a` → `f249f3a` | Merged unchanged | — | — |
+| 2026-10-06 | T19: the shell names no Omarchy command | Claude Code `2.1.291` (`claude-opus-5-5`) | OpenCode `opencode 1.18.31` (`big-pickle`) | `a79f9da` → `a81f497` | Follow-up, brief error | `8df0ff0` (Claude: the brief's rule read a `/` after `++` or `--` as a regular expression; opencode's notes found it) | — |
 
 These three delegate commits predate the `AI-Role`, `AI-Assigned-By` and
 `AI-Task` trailers, so this table is their only record of who assigned them.
