@@ -111,9 +111,10 @@ Cursor `3.23.12` (`composer`) taught the proof host to load the eight
 set. The daily shell was not replaced. Product version stays 0.0.1.
 [Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
 
-### Shared theme integration — Develop, 2026-10-05
+### Style and fonts — 0.2.1 accepted, 2026-10-05
 
 Codex CLI `0.160.1` (`gpt-6.1-sol`) added palette reloads and responsive
-type sizing to the shared shell tokens. Desktop tests and isolated QML proofs
-pass; helper integration and daily use acceptance remain pending.
+type sizing to the shared shell tokens, reviewed delegated helpers and
+completed font-provider routing. Fred tested all four Style controls and
+accepted 0.2.1. Automated and live installation checks pass.
 [Session record](docs/ai/2026-10-05-style-theme-integration.md).

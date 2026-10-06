@@ -4,8 +4,7 @@
   `codex --version` reports `0.160.0`).
 - **Model**: `gpt-6.1-sol` (verified in the active turn metadata).
 - **Transcript**: Retained privately by the author.
-- **Stage**: Test on the development workstation; integrated and installed,
-  awaiting desktop acceptance. The accepted version remains 0.2.0.
+- **Stage**: Run; Fred tested and accepted 0.2.1 for daily use.
 - **Prompts** (excerpt):
   > The next step in the project is 0.2.1, the style and fonts for tamlinux. Make sure you use all the skills at your disposal for front-end design, typography, style, visual graphics, and user interface to make tamlinux beautiful and functional and sustainable. Ask if you have questions.
 - **Scope clarification**:
@@ -70,3 +69,13 @@ Configuration tests: 301 passed. Desktop tests: 66 passed. Real offscreen QML
 checks: 12 passed. The theme diagnostic returns hex strings for its colors.
 Fred's Theme/Background/Unlock/Font checks remain pending; no version bump,
 public push or release has occurred.
+
+## Acceptance
+
+> I didn't realize I needed to open a new terminal. All tests pass. I accept the recent work.
+
+Fred accepted all four Style controls after clarifying that existing Foot
+windows need reopening for font changes. Finalized both version declarations
+at 0.2.1 and recorded changelogs and the accepted step. Automated results:
+301 configuration tests, 66 desktop tests and 12 real QML checks. No public
+push, tag or release was requested.

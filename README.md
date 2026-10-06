@@ -9,11 +9,11 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.0.2](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | [0.2.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.2.0 — the session services run in the Tamlinux shell and Omarchy's packages are frozen; next, every key binding and menu entry on Tamlinux's own commands (0.2). Not an installable image yet |
+| **Status** | 0.2.1 — Style and font controls use the Tamlinux shell; stage 0.2 continues with key bindings and menu entries. Not an installable image yet |
 
 ---
 
@@ -70,7 +70,8 @@ kernel, the Hyprland configuration, the shell environment, and the session
 entry and login screen.
 Since then every step Fred accepts is a version: 0.1.0–0.1.23 moved the
 desktop's session services into the Tamlinux shell, and 0.2.0 froze
-Omarchy's packages. The stages and their
+Omarchy's packages. 0.2.1 moves Style and font controls onto the Tamlinux
+shell. The stages and their
 rules are in [`VERSIONING.md`](VERSIONING.md).
 
 The [development plans](docs/plans/README.md) track the reviewed installation

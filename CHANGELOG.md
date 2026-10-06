@@ -29,6 +29,27 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.1 - 2026-10-05
+
+### Changed
+
+- **Style controls update the Tamlinux shell.** Theme, background and unlock
+  use its pickers. Theme changes apply the selected palette and surface
+  colors; font selection updates terminal configurations and restarts only
+  the existing Tamlinux services shell. Font installation and theme removal
+  use the owned helpers. Existing Foot windows need reopening after a font
+  change.
+- **Shared typography follows the theme.** Validated text size and spacing
+  settings scale controls with the text. Theme reloads coalesce, and failed
+  or malformed reads preserve the current appearance. Full design and
+  typeface changes remain in their separately planned milestone.
+
+### Verification
+
+- Fred tested Theme, Background, Unlock and Font, each and back, and accepted
+  this step. Automated checks: 301 configuration tests, 66 desktop tests and
+  12 real QML checks at normal and fractional scale.
+
 ## 0.2.0 - 2026-10-05
 
 The first step of stage 0.2: nothing Omarchy ships changes underneath the
