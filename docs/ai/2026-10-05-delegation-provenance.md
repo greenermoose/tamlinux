@@ -35,3 +35,11 @@
 Desktop tests: 110 passed, including the nine new widget-port tests. The
 public provenance check (no session IDs, store paths or private repository
 names) finds nothing in `AI_PROVENANCE.md`, `docs/ai/` or the standard.
+
+## Follow-up: 0.2.5 accepted
+
+The network and Wi-Fi QR panels needed no shell change; Claude loaded them
+and pointed the key and the menu row at them in the configuration
+repository. Prompt:
+
+> I did tam-shell tamlinux.network showQr and saw the QR code. I accept 0.2.5.

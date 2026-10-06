@@ -29,6 +29,21 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.2.5 - 2026-10-05
+
+### Changed
+
+- **Network panel and Wi-Fi QR card in the Tamlinux shell.** `SUPER + CTRL +
+  W` opens the network panel (connection, Wi-Fi networks, band, DNS); the
+  QR card shares the connected Wi-Fi network with a phone. No new shell code:
+  both panels were ported at 0.2.4 and are now loaded.
+
+### Verification
+
+- Fred opened the panel from its key, changed Wi-Fi and back, opened the QR
+  card, and accepted this step. Automated checks: 110 desktop tests, and both
+  panels loading in a headless compositor.
+
 ## 0.2.4 - 2026-10-05
 
 ### Changed
