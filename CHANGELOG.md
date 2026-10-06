@@ -29,6 +29,30 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.3.0 - 2026-10-06
+
+The first step of stage 0.3, the Tamlinux bar.
+
+### Changed
+
+- **The eight 2.0.0 plugins depend only on Tamlinux.** No plugin calls an
+  `omarchy-*` command, reads `/usr/share/omarchy` or an `OMARCHY_*` variable
+  (except `fred.workspaces` reading its old configuration keys), or names an
+  `omarchy-*` layer. They run Tamlinux's own commands as
+  `TAMLINUX_BIN + "/tam-..."`, falling back to `~/.local/bin`. Each plugin
+  repository has a test that keeps it that way.
+- **The proof launcher talks only to the shell it started.** It sends IPC by
+  process ID, because the session's own Tamlinux shell shares its
+  configuration directory, and it passes `TAMLINUX_BIN` into the isolated
+  home.
+
+### Verification
+
+- Fred opened every plugin in the isolated Tamlinux shell, checked the clock
+  and tides notifications, a weather location, Text Size and brightness, and
+  accepted this step. Automated checks: the proof selftest at scale 1 and
+  1.25 with all eight plugins, and 258 desktop tests.
+
 ## 0.2.6 - 2026-10-05
 
 Stage 0.2 is complete: every key binding and menu entry runs Tamlinux's own

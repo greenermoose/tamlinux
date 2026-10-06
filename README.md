@@ -9,11 +9,11 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.2.6](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | [0.3.0](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.2.6 — Stage 0.2 complete: every key binding and menu entry runs Tamlinux, including the keybinding viewer, night light, and the audio, Bluetooth, network, Wi-Fi QR, power and speed-test panels; the bar's own keys move with the Tamlinux bar in 0.3. Not an installable image yet |
+| **Status** | 0.3.0 — The eight rewritten plugins depend only on Tamlinux and run in the isolated Tamlinux shell; stage 0.2 is complete (every key binding and menu entry runs Tamlinux). Next, the Tamlinux shell's own bar widgets (0.3.1), then it becomes the daily bar (0.3.2). Not an installable image yet |
 
 ---
 

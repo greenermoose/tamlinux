@@ -145,3 +145,8 @@ let the power panel open without a battery; Fred accepted 0.2.6.
 
 Claude Code `2.1.291` (`claude-opus-5-5`) made `launch-clock-proof` send IPC to the instance it spawned (`quickshell ipc --pid`), because the session's own Tamlinux shell shares the config directory and was receiving the selftest's calls.
 [Session record](docs/ai/2026-10-06-proof-ipc-by-pid.md).
+
+### Plugins on Tamlinux only — 0.3.0 accepted, 2026-10-06
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies from the eight plugins' 2.0.0 candidates and fixed the proof launcher Fred tested them in; Fred accepted 0.3.0.
+[Session record](docs/ai/2026-10-06-proof-ipc-by-pid.md).
