@@ -23,6 +23,18 @@ ShellRoot {
   property var settingsDoc: ({ "version": 1, "entries": {} })
   property bool settingsReady: false
   property var hosts: []
+  // TAMLINUX_BAR_LAYOUT names a layout file; with it the bar draws that
+  // layout (host/BarLayout.qml) instead of the proof's row of entries.
+  // TAMLINUX_PLUGIN_ENTRIES is a JSON object, plugin id to entry file.
+  readonly property string barLayoutPath: Quickshell.env("TAMLINUX_BAR_LAYOUT") || ""
+  property var barLayout: null
+  property bool barLayoutReady: barLayoutPath === ""
+  property var pluginEntries: ({})
+  // The shell's own bar widgets, whose settings it also stores.
+  readonly property var builtinWidgetIds: [
+    "tamlinux.menu", "tamlinux.indicators", "tamlinux.keyboard-layout", "tamlinux.tray",
+    "tamlinux.audio", "tamlinux.bluetooth", "tamlinux.network", "tamlinux.power"
+  ]
   property var liveWidgets: []
 
   readonly property int hostCopies: {
@@ -39,6 +51,7 @@ ShellRoot {
   }
 
   function allowedId(id) {
+    if (builtinWidgetIds.indexOf(id) !== -1) return true
     var parts = pluginIds.split(",")
     for (var i = 0; i < parts.length; i++) {
       if (parts[i] === id) return true
@@ -61,6 +74,43 @@ ShellRoot {
       evidence("settings-unreadable")
       settingsDoc = { "version": 1, "entries": { "fred.clock": { "id": "fred.clock" } } }
     }
+  }
+
+  // { centerAnchor, layout: { left, center, right } }, Omarchy's bar shape;
+  // anything else draws an empty bar and says so.
+  function ingestBarLayout(raw) {
+    var parsed = null
+    try {
+      parsed = JSON.parse(raw || "")
+    } catch (e) {
+      parsed = null
+    }
+    var layout = parsed && parsed.layout && typeof parsed.layout === "object" ? parsed.layout : null
+    if (!layout) evidence("bar-layout-unreadable")
+    var sections = ["left", "center", "right"]
+    var clean = {}
+    for (var i = 0; i < sections.length; i++) {
+      var list = layout && Array.isArray(layout[sections[i]]) ? layout[sections[i]] : []
+      clean[sections[i]] = list.slice(0, 32)
+    }
+    var anchor = parsed && typeof parsed.centerAnchor === "string" ? parsed.centerAnchor : ""
+    barLayout = { "centerAnchor": anchor, "layout": clean }
+    evidence("bar-layout left=" + clean.left.length + " center=" + clean.center.length + " right=" + clean.right.length)
+  }
+
+  function ingestPluginEntries(raw) {
+    var parsed = {}
+    try {
+      parsed = JSON.parse(raw || "{}")
+    } catch (e) {
+      evidence("plugin-entries-unreadable")
+      parsed = {}
+    }
+    var clean = {}
+    for (var id in parsed) {
+      if (typeof parsed[id] === "string" && parsed[id].indexOf("/") === 0) clean[id] = parsed[id]
+    }
+    pluginEntries = clean
   }
 
   function updateEntryInline(moduleName, settings) {
@@ -358,6 +408,22 @@ ShellRoot {
     }
   }
 
+  FileView {
+    id: barLayoutFile
+    path: proof.barLayoutPath
+    printErrors: false
+    onLoaded: {
+      if (proof.barLayoutPath === "") return
+      proof.ingestBarLayout(text())
+      proof.barLayoutReady = true
+    }
+    onLoadFailed: {
+      if (proof.barLayoutPath === "") return
+      proof.ingestBarLayout("")
+      proof.barLayoutReady = true
+    }
+  }
+
   IpcHandler {
     target: "tamlinux-shell"
     function ping(): void { proof.evidence("ping") }
@@ -425,6 +491,7 @@ ShellRoot {
       }
     }
     extraEntries = parsedEntries
+    ingestPluginEntries(String(Quickshell.env("TAMLINUX_PLUGIN_ENTRIES") || "{}"))
     evidence("clock-entry " + clockEntry)
     evidence("extra-entries " + extraEntries.length)
     evidence("host-copies " + hostCopies)
@@ -433,7 +500,7 @@ ShellRoot {
   }
 
   Variants {
-    model: proof.settingsReady && proof.barEnabled ? proof.hostKeys : []
+    model: proof.settingsReady && proof.barLayoutReady && proof.barEnabled ? proof.hostKeys : []
     delegate: BarWindow {
       id: barWindow
       required property var modelData

@@ -28,7 +28,8 @@ WIDGET_FILES: list[tuple[str, str, bool]] = [
     ("desktop/shell/bar/indicators/Reminder.qml", "plugins/bar/indicators/Reminder.qml", False),
     ("desktop/shell/bar/indicators/ScreenRecording.qml", "plugins/bar/indicators/ScreenRecording.qml", False),
     ("desktop/shell/bar/indicators/StayAwake.qml", "plugins/bar/indicators/StayAwake.qml", False),
-    ("desktop/shell/bar/widgets/KeyboardLayout.qml", "plugins/bar/widgets/KeyboardLayout.qml", False),
+    # KeyboardLayout.qml left this list at plan 18 step 0.3.1, when it moved
+    # onto the compositor facade; test_compositor's boundary test covers it.
     ("desktop/shell/bar/widgets/KeyboardLayoutModel.js", "plugins/bar/widgets/KeyboardLayoutModel.js", True),
     ("desktop/shell/bar/widgets/Tray.qml", "plugins/bar/widgets/Tray.qml", False),
     ("desktop/shell/bar/widgets/TrayModel.js", "plugins/bar/widgets/TrayModel.js", False),

@@ -48,6 +48,28 @@ Item {
     console.log("TAMLINUX_EVIDENCE " + message)
   }
 
+  function settingsFor(item) {
+    var id = item && item.moduleName ? String(item.moduleName) : ""
+    if (id === "" || !shell || !shell.entrySettings || !("settings" in item)) return
+    item.settings = shell.entrySettings(id)
+  }
+
+  function adopt(item, name) {
+    settingsFor(item)
+    panelBar.registerWidget(item)
+    note("panel-loaded " + name)
+  }
+
+  // The settings document loads after the panels may have.
+  Connections {
+    target: host.shell
+    ignoreUnknownSignals: true
+    function onSettingsDocChanged() {
+      var items = panelBar.widgets
+      for (var i = 0; i < items.length; i++) host.settingsFor(items[i])
+    }
+  }
+
   // Bar panels name themselves with moduleName; overlays (Wi-Fi QR, speed
   // tests) with manifest.id.
   function panel(id) {
@@ -93,11 +115,14 @@ Item {
       return null
     }
 
-    // Panel settings live with the bar; until it moves (0.3) changes last
-    // only until the shell restarts.
+    // Panel settings (the tray's pins, the battery percentage) are saved in
+    // the shell's settings document, beside the plugins'.
     function updateEntryInline(id, values) {
-      host.note("panel-setting-not-saved " + id)
-      return false
+      if (!host.shell || !host.shell.updateEntryInline) {
+        host.note("panel-setting-not-saved " + id)
+        return false
+      }
+      return host.shell.updateEntryInline(id, values)
     }
   }
 
@@ -114,49 +139,49 @@ Item {
   Loader {
     active: host.enabled.indexOf("audio") !== -1
     sourceComponent: Component { AudioPanel.Panel { bar: panelBar } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded audio") }
+    onLoaded: host.adopt(item, "audio")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed audio")
   }
 
   Loader {
     active: host.enabled.indexOf("bluetooth") !== -1
     sourceComponent: Component { BluetoothPanel.Panel { bar: panelBar } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded bluetooth") }
+    onLoaded: host.adopt(item, "bluetooth")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed bluetooth")
   }
 
   Loader {
     active: host.enabled.indexOf("network") !== -1
     sourceComponent: Component { NetworkPanel.Panel { bar: panelBar } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded network") }
+    onLoaded: host.adopt(item, "network")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed network")
   }
 
   Loader {
     active: host.enabled.indexOf("wifiqr") !== -1
     sourceComponent: Component { WifiQrPanel.Panel { shell: panelShell; manifest: ({ id: "tamlinux.wifiqr" }) } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded wifiqr") }
+    onLoaded: host.adopt(item, "wifiqr")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed wifiqr")
   }
 
   Loader {
     active: host.enabled.indexOf("power") !== -1
     sourceComponent: Component { PowerPanel.Panel { bar: panelBar } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded power") }
+    onLoaded: host.adopt(item, "power")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed power")
   }
 
   Loader {
     active: host.enabled.indexOf("speedtest") !== -1
     sourceComponent: Component { SpeedTestPanel.Panel { shell: panelShell; manifest: ({ id: "tamlinux.speedtest" }) } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded speedtest") }
+    onLoaded: host.adopt(item, "speedtest")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed speedtest")
   }
 
   Loader {
     active: host.enabled.indexOf("disk-speedtest") !== -1
     sourceComponent: Component { DiskSpeedTestPanel.Panel { shell: panelShell; manifest: ({ id: "tamlinux.disk-speedtest" }) } }
-    onLoaded: { panelBar.registerWidget(item); host.note("panel-loaded disk-speedtest") }
+    onLoaded: host.adopt(item, "disk-speedtest")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed disk-speedtest")
   }
 

@@ -347,6 +347,52 @@ def active_keymap(payload: object) -> str:
     return fallback
 
 
+KEYBOARD_LIMIT = 16
+
+
+def keyboards_from(payload: object) -> list[dict]:
+    """Keyboards from `hyprctl -j devices`, bounded, with the fields the
+    layout widget reads. HyprlandAdapter.keyboardsFrom mirrors it."""
+    if isinstance(payload, str):
+        if len(payload) > DEVICES_LIMIT:
+            return []
+        try:
+            payload = json.loads(payload)
+        except json.JSONDecodeError:
+            return []
+    if not isinstance(payload, dict) or not isinstance(payload.get("keyboards"), list):
+        return []
+    found = []
+    for board in payload["keyboards"]:
+        if len(found) >= KEYBOARD_LIMIT:
+            break
+        if not isinstance(board, dict):
+            continue
+        name = board.get("name")
+        if not isinstance(name, str) or not NAME_RE.fullmatch(name):
+            continue
+        keymap = board.get("active_keymap")
+        keymap = keymap if isinstance(keymap, str) and "\n" not in keymap and "\r" not in keymap else ""
+        layout = board.get("layout")
+        index = board.get("active_layout_index")
+        found.append({
+            "name": name,
+            "layout": None if layout is None else str(layout)[:KEYMAP_LIMIT],
+            "activeKeymap": keymap[:KEYMAP_LIMIT],
+            "activeLayoutIndex": index if isinstance(index, int) and not isinstance(index, bool) and index >= 0 else 0,
+            "main": board.get("main") is True,
+        })
+    return found
+
+
+def switch_keyboard_layout_argv(name: str) -> list[str]:
+    """Advance one keyboard to its next layout. A hyprctl command, not a
+    dispatcher."""
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
+        raise CompositorCommandError("keyboard")
+    return [HYPRCTL, "switchxkblayout", name, "next"]
+
+
 def bounded_description(text: object) -> str:
     """Monitor description with newlines flattened and a fixed cap."""
     if not isinstance(text, str):

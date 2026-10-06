@@ -48,8 +48,14 @@ is not copied into this directory.
 | `showTooltip` / `hideTooltip` | sysinfo, monitor, and the shared buttons | Separate overlay. Size follows `TAMLINUX_UI_SCALE`. |
 | `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the first registered panel widget. `omarchy.osd` is refused. |
 | `bar.run` | none of the 2.0.0 plugins | Logged and not executed. The string is not interpreted. |
+| `layoutConfig` | the tray | The bar's `{ left, center, right }` entry lists. |
+| `centerSectionRevealHeld` | the indicators | True while the pointer is over a center widget. |
+| `shell.firstPartyServiceFor(id)` | the indicators | `tamlinux.notifications`, `.nightlight`, `.idle`, `.media` from the session services; null when that service is not running (the proof runs none). |
+| `openMenu(name)` | the menu button | Recorded. Runs `$TAMLINUX_BIN/tam-menu toggle [name]` only when the actions flag is set. |
+| `compositor.keyboards`, `.typedKeyboardName`, `.switchKeyboardLayout(name)`, `.refreshKeyboards()` | the keyboard layout widget | From the adapter's `hyprctl -j devices` read and `activelayout` events; the switch is recorded unless compositor live actions are on. |
+| `compositor.focusGrab` | `PopupCard` | Hyprland's focus grab as a component; null on Sway, where a popup does not close on an outside click. |
 | `pickAgent()` | agents | Recorded. Starts `/usr/bin/omarchy-agent --pick` only when `TAMLINUX_HOST_ACTIONS=1`. |
-| `openTerminal(program)` | sysinfo | Records `btop` only. Any other program is refused. The `btop` launch uses the same actions flag. |
+| `openTerminal(program)` | sysinfo, the menu button | Records `btop`, or `""` for a plain terminal (`xdg-terminal-exec`). Any other program is refused. The launch uses the same actions flag. |
 | `notify(text)` | weather | Records the length of a plain notice up to 512 characters. Shell characters are refused. A plain notice is sent only when the actions flag is set. |
 | `openTimezoneMenu()` | clock | Recorded. Opens the timezone program only when the actions flag is set. |
 
@@ -160,6 +166,8 @@ desktop/
   launch-clock-proof          # stage, launch, and --selftest
   shell/shell.qml             # named config root
   shell/host/                 # bar, settings writes, manifest checks
+  shell/host/BarLayout.qml    # the bar's left/center/right sections from a layout
+  shell/bar/                  # the shell's own bar widgets, BarModel.js, default-layout.json
   shell/host/Compositor.qml   # facade the shell and fixtures read
   shell/host/HyprlandAdapter.qml
   shell/host/SwayAdapter.qml      # loaded only when TAMLINUX_COMPOSITOR=sway
@@ -196,7 +204,16 @@ python3 desktop/launch-clock-proof --timeout 120
 python3 desktop/launch-clock-proof --selftest --scale 1
 python3 desktop/launch-clock-proof --selftest --scale 1.25
 python3 desktop/launch-clock-proof --selftest --compositor sway --scale 1
+python3 desktop/launch-clock-proof --layout --timeout 0
 ```
+
+`--layout` draws `shell/bar/default-layout.json`: the shell's own widgets
+(menu, indicators, keyboard layout, tray, and the Bluetooth, network, and
+audio panels) and all eight plugins, in today's Omarchy bar order with the
+clock as the center anchor. It puts `TAMLINUX_BIN` ahead of `/usr/bin` on
+`PATH`, because the shell's own widgets run owned commands by name. The
+proof runs no session services, so the indicators show as inactive there.
+`--selftest` includes a layout stage that requires every entry to register.
 
 The interactive bar sits on the bottom edge of the first screen and does not
 reserve exclusive space, so the production layout is not reflowed. Choose a
@@ -204,7 +221,8 @@ connector with `--output NAME`, or `--output all`.
 
 Isolated state is `$XDG_RUNTIME_DIR/tamlinux-clock-proof/`. The launcher
 refuses to run without `XDG_RUNTIME_DIR`. The next launch replaces that state.
-The proof environment unsets `OMARCHY_PATH` and sets `PATH` to `/usr/bin`.
+The proof environment unsets `OMARCHY_PATH` and sets `PATH` to `/usr/bin`
+(with `--layout`, `$TAMLINUX_BIN:/usr/bin`).
 `QML_IMPORT_PATH` is only `desktop/shell/modules`.
 
 Stop an interactive proof with Ctrl-C. `--selftest` stops its own processes.

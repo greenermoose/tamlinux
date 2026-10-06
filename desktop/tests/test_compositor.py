@@ -90,6 +90,36 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(commands.active_keymap(payload), "English (US)")
         self.assertEqual(commands.active_keymap('{"keyboards": []}'), "")
         self.assertEqual(commands.active_keymap("x" * (commands.DEVICES_LIMIT + 1)), "")
+
+    def test_keyboards_from_devices(self):
+        payload = {
+            "keyboards": [
+                {"name": "power-button", "layout": "us,de", "active_keymap": "English (US)", "active_layout_index": 0},
+                {"name": "kbd", "main": True, "layout": "us,de", "active_keymap": "German", "active_layout_index": 1},
+                {"name": "bad name", "active_keymap": "x"},
+                {"name": "nl", "active_keymap": "a\nb", "active_layout_index": True},
+                "not a board",
+            ]
+        }
+        self.assertEqual(commands.keyboards_from(payload), [
+            {"name": "power-button", "layout": "us,de", "activeKeymap": "English (US)", "activeLayoutIndex": 0, "main": False},
+            {"name": "kbd", "layout": "us,de", "activeKeymap": "German", "activeLayoutIndex": 1, "main": True},
+            {"name": "nl", "layout": None, "activeKeymap": "", "activeLayoutIndex": 0, "main": False},
+        ])
+        many = {"keyboards": [{"name": f"k{i}"} for i in range(commands.KEYBOARD_LIMIT + 4)]}
+        self.assertEqual(len(commands.keyboards_from(many)), commands.KEYBOARD_LIMIT)
+        self.assertEqual(commands.keyboards_from("not json"), [])
+        self.assertEqual(commands.keyboards_from('{"keyboards": {}}'), [])
+        self.assertEqual(commands.keyboards_from("x" * (commands.DEVICES_LIMIT + 1)), [])
+
+    def test_switch_keyboard_layout(self):
+        self.assertEqual(
+            commands.switch_keyboard_layout_argv("at-translated-set-2-keyboard"),
+            ["/usr/bin/hyprctl", "switchxkblayout", "at-translated-set-2-keyboard", "next"],
+        )
+        for bad in ("", "a b", "x;rm", "a" * 65, None):
+            with self.subTest(bad=bad), self.assertRaises(commands.CompositorCommandError):
+                commands.switch_keyboard_layout_argv(bad)  # type: ignore[arg-type]
         self.assertEqual(commands.bounded_description("HP\n22cwa"), "HP 22cwa")
         self.assertEqual(commands.bounded_description(None), "")
         self.assertEqual(len(commands.bounded_description("d" * 200)), commands.DESCRIPTION_LIMIT)
@@ -267,17 +297,11 @@ class SourceBoundaryTests(unittest.TestCase):
 
     def test_other_qml_does_not_touch_hyprland(self):
         adapter = DESKTOP / "shell" / "host" / "HyprlandAdapter.qml"
-        # Ported verbatim (T12) and not yet wired; plan 18 step 0.3.1 moves it
-        # onto the facade. Fails once it is clean, so the exemption goes too.
-        pending = DESKTOP / "shell" / "bar" / "widgets" / "KeyboardLayout.qml"
-        self.assertIn("Quickshell.Hyprland", pending.read_text(encoding="utf-8"))
         seen = False
         for path in DESKTOP.rglob("*.qml"):
             text = path.read_text(encoding="utf-8")
             if path == adapter:
                 seen = True
-                continue
-            if path == pending:
                 continue
             self.assertNotIn("Quickshell.Hyprland", text, path.name)
             self.assertNotIn("hyprctl", text, path.name)

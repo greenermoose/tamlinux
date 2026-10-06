@@ -435,7 +435,7 @@ class WiringTests(unittest.TestCase):
 
     def test_adapter_rereads_the_binds_after_a_config_reload(self):
         text = (HOST / "HyprlandAdapter.qml").read_text(encoding="utf-8")
-        self.assertIn('event.name === "configreloaded"', text)
+        self.assertIn('if (name === "configreloaded") {\n        adapter.rereadBinds()', text)
         self.assertIn("bindsProc.running = true", text)
 
     def test_the_model_runs_nothing(self):

@@ -1,0 +1,26 @@
+{
+  "centerAnchor": "fred.clock",
+  "layout": {
+    "left": [
+      { "id": "tamlinux.menu" },
+      { "id": "fred.workspaces" }
+    ],
+    "center": [
+      { "id": "tamlinux.indicators" },
+      { "id": "fred.clock" },
+      { "id": "tamlinux.keyboard-layout" },
+      { "id": "fred.weather" },
+      { "id": "fred.tides" }
+    ],
+    "right": [
+      { "id": "tamlinux.tray" },
+      { "id": "fred.agents" },
+      { "id": "tamlinux.bluetooth" },
+      { "id": "tamlinux.network" },
+      { "id": "tamlinux.audio" },
+      { "id": "fred.keyboard" },
+      { "id": "fred.monitor" },
+      { "id": "fred.sysinfo" }
+    ]
+  }
+}

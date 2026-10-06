@@ -1,10 +1,11 @@
 // Ported from omarchy 4.0.4 shell/plugins/bar/widgets/KeyboardLayout.qml
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../../services/LICENSE-omarchy).
-// Changes: owned module, id, and command names.
+// Changes: owned module, id, and command names; the keyboards, the layout
+// switch, and its events come from the compositor facade (bar.compositor)
+// instead of Hyprland directly.
 
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Tam.Ui
 import Tam.Commons
@@ -36,23 +37,14 @@ BarWidget {
   property var layoutBriefs: ({})
   readonly property string layoutLabel: KeyboardLayoutModel.shortLabel(layoutFull, layoutBriefs)
 
-  // A query already in flight was started before this event, so it may read the
-  // layout the switch replaced. Remember the request and re-run once it lands
-  // rather than dropping it; nothing else would correct the label afterwards.
-  property bool refreshPending: false
+  readonly property var compositor: root.bar ? root.bar.compositor : null
 
   function refresh() {
-    if (queryProc.running) {
-      refreshPending = true
-      return
-    }
-
-    refreshPending = false
-    queryProc.running = true
+    if (root.compositor) root.compositor.refreshKeyboards()
   }
 
-  // Keyboards someone can actually type on, which is not everything Hyprland
-  // calls a keyboard.
+  // Keyboards someone can actually type on, which is not everything the
+  // compositor calls a keyboard.
   function typedKeyboards(keyboards) {
     return keyboards.filter(k => KeyboardLayoutModel.isTypedKeyboard(k.name))
   }
@@ -60,102 +52,65 @@ BarWidget {
   // The main flag names no keyboard for long: fcitx5 takes it with the virtual
   // keyboard it binds to inject, which leaves no typed keyboard holding it and
   // nothing to read at all, and once that unbinds it lands on whichever device
-  // Hyprland saw last, a power button included. Go by layout progress instead,
-  // and by the keyboard activelayout named.
+  // the compositor saw last, a power button included. Go by layout progress
+  // instead, and by the keyboard the last switch named.
   function selectKeyboard(typed) {
-    return KeyboardLayoutModel.selectKeyboard(typed, root.typedKeyboardName)
+    return KeyboardLayoutModel.selectKeyboard(typed, root.compositor ? root.compositor.typedKeyboardName : "")
   }
 
-  // switchxkblayout is a hyprctl command rather than a dispatcher, so it has to
-  // be run rather than sent over the dispatch socket. It switches the keyboard
-  // the last reading spoke for, so a click always advances the device the label
-  // is describing. Switching the seat together would reach the typed keyboard
-  // without having to name it, but it would also carry the buttons along, and
-  // the whole read depends on those staying where they started: once a button
-  // has been advanced too, a toggle that wraps the keyboard back to the first
-  // layout leaves the button reading as the furthest along, and the label
-  // follows the button.
+  // The facade's records in the shape KeyboardLayoutModel reads.
+  function modelKeyboards(list) {
+    return (list || []).map(function(k) {
+      return { name: k.name, layout: k.layout === null ? undefined : k.layout, active_keymap: k.activeKeymap, active_layout_index: k.activeLayoutIndex }
+    })
+  }
+
+  // Each facade reading replaces the last. An empty one is either a seat with
+  // no keyboards or a read that failed; both leave the shape in doubt.
+  function ingest() {
+    var listed = root.compositor ? root.modelKeyboards(root.compositor.keyboards) : []
+    var typed = root.typedKeyboards(listed)
+    var kb = root.selectKeyboard(typed)
+    if (!kb || !kb.active_keymap) {
+      root.keyboardUnresolved = true
+      if (typed.length === 0) {
+        root.layoutFull = ""
+        root.keyboardName = ""
+      }
+      return
+    }
+
+    root.keyboardUnresolved = false
+    root.keyboardCount = typed.length
+    root.keyboardName = String(kb.name || "")
+    root.multipleLayouts = kb.layout === undefined || String(kb.layout).indexOf(",") !== -1
+    root.layoutFull = kb.active_keymap
+  }
+
+  // It switches the keyboard the last reading spoke for, so a click always
+  // advances the device the label is describing. Switching the seat together
+  // would reach the typed keyboard without having to name it, but it would also
+  // carry the buttons along, and the whole read depends on those staying where
+  // they started: once a button has been advanced too, a toggle that wraps the
+  // keyboard back to the first layout leaves the button reading as the furthest
+  // along, and the label follows the button.
   function cycleLayout() {
-    if (!root.keyboardName || !root.bar) return
-    root.bar.run("hyprctl switchxkblayout " + Util.shellQuote(root.keyboardName) + " next")
+    if (!root.keyboardName || !root.compositor) return
+    root.compositor.switchKeyboardLayout(root.keyboardName)
     refreshTimer.restart()
   }
 
   Component.onCompleted: {
     briefsProc.running = true
-    refresh()
+    ingest()
   }
 
+  // The compositor adapter reads the devices again on every layout switch and
+  // reload, and when asked; each reading lands here.
   Connections {
-    target: Hyprland
-    function onRawEvent(event) {
-      if (!event || !event.name) return
-      var name = String(event.name)
-      // The event names the keyboard that switched ahead of the layout it moved
-      // to, and that is the keyboard being typed on whatever holds the main flag.
-      if (name === "activelayout") {
-        const named = KeyboardLayoutModel.eventKeyboardName(event)
-        if (named) root.typedKeyboardName = named
-      }
-
-      // A reload that adds a layout to kb_layout decides whether the widget
-      // shows at all, and leaves every keyboard on the layout it was already
-      // reading, so it raises no activelayout to notice it by.
-      if (name.indexOf("activelayout") !== -1 || name === "configreloaded") root.refresh()
-    }
-  }
-
-  Process {
-    id: queryProc
-    command: ["hyprctl", "-j", "devices"]
-    onRunningChanged: {
-      if (running) {
-        stallTimer.restart()
-        return
-      }
-
-      stallTimer.stop()
-      if (root.refreshPending) root.refresh()
-    }
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        let listed
-        try {
-          listed = JSON.parse(text || "{}").keyboards
-        } catch (e) {
-          return
-        }
-
-        // A query the watchdog killed reports nothing at all, and an empty
-        // string parses into the same shape a seat with no keyboards would.
-        // Tell them apart by the list itself, so only a reading that reached
-        // hyprctl gets to speak for the seat.
-        if (!Array.isArray(listed)) return
-
-        const typed = root.typedKeyboards(listed)
-        const kb = root.selectKeyboard(typed)
-        if (!kb || !kb.active_keymap) {
-          // Either the last keyboard has been unplugged, which the label has to
-          // stop describing and the click has to stop naming, or keyboards are
-          // there and none of them reports a keymap. Both leave the shape in
-          // doubt, so keep asking rather than letting a count from before it
-          // changed settle the poll.
-          root.keyboardUnresolved = true
-          if (typed.length === 0) {
-            root.layoutFull = ""
-            root.keyboardName = ""
-          }
-          return
-        }
-
-        root.keyboardUnresolved = false
-        root.keyboardCount = typed.length
-        root.keyboardName = String(kb.name || "")
-        root.multipleLayouts = kb.layout === undefined || String(kb.layout).indexOf(",") !== -1
-        root.layoutFull = kb.active_keymap
-      }
-    }
+    target: root.compositor
+    function onKeyboardsChanged() { root.ingest() }
+    function onTypedKeyboardNameChanged() { root.ingest() }
   }
 
   // The table only changes when xkb data is upgraded, so read it at startup and
@@ -177,27 +132,13 @@ BarWidget {
     onTriggered: root.refresh()
   }
 
-  // A query that never returns would freeze the label until the shell restarts,
-  // since a Process that is already running can't be re-run. Give up on one that
-  // overstays so the next refresh gets through, and ask again: the reading it
-  // never delivered may have been the only one due on a settled seat, and
-  // nothing else would come back for it.
-  Timer {
-    id: stallTimer
-    interval: 5000
-    onTriggered: {
-      queryProc.running = false
-      refreshTimer.restart()
-    }
-  }
-
   // Which keyboard on a crowded seat the label is describing can change without
-  // Hyprland announcing it, since a device arriving or leaving raises no event
+  // the compositor announcing it, since a device arriving or leaving raises no event
   // of its own, and that can only be learned by asking. Poll while there is that
   // ambiguity, until a first reading lands so a query that failed at login still
   // recovers, and while a reading has left the seat's shape in doubt. The
   // one-keyboard install has none of those, and is left alone rather than
-  // spawning hyprctl forever for an answer that cannot change.
+  // asking forever for an answer that cannot change.
   Timer {
     interval: 10000
     running: !root.keyboardName || root.keyboardUnresolved || root.keyboardCount > 1

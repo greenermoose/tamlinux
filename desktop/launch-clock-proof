@@ -35,6 +35,7 @@ COMPOSITOR = Path(__file__).resolve().parent / "fixtures" / "compositor"
 SWAY_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sway"
 UI = Path(__file__).resolve().parent / "fixtures" / "ui"
 ALLOWED = {"fred.clock", "tamlinux.fixture"}
+LAYOUT = SHELL_DIR / "bar" / "default-layout.json"
 ACTION_MARKERS = (
     "omarchy-agent",
     "omarchy-launch-terminal",
@@ -186,7 +187,7 @@ def _seed(home: Path, config: Path, plugin: Path, extras: list[dict] | None = No
     write_settings(config / "tamlinux-shell", {"version": 1, "entries": entries}, allowed)
 
 
-def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland") -> dict:
+def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False) -> dict:
     home = state / "home"
     config = home / ".config"
     plugin = state / "plugin"
@@ -238,6 +239,21 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
     })
     if compositor == "sway":
         env["TAMLINUX_SWAY_FIXTURE"] = str(SWAY_FIXTURE)
+    if layout:
+        # The bar draws the default layout: the shell's own widgets and the
+        # eight plugins, each plugin from its staged entry file.
+        if not extras:
+            raise SystemExit("--layout needs the plugins")
+        target = config / "tamlinux-shell" / "bar-layout.json"
+        target.write_text(LAYOUT.read_text(encoding="utf-8"), encoding="utf-8")
+        os.chmod(target, 0o600)
+        entries = {"fred.clock": by_id["fred.clock"]["entry"]}
+        entries.update({record["id"]: record["entry"] for record in extra_records})
+        env["TAMLINUX_BAR_LAYOUT"] = str(target)
+        # The shell's own widgets and panels run owned commands by name, as
+        # they do in the session; the plugins keep using absolute paths.
+        env["PATH"] = f"{tam_bin}:/usr/bin"
+        env["TAMLINUX_PLUGIN_ENTRIES"] = json.dumps(entries)
     return {"env": env, "home": home, "plugin": plugin, "record": records[0]}
 
 
@@ -330,8 +346,8 @@ def helper_leaks(plugin: Path) -> list[str]:
     ]
 
 
-def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland") -> str:
-    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor)
+def run_session(state: Path, scale: str, output: str, drive, reset: bool = True, copies: str = "1", extras: bool = False, compositor: str = "hyprland", layout: bool = False) -> str:
+    prepared = prepare(state, scale, output, reset=reset, copies=copies, extras=extras, compositor=compositor, layout=layout)
     process = spawn(prepared["env"])
     try:
         ready = wait_for(
@@ -681,6 +697,28 @@ def drive_plugins(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("an Omarchy shell import appeared while loading plugins")
 
 
+def layout_ids() -> list[str]:
+    layout = json.loads(LAYOUT.read_text(encoding="utf-8"))["layout"]
+    return [entry["id"] for section in ("left", "center", "right") for entry in layout[section]]
+
+
+def drive_layout(env: dict, process: subprocess.Popen) -> None:
+    def lines() -> list[str]:
+        return evidence_lines(read_log(process))
+
+    def failed() -> bool:
+        return any(line.startswith(("bar-entry-unknown", "bar-entry-failed", "bar-layout-unreadable")) for line in lines())
+
+    def registered() -> bool:
+        text = lines()
+        return all(any(line.startswith(f"widget-registered {entry_id} ") for line in text) for entry_id in layout_ids())
+
+    if not wait_for(lambda: failed() or registered(), 25):
+        raise SystemExit("the layout's widgets did not register:\n" + read_log(process)[-4000:])
+    if failed():
+        raise SystemExit("a layout entry failed:\n" + read_log(process)[-4000:])
+
+
 def sway_process_lines() -> list[str]:
     try:
         listing = subprocess.run(
@@ -832,6 +870,8 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
         print("physical second output not checked")
     run_session(state_root / "plugins", scale, output, drive_plugins, copies="1", extras=True)
     print("plugins registered")
+    run_session(state_root / "layout", scale, output, drive_layout, copies="1", extras=True, layout=True)
+    print("layout registered")
     print("selftest ok")
     print(f"scale {scale}")
     print(f"pinned {PINNED_REVISION}")
@@ -844,6 +884,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the isolated Tamlinux clock proof")
     parser.add_argument("--selftest", action="store_true")
     parser.add_argument("--plugins", action="store_true", help="load the seven plugins beside the clock")
+    parser.add_argument("--layout", action="store_true", help="draw the default bar layout (shell widgets and all eight plugins); implies --plugins")
     parser.add_argument("--scale", default="1")
     parser.add_argument("--output", default="")
     parser.add_argument("--compositor", choices=("hyprland", "sway"), default="hyprland")
@@ -865,8 +906,9 @@ def main() -> None:
             raise SystemExit(str(exc)) from exc
         return
     state = state_root / "interactive"
-    prepared = prepare(state, args.scale, args.output, extras=args.plugins, compositor=args.compositor)
-    if args.plugins:
+    extras = args.plugins or args.layout
+    prepared = prepare(state, args.scale, args.output, extras=extras, compositor=args.compositor, layout=args.layout)
+    if args.plugins and not args.layout:
         prepared["env"]["TAMLINUX_PLUGINS_ON_ALL"] = "1"
     process = spawn(prepared["env"])
     print(f"proof pid {process.pid}")

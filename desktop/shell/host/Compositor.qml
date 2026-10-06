@@ -13,6 +13,10 @@ QtObject {
   property int focusedWorkspaceId: 0
   property string bindingsText: ""
   property string activeKeymap: ""
+  // Keyboards on the seat, { name, layout, activeKeymap, activeLayoutIndex,
+  // main }, and the one the last layout switch named as typed on.
+  property var keyboards: []
+  property string typedKeyboardName: ""
   property int revision: 0
   property var backend: null
   // A component the bar's popups instantiate to close on an outside click,
@@ -47,6 +51,20 @@ QtObject {
 
   function focusApp(name) {
     if (backend) backend.focusApp(name)
+  }
+
+  function refreshKeyboards() {
+    if (backend && backend.refreshKeyboards) backend.refreshKeyboards()
+  }
+
+  // Advance the named keyboard to its next layout.
+  function switchKeyboardLayout(name) {
+    if (backend && backend.switchKeyboardLayout) backend.switchKeyboardLayout(name)
+  }
+
+  function applyKeyboards(list, typedName) {
+    keyboards = list
+    typedKeyboardName = typedName
   }
 
   function applySnapshot(snapshot) {

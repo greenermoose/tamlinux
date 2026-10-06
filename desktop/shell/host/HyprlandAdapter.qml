@@ -21,6 +21,9 @@ QtObject {
   property int bindsReads: 0
   property string bindingsText: ""
   property string activeKeymap: ""
+  property string typedKeyboardName: ""
+  property bool devicesPending: false
+  readonly property int keyboardLimit: 16
   readonly property bool liveActions: Quickshell.env("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") === "1"
   readonly property int bindsLimit: 262144
   readonly property int devicesLimit: 262144
@@ -87,6 +90,26 @@ QtObject {
     }
     note("compositor-action live focus-workspace " + number)
     enqueue(["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ workspace = "' + number + '" })'], "dispatch")
+  }
+
+  // switchxkblayout is a hyprctl command rather than a dispatcher, so it runs
+  // as one rather than through the dispatch socket.
+  function switchKeyboardLayout(name) {
+    var keyboard = String(name || "")
+    if (!validName(keyboard)) {
+      note("compositor-action rejected switch-keyboard-layout")
+      return
+    }
+    if (!liveActions) {
+      note("compositor-action recorded switch-keyboard-layout " + keyboard)
+      return
+    }
+    note("compositor-action live switch-keyboard-layout " + keyboard)
+    enqueue(["/usr/bin/hyprctl", "switchxkblayout", keyboard, "next"], "switch-keyboard-layout")
+  }
+
+  function refreshKeyboards() {
+    rereadDevices()
   }
 
   function focusOutput(name) {
@@ -203,7 +226,20 @@ QtObject {
     return raw
   }
 
-  // Reads run once each; only the bindings are read again, after a reload.
+  // A read already in flight may predate the change that asked for this one,
+  // so remember the request and read again once it lands.
+  function rereadDevices() {
+    if (devicesProc.running) {
+      devicesPending = true
+      return
+    }
+    devicesPending = false
+    doneReads.devices = false
+    devicesProc.running = true
+  }
+
+  // Reads run once each; the bindings are read again after a reload, the
+  // devices whenever the keyboard layout widget asks.
   function rereadBinds() {
     if (bindsProc.running) return
     doneReads.binds = false
@@ -224,6 +260,7 @@ QtObject {
       note("compositor-adapter hyprctl devices bytes=" + devices.length)
       if (body.length > devicesLimit) note("compositor-adapter capped devices")
       activeKeymap = keymapFrom(devices)
+      if (host && host.applyKeyboards) host.applyKeyboards(keyboardsFrom(devices), typedKeyboardName)
     } else if (label === "monitors") {
       var monitors = bounded(body, monitorsLimit)
       note("compositor-adapter hyprctl monitors bytes=" + monitors.length)
@@ -251,6 +288,40 @@ QtObject {
     } catch (e) {
       return ""
     }
+  }
+
+  // The keyboards in `hyprctl -j devices`, bounded and with only the fields
+  // the layout widget reads. Mirrors compositor_commands.keyboards_from.
+  function keyboardsFrom(text) {
+    try {
+      var data = JSON.parse(text || "")
+      var boards = data && Array.isArray(data.keyboards) ? data.keyboards : []
+      var list = []
+      for (var i = 0; i < boards.length && list.length < keyboardLimit; i++) {
+        var board = boards[i]
+        if (!board || !validName(board.name)) continue
+        var keymap = String(board.active_keymap || "")
+        if (keymap.indexOf("\n") !== -1 || keymap.indexOf("\r") !== -1) keymap = ""
+        var index = Number(board.active_layout_index)
+        list.push({
+          name: String(board.name),
+          layout: board.layout === undefined || board.layout === null ? null : String(board.layout).substring(0, keymapLimit),
+          activeKeymap: keymap.substring(0, keymapLimit),
+          activeLayoutIndex: isFinite(index) && index >= 0 ? Math.floor(index) : 0,
+          main: board.main === true
+        })
+      }
+      return list
+    } catch (e) {
+      return []
+    }
+  }
+
+  // activelayout's data is "<keyboard>,<layout>": the keyboard being typed
+  // on, whatever holds the main flag. fcitx5's virtual keyboard is not one.
+  function noteActiveLayout(data) {
+    var name = String(data || "").split(",")[0]
+    if (validName(name) && name.indexOf("hl-virtual-keyboard") !== 0) typedKeyboardName = name
   }
 
   function ingestMonitors(text) {
@@ -412,7 +483,10 @@ QtObject {
     }
     stderr: StdioCollector { waitForEnd: true }
     onStarted: devicesTerm.restart()
-    onExited: devicesTerm.stop()
+    onExited: {
+      devicesTerm.stop()
+      if (adapter.devicesPending) adapter.rereadDevices()
+    }
   }
 
   readonly property Timer devicesTerm: Timer {
@@ -475,8 +549,18 @@ QtObject {
     function onFocusedWorkspaceChanged() { adapter.refreshFromHyprland() }
     // Re-read the bindings after the config reloads, so the keybinding
     // viewer never shows stale ones.
+    // A layout switch, or a reload that adds a layout, changes what the
+    // keyboard layout widget shows, so read the devices again too.
     function onRawEvent(event) {
-      if (event && event.name === "configreloaded") adapter.rereadBinds()
+      if (!event) return
+      var name = String(event.name || "")
+      if (name === "configreloaded") {
+        adapter.rereadBinds()
+        adapter.rereadDevices()
+      } else if (name.indexOf("activelayout") !== -1) {
+        if (name === "activelayout") adapter.noteActiveLayout(event.data)
+        adapter.rereadDevices()
+      }
     }
   }
 

@@ -23,6 +23,12 @@ QtObject {
   property string fontFamily: Style.font.family
   property bool foregroundAnimationEnabled: false
   property bool centerHoverRevealSuppressed: false
+  // Held while the pointer is over the bar's center section; the indicators
+  // reveal their inactive icons while it is (unless a plugin suppresses it).
+  property bool centerSectionRevealHeld: false
+  // The bar's layout, { left, center, right } entry lists (BarModel.js shape).
+  // The tray reads it to see which widgets the bar already shows.
+  property var layoutConfig: ({ "left": [], "center": [], "right": [] })
   property var activePopout: null
   property var clickTargets: []
   property var shell: null
@@ -142,9 +148,14 @@ QtObject {
     return env
   }
 
-  function startAction(argv, deadline) {
+  readonly property string tamlinuxBin: Quickshell.env("TAMLINUX_BIN") || ((Quickshell.env("HOME") || "") + "/.local/bin")
+
+  function startAction(argv, deadline, owned) {
     if (!liveActions) return true
-    return actionRunner.launch(argv, deadline, actionEnvironment())
+    var env = actionEnvironment()
+    // An owned command calls other owned commands by name.
+    if (owned) env["PATH"] = tamlinuxBin + ":/usr/bin"
+    return actionRunner.launch(argv, deadline, env)
   }
 
   function run(command) {
@@ -156,7 +167,25 @@ QtObject {
     return startAction(["/usr/bin/omarchy-agent", "--pick"], 600000)
   }
 
+  // The menu button: tam-menu toggles the Tamlinux shell's menu (the root
+  // menu, or one named submenu).
+  function openMenu(name) {
+    var menu = String(name || "")
+    if (menu !== "" && !/^[a-z][a-z0-9-]{0,31}$/.test(menu)) {
+      reportUnsupported("open-menu")
+      return false
+    }
+    recordAction("open-menu " + (menu === "" ? "root" : menu))
+    var argv = [tamlinuxBin + "/tam-menu", "toggle"]
+    if (menu !== "") argv.push(menu)
+    return startAction(argv, 15000, true)
+  }
+
   function openTerminal(program) {
+    if (String(program || "") === "") {
+      recordAction("open-terminal")
+      return startAction(["/usr/bin/setsid", "-f", "/usr/bin/xdg-terminal-exec"], 15000)
+    }
     if (String(program || "") === "btop") {
       recordAction("open-terminal btop")
       return startAction(["/usr/bin/omarchy-launch-terminal", "btop"], 600000)

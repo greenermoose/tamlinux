@@ -10,6 +10,8 @@ PanelWindow {
   property string hostKey: ""
   property var screenRef: null
   property bool loadsClock: false
+  // Draw the shell's layout (BarLayout.qml) rather than the proof's row.
+  readonly property bool layoutMode: shell.barLayout !== null
 
   property alias surface: api
   signal clockReady(var widget)
@@ -39,9 +41,25 @@ PanelWindow {
     hostKey: win.hostKey
     screen: win.screenRef
     barSize: win.implicitHeight
+    layoutConfig: win.layoutMode ? shell.barLayout.layout : ({ "left": [], "center": [], "right": [] })
+  }
+
+  Loader {
+    anchors.fill: parent
+    active: win.layoutMode
+    sourceComponent: Component {
+      BarLayout {
+        api: win.surface
+        layout: shell.barLayout.layout
+        centerAnchor: shell.barLayout.centerAnchor
+        pluginEntries: shell.pluginEntries
+        onAdoptRequested: function(item, id) { win.adopt(item, id === "fred.clock") }
+      }
+    }
   }
 
   Row {
+    visible: !win.layoutMode
     anchors.left: parent.left
     anchors.leftMargin: 8
     anchors.verticalCenter: parent.verticalCenter
@@ -49,7 +67,7 @@ PanelWindow {
 
     Loader {
       id: clockLoader
-      active: win.loadsClock && shell.clockEntry !== ""
+      active: !win.layoutMode && win.loadsClock && shell.clockEntry !== ""
       source: win.loadsClock ? shell.clockEntry : ""
       onLoaded: win.adopt(item, true)
       onStatusChanged: {
@@ -60,7 +78,7 @@ PanelWindow {
 
     Loader {
       id: fixtureLoader
-      active: shell.fixtureEntry !== "" && (!win.loadsClock || clockLoader.status === Loader.Ready || clockLoader.status === Loader.Error)
+      active: !win.layoutMode && shell.fixtureEntry !== "" && (!win.loadsClock || clockLoader.status === Loader.Ready || clockLoader.status === Loader.Error)
       source: shell.fixtureEntry
       onLoaded: win.adopt(item, false)
       onStatusChanged: {
@@ -71,7 +89,7 @@ PanelWindow {
 
     Loader {
       id: compositorLoader
-      active: win.loadsClock && shell.compositorEntry !== ""
+      active: !win.layoutMode && win.loadsClock && shell.compositorEntry !== ""
       source: win.loadsClock ? shell.compositorEntry : ""
       onLoaded: win.adopt(item, false)
       onStatusChanged: {
@@ -81,7 +99,7 @@ PanelWindow {
     }
 
     Repeater {
-      model: (win.loadsClock || Quickshell.env("TAMLINUX_PLUGINS_ON_ALL") === "1") ? shell.extraEntries : []
+      model: !win.layoutMode && (win.loadsClock || Quickshell.env("TAMLINUX_PLUGINS_ON_ALL") === "1") ? shell.extraEntries : []
       delegate: Loader {
         required property string modelData
         source: modelData
@@ -95,7 +113,7 @@ PanelWindow {
 
     Loader {
       id: uiLoader
-      active: shell.uiEntry !== "" && (fixtureLoader.status === Loader.Ready || fixtureLoader.status === Loader.Error)
+      active: !win.layoutMode && shell.uiEntry !== "" && (fixtureLoader.status === Loader.Ready || fixtureLoader.status === Loader.Error)
       source: shell.uiEntry
       onLoaded: win.adopt(item, false)
       onStatusChanged: {
@@ -109,7 +127,7 @@ PanelWindow {
     anchors.left: parent.left
     anchors.leftMargin: 8
     anchors.verticalCenter: parent.verticalCenter
-    visible: clockLoader.status === Loader.Error
+    visible: !win.layoutMode && clockLoader.status === Loader.Error
     color: Color.urgent
     text: "fred.clock failed to load"
     font.pixelSize: Style.font.body

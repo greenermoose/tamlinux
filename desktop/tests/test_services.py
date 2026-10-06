@@ -353,7 +353,7 @@ class ServiceSourceTests(unittest.TestCase):
     def test_bar_can_be_switched_off(self):
         text = (DESKTOP / "shell" / "shell.qml").read_text(encoding="utf-8")
         self.assertIn('Quickshell.env("TAMLINUX_BAR") !== "0"', text)
-        self.assertIn("proof.settingsReady && proof.barEnabled ? proof.hostKeys : []", text)
+        self.assertIn("proof.settingsReady && proof.barLayoutReady && proof.barEnabled ? proof.hostKeys : []", text)
         self.assertIn("Services {", text)
 
 
