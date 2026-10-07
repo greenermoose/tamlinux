@@ -853,6 +853,10 @@ BarWidget {
     onStarted: actionWatchdog.restart()
     onExited: function(exitCode, exitStatus) {
       actionWatchdog.stop()
+      // The helper may have just created the state directory. A FileView
+      // whose directory was missing when it started never watches, so every
+      // copy re-reads now, which also arms its watch.
+      root.broadcastWorkspaces("reloadStateFiles")
       root.runNextAction()
     }
   }
@@ -867,6 +871,11 @@ BarWidget {
         actionProcess.running = false
       }
     }
+  }
+
+  function reloadStateFiles() {
+    modeFile.reload()
+    monitorsFile.reload()
   }
 
   function runNextAction() {
@@ -1007,8 +1016,10 @@ BarWidget {
         }
         // The status run may have just rewritten desktop-monitors (a bar
         // built while a display was missing reads the degraded snapshot
-        // first); re-read the file rather than the cached text.
+        // first); re-read the file rather than the cached text. Re-reading
+        // the mode file also arms its watch if its directory has appeared.
         monitorsFile.reload()
+        modeFile.reload()
       }
     }
 
@@ -1105,9 +1116,10 @@ BarWidget {
           root.realignBarMonitor()
           return
         }
+        // Show the next mode at once. The helper's exit re-reads the file;
+        // a status check started now could read the old mode and undo this.
         root.desktopMode = root.nextDesktopMode()
         root.runDesktopCommand(["toggle"])
-        modeRefreshTimer.restart()
       }
     }
   }
