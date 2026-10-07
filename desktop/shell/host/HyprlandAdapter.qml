@@ -23,6 +23,7 @@ QtObject {
   property string activeKeymap: ""
   property string typedKeyboardName: ""
   property bool devicesPending: false
+  property bool monitorsPending: false
   readonly property int keyboardLimit: 16
   readonly property bool liveActions: Quickshell.env("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") === "1"
   readonly property int bindsLimit: 262144
@@ -144,7 +145,7 @@ QtObject {
       "/usr/bin/hyprctl",
       "dispatch",
       'hl.dsp.dpms({ action = "' + word + '", monitor = "' + output + '" })'
-    ], "dispatch")
+    ], "set-dpms")
   }
 
   property string pendingApp: ""
@@ -236,6 +237,20 @@ QtObject {
     devicesPending = false
     doneReads.devices = false
     devicesProc.running = true
+  }
+
+  // Hyprland sends no event when an output's power changes, and a plugin
+  // helper can blank one behind the shell's back. Read the monitors again
+  // whenever focus moves to another output, outputs come or go, or the shell
+  // sets DPMS itself, so dpmsOn is current when a plugin decides to wake.
+  function rereadMonitors() {
+    if (monitorsProc.running) {
+      monitorsPending = true
+      return
+    }
+    monitorsPending = false
+    doneReads.monitors = false
+    monitorsProc.running = true
   }
 
   // Reads run once each; the bindings are read again after a reload, the
@@ -504,7 +519,10 @@ QtObject {
     }
     stderr: StdioCollector { waitForEnd: true }
     onStarted: monitorsTerm.restart()
-    onExited: monitorsTerm.stop()
+    onExited: {
+      monitorsTerm.stop()
+      if (adapter.monitorsPending) adapter.rereadMonitors()
+    }
   }
 
   readonly property Timer monitorsTerm: Timer {
@@ -526,6 +544,7 @@ QtObject {
       adapter.termTimer.stop()
       adapter.killTimer.stop()
       adapter.ingested = false
+      if (adapter.currentLabel === "set-dpms") adapter.rereadMonitors()
       adapter.pump()
     }
   }
@@ -545,7 +564,10 @@ QtObject {
 
   readonly property Connections hyprlandEvents: Connections {
     target: Hyprland
-    function onFocusedMonitorChanged() { adapter.refreshFromHyprland() }
+    function onFocusedMonitorChanged() {
+      adapter.refreshFromHyprland()
+      adapter.rereadMonitors()
+    }
     function onFocusedWorkspaceChanged() { adapter.refreshFromHyprland() }
     // Re-read the bindings after the config reloads, so the keybinding
     // viewer never shows stale ones.
@@ -560,6 +582,8 @@ QtObject {
       } else if (name.indexOf("activelayout") !== -1) {
         if (name === "activelayout") adapter.noteActiveLayout(event.data)
         adapter.rereadDevices()
+      } else if (name.indexOf("monitoradded") === 0 || name.indexOf("monitorremoved") === 0) {
+        adapter.rereadMonitors()
       }
     }
   }

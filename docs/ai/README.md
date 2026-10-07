@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-06 | Monitor power re-read | Claude Code `2.1.292` | `claude-opus-5-5` | [`2026-10-06-dpms-reread.md`](2026-10-06-dpms-reread.md) |
 | 2026-10-06 | 0.3.3 cutover: the daily bar | Claude Code `2.1.292` | `claude-opus-5-5` | [`2026-10-06-0.3.3-cutover.md`](2026-10-06-0.3.3-cutover.md) |
 | 2026-10-06 | Complete 0.3.2 readiness | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-06-0.3.2-completion.md](2026-10-06-0.3.2-completion.md) |
 | 2026-10-06 | Independent, continuing Tamlinux identity | Codex CLI `0.160.1` | `gpt-6.1-sol` | [2026-10-06-independent-continuing-project.md](2026-10-06-independent-continuing-project.md) |

@@ -164,3 +164,11 @@ Codex CLI `0.160.1` (`gpt-6.1-sol`) reconciled public identity, versioning,
 and engineering-plan scope around Fred's independent continuing Tamlinux
 direction. Earlier temporary-project and final-1.x assumptions are superseded.
 Documentation only. [Session record](docs/ai/2026-10-06-independent-continuing-project.md).
+
+## 2026-10-06 monitor power re-read
+
+Claude Code `2.1.292` (`claude-opus-5-5`) made the Hyprland adapter read
+the monitors again on focus changes, output hotplug, and its own DPMS
+changes. A monitor blanked by `fred.workspaces` was still reported lit and
+could not be woken by pointer entry.
+[Session record](docs/ai/2026-10-06-dpms-reread.md).

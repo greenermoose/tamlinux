@@ -49,6 +49,13 @@ complete when a day's use is accepted.
   shell's `host/` directory); without it the `fred.workspaces` and
   `fred.monitor` helpers could not load the compositor backend and did
   nothing. Only the isolated proof had set it.
+- The bar's monitor power state stays current. The Hyprland adapter read
+  `hyprctl monitors` once at startup, and Hyprland sends no event when an
+  output's power changes, so `dpmsOn` stayed true for a monitor that
+  `fred.workspaces` had blanked, and moving the pointer into it did not
+  wake it. The adapter now reads the monitors again when focus moves to
+  another output, when an output is added or removed, and after its own
+  DPMS change.
 
 ### Removed
 

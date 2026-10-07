@@ -299,6 +299,19 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertNotIn("sh -c", qml)
         self.assertNotIn("bash", qml)
 
+    def test_adapter_reads_monitor_power_again(self):
+        # Hyprland has no DPMS event; a stale dpmsOn kept fred.workspaces from
+        # waking a monitor it had blanked.
+        qml = (DESKTOP / "shell" / "host" / "HyprlandAdapter.qml").read_text(encoding="utf-8")
+        focus = qml[qml.index("function onFocusedMonitorChanged()"):]
+        self.assertIn("adapter.rereadMonitors()", focus[:focus.index("}")])
+        self.assertIn('name.indexOf("monitoradded") === 0', qml)
+        self.assertIn('name.indexOf("monitorremoved") === 0', qml)
+        self.assertIn('], "set-dpms")', qml)
+        self.assertIn('if (adapter.currentLabel === "set-dpms") adapter.rereadMonitors()', qml)
+        self.assertIn("if (adapter.monitorsPending) adapter.rereadMonitors()", qml)
+        self.assertIn("doneReads.monitors = false", qml)
+
     def test_other_qml_does_not_touch_hyprland(self):
         adapter = DESKTOP / "shell" / "host" / "HyprlandAdapter.qml"
         seen = False
