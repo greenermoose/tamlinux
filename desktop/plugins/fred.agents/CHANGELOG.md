@@ -2,6 +2,12 @@
 
 All notable changes to `fred.agents` (`agents-fred-tamlinux`) will be documented in this file.
 
+## [2.0.1] - Unreleased
+
+### Fixed
+- Codex account/usage replies arriving together with notifications no longer cause false `account/read` timeouts. The RPC reader consumes its byte buffer before waiting for more pipe data and handles fragmented replies, connection closure, and server errors explicitly.
+- A failed Codex refresh retains the last successful limits, labeled with their original reading time in the panel and bar tooltip. Reset windows expire from that fallback; sign-out and a detected account change clear it. Transient failures request an earlier retry.
+
 ## [2.0.0] - Unreleased
 
 ### Changed

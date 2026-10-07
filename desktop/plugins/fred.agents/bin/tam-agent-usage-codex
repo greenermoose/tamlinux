@@ -474,25 +474,51 @@ def _cached_local_stats(max_age):
     return stats
 
 
-def rpc_request(proc, request_id, method, params=None, timeout=8):
-  payload = {"id": request_id, "method": method, "params": params or {}}
-  proc.stdin.write(json.dumps(payload) + "\n")
-  proc.stdin.flush()
-  deadline = time.time() + timeout
-  while time.time() < deadline:
-    ready, _, _ = select.select([proc.stdout], [], [], 0.25)
-    if not ready:
-      continue
-    line = proc.stdout.readline()
-    if not line:
-      break
-    try:
-      message = json.loads(line)
-    except Exception:
-      continue
-    if message.get("id") == request_id:
-      return message
-  raise TimeoutError(method)
+class RpcReader:
+  """Read complete replies before polling the pipe for more bytes.
+
+  TextIOWrapper.readline can prefetch the next reply. select then sees an
+  empty pipe even though Python holds that reply, causing a false timeout.
+  Own the byte buffer instead, including partial lines across requests.
+  """
+  def __init__(self, proc):
+    self.proc = proc
+    self.buffer = b""
+
+  def request(self, request_id, method, params=None, timeout=8):
+    payload = {"id": request_id, "method": method, "params": params or {}}
+    self.proc.stdin.write((json.dumps(payload) + "\n").encode("utf-8"))
+    self.proc.stdin.flush()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+      if b"\n" in self.buffer:
+        line, self.buffer = self.buffer.split(b"\n", 1)
+        try:
+          message = json.loads(line)
+        except (ValueError, UnicodeError):
+          continue
+        if not isinstance(message, dict) or message.get("id") != request_id:
+          continue
+        if "error" in message:
+          error = message["error"]
+          code = error.get("code", "unknown") if isinstance(error, dict) else "unknown"
+          raise RuntimeError(f"{method} failed (RPC error {code})")
+        if not isinstance(message.get("result"), dict):
+          raise RuntimeError(f"{method} returned an invalid response")
+        return message["result"]
+      remaining = deadline - time.monotonic()
+      if remaining <= 0:
+        break
+      ready, _, _ = select.select([self.proc.stdout], [], [], remaining)
+      if not ready:
+        continue
+      chunk = os.read(self.proc.stdout.fileno(), 65536)
+      if not chunk:
+        raise ConnectionError(f"Codex closed the connection while waiting for {method}")
+      self.buffer += chunk
+      if len(self.buffer) > 1024 * 1024:
+        raise RuntimeError("Codex response exceeded the 1 MiB limit")
+    raise TimeoutError(f"Timed out after {timeout}s waiting for {method}")
 
 
 def limit_window(window):
@@ -518,13 +544,59 @@ def limit_window(window):
   }
 
 
+def previous_codex_limits(source):
+  path = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")) / "omarchy" / "agents" / "usage" / "codex.json"
+  try:
+    if path.stat().st_size > 2 * 1024 * 1024:
+      return {}
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(record, dict) or record.get("limitsSource") != source:
+      return {}
+    stamp = datetime.fromisoformat(record["limitsUpdatedAt"])
+    now = datetime.now(timezone.utc)
+    if stamp.tzinfo is None or stamp > now:
+      return {}
+    limits = []
+    for entry in record.get("limits", []):
+      if not isinstance(entry, dict):
+        continue
+      try:
+        reset = datetime.fromisoformat(entry["resetsAt"])
+        percent = float(entry["percent"])
+        if reset.tzinfo is not None and reset > now and 0 <= percent <= 1:
+          limits.append(entry)
+      except (KeyError, ValueError, TypeError):
+        continue
+    return {"limits": limits, "tierLabel": str(record.get("tierLabel") or ""),
+            "limitsUpdatedAt": stamp.isoformat(), "limitsAccountKey": record.get("limitsAccountKey", "")}
+  except (OSError, ValueError, KeyError, TypeError):
+    return {}
+
+
 def fetch_codex_rpc():
-  result = {"limits": [], "tierLabel": "", "usageStatusText": "", "authHelpText": AUTH_HELP}
+  codex_home = str(Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex")).resolve())
+  source = hashlib.sha256(codex_home.encode("utf-8")).hexdigest()
+  previous = previous_codex_limits(source)
+  result = {"limits": [], "tierLabel": "", "usageStatusText": "", "authHelpText": "",
+            "limitsUpdatedAt": "", "limitsStale": False, "limitsSource": source,
+            "limitsAccountKey": "", "retryAdvised": False}
+
+  def unavailable(detail, retry=True):
+    result["limits"] = []
+    result["retryAdvised"] = retry
+    result["usageStatusText"] = "Codex limits unavailable"
+    result["authHelpText"] = detail
+    if previous.get("limits"):
+      result.update(previous)
+      result["limitsStale"] = True
+      result["usageStatusText"] = "Last known Codex limits"
+      stamp = datetime.fromisoformat(previous["limitsUpdatedAt"]).astimezone().strftime("%Y-%m-%d %H:%M %Z")
+      result["authHelpText"] += f". Showing the last successful reading from {stamp}."
+    return result
+
   codex = find_command("codex")
   if not codex:
-    result["usageStatusText"] = "Codex unavailable"
-    result["authHelpText"] = "codex not found in PATH"
-    return result
+    return unavailable("codex not found in PATH", retry=False)
 
   try:
     proc = subprocess.Popen(
@@ -532,23 +604,31 @@ def fetch_codex_rpc():
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=subprocess.DEVNULL,
-      text=True,
+      bufsize=0,
       env=ENV,
     )
   except Exception as exc:
-    result["usageStatusText"] = "Codex unavailable"
-    result["authHelpText"] = str(exc)
-    return result
+    return unavailable(f"Could not start Codex: {exc}")
 
   try:
-    rpc_request(proc, 1, "initialize", {"clientInfo": {"name": "tam-agent-usage", "version": "1"}}, timeout=8)
-    proc.stdin.write(json.dumps({"method": "initialized", "params": {}}) + "\n")
+    rpc = RpcReader(proc)
+    rpc.request(1, "initialize", {"clientInfo": {"name": "tam-agent-usage", "version": "1"}}, timeout=8)
+    proc.stdin.write(b'{"method":"initialized","params":{}}\n')
     proc.stdin.flush()
-    account_msg = rpc_request(proc, 2, "account/read", timeout=4)
-    limits_msg = rpc_request(proc, 3, "account/rateLimits/read", timeout=4)
+    account_msg = rpc.request(2, "account/read", {"refreshToken": False}, timeout=4)
+    account = account_msg.get("account") or {}
+    if account.get("type") not in ("chatgpt", "chatgptAuthTokens"):
+      previous = {}
+      return unavailable("Sign in to Codex with ChatGPT to see subscription limits. " + AUTH_HELP, retry=False)
+    identity = {key: account.get(key) for key in ("type", "email")}
+    account_key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()
+    if previous.get("limitsAccountKey") != account_key:
+      previous = {}
+    result["limitsAccountKey"] = account_key
+    result["tierLabel"] = str(account.get("planType") or "")
+    limits_msg = rpc.request(3, "account/rateLimits/read", timeout=4)
 
-    account = (account_msg.get("result") or {}).get("account") or {}
-    limits = (limits_msg.get("result") or {}).get("rateLimits") or {}
+    limits = limits_msg.get("rateLimits") or {}
     plan = limits.get("planType") or account.get("planType") or account.get("type") or ""
     result["tierLabel"] = str(plan) if plan else ""
 
@@ -556,9 +636,11 @@ def fetch_codex_rpc():
       entry = limit_window(window)
       if entry:
         result["limits"].append(entry)
+    if not result["limits"]:
+      return unavailable("Codex returned no subscription limit windows")
+    result["limitsUpdatedAt"] = datetime.now(timezone.utc).isoformat()
   except Exception as exc:
-    result["usageStatusText"] = "Codex limits unavailable"
-    result["authHelpText"] = str(exc)
+    return unavailable(str(exc))
   finally:
     try:
       proc.terminate()
@@ -566,8 +648,11 @@ def fetch_codex_rpc():
     except Exception:
       try:
         proc.kill()
+        proc.wait(timeout=1)
       except Exception:
         pass
+    proc.stdin.close()
+    proc.stdout.close()
   return result
 
 

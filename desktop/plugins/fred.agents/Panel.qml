@@ -19,7 +19,7 @@ Panel {
   readonly property color track: Style.selectedFillFor(foreground, Color.accent)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  readonly property string pluginVersion: "2.0.0"
+  readonly property string pluginVersion: "2.0.1"
 
   readonly property var providers: usage.enabledProviders
   // The selection follows the provider, not the slot it happens to sit in: a
@@ -122,6 +122,7 @@ Panel {
     for (var i = 0; i < list.length; i++) {
       var entry = list[i] || {}
       var percent = Number(entry.percent)
+      if (p.limitsStale === true && !(new Date(entry.resetsAt).getTime() > root.nowMs)) continue
       if (percent >= 0) out.push(limitWindow(entry.label, percent, entry.resetsAt, entry.title))
     }
     return out
@@ -194,7 +195,12 @@ Panel {
       var provider = root.providers[i]
       var w = root.bindingWindow(provider)
       var name = provider ? String(provider.providerName || provider.providerId || "?") : "?"
-      if (w) lines.push(name + " " + Math.round(w.percent * 100) + "% · resets " + root.formatTimestamp(w.resetAt))
+      if (w) {
+        var text = name + " " + Math.round(w.percent * 100) + "% · resets " + root.formatTimestamp(w.resetAt)
+        if (provider.limitsStale === true)
+          text += " · last known " + root.formatTimestamp(provider.limitsUpdatedAt)
+        lines.push(text)
+      }
       else lines.push(name + " · unknown")
     }
     lines.push("", "fred.agents v" + root.pluginVersion)

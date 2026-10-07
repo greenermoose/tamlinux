@@ -74,3 +74,8 @@ Cursor `3.23.12` (`composer`) rewrote `fred.agents` to 2.0.0 on
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. No code change was needed on `develop/2.0.0`; the test guards it. Not tagged or released.
 [Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+
+## 2026-10-06 Codex usage reader (2.0.1)
+
+Codex CLI `0.160.1` (`gpt-6.1-sol`) fixed false `account/read` timeouts in the Codex usage reader and kept the last successful limits, labelled "last known", through failed refreshes. Claude Code `2.1.292` (`claude-opus-5-5`) finished the work after the Codex session ended: one test fix and live checks. Not tagged or released.
+[Session record](docs/ai/2026-10-06-codex-rpc-reader.md).

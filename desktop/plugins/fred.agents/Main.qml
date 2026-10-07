@@ -280,6 +280,8 @@ Item {
       ready: record.ready === true || synced,
       usageStatusText: String(record.usageStatusText || ""),
       authHelpText: String(record.authHelpText || ""),
+      limitsStale: record.limitsStale === true,
+      limitsUpdatedAt: String(record.limitsUpdatedAt || ""),
 
       // Rate limits and balances stay per-account and are never merged
       // across devices.
