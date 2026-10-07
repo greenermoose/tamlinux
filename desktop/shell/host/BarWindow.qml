@@ -38,7 +38,7 @@ PanelWindow {
 
   screen: screenRef
   color: transparent ? "transparent" : Color.bar.background
-  exclusionMode: !hidden && Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Normal : ExclusionMode.Ignore
+  exclusionMode: !hidden && Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Auto : ExclusionMode.Ignore
   implicitHeight: Style.bar.sizeHorizontal
   WlrLayershell.namespace: "tamlinux-bar-" + hostKey.replace("#", "-")
   WlrLayershell.layer: WlrLayer.Top

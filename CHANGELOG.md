@@ -29,6 +29,31 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.3.3 - 2026-10-06
+
+The Tamlinux shell is the daily bar on all three screens. Stage 0.3 is
+complete when a day's use is accepted.
+
+### Changed
+
+- The session unit runs the whole shell: the bar on every screen with the
+  eight deployed 2.0.0 plugins, placed by the layout document, plus the
+  session services and panels. Plugin actions are live.
+
+### Fixed
+
+- The daily bar reserves its own height, so tiled windows no longer slide
+  under it.
+- Clicking a workspace number on the bar switches workspaces again. The
+  session start script now exports `TAMLINUX_COMPOSITOR_COMMANDS` (the
+  shell's `host/` directory); without it the `fred.workspaces` and
+  `fred.monitor` helpers could not load the compositor backend and did
+  nothing. Only the isolated proof had set it.
+
+### Removed
+
+- `desktop/launch-daily-bar`; the session unit starts the daily bar.
+
 ## 0.3.2 - 2026-10-06
 
 Daily-bar readiness; the daily bar cutover is the separate 0.3.3 step.

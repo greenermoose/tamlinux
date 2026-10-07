@@ -39,6 +39,9 @@ def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[s
     env = dict(environ)
     notes: list[str] = []
     env.setdefault("QML_IMPORT_PATH", str(SHELL / "modules"))
+    # Plugin helpers (fred.workspaces, fred.monitor) and the Sway adapter load
+    # the compositor backend from here; without it they fail closed.
+    env.setdefault("TAMLINUX_COMPOSITOR_COMMANDS", str(HOST))
     if env.get("TAMLINUX_BAR") == "0":
         return env, notes
     config = config_home(env)

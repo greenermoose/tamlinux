@@ -111,7 +111,8 @@ batch, one validated monitor rule, and `reload`. DPMS uses `dispatch` with
 and logs names, counts, the keymap, and whether the screen matches an output.
 It does not import Hyprland. Plugin QML reads this facade. The develop
 helpers load the backend from `TAMLINUX_COMPOSITOR_COMMANDS`, which the
-proof exports as the shell's `host/` directory. Brightness still calls the Omarchy
+proof and the session start script (`host/session_start.py`) export as the
+shell's `host/` directory. Brightness still calls the Omarchy
 display helper.
 
 IPC stays on the shell target `tamlinux-shell` and the one `tamlinux.clock`
@@ -362,11 +363,9 @@ Automated, on the development Wayland session:
 
 ## Limits
 
-This is a Develop candidate. It does not install a package, switch the
-production shell, or prove a Void target session. The eight plugins load in
-the isolated shell. They are not the running bar. Typed actions record the
-request during the proof. They start the existing programs only when
-`TAMLINUX_HOST_ACTIONS=1`, which `launch-daily-bar --replace` sets and the
+The proof does not install a package or prove a Void target session.
+Typed actions record the request during the proof. They start the existing programs only when
+`TAMLINUX_HOST_ACTIONS=1`, which the session unit sets and the
 proof unsets. Plugin QML does not import Hyprland or start `hyprctl`.
 The develop workspace and monitor helpers call the named Hyprland backend
 instead of building Hyprland commands. The shell's Hyprland adapter remains
@@ -374,8 +373,8 @@ the only Hyprland import in `desktop/`. The Sway adapter fills the same
 facade from fixtures and does not start `swaymsg`. Those helpers do not have
 a Sway backend yet. Live compositor actions stay off unless
 `TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1`, and the proof never sets that flag.
-Replacing the running bar is `desktop/launch-daily-bar --replace` after this
-candidate is accepted. That cutover is Tamlinux step 0.3.3.
+The session unit (`tamlinux-shell.service`) runs the daily bar from the
+deployed copy since Tamlinux 0.3.3.
 
 ## Theme integration
 
@@ -416,4 +415,9 @@ plugin entries from `~/.config/tamlinux/plugins/` and reads
 `~/.config/tamlinux/shell/{layout,settings}.json`. To import the old bar
 configuration once, run `desktop/adapters/omarchy_shell_import.py` with the
 source shell.json and output directory; existing files are refused.
-The daily bar switches separately at 0.3.3.
+Since 0.3.3 this is the daily bar.
+
+Interactive `--layout` copies deployed widget settings into the isolated
+home when available, so the clock displays the converted formats while
+calendar data remains the local fixture. `--settings-file <file>` selects
+another settings document. The selftest always uses its synthetic fixture.
