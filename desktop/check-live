@@ -1,0 +1,940 @@
+#!/usr/bin/python3 -I
+"""Put the running Tamlinux shell through its paces on the live desktop.
+
+    desktop/check-live [--stages passive,panels,...] [--report FILE]
+                       [--restarts N] [--soak MINUTES] [--burst N]
+
+Unlike the proof selftest and check-panels, this talks to the daily shell
+(tamlinux-shell.service) on the real screens. Stages, mildest first:
+
+  passive   read-only: service, process environment, children, IPC targets,
+            service states, layers and reserved space, widget registration,
+            journal warnings, core dumps, memory and CPU, deployed revision
+  panels    opens and closes every bar panel on every screen (route focus),
+            one popup per screen
+  services  notifications (and Do Not Disturb), OSD, clipboard, emoji,
+            reminder and menu overlays, night light, Stay Awake, indicators
+  bar       bottom and back, transparency twice, hide and show
+  stress    rapid panel toggles, a notification burst, IPC latency
+  restart   restarts the service N times; ready time, orphans, settings kept
+  soak      samples memory and CPU for --soak minutes
+
+The default is passive. `all` runs every stage but soak. Every stage puts
+back what it changed: route focus, bar position, transparency and
+visibility, Do Not Disturb, night light, Stay Awake. Test notifications stay
+in the notification history. It never calls the proof hooks that drop
+outputs or bars, write fixtures, or set DPMS.
+"""
+
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import re
+import statistics
+import subprocess
+import sys
+import time
+
+UNIT = "tamlinux-shell.service"
+HOME = os.environ.get("HOME", "")
+STATE = os.path.join(HOME, ".local/state/tamlinux")
+SHELL_LINK = os.path.join(HOME, ".local/share/tamlinux/shell")
+LAYOUT = os.path.join(HOME, ".config/tamlinux/shell/layout.json")
+SETTINGS = os.path.join(HOME, ".config/tamlinux/shell/settings.json")
+BAR_FLAG = os.path.join(STATE, "toggles/bar-off")
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+PLUGINS = ["fred.agents", "fred.clock", "fred.keyboard", "fred.monitor",
+           "fred.sysinfo", "fred.tides", "fred.weather", "fred.workspaces"]
+SERVICE_TARGETS = ["notifications", "osd", "clipboard", "emojis", "imagepicker",
+                   "reminders", "menu", "background", "polkit", "media", "idle",
+                   "nightlight", "battery", "keybindings", "theme"]
+# Lines every start logs that are understood and harmless: one IPC handler
+# per target wins and the per-output copies say so; the portal refuses a
+# second app-id registration from the same connection.
+KNOWN_NOISE = [
+    re.compile(r"Handler was registered but will not be used"),
+    re.compile(r"Failed to register with host portal"),
+]
+WARN_RE = re.compile(r"\b(WARN|ERROR|CRIT|FATAL)\b|TypeError|ReferenceError|"
+                     r"is not a function|Cannot read propert|unavailable|"
+                     r"rejected|failed", re.I)
+BAR_LAYER = re.compile(r"^tamlinux-bar-(.+)-\d+$")
+QUIET_LAYERS = re.compile(r"^tamlinux-(bar-|background$|tooltip-)")
+
+
+class Run:
+    def __init__(self, verbose):
+        self.results = []
+        self.stage = ""
+        self.verbose = verbose
+        self.notes = []
+
+    def add(self, status, name, detail=""):
+        self.results.append((self.stage, status, name, str(detail)))
+        if self.verbose or status != "PASS":
+            print(f"  {status:4}  {name}" + (f" — {detail}" if detail else ""), flush=True)
+        else:
+            print(f"  {status:4}  {name}", flush=True)
+
+    def check(self, ok, name, detail="", warn=False):
+        self.add("PASS" if ok else ("WARN" if warn else "FAIL"), name, detail)
+        return ok
+
+    def info(self, name, detail):
+        self.add("INFO", name, detail)
+
+
+# --- plumbing -------------------------------------------------------------
+
+def sh(argv, timeout=10, check=False):
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return 124, "", "timeout"
+    except FileNotFoundError:
+        return 127, "", "not found"
+    return p.returncode, p.stdout, p.stderr
+
+
+def shell_path():
+    return os.path.realpath(SHELL_LINK)
+
+
+def ipc(target, method, *args, timeout=3):
+    """One call to the live shell. Returns (ok, answer)."""
+    rc, out, err = sh(["qs", "ipc", "-n", "-p", shell_path(), "call", "--",
+                       target, method, *args], timeout=timeout)
+    out = out.strip()
+    bad = (rc != 0 or out in ("Target not found.", "Function not found.")
+           or out.startswith(("Too few", "Too many", "Not ready")))
+    return (not bad), (out if out else err.strip())
+
+
+def hypr(*args):
+    rc, out, _ = sh(["hyprctl", "-j", *args])
+    if rc != 0:
+        return None
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError:
+        return None
+
+
+def monitors():
+    return hypr("monitors") or []
+
+
+def layers():
+    """[(monitor, namespace, x, y, w, h, pid)] for every mapped layer."""
+    rows = []
+    for mon, v in (hypr("layers") or {}).items():
+        for level in v.get("levels", {}).values():
+            for layer in level:
+                rows.append((mon, layer["namespace"], layer["x"], layer["y"],
+                             layer["w"], layer["h"], layer["pid"]))
+    return rows
+
+
+def popup_layers():
+    """Every layer the shell maps besides its bars, backgrounds and tooltips.
+    Plugins name their own (fred-keyboard-panel), so match by process."""
+    pid = main_pid()
+    return [r for r in layers() if r[6] == pid and not QUIET_LAYERS.match(r[1])]
+
+
+def wait_for(predicate, timeout=2.0, step=0.05):
+    end = time.monotonic() + timeout
+    while True:
+        value = predicate()
+        if value:
+            return value
+        if time.monotonic() >= end:
+            return value
+        time.sleep(step)
+
+
+def unit_props(*names):
+    rc, out, _ = sh(["systemctl", "--user", "show", UNIT, "-p", ",".join(names)])
+    props = {}
+    for line in out.splitlines():
+        k, _, v = line.partition("=")
+        props[k] = v
+    return props
+
+
+def main_pid():
+    pid = unit_props("MainPID").get("MainPID", "0")
+    return int(pid) if pid.isdigit() else 0
+
+
+def cgroup_pids():
+    cg = unit_props("ControlGroup").get("ControlGroup", "")
+    try:
+        with open(f"/sys/fs/cgroup{cg}/cgroup.procs") as f:
+            return [int(x) for x in f.read().split()]
+    except OSError:
+        return []
+
+
+def cmdline(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            return f.read().replace(b"\0", b" ").decode(errors="replace").strip()
+    except OSError:
+        return ""
+
+
+def environ(pid):
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as f:
+            raw = f.read().split(b"\0")
+    except OSError:
+        return {}
+    env = {}
+    for item in raw:
+        k, _, v = item.decode(errors="replace").partition("=")
+        if k:
+            env[k] = v
+    return env
+
+
+def user_procs(pattern):
+    rc, out, _ = sh(["pgrep", "-u", str(os.getuid()), "-f", pattern])
+    return [int(x) for x in out.split()] if rc == 0 else []
+
+
+def rss_kb(pid):
+    try:
+        with open(f"/proc/{pid}/smaps_rollup") as f:
+            text = f.read()
+    except OSError:
+        return 0, 0
+    rss = re.search(r"^Rss:\s+(\d+)", text, re.M)
+    pss = re.search(r"^Pss:\s+(\d+)", text, re.M)
+    return int(rss.group(1)) if rss else 0, int(pss.group(1)) if pss else 0
+
+
+def cpu_ticks(pid):
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            fields = f.read().rsplit(")", 1)[1].split()
+        return int(fields[11]) + int(fields[12])
+    except (OSError, IndexError, ValueError):
+        return 0
+
+
+def cpu_percent(pid, seconds):
+    hz = os.sysconf("SC_CLK_TCK")
+    a = cpu_ticks(pid)
+    time.sleep(seconds)
+    b = cpu_ticks(pid)
+    return 100.0 * (b - a) / hz / seconds
+
+
+def journal_cursor():
+    rc, out, _ = sh(["journalctl", "--user", "-u", UNIT, "-n", "0", "--show-cursor", "-q"])
+    m = re.search(r"cursor:\s*(\S+)", out)
+    return m.group(1) if m else None
+
+
+def journal_since(cursor=None, since=None):
+    argv = ["journalctl", "--user", "-u", UNIT, "-o", "cat", "--no-pager", "-q"]
+    if cursor:
+        argv += ["--after-cursor", cursor]
+    elif since:
+        argv += ["--since", since]
+    rc, out, _ = sh(argv, timeout=30)
+    return out.splitlines()
+
+
+def unexpected(lines):
+    hits = []
+    for line in lines:
+        if "TAMLINUX_EVIDENCE" in line and "unavailable" not in line and "failed" not in line:
+            continue
+        if any(p.search(line) for p in KNOWN_NOISE):
+            continue
+        if WARN_RE.search(line):
+            hits.append(line.strip())
+    return hits
+
+
+def summarize(lines, limit=8):
+    counts = {}
+    for line in lines:
+        key = re.sub(r"\d+", "N", re.sub(r"\x1b\[[0-9;]*m", "", line))[:200]
+        counts[key] = counts.get(key, 0) + 1
+    top = sorted(counts.items(), key=lambda kv: -kv[1])[:limit]
+    return "; ".join(f"{n}× {k}" for k, n in top)
+
+
+def file_digest(path):
+    try:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
+
+
+def read_json(path):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def evidence_after(cursor, prefix):
+    for line in journal_since(cursor):
+        m = re.search(r"TAMLINUX_EVIDENCE " + re.escape(prefix) + r"(.*)$", line)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def live_outputs():
+    """Enabled outputs. A screen blanked by DPMS still maps layers, so its
+    panels are checked too; they just are not visible until it wakes."""
+    return [m["name"] for m in monitors() if not m.get("disabled")]
+
+
+def focused_output():
+    for m in monitors():
+        if m.get("focused"):
+            return m["name"]
+    return ""
+
+
+def panel_ids(run):
+    ids = []
+    for section in ("left", "center", "right"):
+        cursor = journal_cursor()
+        ipc("tamlinux-shell", "probePanels", section)
+        found = wait_for(lambda: evidence_after(cursor, f"panels {section}"), timeout=2)
+        if found is None:
+            run.add("FAIL", f"probePanels {section}", "no evidence line")
+            continue
+        ids += [x for x in found.split(",") if x]
+    return ids
+
+
+# --- stages ---------------------------------------------------------------
+
+def stage_passive(run, ctx):
+    props = unit_props("ActiveState", "SubState", "NRestarts", "ActiveEnterTimestamp",
+                       "MainPID", "ExecMainStartTimestamp")
+    run.check(props.get("ActiveState") == "active", "service active",
+              f"{props.get('ActiveState')}/{props.get('SubState')}")
+    run.check(props.get("NRestarts", "0") == "0", "no automatic restarts since start",
+              f"NRestarts={props.get('NRestarts')}", warn=True)
+    ctx["since"] = props.get("ActiveEnterTimestamp", "")
+    run.info("running since", ctx["since"])
+
+    pid = main_pid()
+    ctx["pid"] = pid
+    run.check(pid > 0 and "quickshell" in cmdline(pid), "main process is Quickshell", cmdline(pid))
+    shells = [p for p in user_procs("quickshell") if "quickshell" in cmdline(p).split(" ")[0]]
+    run.check(len(shells) == 1, "exactly one Quickshell", f"{len(shells)}: {shells}")
+    omarchy = [p for p in user_procs("omarchy") if "quickshell" in cmdline(p) or "qs " in cmdline(p)]
+    run.check(not omarchy, "no Omarchy shell running", str(omarchy))
+
+    revision = ""
+    try:
+        with open(os.path.join(HOME, ".local/share/tamlinux/shell-revision")) as f:
+            revision = f.read().strip()
+    except OSError:
+        pass
+    rc, head, _ = sh(["git", "-C", REPO, "rev-parse", "HEAD"])
+    run.check(bool(revision), "deployed shell revision recorded", revision[:12])
+    run.info("deployed vs this checkout",
+             "same" if revision and revision == head.strip() else f"deployed {revision[:12]}, checkout {head.strip()[:12]}")
+    run.check(shell_path() in cmdline(pid), "running the deployed tree", shell_path())
+    try:
+        with open(os.path.join(HOME, ".config/tamlinux/version")) as f:
+            run.info("config version", f.read().strip())
+    except OSError:
+        run.add("WARN", "config version", "~/.config/tamlinux/version missing")
+
+    # The session environment a logout/login or reboot can leave stale.
+    env = environ(pid)
+    sig = env.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    runtime = env.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    rc, live_sig, _ = sh(["hyprctl", "instances", "-j"])
+    live = [i.get("instance") for i in (json.loads(live_sig) if rc == 0 and live_sig.strip() else [])]
+    run.check(sig in live, "shell talks to the running Hyprland instance", f"{sig[:24]}… live={len(live)}")
+    run.check(os.path.exists(os.path.join(runtime, env.get("WAYLAND_DISPLAY", "-"))),
+              "WAYLAND_DISPLAY socket exists", env.get("WAYLAND_DISPLAY"))
+    cc = env.get("TAMLINUX_COMPOSITOR_COMMANDS", "")
+    run.check(bool(cc) and os.path.isfile(os.path.join(cc, "hyprland_backend.py")),
+              "TAMLINUX_COMPOSITOR_COMMANDS reaches the backend", cc)
+    run.check(env.get("TAMLINUX_HOST_ACTIONS") == "1", "host actions live")
+    run.check(env.get("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") == "1", "compositor live actions on")
+    for key in ("OMARCHY_PATH",):
+        run.check(key not in env, f"{key} not in the shell's environment", env.get(key, ""), warn=True)
+    bg = env.get("TAMLINUX_BACKGROUND_LINK", "")
+    run.check("omarchy" not in bg, "background link outside Omarchy state", bg, warn=True)
+
+    # Children: one watcher each, no strays left by an earlier instance.
+    kids = cgroup_pids()
+    names = [cmdline(p) for p in kids]
+    paste = [n for n in names if n.startswith("wl-paste")]
+    run.check(len(paste) == 2, "two clipboard watchers in the unit", f"{len(paste)}")
+    inotify = [n for n in names if n.startswith("inotifywait")]
+    run.check(len(inotify) == 1, "one background watcher in the unit", f"{len(inotify)}")
+    strays = [p for p in user_procs("clipboard/capture.sh") if p not in kids]
+    run.check(not strays, "no clipboard watchers outside the unit", str(strays))
+
+    # IPC: every target answers.
+    rc, out, _ = sh(["qs", "ipc", "-n", "-p", shell_path(), "show"], timeout=5)
+    functions = {}
+    current = None
+    for line in out.splitlines():
+        m = re.match(r"^target (\S+)", line)
+        if m:
+            current = functions.setdefault(m.group(1), set())
+        m = re.match(r"^\s+function (\w+)\(", line)
+        if m and current is not None:
+            current.add(m.group(1))
+    targets = set(functions)
+    ctx["targets"] = targets
+    want = set(SERVICE_TARGETS) | {"tamlinux-shell", "tamlinux.panels", "tamlinux.indicators",
+                                   "tamlinux.audio", "tamlinux.bluetooth", "tamlinux.network",
+                                   "tamlinux.clock", "fred.monitor", "fred.sysinfo",
+                                   "fred.weather", "fred.tides", "fred.agents", "fred.workspaces"}
+    missing = sorted(want - targets)
+    run.check(not missing, "every expected IPC target registered", ", ".join(missing) or f"{len(targets)} targets")
+    stale = sorted(t for t in targets if "omarchy" in t)
+    run.check(not stale, "no omarchy.* IPC targets", ", ".join(stale))
+    for t in sorted(set(SERVICE_TARGETS) & targets):
+        if "ping" in functions[t]:
+            ok, ans = ipc(t, "ping")
+            run.check(ok and ans in ("ok", "pong"), f"{t} ping", ans)
+    t0 = time.monotonic()
+    ok, _ = ipc("tamlinux-shell", "ping")
+    run.check(ok, "shell ping", f"{(time.monotonic() - t0) * 1000:.0f} ms")
+
+    # Service state.
+    ok, pol = ipc("polkit", "state")
+    pol = json.loads(pol) if ok and pol.startswith("{") else {}
+    run.check(pol.get("registered") is True, "polkit agent registered", pol)
+    ok, dnd = ipc("notifications", "dndState")
+    ctx["dnd"] = dnd
+    run.info("Do Not Disturb", dnd)
+    ok, idle = ipc("idle", "status")
+    idle = json.loads(idle) if ok and idle.startswith("{") else {}
+    run.check(idle.get("enabled") is True, "idle service enabled", f"stayAwake={idle.get('stayAwake')}")
+    ok, nl = ipc("nightlight", "status")
+    run.info("night light", nl)
+    ok, n = ipc("emojis", "count")
+    run.check(ok and n.isdigit() and int(n) > 1000, "emoji list loaded", n)
+    ok, n = ipc("clipboard", "count")
+    run.check(ok and n.isdigit(), "clipboard history readable", n)
+    ok, cur = ipc("background", "current")
+    run.check(ok and os.path.isfile(cur), "background image exists", cur)
+    ok, theme = ipc("theme", "current")
+    run.check(ok and theme.startswith("{"), "theme palette loaded", theme[:80])
+    ok, n = ipc("tamlinux-shell", "refreshIndicators")
+    run.check(ok and n == str(len(monitors())), "indicators on every screen", f"{n} copies, {len(monitors())} screens")
+    ok, mon = ipc("fred.monitor", "state")
+    if ok and mon.startswith("{"):
+        st = json.loads(mon)
+        run.check(st.get("focusedMonitor") == focused_output(), "fred.monitor focus matches Hyprland",
+                  f"plugin {st.get('focusedMonitor')}, Hyprland {focused_output()}", warn=True)
+
+    # Layers and reserved space.
+    pos = (read_json(LAYOUT) or {}).get("position", "top")
+    ctx["position"] = pos
+    rows = layers()
+    for m in monitors():
+        name = m["name"]
+        bars = [r for r in rows if r[0] == name and BAR_LAYER.match(r[1])]
+        bgs = [r for r in rows if r[0] == name and r[1] == "tamlinux-background"]
+        run.check(len(bars) == 1, f"{name}: one bar", [b[1] for b in bars])
+        run.check(len(bgs) == 1, f"{name}: one background", len(bgs))
+        if bars:
+            b = bars[0]
+            run.check(b[4] == m["width"] / m["scale"] or abs(b[4] - m["width"] / m["scale"]) < 2,
+                      f"{name}: bar spans the screen", f"{b[4]} of {m['width'] / m['scale']:.0f}")
+            res = m.get("reserved", [0, 0, 0, 0])
+            want_res = b[5]
+            got = res[1] if pos == "top" else res[3]
+            run.check(got == want_res, f"{name}: {pos} reserves the bar height", f"reserved={res} bar h={b[5]}")
+    leftovers = popup_layers()
+    run.check(not leftovers, "no popup or panel left open", [(r[0], r[1]) for r in leftovers], warn=True)
+    run.check(not os.path.exists(BAR_FLAG), "bar-off flag absent")
+
+    # Widget registration at the last start.
+    lines = journal_since(since=ctx["since"]) if ctx["since"] else []
+    layout = read_json(LAYOUT) or {}
+    ids = [e.get("id") for s in ("left", "center", "right") for e in layout.get("layout", {}).get(s, [])]
+    hosts = {}
+    for line in lines:
+        m = re.search(r"widget-registered (\S+) host=(\S+)", line)
+        if m:
+            hosts.setdefault(m.group(2), set()).add(m.group(1))
+    for m in monitors():
+        key = f"{m['name']}#0"
+        got = hosts.get(key, set())
+        absent = [i for i in ids if i not in got]
+        run.check(not absent, f"{m['name']}: every layout widget registered",
+                  ", ".join(absent) or f"{len(got)} widgets")
+    plug = [l for l in lines if "tamlinux-shell: plugins:" in l]
+    if plug:
+        loaded = plug[-1].split("plugins:", 1)[1].replace(" ", "").split(",")
+        run.check(sorted(loaded) == PLUGINS, "all eight plugins loaded", ",".join(loaded))
+    rejected = [l for l in lines if "reject" in l.lower()]
+    run.check(not rejected, "no plugin rejected", "; ".join(rejected[:3]))
+
+    # Journal since the last start.
+    bad = unexpected(lines)
+    run.check(not bad, "journal: no unexpected warnings since start",
+              f"{len(bad)} lines: {summarize(bad)}" if bad else f"{len(lines)} lines", warn=True)
+    ev = [l for l in lines if "TAMLINUX_EVIDENCE" in l]
+    try:
+        started = datetime.datetime.strptime(ctx["since"][4:23], "%Y-%m-%d %H:%M:%S")
+        minutes = max((datetime.datetime.now() - started).total_seconds() / 60, 1 / 60)
+    except ValueError:
+        minutes = 1
+    rate = len(lines) / minutes
+    detail = f"{rate:.1f} lines/min over {minutes:.0f} min, {len(ev)} evidence lines; top: {summarize(ev, 3)}"
+    if minutes < 10:
+        run.info("journal volume (started under 10 min ago)", detail)
+    else:
+        run.check(rate < 20, "journal volume", detail, warn=True)
+
+    # Core dumps this boot.
+    rc, out, _ = sh(["coredumpctl", "list", "--since", "-1d", "--no-pager", "--no-legend", "-q"])
+    dumps = [l for l in out.splitlines() if re.search(r"quickshell|qs\b|wl-paste|hyprsunset|python3", l)]
+    run.check(not dumps, "no shell-related core dumps in the last day", "; ".join(d[:120] for d in dumps[:3]))
+
+    # Resources.
+    rss, pss = rss_kb(pid)
+    ctx["rss0"] = rss
+    run.check(rss < 1024 * 1024, "shell resident memory", f"RSS {rss / 1024:.0f} MiB, PSS {pss / 1024:.0f} MiB",
+              warn=True)
+    mem = unit_props("MemoryCurrent", "MemoryPeak")
+    run.info("unit memory", f"current {int(mem.get('MemoryCurrent', '0') or 0) / 2**20:.0f} MiB, "
+             f"peak {int(mem.get('MemoryPeak', '0') or 0) / 2**20:.0f} MiB"
+             if mem.get("MemoryCurrent", "").isdigit() else str(mem))
+    cpu = cpu_percent(pid, ctx.get("cpu_seconds", 5))
+    run.check(cpu < 3.0, "idle CPU", f"{cpu:.2f}% over {ctx.get('cpu_seconds', 5)} s", warn=True)
+
+    # Saved settings parse.
+    run.check(read_json(LAYOUT) is not None, "layout.json parses")
+    s = read_json(SETTINGS)
+    run.check(isinstance(s, dict) and "entries" in s, "settings.json parses",
+              f"{len(s.get('entries', {}))} entries" if isinstance(s, dict) else "")
+
+
+def stage_panels(run, ctx):
+    outputs = live_outputs()
+    asleep = [m["name"] for m in monitors() if not m.get("dpmsStatus", True)]
+    if asleep:
+        run.info("blanked screens (checked, not visible)", ", ".join(asleep))
+    ids = panel_ids(run)
+    run.info("bar panels", ",".join(ids))
+    try:
+        for out in outputs:
+            ipc("tamlinux-shell", "setRouteFocus", out)
+            for pid_ in ids:
+                t0 = time.monotonic()
+                ok, ans = ipc("tamlinux-shell", "summon", pid_)
+                opened = wait_for(lambda: [r for r in popup_layers() if r[0] == out
+                                           and not r[1].endswith("-dismiss")], timeout=2)
+                ms = (time.monotonic() - t0) * 1000
+                run.check(ok and ans == "ok" and bool(opened), f"{out}: {pid_} opens there",
+                          f"{ans}, {[r[1] for r in opened] if opened else 'no layer'}, {ms:.0f} ms")
+                elsewhere = [r for r in popup_layers() if r[0] != out and not r[1].endswith("-dismiss")]
+                run.check(not elsewhere, f"{out}: {pid_} opens nowhere else", [(r[0], r[1]) for r in elsewhere])
+                ipc("tamlinux-shell", "hide", pid_)
+                gone = wait_for(lambda: not popup_layers(), timeout=2)
+                run.check(gone, f"{out}: {pid_} closes", [(r[0], r[1]) for r in popup_layers()])
+            if len(ids) >= 2:
+                ipc("tamlinux-shell", "summon", ids[0])
+                wait_for(lambda: [r for r in popup_layers() if r[0] == out], timeout=2)
+                ipc("tamlinux-shell", "summon", ids[-1])
+                time.sleep(0.4)
+                here = [r for r in popup_layers() if r[0] == out and not r[1].endswith("-dismiss")]
+                run.check(len(here) == 1, f"{out}: one popup at a time", [r[1] for r in here])
+                ipc("tamlinux-shell", "hide", ids[0])
+                ipc("tamlinux-shell", "hide", ids[-1])
+                wait_for(lambda: not popup_layers(), timeout=2)
+        # Two screens at once: each keeps its own popup.
+        if len(outputs) >= 2 and ids:
+            ipc("tamlinux-shell", "setRouteFocus", outputs[0])
+            ipc("tamlinux-shell", "summon", ids[0])
+            ipc("tamlinux-shell", "setRouteFocus", outputs[1])
+            ipc("tamlinux-shell", "summon", ids[-1])
+            time.sleep(0.5)
+            panels = sorted({r[0] for r in popup_layers() if not r[1].endswith("-dismiss")})
+            run.info("popups on two screens at once", f"open on {panels}")
+            ipc("tamlinux-shell", "setRouteFocus", outputs[0]); ipc("tamlinux-shell", "hide", ids[0])
+            ipc("tamlinux-shell", "setRouteFocus", outputs[1]); ipc("tamlinux-shell", "hide", ids[-1])
+            run.check(wait_for(lambda: not popup_layers(), timeout=2), "both close",
+                      [(r[0], r[1]) for r in popup_layers()])
+        # Keys: SUPER + CTRL + n reaches the Nth right-hand panel.
+        ipc("tamlinux-shell", "setRouteFocus", outputs[0])
+        ok, first = ipc("tamlinux-shell", "togglePanelAt", "right", "1")
+        opened = wait_for(lambda: popup_layers(), timeout=2)
+        run.check(ok and first != "unknown" and bool(opened), "togglePanelAt right 1", first)
+        ipc("tamlinux-shell", "togglePanelAt", "right", "1")
+        run.check(wait_for(lambda: not popup_layers(), timeout=2), "togglePanelAt again closes it")
+        ok, ans = ipc("tamlinux-shell", "togglePanelAt", "right", "99")
+        run.check(ans == "unknown", "an out-of-range panel number is refused", ans)
+        ok, ans = ipc("tamlinux-shell", "summon", "omarchy.osd")
+        run.check(ans == "unknown", "omarchy.osd route refused", ans)
+    finally:
+        ipc("tamlinux-shell", "setRouteFocus", "")
+        for pid_ in ids:
+            ipc("tamlinux-shell", "hide", pid_)
+
+
+def stage_services(run, ctx):
+    token = f"check-live {os.getpid()}-{int(time.time())}"
+    ok, dnd0 = ipc("notifications", "dndState")
+    try:
+        ipc("notifications", "setDnd", "off")
+        rc, nid, err = sh(["notify-send", "-a", "check-live", "-p", "-t", "4000", token, "Tamlinux live check"])
+        shown = wait_for(lambda: [r for r in layers() if r[1] == "tamlinux-notifications"], timeout=3)
+        run.check(rc == 0 and bool(shown), "a notification shows", f"id {nid.strip()} on {[r[0] for r in shown] if shown else '-'}")
+        ok, ans = ipc("notifications", "dismiss", token)
+        gone = wait_for(lambda: not [r for r in layers() if r[1] == "tamlinux-notifications"], timeout=3)
+        run.check(gone, "dismissing it by summary removes it", ans)
+        ipc("notifications", "setDnd", "on")
+        ok, state = ipc("notifications", "isDnd")
+        run.check(state in ("on", "true"), "Do Not Disturb turns on", state)
+        n = ipc("tamlinux-shell", "refreshIndicators")[1]
+        sh(["notify-send", "-a", "check-live", "-t", "3000", token + " dnd", "should stay hidden"])
+        time.sleep(1.0)
+        leaked = [r for r in layers() if r[1] == "tamlinux-notifications"]
+        run.check(not leaked, "Do Not Disturb holds a normal notification", [r[0] for r in leaked])
+        ipc("notifications", "dismiss", token + " dnd")
+    finally:
+        ipc("notifications", "setDnd", "on" if dnd0 in ("on", "true") else "off")
+        ok, back = ipc("notifications", "dndState")
+        run.check(back == dnd0, "Do Not Disturb restored", f"{dnd0} -> {back}")
+
+    payload = json.dumps({"icon": "", "message": "check-live", "duration": 700})
+    ok, ans = ipc("osd", "show", payload)
+    shown = wait_for(lambda: [r for r in layers() if r[1] == "tamlinux-osd"], timeout=2)
+    run.check(ok and bool(shown), "OSD shows", f"on {[r[0] for r in shown] if shown else '-'}")
+    if shown:
+        run.check(shown[0][0] == focused_output(), "OSD on the focused screen", f"{shown[0][0]} vs {focused_output()}",
+                  warn=True)
+    gone = wait_for(lambda: not [r for r in layers() if r[1] == "tamlinux-osd"], timeout=3)
+    ok, st = ipc("osd", "state")
+    run.check(gone and st == "closed", "OSD hides after its duration", st)
+
+    for target, ns, opener, args in (("clipboard", "tamlinux-clipboard", "open", ()),
+                                     ("emojis", "tamlinux-emojis", "open", ()),
+                                     ("reminders", "tamlinux-reminders", "open", ()),
+                                     ("menu", "tamlinux-menu", "summon", ("",))):
+        try:
+            ok, ans = ipc(target, opener, *args)
+            shown = wait_for(lambda: [r for r in layers() if r[1] == ns], timeout=2)
+            run.check(ok and bool(shown), f"{target} opens", f"{ans or 'ok'} on {[r[0] for r in shown] if shown else '-'}")
+        finally:
+            ipc(target, "close")
+        run.check(wait_for(lambda: not [r for r in layers() if r[1] == ns], timeout=2), f"{target} closes")
+
+    ok, nl0 = ipc("nightlight", "status")
+    on0 = '"enabled":true' in nl0
+    try:
+        ok, ans = ipc("nightlight", "toggle", timeout=8)
+        flipped = wait_for(lambda: ('"enabled":true' in ipc("nightlight", "status")[1]) != on0, timeout=6, step=0.3)
+        run.check(flipped, "night light toggles", ans)
+    finally:
+        ok, now = ipc("nightlight", "status")
+        if ('"enabled":true' in now) != on0:
+            ipc("nightlight", "toggle", timeout=8)
+        back = wait_for(lambda: ('"enabled":true' in ipc("nightlight", "status")[1]) == on0, timeout=6, step=0.3)
+        run.check(back, "night light restored", ipc("nightlight", "status")[1])
+
+    def stay():
+        ok, s = ipc("idle", "status")
+        return json.loads(s).get("stayAwake") if ok and s.startswith("{") else None
+    s0 = stay()
+    try:
+        ipc("idle", "toggle")
+        run.check(wait_for(lambda: stay() == (not s0), timeout=3), "Stay Awake toggles", f"from {s0}")
+        n = ipc("tamlinux-shell", "refreshIndicators")[1]
+        run.check(n == str(len(monitors())), "indicators refresh on every screen", n)
+    finally:
+        if stay() != s0:
+            ipc("idle", "toggle")
+        run.check(wait_for(lambda: stay() == s0, timeout=3), "Stay Awake restored", f"{stay()}")
+        try:
+            with open(os.path.join(STATE, "indicators/stay-awake")) as f:
+                run.info("stay-awake file", f.read().strip() or "(empty)")
+        except OSError:
+            run.info("stay-awake file", "absent")
+
+    ok, ans = ipc("media", "status")
+    run.check(ok and ans.startswith("{"), "media status answers", ans[:80])
+    ok, ans = ipc("battery", "status")
+    run.check(ok and ans.startswith("{"), "battery status answers", ans[:80])
+    ok, ans = ipc("keybindings", "ping")
+    run.check(ok, "keybindings service answers", ans)
+
+
+def stage_bar(run, ctx):
+    # Moving and hiding the bar animate, and a screen blanked by DPMS sends no
+    # frame callbacks, so its bar keeps the old state until it wakes. Assert
+    # on awake screens; report the blanked ones.
+    doc0 = read_json(LAYOUT) or {}
+    pos0 = doc0.get("position", "top")
+    other = "bottom" if pos0 == "top" else "top"
+    idx = {"top": 1, "bottom": 3}
+
+    def awake():
+        return [m for m in monitors() if m.get("dpmsStatus", True)]
+
+    def asleep_note(label):
+        rows = [(m["name"], m["reserved"]) for m in monitors() if not m.get("dpmsStatus", True)]
+        if rows:
+            run.info(f"{label} on blanked screens (applies on wake)", rows)
+
+    try:
+        ok, ans = ipc("tamlinux-shell", "setBarPosition", other)
+        moved = wait_for(lambda: all(m["reserved"][idx[other]] > 0 and m["reserved"][idx[pos0]] == 0
+                                     for m in awake()), timeout=4)
+        run.check(ok and bool(moved), f"bar moves to the {other}", [(m["name"], m["reserved"]) for m in awake()])
+        geo = {r[0]: r for r in layers() if BAR_LAYER.match(r[1])}
+        for m in awake():
+            b = geo.get(m["name"])
+            if not b:
+                run.add("FAIL", f"{m['name']}: bar present after moving")
+                continue
+            bottom_edge = m["y"] + m["height"] / m["scale"]
+            at = "bottom" if abs((b[3] + b[5]) - bottom_edge) < 2 else ("top" if b[3] == m["y"] else "?")
+            run.check(at == other, f"{m['name']}: bar drawn at the {other}", f"y={b[3]} h={b[5]}")
+        asleep_note(f"bar at the {other}")
+        run.check((read_json(LAYOUT) or {}).get("position") == other, "position saved")
+    finally:
+        ipc("tamlinux-shell", "setBarPosition", pos0)
+        back = wait_for(lambda: all(m["reserved"][idx[pos0]] > 0 for m in monitors()), timeout=4)
+        run.check(bool(back), f"bar back at the {pos0} on every screen", [m["reserved"] for m in monitors()])
+
+    t0 = doc0.get("transparent", False)
+    ok, a = ipc("tamlinux-shell", "toggleBarTransparency")
+    run.check((read_json(LAYOUT) or {}).get("transparent") == (not t0), "transparency toggles and saves", a)
+    ok, b = ipc("tamlinux-shell", "toggleBarTransparency")
+    run.check((read_json(LAYOUT) or {}).get("transparent") == t0, "transparency restored", b)
+
+    try:
+        ok, ans = ipc("tamlinux-shell", "setBar", "off")
+        run.check(ok and ans == "hidden", "bar hides", ans)
+        free = wait_for(lambda: all(sum(m["reserved"]) == 0 for m in awake()), timeout=3)
+        run.check(bool(free), "hidden bar reserves nothing", [(m["name"], m["reserved"]) for m in awake()])
+        geo = {r[0]: r for r in layers() if BAR_LAYER.match(r[1])}
+        run.info("hidden bar layers", {n: r[3] for n, r in geo.items()})
+        asleep_note("bar hidden")
+        run.check(wait_for(lambda: os.path.exists(BAR_FLAG), timeout=2), "bar-off flag written")
+    finally:
+        ok, ans = ipc("tamlinux-shell", "setBar", "on")
+        shown = wait_for(lambda: all(m["reserved"][idx[pos0]] > 0 for m in monitors()), timeout=4)
+        run.check(ok and bool(shown), "bar shows on every screen again", ans)
+        run.check(wait_for(lambda: not os.path.exists(BAR_FLAG), timeout=2), "bar-off flag removed")
+    ok, ans = ipc("tamlinux-shell", "setBarPosition", "left")
+    run.check(ans == "unknown", "unsupported position refused", ans)
+    doc1 = read_json(LAYOUT) or {}
+    run.check(doc1 == doc0, "layout.json unchanged after the round trips",
+              "" if doc1 == doc0 else f"{doc0.get('position')}/{doc0.get('transparent')} -> {doc1.get('position')}/{doc1.get('transparent')}")
+
+
+def stage_stress(run, ctx):
+    pid = main_pid()
+    rss0, _ = rss_kb(pid)
+    cursor = journal_cursor()
+    ids = panel_ids(run)
+    out = focused_output()
+    rounds = ctx.get("rounds", 15)
+    try:
+        ipc("tamlinux-shell", "setRouteFocus", out)
+        t0 = time.monotonic()
+        calls = 0
+        for _ in range(rounds):
+            for pid_ in ids:
+                ipc("tamlinux-shell", "toggle", pid_)
+                calls += 1
+        dur = time.monotonic() - t0
+        run.info("rapid toggles", f"{calls} toggles in {dur:.1f} s on {out}")
+        for pid_ in ids:
+            ipc("tamlinux-shell", "hide", pid_)
+        settled = wait_for(lambda: not popup_layers(), timeout=3)
+        run.check(settled, "every panel closed after rapid toggling", [(r[0], r[1]) for r in popup_layers()])
+    finally:
+        ipc("tamlinux-shell", "setRouteFocus", "")
+
+    burst = ctx.get("burst", 10)
+    ok, dnd0 = ipc("notifications", "dndState")
+    ipc("notifications", "setDnd", "off")
+    try:
+        for i in range(burst):
+            sh(["notify-send", "-a", "check-live", "-t", "2000", f"check-live burst {i + 1}/{burst}", "stress"])
+        shown = wait_for(lambda: [r for r in layers() if r[1] == "tamlinux-notifications"], timeout=3)
+        run.check(bool(shown), f"{burst} notifications in a burst show", len(shown) if shown else 0)
+        ipc("notifications", "dismissAll")
+        run.check(wait_for(lambda: not [r for r in layers() if r[1] == "tamlinux-notifications"], timeout=4),
+                  "dismissAll clears them")
+    finally:
+        ipc("notifications", "setDnd", "on" if dnd0 in ("on", "true") else "off")
+
+    lat = []
+    for _ in range(40):
+        t = time.monotonic()
+        ok, _ = ipc("tamlinux-shell", "ping")
+        lat.append((time.monotonic() - t) * 1000)
+    lat.sort()
+    p95 = lat[int(len(lat) * 0.95) - 1]
+    run.check(p95 < 250, "IPC latency", f"p50 {statistics.median(lat):.0f} ms, p95 {p95:.0f} ms, max {lat[-1]:.0f} ms",
+              warn=True)
+    rss1, _ = rss_kb(main_pid())
+    run.check(main_pid() == pid, "the shell survived the stress", f"pid {pid} -> {main_pid()}")
+    run.check(rss1 - rss0 < 150 * 1024, "memory growth under stress",
+              f"{rss0 / 1024:.0f} -> {rss1 / 1024:.0f} MiB ({(rss1 - rss0) / 1024:+.0f})", warn=True)
+    bad = unexpected(journal_since(cursor))
+    run.check(not bad, "journal clean during stress", summarize(bad), warn=True)
+
+
+def stage_restart(run, ctx):
+    digests0 = {p: file_digest(p) for p in (LAYOUT, SETTINGS)}
+    times = []
+    for i in range(ctx.get("restarts", 2)):
+        old = main_pid()
+        t0 = time.monotonic()
+        rc, _, err = sh(["systemctl", "--user", "restart", UNIT], timeout=30)
+        run.check(rc == 0, f"restart {i + 1}: systemctl restart", err.strip())
+
+        def ready():
+            if main_pid() in (0, old):
+                return False
+            if not ipc("tamlinux-shell", "ping")[0]:
+                return False
+            bars = [r for r in layers() if BAR_LAYER.match(r[1])]
+            return len(bars) == len(monitors())
+        ok = wait_for(ready, timeout=20, step=0.1)
+        dt = time.monotonic() - t0
+        times.append(dt)
+        run.check(bool(ok), f"restart {i + 1}: bars on every screen and IPC up", f"{dt:.2f} s")
+        okp = wait_for(lambda: '"registered":true' in ipc("polkit", "state")[1], timeout=5)
+        run.check(bool(okp), f"restart {i + 1}: polkit agent registered again")
+        time.sleep(1.0)
+        kids = [cmdline(p) for p in cgroup_pids()]
+        paste_all = user_procs("clipboard/capture.sh")
+        run.check(sum(k.startswith("wl-paste") for k in kids) == 2 and len(paste_all) == 2,
+                  f"restart {i + 1}: two clipboard watchers, no orphans", f"{len(paste_all)} for the user")
+        run.check(sum(k.startswith("inotifywait") for k in kids) == 1, f"restart {i + 1}: one background watcher")
+        unit = cgroup_pids()
+        stray = [p for p in user_procs("inotifywait") if p not in unit
+                 and ("tamlinux" in cmdline(p) or "omarchy/current" in cmdline(p))]
+        run.check(not stray, f"restart {i + 1}: no orphaned background watcher", stray)
+    digests1 = {p: file_digest(p) for p in (LAYOUT, SETTINGS)}
+    run.check(digests0 == digests1, "layout and settings unchanged by restarts")
+    if times:
+        run.info("restart times", ", ".join(f"{t:.2f} s" for t in times))
+    run.check(unit_props("NRestarts").get("NRestarts") == "0", "restarts were clean (no crash restarts)")
+
+
+def stage_soak(run, ctx):
+    minutes = ctx.get("soak", 0)
+    if minutes <= 0:
+        run.info("soak", "skipped (--soak MINUTES)")
+        return
+    pid = main_pid()
+    samples = []
+    end = time.monotonic() + minutes * 60
+    while time.monotonic() < end:
+        rss, _ = rss_kb(pid)
+        cpu = cpu_percent(pid, 10)
+        samples.append((rss, cpu))
+        if main_pid() != pid:
+            run.add("FAIL", "soak: shell restarted", f"{pid} -> {main_pid()}")
+            return
+        time.sleep(max(0, min(20, end - time.monotonic())))
+    first, last = samples[0][0], samples[-1][0]
+    cpus = [c for _, c in samples]
+    slope = (last - first) / 1024 / max(minutes, 1e-9) * 60
+    run.check(slope < 20, "soak: memory trend", f"{first / 1024:.0f} -> {last / 1024:.0f} MiB over {minutes} min "
+              f"({slope:+.0f} MiB/h)", warn=True)
+    run.check(statistics.mean(cpus) < 3, "soak: average CPU", f"{statistics.mean(cpus):.2f}% (max {max(cpus):.1f}%)",
+              warn=True)
+
+
+STAGES = {"passive": stage_passive, "panels": stage_panels, "services": stage_services,
+          "bar": stage_bar, "stress": stage_stress, "restart": stage_restart, "soak": stage_soak}
+
+
+def write_report(run, path, args, started):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    counts = {}
+    for _, status, _, _ in run.results:
+        counts[status] = counts.get(status, 0) + 1
+    with open(path, "w") as f:
+        f.write(f"# Tamlinux live check — {started:%Y-%m-%d %H:%M}\n\n")
+        f.write(f"Stages: {args.stages}. Revision: ")
+        try:
+            with open(os.path.join(HOME, ".local/share/tamlinux/shell-revision")) as r:
+                f.write(r.read().strip()[:12])
+        except OSError:
+            f.write("unknown")
+        f.write(".  " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())) + "\n\n")
+        f.write("| Stage | Result | Check | Detail |\n| --- | --- | --- | --- |\n")
+        for stage, status, name, detail in run.results:
+            d = detail.replace("|", "\\|").replace("\n", " ")
+            f.write(f"| {stage} | {status} | {name} | {d[:400]} |\n")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--stages", default="passive", help="comma list, or all")
+    ap.add_argument("--report", default="")
+    ap.add_argument("--restarts", type=int, default=2)
+    ap.add_argument("--soak", type=float, default=0, help="minutes")
+    ap.add_argument("--burst", type=int, default=10)
+    ap.add_argument("--rounds", type=int, default=15, help="rapid toggle rounds")
+    ap.add_argument("--cpu-seconds", type=int, default=5)
+    ap.add_argument("-v", "--verbose", action="store_true")
+    args = ap.parse_args()
+    stages = list(STAGES) if args.stages == "all" else args.stages.split(",")
+    if args.stages == "all":
+        stages.remove("soak")
+        if args.soak > 0:
+            stages.append("soak")
+    unknown = [s for s in stages if s not in STAGES]
+    if unknown:
+        ap.error("unknown stage: " + ", ".join(unknown))
+    if not os.environ.get("WAYLAND_DISPLAY") or not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        print("check-live needs the desktop session's WAYLAND_DISPLAY and HYPRLAND_INSTANCE_SIGNATURE", file=sys.stderr)
+        return 2
+
+    started = datetime.datetime.now()
+    run = Run(args.verbose)
+    ctx = {"restarts": args.restarts, "soak": args.soak, "burst": args.burst,
+           "rounds": args.rounds, "cpu_seconds": args.cpu_seconds}
+    for name in stages:
+        run.stage = name
+        print(f"== {name}", flush=True)
+        try:
+            STAGES[name](run, ctx)
+        except Exception as e:  # a broken check is a finding, not a crash
+            run.add("FAIL", f"{name} stage raised", f"{type(e).__name__}: {e}")
+        if name != "passive" and name != "soak":
+            left = popup_layers()
+            run.check(not left, f"{name}: nothing left open", [(r[0], r[1]) for r in left])
+    ipc("tamlinux-shell", "setRouteFocus", "")
+
+    path = args.report or os.path.join(STATE, "check-live", f"{started:%Y%m%d-%H%M%S}.md")
+    write_report(run, path, args, started)
+    counts = {}
+    for _, status, _, _ in run.results:
+        counts[status] = counts.get(status, 0) + 1
+    print("\n" + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())) + f"\nreport: {path}")
+    return 1 if counts.get("FAIL") else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
