@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.monitor",
   "name": "Display",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": "Fred (@greenermoose)",
   "description": "Compact multi-display control, saved layouts, and safe rollback",
   "repository": "https://github.com/greenermoose/monitor-fred-tamlinux",

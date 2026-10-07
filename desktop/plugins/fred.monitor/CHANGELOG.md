@@ -2,6 +2,15 @@
 
 All notable changes to `fred.monitor` are documented here.
 
+## [2.0.1] - Unreleased
+
+### Fixed
+- Reset/retrain works again. `fred-monitor-reset` ran the Tamlinux backend as `python3 -I hyprland_backend.py`. Isolated mode leaves the script's directory off `sys.path`, so the backend's `import compositor_commands` failed. The helper discarded that error, read no monitors, and reported the display as not connected. It now puts only the backend directory on the path and calls the backend's `main`.
+- A failed monitor read now reports `cannot read monitors from the compositor` instead of `not connected`.
+
+### Added
+- `tests/test_reset.py` runs the helper against a stand-in backend that imports a sibling module, as the real one does.
+
 ## [2.0.0] - Unreleased
 
 ### Changed

@@ -86,3 +86,8 @@ compositor facade. The three DPMS controls call `bar.compositor.setDpms`. Layout
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Text Size runs `tam-display-text-size` and the brightness helper runs `tam-brightness-display`, both by absolute path from `TAMLINUX_BIN` (fallback `~/.local/bin`). Those commands call other Tamlinux commands by name, so the closed `PATH` is `TAMLINUX_BIN:/usr/bin`, as it was Omarchy's command directory before. A new state test pins both resolutions. Not tagged or released.
 [Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+
+## 2026-10-06 reset backend import (2.0.1)
+
+Claude Code `2.1.292` (`claude-opus-5-5`) fixed Reset/retrain on `develop/2.0.0`. `fred-monitor-reset` ran the backend with `python3 -I`, which leaves the script's directory off `sys.path`. The backend could not import `compositor_commands`, and the helper reported the monitor as not connected. A new test covers the helper. Not tagged or released.
+[Session record](docs/ai/2026-10-06-reset-backend-import.md).

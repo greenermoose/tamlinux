@@ -17,17 +17,29 @@ if [[ -z "$output" || ! "$output" =~ ^[A-Za-z0-9._-]+$ ]]; then
 fi
 
 backend_dir="${TAMLINUX_COMPOSITOR_COMMANDS:-}"
-backend_py="${backend_dir}/hyprland_backend.py"
-if [[ -z "$backend_dir" || ! -f "$backend_py" ]]; then
+if [[ "$backend_dir" != /* \
+  || ! -f "${backend_dir}/hyprland_backend.py" \
+  || ! -f "${backend_dir}/compositor_commands.py" ]]; then
   echo "Error: compositor commands unavailable" >&2
   exit 1
 fi
 
+# Isolated mode leaves the script's own directory off sys.path, so running
+# hyprland_backend.py by path cannot import its sibling compositor_commands.
+# Put only the backend directory on the path, then run the backend's main.
 compositor() {
-  /usr/bin/python3 -I "$backend_py" "$@"
+  /usr/bin/python3 -I -B -c '
+import sys
+sys.path.insert(0, sys.argv.pop(1))
+import hyprland_backend
+raise SystemExit(hyprland_backend.main(sys.argv))
+' "$backend_dir" "$@"
 }
 
-monitors_json=$(compositor monitors-all 2>/dev/null || echo "[]")
+if ! monitors_json=$(compositor monitors-all); then
+  echo "Error: cannot read monitors from the compositor" >&2
+  exit 1
+fi
 monitor_data=$(printf '%s\n' "$monitors_json" | jq -r --arg o "$output" '
   .[] | select(.name == $o) | {
     name,
