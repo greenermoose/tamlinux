@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Every display shows the new desktop mode (O/M/W) at once. When the state directory did not exist as the bars started, their mode-file watch was never armed and other displays caught up only at the 30-second status check. Every copy now re-reads the state files after any helper command, and the status check re-reads the mode file, which arms the watch.
+- An isolated test shell no longer retrains the real MSI display. `tam-desktop-mode dpms-on DP-2` runs `msi-mp161-resume-workaround` only when live compositor actions are on; without them the dpms call was only recorded.
 - A click on the mode letter no longer flashes back to the old mode. The click no longer starts a status check that could read the file before the helper wrote the new mode.
 
 ## [1.5.2] - 2026-09-23

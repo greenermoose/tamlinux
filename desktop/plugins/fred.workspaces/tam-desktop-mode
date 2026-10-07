@@ -931,7 +931,10 @@ def dpms_on(monitor: str) -> bool:
     _accepted, ok = _named_ok("dpms", [monitor, "on"])
     if not ok:
         _accepted, ok = _named_ok("dpms-fallback", [monitor, "on"])
-    if ok and monitor == "DP-2":
+    # The workaround modesets the real DP-2 itself. Without live compositor
+    # actions (an isolated proof) the dpms call was only recorded, so the
+    # display never went dark and must not be retrained.
+    if ok and monitor == "DP-2" and os.environ.get("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") == "1":
         workaround = os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround")
         if os.path.isfile(workaround) and os.access(workaround, os.X_OK):
             try:

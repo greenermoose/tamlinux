@@ -552,6 +552,7 @@ class IdleBlankingTests(unittest.TestCase):
 
     def test_dpms_on_dp2_invokes_msi_workaround(self):
         with (
+            patch.dict(os.environ, {"TAMLINUX_COMPOSITOR_LIVE_ACTIONS": "1"}),
             patch.object(desktop_mode, "run_named", return_value=completed()) as run,
             patch("os.path.isfile", return_value=True),
             patch("os.access", return_value=True),
@@ -560,6 +561,20 @@ class IdleBlankingTests(unittest.TestCase):
             self.assertTrue(desktop_mode.dpms_on("DP-2"))
         run.assert_called_once_with("dpms", ["DP-2", "on"])
         popen.assert_called_once_with([desktop_mode.os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround"), "--once"])
+
+    def test_dpms_on_dp2_without_live_actions_runs_no_workaround(self):
+        # An isolated proof only records the dpms call; the real DP-2 never
+        # went dark, so the workaround must not modeset it.
+        os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+        with (
+            patch.object(desktop_mode, "run_named", return_value=completed(stdout="recorded\n")) as run,
+            patch("os.path.isfile", return_value=True),
+            patch("os.access", return_value=True),
+            patch("subprocess.Popen") as popen,
+        ):
+            self.assertTrue(desktop_mode.dpms_on("DP-2"))
+        run.assert_called_once_with("dpms", ["DP-2", "on"])
+        popen.assert_not_called()
 
     def test_dpms_on_fallback_when_primary_dispatch_fails(self):
         results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
