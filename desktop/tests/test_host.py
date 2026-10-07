@@ -278,6 +278,15 @@ class FixtureTests(unittest.TestCase):
         self.assertNotIn('target: "tamlinux.fixture"', shell)
 
 
+class BarWindowTests(unittest.TestCase):
+    def test_daily_bar_reserves_its_own_height(self):
+        # ExclusionMode.Normal reserves only an explicit exclusiveZone (0 by
+        # default); Auto reserves the bar's height, as Omarchy's bar did.
+        text = (DESKTOP / "shell" / "host" / "BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn('=== "1" ? ExclusionMode.Auto : ExclusionMode.Ignore', text)
+        self.assertNotIn("ExclusionMode.Normal", text)
+
+
 class AdapterTests(unittest.TestCase):
     def test_patch_matches_generator_and_drops_omarchy_routes(self):
         clock = build_patch.repo_default()
