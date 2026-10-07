@@ -281,7 +281,7 @@ class FixtureTests(unittest.TestCase):
 class BarWindowTests(unittest.TestCase):
     def test_daily_bar_reserves_its_own_height(self):
         # ExclusionMode.Normal reserves only an explicit exclusiveZone (0 by
-        # default); Auto reserves the bar's height, as Omarchy's bar did.
+        # default); Auto reserves the bar's height.
         text = (DESKTOP / "shell" / "host" / "BarWindow.qml").read_text(encoding="utf-8")
         self.assertIn('=== "1" ? ExclusionMode.Auto : ExclusionMode.Ignore', text)
         self.assertNotIn("ExclusionMode.Normal", text)

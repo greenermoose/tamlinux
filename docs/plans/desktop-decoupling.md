@@ -7,7 +7,7 @@ Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
-**Status:** Tamlinux 0.3.2 readiness implemented; manual acceptance of the complete bar remains before 0.3.3. The Tamlinux shell's session services (notifications,
+**Status:** Tamlinux 0.3.3: the Tamlinux shell is the daily bar, in daily testing before stage 0.3 is accepted. The Tamlinux shell's session services (notifications,
 on-screen display, clipboard, pickers, reminders, menu, background, polkit,
 media, idle, battery, and lock) and the inherited desktop's panels (audio,
 Bluetooth, network, Wi-Fi QR, power, and speed tests) run in daily use beside
@@ -149,7 +149,7 @@ its original names (Step 1–5), which were Develop candidates feeding stages
 | 0.0 | The foundation owned: package mirror and kernel, Hyprland configuration, shell environment, session entry, login screen | — | 0.0.1 and 0.0.2, 2026-09-22 and 2026-10-04. |
 | 0.1 | Session services in the Tamlinux shell beside the existing bar; the desktop's commands owned | Proof | 0.1.0–0.1.23 accepted 2026-10-04 and 2026-10-05: notifications, OSD, clipboard, pickers, reminders, menu, background, screenshots, polkit, capture, media, idle, battery, browser extensions, monitor watch, lock, and the menus' and keys' remaining commands. |
 | 0.2 | Every key binding and menu entry on owned commands; the inherited desktop's panels (audio, Bluetooth, network, power, Wi-Fi QR, speed tests) in the Tamlinux shell | 0.1 | 0.2.0–0.2.6 accepted 2026-10-05. Each key and entry checked by Fred; only the bar's own panel keys left for 0.3. |
-| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | 0.3.0 and 0.3.1 accepted 2026-10-06: the plugins load in the isolated shell and call only Tamlinux commands, and the shell draws the whole bar with its own widgets. 0.3.2 prepares multi-screen routing, bar controls, settings migration, and deployed copies. The daily bar is replaced and the inherited shell stops at 0.3.3. |
+| 0.3 | The Tamlinux shell with the eight `fred.<id>` 2.0.0 plugins and its own tray, indicators, and status widgets as the daily bar | 0.2 | 0.3.0 and 0.3.1 accepted 2026-10-06: the plugins load in the isolated shell and call only Tamlinux commands, and the shell draws the whole bar with its own widgets. 0.3.2 (accepted the same day) prepared multi-screen routing, bar controls, settings migration, and deployed copies. 0.3.3 replaced the daily bar and stopped the inherited shell; in daily testing. |
 | 0.4 | Plugin backends and helpers on the compositor contract; Sway adapter | 0.3 | Sway adapter slice, 2026-10-04: ext-workspace workspaces first, i3 IPC second, bindings from a generated fragment; fixture proof passed. Still needed: Sway backends for the monitor and desktop-mode helpers, night light, and capture through the contract; daily use of the Hyprland adapter. |
 | 0.5 | Tamlinux's own look and name | 0.3 | One theme source generates every application's colours; owned fonts; the name on the login screen, menus, and About. |
 | 0.6 | The inherited desktop removed; Hyprland stays | 0.2–0.5 | Its system files, session environment, and every package it built are owned; its packages, package mirror, repository, and kernel are removed. |
@@ -424,6 +424,13 @@ Both scale 1 and 1.25 selftests checked focused-output routes and bar
 controls on DP-1, DP-2, and HDMI-A-1, converted clock settings, and a plugin
 with an escaping entry path. No proof compositor mutations ran.
 
-The services-only unit still has `TAMLINUX_BAR=0`. Manual use of the complete
-isolated bar is owed before the separate 0.3.3 cutover; readiness tests do
-not assert daily-use acceptance.
+## Cutover (0.3.3)
+
+`tamlinux-shell.service` runs the deployed shell with the bar on: the layout
+document and plugin tree under `~/.config/tamlinux/`, an exclusive zone on
+every output, and live plugin actions. Keys and menu entries reach the panel
+on the focused screen through the `tamlinux-shell` IPC routes. Rollback is
+the previous Home Manager generation plus the live-linked compositor and
+menu files at their pre-cutover revision. The bar's exclusive zone was first
+exercised here: the isolated proofs never set it, and the daily bar now
+reserves its own height.
