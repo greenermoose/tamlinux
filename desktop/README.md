@@ -49,7 +49,7 @@ is not copied into this directory.
 | `shell.summon` / `hide` / `toggle` | monitor calls `summon` | Opens or closes the registered panel on the focused output. `omarchy.osd` is refused. |
 | `bar.run` | none of the 2.0.0 plugins | Logged and not executed. The string is not interpreted. |
 | `layoutConfig` | the tray | The bar's `{ left, center, right }` entry lists. |
-| `centerSectionRevealHeld` | the indicators | True while the pointer is over a center widget. |
+| `centerSectionRevealHeld` | the indicators | True while the pointer is anywhere over the bar. |
 | `shell.firstPartyServiceFor(id)` | the indicators | `tamlinux.notifications`, `.nightlight`, `.idle`, `.media` from the session services; null when that service is not running (the proof runs none). |
 | `openMenu(name)` | the menu button | Recorded. Runs `$TAMLINUX_BIN/tam-menu toggle [name]` only when the actions flag is set. |
 | `compositor.keyboards`, `.typedKeyboardName`, `.switchKeyboardLayout(name)`, `.refreshKeyboards()` | the keyboard layout widget | From the adapter's `hyprctl -j devices` read and `activelayout` events; the switch is recorded unless compositor live actions are on. |

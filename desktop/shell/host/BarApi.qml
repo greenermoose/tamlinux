@@ -25,8 +25,8 @@ QtObject {
   property string fontFamily: Style.font.family
   property bool foregroundAnimationEnabled: false
   property bool centerHoverRevealSuppressed: false
-  // Held while the pointer is over the bar's center section; the indicators
-  // reveal their inactive icons while it is (unless a plugin suppresses it).
+  // Held while the pointer is anywhere over the bar; the indicators reveal
+  // their inactive icons while it is (unless a plugin suppresses it).
   property bool centerSectionRevealHeld: false
   // The bar's layout, { left, center, right } entry lists (BarModel.js shape).
   // The tray reads it to see which widgets the bar already shows.

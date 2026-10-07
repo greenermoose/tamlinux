@@ -51,9 +51,12 @@ Item {
   readonly property bool anchored: centerAnchor !== "" && BarModel.entryIndex(centerEntries, centerAnchor) !== -1
   readonly property real gap: Style.space(4)
 
-  // Over any center widget, not the empty bar between sections.
-  readonly property bool centerHovered: plainHover.hovered || anchorHover.hovered || beforeHover.hovered || afterHover.hovered
-  onCenterHoveredChanged: api.centerSectionRevealHeld = centerHovered
+  // The indicators show while the pointer is anywhere on the bar, so moving
+  // from the clock to the icons it revealed never crosses a spot that hides
+  // them. An ancestor of every widget stays hovered over each of them.
+  HoverHandler {
+    onHoveredChanged: root.api.centerSectionRevealHeld = hovered
+  }
 
   function note(message) {
     console.log("TAMLINUX_EVIDENCE " + message)
@@ -108,7 +111,6 @@ Item {
       visible: !root.anchored
       anchors.centerIn: parent
       spacing: root.gap
-      HoverHandler { id: plainHover }
       Repeater { model: root.anchored ? [] : root.centerEntries; delegate: Slot {} }
     }
 
@@ -117,7 +119,6 @@ Item {
       id: anchorRow
       visible: root.anchored
       anchors.centerIn: parent
-      HoverHandler { id: anchorHover }
       Repeater { model: root.anchored ? [root.centerAnchor] : []; delegate: Slot {} }
     }
 
@@ -127,7 +128,6 @@ Item {
       anchors.rightMargin: root.gap
       anchors.verticalCenter: parent.verticalCenter
       spacing: root.gap
-      HoverHandler { id: beforeHover }
       Repeater { model: root.anchored ? BarModel.entriesBefore(root.centerEntries, root.centerAnchor) : []; delegate: Slot {} }
     }
 
@@ -137,7 +137,6 @@ Item {
       anchors.leftMargin: root.gap
       anchors.verticalCenter: parent.verticalCenter
       spacing: root.gap
-      HoverHandler { id: afterHover }
       Repeater { model: root.anchored ? BarModel.entriesAfter(root.centerEntries, root.centerAnchor) : []; delegate: Slot {} }
     }
   }
