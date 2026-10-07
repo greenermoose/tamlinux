@@ -44,6 +44,11 @@ complete when a day's use is accepted.
 
 - The daily bar reserves its own height, so tiled windows no longer slide
   under it.
+- Clicking a workspace number on the bar switches workspaces again. The
+  session start script now exports `TAMLINUX_COMPOSITOR_COMMANDS` (the
+  shell's `host/` directory); without it the `fred.workspaces` and
+  `fred.monitor` helpers could not load the compositor backend and did
+  nothing. Only the isolated proof had set it.
 
 ### Removed
 

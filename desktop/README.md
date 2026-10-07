@@ -111,7 +111,8 @@ batch, one validated monitor rule, and `reload`. DPMS uses `dispatch` with
 and logs names, counts, the keymap, and whether the screen matches an output.
 It does not import Hyprland. Plugin QML reads this facade. The develop
 helpers load the backend from `TAMLINUX_COMPOSITOR_COMMANDS`, which the
-proof exports as the shell's `host/` directory. Brightness still calls the Omarchy
+proof and the session start script (`host/session_start.py`) export as the
+shell's `host/` directory. Brightness still calls the Omarchy
 display helper.
 
 IPC stays on the shell target `tamlinux-shell` and the one `tamlinux.clock`

@@ -169,12 +169,13 @@ class RegistryCommandTests(unittest.TestCase):
 
 
 class SessionStartTests(unittest.TestCase):
-    """The session unit's start script: plugin map and layout path."""
+    """The session unit's start script: plugin map, layout path, backend path."""
 
-    def test_services_only_adds_nothing_but_the_import_path(self):
+    def test_services_only_adds_nothing_but_the_import_and_backend_paths(self):
         env, notes = session_start.session_environment({"HOME": "/home/u", "TAMLINUX_BAR": "0"})
         self.assertEqual(notes, [])
         self.assertEqual(env["QML_IMPORT_PATH"], str(DESKTOP / "shell" / "modules"))
+        self.assertEqual(env["TAMLINUX_COMPOSITOR_COMMANDS"], str(DESKTOP / "shell" / "host"))
         self.assertNotIn("TAMLINUX_PLUGIN_ENTRIES", env)
         self.assertNotIn("TAMLINUX_BAR_LAYOUT", env)
 
@@ -193,13 +194,17 @@ class SessionStartTests(unittest.TestCase):
             self.assertEqual(list(entries), ["fred.clock"])
             self.assertIn("left off the bar: fred.broken: entry point does not exist: Missing.qml", notes)
             self.assertIn("plugins: fred.clock", notes)
+            backend = Path(env["TAMLINUX_COMPOSITOR_COMMANDS"])
+            self.assertTrue((backend / "hyprland_backend.py").is_file())
+            self.assertTrue((backend / "compositor_commands.py").is_file())
 
     def test_the_environment_wins(self):
         env, notes = session_start.session_environment({
             "HOME": "/home/u", "QML_IMPORT_PATH": "/x", "TAMLINUX_BAR_LAYOUT": "/l.json",
-            "TAMLINUX_PLUGIN_ENTRIES": "{}"})
-        self.assertEqual((env["QML_IMPORT_PATH"], env["TAMLINUX_BAR_LAYOUT"], env["TAMLINUX_PLUGIN_ENTRIES"]),
-                         ("/x", "/l.json", "{}"))
+            "TAMLINUX_PLUGIN_ENTRIES": "{}", "TAMLINUX_COMPOSITOR_COMMANDS": "/c"})
+        self.assertEqual((env["QML_IMPORT_PATH"], env["TAMLINUX_BAR_LAYOUT"], env["TAMLINUX_PLUGIN_ENTRIES"],
+                          env["TAMLINUX_COMPOSITOR_COMMANDS"]),
+                         ("/x", "/l.json", "{}", "/c"))
         self.assertEqual(notes, [])
 
     def test_no_plugins_directory_is_not_fatal(self):
