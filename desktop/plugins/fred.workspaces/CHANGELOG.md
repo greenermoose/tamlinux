@@ -4,6 +4,11 @@ All notable changes to `fred.workspaces` (`workspaces-fred-tamlinux`) will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.1] - Unreleased
+
+### Fixed
+- Moving the pointer into a blanked monitor, or focusing it, wakes it again. The Tamlinux shell read monitor power only at startup and kept reporting every monitor lit. Shortly after this bar blanked its monitor, it took that stale report as "lit" and cleared its dark state, so cursor entry found nothing to wake. A monitor this bar blanked now stays dark in its own state until the shell reports it dark. A later "lit" report still counts, for example after hypridle wakes every display.
+
 ## [2.0.0] - Unreleased
 
 ### Changed

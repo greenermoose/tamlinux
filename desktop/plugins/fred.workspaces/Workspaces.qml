@@ -10,7 +10,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.0"
+  readonly property string pluginVersion: "2.0.1"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -31,6 +31,10 @@ BarWidget {
     return isNaN(num) ? 300 : Math.max(0, num)
   }
   property bool isMonitorDark: false
+  // Set when this bar blanks its monitor, cleared once the facade reports it
+  // dark. Until then a "lit" report predates the blank and is ignored, or
+  // cursor entry would find nothing to wake.
+  property bool blankUnconfirmed: false
   // True while this bar's helper process runs; siblings read it through
   // anyHelperRunning() before acting on a wake.
   readonly property bool helperRunning: actionProcess.running
@@ -452,6 +456,7 @@ BarWidget {
   function wakeMonitor(reason) {
     if (!barMonitor) return
     root.isMonitorDark = false
+    root.blankUnconfirmed = false
     root.idleLog("wake (" + reason + ")")
     root.runDesktopCommand(["dpms-on", String(barMonitor.name)])
   }
@@ -464,6 +469,7 @@ BarWidget {
       return
     }
     root.isMonitorDark = true
+    root.blankUnconfirmed = true
     root.idleLog("blank after " + root.unusedMonitorTimeout + " s unused")
     root.runDesktopCommand(["dpms-off", String(barMonitor.name)])
   }
@@ -472,6 +478,7 @@ BarWidget {
     if (useSettle.running) useSettle.stop()
     if (root.isMonitorDark) root.idleLog("dark state reset (resetIdle)")
     root.isMonitorDark = false
+    root.blankUnconfirmed = false
     Qt.callLater(root.trackMonitorIdle)
   }
 
@@ -480,6 +487,8 @@ BarWidget {
   function probeDpmsState() {
     if (!barMonitor) return
     var dark = barMonitor.dpmsOn === false
+    if (dark) root.blankUnconfirmed = false
+    else if (root.isMonitorDark && root.blankUnconfirmed) return
     if (dark !== root.isMonitorDark) {
       root.idleLog(dark ? "monitor already dark; adopting it" : "monitor is lit; dropping stale dark state")
       root.isMonitorDark = dark

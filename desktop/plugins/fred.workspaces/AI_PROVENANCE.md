@@ -101,3 +101,8 @@ compositor facade. QML reads outputs, workspaces, focus, and `dpmsOn` from the f
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. No code change. `tam-desktop-mode` keeps reading the four `OMARCHY_DESKTOP_*` configuration keys and session variables for compatibility, and the test allows exactly those. Not tagged or released.
 [Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+
+## 2026-10-06 wake a blanked monitor (2.0.1)
+
+Claude Code `2.1.292` (`claude-opus-5-5`) kept a monitor this bar blanked dark until the shell reports it dark, so pointer entry or focus wakes it again. A stale "lit" report from the shell had cleared the dark state. Not tagged or released.
+[Session record](docs/ai/2026-10-06-wake-blanked-monitor.md).
