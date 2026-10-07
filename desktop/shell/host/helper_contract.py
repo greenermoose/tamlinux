@@ -210,13 +210,19 @@ class CommandOutcome:
     ok: bool
     succeeded_indexes: tuple[int, ...]
     failed_indexes: tuple[int, ...]
+    unreported_indexes: tuple[int, ...] = ()
 
 
 def command_outcome(payload, expected_commands=1):
-    """All parsed command replies must succeed; a batch is not atomic."""
+    """Batches aren't atomic; an aborted prefix leaves unreported commands.
+
+    Sway may stop parsing after a failure. A short prefix ending in failure
+    preserves its outcomes without asserting whether later commands executed.
+    A short all-success reply is incomplete and is rejected.
+    """
     integer(expected_commands, 1, MAX_COMMANDS)
     replies = records(decode(payload), MAX_COMMANDS)
-    if len(replies) != expected_commands:
+    if not 1 <= len(replies) <= expected_commands:
         raise ContractError("command reply count")
     succeeded, failed = [], []
     for index, reply in enumerate(replies):
@@ -226,4 +232,8 @@ def command_outcome(payload, expected_commands=1):
         if "error" in reply:
             success = success and text(reply["error"]) == ""
         (succeeded if success else failed).append(index)
-    return CommandOutcome(not failed, tuple(succeeded), tuple(failed))
+    unreported = tuple(range(len(replies), expected_commands))
+    if unreported and len(replies) - 1 not in failed:
+        raise ContractError("incomplete successful command reply")
+    return CommandOutcome(not failed and not unreported, tuple(succeeded),
+                          tuple(failed), unreported)

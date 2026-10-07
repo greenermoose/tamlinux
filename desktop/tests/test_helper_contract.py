@@ -131,6 +131,16 @@ class FactsTests(unittest.TestCase):
 
 
 class ReplyTests(unittest.TestCase):
+    def test_aborted_prefix_preserves_reported_and_unreported_commands(self):
+        result = command_outcome('[{"success":true},{"success":false,"parse_error":true}]',
+                                 expected_commands=3)
+        self.assertFalse(result.ok)
+        self.assertEqual(result.succeeded_indexes, (0,))
+        self.assertEqual(result.failed_indexes, (1,))
+        self.assertEqual(result.unreported_indexes, (2,))
+        with self.assertRaises(ContractError):
+            command_outcome('[{"success":true}]', expected_commands=2)
+
     def test_partial_success_does_not_make_batch_atomic(self):
         result = command_outcome(json.dumps([
             {"success": True}, {"success": False, "error": "unsupported"},
