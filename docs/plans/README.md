@@ -12,6 +12,7 @@ Omarchy, then prove Tamlinux on Sway. Arch stays the workstation base.
 | --- | --- |
 | [Desktop decoupling](desktop-decoupling.md) | 0.4 settings/state and menus, 0.5 themes/fonts/identity, 0.6 native ownership and boot-dependent final removal; independent Hyprland acceptance. |
 | [Theme system](theme-system.md) | Chosen Tamarack/Atkinson direction; deterministic owned generation, fonts and visible identity at 0.5. |
+| [Compositor protocol layer](compositor-protocol-layer.md) | Shared standard-protocol facts for every adapter; shadow then authoritative on Hyprland when Fred schedules it; Sway adapter rebuilt on it at 0.7.0. |
 | [Sway integration](sway-integration.md) | Prepared adapters retained; integration/package 0.7 after 0.6 acceptance, physical daily proof 0.8, Hyprland removal 1.0. |
 | [Installation framework](installation-framework.md) | Existing-distribution Nix + native host adapter; bounded inspect/plan/apply/verify for 0.7, using independent component ownership. |
 | [`tam` command](tamlinux-command.md) | Approved small offline guide/welcome/explain and installation entry point; name updated 2026-10-07, implementation pending. Supporting work for 0.7. |

@@ -9,7 +9,7 @@ through 1.0. Existing adapter prototypes are not an accepted package/session.
 
 | Proposed step | Work and required evidence |
 | --- | --- |
-| **0.7.0** | Workspace/monitor helper contract on both adapters; unchanged Hyprland behavior; Sway layout preview/keep/revert/timeout and bounded failure/restoration. |
+| **0.7.0** | Workspace/monitor helper contract on both adapters; Sway adapter rebuilt as a gap filler on the [compositor protocol layer](compositor-protocol-layer.md) (milestone D); unchanged Hyprland behavior; Sway layout preview/keep/revert/timeout and bounded failure/restoration. |
 | **0.7.1** | Night light on both adapters with key/menu/indicator agreement and clear tool failure/unsupported results. |
 | **0.7.2** | Screenshots, region/window selection, recording, OCR/QR and color picking; compositor geometry and image-pixel conversion tested at fractional scales/transforms. |
 | **0.7.3** | Nix package plus native Arch host adapter; installed Sway session beside Hyprland; `tam install verify`, login, driver bridge, PAM, portals/keyring and update/rollback proof. |

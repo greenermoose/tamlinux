@@ -51,6 +51,17 @@ project repository. Source compilation is acceptable; slower clients can use
 binary packages. Keep one declared owner for each package and setting.
 [Void custom repositories](https://docs.voidlinux.org/xbps/repositories/custom.html).
 
+Plan to carry Tamlinux's `xbps-src` templates in the project repository
+permanently, not as future `void-packages` submissions. Void's project-wide
+[contribution policy](https://github.com/void-linux/.github/blob/master/CONTRIBUTING.md)
+(2026-06-12) expects contributions in all Void spaces, including issues and
+comments, to originate from humans, and requires every use of AI tools to be
+disclosed. Void maintainers also expect new projects to show a history of
+reliable maintenance before packaging them. Tamlinux is developed largely
+with AI agents. Any contact with Void is written by Fred and discloses AI use;
+agents do not post in Void spaces. Count the ongoing maintenance of these
+templates in the packaging evaluation.
+
 Sway remains the selected compositor, with seatd and an independent Quickshell
 host. On Void, the workstation package is built as native `xbps-src`
 packages; on existing distributions, the same sources are delivered as a Nix
@@ -84,6 +95,16 @@ separate boot partitions and nested subvolumes; snapshots are not recursive
 and do not replace an external backup. Bound retention and measure free space
 across repeated upgrades.
 [Btrfs snapshots](https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html).
+
+XBPS 0.60.7 has no transaction hooks; a hooks proposal
+([xbps#666](https://github.com/void-linux/xbps/pull/666)) is unmerged. Pre-update
+checkpoints therefore come from Tamlinux's update command, and running
+`xbps-install` directly skips them. The pilot must show how such an
+unrecorded transaction is detected and recovered from. Recheck XBPS
+releases before the pilot; a released hook would close this gap.
+
+The pilot also proves the **route back to plain Void**: Tamlinux packages
+uninstall to a working stock Void system, with the user's documents intact.
 
 Prove installation, unprivileged Sway/seatd startup, required applications,
 network/audio, graphics, sleep, native services, and offline recovery after a

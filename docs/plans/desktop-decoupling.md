@@ -166,6 +166,11 @@ active reliability trials. Recovery includes deployed shell/plugins, mutable
 settings/layouts, live-linked files, native package/system checkpoints and separate
 boot artifacts; a Home Manager generation alone cannot restore that whole set.
 
+Gate A also requires a tested **route back to plain Arch**. It is a
+documented, reversible removal of the Tamlinux layer that leaves a working
+login and the user's documents intact. A project that stops should leave its
+users a way out, not a stranded system.
+
 The following specifications document the early Develop proofs. Their prototype
 boundaries and evidence do not authorize changing the current daily desktop.
 
@@ -392,6 +397,11 @@ Only workspace-number and focus-output commands are kept. `exec`, `include`,
 and any other command are dropped. The result is the JSON array
 `Bindings.parseBinds` already accepts. The keymap comes from a bounded
 `get_inputs` fixture (`xkb_active_layout_name`).
+
+A 2026-10-08 review found that this protocol path never succeeds as
+written: one-time reads, no output assignment, no updates. The
+[compositor protocol layer](compositor-protocol-layer.md) replaces it with a
+shared layer for both adapters.
 
 `launch-clock-proof` sets `TAMLINUX_COMPOSITOR=hyprland` unless
 `--compositor sway` is passed. That mode reads `desktop/fixtures/sway/` and
