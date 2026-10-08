@@ -1,9 +1,10 @@
 # Compositor protocol layer
 
-**Status — 2026-10-08:** planned. Fred accepted the approach and decided its
-schedule, acceptance period and display-power boundary on 2026-10-08.
-Implementation has not started. This plan deploys nothing and
-does not change the product version (accepted 0.3.3).
+**Status — 2026-10-08:** milestone A developed and verified locally. The shared
+bound state, adapter refactor, reactive fixtures and isolated Hyprland proof
+are implemented. No deployment; product version remains accepted 0.3.3.
+Milestone B waits for 0.4.0 acceptance. Fred accepted the approach, schedule,
+acceptance period and display-power boundary on 2026-10-08.
 
 The shell gets its compositor facts from standard Wayland protocols wherever
 a protocol exists. Compositor IPC fills only the remaining gaps. The shared
@@ -134,6 +135,50 @@ if it persists past a short settle time after the last compositor change,
 because the two sources update at slightly different moments. An agent
 summarizes the log for Fred, who does not need to read evidence lines.
 Hotplug occurrences that need someone's hands are arranged with Fred.
+
+## Milestone A evidence — 2026-10-08
+
+`ProtocolState.qml` binds the windowset and screen lists; its snapshot binding
+also observes nested active, urgent, capability, projection-screen and geometry
+properties. Workspace numbers come from numeric names, never opaque protocol
+ids. A workspace's projection must identify exactly one current output;
+missing or ambiguous projections and duplicate names leave the snapshot
+unready. Input scans cap at 64 entries, output names at 64 characters, and
+workspace names at 1–10. Unknown protocol readiness falls back to IPC.
+
+Hyprland still publishes its unchanged IPC snapshot. Only the isolated proof
+sets `TAMLINUX_PROTOCOL_PROOF=1` to load a parallel protocol source and compare
+workspace ownership, per-output active workspace and output positions after a
+750 ms settle interval. This is a development check, not milestone B's daily
+shadow logger or its acceptance clock. No protocol object is instantiated on
+the default Hyprland path. Global focus, windows, keyboard, bindings, display
+power and special workspaces remain adapter facts. Protocol activation checks
+`canActivate`; an already-active workspace succeeds without a request.
+
+The Sway development adapter uses the shared source and a bound combined
+snapshot instead of one-time protocol reads. Its fixture mode leaves the
+protocol component unloaded. Real Sway gap completion and session integration
+remain milestone D at 0.7.0.
+
+Verification:
+
+- All **398 desktop tests passed**, including actual offscreen QML fixtures
+  for initially empty lists, per-output groups, urgency/capabilities, active
+  workspace changes, movement between groups, nested projection changes,
+  output removal/return, geometry, ambiguous ownership, bounds and comparison.
+- `python3 desktop/launch-protocol-proof`: protocol and IPC snapshots agreed
+  for **three outputs and four workspaces** on Hyprland with Quickshell 0.3.1.
+  The isolated shell creates no surfaces, dispatches no actions, and exits
+  within 15 seconds. It reads only through the existing adapter commands.
+- `python3 desktop/launch-clock-proof --selftest --compositor sway`: passed;
+  fixed fixture snapshots and recorded-action checks still work.
+
+No physical hotplug, suspend, desktop-mode change or daily shadow trial was
+performed by this milestone. The reactive tests use mutable fixture objects;
+the live proof checks the current connected desktop. Make/model description
+format, urgency and out-of-contract workspaces are not compared to IPC, which
+does not currently expose corresponding facade fields. ShellScreen exposes
+`model`, but no separate manufacturer field in the installed Quickshell API.
 
 ## Decided 2026-10-08
 

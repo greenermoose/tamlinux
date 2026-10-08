@@ -128,7 +128,7 @@ class SnapshotTests(unittest.TestCase):
 class SourceBoundaryTests(unittest.TestCase):
     def test_adapter_matches_the_command_text(self):
         qml = (DESKTOP / "shell" / "host" / "SwayAdapter.qml").read_text(encoding="utf-8")
-        self.assertIn("import Quickshell.WindowManager", qml)
+        self.assertIn('source: "ProtocolState.qml"', qml)
         self.assertIn("import Quickshell.I3", qml)
         self.assertIn('"/usr/bin/swaymsg", "-t", "get_inputs", "-r"', qml)
         self.assertIn('"/usr/bin/swaymsg", "-t", "get_outputs", "-r"', qml)
@@ -144,16 +144,16 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn("I3.dispatch(setDpmsRequest(output, word))", qml)
         self.assertIn("I3.dispatch(focusAppRequest(app))", qml)
         self.assertIn("""'[app_id="(?i)'""", qml)
-        self.assertIn("WindowManager.windowsets", qml)
+        self.assertIn("ProtocolModel.combine", qml)
+        self.assertIn("onLiveSnapshotChanged", qml)
         self.assertIn("workspacesFromI3", qml)
-        self.assertLess(qml.index("workspacesFromWindowsets"), qml.index("workspacesFromI3"))
         self.assertIn('["/usr/bin/python3", "-I", root + "/sway_snapshot.py", fixture]', qml)
         self.assertIn("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", qml)
         self.assertNotIn("hyprctl", qml)
         self.assertNotIn("sh -c", qml)
         self.assertNotIn("bash", qml)
 
-    def test_only_the_sway_adapter_imports_sway_modules(self):
+    def test_protocol_and_sway_import_boundaries(self):
         adapter = DESKTOP / "shell" / "host" / "SwayAdapter.qml"
         seen = False
         for path in DESKTOP.rglob("*.qml"):
@@ -162,7 +162,8 @@ class SourceBoundaryTests(unittest.TestCase):
                 seen = True
                 continue
             self.assertNotIn("Quickshell.I3", text, path.name)
-            self.assertNotIn("Quickshell.WindowManager", text, path.name)
+            if path != DESKTOP / "shell" / "host" / "ProtocolState.qml":
+                self.assertNotIn("Quickshell.WindowManager", text, path.name)
             self.assertNotIn("swaymsg", text, path.name)
         self.assertTrue(seen)
         facade = (DESKTOP / "shell" / "host" / "Compositor.qml").read_text(encoding="utf-8")

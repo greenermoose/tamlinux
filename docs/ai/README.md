@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-08 | Shared compositor protocol layer, milestone A | Codex CLI `0.161.0` | `gpt-6.1-sol` | [2026-10-08-protocol-layer-development.md](2026-10-08-protocol-layer-development.md) |
 | 2026-10-08 | Compositor protocol layer and base-plan additions | Claude Code `2.1.294` | `claude-opus-5-5` | [`2026-10-08-compositor-protocol-layer.md`](2026-10-08-compositor-protocol-layer.md) |
 | 2026-10-07 | Independence-first replanning | Codex CLI `0.161.0` | `gpt-6.1-sol` | [2026-10-07-independence-first-replanning.md](2026-10-07-independence-first-replanning.md) |
 | 2026-10-06 | Monitor power re-read | Claude Code `2.1.292` | `claude-opus-5-5` | [`2026-10-06-dpms-reread.md`](2026-10-06-dpms-reread.md) |

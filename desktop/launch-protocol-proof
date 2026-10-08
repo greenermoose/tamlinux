@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Compare standard protocol facts with the isolated Hyprland IPC adapter.
+
+Creates no windows, dispatches no actions, and stops after at most 15 seconds.
+The running shell and its settings are never used as a test target.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+DESKTOP = Path(__file__).resolve().parent
+
+
+def main() -> None:
+    if not os.environ.get("WAYLAND_DISPLAY") or not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        raise SystemExit("The read-only live proof requires a Hyprland Wayland session")
+    with tempfile.TemporaryDirectory(prefix="tamlinux-protocol-proof-") as temporary:
+        root = Path(temporary)
+        config = root / "config"
+        (config / "host").mkdir(parents=True)
+        shutil.copyfile(DESKTOP / "fixtures/protocol-live/shell.qml", config / "shell.qml")
+        for name in ("ProtocolState.qml", "protocol_model.js", "HyprlandAdapter.qml"):
+            shutil.copyfile(DESKTOP / "shell/host" / name, config / "host" / name)
+        env = {"PATH": "/usr/bin", "HOME": str(root),
+               "XDG_CONFIG_HOME": str(config), "XDG_CACHE_HOME": str(root / "cache"),
+               "QT_QPA_PLATFORM": "wayland", "TAMLINUX_PROTOCOL_PROOF": "1"}
+        for name in ("XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
+            if os.environ.get(name):
+                env[name] = os.environ[name]
+        try:
+            result = subprocess.run(
+                ["/usr/bin/quickshell", "--no-color", "-p", str(config)],
+                env=env, capture_output=True, text=True, timeout=15, check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise SystemExit("The isolated protocol proof exceeded 15 seconds") from error
+    log = result.stdout + result.stderr
+    if result.returncode or "PROTOCOL_LIVE_OK" not in log or any(
+        word in log for word in ("TypeError", "ReferenceError", "PROTOCOL_LIVE_FAILED")
+    ):
+        raise SystemExit(log[-12000:])
+    for line in log.splitlines():
+        if "PROTOCOL_LIVE_OK" in line or "protocol-proof" in line:
+            print(line)
+
+
+if __name__ == "__main__":
+    main()

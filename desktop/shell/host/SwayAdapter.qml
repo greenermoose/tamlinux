@@ -1,17 +1,29 @@
 import QtQuick
 import Quickshell
-import Quickshell.WindowManager
 import Quickshell.I3
 import Quickshell.I3._Ipc
 import Quickshell.Io
+import "protocol_model.js" as ProtocolModel
 
-// The only shell file that imports Quickshell.WindowManager or Quickshell.I3.
+// The only shell file that imports Quickshell.I3. Shared protocol facts live
+// in ProtocolState; fixture mode does not instantiate it.
 // swaymsg argv matches sway_commands.py and is not started. Live mutations
 // use I3.dispatch with one fixed request, and only when the live flag is set.
 QtObject {
   id: adapter
 
   property var host: null
+  readonly property bool fixtureMode: String(Quickshell.env("TAMLINUX_SWAY_FIXTURE") || "") !== ""
+  readonly property Loader protocolState: Loader {
+    active: !adapter.fixtureMode
+    source: "ProtocolState.qml"
+  }
+  readonly property var liveSnapshot: {
+    if (fixtureMode) return null
+    var ipc = buildIpcSnapshot()
+    return ProtocolModel.combine(protocolState.item ? protocolState.item.snapshot : null, ipc)
+  }
+  onLiveSnapshotChanged: { if (liveSnapshot) publishSnapshot(liveSnapshot) }
   property string publishedKey: ""
   readonly property bool liveActions: Quickshell.env("TAMLINUX_COMPOSITOR_LIVE_ACTIONS") === "1"
   readonly property int bindsLimit: 262144
@@ -150,17 +162,7 @@ QtObject {
   }
 
   function activateWindowset(number) {
-    var sets = WindowManager.windowsets || []
-    var total = sets.length || 0
-    for (var i = 0; i < total; i++) {
-      var set = sets[i]
-      if (!set || !set.activate) continue
-      var id = String(set.id || set.name || "")
-      if (id !== String(number)) continue
-      set.activate()
-      return true
-    }
-    return false
+    return protocolState.item ? protocolState.item.activate(number) : false
   }
 
   function listCount(list) {
@@ -198,51 +200,10 @@ QtObject {
 
   function publishSnapshot(snapshot) {
     if (!host || !snapshot) return
-    var outputs = snapshot.outputs || []
-    var workspaces = snapshot.workspaces || []
-    var focused = String(snapshot.focusedOutputName || "")
-    var focusedWorkspace = Number(snapshot.focusedWorkspaceId || 0)
-    var bindingsText = String(snapshot.bindingsText || "")
-    var activeKeymap = String(snapshot.activeKeymap || "")
-    var key = focused + "#" + focusedWorkspace + "#" + bindingsText.length + "#" + activeKeymap
-    for (var n = 0; n < outputs.length; n++) {
-      var output = outputs[n]
-      if (!output) continue
-      key += "|" + output.name + ":" + output.activeWorkspaceId + ":" + (output.dpmsOn ? "1" : "0")
-    }
-    for (var s = 0; s < workspaces.length; s++) {
-      var space = workspaces[s]
-      if (!space) continue
-      var windows = space.windows ? space.windows.length : 0
-      key += "|w" + space.id + ":" + space.output + ":" + windows
-    }
+    var key = JSON.stringify(snapshot)
     if (key === publishedKey) return
     publishedKey = key
     host.applySnapshot(snapshot)
-  }
-
-  function workspacesFromWindowsets() {
-    var sets = WindowManager.windowsets || []
-    var total = listCount(sets)
-    if (total === 0) return null
-    var spaces = []
-    var focused = 0
-    for (var i = 0; i < total && spaces.length < workspaceListLimit; i++) {
-      var set = listAt(sets, i)
-      if (!set) continue
-      var number = workspaceNumber(set.id || set.name)
-      if (number === 0) continue
-      if (set.active && focused === 0) focused = number
-      spaces.push({
-        id: number,
-        output: "",
-        occupied: false,
-        windows: []
-      })
-    }
-    if (spaces.length === 0) return null
-    spaces.sort(function(a, b) { return a.id - b.id })
-    return { workspaces: spaces, focusedWorkspaceId: focused }
   }
 
   function workspacesFromI3() {
@@ -263,10 +224,8 @@ QtObject {
     return { workspaces: spaces, focusedWorkspaceId: focused }
   }
 
-  function publishLive() {
-    if (!host) return
-    var chosen = workspacesFromWindowsets()
-    if (!chosen) chosen = workspacesFromI3()
+  function buildIpcSnapshot() {
+    var chosen = workspacesFromI3()
     var model = I3.monitors
     var total = listCount(model)
     var outputs = []
@@ -300,14 +259,14 @@ QtObject {
       if (a.name > b.name) return 1
       return 0
     })
-    publishSnapshot({
+    return {
       outputs: outputs,
       focusedOutputName: focused,
       workspaces: chosen.workspaces,
       focusedWorkspaceId: chosen.focusedWorkspaceId,
       bindingsText: "",
       activeKeymap: ""
-    })
+    }
   }
 
   function snapshotArgv(fixture) {
@@ -374,6 +333,6 @@ QtObject {
       startFixture(fixture)
       return
     }
-    publishLive()
+    if (liveSnapshot) publishSnapshot(liveSnapshot)
   }
 }

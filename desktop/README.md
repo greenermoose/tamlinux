@@ -27,6 +27,19 @@ Clock source is the `develop/2.0.0` working tree. The 1.3.3 pin
 patch is generated from.
 Development closure checked here: Quickshell 0.3.1, Qt 6.11.2.
 
+The [shared compositor protocol layer](../docs/plans/compositor-protocol-layer.md)
+has a separate read-only proof:
+
+```sh
+python3 desktop/launch-protocol-proof
+```
+
+Run it from the repository root in a Hyprland Wayland session. It creates an
+isolated shell with no windows, compares protocol workspace/output facts to
+the unchanged IPC adapter, and exits within 15 seconds. No actions are sent
+and the daily shell is untouched. Reactive offscreen fixtures are included
+in `python3 -B -m unittest discover -s desktop/tests -p 'test_*.py'`.
+
 ## Host contract
 
 Each output gets its own bar object from `desktop/shell/host/BarApi.qml`.

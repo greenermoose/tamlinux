@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import "protocol_model.js" as ProtocolModel
 
 // The only shell file that imports Quickshell.Hyprland or starts hyprctl.
 // Command text matches compositor_commands.py. There is no generic hyprctl argv.
@@ -9,6 +10,30 @@ QtObject {
   id: adapter
 
   property var host: null
+  property var ipcSnapshot: null
+  // Develop-only comparison; no new protocol object on the daily IPC path.
+  readonly property Loader protocolProof: Loader {
+    active: Quickshell.env("TAMLINUX_PROTOCOL_PROOF") === "1"
+    source: "ProtocolState.qml"
+    onLoaded: protocolSettle.restart()
+  }
+  readonly property Connections protocolChanges: Connections {
+    target: protocolProof.item
+    function onSnapshotChanged() { protocolSettle.restart() }
+  }
+  readonly property Timer protocolSettle: Timer {
+    interval: 750
+    onTriggered: {
+      if (!protocolProof.item) return
+      var facts = protocolProof.item.snapshot
+      var comparison = ProtocolModel.compare(facts, adapter.ipcSnapshot)
+      adapter.note("protocol-proof " + JSON.stringify({
+        equal: comparison.equal, differences: comparison.differences,
+        outputs: facts.outputs.length, workspaces: facts.workspaces.length,
+        problems: facts.problems
+      }))
+    }
+  }
   // PopupCard creates one per popup: Hyprland's focus grab clears on a click
   // outside the listed windows.
   readonly property Component focusGrab: Component { HyprlandFocusGrab {} }
@@ -458,16 +483,18 @@ QtObject {
     for (var s = 0; s < workspaces.length; s++) {
       key += "|w" + workspaces[s].id + ":" + workspaces[s].output + ":" + workspaces[s].windows.length
     }
-    if (key === publishedKey) return
-    publishedKey = key
-    host.applySnapshot({
+    ipcSnapshot = {
       outputs: outputs,
       focusedOutputName: focused,
       workspaces: workspaces,
       focusedWorkspaceId: focusedWorkspace,
       bindingsText: bindingsText,
       activeKeymap: activeKeymap
-    })
+    }
+    if (protocolProof.active) protocolSettle.restart()
+    if (key === publishedKey) return
+    publishedKey = key
+    host.applySnapshot(ipcSnapshot)
   }
 
   readonly property Process bindsProc: Process {
