@@ -10,11 +10,11 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.3.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | [0.3.3](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.3.3 — Cutover: the Tamlinux shell, with the eight 2.0.0 plugins, its own tray, indicators, and status widgets, is the daily bar on every screen, running from a pinned deployed copy. In daily testing. Not an installable image yet |
+| **Status** | 0.3.3 — Cutover: the Tamlinux shell, with the eight 2.x plugins, its own tray, indicators, and status widgets, is the daily bar on every screen, running from a pinned deployed copy. Accepted after daily use on 2026-10-07; settings/theme/package independence remains in progress. Not an installable image yet |
 
 ---
 
@@ -48,37 +48,33 @@ inspired by the UI Omarchy provides, built on Sway and Void Linux.
 This repository is a public explainer, not an ISO, installer, or package
 repository yet.
 
-## Current base
+## Current base and next steps
 
-Tamlinux 0.0 through 0.6 is built on Omarchy, plus Fred's patches and plugins.
-We are porting some Omarchy code piece by piece, while Hyprland keeps running
-and the machine stays in daily use. Once we have ported over all the Omarchy
-code, then the roadmap continues in two moves:
+The current workstation runs Tamlinux's deployed Quickshell shell and eight
+2.x plugins on Arch/Hyprland. Stage 0.3 is accepted. The remaining Omarchy
+dependencies are removed while retaining the working Hyprland desktop:
 
-1. **A workstation package for existing distributions.** Sway, the
-   independent Quickshell shell, the rewritten `fred.*` plugins, selected
-   third-party tools, and the `tamlinux` command, delivered as a Nix flake
-   with a small native host adapter. Fred's Arch workstation installs it,
-   then removes Hyprland: that is **Tamlinux 1.0.0**.
-2. **A minimal base for the same package.** **Void Linux with runit, seatd,
-   Wayland, Sway, and Btrfs**, with the package built from the same sources as
-   native `xbps-src` packages. If Void has a showstopper, we will try
-   **antiX Linux Core with runit**. Compare musl and glibc. See the
-   [base operating system plan](docs/plans/base-operating-system.md).
+1. **0.4: settings/state and menus.** Own user data, caches, helper entry points
+   and menu extensions, keeping keys and bar actions consistent.
+2. **0.5: theme system, fonts and identity.** One validated source generates
+   supported app themes; independently owned fonts/glyphs and Tamlinux surfaces.
+3. **0.6: packages/system ownership and final removal.** Preserve current
+   effective settings and workflows; remove remaining components after the
+   independent boot/update/recovery path is verified. Accept Tamlinux on
+   Hyprland without Omarchy.
+4. **0.7–1.0: Sway.** Complete compositor integration and install the Nix
+   workstation package with a native Arch host adapter beside the accepted
+   Hyprland fallback (0.7). Prove physical daily parity (0.8), then remove
+   Hyprland (1.0). The package includes the planned `tam` terminal command.
+5. **1.1–1.3: other hosts and a minimal base.** Verify another distribution,
+   then Void + runit + seatd + Btrfs and native `xbps-src` source delivery;
+   compare musl/glibc. antiX Core/runit is the fallback for a Void showstopper.
+   Repeatable installation and terminal-only profiles follow evidence.
 
-0.0.1 was the first workstation snapshot.
-0.0.2 (2026-10-04) owns the foundation: Arch's own package mirror and stock
-kernel, the Hyprland configuration, the shell environment, and the session
-entry and login screen.
-Since then every step Fred accepts is a version: 0.1.0–0.1.23 moved the
-desktop's session services into the Tamlinux shell, and 0.2.0 froze
-Omarchy's packages. 0.2.1 moves Style and font controls onto the Tamlinux
-shell, 0.2.2 adds its keybinding viewer, 0.2.3 owns the night light, and 0.2.4 adds the audio and Bluetooth panels. The stages and their
-rules are in [`VERSIONING.md`](VERSIONING.md).
-
-The [development plans](docs/plans/README.md) track the reviewed installation
-direction and the approved first slice of the `tamlinux` command. Neither is
-part of the installation yet.
+These are two separate desktop proofs. Prepared Sway adapters are retained;
+they do not move Sway integration ahead of accepted independence on Hyprland.
+The [development plans](docs/plans/README.md) carry detailed acceptance and
+recovery. Planning changes do not bump [VERSION](VERSION) or install components.
 
 ## Targets
 

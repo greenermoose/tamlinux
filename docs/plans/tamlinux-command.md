@@ -1,14 +1,18 @@
-# The `tamlinux` command and offline guide
+# The `tam` command and offline guide
 
 **Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
 workstation environment aimed at the best possible user experience on any
-hardware. The package and command retain the Tamlinux name. Existing-distribution
+hardware. The workstation package remains `tamlinux`; the terminal command is `tam`
+(named 2026-10-07). Existing-distribution
 Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
 **Status:** First command slice approved by Fred on 2026-09-23;
-implementation has not started. Later slices remain proposals.
+implementation has not started. The command was named `tam` on 2026-10-07;
+the package/data namespace remains `tamlinux`. Later slices remain proposals.
+The approved first slice can develop independently and feeds 0.7 packaging;
+it does not block settings/menu/theme ownership or Omarchy removal.
 
 ## Purpose
 
@@ -22,17 +26,17 @@ point and the guide can grow from actual user questions.
 
 | Command | First behavior |
 | :-- | :-- |
-| `tamlinux --help` | Show available commands and where to start. |
-| `tamlinux --version` | Read the product version from installed metadata; label command version separately if it differs. |
-| `tamlinux install ...` | Delegate to the installation contract in [the installation plan](installation-framework.md). |
-| `tamlinux` | Show welcome on the first interactive use, then open the local guide on later uses; print a short text index when output is piped. |
-| `tamlinux welcome` | Open orientation explicitly at any time; never require it before `--help` or installation. |
-| `tamlinux explain <topic>` | Initially match curated local topics and give a clear miss message. |
+| `tam --help` | Show available commands and where to start. |
+| `tam --version` | Read the product version from installed metadata; label command version separately if it differs. |
+| `tam install ...` | Delegate to the installation contract in [the installation plan](installation-framework.md). |
+| `tam` | Show welcome on the first interactive use, then open the local guide on later uses; print a short text index when output is piped. |
+| `tam welcome` | Open orientation explicitly at any time; never require it before `--help` or installation. |
+| `tam explain <topic>` | Initially match curated local topics and give a clear miss message. |
 
 The first interactive bare invocation shows welcome automatically. Record that
 welcome was shown in `$XDG_STATE_HOME/tamlinux/welcome_seen` (falling back to
 `~/.local/state/tamlinux/welcome_seen`) after it is displayed successfully,
-whether through Lynx or the text fallback. Explicit `tamlinux welcome` also
+whether through Lynx or the text fallback. Explicit `tam welcome` also
 records it. `--help`, `--version`, installation commands, and the bare command
 when piped leave first-use state unchanged. The command must distinguish
 terminal output from piped output and never emit browser control text into a
@@ -46,7 +50,7 @@ Ship a small, semantic HTML corpus with relative links and a plain-text
 fallback. Lynx is the optional terminal browser because it is already used on
 the current workstation and works offline. If Lynx is unavailable, show the
 text guide and instructions for installing it on the detected base; do not
-start an installation automatically. `tamlinux` locates the installed
+start an installation automatically. `tam` locates the installed
 corpus through package data, not a fixed `/usr/share` path, so NixOS, native
 Arch packages, and user installations can share the same content.
 
@@ -62,9 +66,9 @@ external; opening the local guide must not fetch network content.
   options, pipes, and redirection. The parser must only describe input; it
   must never execute it. Man-page integration can follow once formatting and
   links are reliable.
-- Add `tamlinux ai` after hardware estimates can report their assumptions and
+- Add `tam ai` after hardware estimates can report their assumptions and
   uncertainty. A calculated speed is an estimate, not a measured benchmark.
-- Add `tamlinux config` once each setting has a clear owner and reversible
+- Add `tam config` once each setting has a clear owner and reversible
   operation. Read-only inspection should come first.
 
 These are development directions, not features in the first release. The
@@ -90,5 +94,8 @@ interactive browsing when installed; plain-text help must work without it.
   Lynx is unavailable.
 - **2026-09-23:** Fred confirmed automatic welcome on the first use of the bare
   command.
+- **2026-10-07:** Terminal command renamed `tam`; install/help/welcome/explain
+  behavior remains the approved first slice. Package and XDG namespace stay
+  `tamlinux`; no additional features are authorized by the rename.
 - **Still open:** The later compound-command `explain`, `ai`, and `config`
   expansions need their own review before implementation.

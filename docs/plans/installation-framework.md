@@ -2,7 +2,8 @@
 
 **Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
 workstation environment aimed at the best possible user experience on any
-hardware. The package and command retain the Tamlinux name. Existing-distribution
+hardware. The workstation package remains `tamlinux`; the terminal command is `tam`
+(named 2026-10-07). Existing-distribution
 Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
@@ -25,13 +26,16 @@ the target and acceptance criteria.
 
 Version numbers are in [VERSIONING.md](../../VERSIONING.md).
 
-1. **Omarchy 0.x development system.** Keep the working workstation productive
-   while decoupling plugins, configuration, and services from Omarchy/Hyprland
-   (0.1–0.6).
-2. **Workstation package on an existing distribution.** Install the package on
-   Fred's Arch workstation beside the Hyprland session (0.7), daily-drive it
-   (0.8), then remove Hyprland (1.0.0). Arch and pacman remain
-   the base.
+1. **Independent Hyprland baseline.** On the current Arch workstation,
+   accept settings/state/menu ownership (0.4), independent themes/fonts/identity
+   (0.5), then native package/system ownership and boot-dependent final removal
+   (0.6). Keep Hyprland and prove daily behavior, boot/update/recovery and sleep.
+   No portable installer or Sway backend is needed to establish this baseline.
+2. **Sway integration and workstation package.** Only after 0.6 acceptance,
+   complete both compositor adapters/helpers and install a verified Sway
+   package/session beside the independent Hyprland fallback (0.7). Daily-drive
+   and accept physical workflow parity (0.8), then remove Hyprland (1.0).
+   Arch/pacman remain the base. Prototype code is retained preparation.
 3. **A second distribution.** Install the same package on another machine
    running a different distribution with systemd, to exercise the host adapter
    away from Arch (1.1).
@@ -43,6 +47,12 @@ Version numbers are in [VERSIONING.md](../../VERSIONING.md).
 5. **antiX Core fallback.** If Void has a showstopper, try antiX Core with runit.
    A musl-only problem should first be tested on Void glibc. On antiX, APT/dpkg
    owns native packages; do not mix native managers in the same root.
+
+Stage 0.6 supplies the first independent component/file/update-owner manifest.
+Build package automation from that proved baseline; do not require a portable
+installer before adopting the current host's files. Existing platform-specific
+ownership remains native; observed state and secrets are external to package
+defaults. Sway packaging must preserve a recoverable Hyprland login.
 
 ## Layers and ownership
 
@@ -74,11 +84,11 @@ feeds two delivery adapters:
 | :-- | :-- |
 | Host distribution | Kernel, firmware, graphics drivers, PAM, logind or seatd, PipeWire, NetworkManager, BlueZ, Chrome, VS Code |
 | Host adapter (native package, e.g. a PKGBUILD on Arch) | Wayland session entry, locker PAM file, groups and udev rules, graphics-driver bridge for Nix-built Sway |
-| Workstation flake (Nix) | Sway, Qt/Quickshell closure, shell, plugins, selected third-party desktop tools, `tamlinux` command, knowledge corpus |
+| Workstation flake (Nix) | Sway, Qt/Quickshell closure, shell, plugins, selected third-party desktop tools, `tam` command, knowledge corpus |
 | User | Validated declarative settings only |
 
 On the Void base, native `xbps-src` packages replace the flake and the host
-adapter, and runit services supply the session. Prove early on existing
+adapter, and runit services supply the session. At stage 0.7, prove early on existing
 distributions: Nix-built Sway and Mesa against host kernel drivers, locker
 authentication through host PAM, and portal and keyring startup under the host
 session manager. Chrome and VS Code come from their vendors' packages and are
@@ -89,11 +99,11 @@ host kernel or native package database.
 
 ```text
 tamlinux/
-  bin/tamlinux                 # command entry point
+  bin/tam                      # command entry point
   flake.nix                    # workstation package for existing distributions
   installer/                   # inspect, plan, apply, verify orchestration
   host-adapters/arch/          # native host adapter (PKGBUILD) for Arch
-  profiles/omarchy/            # current 0.x development adapter
+  profiles/arch-hyprland/      # independent Hyprland baseline; legacy import separate
   profiles/arch/               # existing-distribution profile, first host
   profiles/void/               # first target base adapter, native xbps-src
   profiles/antix/              # fallback base adapter
@@ -108,20 +118,20 @@ can be composed. Hardware layouts and credentials are supplied separately.
 
 ## Installation contract
 
-- `tamlinux install inspect` reports OS, architecture, version, package tools,
+- `tam install inspect` reports OS, architecture, version, package tools,
   and supported profile.
-- `tamlinux install plan --profile <profile>` prints exact changes, inputs,
+- `tam install plan --profile <profile>` prints exact changes, inputs,
   revisions, privileges, checkpoints, and recovery steps without changing anything.
-- `tamlinux install apply --profile <profile>` applies only the reviewed plan;
+- `tam install apply --profile <profile>` applies only the reviewed plan;
   a stale or mismatched plan requires a new review.
-- `tamlinux install verify` checks components, versions, command resolution,
+- `tam install verify` checks components, versions, command resolution,
   desktop integration, and failed or skipped steps.
 
 Every step declares prerequisites, owner, expected state, action, and verification.
 Re-running a satisfied step is safe. Failure stops dependent steps and reports
 recovery. Applying a workstation layer never partitions storage or switches the
 active OS as a hidden side effect. Native host packages remain authoritative
-on the current Omarchy workstation.
+on the current Arch workstation throughout independence and Sway integration.
 
 ## Pilot and recovery requirements
 
@@ -149,7 +159,7 @@ Snapshots supplement an external backup.
 | Milestone | Deliverable | Acceptance evidence |
 | :-- | :-- | :-- |
 | A. Inventory | Current component/owner manifest and dependency classification | Recorded source revisions and ownership. |
-| B. Framework | Inspect, plan, bounded apply, verify on the current base | Plans, step results, versions, recovery route. |
+| B. Framework | Inspect, plan, bounded apply, verify for 0.7 delivery, using the accepted independent Hyprland ownership manifest | Plans, idempotent steps, recovery; does not block earlier ownership transfers. |
 | C. Package on this workstation | Workstation flake and Arch host adapter; Sway session beside Hyprland, then Hyprland removed (0.7–1.0.0) | `install verify` passes; required workflows and parity checks; rollback route recorded before removal. |
 | D. Second distribution | Same package on a different distribution (1.1) | Install, verify, and a recorded list of host-adapter differences. |
 | E. Void pilot | Minimal runit/Btrfs base, native `xbps-src` packages, libc comparison on secondary hardware (1.2) | BIOS/UEFI installation, hardware checks, resource measurements; Chrome, VS Code, terminal workflow, kernel/userspace update and full recovery. |
@@ -157,7 +167,8 @@ Snapshots supplement an external backup.
 
 Try antiX Core if Void fails an essential requirement at acceptable maintenance
 cost. The daily workstation's base stays Arch until the pilot has evidence;
-its desktop moves to the workstation package first (1.0.0). Documentation changes do not bump the product version.
+its desktop is packaged at 0.7, accepted on Sway at 0.8, and drops Hyprland
+at 1.0. Documentation changes do not bump the product version.
 
 ## Decision record
 
@@ -172,6 +183,10 @@ its desktop moves to the workstation package first (1.0.0). Documentation change
   distributions first, with a Nix flake and a native host adapter; Fred's Arch
   workstation is the first host and reaches 1.0.0 when Omarchy and Hyprland are
   removed. On Void, build the same sources as native `xbps-src` packages.
+
+- **2026-10-07:** Independent Hyprland acceptance at 0.6 now precedes integrated
+  Sway/package work at 0.7. The terminal command is named `tam`; the package
+  remains `tamlinux`. Prior approved install operations retain their behavior.
 
 Open: pilot hardware, disk layout, libc choice, supported existing
 distributions, the graphics bridge for Nix-built Sway, signed binary delivery, application licensing, graphics drivers/renderer,

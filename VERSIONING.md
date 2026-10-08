@@ -24,6 +24,13 @@ through it.
   running; **1.0.0** removes Hyprland. After 1.0.0 the same rule applies:
   stage 1.N, steps 1.N.k.
 
+**Sequence revised 2026-10-07:** settings/state and menus (0.4), theme system,
+fonts and identity (0.5), package/system ownership and boot-dependent final
+removal (0.6), then Sway integration/package (0.7) and daily proof (0.8).
+The former prepared compositor 0.4 schedule is deferred; accepted 0.0–0.3
+versions and authored prototype records retain their identifiers. This
+documentation change leaves the product version at 0.3.3.
+
 This scheme was adopted on 2026-10-05. Before it, minor versions were fixed
 milestones and work between them raised no number, so the steps accepted
 since 0.0.2 were numbered afterwards, in the order they were accepted
@@ -36,12 +43,12 @@ planned but never issued.
 | **0.1** | The desktop's session services run in the Tamlinux shell beside the existing bar: notifications, on-screen display, clipboard history, emoji and image pickers, reminders, the command menu, the background, screenshots and screen capture, the polkit agent, media keys, idle and Stay Awake, battery warnings, and the lock screen; and the commands the desktop calls are Tamlinux's own. | Arch | Existing bar, Tamlinux services |
 | **0.2** | Every key binding and menu entry runs Tamlinux's own commands, including the keybinding viewer, night light, and the audio, Bluetooth, network, power, and speed-test panels. Only the bar's own keys and settings wait for 0.3, and the theme, branding, and boot-splash entries for 0.5 and the boot work. Reached 2026-10-05 (0.2.0–0.2.6). | Arch | Existing bar, Tamlinux services and panels |
 | **0.3** | The Tamlinux shell, with all eight rewritten plugins and its own tray, indicators, and status widgets, is the daily bar. | Arch | Tamlinux shell on Hyprland |
-| **0.4** | Plugins and helpers reach the compositor only through the compositor contract; the Hyprland adapter is in daily use and the Sway adapter passes its tests. | Arch | Tamlinux shell on Hyprland |
+| **0.4** | Tamlinux owns non-theme settings/state/cache, helper entry points and menu extensions. All readers/writers agree; theme and boot exceptions remain explicitly scheduled. | Arch | Tamlinux shell on Hyprland |
 | **0.5** | Tamlinux's own look and name: one theme source for every application, its own fonts, and its name on the login screen, menus, and About. | Arch | Tamlinux shell on Hyprland |
-| **0.6** | Omarchy is removed; Hyprland stays. Its packages, package mirror, repository, and kernel are gone, and nothing running or installed comes from it. | Arch | Tamlinux on Hyprland |
-| **0.7** | The `tamlinux` workstation package exists and installs a Sway session beside the Hyprland session. | Arch | Both sessions available |
-| **0.8** | The Sway session is the daily driver while the Hyprland session remains the fallback; one step per parity milestone. | Arch | Tamlinux on Sway |
-| **1.0** | Hyprland is removed from the workstation. The first installation of the workstation package on an existing distribution. | Arch | Tamlinux on Sway |
+| **0.6** | Package and system ownership are proved; Omarchy runtime dependencies are removed after independent boot/update/recovery is verified. Daily Tamlinux on Hyprland is accepted as the first proof gate. | Arch | Tamlinux on Hyprland |
+| **0.7** | Helpers, night light and capture pass the compositor contract on both adapters; the package installs a verified Sway session beside independent Hyprland, with physical monitor-recovery evidence. | Arch | Both sessions available |
+| **0.8** | Physical Sway daily use and all required workflow/plugin parity are accepted as the second proof gate, with independent Hyprland available as fallback. | Arch | Tamlinux on Sway |
+| **1.0** | Hyprland is removed from the workstation after accepted independent Hyprland and Sway daily-use proofs; the installed workstation package runs Sway only. | Arch | Tamlinux on Sway |
 | **1.1** | The same package installs on a second, different distribution on another machine. | Arch + one other | Tamlinux on Sway |
 | **1.2** | Void pilot: the same sources as native `xbps-src` packages on Void + runit + Btrfs + seatd, with complete recovery proved. antiX Core + runit only if Void has a showstopper. | + Void pilot | Tamlinux on Sway |
 | **1.3** | Repeatable live-media base install, single-command workstation activation, and the terminal-only profile. | + Void pilot | + terminal-only |

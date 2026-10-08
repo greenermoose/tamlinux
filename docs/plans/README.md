@@ -1,29 +1,28 @@
 # Development plans
 
-**Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
-workstation environment aimed at the best possible user experience on any
-hardware. The package and command retain the Tamlinux name. Existing-distribution
-Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
-profiles are capability-based; circa-2006 machines are validation examples,
-not a universal age cutoff.
+Tamlinux is an independent, continuing Linux workstation environment. The
+package remains `tamlinux`; its terminal command is `tam`. A plan describes
+work and acceptance, not an installed component. Current accepted workstation
+version: **0.3.3**, the daily Tamlinux bar on Hyprland.
 
-These plans track work being developed in Tamlinux. A plan is a design for
-review, not an installed component or a promise that a feature already works.
-The [project README](../../README.md) describes the current released state.
+**Sequence revised 2026-10-07:** first prove Tamlinux on Hyprland without
+Omarchy, then prove Tamlinux on Sway. Arch stays the workstation base.
 
-| Work | Status | Next step |
-| :-- | :-- | :-- |
-| [Base operating system](base-operating-system.md) | Void first, antiX Core fallback decided 2026-10-03 | Prove the runit/Btrfs pilot and compare musl/glibc. |
-| [Desktop decoupling](desktop-decoupling.md) | Re-keyed by version 2026-10-05. 0.1.0–0.1.23 accepted: the Tamlinux shell's session services and the desktop's commands; the eight plugins are 2.0.0 Develop candidates; the shell's Sway adapter slice 2026-10-04 | Every key binding and menu entry on owned commands (0.2), then replace the daily bar (0.3) and finish the compositor contract (0.4). |
-| [Installation framework](installation-framework.md) | Updated 2026-10-03: workstation package on existing distributions first (Nix flake + host adapter), then Void (native `xbps-src`); antiX Core fallback | Build the inspect/plan/apply/verify framework with an Arch profile; select pilot hardware in parallel. |
-| [`tamlinux` command](tamlinux-command.md) | First slice and first-use welcome approved, 2026-09-23 | Implement the command skeleton and minimal offline guide. |
+| Plan | Current scope and next work |
+| --- | --- |
+| [Desktop decoupling](desktop-decoupling.md) | 0.4 settings/state and menus, 0.5 themes/fonts/identity, 0.6 native ownership and boot-dependent final removal; independent Hyprland acceptance. |
+| [Theme system](theme-system.md) | Chosen Tamarack/Atkinson direction; deterministic owned generation, fonts and visible identity at 0.5. |
+| [Sway integration](sway-integration.md) | Prepared adapters retained; integration/package 0.7 after 0.6 acceptance, physical daily proof 0.8, Hyprland removal 1.0. |
+| [Installation framework](installation-framework.md) | Existing-distribution Nix + native host adapter; bounded inspect/plan/apply/verify for 0.7, using independent component ownership. |
+| [`tam` command](tamlinux-command.md) | Approved small offline guide/welcome/explain and installation entry point; name updated 2026-10-07, implementation pending. Supporting work for 0.7. |
+| [Base operating system](base-operating-system.md) | Second distribution 1.1, then Void/runit/Btrfs/native-source pilot 1.2 and repeatable activation/terminal profile 1.3; antiX Core fallback if needed. |
 
-The delivery order is: describe the current system; decouple dependencies
-top-down on the existing Omarchy base; package the result as one workstation
-package and install it on Fred's Arch workstation, removing Omarchy and
-Hyprland (1.0.0); install it on a second distribution (1.1); then prove the
-Void Linux base layer (or antiX Core fallback) on a secondary computer (1.2,
-1.3). See [VERSIONING.md](../../VERSIONING.md) for the series.
-A plan moves to implementation after its open decisions are resolved. Progress
-and evidence are recorded in the matching plan; version changes follow
-[VERSIONING.md](../../VERSIONING.md).
+Boot work and reliability continue alongside ownership work. Final removal
+requires independently maintained kernel/initramfs/boot hooks and tested
+encrypted boot, update, fallback/snapshot recovery and sleep/resume. A boot
+delay leaves independence pending; it does not move Sway integration ahead.
+Existing prototypes, legal attribution and dated records stay as evidence.
+
+The stage meanings and unchanged 0.3.3 version are in
+[VERSIONING.md](../../VERSIONING.md). Publication and release remain separate
+from local planning and implementation.
