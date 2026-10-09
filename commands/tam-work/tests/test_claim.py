@@ -3,6 +3,7 @@
 import concurrent.futures
 import importlib.machinery
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
@@ -60,11 +61,15 @@ class Claims(unittest.TestCase):
         self.assertFalse((self.registry / "first.json").exists())
 
     def test_concurrent_processes_get_only_one_claim(self):
+        # A session inherited from the caller would make all eight writers one session.
+        env = {key: value for key, value in os.environ.items()
+               if key not in ("TAM_WORK_SESSION", "CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_SESSION_ID")}
+
         def attempt(index):
             return subprocess.run([sys.executable, str(SCRIPT), "--registry", str(self.registry),
                                    "claim", f"writer-{index}", "--owner", "codex",
                                    "--scope", "repo/file", "--worktree", f"/tree-{index}", "--note", "race"],
-                                  capture_output=True, text=True, timeout=10)
+                                  env=env, capture_output=True, text=True, timeout=10)
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             results = list(pool.map(attempt, range(8)))
         self.assertEqual(sum(item.returncode == 0 for item in results), 1)
