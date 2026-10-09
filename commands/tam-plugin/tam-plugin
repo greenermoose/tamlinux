@@ -1,0 +1,679 @@
+#!/usr/bin/env bash
+# tam-plugin — Manage Fred's Tamlinux shell plugins (fred.*)
+#
+# Part of the Omarchy Fred Plugin Suite (https://github.com/greenermoose/plugin-fred-tamlinux)
+# License: GPL-3.0-or-later
+
+set -euo pipefail
+
+VERSION="3.0.0"
+
+# Directories
+LIVE_DIR="${FRED_LIVE_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/tamlinux/plugins}"
+CACHE_DIR="${HOME}/.cache/tam-plugin"
+STATE_ROOT="${FRED_STATE_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/tam-plugin}"
+DEV_ROOT="${FRED_DEV_ROOT:-${STATE_ROOT}/dev}"
+TEST_ROOT="${FRED_TEST_ROOT:-${STATE_ROOT}/test}"
+PUBLISHED_ROOT="${FRED_PUBLISHED_ROOT:-${HOME}/Code/tamlinux}"
+MARKETPLACE_REGISTRY_URL="https://raw.githubusercontent.com/omacom/omarchy-plugin-marketplace/main/registry.json"
+
+SHELL_DIR="${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}"
+REGISTRY="${TAMLINUX_REGISTRY:-$SHELL_DIR/host/registry.py}"
+# Plugin source is desktop/plugins in a Tamlinux product checkout. Installed
+# plugins come from the deployed package (see tam-deploy).
+SOURCE_REPO="${TAMLINUX_SOURCE_REPO:-${PUBLISHED_ROOT}/tamlinux}"
+PLUGINS_SRC="${SOURCE_REPO}/desktop/plugins"
+
+# Known Fred plugins catalog
+declare -A CATALOG_REPOS=(
+  ["fred.workspaces"]="https://github.com/greenermoose/workspaces-fred-tamlinux.git"
+  ["fred.clock"]="https://github.com/greenermoose/clock-fred-tamlinux.git"
+  ["fred.sysinfo"]="https://github.com/greenermoose/sysinfo-fred-tamlinux.git"
+  ["fred.monitor"]="https://github.com/greenermoose/monitor-fred-tamlinux.git"
+  ["fred.weather"]="https://github.com/greenermoose/weather-fred-tamlinux.git"
+  ["fred.tides"]="https://github.com/greenermoose/tides-fred-tamlinux.git"
+  ["fred.keyboard"]="https://github.com/greenermoose/keyboard-fred-tamlinux.git"
+  ["fred.agents"]="https://github.com/greenermoose/agents-fred-tamlinux.git"
+)
+
+declare -A CATALOG_DESC=(
+  ["fred.workspaces"]="Dynamic workspace indicator with multi-monitor desktop mode switcher"
+  ["fred.clock"]="Next-event countdown badge, multi-feed iCal sync, and interactive agenda"
+  ["fred.sysinfo"]="Universal hardware telemetry and system monitoring bar plugin"
+  ["fred.monitor"]="Display management panel with per-display link Reset and arrangement"
+  ["fred.weather"]="10-day outlook, 48-hour curve, and solar timeline with multi-monitor isolation"
+  ["fred.tides"]="Multi-monitor tide widget with current sea level, 24-hour scrubbable curve, and high/low timeline"
+  ["fred.keyboard"]="Keyboard shortcut explorer: see which keys run which commands on a model of your keyboard"
+  ["fred.agents"]="AI agent usage bar plugin: Antigravity, Claude, Codex, and Cursor activity and live subscription limits at a glance"
+)
+
+# Catalog entries whose public repository does not exist yet. They are listed so
+# the suite is discoverable, but they cannot be installed or updated.
+declare -A CATALOG_UNPUBLISHED=()
+
+published_dir() {
+  local id="$1"
+  printf '%s/%s\n' "$PLUGINS_SRC" "$id"
+}
+
+fail() {
+  echo "tam-plugin: $*" >&2
+  exit 1
+}
+
+warn() {
+  echo "tam-plugin: warning: $*" >&2
+}
+
+# Two caches stand between a deployed plugin file and the running bar:
+#  - in memory: Quickshell 0.3.1 exposes no Qt.clearComponentCache, so the
+#    shell's plugin rescan only refreshes manifest metadata and
+#    Qt.createComponent keeps returning the code loaded at shell start;
+#  - on disk: Qt validates ~/.cache/quickshell/qmlcache/<sha1(path)>.qmlc by
+#    source mtime alone, and Nix store files all carry mtime 1970, so a
+#    redeploy at the same path is served from the stale compile even after a
+#    restart.
+# Purge the disk entries for the local plugins, then restart the shell.
+validate_plugin() {
+  [[ -f "$REGISTRY" ]] || fail "Tamlinux registry not found: $REGISTRY"
+  python3 -I "$REGISTRY" validate "$1"
+}
+
+# Home Manager links each plugin directory to an immutable store tree.
+# Dev/test links point elsewhere and must be recovered before activation.
+is_override_link() {
+  [[ -L "$1" ]] || return 1
+  [[ "$(readlink -f -- "$1")" != /nix/store/* ]]
+}
+
+reload_shell() {
+  tam-qmlcache-purge -q "$LIVE_DIR" || fail "QML cache purge failed"
+  tam-restart-shell || fail "shell restart failed; run tam-restart-shell after recovery"
+}
+
+usage() {
+  cat <<USAGE
+tam-plugin v${VERSION} — Manage Fred's Tamlinux shell plugins
+
+Usage:
+  tam-plugin list [--all] [--refresh]
+  tam-plugin info <id>
+  tam-plugin search [query]
+  tam-plugin diff <id>
+  tam-plugin verify <id>
+  tam-plugin dev <id> on|off
+  tam-plugin restore <id>
+  tam-plugin upstream-diff
+  tam-plugin --version
+  tam-plugin --help
+
+Subcommands:
+  list              Show status of installed plugins (or all catalog plugins with --all)
+  info <id>         Inspect detailed plugin information, repository, and marketplace status
+  search [query]    Search available plugins in Fred's catalog
+  diff <id>         [Developer] Diff the installed plugin against its Tamlinux source
+  verify <id>       [Developer] Compare installed and source payload digests for behavior-bearing drift
+  dev <id> on|off   [Developer] Point the running plugin at its Tamlinux source for fast iteration
+                    (not a deployment; Test and Run use tam-deploy)
+  restore <id>      [Developer] Restore managed plugin state from active override or stale recovery
+  upstream-diff     [Developer] Compare clonedFrom stamps against installed Omarchy
+USAGE
+}
+
+cmd_upstream_diff() {
+  local installed_ver recorded_ver plugin_id upstream
+  installed_ver=$(cat /usr/share/omarchy/version 2>/dev/null || echo "unknown")
+  for upstream in "$PLUGINS_SRC"/fred.*/UPSTREAM.md; do
+    [[ -f "$upstream" ]] || continue
+    plugin_id=$(basename "$(dirname "$upstream")")
+    recorded_ver=$(grep -i "Upstream Version:" "$upstream" | head -n 1 | awk '{print $NF}' | tr -d '`*')
+    if [[ -n "$recorded_ver" && "$recorded_ver" != "$installed_ver" ]]; then
+      warn "$plugin_id was cloned from Omarchy $recorded_ver, but installed Omarchy is $installed_ver"
+    fi
+  done
+}
+
+validate_plugin_id() {
+  local id="$1"
+  [[ "$id" =~ ^fred\.[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+    fail "invalid plugin id '$id' (expected fred.<name>)"
+}
+
+test_state_dir() {
+  printf '%s/%s\n' "$TEST_ROOT" "$1"
+}
+
+dev_state_dir() {
+  printf '%s/%s\n' "$DEV_ROOT" "$1"
+}
+
+is_distribution_file() {
+  local rel="$1"
+  case "$rel" in
+    README.md|LICENSE|CHANGELOG.md|UPSTREAM.md|AI_PROVENANCE.md|.gitignore|.payload.*)
+      return 0
+      ;;
+    docs/*|upstream/*|tests/*|.git/*|assets/screenshots/*)
+      return 0
+      ;;
+    preview.png)
+      return 0
+      ;;
+    *__pycache__*|*.pyc|*.bak*|*~|*.swp)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+generate_payload_manifest() {
+  local dir="$1"
+  local outfile="$2"
+  local tmpfile="${outfile}.tmp.$$"
+  rm -f -- "$tmpfile"
+
+  (
+    cd "$dir"
+    local file_list=()
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      while IFS= read -r -d '' f; do
+        [[ -n "$f" ]] && file_list+=("$f")
+      done < <({ git ls-files -z; git ls-files --others --exclude-standard -z; })
+    else
+      while IFS= read -r -d '' f; do
+        [[ -n "$f" ]] && file_list+=("${f#./}")
+      done < <(find . \( -type f -o -type l \) -print0)
+    fi
+
+    if (( ${#file_list[@]} > 0 )); then
+      printf '%s\n' "${file_list[@]}" | LC_ALL=C sort -u | while IFS= read -r rel; do
+        [[ -n "$rel" ]] || continue
+        if is_distribution_file "$rel"; then
+          continue
+        fi
+        local mode hash
+        if [[ -L "$rel" ]]; then
+          local target
+          target="$(readlink "$rel")"
+          mode="symlink"
+          hash="$(printf '%s' "$target" | sha256sum | awk '{print $1}')"
+        elif [[ -f "$rel" ]]; then
+          if [[ -x "$rel" ]]; then
+            mode="0755"
+          else
+            mode="0644"
+          fi
+          hash="$(sha256sum "$rel" | awk '{print $1}')"
+        else
+          continue
+        fi
+        printf '%s  %s  %s\n' "$hash" "$mode" "$rel" >> "$tmpfile"
+      done
+    fi
+  )
+
+  if [[ ! -f "$tmpfile" ]]; then
+    touch "$tmpfile"
+  fi
+  mv -f "$tmpfile" "$outfile"
+}
+
+compute_payload_digest() {
+  local manifest_file="$1"
+  if [[ -s "$manifest_file" ]]; then
+    sha256sum "$manifest_file" | awk '{print $1}'
+  else
+    echo "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  fi
+}
+
+fetch_registry_json() {
+  local refresh="${1:-0}"
+  mkdir -p "$CACHE_DIR"
+  local cached_file="$CACHE_DIR/registry.json"
+
+  # Use cached file if newer than 3600 seconds and refresh not requested
+  if [[ "$refresh" -eq 0 && -f "$cached_file" ]]; then
+    local now mtime age
+    now=$(date +%s)
+    mtime=$(stat -c %Y "$cached_file" 2>/dev/null || stat -f %m "$cached_file" 2>/dev/null || echo 0)
+    age=$(( now - mtime ))
+    if (( age < 3600 )); then
+      cat "$cached_file"
+      return 0
+    fi
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    local tmp="$cached_file.tmp.$$"
+    if curl -sSL --connect-timeout 5 --max-time 10 "$MARKETPLACE_REGISTRY_URL" -o "$tmp" 2>/dev/null; then
+      if [[ -s "$tmp" ]] && (command -v jq >/dev/null 2>&1 && jq empty "$tmp" 2>/dev/null); then
+        mv "$tmp" "$cached_file"
+        cat "$cached_file"
+        return 0
+      fi
+      rm -f "$tmp"
+    fi
+  fi
+
+  # Fallback to existing cache if offline/error
+  if [[ -f "$cached_file" ]]; then
+    cat "$cached_file"
+  else
+    echo "[]"
+  fi
+}
+
+cmd_list() {
+  local show_all=0
+  local refresh=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --all|-a) show_all=1 ;;
+      --refresh|-r) refresh=1 ;;
+      *) ;;
+    esac
+    shift
+  done
+
+  local registry_json
+  registry_json="$(fetch_registry_json "$refresh")"
+
+  # Collect plugin IDs
+  local plugin_ids=()
+  if [[ -d "$LIVE_DIR" ]]; then
+    for dir in "$LIVE_DIR"/fred.*; do
+      [[ -e "$dir" || -L "$dir" ]] || continue
+      plugin_ids+=("$(basename "$dir")")
+    done
+  fi
+
+  if [[ -d "$PLUGINS_SRC" ]]; then
+    for dir in "$PLUGINS_SRC"/fred.*; do
+      [[ -d "$dir" ]] || continue
+      local base
+      base="$(basename "$dir")"
+      if [[ ! " ${plugin_ids[*]:-} " =~ [[:space:]]${base}[[:space:]] ]]; then
+        plugin_ids+=("$base")
+      fi
+    done
+  fi
+
+  if [[ "$show_all" -eq 1 ]]; then
+    for id in "${!CATALOG_REPOS[@]}"; do
+      if [[ ! " ${plugin_ids[*]:-} " =~ [[:space:]]${id}[[:space:]] ]]; then
+        plugin_ids+=("$id")
+      fi
+    done
+  fi
+
+  if (( ${#plugin_ids[@]} == 0 )); then
+    echo "No fred.* plugins installed. Use 'tam-plugin list --all' or 'search' to discover plugins."
+    return 0
+  fi
+
+  IFS=$'\n' plugin_ids=($(sort -u <<<"${plugin_ids[*]}"))
+  unset IFS
+
+  [[ -f "$REGISTRY" ]] || fail "Tamlinux registry not found: $REGISTRY"
+  local plugin_entries_json
+  plugin_entries_json="$(python3 -I "$REGISTRY" entries "$LIVE_DIR")"
+
+  printf "%-18s %-10s %-10s %-22s %s\n" "ID" "INSTALLED" "STATE" "MARKETPLACE" "LATEST GITHUB / LOCAL"
+
+  for id in "${plugin_ids[@]}"; do
+    local manifest=""
+    if [[ -f "$LIVE_DIR/$id/manifest.json" ]]; then
+      manifest="$LIVE_DIR/$id/manifest.json"
+    elif [[ -f "$PLUGINS_SRC/$id/manifest.json" ]]; then
+      manifest="$PLUGINS_SRC/$id/manifest.json"
+    fi
+
+    local version="none"
+    if [[ -n "$manifest" ]] && command -v jq >/dev/null 2>&1; then
+      version="$(jq -r '.version // "unknown"' "$manifest" 2>/dev/null || echo "unknown")"
+    fi
+
+    local state="not installed"
+    if [[ -e "$LIVE_DIR/$id" ]]; then
+      state="invalid"
+      if jq -e --arg id "$id" 'has($id)' <<<"$plugin_entries_json" >/dev/null; then
+        state="validated"
+      fi
+      [[ ! -f "$(dev_state_dir "$id")/active" ]] || state="dev"
+      [[ ! -f "$(test_state_dir "$id")/active" ]] || state="test"
+    elif [[ -n "$manifest" ]]; then
+      state="staged"
+    fi
+
+    # Check Marketplace Registry status
+    local mkt_status="Not Listed"
+    [[ -z "${CATALOG_UNPUBLISHED[$id]:-}" ]] || mkt_status="Coming soon"
+    if command -v jq >/dev/null 2>&1 && [[ "$registry_json" != "[]" ]]; then
+      local mkt_entry
+      mkt_entry="$(jq -c --arg id "$id" '.sources[]? | select((.plugins // {}) | has($id))' <<<"$registry_json" 2>/dev/null || true)"
+      if [[ -n "$mkt_entry" ]]; then
+        local outcome
+        outcome="$(jq -r '.automatedSecurityBaseline.outcome // "verified"' <<<"$mkt_entry" 2>/dev/null)"
+        if [[ "$outcome" == "passed" || "$outcome" == "verified" ]]; then
+          mkt_status="Verified"
+        else
+          mkt_status="In Review"
+        fi
+      fi
+    fi
+
+    # Check Published Tag / Git remote
+    local suffix="${id#fred.}"
+    local pub_dir
+    pub_dir="$(published_dir "$id")"
+    local pub_tag="-"
+    if [[ -n "${CATALOG_UNPUBLISHED[$id]:-}" ]]; then
+      pub_tag="unpublished"
+    elif [[ -d "$pub_dir/.git" ]]; then
+      pub_tag="$(git -C "$pub_dir" describe --tags --exact-match 2>/dev/null || git -C "$pub_dir" describe --tags 2>/dev/null || echo "(dev)")"
+    elif [[ -n "${CATALOG_REPOS[$id]:-}" ]]; then
+      pub_tag="Available"
+    fi
+
+    printf "%-18s %-10s %-10s %-22s %s\n" "$id" "$version" "$state" "$mkt_status" "$pub_tag"
+  done
+}
+
+cmd_info() {
+  local id="${1:-}"
+  [[ -n "$id" ]] || fail "info requires a plugin id (e.g. fred.clock)"
+
+  local repo_url="${CATALOG_REPOS[$id]:-https://github.com/greenermoose/omarchy-$id.git}"
+  local desc="${CATALOG_DESC[$id]:-Personal Tamlinux shell plugin}"
+
+  echo "Plugin:      $id"
+  echo "Description: $desc"
+  echo "Repository:  $repo_url"
+
+  validate_plugin_id "$id"
+  local live_path="$LIVE_DIR/$id"
+  if [[ -d "$live_path" || -L "$live_path" ]]; then
+    echo "Installed:   Yes ($live_path)"
+    validate_plugin "$live_path" >/dev/null || fail "installed plugin failed validation"
+    if [[ -f "$live_path/manifest.json" ]] && command -v jq >/dev/null 2>&1; then
+      local v author
+      v="$(jq -r '.version // "unknown"' "$live_path/manifest.json")"
+      author="$(jq -r '.author // "Fred"' "$live_path/manifest.json")"
+      echo "Version:     $v"
+      echo "Author:      $author"
+    fi
+  else
+    echo "Installed:   No"
+  fi
+
+  # Query registry
+  local registry_json
+  registry_json="$(fetch_registry_json)"
+  if command -v jq >/dev/null 2>&1 && [[ "$registry_json" != "[]" ]]; then
+    local mkt_entry
+    mkt_entry="$(jq -c --arg id "$id" '.sources[]? | select((.plugins // {}) | has($id))' <<<"$registry_json" 2>/dev/null || true)"
+    if [[ -n "$mkt_entry" ]]; then
+      echo "Marketplace: Listed"
+      echo "  Added:     $(jq -r '.addedAt // "unknown"' <<<"$mkt_entry")"
+      echo "  Commit:    $(jq -r '.listingValidatedCommit // "unknown"' <<<"$mkt_entry")"
+      echo "  Security:  $(jq -r '.automatedSecurityBaseline.outcome // "passed"' <<<"$mkt_entry")"
+    else
+      echo "Marketplace: Not yet listed or review in progress"
+    fi
+  fi
+}
+
+cmd_search() {
+  local query="${1:-}"
+  printf "%-18s %s\n" "ID" "DESCRIPTION"
+  for id in "${!CATALOG_REPOS[@]}"; do
+    local desc="${CATALOG_DESC[$id]}"
+    if [[ -z "$query" || "$id" =~ $query || "$desc" =~ $query ]]; then
+      if [[ -n "${CATALOG_UNPUBLISHED[$id]:-}" ]]; then
+        printf "%-18s %s\n" "$id" "$desc [coming soon: not published yet]"
+      else
+        printf "%-18s %s\n" "$id" "$desc"
+      fi
+    fi
+  done
+}
+
+cmd_diff() {
+  local id="${1:-}"
+  [[ -n "$id" ]] || fail "diff requires a plugin id (e.g. fred.clock)"
+  local deployed="$LIVE_DIR/$id"
+  local published
+  published="$(published_dir "$id")"
+
+  [[ -d "$deployed" ]] || fail "installed plugin not found: $deployed"
+  [[ -d "$published" ]] || fail "plugin source not found: $published (set TAMLINUX_SOURCE_REPO)"
+
+  diff -ur --color=auto \
+    --exclude=.git \
+    --exclude='*.bak*' \
+    --exclude='*~' \
+    --exclude='__pycache__' \
+    "$deployed" "$published" || true
+}
+
+cmd_verify() {
+  local id="${1:-}"
+  [[ -n "$id" ]] || fail "verify requires a plugin id (e.g. fred.clock)"
+  validate_plugin_id "$id"
+  local deployed="$LIVE_DIR/$id"
+  local published
+  published="$(published_dir "$id")"
+
+  [[ -d "$deployed" ]] || fail "installed plugin not found: $deployed"
+  [[ -d "$published" ]] || fail "plugin source not found: $published (set TAMLINUX_SOURCE_REPO)"
+
+  local tmp_dep tmp_pub
+  tmp_dep="$(mktemp)"
+  tmp_pub="$(mktemp)"
+  trap 'rm -f "$tmp_dep" "$tmp_pub"' RETURN
+
+  generate_payload_manifest "$deployed" "$tmp_dep"
+  generate_payload_manifest "$published" "$tmp_pub"
+
+  local dep_digest pub_digest
+  dep_digest="$(compute_payload_digest "$tmp_dep")"
+  pub_digest="$(compute_payload_digest "$tmp_pub")"
+
+  echo "verify: installed payload digest: $dep_digest"
+  echo "verify: source payload digest:    $pub_digest"
+
+  if [[ "$dep_digest" == "$pub_digest" ]]; then
+    echo "verify: SUCCESS: payload digests match for $id ($dep_digest)"
+    return 0
+  else
+    echo "verify: FAILED: behavior-bearing differences detected for $id:" >&2
+    diff -u --color=auto \
+      --label "installed ($deployed)" "$tmp_dep" \
+      --label "source ($published)" "$tmp_pub" >&2 || true
+    fail "payload verification failed for $id; the source differs from the installed package in behavior-bearing files"
+  fi
+}
+
+cmd_restore() {
+  local id="${1:-}"
+  [[ -n "$id" ]] || fail "restore requires a plugin id (e.g. fred.clock)"
+  validate_plugin_id "$id"
+
+  local live="$LIVE_DIR/$id"
+  local dev_state test_state
+  dev_state="$(dev_state_dir "$id")"
+  test_state="$(test_state_dir "$id")"
+
+  echo "restore: inspecting override and recovery state for $id..."
+
+  # 1. Remove active symlink if present
+  if is_override_link "$live"; then
+    local target
+    target="$(readlink "$live" 2>/dev/null || true)"
+    echo "restore: removing active symlink $live -> $target"
+    rm -f -- "$live"
+  fi
+
+  # 2. Reconcile dev state
+  if [[ -e "$dev_state/original" ]]; then
+    if [[ ! -e "$live" ]]; then
+      echo "restore: restoring original directory from dev state ($dev_state/original -> $live)"
+      mv -- "$dev_state/original" "$live"
+    else
+      echo "restore: note: $live already exists; removing saved dev copy" >&2
+      rm -rf -- "$dev_state/original"
+    fi
+  elif [[ -e "$dev_state/original.absent" ]]; then
+    if [[ -L "$live" ]]; then
+      rm -f -- "$live"
+    fi
+  fi
+  rm -f -- "$dev_state/original.absent" "$dev_state/active"
+  rmdir "$dev_state" 2>/dev/null || true
+
+  # 3. Reconcile test state
+  if [[ -e "$test_state/original" ]]; then
+    if [[ ! -e "$live" ]]; then
+      echo "restore: restoring original directory from test state ($test_state/original -> $live)"
+      mv -- "$test_state/original" "$live"
+    else
+      echo "restore: note: $live already exists; removing saved test copy" >&2
+      rm -rf -- "$test_state/original"
+    fi
+  elif [[ -e "$test_state/original.absent" ]]; then
+    if [[ -L "$live" ]]; then
+      rm -f -- "$live"
+    fi
+  fi
+  rm -f -- "$test_state/original.absent" "$test_state/active" "$test_state/current" "$test_state/previous"
+  rmdir "$test_state" 2>/dev/null || true
+
+  reload_shell
+  echo "restore: override state cleared for $id"
+}
+
+cmd_dev() {
+  local id="${1:-}"
+  local mode="${2:-}"
+
+  [[ -n "$id" ]] || fail "dev requires a plugin id (e.g. fred.clock)"
+  validate_plugin_id "$id"
+  [[ "$mode" == "on" || "$mode" == "off" ]] || fail "dev mode must be 'on' or 'off'"
+  local deployed="$PLUGINS_SRC/$id"
+  local live="$LIVE_DIR/$id"
+  local dev_state test_state
+  dev_state="$(dev_state_dir "$id")"
+  test_state="$(test_state_dir "$id")"
+  [[ ! -f "$test_state/active" ]] ||
+    fail "$id has snapshot test state from tam-plugin 2.x; run 'tam-plugin restore $id' first"
+
+  if [[ "$mode" == "on" ]]; then
+    [[ -d "$deployed" ]] || fail "installed plugin not found: $deployed"
+    validate_plugin "$deployed" >/dev/null
+    mkdir -p "$LIVE_DIR"
+
+    if [[ -L "$live" ]] && [[ "$(readlink -f "$live")" == "$(readlink -f "$deployed")" ]]; then
+      echo "dev: $id is already linked in dev mode -> $deployed"
+      return 0
+    fi
+
+    if is_override_link "$live"; then
+      fail "$live is an unknown symlink ($(readlink "$live")); run 'tam-plugin restore $id' before entering dev mode"
+    fi
+
+    if [[ -e "$dev_state/original" || -e "$dev_state/original.absent" || -f "$dev_state/active" ]]; then
+      fail "stale dev recovery state exists at $dev_state; run 'tam-plugin restore $id' first"
+    fi
+
+    mkdir -p -- "$dev_state"
+    if [[ -e "$live" || -L "$live" ]]; then
+      mv -- "$live" "$dev_state/original"
+    else
+      : > "$dev_state/original.absent"
+    fi
+    : > "$dev_state/active"
+
+    ln -s "$deployed" "$live"
+    reload_shell
+    echo "dev: mode ON for $id -> $deployed"
+  else
+    if [[ -L "$live" ]]; then
+      local target
+      target="$(readlink -f -- "$live" 2>/dev/null || true)"
+      if [[ -n "$target" && "$target" != "$(readlink -f -- "$deployed")" ]]; then
+        fail "refusing to remove dev symlink: $live does not point to $deployed (run 'tam-plugin restore $id' if needed)"
+      fi
+      rm -- "$live"
+      echo "dev: removed dev symlink for $id"
+    else
+      echo "dev: $live is not a dev symlink"
+    fi
+
+    # Restore the saved managed tree
+    if [[ -e "$dev_state/original" ]]; then
+      mv -- "$dev_state/original" "$live"
+      echo "dev: restored original plugin directory for $id"
+    elif [[ -e "$dev_state/original.absent" ]]; then
+      rm -f -- "$dev_state/original.absent"
+    fi
+    rm -f -- "$dev_state/active"
+    rmdir "$dev_state" 2>/dev/null || true
+
+    # The saved link is the managed package path, so restoring it needs no
+    # Home Manager switch.
+    reload_shell
+    echo "dev: mode OFF for $id"
+  fi
+}
+
+case "${1:-}" in
+  list)
+    shift
+    cmd_list "$@"
+    ;;
+  info)
+    shift
+    cmd_info "$@"
+    ;;
+  search)
+    shift
+    cmd_search "$@"
+    ;;
+  diff)
+    shift
+    cmd_diff "$@"
+    ;;
+  verify)
+    shift
+    cmd_verify "$@"
+    ;;
+  dev)
+    shift
+    cmd_dev "$@"
+    ;;
+  test|run)
+    fail "'$1' moved to tam-deploy: plugins are tested and run as part of the Tamlinux package"
+    ;;
+  restore)
+    shift
+    cmd_restore "$@"
+    ;;
+  upstream-diff)
+    shift
+    cmd_upstream_diff "$@"
+    ;;
+  -v|--version)
+    echo "tam-plugin v${VERSION}"
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
