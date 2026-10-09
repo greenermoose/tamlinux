@@ -1,0 +1,83 @@
+# AI Collaboration & Provenance
+
+This repository practices transparent AI-assisted engineering. We document the AI tools, models, prompts, and architectural decisions that shaped `fred.weather`.
+
+---
+
+## How to read this record
+
+This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
+brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
+each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
+transcripts are retained privately by the author, so the records carry no
+session IDs or local transcript paths.
+
+---
+
+## 1. Fred's Multi-Agent AI Toolchain
+
+Rather than relying on a single AI model or interface, Fred uses a specialized toolchain tailored to each tool's strengths. CLI versions below reflect the environment captured during development (`<tool> --version`).
+
+| Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
+| :-- | :-- | :-- | :-- |
+| **Claude Code** (`claude`) | `2.1.267` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
+| **Codex CLI** (`codex`) | `0.156.1` | `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
+| **Antigravity CLI** (`agy`) | `1.2.6` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security remediation, bash/Python/QML engineering, and git release workflow. |
+| **OpenCode** (`opencode`) | `1.18.30` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux / Omarchy package specifics and shell configuration, conserving frontier-model token budgets. |
+| **Grok CLI** (`grok`) | `1.0.25` (`f7e67d6988e2`, stable) | Grok 4.6 | **Workstation Support**: Additional debugging, hardware diagnostics, and alternative implementation analysis. |
+
+---
+
+## 2. Key Architectural Milestones & AI Role
+
+| Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
+| :-- | :-- | :-- | :-- |
+| **Initial Implementation & Focus Isolation** | `v1.0.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Designed multi-monitor focus-isolated weather panel with 48h timeline curve, 10-day forecast, Font Awesome Sun glyph (`\uf185`), hover tooltip briefing, and closed-environment security baseline. |
+| **Location Header & Tooltip Reordering** | `v1.0.1` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Added city/state location formatting and reordered tooltip lines with version at bottom separated by blank line. |
+| **Custom Hover Popup, IPC Control & Preview Assets** | `v1.0.2` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Implemented custom `PopupWindow` in `BarWidget.qml` with styled dimmed caption version footer, programmatic `showHover`/`hideHover` IPC methods, and HP monitor preview screenshot composite. |
+| **Multi-Monitor Broadcast, Retry Hardening & Resume Sync** | `v1.0.3` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Added `refreshAll` and payload broadcast across monitors via `WeatherStore.js`, implemented `scheduleDailyForecastRetry()` with exponential backoff in `Panel.qml`, and wired resume hook in `msi-mp161-resume-workaround`. |
+| **Daily Forecast Local Timezone Alignment** | `v1.0.4` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Fixed off-by-one daily forecast date bug where late-evening local time in western timezones rolled to UTC tomorrow; added `forecastTodayString`, cache rollover filtering, and dynamic today index resolution. |
+| **v1.0.4 GitHub Release** | `v1.0.4` | Codex CLI `0.155.1` (`gpt-6-sol`) | Verified deployed/public runtime parity, tests, and manifest; prepared the release metadata without changing runtime code. [Session record](docs/ai/2026-09-23-release-v1.0.4.md). |
+
+Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `weather-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `for Omarchy Linux` tagline with Tamlinux. Stock `omarchy.weather` wording is unchanged.
+
+## 2026-09-23 upstream survey foundation
+
+Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
+and dated survey directory for this repository. This was documentation only;
+no field survey or runtime change was made.
+[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
+transcript paths from this repository's AI records and linked the public
+provenance standard. Documentation only.
+[Session record](docs/ai/2026-09-28-private-session-ids.md).
+
+## 2026-10-03 shell-independent 2.0.0
+
+Cursor `3.23.12` (`composer`) rewrote `fred.weather` to 2.0.0 on
+`develop/2.0.0`. A right-click notifies a plain status string. Not tagged
+or released.
+[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.weather 2.0.0 QML at the Tamlinux
+compositor facade. Panel targeting uses `bar.compositor.focusedOutputName` and `outputs`. The store still matches a monitor by name or description. `WeatherPanelWindow` takes keyboard focus only on the focused output. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Location reads, saves, and clears run `tam-weather-location` by absolute path from `TAMLINUX_BIN`, falling back to `~/.local/bin`, instead of `omarchy-weather-location` by bare name. The location file is unchanged. The panel layer is `tamlinux-weather-panel`. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).

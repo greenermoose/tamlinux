@@ -1,0 +1,109 @@
+# AI Collaboration & Provenance
+
+This repository practices transparent AI-assisted engineering. We document the
+AI tools, models, prompts, and architectural decisions that shaped
+`fred.keyboard`.
+
+---
+
+## How to read this record
+
+This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
+brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
+each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
+transcripts are retained privately by the author, so the records carry no
+session IDs or local transcript paths.
+
+---
+
+## 1. Fred's Multi-Agent AI Toolchain
+
+CLI versions below were captured live on 2026-09-19 and re-checked 2026-09-20 (release day) (`<tool> --version`) for
+the tools that touched this repository.
+
+| Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
+| :-- | :-- | :-- | :-- |
+| **Claude Code** (`claude`) | `2.1.278` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: research, feasibility verification, plan authoring, scaffolding. |
+| **Antigravity CLI** (`agy`) | `1.2.7` | Gemini 3.8 Flash (High) (`gemini-3.8-flash-high`) | **Research**: initial reconnaissance of Omarchy internals and prior art. |
+| **Codex CLI** (`codex`) | `0.156.1` | GPT-6 Sol (`gpt-6-sol`) | Upstream survey documentation and publication. |
+
+---
+
+## 2. Key Architectural Milestones & AI Role
+
+| Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
+| :-- | :-- | :-- | :-- |
+| **Reconnaissance** | pre-`0.1.0` | Antigravity (Gemini 3.8 Flash High) | Surveyed stock Omarchy keyboard components, `hyprctl binds` (252 binds), `bindings.lua`, `omarchy-menu-keybindings`, and the plugin marketplace registry. Identified `/dev/input` global capture as the approach used by an existing minimap plugin. Session ended on an API quota limit before any code was written. |
+| **Design & feasibility** | `0.1.0` | Claude Code (Claude Opus 5) | Established that key capture need not be global: panel-scoped capture makes the plugin a non-keylogger. Found and resolved the blocking risk that Hyprland matches keybinds before the focused client sees them, by verifying `zwp_keyboard_shortcuts_inhibit_manager_v1` end to end (Hyprland `ShortcutsInhibit.cpp`, `KeybindManager.cpp:643`/`:844`, layer-shell support via `focusState()->surface()`, Quickshell's `ShortcutInhibitor`, `binds:disable_keybind_grabbing=false`, 0/252 binds exempt). Documented the evdev/xkb/Qt keycode reconciliation hazard. (An initial proposal to drive the model from XKB `pc104` geometry was superseded once Fred transcribed his keycaps: his board is not pc104.) Surveyed eight prior-art plugins. |
+| **Scaffold** | `0.1.0` | Claude Code (Claude Opus 5) | Repository skeleton: manifest, GPL-3.0 license, changelog, bar widget entry point with the nf-md-keyboard glyph. |
+| **Layout system** | `0.1.0` | Claude Code (Claude Opus 5) | Two supplies of layouts (OS XKB geometries plus a field-observed library), `LayoutResolver.js` with per-device resolution and exactness reporting, the Calliope transcribed from its keycaps, and a contribution guide. |
+| **First working build** | `0.1.0` | Claude Code (Claude Opus 5) | Bar widget, panel rendering the resolved layout, panel-scoped key highlighting, device detection, and Caps/Num Lock indicators read from sysfs. Fixed three real defects found during the build: a `\uF030C` escape that silently parsed as U+F030 plus a literal "C", 64-bit `KEY=` bitmap words losing precision through `parseInt`, and a missing `implicitWidth` that made the widget load correctly but render at zero width. |
+| **Pre-release publish** | `0.1.0` | Claude Code (Claude Opus 5) | Published to public GitHub `main` as a pre-release: no tags, no GitHub Release, no marketplace submission. Registered in the suite catalog and showcase. |
+| **Capture mode** | `0.1.1` | Claude Code (Claude Opus 5) | `CaptureMode.qml` wraps Quickshell's `ShortcutInhibitor` behind an off-by-default toggle with an accent banner; Escape leaves the mode before it closes the panel, and closing resets it. `Bindings.js` takes over the keycode bridge (native to evdev, modifiers, chord labels) with unit tests, and the panel gains a "Pressed: Super + K" readout. The inhibitor is driven imperatively because Quickshell clears `enabled` itself on a compositor cancel. Fred tested it interactively and confirmed it works. |
+| **Readout fixes** | `0.1.2` | Claude Code (Claude Opus 5) | From Fred's test: the space bar reads "Space Bar" instead of a blank (`Bindings.cellName`), and the Escape that ends capture mode is recorded in the readout before the mode turns off. |
+| **Binding overlay** | `0.2.0` | Claude Code (Claude Opus 5) | `Bindings.js` gains the Hyprland side of the keycode bridge: modmask bits, keysym-to-cell mapping with shifted symbols, `code:N` to evdev, a bounded parser for `hyprctl binds`, index, exact-modmask lookup and labels, all unit-tested. Found that Hyprland 0.56.2's JSON output drops `code:N` binds (77 of 252 here), so the text form is read. Panel tints bound keys, says what a chord runs, and lists orphan binds. |
+| **Mouse capture** | `0.2.1` | Claude Code (Claude Opus 5) | Fred's addition: capture mode records clicks and wheel steps with held modifiers and resolves them against Hyprland's mouse binds. Verified in the local Hyprland source that the inhibitor covers `onMouseEvent`/`onAxisEvent`, so no second mechanism. The card is covered while the mode is on; the banner names Esc as the exit, in Fred's words. |
+| **Panel ergonomics** | `0.2.2` | Claude Code (Claude Opus 5) | Fred's requests after a look: the panel stays open while apps on other monitors are used (`ExplorerPanel.qml`, a clone of the stock `Ui/KeyboardPanel.qml` without its other-output click-catchers; first upstream code in the repo, recorded in `UPSTREAM.md`), and the orphan-bind list becomes a collapsible, aligned section at the bottom (`OrphanBinds.qml`). |
+| **Reverse lookup** | `0.3.0` | Claude Code (Claude Opus 5) | `SearchView.qml` over `Bindings.searchBinds`/`markedCodes`: a query lists matching binds as chord and description and outlines their keys and modifiers on the board; orphans findable but muted. Search and capture mode are modes, not neighbours. |
+| **Legend, hover, footer** | `0.3.1` | Claude Code (Claude Opus 5) | Fred asked what the tint meant: the legend moved to the Layout line, every key gained a hover listing its evdev code and binds (`Bindings.keyTooltip`, stock `PanelToolTip`), and the panel a version footer. |
+| **Footer** | `0.3.2` | Claude Code (Claude Opus 5) | Centred to match the suite; clicking it opens the public repository through closed-environment `xdg-open`, the pattern `fred.clock` uses. |
+| **Modifier hover** | `0.3.3` | Claude Code (Claude Opus 5) | Fred: modifiers are not unbound. Their hover now counts the binds they are held in (`Bindings.modifierBindCount`); plain keys without binds still say so. Fn sentence moved to the bottom hint. |
+| **Capture box** | `0.3.4` | Claude Code (Claude Opus 5) | Fred's UI direction: capture mode as one box with its notice inside, dimmed switch while on (his pick from three options), accent chrome while live, and a top-right Esc hint that says what Esc does right now. |
+| **Release 1.0.0** | `1.0.0` | Claude Code (Claude Opus 5) | 0.3.6 renumbered with no code change, after Fred's tests of every 0.x version. README rewritten (Fred edited the title, intro and section names; Requirements section added), five screenshots taken by Fred driving and the agent capturing, `UPSTREAM.md` extended to credit all eight prior-art plugins, CHANGELOG consolidated. Tagged, released on GitHub, announced in Show & Tell and submitted to the marketplace under SOP 3. |
+| **Two-column lists** | `0.3.5` | Claude Code (Claude Opus 5) | Fred: the lists' scrolling was undiscoverable and two columns would fit. `BindList.qml` (shared by search and orphans): column-major two columns, per-column chord alignment, accent scroll indicator and a wheel hint when overflowing. |
+| **Overflow fix** | `0.3.6` | Claude Code (Claude Opus 5) | The expanded orphan list spilled past the card. The list now gets the room left after every other child of the column (summed from their implicit heights, loop-free) and the card's artificial height cap is gone. |
+
+---
+
+## 3. Provenance Notes
+
+- The design plan lives in the private workstation config and records every
+  decision with its date and rationale.
+- Agy's reconnaissance session transcript is retained privately by the
+  author, like every session transcript in this record.
+- No third-party code is vendored into this repository. The prior-art plugins
+  listed in `README.md` informed the design only; had any code been copied,
+  `UPSTREAM.md` and MIT attribution would be mandatory.
+- Human direction throughout: Fred set the concept, chose panel-scoped capture
+  over global capture, and decided the layout, binding scope, capture-mode and
+  build-versus-fork questions.
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `keyboard-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced current-facing `Fred's Omarchy keyboard` / `for Omarchy Linux` wording with Tamlinux. Omarchy 4.0.4 package version and shell UI kit references are unchanged.
+
+## 2026-09-23 upstream survey foundation
+
+Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
+and dated survey directory for this repository. This was documentation only;
+no field survey or runtime change was made.
+[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
+transcript paths from this repository's AI records and linked the public
+provenance standard. Documentation only.
+[Session record](docs/ai/2026-09-28-private-session-ids.md).
+
+## 2026-10-03 shell-independent 2.0.0
+
+Cursor `3.23.12` (`composer`) rewrote `fred.keyboard` to 2.0.0 on
+`develop/2.0.0`. Hyprland reads stay in the plugin. Not tagged or released.
+[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.keyboard 2.0.0 QML at the Tamlinux
+compositor facade. The panel no longer starts `hyprctl`. It parses `bindingsText` with `Bindings.parseBinds` and copies `activeKeymap` when the facade revision changes. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. The closed environment's `PATH` is `/usr/bin`; Omarchy's command directory is gone. Nothing the plugin runs needed it. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).

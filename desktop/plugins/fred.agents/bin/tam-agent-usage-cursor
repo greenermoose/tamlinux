@@ -1,0 +1,650 @@
+#!/usr/bin/python3
+# omarchy:summary=Print the Cursor usage record as JSON
+# omarchy:args=[--force] [--limits-only]
+# omarchy:hidden=true
+"""Collect Cursor usage into one display-ready JSON record.
+
+Prompt and session counts come from local transcripts; live plan usage comes
+from Cursor's usage endpoint, authorized with the access token Cursor keeps
+in its SQLite state (state.vscdb), read read-only. Nothing sensitive is
+printed or written: the token exists only inside the Authorization header,
+and the record and the limits cache carry only percentages and reset times.
+
+Sessions come from Cursor agent transcripts under
+~/.cursor/projects/*/agent-transcripts/<session>/<session>.jsonl. A subagent
+file in <session>/subagents/ is work delegated by that same chat, so it
+counts into the parent session's prompt totals, never as a session of its
+own. conversation-search.db adds older composer sessions read-only; DB rows
+that are just pointers to a transcript-derived session id are skipped so
+nothing is counted twice.
+
+Prompt = a transcript line with role "user" whose content has a text item.
+Session day = the first <timestamp> parsed from the top-level transcript
+file, else that file's mtime. Cursor writes timestamps as local wall-clock
+dates ("Friday, Sep 4, 2026, 10:19 AM (UTC-4)"), so they are used as local
+calendar days without any timezone conversion.
+"""
+
+import argparse
+import base64
+import datetime as _dt
+import fcntl
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+
+AGENT_ID = "cursor"
+AGENT_NAME = "Cursor"
+AUTH_HELP = "Open Cursor to sign in and restore live usage."
+USAGE_ENDPOINT = "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage"
+# A panel that is opened and shut repeatedly must not re-probe the endpoint
+# each flick; the limits cache is reused inside this window much like the
+# Claude and Codex collectors reuse theirs.
+PROBE_MIN_INTERVAL_SECONDS = 15
+
+# A scan this recent is only reused to dedup concurrent collector runs (the
+# update command backgrounds one per agent while the panel refreshes on its
+# own); every periodic widget refresh lands a real rescan, however low
+# refreshIntervalSec is set. --limits-only promises only fresh limits, so it
+# may reuse a scan for up to 15 minutes; the live usage probe additionally
+# has its own reuse window in collect_limits().
+SCAN_REUSE_SECONDS = 20
+LIMITS_ONLY_REUSE_SECONDS = 900
+
+# Guard against pathological transcripts: a session jsonl larger than this is
+# skipped whole rather than parsed into memory.
+MAX_FILE_BYTES = 128 * 1024 * 1024
+
+# Pulls the wall-clock calendar date out of Cursor's printed timestamp. The
+# (UTC) suffix is display metadata about the same local time, so it is
+# dropped rather than applied.
+TIMESTAMP_RE = re.compile(r"<timestamp>(.*?)</timestamp>", re.DOTALL)
+TIMESTAMP_FORMATS = (
+    "%A, %b %d, %Y, %I:%M %p",
+    "%A, %B %d, %Y, %I:%M %p",
+    "%A, %d %b %Y, %I:%M %p",
+)
+
+
+def number(value):
+  try:
+    return int(value or 0)
+  except Exception:
+    return 0
+
+
+def local_day_from_ms(value):
+  if isinstance(value, (int, float)):
+    # conversation-search.db updated_at is milliseconds since the epoch.
+    if value > 10_000_000_000:
+      value = value / 1000
+    return datetime.fromtimestamp(value).strftime("%Y-%m-%d")
+  return datetime.now().strftime("%Y-%m-%d")
+
+
+def parse_timestamp(text):
+  if not text:
+    return None
+  match = TIMESTAMP_RE.search(text)
+  if not match:
+    return None
+  body = re.sub(r"\s*\(UTC[^)]*\)\s*", " ", match.group(1)).strip()
+  for fmt in TIMESTAMP_FORMATS:
+    try:
+      return datetime.strptime(body, fmt)
+    except Exception:
+      continue
+  return None
+
+
+def session_day(text, path):
+  """Day for a session: the first <timestamp> from its top-level file, else
+  the file mtime."""
+  dt = parse_timestamp(text)
+  if dt is not None:
+    return dt.strftime("%Y-%m-%d")
+  try:
+    return datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
+  except OSError:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def transcript_prompt_count(path):
+  """Count role==user lines with a text content item."""
+  count = 0
+  try:
+    with path.open(errors="replace") as handle:
+      for raw in handle:
+        try:
+          entry = json.loads(raw)
+        except Exception:
+          continue
+        if entry.get("type") == "turn_ended":
+          continue
+        if entry.get("role") != "user":
+          continue
+        content = entry.get("message", {}).get("content")
+        if not isinstance(content, list):
+          continue
+        for item in content:
+          if isinstance(item, dict) and item.get("type") == "text":
+            count += 1
+            break
+  except OSError:
+    pass
+  return count
+
+
+def file_head(path, limit=1 << 16):
+  try:
+    with path.open(errors="replace") as handle:
+      return handle.read(limit)
+  except OSError:
+    return ""
+
+
+def scan_transcripts():
+  """Aggregate Cursor agent transcripts into day buckets.
+
+  Each session dir contributes exactly one session (its directory name);
+  subagent files add their prompts to the parent. Returns:
+    (prompts_by_day, sessions_by_day) where both map day -> (int, set)."""
+  projects = Path.home() / ".cursor" / "projects"
+  prompts_by_day = {}
+  sessions_by_day = {}
+  if not projects.is_dir():
+    return prompts_by_day, sessions_by_day
+  for transcript_dir in sorted(projects.glob("*/agent-transcripts/*")):
+    if not transcript_dir.is_dir() or transcript_dir.name == "subagents":
+      continue
+    session_key = transcript_dir.name
+    top_files = sorted(transcript_dir.glob("*.jsonl"))
+    if not top_files:
+      continue
+    head_text = "".join(file_head(p) for p in top_files)
+    day = session_day(head_text, top_files[0])
+    prompts = sum(transcript_prompt_count(p) for p in top_files)
+    for path in sorted(transcript_dir.glob("subagents/*.jsonl")):
+      prompts += transcript_prompt_count(path)
+    prompts_by_day[day] = prompts_by_day.get(day, 0) + prompts
+    sessions_by_day.setdefault(day, set()).add(session_key)
+  return prompts_by_day, sessions_by_day
+
+
+def scan_conversation_db(prompts_by_day, sessions_by_day, all_session_ids):
+  """Best-effort older composer sessions from conversation-search.db.
+
+  Read-only and WAL-tolerant; any failure only skips the DB bonus and never
+  blocks or invalidates the transcript scan. DB rows whose id already names a
+  transcript session are skipped (same chat, already counted). Sessions whose
+  branches carry no usable message payload contribute their session count and
+  nothing else.
+  """
+  db = Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "conversation-search.db"
+  if not db.is_file():
+    return
+  try:
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
+  except sqlite3.Error:
+    return
+  try:
+    conn.execute("PRAGMA query_only = ON")
+    for row in conn.execute("SELECT id, branches, updated_at FROM conversations"):
+      try:
+        conversation_id, branches, updated_at = row
+        if conversation_id in all_session_ids:
+          continue
+        day = local_day_from_ms(updated_at)
+        prompts = 0
+        if isinstance(branches, str) and branches.strip():
+          try:
+            payload = json.loads(branches)
+          except Exception:
+            payload = None
+          messages = payload
+          if isinstance(payload, dict):
+            messages = (payload.get("messages") or payload.get("requests")
+                        or payload.get("branches"))
+          if isinstance(messages, list):
+            for message in messages:
+              if not isinstance(message, dict) or message.get("role") != "user":
+                continue
+              content = message.get("content")
+              if isinstance(content, list):
+                for item in content:
+                  if isinstance(item, dict) and item.get("type") == "text":
+                    prompts += 1
+                    break
+              elif isinstance(content, str) and content.strip():
+                prompts += 1
+        prompts_by_day[day] = prompts_by_day.get(day, 0) + prompts
+        sessions_by_day.setdefault(day, set()).add(conversation_id)
+        all_session_ids.add(conversation_id)
+      except Exception:
+        continue
+  except sqlite3.Error:
+    return
+  finally:
+    try:
+      conn.close()
+    except Exception:
+      pass
+
+
+def cache_root():
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "tamlinux" / "agents"
+  root.mkdir(parents=True, exist_ok=True)
+  return root
+
+
+def scan_cache_paths():
+  projects = Path.home() / ".cursor" / "projects"
+  db = Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "conversation-search.db"
+  digest = hashlib.sha1((str(Path.home()) + "\n" + str(projects) + "\n" + str(db)).encode("utf-8")).hexdigest()[:16]
+  root = cache_root()
+  return root / f"cursor-scan-{digest}.json", root / f"cursor-scan-{digest}.lock"
+
+
+def read_fresh_json(path, max_age_seconds):
+  if max_age_seconds <= 0 or not path.exists():
+    return None
+  try:
+    # A negative age means the mtime is in the future: the clock moved
+    # backwards since the write, so the cache's freshness cannot be trusted.
+    age = time.time() - path.stat().st_mtime
+    if 0 <= age <= max_age_seconds:
+      return json.loads(path.read_text(encoding="utf-8"))
+  except Exception:
+    return None
+  return None
+
+
+def write_json(path, payload):
+  # A temp name unique to this writer, not derived from the target: several
+  # collectors can run at once (the update command backgrounds one per agent,
+  # the panel refreshes on its own), and a shared temp path means the second
+  # replace finds the first one's file already moved away.
+  handle_fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+  tmp = Path(tmp_name)
+  try:
+    with os.fdopen(handle_fd, "w", encoding="utf-8") as handle:
+      handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
+    # mkstemp opens at 0600; nothing in the cache is sensitive, so open it
+    # up to the usual 0644.
+    tmp.chmod(0o644)
+    tmp.replace(path)
+  except BaseException:
+    tmp.unlink(missing_ok=True)
+    raise
+
+
+# The cache payload is a versioned envelope around the local-stats dict, so a
+# corrupted or foreign-shaped file is a cache miss (rescan + rewrite) instead
+# of a crash or a garbage record.
+def read_cached_stats(cache_file, max_age_seconds):
+  cached = read_fresh_json(cache_file, max_age_seconds)
+  if not isinstance(cached, dict) or cached.get("schemaVersion") != 1:
+    return None
+  # today* fields only mean "today" on the day they were scanned. A cache
+  # from another local date (midnight passed, or the clock moved) is a miss,
+  # not merely old, whatever its mtime says.
+  if cached.get("scanDate") != datetime.now().strftime("%Y-%m-%d"):
+    return None
+  stats = cached.get("stats")
+  if not isinstance(stats, dict):
+    return None
+  for key in ("todayPrompts", "todaySessions", "todayTotalTokens", "recentDays", "totalPrompts", "totalSessions", "activeDays", "activeDates", "modelUsage"):
+    if key not in stats:
+      return None
+  return stats
+
+
+def write_cached_stats(cache_file, stats):
+  try:
+    write_json(cache_file, {"schemaVersion": 1, "scanDate": datetime.now().strftime("%Y-%m-%d"), "stats": stats})
+  except Exception as exc:
+    print(f"tam-agent-usage-cursor: could not write usage cache ({exc})", file=sys.stderr)
+
+
+def local_stats():
+  prompts_by_day, sessions_by_day = scan_transcripts()
+  all_session_ids = set()
+  for ids in sessions_by_day.values():
+    all_session_ids.update(ids)
+  scan_conversation_db(prompts_by_day, sessions_by_day, all_session_ids)
+
+  now = datetime.now()
+  today = now.strftime("%Y-%m-%d")
+  recent_dates = [(now - _dt.timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(6, -1, -1)]
+  active_dates = set(sessions_by_day.keys())
+  return {
+    "todayPrompts": prompts_by_day.get(today, 0),
+    "todaySessions": len(sessions_by_day.get(today, set())),
+    "todayTotalTokens": 0,
+    "todayTokensByModel": {},
+    "recentDays": [{"date": day, "messageCount": prompts_by_day.get(day, 0)} for day in recent_dates],
+    "totalPrompts": sum(prompts_by_day.values()),
+    "totalSessions": len(all_session_ids),
+    # Days with any recorded usage, for the all-time "N days" summary. The
+    # dates travel too: merging snapshots from several machines needs their
+    # union, which a count alone cannot give.
+    "activeDays": len(active_dates),
+    "activeDates": sorted(active_dates),
+    "modelUsage": {},
+  }
+
+
+def cached_local_stats(max_age):
+  """Local stats, with the cache as a pure optimization.
+
+  The cache must never take the collector down: any cache-layer failure
+  (unwritable cache root, lock errors, disk full) degrades to a direct scan
+  and a warning on stderr. The JSON record is the contract; the cache is not.
+  """
+  try:
+    return _cached_local_stats(max_age)
+  except Exception as exc:
+    print(f"tam-agent-usage-cursor: cache unavailable ({exc}); scanning directly", file=sys.stderr)
+    return local_stats()
+
+
+def _cached_local_stats(max_age):
+  cache_file, lock_file = scan_cache_paths()
+
+  cached = read_cached_stats(cache_file, max_age)
+  if cached is not None:
+    return cached
+
+  with lock_file.open("w") as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    cached = read_cached_stats(cache_file, max_age)
+    if cached is not None:
+      return cached
+    stats = local_stats()
+    write_cached_stats(cache_file, stats)
+    return stats
+
+
+# ---------------------------------------------------------------- live usage
+#
+# The plan allowance comes from Cursor's usage endpoint, authorized with the
+# access token Cursor keeps in state.vscdb. That database is read read-only:
+# nothing here renews, rotates, or writes a credential, and the token lives
+# only inside the probe's Authorization header.
+
+def state_vsc_path():
+  return Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "state.vscdb"
+
+
+def b64url_payload(token):
+  """Decode a JWT's unsigned JSON body without verifying it."""
+  try:
+    segment = str(token or "").split(".")[1]
+    segment += "=" * (-len(segment) % 4)
+    payload = json.loads(base64.urlsafe_b64decode(segment))
+    return payload if isinstance(payload, dict) else {}
+  except Exception:
+    return {}
+
+
+def cursor_auth():
+  """Cursor's stored sign-in, read read-only.
+
+  Returns (access_token, expires_at_ms, plan). The plan is Cursor's own
+  membership type ("pro", ...) and becomes the record's tier label; the
+  token is used in-memory only.
+  """
+  db = state_vsc_path()
+  try:
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
+  except sqlite3.Error:
+    return "", 0, ""
+  try:
+    conn.execute("PRAGMA query_only = ON")
+    values = dict(conn.execute("SELECT key, value FROM ItemTable WHERE key LIKE 'cursorAuth/%'"))
+  except sqlite3.Error:
+    return "", 0, ""
+  finally:
+    try:
+      conn.close()
+    except Exception:
+      pass
+  access = str(values.get("cursorAuth/accessToken") or "")
+  plan = str(values.get("cursorAuth/stripeMembershipType") or "")
+  expires_ms = number(b64url_payload(access).get("exp")) * 1000
+  return access, expires_ms if expires_ms > 0 else 0, plan
+
+
+def normalize_percent(value):
+  # The endpoint reports a percentage on a 0-100 scale; the record wants the
+  # used fraction 0..1. Values already in range pass through.
+  try:
+    n = float(value)
+  except Exception:
+    return -1
+  if n != n:
+    return -1
+  if n > 1:
+    n = n / 100.0
+  return min(max(n, 0.0), 1.0)
+
+
+def normalize_reset_at(value):
+  if value is None or str(value).strip() == "":
+    return ""
+  # The endpoint has returned billingCycleEnd both as a number and as a
+  # numeric string; either way it is epoch milliseconds.
+  try:
+    millis = float(str(value).strip())
+  except Exception:
+    return str(value)
+  millis = millis / 1000 if millis > 10_000_000_000 else millis
+  return datetime.fromtimestamp(millis, timezone.utc).isoformat()
+
+
+def probe_limits(access_token):
+  request = urllib.request.Request(
+    USAGE_ENDPOINT,
+    method="POST",
+    data=b"{}",
+    headers={
+      "Authorization": "Bearer " + access_token,
+      "Content-Type": "application/json",
+      "Connect-Protocol-Version": "1",
+      "Accept": "application/json",
+    },
+  )
+  try:
+    with urllib.request.urlopen(request, timeout=10) as response:
+      payload = json.loads(response.read().decode("utf-8", errors="replace"))
+  except urllib.error.HTTPError as error:
+    if error.code == 429:
+      help_text = "Cursor's usage endpoint is rate limiting checks right now. Local Cursor stats are still shown."
+    elif error.code == 401:
+      help_text = "Cursor's stored sign-in no longer authorizes this machine. Open Cursor to sign back in; local stats are still shown."
+    else:
+      help_text = f"Cursor's usage endpoint returned status {error.code}. Local Cursor stats are still shown."
+    return {"ok": False, "helpText": help_text}
+  except Exception:
+    # A transport failure reached no server at all — no route, no DNS. Any
+    # real answer, including an error status, is a server we should stop
+    # pestering; this is not.
+    return {
+      "ok": False,
+      "transport": True,
+      "helpText": "Couldn't reach Cursor's usage endpoint. Retrying shortly. Local Cursor stats are still shown.",
+    }
+
+  limits = []
+  plan = payload.get("planUsage") or {}
+  percent = normalize_percent(plan.get("totalPercentUsed"))
+  if percent >= 0:
+    limits.append({
+      "label": "Monthly (billing cycle)",
+      "percent": percent,
+      "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
+    })
+  # Cursor's in-app Plan view meters the auto-model bucket against its own
+  # allowance; that reads higher than the included total (above) while
+  # API-model spend is untouched. Both are recorded so the panel shows both.
+  auto_percent = normalize_percent(plan.get("autoPercentUsed"))
+  if auto_percent >= 0:
+    limits.append({
+      "label": "Auto usage (billing cycle)",
+      "percent": auto_percent,
+      "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
+    })
+  spend = payload.get("spendLimitUsage") or {}
+  if isinstance(spend.get("percent"), (int, float)):
+    percent = normalize_percent(spend.get("percent"))
+    if percent >= 0:
+      limits.append({
+        "label": "Spend (billing cycle)",
+        "percent": percent,
+        "resetsAt": normalize_reset_at(payload.get("billingCycleEnd")),
+      })
+  # The API may grow a scoped limits list; honor it if it does.
+  for entry in payload.get("limits") or []:
+    if not isinstance(entry, dict):
+      continue
+    percent = normalize_percent(entry.get("percent"))
+    if percent < 0:
+      continue
+    limits.append({
+      "label": "Plan",
+      "percent": percent,
+      "resetsAt": normalize_reset_at(entry.get("resetsAt")),
+    })
+
+  if not limits:
+    return {"ok": False, "helpText": "Cursor's usage endpoint returned no limits. Local Cursor stats are still shown."}
+  return {"ok": True, "limits": limits}
+
+
+# A cached percentage outlives the probe that measured it, but only until its
+# window rolls over: once a window has reset, the figure describes a period
+# that is over, and a stale 78% would misreport an allowance that is now
+# untouched. A window with no reset time, or one that will not parse, is kept
+# — an unreadable timestamp is no reason to throw away a real number.
+def usable_cached_limits(cached):
+  entries = cached.get("limits")
+  if not isinstance(entries, list):
+    return []
+  now = datetime.now(timezone.utc)
+  out = []
+  for entry in entries:
+    if not isinstance(entry, dict):
+      continue
+    raw = str(entry.get("resetsAt") or "")
+    if raw == "":
+      out.append(entry)
+      continue
+    try:
+      resets_at = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+      if resets_at.tzinfo is None:
+        resets_at = resets_at.replace(tzinfo=timezone.utc)
+    except Exception:
+      out.append(entry)
+      continue
+    if resets_at > now:
+      out.append(entry)
+  return out
+
+
+def collect_limits(access_token, expires_at_ms, force):
+  result = {"limits": [], "usageStatusText": "", "authHelpText": AUTH_HELP}
+
+  # A panel that is opened and shut repeatedly must not turn into a request
+  # per flick, so recent probe results are reused for a short window — and
+  # kept as the answer of record when a later probe fails.
+  probe_cache = cache_root() / "cursor-limits.json"
+  cached = read_fresh_json(probe_cache, float("inf")) or {}
+  fallback = usable_cached_limits(cached)
+
+  if access_token == "":
+    result["limits"] = fallback
+    result["usageStatusText"] = "Waiting for auth"
+    return result
+  if expires_at_ms > 0 and expires_at_ms <= time.time() * 1000:
+    result["limits"] = fallback
+    result["usageStatusText"] = "Sign-in expired"
+    result["authHelpText"] = (
+      "Cursor's saved sign-in expired"
+      + (" — showing the last known limits." if fallback else ".")
+      + " Open Cursor to refresh it."
+    )
+    return result
+
+  # --force is a person asking for fresh numbers, so it skips the reuse window
+  # entirely; the interval is there to absorb repeated panel opens, not to
+  # overrule someone who pressed refresh.
+  fetched_at = number(cached.get("fetchedAtMs")) / 1000
+  if fallback and not force and time.time() - fetched_at < PROBE_MIN_INTERVAL_SECONDS:
+    result["limits"] = fallback
+    return result
+
+  probe = probe_limits(access_token)
+  if probe["ok"]:
+    result["limits"] = probe["limits"]
+    write_json(probe_cache, {"fetchedAtMs": round(time.time() * 1000), "limits": probe["limits"]})
+    return result
+
+  # The first probe after login often fires before DHCP has handed out a
+  # route. Ask the shell to try again sooner than its regular interval.
+  if probe.get("transport"):
+    result["retryAdvised"] = True
+  if fallback:
+    result["limits"] = fallback
+  else:
+    result["usageStatusText"] = "Cursor limits unavailable"
+    result["authHelpText"] = probe["helpText"]
+  return result
+
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--force", action="store_true")
+  parser.add_argument("--limits-only", action="store_true")
+  args = parser.parse_args()
+
+  max_age = 0 if args.force else (LIMITS_ONLY_REUSE_SECONDS if args.limits_only else SCAN_REUSE_SECONDS)
+  stats = cached_local_stats(max_age)
+
+  access_token, expires_at_ms, plan = cursor_auth()
+  limits = collect_limits(access_token, expires_at_ms, args.force)
+
+  record = {
+    "schemaVersion": 1,
+    "id": AGENT_ID,
+    "name": AGENT_NAME,
+    "updatedAt": datetime.now(timezone.utc).isoformat(),
+    "ready": True,
+    "hasLocalStats": True,
+    "tierLabel": plan,
+    "usageStatusText": limits["usageStatusText"],
+    "authHelpText": limits["authHelpText"],
+    "limits": limits["limits"],
+    # Cursor exposes no local token ledger (the live plan usage covers the
+    # billing cycle instead); the prompt-mode panel uses this to show prompt
+    # charts where Claude/Codex show token charts.
+    "tokensAvailable": False,
+    "hasPromptStats": True,
+    "scope": "device",
+  }
+  if limits.get("retryAdvised"):
+    record["retryAdvised"] = True
+  record.update(stats)
+  print(json.dumps(record, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+  main()

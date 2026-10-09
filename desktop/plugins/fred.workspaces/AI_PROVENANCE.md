@@ -1,0 +1,108 @@
+# AI Collaboration & Provenance
+
+This repository practices transparent AI-assisted engineering. We document the AI tools, models, prompts, and architectural decisions that shaped `fred.workspaces`.
+
+---
+
+## How to read this record
+
+This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
+brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
+each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
+transcripts are retained privately by the author, so the records carry no
+session IDs or local transcript paths.
+
+---
+
+## 1. Fred's Multi-Agent AI Toolchain
+
+Rather than relying on a single AI model or interface, Fred uses a specialized toolchain tailored to each tool's strengths. CLI versions below were captured on 2026-09-13 (`<tool> --version`).
+
+| Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
+| :-- | :-- | :-- | :-- |
+| **Claude Code** (`claude`) | `2.1.273` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
+| **Codex CLI** (`codex`) | `0.156.1` | `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
+| **Antigravity CLI** (`agy`) | `1.2.2` / `1.2.5` / `1.2.6` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security remediation, bash/Python/QML engineering, and git release workflow. |
+| **OpenCode** (`opencode`) | `1.18.30` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux / Omarchy package specifics and shell configuration, conserving frontier-model token budgets. |
+| **Grok CLI** (`grok`) | `1.0.25` (`f7e67d6988e2`, stable) | Grok 4.6 | **Workstation Support**: Additional debugging, hardware diagnostics, and alternative implementation analysis. |
+
+---
+
+## 2. Key Architectural Milestones & AI Role
+
+| Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
+| :-- | :-- | :-- | :-- |
+| **Initial Implementation** | `v1.0.0` | Claude & Antigravity | Cloned stock `omarchy.workspaces`, added dynamic visual indicators and multi-monitor desktop switching. |
+| **In-Place Replacement** | `v1.1.0` | Claude & Antigravity | Stamped `omarchy.clonedFrom: "omarchy.workspaces"` to preserve relative layout anchors (`findRelativeBarLocation`) and enable clean in-place replacement. |
+| **Security Hardening** | `v1.2.0` | Antigravity (Gemini) | Sanitized process execution, eliminated arbitrary code execution in configuration parsing, and implemented atomic JSON state writes. |
+| **Marketplace Verification** | `v1.2.1` | Antigravity (Gemini) | Successfully verified and listed on the official [Omarchy Plugin Marketplace](https://github.com/omacom/omarchy-plugin-marketplace) with an automated security baseline rating of **Passed**. |
+| **Dynamic Monitor Sets** | `v1.3.0` | Codex CLI `0.154.0` (`gpt-5.6-sol`) | Replaced hard-coded monitor pairs with runtime-sized all-monitor Windows sets; added complete-set bar state, verified batch dispatch, and 1/2/3/4-monitor tests. |
+| **Center Monitor Sync & Atomic Watch Fix** | `v1.3.1` | Antigravity CLI `1.2.3` (Gemini 3.8 Flash (High)) | Fixed active workspace indicator desync on center monitor by enabling `atomicWrites: true` on `FileView` watchers, fixing monitor coordinate probing in fallback routines, and binding workspace list updates to window revision. |
+| **Hardware Resilience & Fault Tolerance** | `v1.4.0` *(Unreleased)* | Antigravity CLI `1.2.3` (Gemini 3.8 Flash (High)) | Solved multi-monitor hardware drops: anchored workspaces to fixed physical slots ($K=3$), graceful parking without workspace re-indexing, automatic geometric gap compression to prevent mouse traps, resilient two-stage switching, and debounced hotplug recovery. |
+| **Stale Bar State, Cached Plugin Code & Duplicate Helper** | `v1.4.1` *(Unreleased)* | Claude Code `2.1.273` (Claude Opus 5) | Bars now reload the state files on change instead of re-parsing cached text; hotplug `reconcile` fixed (`HyprlandIpcEvent.name`); `topology_size` config honored. Found that Quickshell's in-memory and on-disk QML caches (Nix store mtime = 1970) had kept v1.3.0 running through two deploys, and that the Super+N bindings used a stale second helper — both fixed on the workstation side (`omarchy-qmlcache-purge`, single helper). |
+| **Split Monitor Sets: Partial State & Follow Focus** | `v1.4.2` *(Unreleased)* | Claude Code `2.1.273` (Claude Opus 5) | `splitSet` setting (Windows mode only): `true` (default) lets a window focus split the set — the monitor that followed shows a hollow marker and an **F** mode letter, and click returns it to the set's desktop; `false` makes the whole set follow. |
+| **Ecosystem dependency record** | `v1.4.3` | Claude Code `2.1.274` (Claude Opus 5) | `ECOSYSTEM.md`: the two Hyprland patches `reconcile` relies on, with stock-vs-patched behaviour and links to the fork branches and the public registry `omarchy-fred-ecosystem`. |
+| **Per-Monitor Idle Blanking of Unused Monitors** | `v1.5.0` | Antigravity CLI `1.2.5` (Gemini 3.8 Flash (High)) | Strictly event-driven per-monitor idle DPMS blanking embedded directly in `fred.workspaces` BarWidget; zero background polling preserving CPU deep C-states; immediate wake on cursor entry / window / workspace change; Fault C protection on DP-2 with background retrain; remote `resetIdle` IPC method. |
+| **Settled Idle Tracking, DPMS Sync & Version Footers** | `v1.5.1` | Antigravity CLI `1.2.6` (Gemini 3.8 Flash (High)) | Fixed idle blanking to act on settled state (400 ms debounce), adopted true DPMS state on bar init, and added version footer on hover across all workspace and mode buttons. |
+| **State Directory and Read-Only Command Audit** | `v1.5.2` | Codex CLI `0.155.1` (`gpt-6-sol`) | Preserved the mode of Omarchy's shared state directory, made status and indicator avoid state writes, and added a symlinked config regression test. |
+
+Detailed session logs and prompts are documented in [`docs/ai/README.md`](docs/ai/README.md). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `workspaces-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 helper rename
+
+Cursor `3.21.16` (`composer`) renamed `omarchy-desktop-mode` to `tam-desktop-mode` so the published tree matches the deployed Tamlinux command names. [Session record](docs/ai/2026-09-22-tam-desktop-mode.md).
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `Fred's Omarchy workspaces` tagline and platform line with Tamlinux. Omarchy Desktop / Stock mode names are unchanged.
+
+## 2026-09-23 workspaces audit fixes
+
+Codex CLI `0.155.1` (`gpt-6-sol`) implemented and deployed the v1.5.2 audit fixes. [Session record](docs/ai/2026-09-23-workspaces-audit.md).
+
+## 2026-09-23 upstream survey foundation
+
+Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
+and dated survey directory for this repository. This was documentation only;
+no field survey or runtime change was made.
+[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
+transcript paths from this repository's AI records and linked the public
+provenance standard. Documentation only.
+[Session record](docs/ai/2026-09-28-private-session-ids.md).
+
+## 2026-10-03 shell-independent 2.0.0
+
+Cursor `3.23.12` (`composer`) rewrote `fred.workspaces` to 2.0.0 on
+`develop/2.0.0`. The Omarchy workspaces IPC handler is gone. Hyprland reads
+stay. Not tagged or released.
+[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 named compositor backend
+
+Cursor `3.23.12` (`composer`) pointed `tam-desktop-mode` on `develop/2.0.0` at the Tamlinux compositor backend. The helper no longer builds Hyprland command text. Not tagged or released.
+[Session record](docs/ai/2026-10-03-hyprland-command-ownership.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.workspaces 2.0.0 QML at the Tamlinux
+compositor facade. QML reads outputs, workspaces, focus, and `dpmsOn` from the facade and reacts to `revision`. `tam-desktop-mode` still dispatches through Hyprland. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. No code change. `tam-desktop-mode` keeps reading the four `OMARCHY_DESKTOP_*` configuration keys and session variables for compatibility, and the test allows exactly those. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+
+## 2026-10-06 wake a blanked monitor (2.0.1)
+
+Claude Code `2.1.292` (`claude-opus-5-5`) kept a monitor this bar blanked dark until the shell reports it dark, so pointer entry or focus wakes it again. A stale "lit" report from the shell had cleared the dark state. Not tagged or released.
+[Session record](docs/ai/2026-10-06-wake-blanked-monitor.md).

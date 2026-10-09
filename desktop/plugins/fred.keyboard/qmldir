@@ -1,0 +1,7 @@
+BindList 1.0 BindList.qml
+CaptureMode 1.0 CaptureMode.qml
+ExplorerPanel 1.0 ExplorerPanel.qml
+KeyboardView 1.0 KeyboardView.qml
+Launch 1.0 Launch.qml
+OrphanBinds 1.0 OrphanBinds.qml
+SearchView 1.0 SearchView.qml

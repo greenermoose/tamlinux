@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "fred.monitor",
+  "name": "Display",
+  "version": "2.0.3",
+  "author": "Fred (@greenermoose)",
+  "description": "Compact multi-display control, saved layouts, and safe rollback",
+  "repository": "https://github.com/greenermoose/monitor-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/monitor-fred-tamlinux",
+  "license": "GPL-3.0-or-later",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Display",
+    "description": "Compact multi-display control, saved layouts, and safe rollback",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

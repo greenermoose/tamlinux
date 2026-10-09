@@ -1,0 +1,596 @@
+import importlib.util
+from importlib.machinery import SourceFileLoader
+import io
+import json
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import call, patch
+
+
+HELPER = Path(__file__).resolve().parents[1] / "tam-desktop-mode"
+HOST = Path(__file__).resolve().parents[6] / "tamlinux" / "desktop" / "shell" / "host"
+os.environ["TAMLINUX_COMPOSITOR_COMMANDS"] = str(HOST)
+os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+LOADER = SourceFileLoader("omarchy_desktop_mode", str(HELPER))
+SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
+desktop_mode = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+SPEC.loader.exec_module(desktop_mode)
+
+
+def completed(returncode=0, stdout="ok\n", stderr=""):
+    return subprocess.CompletedProcess([], returncode, stdout, stderr)
+
+
+class MappingTests(unittest.TestCase):
+    def test_workspace_sets_for_one_two_three_and_four_monitors(self):
+        expected = {
+            (1, 1): [1],
+            (2, 1): [2],
+            (5, 1): [5],
+            (1, 2): [1, 2],
+            (2, 2): [3, 4],
+            (5, 2): [9, 10],
+            (1, 3): [1, 2, 3],
+            (2, 3): [4, 5, 6],
+            (5, 3): [13, 14, 15],
+            (2, 4): [5, 6, 7, 8],
+            (10, 3): [28, 29, 30],
+        }
+        for coordinates, workspaces in expected.items():
+            with self.subTest(coordinates=coordinates):
+                self.assertEqual(desktop_mode.workspace_ids(*coordinates), workspaces)
+
+    def test_inverse_desktop_mapping(self):
+        for set_size in (1, 2, 3, 4):
+            for desktop in (1, 2, 5, 10):
+                for workspace in desktop_mode.workspace_ids(desktop, set_size):
+                    self.assertEqual(
+                        desktop_mode.desktop_for_workspace(workspace, set_size),
+                        desktop,
+                    )
+
+    def test_invalid_mapping_coordinates_are_rejected(self):
+        for args in ((0, 0, 1), (1, -1, 1), (1, 1, 1), (1, 0, 0)):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                desktop_mode.workspace_for_monitor(*args)
+
+
+class MonitorDiscoveryTests(unittest.TestCase):
+    def test_geometry_order_filtering_and_tie_breaks(self):
+        data = [
+            {"name": "RIGHT", "x": 300, "y": 0},
+            {"name": "TIE-B", "x": 100, "y": 50},
+            {"name": "LEFT", "x": -200, "y": 20},
+            {"name": "TIE-A", "x": 100, "y": 50},
+            {"name": "MIRROR", "x": 400, "y": 0, "mirrorOf": "RIGHT"},
+            {"name": "DISABLED", "x": 500, "y": 0, "disabled": True},
+            {"name": "bad name", "x": 0, "y": 0},
+            {"name": "NO-X", "y": 0},
+            {"name": "LEFT", "x": 900, "y": 0},
+        ]
+        self.assertEqual(
+            desktop_mode.ordered_monitors(data),
+            ["LEFT", "TIE-A", "TIE-B", "RIGHT"],
+        )
+
+    def test_invalid_json_shape_and_monitor_cap(self):
+        self.assertEqual(desktop_mode.ordered_monitors({"name": "DP-1"}), [])
+        data = [{"name": f"DP-{index}", "x": index, "y": 0} for index in range(20)]
+        self.assertEqual(len(desktop_mode.ordered_monitors(data)), 16)
+
+    def test_discovery_rejects_failed_oversized_and_malformed_output(self):
+        results = (
+            completed(returncode=1),
+            completed(stdout="[" + (" " * desktop_mode.MAX_HYPRCTL_OUTPUT) + "]"),
+            completed(stdout="not-json"),
+        )
+        for result in results:
+            with self.subTest(result=result), patch.object(desktop_mode, "run_named", return_value=result):
+                self.assertEqual(desktop_mode.discover_monitors(), [])
+
+    def test_resolve_writes_versioned_monitor_set_and_outer_endpoints(self):
+        monitors = ["DP-2", "DP-1", "HDMI-A-1"]
+        with (
+            patch.object(desktop_mode, "load_full_config", return_value=("", "", 0, "")),
+            patch.object(desktop_mode, "discover_monitors", return_value=monitors),
+            patch.object(desktop_mode, "read_state_file", return_value=""),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+            patch.dict(desktop_mode.os.environ, {}, clear=True),
+        ):
+            self.assertEqual(
+                desktop_mode.resolve_monitors(),
+                (monitors, "DP-2", "HDMI-A-1"),
+            )
+        payload = json.loads(write_state.call_args.args[1])
+        self.assertEqual(payload["version"], 2)
+        self.assertEqual(payload["monitors"], monitors)
+        self.assertEqual(payload["count"], 3)
+        self.assertEqual(payload["left"], "DP-2")
+        self.assertEqual(payload["right"], "HDMI-A-1")
+
+    def test_failed_discovery_does_not_reuse_configured_endpoints(self):
+        with (
+            patch.object(desktop_mode, "load_full_config", return_value=("DP-2", "HDMI-A-1", 0, "")),
+            patch.object(desktop_mode, "discover_monitors", return_value=[]),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+            patch.dict(desktop_mode.os.environ, {}, clear=True),
+        ):
+            self.assertEqual(desktop_mode.resolve_monitors(), ([], "", ""))
+            write_state.assert_not_called()
+
+
+class StateAndConfigTests(unittest.TestCase):
+    def test_existing_shared_state_directory_keeps_its_mode(self):
+        with tempfile.TemporaryDirectory() as state_home:
+            shared_dir = Path(state_home) / "tamlinux"
+            shared_dir.mkdir(mode=0o755)
+            os.chmod(shared_dir, 0o755)
+            with patch.dict(desktop_mode.os.environ, {"XDG_STATE_HOME": state_home}):
+                desktop_mode.atomic_write_state("desktop-mode", "mac\n")
+            self.assertEqual(shared_dir.stat().st_mode & 0o777, 0o755)
+            self.assertEqual((shared_dir / "desktop-mode").read_text(), "mac\n")
+
+    def test_status_and_indicator_do_not_create_or_update_state(self):
+        with tempfile.TemporaryDirectory() as state_home:
+            shared_dir = Path(state_home) / "tamlinux"
+            with patch.dict(desktop_mode.os.environ, {"XDG_STATE_HOME": state_home}):
+                for command, expected in (("status", "mac\n"), ("indicator", "M\n")):
+                    output = io.StringIO()
+                    with (
+                        patch.object(desktop_mode.sys, "argv", ["tam-desktop-mode", command]),
+                        patch.object(desktop_mode.sys, "stdout", output),
+                        patch.object(desktop_mode, "resolve_topology") as resolve,
+                    ):
+                        desktop_mode.main()
+                    self.assertEqual(output.getvalue(), expected)
+                    resolve.assert_not_called()
+                    self.assertFalse(shared_dir.exists())
+
+                shared_dir.mkdir(mode=0o755)
+                os.chmod(shared_dir, 0o755)
+                state_file = shared_dir / "desktop-mode"
+                state_file.write_text("windows\n")
+                before = state_file.stat().st_mtime_ns
+                for command, expected in (("status", "windows\n"), ("indicator", "W\n")):
+                    output = io.StringIO()
+                    with (
+                        patch.object(desktop_mode.sys, "argv", ["tam-desktop-mode", command]),
+                        patch.object(desktop_mode.sys, "stdout", output),
+                        patch.object(desktop_mode, "resolve_topology") as resolve,
+                    ):
+                        desktop_mode.main()
+                    self.assertEqual(output.getvalue(), expected)
+                    resolve.assert_not_called()
+                    self.assertEqual(state_file.stat().st_mtime_ns, before)
+                    self.assertEqual(shared_dir.stat().st_mode & 0o777, 0o755)
+
+    def test_config_read_follows_owned_regular_file_symlink(self):
+        with tempfile.TemporaryDirectory() as config_home:
+            config_dir = Path(config_home) / "tamlinux"
+            config_dir.mkdir()
+            target = Path(config_home) / "desktop-mode-target.conf"
+            target.write_text("left_monitor=DP-2\n")
+            (config_dir / "desktop-mode.conf").symlink_to(target)
+            with patch.dict(desktop_mode.os.environ, {"XDG_CONFIG_HOME": config_home}):
+                self.assertEqual(desktop_mode.load_config_file(), ("DP-2", ""))
+
+
+class DispatchTests(unittest.TestCase):
+    MONITORS = ["DP-2", "DP-1", "HDMI-A-1"]
+
+    def test_batch_uses_one_named_request(self):
+        steps = [("focus-output", "DP-2"), ("focus-workspace", 4)]
+        with patch.object(desktop_mode, "run_named", return_value=completed()) as run:
+            self.assertTrue(desktop_mode.dispatch_batch(steps))
+        run.assert_called_once_with("batch", steps)
+
+    def test_three_monitor_switch_places_contiguous_set_and_restores_focus(self):
+        with (
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-1"),
+            patch.object(desktop_mode, "dispatch_batch", return_value=True) as batch,
+            patch.object(
+                desktop_mode,
+                "monitor_snapshot",
+                return_value=({"DP-2": 4, "DP-1": 5, "HDMI-A-1": 6}, "DP-1"),
+            ),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            self.assertTrue(desktop_mode.switch_windows(2, self.MONITORS))
+        steps = batch.call_args.args[0]
+        self.assertIn(("focus-workspace", 4), steps)
+        self.assertIn(("move-workspace", "DP-1"), steps)
+        self.assertIn(("focus-workspace", 6), steps)
+        self.assertEqual(steps[-1], ("focus-output", "DP-1"))
+        write_state.assert_called_once_with("desktop-current", "2\n")
+
+    def test_two_monitor_switch_preserves_pair_mapping(self):
+        with (
+            patch.object(desktop_mode, "focused_monitor", return_value="LEFT"),
+            patch.object(desktop_mode, "dispatch_batch", return_value=True) as batch,
+            patch.object(desktop_mode, "monitor_snapshot", return_value=({"LEFT": 9, "RIGHT": 10}, "LEFT")),
+            patch.object(desktop_mode, "atomic_write_state"),
+        ):
+            self.assertTrue(desktop_mode.switch_windows(5, ["LEFT", "RIGHT"]))
+        steps = batch.call_args.args[0]
+        self.assertIn(("focus-workspace", 9), steps)
+        self.assertIn(("focus-workspace", 10), steps)
+
+    def test_failed_batch_does_not_advance_current_state(self):
+        with (
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-2"),
+            patch.object(desktop_mode, "dispatch_batch", return_value=False),
+            patch.object(
+                desktop_mode,
+                "monitor_snapshot",
+                return_value=({"DP-2": 4, "DP-1": 5, "HDMI-A-1": 6}, "DP-2"),
+            ),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            self.assertFalse(desktop_mode.switch_windows(2, self.MONITORS))
+        write_state.assert_not_called()
+
+    def test_verification_failure_does_not_advance_current_state(self):
+        with (
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-2"),
+            patch.object(desktop_mode, "dispatch_batch", return_value=True),
+            patch.object(
+                desktop_mode,
+                "monitor_snapshot",
+                return_value=({"DP-2": 1, "DP-1": 5, "HDMI-A-1": 6}, "DP-2"),
+            ),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            self.assertFalse(desktop_mode.switch_windows(2, self.MONITORS))
+        write_state.assert_not_called()
+
+    def test_discovery_failure_switches_one_workspace_only(self):
+        with (
+            patch.object(desktop_mode, "focused_monitor", return_value=""),
+            patch.object(desktop_mode, "dispatch_focus_workspace", return_value=True) as focus,
+            patch.object(desktop_mode, "place_workspace") as place,
+            patch.object(desktop_mode, "atomic_write_state"),
+        ):
+            self.assertTrue(desktop_mode.switch_windows(3, []))
+        focus.assert_called_once_with(3)
+        place.assert_not_called()
+
+    def test_move_uses_focused_monitor_position_then_activates_set(self):
+        with (
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-1"),
+            patch.object(desktop_mode, "dispatch_move_window", return_value=True) as move,
+            patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
+            patch.object(desktop_mode, "dispatch_focus_monitor", return_value=True) as focus,
+        ):
+            desktop_mode.move_window(2, False, self.MONITORS, "DP-2", "HDMI-A-1")
+        move.assert_called_once_with(5, False)
+        switch.assert_called_once_with(2, self.MONITORS)
+        focus.assert_called_once_with("DP-1")
+
+    def test_silent_move_uses_right_workspace_without_switching_set(self):
+        with (
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "focused_monitor", return_value="HDMI-A-1"),
+            patch.object(desktop_mode, "dispatch_move_window", return_value=True) as move,
+            patch.object(desktop_mode, "switch_windows") as switch,
+            patch.object(desktop_mode, "dispatch_focus_monitor") as focus,
+        ):
+            desktop_mode.move_window(2, True, self.MONITORS, "DP-2", "HDMI-A-1")
+        move.assert_called_once_with(6, False)
+        switch.assert_not_called()
+        focus.assert_not_called()
+
+    def test_dispatch_uses_fallback_when_primary_dispatch_fails(self):
+        with patch.object(
+            desktop_mode,
+            "run_named",
+            side_effect=[completed(returncode=1, stderr="error"), completed()],
+        ) as run:
+            self.assertTrue(desktop_mode.dispatch_focus_workspace(4))
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call("focus-workspace", 4),
+                call("focus-workspace-fallback", 4),
+            ],
+        )
+
+
+class ResilienceTests(unittest.TestCase):
+    CANONICAL_TOPO = [
+        {"output": "DP-2", "mode": "1920x1080@60", "position": "0x720", "scale": 1.5, "x": 0, "y": 720},
+        {"output": "DP-1", "mode": "2560x1440@60", "position": "1280x0", "scale": 1.0, "x": 1280, "y": 0},
+        {"output": "HDMI-A-1", "mode": "1920x1080@60", "position": "3840x360", "scale": 1.0, "x": 3840, "y": 360},
+    ]
+
+    def test_topology_anchored_workspace_mapping_normal(self):
+        with (
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "discover_monitors", return_value=["DP-2", "DP-1", "HDMI-A-1"]),
+            patch.object(desktop_mode, "atomic_write_state"),
+        ):
+            monitors, left, right, slots, topo_size, _ = desktop_mode.resolve_topology()
+            self.assertEqual(topo_size, 3)
+            self.assertEqual(slots, {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2})
+
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["DP-2"], topo_size), 1)
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["DP-1"], topo_size), 2)
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["HDMI-A-1"], topo_size), 3)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-2"], topo_size), 4)
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-1"], topo_size), 5)
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["HDMI-A-1"], topo_size), 6)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-2"], topo_size), 13)
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-1"], topo_size), 14)
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["HDMI-A-1"], topo_size), 15)
+
+    def test_configured_topology_size_widens_the_grid(self):
+        # A configured topology_size larger than the canonical monitor list
+        # must reach resolve_topology (it used to be dropped on the way).
+        with (
+            patch.object(desktop_mode, "load_full_config", return_value=("", "", 4, "")),
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "discover_monitors", return_value=["DP-2", "DP-1", "HDMI-A-1"]),
+            patch.object(desktop_mode, "read_state_file", return_value=""),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+            patch.dict(desktop_mode.os.environ, {}, clear=True),
+        ):
+            _, _, _, slots, topo_size, _ = desktop_mode.resolve_topology()
+            self.assertEqual(topo_size, 4)
+            self.assertEqual(slots, {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2})
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-1"], topo_size), 6)
+        payload = json.loads(write_state.call_args.args[1])
+        self.assertEqual(payload["topology_size"], 4)
+
+    def test_slot_stability_when_center_monitor_drops(self):
+        with (
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "discover_monitors", return_value=["DP-2", "HDMI-A-1"]),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            monitors, left, right, slots, topo_size, _ = desktop_mode.resolve_topology()
+            self.assertEqual(topo_size, 3)
+            self.assertEqual(slots, {"DP-2": 0, "HDMI-A-1": 2})
+
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["DP-2"], topo_size), 1)
+            self.assertEqual(desktop_mode.workspace_for_slot(1, slots["HDMI-A-1"], topo_size), 3)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["DP-2"], topo_size), 4)
+            self.assertEqual(desktop_mode.workspace_for_slot(2, slots["HDMI-A-1"], topo_size), 6)
+
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["DP-2"], topo_size), 13)
+            self.assertEqual(desktop_mode.workspace_for_slot(5, slots["HDMI-A-1"], topo_size), 15)
+            self.assertEqual(desktop_mode.desktop_for_workspace(14, topo_size), 5)
+
+            payload = json.loads(write_state.call_args.args[1])
+            self.assertTrue(payload["degraded"])
+            self.assertEqual(payload["count"], 2)
+            self.assertEqual(payload["topology_size"], 3)
+
+    def test_geometric_gap_compression_when_center_drops(self):
+        live_monitors = [
+            {"name": "DP-2", "x": 0, "y": 720, "width": 1920, "height": 1080, "scale": 1.5, "refreshRate": 60.0},
+            {"name": "HDMI-A-1", "x": 3840, "y": 360, "width": 1920, "height": 1080, "scale": 1.0, "refreshRate": 60.0},
+        ]
+        with (
+            patch.object(desktop_mode, "run_named", side_effect=[
+                completed(stdout=json.dumps(live_monitors)),
+                completed(stdout="ok"),
+            ]) as run_ctl,
+        ):
+            desktop_mode.ensure_contiguous_layout(["DP-2", "HDMI-A-1"], self.CANONICAL_TOPO)
+
+            self.assertEqual(run_ctl.call_count, 2)
+            self.assertEqual(run_ctl.call_args_list[0].args[0], "monitors")
+            self.assertEqual(run_ctl.call_args_list[1].args[0], "monitor-rule")
+            rule = run_ctl.call_args_list[1].args[1]
+            self.assertEqual(rule[0], "HDMI-A-1")
+            self.assertEqual(rule[2], "1280x360")
+
+    def test_geometric_layout_restoration_when_all_monitors_present(self):
+        live_monitors = [
+            {"name": "DP-2", "x": 0, "y": 720, "width": 1920, "height": 1080, "scale": 1.5, "refreshRate": 60.0},
+            {"name": "DP-1", "x": 1280, "y": 0, "width": 2560, "height": 1440, "scale": 1.0, "refreshRate": 60.0},
+            {"name": "HDMI-A-1", "x": 1280, "y": 360, "width": 1920, "height": 1080, "scale": 1.0, "refreshRate": 60.0},
+        ]
+        with (
+            patch.object(desktop_mode, "run_named", side_effect=[
+                completed(stdout=json.dumps(live_monitors)),
+                completed(stdout="ok"),
+            ]) as run_ctl,
+        ):
+            desktop_mode.ensure_contiguous_layout(["DP-2", "DP-1", "HDMI-A-1"], self.CANONICAL_TOPO)
+
+            self.assertEqual(run_ctl.call_count, 2)
+            self.assertEqual(run_ctl.call_args_list[1].args[0], "monitor-rule")
+            rule = run_ctl.call_args_list[1].args[1]
+            self.assertEqual(rule[0], "HDMI-A-1")
+            self.assertEqual(rule[2], "3840x360")
+
+    def test_switch_windows_degraded_two_monitors_preserves_slots(self):
+        with (
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-2"),
+            patch.object(desktop_mode, "dispatch_batch", return_value=True) as batch,
+            patch.object(
+                desktop_mode,
+                "monitor_snapshot",
+                return_value=({"DP-2": 4, "HDMI-A-1": 6}, "DP-2"),
+            ),
+            patch.object(desktop_mode, "atomic_write_state") as write_state,
+        ):
+            self.assertTrue(desktop_mode.switch_windows(2, ["DP-2", "HDMI-A-1"]))
+
+        steps = batch.call_args.args[0]
+        self.assertIn(("focus-workspace", 4), steps)
+        self.assertIn(("focus-workspace", 6), steps)
+        self.assertNotIn(("focus-workspace", 5), steps)
+        write_state.assert_called_once_with("desktop-current", "2\n")
+
+    def test_realign_moves_only_the_deviated_monitor(self):
+        slots = {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}
+        with (
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "focused_monitor", return_value="DP-1"),
+            patch.object(desktop_mode, "place_workspace", return_value=True) as place,
+            patch.object(desktop_mode, "dispatch_focus_monitor", return_value=True) as refocus,
+            patch.object(desktop_mode, "monitor_snapshot", return_value=({"DP-2": 1, "DP-1": 2, "HDMI-A-1": 3}, "DP-1")),
+        ):
+            self.assertTrue(desktop_mode.realign_monitor("DP-2", 1, list(slots), slots, 3))
+        place.assert_called_once_with(1, "DP-2")
+        refocus.assert_called_once_with("DP-1")
+
+    def test_realign_refuses_outside_windows_mode(self):
+        with patch.object(desktop_mode, "current_mode", return_value="mac"):
+            self.assertFalse(desktop_mode.realign_monitor("DP-2", 1, ["DP-2", "DP-1"], {"DP-2": 0, "DP-1": 1}, 3))
+
+    def test_reconcile_syncs_current_desktop_on_returned_display(self):
+        with (
+            patch.object(desktop_mode, "resolve_topology", return_value=(
+                ["DP-2", "DP-1", "HDMI-A-1"], "DP-2", "HDMI-A-1",
+                {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}, 3, ["DP-2", "DP-1", "HDMI-A-1"]
+            )),
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "ensure_contiguous_layout"),
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "read_state_file", return_value="2"),
+            patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
+            patch.object(desktop_mode, "write_desktop_monitors_state"),
+        ):
+            self.assertEqual(desktop_mode.reconcile(), "reconciled")
+            switch.assert_called_once_with(2, ["DP-2", "DP-1", "HDMI-A-1"], {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}, 3)
+
+    DARK_TOPOLOGY = (
+        ["DP-2", "DP-1"], "DP-2", "DP-1",
+        {"DP-2": 0, "DP-1": 1}, 3, ["DP-2", "DP-1", "HDMI-A-1"],
+    )
+
+    def _reconcile_with_live_monitors(self, live_monitors):
+        with (
+            patch.object(desktop_mode, "resolve_topology", return_value=self.DARK_TOPOLOGY),
+            patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),
+            patch.object(desktop_mode, "ensure_contiguous_layout"),
+            patch.object(desktop_mode, "current_mode", return_value="windows"),
+            patch.object(desktop_mode, "read_state_file", return_value="2"),
+            patch.object(desktop_mode, "run_named", return_value=completed(stdout=json.dumps(live_monitors))),
+            patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
+            patch.object(desktop_mode, "write_desktop_monitors_state") as write_state,
+        ):
+            outcome = desktop_mode.reconcile()
+        return outcome, switch, write_state
+
+    def test_reconcile_defers_when_all_monitors_dpms_off(self):
+        # The HP (HDMI-A-1) has dropped HPD ~7 s after DPMS-off; the survivors are dark.
+        outcome, switch, write_state = self._reconcile_with_live_monitors([
+            {"name": "DP-2", "disabled": False, "dpmsStatus": False},
+            {"name": "DP-1", "disabled": False, "dpmsStatus": False},
+        ])
+        self.assertEqual(outcome, "deferred: dpms off")
+        switch.assert_not_called()
+        write_state.assert_called_once()
+
+    def test_reconcile_runs_when_any_monitor_lit(self):
+        outcome, switch, write_state = self._reconcile_with_live_monitors([
+            {"name": "DP-2", "disabled": False, "dpmsStatus": False},
+            {"name": "DP-1", "disabled": False, "dpmsStatus": True},
+        ])
+        self.assertEqual(outcome, "reconciled")
+        switch.assert_called_once_with(2, ["DP-2", "DP-1"], {"DP-2": 0, "DP-1": 1}, 3)
+        write_state.assert_called_once()
+
+    def test_all_dpms_off_ignores_disabled_monitors_and_bad_input(self):
+        self.assertTrue(desktop_mode.all_dpms_off([
+            {"name": "DP-1", "disabled": False, "dpmsStatus": False},
+            {"name": "HDMI-A-1", "disabled": True, "dpmsStatus": True},
+        ]))
+        self.assertFalse(desktop_mode.all_dpms_off([{"name": "DP-1", "disabled": False}]))
+        self.assertFalse(desktop_mode.all_dpms_off([]))
+        self.assertFalse(desktop_mode.all_dpms_off({"name": "DP-1"}))
+        self.assertFalse(desktop_mode.all_dpms_off("garbage"))
+
+
+class IdleBlankingTests(unittest.TestCase):
+    def test_load_unused_monitor_timeout_default(self):
+        with patch.dict(desktop_mode.os.environ, {}, clear=True), patch("os.open", side_effect=OSError):
+            self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
+
+    def test_load_unused_monitor_timeout_from_env(self):
+        with patch.dict(desktop_mode.os.environ, {"TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT": "120"}):
+            self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 120)
+
+    def test_load_unused_monitor_timeout_env_invalid_falls_back(self):
+        with patch.dict(desktop_mode.os.environ, {"TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT": "invalid"}), patch("os.open", side_effect=OSError):
+            self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
+
+    def test_dpms_off_valid_monitor(self):
+        with patch.object(desktop_mode, "run_named", return_value=completed()) as run:
+            self.assertTrue(desktop_mode.dpms_off("DP-1"))
+        run.assert_called_once_with("dpms", ["DP-1", "off"])
+
+    def test_dpms_off_fallback_when_primary_dispatch_fails(self):
+        results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
+        with patch.object(desktop_mode, "run_named", side_effect=results) as run:
+            self.assertTrue(desktop_mode.dpms_off("DP-1"))
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[1], call("dpms-fallback", ["DP-1", "off"]))
+
+    def test_dpms_off_rejects_invalid_monitor_name(self):
+        with patch.object(desktop_mode, "run_named") as run:
+            self.assertFalse(desktop_mode.dpms_off("DP-1; rm -rf /"))
+        run.assert_not_called()
+
+    def test_dpms_on_valid_monitor_not_dp2(self):
+        with patch.object(desktop_mode, "run_named", return_value=completed()) as run, patch("subprocess.Popen") as popen:
+            self.assertTrue(desktop_mode.dpms_on("DP-1"))
+        run.assert_called_once_with("dpms", ["DP-1", "on"])
+        popen.assert_not_called()
+
+    def test_dpms_on_dp2_invokes_msi_workaround(self):
+        with (
+            patch.dict(os.environ, {"TAMLINUX_COMPOSITOR_LIVE_ACTIONS": "1"}),
+            patch.object(desktop_mode, "run_named", return_value=completed()) as run,
+            patch("os.path.isfile", return_value=True),
+            patch("os.access", return_value=True),
+            patch("subprocess.Popen") as popen,
+        ):
+            self.assertTrue(desktop_mode.dpms_on("DP-2"))
+        run.assert_called_once_with("dpms", ["DP-2", "on"])
+        popen.assert_called_once_with(
+            [desktop_mode.os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround"), "--once"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True)
+
+    def test_dpms_on_dp2_without_live_actions_runs_no_workaround(self):
+        # An isolated proof only records the dpms call; the real DP-2 never
+        # went dark, so the workaround must not modeset it.
+        os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
+        with (
+            patch.object(desktop_mode, "run_named", return_value=completed(stdout="recorded\n")) as run,
+            patch("os.path.isfile", return_value=True),
+            patch("os.access", return_value=True),
+            patch("subprocess.Popen") as popen,
+        ):
+            self.assertTrue(desktop_mode.dpms_on("DP-2"))
+        run.assert_called_once_with("dpms", ["DP-2", "on"])
+        popen.assert_not_called()
+
+    def test_dpms_on_fallback_when_primary_dispatch_fails(self):
+        results = [completed(returncode=1, stderr="error"), completed(returncode=0)]
+        with patch.object(desktop_mode, "run_named", side_effect=results) as run:
+            self.assertTrue(desktop_mode.dpms_on("DP-1"))
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[1], call("dpms-fallback", ["DP-1", "on"]))
+
+    def test_dpms_on_rejects_invalid_monitor_name(self):
+        with patch.object(desktop_mode, "run_named") as run:
+            self.assertFalse(desktop_mode.dpms_on("invalid$(name)"))
+        run.assert_not_called()
+
+
+if __name__ == "__main__":
+    unittest.main()

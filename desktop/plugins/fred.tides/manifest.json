@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "fred.tides",
+  "name": "Tides",
+  "version": "2.0.1",
+  "author": "Fred (@greenermoose)",
+  "license": "GPL-3.0-or-later",
+  "repository": "https://github.com/greenermoose/tides-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/tides-fred-tamlinux",
+  "description": "Multi-monitor tide widget with current sea level, 24-hour scrubbable curve, and high/low tide timeline",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Tides",
+    "description": "Current sea level, 24-hour scrubbable tide curve, and high/low events",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "center"
+  }
+}

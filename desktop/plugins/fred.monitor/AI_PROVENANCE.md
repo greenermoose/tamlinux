@@ -1,0 +1,93 @@
+# AI Collaboration & Provenance
+
+This repository practices transparent AI-assisted engineering. We document the AI tools, models, prompts, and architectural decisions that shaped `fred.monitor`.
+
+---
+
+## How to read this record
+
+This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
+brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
+each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
+transcripts are retained privately by the author, so the records carry no
+session IDs or local transcript paths.
+
+---
+
+## 1. Fred's Multi-Agent AI Toolchain
+
+Rather than relying on a single AI model or interface, Fred uses a specialized toolchain tailored to each tool's strengths. CLI versions below reflect the environment captured during development (`<tool> --version`).
+
+| Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
+| :--- | :--- | :--- | :--- |
+| **Claude Code** (`claude`) | `2.1.267` | Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
+| **Codex CLI** (`codex`) | `0.156.1` | `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude. |
+| **Antigravity CLI** (`agy`) | `1.2.6` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security remediation, bash/Python/QML engineering, and git release workflow. |
+| **OpenCode** (`opencode`) | `1.18.30` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux / Omarchy package specifics and shell configuration, conserving frontier-model token budgets. |
+| **Grok CLI** (`grok`) | `1.0.25` (`f7e67d6988e2`, stable) | Grok 4.6 | **Workstation Support**: Additional debugging, hardware diagnostics, and alternative implementation analysis. |
+
+---
+
+## 2. Key Architectural Milestones & AI Role
+
+| Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
+| :--- | :--- | :--- | :--- |
+| **Initial Clone & Hardening Baseline** | `v0.1.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Cloned stock `omarchy.monitor` into `fred.monitor`. Integrated supervised `Launch.qml` with closed environment allowlist and deadline watchdog; added running version indicators in hover tooltip and panel footer; established provenance and GPL-3.0 licensing. |
+| **Stock Defect Fixes & Link Reset (A3 & A4)** | `v0.1.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Fixed stock display toggle syntax via `hyprctl eval hl.monitor` and scale positioning clobber; implemented `fred-monitor-reset` retrain helper with rollinglog DRM verification; added position labeling (Left/Center/Right), dual-column cursor navigation, `r` shortcut, and IPC `reset(name)`. |
+| **Per-Display Cards & Enriched State (Milestone B)** | `v1.0.0` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Implemented per-display expandable cards (highlighted expanded by default) with hardware facts, individual DDC brightness sliders with cached queries, scale pills, refresh-rate chips, 10s auto-restore DPMS safety, unified keyboard navigation across cards, and rewritten Python state helper. |
+| **1.1.0–1.2.3 Deployed Monitor Controls** | `v1.2.3` | Earlier deployed config commits | Added the owner-output panel window, monitor-aware hover, saved layouts, private state helpers, guarded Apply/Keep/Revert, help sheet, and brightness hardening. The 2026-09-23 Codex session ported the existing work to this public repository; it did not author those runtime features. |
+| **Public v1.2.3 Release** | `v1.2.3` | Codex CLI `0.155.1` (`gpt-6-sol`) | Reviewed and copied the deployed runtime and tests, retained canonical repository links, validated the package, and prepared the release. [Session record](docs/ai/2026-09-23-release-v1.2.3.md). |
+
+## 2026-09-22 repository rename
+
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `monitor-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+
+## 2026-09-22 UPSTREAM example path
+
+Cursor `3.21.16` (`composer`) pointed the upstream diff example at `~/Code/tamlinux/monitor-fred-tamlinux`.
+
+## 2026-09-22 Tamlinux branding
+
+Cursor `3.21.16` (`composer`) replaced the current-facing `for Omarchy Linux` tagline with Tamlinux. Stock `omarchy.monitor` wording is unchanged.
+
+## 2026-09-23 upstream survey foundation
+
+Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
+and dated survey directory for this repository. This was documentation only;
+no field survey or runtime change was made.
+[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+
+## 2026-09-28 private session IDs
+
+Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
+transcript paths from this repository's AI records and linked the public
+provenance standard. Documentation only.
+[Session record](docs/ai/2026-09-28-private-session-ids.md).
+
+## 2026-10-03 shell-independent 2.0.0
+
+Cursor `3.23.12` (`composer`) rewrote `fred.monitor` to 2.0.0 on
+`develop/2.0.0`. The IPC target is `fred.monitor`. Not tagged or released.
+[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+
+## 2026-10-03 named compositor backend
+
+Cursor `3.23.12` (`composer`) pointed the layout, state, and reset helpers on `develop/2.0.0` at the Tamlinux compositor backend. They no longer build Hyprland command text. Brightness still uses the Omarchy helper. Not tagged or released.
+[Session record](docs/ai/2026-10-03-hyprland-command-ownership.md).
+
+## 2026-10-03 compositor facade reads
+
+Cursor `3.23.12` (`composer`) pointed fred.monitor 2.0.0 QML at the Tamlinux
+compositor facade. The three DPMS controls call `bar.compositor.setDpms`. Layout, state, and reset helpers still call Hyprland. Not tagged or released.
+[Session record](docs/ai/2026-10-03-compositor-facade.md).
+
+## 2026-10-06 Tamlinux-only dependencies
+
+Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Text Size runs `tam-display-text-size` and the brightness helper runs `tam-brightness-display`, both by absolute path from `TAMLINUX_BIN` (fallback `~/.local/bin`). Those commands call other Tamlinux commands by name, so the closed `PATH` is `TAMLINUX_BIN:/usr/bin`, as it was Omarchy's command directory before. A new state test pins both resolutions. Not tagged or released.
+[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+
+## 2026-10-06 reset backend import (2.0.1)
+
+Claude Code `2.1.292` (`claude-opus-5-5`) fixed Reset/retrain on `develop/2.0.0`. `fred-monitor-reset` ran the backend with `python3 -I`, which leaves the script's directory off `sys.path`. The backend could not import `compositor_commands`, and the helper reported the monitor as not connected. A new test covers the helper. Not tagged or released.
+[Session record](docs/ai/2026-10-06-reset-backend-import.md).
