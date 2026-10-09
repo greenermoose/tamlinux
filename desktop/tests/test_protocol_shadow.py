@@ -117,6 +117,16 @@ class ShadowEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             shadow.timestamp("2026-10-09T12:00:00")
 
+    def test_journal_binary_color_messages_are_decoded_and_checked(self):
+        row = entry(0, 1000)
+        expected = shadow.parse_record(json.dumps(row))
+        row["MESSAGE"] = list(("\x1b[34m DEBUG\x1b[0m " + row["MESSAGE"]).encode())
+        self.assertEqual(shadow.parse_record(json.dumps(row)), expected)
+        for invalid in ([True], [256], [-1], ["text"], [255], [0] * 4097):
+            row["MESSAGE"] = invalid
+            with self.assertRaises(ValueError):
+                shadow.parse_record(json.dumps(row))
+
     def test_dropped_difference_is_detected_even_between_healthy_heartbeats(self):
         self.insert(entry(0, 1000), entry(2, 1060))
         result = shadow.summarize(self.db, 1060)

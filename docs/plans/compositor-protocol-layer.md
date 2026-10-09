@@ -269,9 +269,10 @@ cannot inflate the three-occurrence requirement. Supported suspend/boot notes
 can explain the corresponding heartbeat gap; other gaps remain visible.
 No physical event is forced to fill the matrix.
 
-Verification before deployment: all 408 desktop tests pass, including actual
+Verification before corrected deployment: all 409 desktop tests pass, including actual
 QML settling/heartbeat fixtures, journal retry/deduplication, missing-record
 detection, code-identity resets, stale/gapped evidence, supported/unsupported
-events, and a complete 14-day fixture with three of each event. The isolated
+events, journald's byte-array encoding for colored messages, and a complete
+14-day fixture with three of each event. The isolated
 `desktop/launch-protocol-proof --shadow` recorded agreement on three outputs
 and four workspaces, with no surfaces or dispatches.

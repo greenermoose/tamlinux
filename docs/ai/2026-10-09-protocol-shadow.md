@@ -31,13 +31,18 @@ overlapping entries. Readiness is evidence for Fred, not milestone acceptance.
 
 ## Verification
 
-- All 408 desktop tests passed, including real offscreen QML timing fixtures
+- All 409 desktop tests passed, including real offscreen QML timing fixtures
   and positive/negative evidence-accounting cases.
 - The isolated read-only Hyprland shadow proof passed on three outputs and
   four workspaces; it created no surfaces and dispatched no actions.
 - All 494 workstation configuration tests passed with normal user access.
   The initial sandbox run could not bind its socket fixtures and could not
   perform several installed-command checks; that failed run is retained.
+- The first daily activation exposed journald's byte-array encoding for
+  colored Quickshell messages: the logger agreed, but collection skipped
+  records. A separate correction decodes bounded UTF-8 byte arrays and tests
+  valid and invalid encodings. The 409-test rerun passed. The corrected
+  collector changes the trial identity and starts a fresh observation period.
 - Daily deployment and initial comparison evidence will be recorded after
   activating the committed candidate. These development checks do not count
   as physical event coverage or the 14-day observation period.

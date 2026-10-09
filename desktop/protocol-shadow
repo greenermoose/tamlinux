@@ -57,6 +57,12 @@ def parse_record(line: str) -> tuple | None:
         raise ValueError("oversized journal record")
     entry = json.loads(line)
     message = entry.get("MESSAGE", "")
+    # journalctl JSON encodes non-printable messages (including Quickshell's
+    # ANSI color escapes) as byte arrays rather than strings.
+    if isinstance(message, list):
+        if len(message) > 4096 or any(type(byte) is not int or not 0 <= byte <= 255 for byte in message):
+            raise ValueError("invalid journal message byte array")
+        message = bytes(message).decode("utf-8")
     if not isinstance(message, str) or MARKER not in message:
         return None
     payload = json.loads(message.split(MARKER, 1)[1])
