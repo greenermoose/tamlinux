@@ -8,7 +8,10 @@ import unittest
 
 
 PLUGIN = pathlib.Path(__file__).resolve().parents[1]
-HOST = pathlib.Path(__file__).resolve().parents[2] / "tamlinux" / "desktop" / "shell" / "host"
+candidate = PLUGIN.parents[1] / "shell" / "host"
+if not candidate.is_dir():
+    candidate = PLUGIN.parents[1] / "tamlinux" / "desktop" / "shell" / "host"
+HOST = candidate
 os.environ["TAMLINUX_COMPOSITOR_COMMANDS"] = str(HOST)
 LOADER = importlib.machinery.SourceFileLoader("fred_monitor_layout", str(PLUGIN / "fred-monitor-layout"))
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)

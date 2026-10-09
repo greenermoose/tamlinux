@@ -5,8 +5,8 @@
   "version": "2.0.0",
   "author": "Fred (@greenermoose)",
   "license": "GPL-3.0-or-later",
-  "repository": "https://github.com/greenermoose/weather-fred-tamlinux",
-  "homepage": "https://github.com/greenermoose/weather-fred-tamlinux",
+  "repository": "https://github.com/greenermoose/tamlinux.git",
+  "homepage": "https://github.com/greenermoose/tamlinux",
   "description": "Multi-monitor weather widget with current conditions, 48-hour timeline, and 10-day forecast",
   "kinds": [
     "bar-widget"

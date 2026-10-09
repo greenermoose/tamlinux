@@ -5,8 +5,8 @@
   "version": "2.0.0",
   "author": "Fred (@greenermoose)",
   "description": "Keyboard shortcut explorer: which keys run which commands, and which commands need which keys",
-  "repository": "https://github.com/greenermoose/keyboard-fred-tamlinux",
-  "homepage": "https://github.com/greenermoose/keyboard-fred-tamlinux",
+  "repository": "https://github.com/greenermoose/tamlinux.git",
+  "homepage": "https://github.com/greenermoose/tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"

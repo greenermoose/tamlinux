@@ -49,6 +49,9 @@ def clock_repo() -> Path:
     override = os.environ.get("TAMLINUX_CLOCK_SOURCE")
     if override:
         return Path(override)
+    local = Path(__file__).resolve().parent / "plugins" / "fred.clock"
+    if local.is_dir():
+        return local
     return workspace() / "clock-fred-tamlinux"
 
 
@@ -84,14 +87,14 @@ def _private(path: Path) -> None:
     os.chmod(path, 0o700)
 
 
-EXTRA_REPOS = (
-    "agents-fred-tamlinux",
-    "sysinfo-fred-tamlinux",
-    "weather-fred-tamlinux",
-    "tides-fred-tamlinux",
-    "keyboard-fred-tamlinux",
-    "monitor-fred-tamlinux",
-    "workspaces-fred-tamlinux",
+EXTRA_PLUGINS = (
+    "fred.agents",
+    "fred.sysinfo",
+    "fred.weather",
+    "fred.tides",
+    "fred.keyboard",
+    "fred.monitor",
+    "fred.workspaces",
 )
 
 
@@ -127,11 +130,12 @@ def stage_clock(plugin: Path) -> None:
 
 def stage_extras(state: Path) -> list[dict]:
     roots = []
-    for name in EXTRA_REPOS:
-        source = clock_repo().parent / name
+    plugins = Path(__file__).resolve().parent / "plugins"
+    for pid in EXTRA_PLUGINS:
+        source = plugins / pid
         if not (source / "manifest.json").is_file():
-            raise SystemExit(f"plugin checkout is missing: {source}")
-        dest = state / "plugins" / name
+            raise SystemExit(f"plugin source is missing: {source}")
+        dest = state / "plugins" / pid
         copy_tree(source, dest)
         roots.append(dest)
     try:

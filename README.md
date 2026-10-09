@@ -158,22 +158,28 @@ help diagnose and repair itself.
 
 ## Desktop shell
 
-Tamlinux's desktop is Hyprland and Quickshell. The public plugin suite lives
-at [greenermoose.github.io/plugin-fred-tamlinux](https://greenermoose.github.io/plugin-fred-tamlinux/)
-and in these repositories:
+Tamlinux's desktop is Hyprland and Quickshell. The `fred.*` plugin suite is
+owned here, one directory per plugin under
+[`desktop/plugins/`](desktop/plugins/README.md), hosted by the shell in
+[`desktop/shell/`](desktop/README.md). History, releases, and development
+branches from the earlier independent repositories are preserved as
+namespaced `fred.<name>/` refs in this repository.
 
-| Plugin | Repository |
+| Plugin | Source |
 | :-- | :-- |
-| `fred.workspaces` | [workspaces-fred-tamlinux](https://github.com/greenermoose/workspaces-fred-tamlinux) |
-| `fred.clock` | [clock-fred-tamlinux](https://github.com/greenermoose/clock-fred-tamlinux) |
-| `fred.keyboard` | [keyboard-fred-tamlinux](https://github.com/greenermoose/keyboard-fred-tamlinux) |
-| `fred.sysinfo` | [sysinfo-fred-tamlinux](https://github.com/greenermoose/sysinfo-fred-tamlinux) |
-| `fred.tides` | [tides-fred-tamlinux](https://github.com/greenermoose/tides-fred-tamlinux) |
-| `fred.weather` | [weather-fred-tamlinux](https://github.com/greenermoose/weather-fred-tamlinux) |
-| `fred.monitor` | [monitor-fred-tamlinux](https://github.com/greenermoose/monitor-fred-tamlinux) |
-| `fred.agents` | [agents-fred-tamlinux](https://github.com/greenermoose/agents-fred-tamlinux) |
+| `fred.workspaces` | [`desktop/plugins/fred.workspaces/`](desktop/plugins/fred.workspaces) |
+| `fred.clock` | [`desktop/plugins/fred.clock/`](desktop/plugins/fred.clock) |
+| `fred.keyboard` | [`desktop/plugins/fred.keyboard/`](desktop/plugins/fred.keyboard) |
+| `fred.sysinfo` | [`desktop/plugins/fred.sysinfo/`](desktop/plugins/fred.sysinfo) |
+| `fred.tides` | [`desktop/plugins/fred.tides/`](desktop/plugins/fred.tides) |
+| `fred.weather` | [`desktop/plugins/fred.weather/`](desktop/plugins/fred.weather) |
+| `fred.monitor` | [`desktop/plugins/fred.monitor/`](desktop/plugins/fred.monitor) |
+| `fred.agents` | [`desktop/plugins/fred.agents/`](desktop/plugins/fred.agents) |
 
-The manager CLI is [`tam-plugin`](https://github.com/greenermoose/plugin-fred-tamlinux).
+The independent `greenermoose/*-fred-tamlinux` plugin repositories are
+frozen; their released 1.x Omarchy versions and full history remain there
+for reference. The manager CLI is
+[`tam-plugin`](https://github.com/greenermoose/plugin-fred-tamlinux).
 Carried third-party patches are recorded in
 [`ecosystem-fred-tamlinux`](https://github.com/greenermoose/ecosystem-fred-tamlinux).
 

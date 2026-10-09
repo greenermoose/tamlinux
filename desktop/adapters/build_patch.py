@@ -24,6 +24,9 @@ BAR_IPC_STUB = '''    function openAddEvent(): void {
 
 
 def repo_default() -> Path:
+    local = Path(__file__).resolve().parents[1] / "plugins" / "fred.clock"
+    if local.is_dir():
+        return local
     return Path(__file__).resolve().parents[3] / "clock-fred-tamlinux"
 
 

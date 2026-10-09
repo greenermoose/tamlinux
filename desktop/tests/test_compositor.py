@@ -316,6 +316,8 @@ class SourceBoundaryTests(unittest.TestCase):
         adapter = DESKTOP / "shell" / "host" / "HyprlandAdapter.qml"
         seen = False
         for path in DESKTOP.rglob("*.qml"):
+            if path.is_relative_to(DESKTOP / "plugins"):
+                continue
             text = path.read_text(encoding="utf-8")
             if path == adapter:
                 seen = True
@@ -327,11 +329,15 @@ class SourceBoundaryTests(unittest.TestCase):
 
     def test_helpers_do_not_build_hyprland_commands(self):
         root = WORKSPACE
+        def helper(plugin: str, name: str) -> Path:
+            in_repo = DESKTOP / "plugins" / plugin / name
+            return in_repo if in_repo.is_file() else root / f"{plugin.removeprefix('fred.')}-fred-tamlinux" / name
+
         helpers = (
-            root / "workspaces-fred-tamlinux" / "tam-desktop-mode",
-            root / "monitor-fred-tamlinux" / "fred-monitor-layout",
-            root / "monitor-fred-tamlinux" / "fred-monitor-state",
-            root / "monitor-fred-tamlinux" / "fred-monitor-reset",
+            helper("fred.workspaces", "tam-desktop-mode"),
+            helper("fred.monitor", "fred-monitor-layout"),
+            helper("fred.monitor", "fred-monitor-state"),
+            helper("fred.monitor", "fred-monitor-reset"),
         )
         for path in helpers:
             text = path.read_text(encoding="utf-8")
@@ -346,7 +352,9 @@ class SourceBoundaryTests(unittest.TestCase):
         )
         seen = 0
         for name in names:
-            plugin = root / f"{name}-fred-tamlinux"
+            plugin = DESKTOP / "plugins" / f"fred.{name}"
+            if not plugin.is_dir():
+                plugin = root / f"{name}-fred-tamlinux"
             self.assertTrue(plugin.is_dir(), name)
             for path in plugin.rglob("*.qml"):
                 text = path.read_text(encoding="utf-8")

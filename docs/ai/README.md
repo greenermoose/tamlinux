@@ -17,6 +17,8 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-09 | Plugin suite consolidation into Tamlinux | OpenCode `1.18.35` / agy `1.2.16` | `big-pickle` / `gemini-3.8-flash-high` | [`2026-10-09-plugins-consolidation.md`](2026-10-09-plugins-consolidation.md) |
+| 2026-10-09 | Public package-delivery ownership | Codex CLI `0.162.0` | `gpt-6.1-sol` | [2026-10-09-package-ownership.md](2026-10-09-package-ownership.md) |
 | 2026-10-09 | Daily compositor protocol shadow monitoring | Codex CLI `0.162.0` | `gpt-6.1-sol` | [2026-10-09-protocol-shadow.md](2026-10-09-protocol-shadow.md) |
 | 2026-10-08 | 0.4.0 login, normal Run and tested acceptance | Codex CLI `0.162.0` | `gpt-6.1-sol` | [2026-10-08-0.4.0-acceptance.md](2026-10-08-0.4.0-acceptance.md) |
 | 2026-10-08 | Shared compositor protocol layer, milestone A | Codex CLI `0.161.0` | `gpt-6.1-sol` | [2026-10-08-protocol-layer-development.md](2026-10-08-protocol-layer-development.md) |

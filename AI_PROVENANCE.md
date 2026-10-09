@@ -54,6 +54,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-09: public package-delivery ownership was aligned with the four-repository
+split using Codex CLI `0.162.0`, model `gpt-6.1-sol`; see the
+[session record](docs/ai/2026-10-09-package-ownership.md).
+
 Rows retain the decisions and proposed schedules at the time of each session.
 The 2026-10-07 replanning row and [current versioning](VERSIONING.md) supersede
 earlier future-stage schedules without changing accepted version identifiers.
@@ -180,3 +184,12 @@ the monitors again on focus changes, output hotplug, and its own DPMS
 changes. A monitor blanked by `fred.workspaces` was still reported lit and
 could not be woken by pointer entry.
 [Session record](docs/ai/2026-10-06-dpms-reread.md).
+
+## 2026-10-09 plugin suite consolidation
+
+OpenCode 1.18.35 (big-pickle) and Antigravity CLI (agy) 1.2.16
+(gemini-3.8-flash-high) consolidated the eight independent fred.* plugin
+repositories into desktop/plugins/ in the Tamlinux product repository,
+preserving git history, branch lines, and namespaced tags. The standalone
+repositories are frozen as historical Omarchy 1.x reference.
+[Session record](docs/ai/2026-10-09-plugins-consolidation.md).

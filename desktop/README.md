@@ -22,7 +22,8 @@ Tamlinux, and is maintained here from then on; its header says
 `Ported from omarchy 4.0.4 …`. Older records say "vendored" for the same
 thing.
 
-Clock source is the `develop/2.0.0` working tree. The 1.3.3 pin
+Clock source is the `fred.clock/develop/2.0.0` tree imported under
+[`plugins/fred.clock/`](plugins/README.md). The 1.3.3 pin
 `ed5140ccefc83c0a2fdd5f899bbd290acc35d88a` remains the baseline the adapter
 patch is generated from.
 Development closure checked here: Quickshell 0.3.1, Qt 6.11.2.
@@ -191,6 +192,7 @@ desktop/
   shell/host/hyprland_backend.py  # the only Python that starts hyprctl
   shell/host/ui_contract.py   # border and wheel numbers; does not launch anything
   shell/modules/Tam/          # Commons and Ui
+  plugins/                    # the eight fred.* plugins, one directory each
   adapters/clock-step1.patch  # imports, identity, offline gate, disabled edits
   adapters/build_patch.py     # regenerates that patch from the pinned revision
   fixtures/panel/             # tamlinux.fixture, not a fred.* plugin
@@ -210,8 +212,9 @@ files, `..`, and symlinks are rejected.
 
 ## Launch
 
-From this repository, with a sibling checkout of `clock-fred-tamlinux` (or
-`TAMLINUX_CLOCK_SOURCE` pointing at one):
+From this repository, reading the pinned clock from
+`desktop/plugins/fred.clock` (`TAMLINUX_CLOCK_SOURCE` overrides the path) and
+the other seven plugins from `desktop/plugins/`:
 
 ```sh
 python3 desktop/launch-clock-proof --timeout 120
