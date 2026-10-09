@@ -26,10 +26,11 @@ export TAMLINUX_SOURCE_REPO="$FRED_PUBLISHED_ROOT/tamlinux"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 mkdir -p "$HOME/bin" "$FRED_LIVE_DIR" "$TAMLINUX_SOURCE_REPO/desktop/plugins"
+BASH_PATH="$(command -v bash)"  # no /usr/bin/env in a build sandbox
 for tool in tam-qmlcache-purge tam-restart-shell; do
-  printf '#!/usr/bin/env bash\nexit 0\n' > "$HOME/bin/$tool"
+  printf '#!%s\nexit 0\n' "$BASH_PATH" > "$HOME/bin/$tool"
 done
-printf '#!/usr/bin/env bash\necho "home-manager must not run" >&2\nexit 1\n' > "$HOME/bin/home-manager"
+printf '#!%s\necho "home-manager must not run" >&2\nexit 1\n' "$BASH_PATH" > "$HOME/bin/home-manager"
 chmod +x "$HOME/bin/"*
 export PATH="$HOME/bin:$PATH"
 
