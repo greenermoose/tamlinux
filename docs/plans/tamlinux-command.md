@@ -43,29 +43,26 @@ framework; `libtam` remains a separate dependency.
 | `tam welcome` | Open orientation explicitly at any time; never require it before `--help` or installation. |
 | `tam explain <topic>` | Initially match curated local topics and give a clear miss message. |
 
-Bare invocation never opens the browser or changes first-use state, whether
+Bare invocation never opens the guide or changes first-use state, whether
 interactive or piped. `tam welcome` explicitly displays orientation. Record
 that welcome was shown in `$XDG_STATE_HOME/tamlinux/welcome_seen` (falling back
 to `~/.local/state/tamlinux/welcome_seen`) only after successful display,
-whether through Lynx or the text fallback. `show`, `--help`, `--version`,
+whether in the interactive pager or via text output. `show`, `--help`, `--version`,
 and installation commands leave first-use state unchanged. The command must distinguish
-terminal output from piped output and never emit browser control text into a
-pipeline. It must check
-whether Lynx is available and, if absent, show readable text and instructions
-for installing Lynx so that HTML can be rendered.
+terminal output from piped output and never emit control text into a
+pipeline. `tam` parses and displays HTML natively on its own using its built-in
+renderer and pager, so no external browser is required.
 
 ## Knowledge format
 
-The component currently renders semantic HTML in C and supplies plain-text pipe
+`tam` renders semantic HTML natively in C and supplies plain-text pipe
 output without an external viewer. Its development plan governs implemented
-guide behavior. The following retains the earlier Lynx proposal, not a current
-command dependency.
+guide behavior.
 
 Ship a small, semantic HTML corpus with relative links and a plain-text
-fallback. Lynx is the optional terminal browser because it is already used on
-the current workstation and works offline. If Lynx is unavailable, show the
-text guide and instructions for installing it on the detected base; do not
-start an installation automatically. `tam` locates the installed
+fallback. `tam` parses and renders the HTML natively with its built-in pager,
+requiring no external browser. When output is piped, `tam` automatically
+emits clean plain text without terminal escape sequences. `tam` locates the installed
 corpus through package data, not a fixed `/usr/share` path, so NixOS, native
 Arch packages, and user installations can share the same content.
 
@@ -88,16 +85,15 @@ external; opening the local guide must not fetch network content.
 
 These are development directions, not features in the first release. The
 first implementation uses C with the separate `libtam` foundation library,
-following Fred's 2026-10-08 language directive. Lynx enables
-interactive browsing when installed; plain-text help must work without it.
+following Fred's 2026-10-08 language directive. The built-in native C renderer
+and pager handle interactive browsing; plain-text output works cleanly when piped.
 
 ## Implementation order and review points
 
 1. Set the command layout and version source; make `--help`, `--version`, and
    `install inspect` work before any state-changing installer step.
-2. Package the minimal guide; check for Lynx before interactive browsing and
-   provide the text guide plus installation instructions when it is missing.
-   Keep piped output predictable in both cases.
+2. Package the minimal guide; provide native HTML parsing and pager display for
+   interactive browsing, and clean plain text when piped.
 3. Add explicit `welcome`, its successfully-displayed state, and the
    first curated `explain` topics.
 4. Extend installation, explanation, AI, and configuration in that order,
@@ -133,5 +129,8 @@ interactive browsing when installed; plain-text help must work without it.
   ("tam show by itself shows the index page, just like tam browse does now"),
   retaining `browse` as an explain topic (`tam explain browse`), and added shell
   symbol quoting for `tam explain` (e.g. `tam explain '|'`).
+- **2026-10-09:** Fred confirmed that Lynx is no longer needed: `tam` parses
+  and displays HTML natively on its own using its built-in C renderer and pager,
+  with zero external browser dependencies.
 - **Still open:** The later compound-command `explain`, `ai`, and `config`
   expansions need their own review before implementation.

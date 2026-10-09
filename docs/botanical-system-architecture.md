@@ -207,6 +207,6 @@ The `tam` command includes built-in inspection and explanation tools designed to
 
 ### Semantic Offline Documentation
 
-Tamlinux ships with a lightweight, semantic local knowledge base accessible via `tam` (rendered through Lynx or a clean terminal text fallback). Users can learn about shell pipelines, filesystem architecture, kernel parameters, and hardware drivers without an internet connection.
+Tamlinux ships with a lightweight, semantic local knowledge base accessible via `tam` (rendered natively by `tam` with a clean terminal text fallback when piped). Users can learn about shell pipelines, filesystem architecture, kernel parameters, and hardware drivers without an internet connection.
 
 By combining the elegance of the botanical model with native self-inspection, Tamlinux ensures that users do not just run their computers—**they understand and own them.**
