@@ -95,19 +95,38 @@ session manager. Chrome and VS Code come from their vendors' packages and are
 checked, never redistributed. Nix profile rollback alone does not restore the
 host kernel or native package database.
 
-## Proposed repository shape
+## Repository ownership
+
+The 2026-10-09 ownership decision separates product source from delivery.
+`tamlinux` owns desktop behavior, generic defaults, installation/recovery
+contracts, and behavior/integration tests. `tamlinux-tools` owns independently
+useful utilities; `tam` owns the command/offline guide; `libtam` owns the C
+foundation. `tamlinux-packages` consumes pinned revisions of these sources and
+owns Nix sets/modules, native recipes, tested component assemblies, and delivery
+verification. Personal settings and machine restoration records remain external.
+
+## Proposed source and delivery shapes
 
 ```text
 tamlinux/
-  flake.nix                    # workstation package for existing distributions
   installer/                   # inspect, plan, apply, verify orchestration
-  host-adapters/arch/          # native host adapter (PKGBUILD) for Arch
   profiles/arch-hyprland/      # independent Hyprland baseline; legacy import separate
   profiles/arch/               # existing-distribution profile, first host
   profiles/void/               # first target base adapter, native xbps-src
   profiles/antix/              # fallback base adapter
-  manifests/                   # source and package versions/owners
+  manifests/                   # product interfaces and source/file owners
   docs/plans/                  # decisions, milestones, evidence
+
+tamlinux-packages/
+  flake.nix                    # pinned public delivery inputs
+  nix/packages/                # component derivations
+  nix/sets/                    # selectable package sets, developer baseline
+  nix/modules/                 # reusable Home Manager deployment
+  native/arch/                 # native Arch adapter recipes
+  native/void/                 # native xbps-src recipes
+  deliveries/                  # exact component/build selections
+  examples/                    # generic consumer configurations
+  tests/                       # build and installed-package verification
 ```
 
 The separate `tam` component repository owns command source and bundled
@@ -115,7 +134,8 @@ offline knowledge. The workstation package consumes pinned `tam` and
 `libtam` inputs instead of duplicating their source here. The `tam install`
 entry point delegates to this product's installation framework.
 
-This is a proposed structure, not an implemented installer. Do not copy
+The first Nix extraction is a Develop candidate; native adapters and the
+installer remain unimplemented. Do not copy
 third-party source trees into the repository when pinned maintained inputs
 can be composed. Hardware layouts and credentials are supplied separately.
 
@@ -190,6 +210,11 @@ at 1.0. Documentation changes do not bump the product version.
 - **2026-10-07:** Independent Hyprland acceptance at 0.6 now precedes integrated
   Sway/package work at 0.7. The terminal command is named `tam`; the package
   remains `tamlinux`. Prior approved install operations retain their behavior.
+
+- **2026-10-09:** Public delivery definitions move to `tamlinux-packages`.
+  Every Tamlinux installation includes a C developer baseline. Product source
+  and behavior stay in their owning components; this ownership extraction does
+  not advance compositor, host/base, boot, or installer acceptance.
 
 Open: pilot hardware, disk layout, libc choice, supported existing
 distributions, the graphics bridge for Nix-built Sway, signed binary delivery, application licensing, graphics drivers/renderer,
