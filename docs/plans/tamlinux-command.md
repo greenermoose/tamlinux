@@ -39,7 +39,7 @@ framework; `libtam` remains a separate dependency.
 | `tam --version` | Read the cultivar version from installed metadata; label command version separately if it differs. |
 | `tam install ...` | Delegate to the installation contract in [the installation plan](installation-framework.md). |
 | `tam` | Print a concise introduction and available starting points, then exit successfully. |
-| `tam browse` | Explicitly open the local guide; print a readable text index when output is piped. |
+| `tam show` | Explicitly open the local guide; print a readable text index when output is piped. |
 | `tam welcome` | Open orientation explicitly at any time; never require it before `--help` or installation. |
 | `tam explain <topic>` | Initially match curated local topics and give a clear miss message. |
 
@@ -47,7 +47,7 @@ Bare invocation never opens the browser or changes first-use state, whether
 interactive or piped. `tam welcome` explicitly displays orientation. Record
 that welcome was shown in `$XDG_STATE_HOME/tamlinux/welcome_seen` (falling back
 to `~/.local/state/tamlinux/welcome_seen`) only after successful display,
-whether through Lynx or the text fallback. `browse`, `--help`, `--version`,
+whether through Lynx or the text fallback. `show`, `--help`, `--version`,
 and installation commands leave first-use state unchanged. The command must distinguish
 terminal output from piped output and never emit browser control text into a
 pipeline. It must check
@@ -129,5 +129,9 @@ interactive browsing when installed; plain-text help must work without it.
   is a **cultivar**. Grown versions will carry a cultivar *name* and a version
   number (e.g. "Tamlinux cultivar blue sparkler 1.0.0"); no name exists yet, so
   `tam --version` prints "Tamlinux cultivar <version>".
+- **2026-10-09:** Fred replaced the guide subcommand `tam browse` with `tam show`
+  ("tam show by itself shows the index page, just like tam browse does now"),
+  retaining `browse` as an explain topic (`tam explain browse`), and added shell
+  symbol quoting for `tam explain` (e.g. `tam explain '|'`).
 - **Still open:** The later compound-command `explain`, `ai`, and `config`
   expansions need their own review before implementation.
