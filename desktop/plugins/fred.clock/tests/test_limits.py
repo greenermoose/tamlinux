@@ -97,6 +97,10 @@ class TestLimitsAndSecurity(unittest.TestCase):
     def test_oversized_remote_feed(self):
         """Verify remote feed exceeding MAX_FEED_BYTES is dropped (with and without Content-Length) while sibling feed loads."""
         sibling_ics = os.path.join(FIXTURES_DIR, "all_day.ics")
+        # Keep the fixed sibling fixture inside the fetch window regardless
+        # of when this security regression runs.
+        fixture_now = str(int(datetime.datetime(2026, 9, 15, 12,
+                                               tzinfo=datetime.timezone.utc).timestamp()))
 
         class OversizedHandler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
@@ -144,7 +148,7 @@ class TestLimitsAndSecurity(unittest.TestCase):
             with open(self.cfg_path, "w") as f:
                 json.dump(cfg, f)
 
-            res = self._run_fetch()
+            res = self._run_fetch(["--now", fixture_now])
             self.assertEqual(res.returncode, 0, f"Stderr: {res.stderr}")
             with open(self.out_path, "r") as f:
                 data = json.load(f)
@@ -160,7 +164,7 @@ class TestLimitsAndSecurity(unittest.TestCase):
             with open(self.cfg_path, "w") as f:
                 json.dump(cfg, f)
 
-            res = self._run_fetch()
+            res = self._run_fetch(["--now", fixture_now])
             self.assertEqual(res.returncode, 0, f"Stderr: {res.stderr}")
             with open(self.out_path, "r") as f:
                 data = json.load(f)
@@ -168,6 +172,7 @@ class TestLimitsAndSecurity(unittest.TestCase):
             self.assertEqual(data["events"][0]["calendar"], "Sibling")
         finally:
             httpd.shutdown()
+            httpd.server_close()
 
     # 2. http:// and cross-scheme redirect
     def test_http_and_cross_scheme_redirect(self):
