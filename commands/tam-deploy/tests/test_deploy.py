@@ -259,6 +259,7 @@ class Verify(Fixture):
         self.link(self.app.shell_link, shell)
         self.link(self.app.plugins_dir / "fred.clock", plugin)
         self.link(self.app.bin_dir / "tam-deploy", command)
+        self.link(self.app.bin_dir / "tam", "/nix/store/d-tam-0.7.0/bin/tam")
 
     def test_matching_install(self):
         self.install()
@@ -280,10 +281,11 @@ class ConfigurationLookupTest(unittest.TestCase):
         self.home = Path(self.temp.name)
         self.addCleanup(self.temp.cleanup)
 
-    def make_config(self, name):
-        path = self.home / "Code/tamlinux" / name / "config/tamlinux/plugins"
+    def make_config(self, name, inputs=("tamlinux-packages",)):
+        path = self.home / "Code/tamlinux" / name
         path.mkdir(parents=True)
-        return path.parents[2]
+        (path / "flake.lock").write_text(json.dumps({"nodes": {"root": {"inputs": {i: i for i in inputs}}}}))
+        return path
 
     def test_environment_overrides_discovery(self):
         self.make_config("one")
@@ -292,6 +294,7 @@ class ConfigurationLookupTest(unittest.TestCase):
 
     def test_single_checkout_with_plugins_is_found(self):
         config = self.make_config("workstation")
+        self.make_config("tamlinux-packages", inputs=("nixpkgs", "tamlinux"))
         (self.home / "Code/tamlinux/product").mkdir()
         with patch.dict(os.environ, {"TAMLINUX_CONFIG_REPO": ""}):
             self.assertEqual(deploy.find_config_repo(self.home), config)

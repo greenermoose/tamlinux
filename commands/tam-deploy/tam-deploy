@@ -35,12 +35,19 @@ def command(*args: str, capture: bool = False, quiet: bool = False) -> str:
 
 
 def find_config_repo(home: Path) -> Path:
-    """TAMLINUX_CONFIG_REPO, else the one ~/Code/tamlinux/* checkout that holds
-    config/tamlinux/plugins (the same rule tam-plugin uses)."""
+    """TAMLINUX_CONFIG_REPO, else the one ~/Code/tamlinux/* checkout whose
+    flake.lock has a tamlinux-packages input."""
     if os.environ.get("TAMLINUX_CONFIG_REPO"):
         return Path(os.environ["TAMLINUX_CONFIG_REPO"])
     root = home / "Code/tamlinux"
-    matches = sorted(d for d in root.glob("*/") if (d / "config/tamlinux/plugins").is_dir()) if root.is_dir() else []
+    matches = []
+    for lock in sorted(root.glob("*/flake.lock")) if root.is_dir() else []:
+        try:
+            inputs = json.loads(lock.read_text())["nodes"]["root"].get("inputs", {})
+        except (OSError, ValueError, KeyError):
+            continue
+        if "tamlinux-packages" in inputs:
+            matches.append(lock.parent)
     if len(matches) != 1:
         raise DeploymentError("set TAMLINUX_CONFIG_REPO to the Home Manager configuration checkout")
     return matches[0]
@@ -184,12 +191,14 @@ class Deployment:
             target = os.path.realpath(plugin)
             if not (target.startswith("/nix/store/") and "-tamlinux-plugins-" in target):
                 problems.append(f"{plugin.name} resolves outside the plugin package: {target}")
-        for name in ("tam-deploy", "tam-plugin", "tam-work"):
+        packages = {"tam-deploy": "-tamlinux-commands-", "tam-plugin": "-tamlinux-commands-",
+                    "tam-work": "-tamlinux-commands-", "tam": "-tam-", "tam-file-select": "-tamlinux-tools-"}
+        for name, package in packages.items():
             link = self.bin_dir / name
             if link.exists() or link.is_symlink():
                 target = os.path.realpath(link)
-                if not (target.startswith("/nix/store/") and "-tamlinux-commands-" in target):
-                    problems.append(f"{name} resolves outside the command package: {target}")
+                if not (target.startswith("/nix/store/") and package in target):
+                    problems.append(f"{name} resolves outside its package: {target}")
         return problems
 
     def record(self, message: str, files: list[str]) -> None:

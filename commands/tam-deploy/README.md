@@ -29,7 +29,7 @@ make install   # honours PREFIX and DESTDIR
 
 | Variable | Default |
 | --- | --- |
-| `TAMLINUX_CONFIG_REPO` | The one checkout under `~/Code/tamlinux/` that contains `config/tamlinux/plugins` |
+| `TAMLINUX_CONFIG_REPO` | The one checkout under `~/Code/tamlinux/` whose `flake.lock` has a `tamlinux-packages` input |
 | `TAMLINUX_HOME_CONFIGURATION` | The current user name (`home-manager switch --flake <repo>#<name>`) |
 | `TAMLINUX_WORKSPACE` | `~/Code/tamlinux`, holding clones of `tamlinux-packages` and each component |
 | `TAMLINUX_PACKAGES_INPUT` | `tamlinux-packages`, the configuration's flake input |
