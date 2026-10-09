@@ -90,20 +90,35 @@ def private_runtime_dir():
     base = os.environ.get("XDG_RUNTIME_DIR", "")
     if not base or not os.path.isabs(base):
         return None
-    path = os.path.join(base, "fred.monitor")
+    base = os.path.join(base, "tamlinux")
+    base_fd = None
+    cache_fd = None
     try:
-        os.mkdir(path, 0o700)
-    except FileExistsError:
-        pass
-    try:
-        info = os.lstat(path)
-        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
-            return None
+        os.makedirs(base, mode=0o700, exist_ok=True)
+        base_fd = os.open(base, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        info = os.fstat(base_fd)
+        # Other Tamlinux components may create this shared namespace as 0755.
+        # Only the plugin's own directory needs to be private; nobody else may
+        # write the parent or replace its entries.
+        if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o022:
+            raise ValueError("unsafe Tamlinux runtime directory")
+        try:
+            os.mkdir("monitor", 0o700, dir_fd=base_fd)
+        except FileExistsError:
+            pass
+        cache_fd = os.open("monitor", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=base_fd)
+        info = os.fstat(cache_fd)
         if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
-            return None
-        return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    except OSError:
+            os.close(cache_fd)
+            cache_fd = None
+        return cache_fd
+    except (OSError, ValueError):
+        if cache_fd is not None:
+            os.close(cache_fd)
         return None
+    finally:
+        if base_fd is not None:
+            os.close(base_fd)
 
 
 def cache_name(monitor_name):

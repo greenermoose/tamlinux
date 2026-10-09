@@ -239,17 +239,31 @@ def runtime_directory():
     base = os.environ.get("XDG_RUNTIME_DIR", "")
     if not base or not os.path.isabs(base):
         raise LayoutError("XDG_RUNTIME_DIR is unavailable")
-    path = os.path.join(base, "fred.monitor")
+    base = os.path.join(base, "tamlinux")
+    base_fd = None
+    monitor_fd = None
     try:
-        os.mkdir(path, 0o700)
-    except FileExistsError:
-        pass
-    info = os.lstat(path)
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
-        raise LayoutError("runtime path is not a directory")
-    if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
-        raise LayoutError("runtime directory ownership or mode is unsafe")
-    return path
+        os.makedirs(base, mode=0o700, exist_ok=True)
+        base_fd = os.open(base, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        info = os.fstat(base_fd)
+        if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o022:
+            raise LayoutError("Tamlinux runtime directory ownership or mode is unsafe")
+        try:
+            os.mkdir("monitor", 0o700, dir_fd=base_fd)
+        except FileExistsError:
+            pass
+        monitor_fd = os.open("monitor", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=base_fd)
+        info = os.fstat(monitor_fd)
+        if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+            raise LayoutError("runtime directory ownership or mode is unsafe")
+        return os.path.join(base, "monitor")
+    except OSError as error:
+        raise LayoutError("runtime path is not a safe directory") from error
+    finally:
+        if monitor_fd is not None:
+            os.close(monitor_fd)
+        if base_fd is not None:
+            os.close(base_fd)
 
 
 def open_runtime(path):

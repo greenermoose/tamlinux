@@ -24,7 +24,7 @@ class StateCacheTests(unittest.TestCase):
             try:
                 dir_fd = STATE.private_runtime_dir()
                 self.assertIsNotNone(dir_fd)
-                runtime = pathlib.Path(temp) / "fred.monitor"
+                runtime = pathlib.Path(temp) / "tamlinux" / "monitor"
                 self.assertEqual(stat.S_IMODE(runtime.stat().st_mode), 0o700)
 
                 filename = STATE.cache_name("DP-1")

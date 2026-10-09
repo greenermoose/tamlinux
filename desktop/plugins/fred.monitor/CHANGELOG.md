@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.3] - Unreleased
+
+- Fix empty display panels when another component has created the shared Tamlinux runtime directory with mode 0755. Accept a user-owned parent without group/world write permission, while retaining mode 0700 for monitor cache and preview/rollback state.
+- Open and validate runtime directories without following symlinks. Unavailable brightness cache no longer prevents reading displays; unsafe layout transaction storage still fails closed.
+
 All notable changes to `fred.monitor` are documented here.
 
 ## [2.0.1] - Unreleased

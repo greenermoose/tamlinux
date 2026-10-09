@@ -15,7 +15,7 @@ Panel {
   ipcTarget: "fred.monitor"
   manageIpc: false
 
-  readonly property string pluginVersion: "2.0.1"
+  readonly property string pluginVersion: "2.0.3"
   readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "TAMLINUX_COMPOSITOR_COMMANDS", "TAMLINUX_COMPOSITOR_LIVE_ACTIONS", "TAMLINUX_BIN"]
   // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
   readonly property string textSizeHelper:
