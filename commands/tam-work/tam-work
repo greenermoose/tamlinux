@@ -1,0 +1,456 @@
+#!/usr/bin/env python3
+"""Local advisory claims for existing checkouts and canonical repository scopes."""
+
+import argparse
+import fcntl
+import json
+import os
+import re
+import subprocess
+import tempfile
+import uuid
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+
+def resolve_paths(registry, workspace, environ, home):
+    """Flags win, then TAM_WORK_REGISTRY/TAM_WORK_WORKSPACE, then defaults under home."""
+    def setting(value, name):
+        value = value if value is not None else environ.get(name) or None
+        if isinstance(value, str) and value.startswith("~/"):
+            value = home / value[2:]
+        return Path(value) if value is not None else None
+    workspace = setting(workspace, "TAM_WORK_WORKSPACE") or home / "Code/tamlinux"
+    registry = setting(registry, "TAM_WORK_REGISTRY") or workspace / "worktrees/coordination"
+    return registry, workspace
+IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,95}\Z")
+
+
+def scope(value):
+    path = PurePosixPath(value)
+    if not value or path.is_absolute() or ".." in path.parts or not path.parts:
+        raise ValueError("scope must be a nonempty workspace-relative path")
+    return str(path)
+
+
+def overlaps(left, right):
+    a, b = PurePosixPath(left), PurePosixPath(right)
+    return a == b or a in b.parents or b in a.parents
+
+
+def timestamp():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+@contextmanager
+def locked(registry):
+    registry.mkdir(parents=True, exist_ok=True)
+    with (registry / ".lock").open("a") as stream:
+        fcntl.flock(stream, fcntl.LOCK_EX)
+        yield
+
+
+def records(registry):
+    # Invalid records fail closed: do not silently ignore another agent's claim.
+    result = []
+    for path in sorted(registry.glob("*.json")):
+        row = json.loads(path.read_text())
+        if row["status"] not in ("active", "observed", "released"):
+            raise ValueError(f"invalid claim status in {path.name}")
+        if not row["scopes"]:
+            raise ValueError(f"empty scope in {path.name}")
+        row["scopes"] = [scope(item) for item in row["scopes"]]
+        result.append(row)
+    return result
+
+
+def write_record(registry, row):
+    fd, name = tempfile.mkstemp(prefix=".claim-", dir=registry)
+    try:
+        with os.fdopen(fd, "w") as stream:
+            json.dump(row, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(name, registry / (row["id"] + ".json"))
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def checkout_path(value):
+    path = Path(value).resolve()
+    if path.is_dir():
+        root = git(path, "rev-parse", "--show-toplevel", optional=True)
+        if root:
+            path = Path(root).resolve()
+    return str(path)
+
+
+def mode(row):
+    """Shared claims let other sessions hold disjoint paths in the same checkout.
+
+    Records written before modes existed: session-less (legacy claim command)
+    and whole-repository claims keep their exclusive meaning; path-scoped
+    begin claims were always disjoint by construction and become shared.
+    """
+    if row.get("mode") in ("shared", "exclusive"):
+        return row["mode"]
+    if not row.get("session") or (row.get("repo") and row["scopes"] == [row["repo"]]):
+        return "exclusive"
+    return "shared"
+
+
+def same_session(row, owner, session):
+    # Legacy records lack session identity: a tool name is not a handoff.
+    return bool(session) and row.get("session") == session and row["owner"] == owner
+
+
+def check_conflicts(current, scopes, checkout, owner, session=None, exclusive=True):
+    for row in current:
+        if row["status"] == "released" or same_session(row, owner, session):
+            continue
+        if checkout_path(row.get("checkout") or row["worktree"]) == checkout:
+            if exclusive or mode(row) == "exclusive":
+                held = "exclusively " if mode(row) == "exclusive" else ""
+                raise ValueError(f"checkout held {held}by {row['id']} ({row['owner']}, session {row.get('session', 'legacy/see note')}): {checkout}")
+        for wanted in scopes:
+            for held in row["scopes"]:
+                if overlaps(wanted, held):
+                    raise ValueError(f"overlap with {row['id']} ({row['owner']}): {wanted} / {held}")
+
+
+def claim(registry, ident, owner, scopes, worktree, note, observed=False, session=None):
+    if not IDENTIFIER.fullmatch(ident) or not owner.strip():
+        raise ValueError("invalid claim id or empty owner")
+    scopes = sorted(set(scope(item) for item in scopes))
+    if not scopes:
+        raise ValueError("at least one scope is required")
+    with locked(registry):
+        current = records(registry)
+        if any(row["id"] == ident for row in current):
+            raise ValueError("claim id already exists; use a new id")
+        checkout = checkout_path(worktree)
+        check_conflicts(current, scopes, checkout, owner, session)
+        row = dict(id=ident, owner=owner, scopes=scopes, worktree=worktree,
+                   note=note, status="observed" if observed else "active",
+                   created_at=timestamp())
+        if session:
+            row.update(session=session, checkout=checkout)
+        write_record(registry, row)
+        return row
+
+
+def release(registry, ident, owner, note, session=None):
+    with locked(registry):
+        row = next((item for item in records(registry) if item["id"] == ident), None)
+        if row is None or row["owner"] != owner:
+            raise ValueError("claim missing or owner does not match")
+        if row.get("session") and row["session"] != session:
+            raise ValueError("session does not match claim; obtain an explicit handoff")
+        row.update(status="released", released_at=timestamp(), release_note=note)
+        write_record(registry, row)
+        return row
+
+
+def git(path, *args, optional=False):
+    result = subprocess.run(["git", "--no-optional-locks", "-C", str(path), *args], capture_output=True,
+                            text=True, timeout=15)
+    if result.returncode:
+        if optional:
+            return ""
+        raise ValueError(result.stderr.strip() or "not a Git checkout")
+    return result.stdout.strip()
+
+
+def remote(path):
+    value = git(path, "remote", "get-url", "origin", optional=True).rstrip("/")
+    if value.startswith("git@"):
+        value = value[4:].replace(":", "/", 1)
+    else:
+        value = re.sub(r"^[a-z]+://(?:[^/@]+@)?", "", value)
+    return value.removesuffix(".git")
+
+
+def repository(cwd, workspace, explicit=None):
+    workspace = workspace.resolve()
+    root = Path(git(cwd, "rev-parse", "--show-toplevel")).resolve()
+    common = Path(git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
+    origin = remote(root)
+    origin_value = git(root, "remote", "get-url", "origin", optional=True).removeprefix("file://")
+    local_origin = (root / origin_value).resolve() if origin_value else None
+    named = workspace / origin.rsplit("/", 1)[-1] if origin else None
+    if explicit:
+        name = scope(explicit)
+        if "/" in name:
+            raise ValueError("--repo must name a workspace-root repository")
+        candidates = [workspace / name]
+    elif local_origin and local_origin.parent == workspace and (local_origin / ".git").exists():
+        candidates = [local_origin]
+    elif named and (named / ".git").exists() and remote(named) == origin:
+        candidates = [named]
+    elif common.name == ".git" and common.parent.parent == workspace:
+        candidates = [common.parent]
+    else:
+        if not origin:
+            raise ValueError("cannot infer canonical repository; supply --repo")
+        candidates = [p for p in workspace.iterdir() if (p / ".git").exists() and remote(p) == origin]
+    if len(candidates) != 1 or not (candidates[0] / ".git").exists():
+        raise ValueError("canonical repository is missing or ambiguous; supply --repo")
+    canonical = candidates[0].resolve()
+    canonical_root = git(canonical, "rev-parse", "--show-toplevel")
+    if Path(canonical_root).resolve() != canonical or canonical.parent != workspace:
+        raise ValueError("canonical repository must be a workspace-root checkout")
+    canonical_common = Path(git(canonical, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
+    if root != canonical and common != canonical_common:
+        if local_origin != canonical and (not remote(root) or remote(root) != remote(canonical)):
+            raise ValueError("clone origin does not match canonical repository")
+    return root, canonical.name
+
+
+def identity(owner=None, session=None):
+    session = session or os.environ.get("TAM_WORK_SESSION")
+    owner = owner or os.environ.get("TAM_WORK_OWNER")
+    if not session:
+        for variable, inferred in (("CODEX_THREAD_ID", "codex"), ("CODEX_SESSION_ID", "codex"),
+                                   ("CLAUDE_SESSION_ID", "claude")):
+            if os.environ.get(variable):
+                session = os.environ[variable]
+                owner = owner or inferred
+                break
+    if not owner or not session or not owner.strip() or not session.strip():
+        raise ValueError("session identity required: pass --owner and --session, or set TAM_WORK_OWNER/TAM_WORK_SESSION once")
+    if not IDENTIFIER.fullmatch(owner):
+        raise ValueError("invalid owner")
+    return owner, session
+
+
+def local_scopes(root, repo, values):
+    result = []
+    for value in values or ["."]:
+        if value == ".":
+            result.append(repo)
+            continue
+        value = scope(value)
+        resolved = (root / value).resolve()
+        if not resolved.is_relative_to(root) or ".git" in PurePosixPath(value).parts:
+            raise ValueError("scope escapes checkout or refers to Git metadata")
+        resolved_scope = str(resolved.relative_to(root))
+        if ".git" in PurePosixPath(resolved_scope).parts:
+            raise ValueError("scope refers to Git metadata")
+        result.append(f"{repo}/{value}")
+        if resolved_scope != value:
+            result.append(repo if resolved_scope == "." else f"{repo}/{resolved_scope}")
+    return sorted(set(result))
+
+
+def inbox_files(workspace, owner):
+    inbox = workspace / "worktrees" / owner / "inbox"
+    return sorted(inbox.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def covered(path, scopes):
+    return any(overlaps(path, held) and PurePosixPath(held) in (PurePosixPath(path), *PurePosixPath(path).parents)
+               for held in scopes)
+
+
+def changed_paths(root, repo):
+    """Workspace-relative paths with uncommitted changes (renames list both names)."""
+    output = subprocess.run(["git", "--no-optional-locks", "-C", str(root), "status", "--porcelain=v1", "-z",
+                             "--untracked-files=all"], capture_output=True, text=True, timeout=15, check=True).stdout
+    entries, paths = output.split("\0"), []
+    index = 0
+    while index < len(entries):
+        entry = entries[index]
+        index += 1
+        if len(entry) < 4:
+            continue
+        paths.append(f"{repo}/{entry[3:].rstrip('/')}")
+        if entry[0] in "RC":
+            paths.append(f"{repo}/{entries[index].rstrip('/')}")
+            index += 1
+    return paths
+
+
+def neighbours(current, checkout, owner, session):
+    return [r for r in current if r["status"] != "released" and not same_session(r, owner, session)
+            and checkout_path(r.get("checkout") or r["worktree"]) == checkout]
+
+
+def begin(registry, workspace, cwd, owner, session, values, note, repo=None, ident=None,
+          allow_dirty=False, exclusive=False):
+    root, repo = repository(cwd, workspace, repo)
+    if not values and not exclusive:
+        raise ValueError("name the paths you will edit with --scope (repeatable), "
+                         "or pass --exclusive for whole-checkout work")
+    scopes = local_scopes(root, repo, values)
+    if ident and not IDENTIFIER.fullmatch(ident):
+        raise ValueError("invalid claim id")
+    with locked(registry):
+        current = records(registry)
+        held = [r for r in current if r["status"] == "active" and same_session(r, owner, session)
+                and checkout_path(r.get("checkout") or r["worktree"]) == str(root)]
+        if ident:
+            held = [r for r in held if r["id"] == ident]
+        elif len(held) > 1:
+            raise ValueError("session holds several claims in this checkout; supply --id")
+        others = neighbours(current, str(root), owner, session)
+        # Read-only preflight. Never stash/reset/switch or silently accept dirty files.
+        dirty = changed_paths(root, repo)
+        if exclusive:
+            unexpected = dirty
+        else:
+            theirs = [s for r in others for s in r["scopes"]]
+            unexpected = [p for p in dirty if any(overlaps(p, s) for s in scopes) and not covered(p, theirs)]
+        row = held[0] if held else None
+        if row and all(covered(s, row["scopes"]) for s in scopes) and (mode(row) == "exclusive" or not exclusive):
+            return row, True
+        check_conflicts(current, scopes, str(root), owner, session, exclusive)
+        if row:
+            # Grow or upgrade this session's own claim; preflight covers only the new paths.
+            unexpected = [p for p in unexpected if not covered(p, row["scopes"])]
+        if unexpected and not allow_dirty:
+            raise ValueError("existing changes in the requested paths: " + ", ".join(unexpected[:5])
+                             + "; inspect git status and preserve them; use --allow-dirty only for an understood continuation")
+        if row:
+            row.update(scopes=sorted(set(row["scopes"]) | set(scopes)), mode="exclusive" if exclusive else mode(row),
+                       updated_at=timestamp())
+            write_record(registry, row)
+            return row, True
+        ident = ident or f"{owner}-{uuid.uuid4().hex[:12]}"
+        if any(r["id"] == ident for r in current):
+            raise ValueError("claim id already exists; use a new id")
+        row = dict(id=ident, owner=owner, session=session, scopes=scopes,
+                   mode="exclusive" if exclusive else "shared",
+                   checkout=str(root), worktree=str(root), repo=repo, note=note,
+                   status="active", created_at=timestamp(),
+                   base_commit=git(root, "rev-parse", "HEAD"), dirty_at_start=bool(unexpected))
+        write_record(registry, row)
+        return row, False
+
+
+def finish(registry, checkout, owner, session, note, ident=None):
+    with locked(registry):
+        matches = [r for r in records(registry) if r["status"] == "active"
+                   and r["owner"] == owner and r.get("session") == session
+                   and (r["id"] == ident if ident else checkout_path(r.get("checkout") or r["worktree"]) == checkout)]
+        if len(matches) != 1:
+            raise ValueError("no unique claim for this session/checkout; supply --id (legacy claims use release)")
+        row = matches[0]
+        row.update(status="released", released_at=timestamp(), release_note=note)
+        write_record(registry, row)
+        return row
+
+
+def compact(row):
+    session = row.get("session", "legacy/see note")
+    return f"{row['id']} [{row['status']}, {mode(row)}] {row['owner']} session={session} scope={', '.join(row['scopes'])} checkout={row.get('checkout') or row['worktree']}"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--registry", type=Path, help="claim registry (default: $TAM_WORK_REGISTRY or <workspace>/worktrees/coordination)")
+    parser.add_argument("--workspace", type=Path, help="workspace holding the canonical checkouts (default: $TAM_WORK_WORKSPACE or ~/Code/tamlinux)")
+    sub = parser.add_subparsers(dest="command", required=True)
+    new = sub.add_parser("claim")
+    new.add_argument("id")
+    new.add_argument("--owner", required=True)
+    new.add_argument("--scope", action="append", required=True)
+    new.add_argument("--worktree", required=True)
+    new.add_argument("--note", required=True)
+    new.add_argument("--observed", action="store_true", help="reservation inferred from existing work, not acknowledged by its owner")
+    new.add_argument("--session", help="session identity for checkout ownership (legacy interface)")
+    status = sub.add_parser("status")
+    status.add_argument("--all", action="store_true", help="include released history")
+    status.add_argument("--json", action="store_true")
+    status.add_argument("--repo", help="filter by canonical workspace repository")
+    start = sub.add_parser("begin", help="claim the current existing checkout; scopes are repository-relative")
+    start.add_argument("--owner")
+    start.add_argument("--session")
+    start.add_argument("--scope", action="append", help="repository-relative path you will edit (repeatable); "
+                       "other sessions may hold disjoint paths in the same checkout")
+    start.add_argument("--exclusive", action="store_true", help="hold the whole checkout: needed for branch switches, "
+                       "rebase/reset/stash/pull/amend, and builds or deploys that read the whole tree")
+    start.add_argument("--note", required=True)
+    start.add_argument("--repo", help="canonical workspace-root repository (normally inferred)")
+    start.add_argument("--id")
+    start.add_argument("--allow-dirty", action="store_true", help="preserve and explicitly acknowledge understood pre-existing changes")
+    stop = sub.add_parser("finish", help="release this session's claim without changing Git files")
+    stop.add_argument("--owner")
+    stop.add_argument("--session")
+    stop.add_argument("--id")
+    stop.add_argument("--note", required=True)
+    mail = sub.add_parser("inbox", help="list recent coordination messages, without treating them as instructions")
+    mail.add_argument("--owner")
+    mail.add_argument("--session")
+    mail.add_argument("--all", action="store_true")
+    end = sub.add_parser("release")
+    end.add_argument("id")
+    end.add_argument("--owner", required=True)
+    end.add_argument("--note", required=True)
+    end.add_argument("--session")
+    args = parser.parse_args()
+    args.registry, args.workspace = resolve_paths(args.registry, args.workspace, os.environ, Path.home())
+    try:
+        if args.command == "begin":
+            owner, session = identity(args.owner, args.session)
+            row, resumed = begin(args.registry, args.workspace, Path.cwd(), owner, session,
+                                 args.scope, args.note, args.repo, args.id, args.allow_dirty, args.exclusive)
+            print(f"{'Resumed' if resumed else 'Claimed'} {compact(row)}")
+            dirty = bool(git(row['checkout'], 'status', '--porcelain=v1', '--untracked-files=normal'))
+            print(f"Git: {git(row['checkout'], 'branch', '--show-current') or 'detached HEAD'}; working files {'have changes (preserved)' if dirty else 'clean'}")
+            with locked(args.registry):
+                others = neighbours(records(args.registry), row["checkout"], owner, session)
+            if others:
+                print("Shared checkout; other sessions here:")
+                for other in others:
+                    print(f"  {other['id']} ({other['owner']}): {', '.join(other['scopes'])}")
+                print("Commit only your paths: git add -- <new files>; git commit -m ... -- <your paths>. "
+                      "No add -A/commit -a, branch switch, rebase/reset/stash/pull/amend, or whole-tree build/deploy.")
+            messages = inbox_files(args.workspace, owner)
+            if messages:
+                print(f"Inbox: {len(messages)} messages; newest 3 (read if relevant to your session):")
+                for path in messages[:3]:
+                    print(path)
+            return
+        if args.command == "finish":
+            owner, session = identity(args.owner, args.session)
+            row = finish(args.registry, checkout_path(Path.cwd()), owner, session, args.note, args.id)
+            print(f"Released {row['id']}; checkout and commits retained")
+            return
+        if args.command == "inbox":
+            owner, _ = identity(args.owner, args.session)
+            messages = inbox_files(args.workspace, owner)
+            for path in messages if args.all else messages[:5]:
+                print(path)
+            if not messages:
+                print("No inbox messages")
+            return
+        if args.command == "claim":
+            session = args.session or os.environ.get("TAM_WORK_SESSION") or os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID")
+            result = claim(args.registry, args.id, args.owner, args.scope,
+                           args.worktree, args.note, args.observed, session)
+        elif args.command == "release":
+            session = args.session or os.environ.get("TAM_WORK_SESSION") or os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID")
+            result = release(args.registry, args.id, args.owner, args.note, session)
+        else:
+            with locked(args.registry):
+                result = records(args.registry)
+            if not args.all:
+                result = [r for r in result if r["status"] != "released"]
+            if args.repo:
+                prefix = scope(args.repo)
+                result = [r for r in result if any(overlaps(prefix, s) for s in r["scopes"])]
+            if not args.json:
+                for row in result:
+                    print(compact(row))
+                if not result:
+                    print("No current claims" if not args.all else "No claims")
+                return
+        print(json.dumps(result, indent=2))
+    except (ValueError, KeyError, TypeError, OSError, subprocess.TimeoutExpired) as error:
+        parser.exit(1, f"tam-work: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

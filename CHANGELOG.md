@@ -8,6 +8,18 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`tam-work` for shared checkouts** (2026-10-09). The command that lets
+  several sessions, people or AI agents, work in the same Git checkouts
+  without overwriting each other is now part of Tamlinux, in
+  [`commands/tam-work/`](commands/tam-work/README.md). Sessions claim the
+  paths they will edit and overlapping claims are refused.
+  `TAM_WORK_WORKSPACE` and `TAM_WORK_REGISTRY` override the default
+  workspace (`~/Code/tamlinux`) and claim registry
+  (`<workspace>/worktrees/coordination`). `make check` runs its tests and
+  `make install` honours `PREFIX` and `DESTDIR`.
+
 ### Changed
 
 - **Every accepted step is a version** (2026-10-05). The minor version names
