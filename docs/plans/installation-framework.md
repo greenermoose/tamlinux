@@ -99,7 +99,6 @@ host kernel or native package database.
 
 ```text
 tamlinux/
-  bin/tam                      # command entry point
   flake.nix                    # workstation package for existing distributions
   installer/                   # inspect, plan, apply, verify orchestration
   host-adapters/arch/          # native host adapter (PKGBUILD) for Arch
@@ -108,9 +107,13 @@ tamlinux/
   profiles/void/               # first target base adapter, native xbps-src
   profiles/antix/              # fallback base adapter
   manifests/                   # source and package versions/owners
-  knowledge/                   # offline command and onboarding content
   docs/plans/                  # decisions, milestones, evidence
 ```
+
+The separate `tam` component repository owns command source and bundled
+offline knowledge. The workstation package consumes pinned `tam` and
+`libtam` inputs instead of duplicating their source here. The `tam install`
+entry point delegates to this product's installation framework.
 
 This is a proposed structure, not an implemented installer. Do not copy
 third-party source trees into the repository when pinned maintained inputs
