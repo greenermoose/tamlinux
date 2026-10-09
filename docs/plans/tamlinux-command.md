@@ -9,11 +9,13 @@ profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
 **Status:** First command slice approved by Fred on 2026-09-23;
-local component repository scaffold prepared on 2026-10-08; command
-implementation has not started. The command was named `tam` on 2026-10-07;
-the package/data namespace remains `tamlinux`. Later slices remain proposals.
-The approved first slice can develop independently and feeds 0.7 packaging;
-it does not block settings/menu/theme ownership or Omarchy removal.
+local component repository scaffold prepared on 2026-10-08; the command
+foundation (bare introduction, `--help`, `--version`, argument errors) was
+implemented and installed locally as `tam 0.0.1` on 2026-10-09. The command was
+named `tam` on 2026-10-07; the package/data namespace remains `tamlinux`.
+Browsing, orientation, explanation and installation remain proposals. The
+approved first slice can develop independently and feeds 0.7 packaging; it does
+not block settings/menu/theme ownership or Omarchy removal.
 
 ## Purpose
 
@@ -31,7 +33,7 @@ framework; `libtam` remains a separate dependency.
 | Command | First behavior |
 | :-- | :-- |
 | `tam --help` | Show available commands and where to start. |
-| `tam --version` | Read the product version from installed metadata; label command version separately if it differs. |
+| `tam --version` | Read the cultivar version from installed metadata; label command version separately if it differs. |
 | `tam install ...` | Delegate to the installation contract in [the installation plan](installation-framework.md). |
 | `tam` | Print a concise introduction and available starting points, then exit successfully. |
 | `tam browse` | Explicitly open the local guide; print a readable text index when output is piped. |
@@ -108,5 +110,16 @@ interactive browsing when installed; plain-text help must work without it.
   automatic welcome/guide behavior of bare invocation. Implementation uses C
   with `libtam`; the separate local `tam` component repository contains the
   command development plan and scaffold.
+- **2026-10-09:** Command foundation implemented (`tam 0.0.1`): bare
+  introduction, `--help`, `--version` and argument errors, built with GNU Make
+  and `cc` against an installed `libtam`, and installed to `/usr/local/bin`.
+  `--version` reports the separate command version, the `libtam` version, and
+  the installed cultivar version from `~/.config/tamlinux/version`. Toolchain
+  options and the cultivar packaging path are recorded in the
+  [`tam` C toolchain report](../../improvements-fred-tamlinux/reports/2026-10-09-tam-c-toolchain-and-build.md).
+- **2026-10-09:** Fred set the terminology for the whole-release identity: it
+  is a **cultivar**. Grown versions will carry a cultivar *name* and a version
+  number (e.g. "Tamlinux cultivar blue sparkler 1.0.0"); no name exists yet, so
+  `tam --version` prints "Tamlinux cultivar <version>".
 - **Still open:** The later compound-command `explain`, `ai`, and `config`
   expansions need their own review before implementation.
