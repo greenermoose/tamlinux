@@ -1,10 +1,13 @@
 # Compositor protocol layer
 
-**Status — 2026-10-09:** milestone B's daily logger and durable evidence collector
-are developed and verified in isolation; daily Test deployment is being prepared.
-Development tests do not establish the 14-day period. Milestone A and product
-step 0.4.0 were completed on 2026-10-08. Fred accepted the approach, schedule,
-acceptance period and display-power boundary on 2026-10-08.
+**Status — 2026-10-09:** milestone B is deployed in daily shadow Test from
+`a0d7737`, with agreeing records being archived. The current observation period
+starts at **2026-10-09 12:41:35 UTC**. All 409 desktop and 494 workstation
+configuration tests passed; daily panel checks passed on three displays with
+the eight plugin payloads and preferences unchanged. Fred's 0.4.1 acceptance
+is pending; the accepted product version remains 0.4.0. Milestone C still
+requires 14 consecutive days and three of every required event. Fred accepted
+the approach, schedule, period and display-power boundary on 2026-10-08.
 
 The shell gets its compositor facts from standard Wayland protocols wherever
 a protocol exists. Compositor IPC fills only the remaining gaps. The shared

@@ -43,6 +43,18 @@ overlapping entries. Readiness is evidence for Fred, not milestone acceptance.
   records. A separate correction decodes bounded UTF-8 byte arrays and tests
   valid and invalid encodings. The 409-test rerun passed. The corrected
   collector changes the trial identity and starts a fresh observation period.
-- Daily deployment and initial comparison evidence will be recorded after
-  activating the committed candidate. These development checks do not count
-  as physical event coverage or the 14-day observation period.
+- **Commits**: initial development `fa540bb`; collector correction and deployed
+  candidate `a0d7737`. Deployment/provenance documentation follows separately.
+- The corrected candidate is deployed in daily shadow Test. The first equal
+  production comparison is **2026-10-09 12:41:35 UTC**. Minute heartbeats and
+  the scheduled collector are active; initial records have no differences,
+  missing sequences or unexplained gaps. All six event counts remain zero.
+- The live passive/panel checker passed 161 checks on three outputs. All eight
+  plugin store paths and file digests, layout and preferences match the saved
+  baseline. Three checker warnings were present before deployment; a fourth,
+  startup CPU warning, was followed by a settled five-second sample of 0.60%.
+- The accepted 0.4.0 generation remains the rollback target and the normal
+  shell pin is unchanged. A committed configuration snapshot excluded unrelated
+  working changes from the activation. No public push, release or milestone
+  acceptance occurred. The accepted version remains 0.4.0; Fred's acceptance
+  of this Test candidate and the event-covered 14-day period are pending.
