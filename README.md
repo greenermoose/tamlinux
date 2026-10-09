@@ -20,25 +20,26 @@ Quickshell, and Omarchy.
 
 ## What Tamlinux is
 
-Tamlinux is a resource-efficient, high-performance workstation environment
-for Linux. Its purpose is a responsive, reliable, accessible daily experience
-that gets the most from hardware that already exists:
-desktop systems, mini PCs, and laptops that have decades of useful life.
+Tamlinux is a resource-efficient, high-performance, AI-ready user interface
+for laptop and desktop computers running Linux. Its goal is to be is a responsive,
+reliable, accessible daily experience that gets the most from desktop systems,
+mini PCs, and laptops that can be kept in delightful, productive use for decades.
 
 *Tam* can mean **tamarack**, **total addressable market**, or **the absolute
 max**. Like the tamarack's needles, Tamlinux sheds old packages to make room
 for new while the project continues improving. We are moving from Omarchy toward an
 installation package that turns an existing Linux distribution into a lean,
-high-efficiency workstation environment, and then ultimately a system grafted
-onto a minimal Void base, with antiX Core as the fallback if Void has a
-showstopper. The aim is a sustainable workstation environment that runs well
-on a wide variety of hardware.
+ergonomic workstation environment, and then ultimately a package ("cultivar") grafted
+onto a minimal Void base ("root-stock"), with antiX Core as the fallback if Void has a
+showstopper. The aim is a sustainable, feature-complete workstation environment that
+runs well on a wide variety of hardware.
 
-Simplifying and minimizing resource use is not merely an accommodation for
-older computers: it is a virtue. Removing bloat, resident daemons, and polling
-loops allows Linux to run faster and use less energy on modern hardware, too.
-On older hardware, it keeps viable machines in service; on modern hardware, it
-unlocks blistering speed, cooler operation, and lower energy consumption.
+Simplifying and minimizing resource use not merely accommodates older computers:
+it is a virtue. Removing bloat, resident daemons, and polling loops allows Linux
+to run faster and use less power on modern hardware, too.  On older hardware, it
+keeps machines in service; on modern hardware, it unlocks blistering speed,
+cooler operation, and lower resource consumption to extend the life of components
+with finite cycle counts, such as battery cells and non-volatile memory chips.
 
 Arch's rolling updates, AntiX's non-systemd efficiency and hardware longevity,
 and Nix's atomic package rollbacks are core technical inspirations. Wayland
@@ -121,7 +122,7 @@ faster on the computer you already have.
 
 At the same time, simplifying and minimizing resource consumption delivers
 immediate gains on modern hardware: lower energy use, cooler and quieter
-thermals, extended battery runtimes, and reduced idle draw. We borrow the
+thermals, extended battery runtimes, and longer component life. We borrow the
 rolling update philosophy from Arch Linux so that systems remain continuously
 maintained and fresh without disruptive whole-OS re-install cycles, alongside
 AntiX Linux's dedicated focus on running efficiently on older hardware without
@@ -129,18 +130,18 @@ systemd overhead.
 
 A single desktop across a personal fleet — same keybindings, same package
 habits, same shell — removes the maintenance tax of fragmented, end-of-life
-operating systems. Energy efficiency is a design brief, not a review
+operating systems. System efficiency is a design brief, not a review
 afterthought: no polling loops, no resident daemons, no chores that need
 babysitting.
 
 When a machine becomes unusable, most operating systems cannot tell hardware
-failure from software rot. Tamlinux aims for introspection: the desktop
-should help diagnose and repair itself.
+failure from software rot. Tamlinux allows introspection: the software can
+help diagnose and repair itself.
 
 ## Values
 
 - **Hardware longevity & broad compatibility.** Keep existing computers useful
-  and secure, running across a wide variety of hardware.
+  for longer, running across a wide variety of hardware.
 - **Resource minimization & energy efficiency.** Simplifying and minimizing
   resource use makes modern hardware run faster and cooler while extending the
   life of older devices. Event-driven, bounded, self-reporting work with no
