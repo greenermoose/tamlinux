@@ -23,7 +23,7 @@ Panel {
   ipcTarget: "fred.clock"
   manageIpc: false
 
-  readonly property string pluginVersion: "2.0.0"
+  readonly property string pluginVersion: "2.0.2"
 
   property var anchorItem: null
 
@@ -138,7 +138,7 @@ Panel {
 
   FileView {
     id: eventsCache
-    path: Quickshell.env("HOME") + "/.cache/fred.clock/events.json"
+    path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/tamlinux/clock/events.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
@@ -1630,19 +1630,9 @@ Panel {
           }
 
           // ---------- Version Footer ----------
-          Item {
-            width: parent.width
-            height: Style.space(22)
-
-            Text {
-              anchors.centerIn: parent
-              textFormat: Text.PlainText
-              text: "fred.clock v" + root.pluginVersion
-              color: root.contentForeground
-              opacity: 0.45
-              font.family: root.contentFontFamily
-              font.pixelSize: Style.font.caption
-            }
+          VersionFooter {
+            bar: root.bar
+            text: "fred.clock v" + root.pluginVersion
           }
         }
       }

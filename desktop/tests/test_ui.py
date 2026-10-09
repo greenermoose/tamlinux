@@ -90,7 +90,7 @@ class ActionBoundaryTests(unittest.TestCase):
         names = (
             "Border.qml", "BarIconButton.qml", "BorderSurface.qml", "CursorSurface.qml",
             "Dropdown.qml", "PanelHero.qml", "PanelSectionHeader.qml", "PanelSlider.qml",
-            "ToggleSwitch.qml",
+            "ToggleSwitch.qml", "VersionFooter.qml",
         )
         for name in names:
             matches = list(DESKTOP.rglob(name))

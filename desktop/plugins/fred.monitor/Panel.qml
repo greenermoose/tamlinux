@@ -1718,19 +1718,9 @@ Panel {
           }
 
           // ---------- Version Footer ----------
-          Item {
-            width: parent.width
-            height: Style.space(22)
-
-            Text {
-              anchors.centerIn: parent
-              textFormat: Text.PlainText
-              text: "fred.monitor v" + root.pluginVersion
-              color: root.bar ? root.bar.foreground : Color.foreground
-              opacity: 0.45
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.caption
-            }
+          VersionFooter {
+            bar: root.bar
+            text: "fred.monitor v" + root.pluginVersion
           }
         }
       }

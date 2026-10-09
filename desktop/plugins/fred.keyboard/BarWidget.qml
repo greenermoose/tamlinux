@@ -43,7 +43,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "2.0.0"
+  readonly property string pluginVersion: "2.0.1"
   readonly property string repoUrl: "https://github.com/greenermoose/keyboard-fred-tamlinux"
 
   // Closed environment: only these names reach a child process.
@@ -480,34 +480,11 @@ Panel {
 
         // Version footer, centred like the rest of the suite; clicking it
         // opens the plugin's public repository.
-        Item {
-          width: parent.width
-          height: Style.space(22)
-
-          Text {
-            id: footer
-            anchors.centerIn: parent
-            textFormat: Text.PlainText
-            text: "fred.keyboard v" + root.pluginVersion
-            color: root.bar.foreground
-            opacity: footerHover.containsMouse ? 0.9 : 0.45
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.caption
-            font.underline: footerHover.containsMouse
-
-            MouseArea {
-              id: footerHover
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.openRepo()
-            }
-
-            PanelToolTip {
-              visible: footerHover.containsMouse
-              text: root.repoUrl
-            }
-          }
+        VersionFooter {
+          bar: root.bar
+          text: "fred.keyboard v" + root.pluginVersion
+          clickable: true
+          onClicked: root.openRepo()
         }
       }
 

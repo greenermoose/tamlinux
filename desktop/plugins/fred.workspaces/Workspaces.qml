@@ -10,7 +10,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.1"
+  readonly property string pluginVersion: "2.0.3"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -24,8 +24,9 @@ BarWidget {
 
   // Per-monitor idle blanking of unused monitors (Plan 08)
   // Timeout in seconds. 0 disables per-monitor blanking.
+  property int ownedUnusedMonitorTimeout: 300
   readonly property int unusedMonitorTimeout: {
-    var raw = root.setting("unusedMonitorTimeout", 300)
+    var raw = root.setting("unusedMonitorTimeout", root.ownedUnusedMonitorTimeout)
     if (typeof raw === "number") return Math.max(0, raw)
     var num = parseInt(raw, 10)
     return isNaN(num) ? 300 : Math.max(0, num)
@@ -47,18 +48,18 @@ BarWidget {
 
   readonly property string modePath: {
     var stateHome = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
-    return stateHome + "/omarchy/desktop-mode"
+    return stateHome + "/tamlinux/desktop-mode"
   }
   readonly property string monitorsPath: {
     var stateHome = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
-    return stateHome + "/omarchy/desktop-monitors"
+    return stateHome + "/tamlinux/desktop-monitors"
   }
   readonly property string canonicalHelperPath: {
     var resolved = String(Qt.resolvedUrl("tam-desktop-mode"))
     if (resolved.indexOf("file://") === 0) {
       return decodeURIComponent(resolved.substring(7))
     }
-    return Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.workspaces/tam-desktop-mode"
+    return ""
   }
   readonly property var processEnv: {
     var env = {
@@ -78,6 +79,11 @@ BarWidget {
     if (commands) env["TAMLINUX_COMPOSITOR_COMMANDS"] = commands
     var live = Quickshell.env("TAMLINUX_COMPOSITOR_LIVE_ACTIONS")
     if (live) env["TAMLINUX_COMPOSITOR_LIVE_ACTIONS"] = live
+    for (var key of ["LEFT_MONITOR", "RIGHT_MONITOR", "TOPOLOGY", "UNUSED_MONITOR_TIMEOUT"]) {
+      var name = "TAMLINUX_DESKTOP_" + key
+      var value = Quickshell.env(name)
+      if (value) env[name] = value
+    }
     return env
   }
 
@@ -1036,6 +1042,30 @@ BarWidget {
     onExited: statusWatchdog.stop()
   }
 
+  FileView {
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/desktop-mode.conf"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: if (!preferencesProcess.running) preferencesProcess.running = true
+  }
+
+  Process {
+    id: preferencesProcess
+    command: [root.canonicalHelperPath, "preferences"]
+    clearEnvironment: true
+    environment: root.processEnv
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (text.length > 256) return
+        try {
+          var prefs = JSON.parse(text)
+          if (typeof prefs.unusedMonitorTimeout === "number") root.ownedUnusedMonitorTimeout = Math.max(0, prefs.unusedMonitorTimeout)
+        } catch (error) {}
+      }
+    }
+  }
+
   Timer {
     id: statusWatchdog
     interval: 2000
@@ -1054,7 +1084,10 @@ BarWidget {
     running: true
     repeat: true
     triggeredOnStart: true
-    onTriggered: if (!modeStatusProcess.running) modeStatusProcess.running = true
+    onTriggered: {
+      if (!modeStatusProcess.running) modeStatusProcess.running = true
+      if (!preferencesProcess.running) preferencesProcess.running = true
+    }
   }
 
   GridLayout {

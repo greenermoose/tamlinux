@@ -14,7 +14,7 @@ Panel {
   ipcTarget: "fred.sysinfo"
   manageIpc: false
 
-  readonly property string pluginVersion: "2.0.0"
+  readonly property string pluginVersion: "2.0.2"
 
   property var stats: ({})
   property int phraseIndex: 0
@@ -36,7 +36,7 @@ Panel {
     if (resolved.indexOf("file://") === 0) {
       return decodeURIComponent(resolved.substring(7))
     }
-    return Quickshell.env("HOME") + "/.config/omarchy/plugins/fred.sysinfo/sysinfo-probe.py"
+    return ""
   }
 
   readonly property var processEnv: ({
@@ -650,19 +650,9 @@ Panel {
           }
 
           // ---------- Section 7: Version Footer ----------
-          Item {
-            width: parent.width
-            height: Style.space(22)
-
-            Text {
-              anchors.centerIn: parent
-              textFormat: Text.PlainText
-              text: "fred.sysinfo v" + root.pluginVersion
-              color: root.bar.foreground
-              opacity: 0.45
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-            }
+          VersionFooter {
+            bar: root.bar
+            text: "fred.sysinfo v" + root.pluginVersion
           }
         }
       }

@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "id": "fred.tides",
   "name": "Tides",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "author": "Fred (@greenermoose)",
   "license": "GPL-3.0-or-later",
-  "repository": "https://github.com/greenermoose/tamlinux.git",
-  "homepage": "https://github.com/greenermoose/tamlinux",
+  "repository": "https://github.com/greenermoose/tides-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/tides-fred-tamlinux",
   "description": "Multi-monitor tide widget with current sea level, 24-hour scrubbable curve, and high/low tide timeline",
   "kinds": [
     "bar-widget"

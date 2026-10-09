@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "2.0.0"
+  property string pluginVersion: "2.0.2"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -168,7 +168,7 @@ Panel {
   property bool cacheWriteInFlight: false
 
   readonly property string weatherCacheDir: (Quickshell.env("XDG_CACHE_HOME")
-    || Quickshell.env("HOME") + "/.cache") + "/fred.weather"
+    || Quickshell.env("HOME") + "/.cache") + "/tamlinux/weather"
   readonly property string weatherCachePath: weatherCacheDir + "/weather-cache.json"
 
   function initializeWeather() {
@@ -454,7 +454,7 @@ Panel {
 
   FileView {
     id: locationFile
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/tamlinux/settings/weather.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
@@ -1140,19 +1140,9 @@ Panel {
         }
 
         // 6. Section: Centered Version Footer
-        Item {
-          width: parent.width
-          height: Style.space(24)
-
-          Text {
-            anchors.centerIn: parent
-            textFormat: Text.PlainText
-            text: "fred.weather v" + root.pluginVersion
-            color: root.foreground
-            opacity: 0.45
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
+        VersionFooter {
+          bar: root.bar
+          text: "fred.weather v" + root.pluginVersion
         }
       }
     }

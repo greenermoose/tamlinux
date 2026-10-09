@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "id": "fred.workspaces",
   "name": "Workspaces with Desktop Mode",
-  "version": "2.0.1",
+  "version": "2.0.3",
   "author": "Fred (@greenermoose)",
   "description": "Workspace numbers with clickable desktop modes, dynamic Windows sets, and unused monitor idle blanking",
-  "repository": "https://github.com/greenermoose/tamlinux.git",
-  "homepage": "https://github.com/greenermoose/tamlinux",
+  "repository": "https://github.com/greenermoose/workspaces-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/workspaces-fred-tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"

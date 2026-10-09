@@ -291,6 +291,15 @@ class BarWindowTests(unittest.TestCase):
         self.assertIn('=== "1" ? ExclusionMode.Auto : ExclusionMode.Ignore', text)
         self.assertNotIn("ExclusionMode.Normal", text)
 
+    def test_tooltip_overlay_structure_and_version_footer(self):
+        text = (DESKTOP / "shell" / "host" / "BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn("parsedTooltip", text)
+        self.assertIn("tipLabel", text)
+        self.assertIn("tipFooterLabel", text)
+        self.assertIn("Style.font.caption", text)
+        self.assertIn("opacity: 0.45", text)
+        self.assertIn("horizontalAlignment: Text.AlignHCenter", text)
+
 
 class AdapterTests(unittest.TestCase):
     def test_patch_matches_generator_and_drops_omarchy_routes(self):

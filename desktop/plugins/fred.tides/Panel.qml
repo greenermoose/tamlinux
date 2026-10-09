@@ -16,7 +16,7 @@ Panel {
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "2.0.0"
+  property string pluginVersion: "2.0.2"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
   property string numberFontFamily: (root.settings && root.settings.numberFontFamily)
@@ -172,8 +172,8 @@ Panel {
   }
 
   // --- Location Management -------------------------------------------------
-  readonly property string tidesLocationPath: Quickshell.env("HOME") + "/.local/state/omarchy/settings/tides.json"
-  readonly property string cacheFilePath: Quickshell.env("HOME") + "/.cache/fred.tides/cache.json"
+  readonly property string tidesLocationPath: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/tamlinux/settings/tides.json"
+  readonly property string cacheFilePath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/tamlinux/tides/cache.json"
 
   property var weatherLocationState: ({ name: "", latitude: null, longitude: null, unit: "m" })
   property var tidesLocationState: ({ name: "", latitude: null, longitude: null, unit: "m" })
@@ -191,7 +191,7 @@ Panel {
   }
 
   property FileView weatherLocationFile: FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/tamlinux/settings/weather.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
@@ -223,7 +223,7 @@ Panel {
   property string weatherRegion: ""
 
   property FileView weatherCacheFile: FileView {
-    path: Quickshell.env("HOME") + "/.cache/fred.weather/weather-cache.json"
+    path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/tamlinux/weather/weather-cache.json"
     watchChanges: false
     printErrors: false
     onLoaded: {
@@ -307,7 +307,7 @@ Panel {
 
   function persistLocation(name, latitude, longitude, unit, region) {
     locationSaveProc.command = ["bash", "-c",
-      "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "_",
+      "umask 077; mkdir -p \"$(dirname \"$1\")\" && tmp=$(mktemp \"$1.XXXXXX\") && printf '%s' \"$2\" > \"$tmp\" && mv \"$tmp\" \"$1\"", "_",
       root.tidesLocationPath, Model.locationFileContents(name, latitude, longitude, unit, region)]
     locationSaveProc.running = true
   }
@@ -1168,19 +1168,10 @@ Panel {
           }
         }
 
-        // ---- Version & Attribution Footer ----------------------------------
-        Item {
-          width: parent.width
-          height: Style.space(18)
-
-          Text {
-            anchors.centerIn: parent
-            text: "fred.tides v" + root.pluginVersion + " • Open-Meteo Marine"
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            color: root.bar ? root.bar.foreground : Color.popups.text
-            opacity: 0.4
-          }
+        // ---- Version Footer ------------------------------------------------
+        VersionFooter {
+          bar: root.bar
+          text: "fred.tides v" + root.pluginVersion
         }
       }
     }

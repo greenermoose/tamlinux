@@ -17,6 +17,18 @@ PanelWindow {
   signal clockReady(var widget)
 
   property string tooltipText: ""
+  readonly property var parsedTooltip: {
+    var raw = win.tooltipText || ""
+    if (!raw) return { body: "", footer: "" }
+    var m = String(raw).match(/^([\s\S]*?)(?:\r?\n\s*)*\r?\n(fred\.[a-z0-9_.-]+\s+v\S+.*)$/i)
+    if (m) {
+      return {
+        body: m[1].replace(/\s+$/, ""),
+        footer: m[2].trim()
+      }
+    }
+    return { body: raw, footer: "" }
+  }
   // The hovered item's center along the bar; the tooltip centers on it and
   // is kept a gap inside both screen edges, as Omarchy's bar does.
   property real tooltipCenterX: 0
@@ -248,16 +260,36 @@ PanelWindow {
     margins.top: win.atBottom ? 0 : win.implicitHeight + Style.space(6)
     margins.bottom: win.atBottom ? win.implicitHeight + Style.space(6) : 0
     margins.left: Math.round(win.tooltipX)
-    implicitWidth: tipLabel.implicitWidth + Style.spacing.controlPaddingX * 2
-    implicitHeight: tipLabel.implicitHeight + Style.spacing.controlPaddingY * 2
+    implicitWidth: tipContent.implicitWidth + Style.spacing.controlPaddingX * 2
+    implicitHeight: tipContent.implicitHeight + Style.spacing.controlPaddingY * 2
 
-    Text {
-      id: tipLabel
+    Column {
+      id: tipContent
       anchors.centerIn: parent
-      text: win.tooltipText
-      color: Color.tooltip.text
-      font.family: Style.font.family
-      font.pixelSize: Style.font.bodySmall
+      spacing: (tipLabel.visible && tipFooterLabel.visible) ? Style.space(6) : 0
+
+      Text {
+        id: tipLabel
+        visible: text !== ""
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: win.parsedTooltip.body
+        color: Color.tooltip.text
+        font.family: Style.font.family
+        font.pixelSize: Style.font.bodySmall
+        horizontalAlignment: Text.AlignHCenter
+      }
+
+      Text {
+        id: tipFooterLabel
+        visible: text !== ""
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: win.parsedTooltip.footer
+        color: Color.tooltip.text
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        opacity: 0.45
+        horizontalAlignment: Text.AlignHCenter
+      }
     }
 
     Rectangle {

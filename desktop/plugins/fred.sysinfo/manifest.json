@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "id": "fred.sysinfo",
   "name": "System Information",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "author": "Fred (@greenermoose)",
   "description": "Comprehensive hardware monitor and system information panel (CPU, thermals, motherboard, memory, storage, I/O)",
-  "repository": "https://github.com/greenermoose/tamlinux.git",
-  "homepage": "https://github.com/greenermoose/tamlinux",
+  "repository": "https://github.com/greenermoose/sysinfo-fred-tamlinux",
+  "homepage": "https://github.com/greenermoose/sysinfo-fred-tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"

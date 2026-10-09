@@ -9,8 +9,7 @@ BarWidget {
   id: root
   moduleName: "fred.tides"
 
-  readonly property string pluginVersion: "2.0.0"
-  property bool hoverOpen: false
+  readonly property string pluginVersion: "2.0.2"
   // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
   readonly property string notificationHelper:
     (Quickshell.env("TAMLINUX_BIN") || (Quickshell.env("HOME") + "/.local/bin")) + "/tam-notification-send"
@@ -95,21 +94,13 @@ BarWidget {
     bar: root.bar
     text: panelLoader.item && panelLoader.item.label ? panelLoader.item.label : "\udb81\udf8d"
     slotSize: Style.bar.statusSlot
-    tooltipText: ""
-
-    HoverHandler {
-      id: buttonHover
-      onHoveredChanged: {
-        if (hovered) {
-          if (!root.opened) root.hoverOpen = true
-        } else {
-          root.hoverOpen = false
-        }
-      }
+    tooltipText: {
+      var lines = (panelLoader.item && panelLoader.item.hoverLines) ? panelLoader.item.hoverLines.slice() : ["Tides"]
+      lines.push("", "fred.tides v" + root.pluginVersion)
+      return lines.join("\n")
     }
 
     onPressed: function(b) {
-      root.hoverOpen = false
       if (!root.bar) return
       if (b === Qt.RightButton) {
         if (panelLoader.item && panelLoader.item.statusSummary && root.notificationHelper !== "" && !notificationProc.running) {
@@ -120,83 +111,6 @@ BarWidget {
         root.refresh()
       } else {
         root.togglePanel()
-      }
-    }
-  }
-
-  PopupWindow {
-    id: hoverPopup
-    visible: root.hoverOpen && !root.opened
-    color: "transparent"
-    implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
-    implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
-
-    anchor {
-      id: hoverAnchor
-      window: button.QsWindow.window
-      adjustment: PopupAdjustment.Slide
-      edges: Edges.Top | Edges.Left
-      gravity: Edges.Bottom | Edges.Right
-      rect.width: 1
-      rect.height: 1
-
-      onAnchoring: {
-        var barWin = button.QsWindow.window
-        if (!barWin) return
-        var popupWidth = hoverPopup.implicitWidth
-        var popupHeight = hoverPopup.implicitHeight
-        var localX = button.width / 2 - popupWidth / 2
-        var localY = button.height + 6
-        if (root.bar && root.bar.position === "bottom") {
-          localY = -popupHeight - 6
-        }
-        var point = barWin.contentItem.mapFromItem(button, localX, localY)
-        hoverAnchor.rect.x = Math.round(point.x)
-        hoverAnchor.rect.y = Math.round(point.y)
-      }
-    }
-
-    BorderSurface {
-      id: tooltipBubble
-      implicitWidth: tooltipCol.implicitWidth + Style.space(24)
-      implicitHeight: tooltipCol.implicitHeight + Style.space(16)
-      color: Color.tooltip.background
-      borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
-      radius: Style.cornerRadius
-
-      Column {
-        id: tooltipCol
-        anchors.centerIn: parent
-        spacing: Style.space(3)
-
-        Repeater {
-          model: (panelLoader.item && panelLoader.item.hoverLines) ? panelLoader.item.hoverLines : ["Tides"]
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            textFormat: Text.PlainText
-            text: modelData
-            color: Color.tooltip.text
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.font.body
-            horizontalAlignment: Text.AlignHCenter
-          }
-        }
-
-        Item {
-          width: 1
-          height: Style.space(6)
-        }
-
-        Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          textFormat: Text.PlainText
-          text: "fred.tides v" + root.pluginVersion
-          color: Color.tooltip.text
-          opacity: 0.45
-          font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignHCenter
-        }
       }
     }
   }

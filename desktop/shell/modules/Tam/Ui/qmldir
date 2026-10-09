@@ -21,4 +21,5 @@ PopupCard 1.0 PopupCard.qml
 SpeedTestOverlay 1.0 SpeedTestOverlay.qml
 TextField 1.0 TextField.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
+VersionFooter 1.0 VersionFooter.qml
 WidgetButton 1.0 WidgetButton.qml

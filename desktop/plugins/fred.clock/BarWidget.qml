@@ -15,7 +15,7 @@ BarWidget {
   id: root
   moduleName: "fred.clock"
 
-  readonly property string pluginVersion: "2.0.0"
+  readonly property string pluginVersion: "2.0.2"
 
   property date displayDate: clock.date
 
@@ -88,7 +88,7 @@ BarWidget {
 
   FileView {
     id: calendarsConfig
-    path: Quickshell.env("HOME") + "/.config/fred.clock/calendars.json"
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/clock/calendars.json"
     watchChanges: true
     printErrors: false
     onFileChanged: root.runFetch()
@@ -96,7 +96,7 @@ BarWidget {
 
   FileView {
     id: localIcsWatcher
-    path: Quickshell.env("HOME") + "/.config/fred.clock/local.ics"
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/clock/local.ics"
     watchChanges: true
     printErrors: false
     onFileChanged: root.runFetch()
@@ -104,7 +104,7 @@ BarWidget {
 
   FileView {
     id: eventsCache
-    path: Quickshell.env("HOME") + "/.cache/fred.clock/events.json"
+    path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/tamlinux/clock/events.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
