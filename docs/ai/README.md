@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-09 | The Tamlinux 0.4.1 package | Claude Code `2.1.295` | `claude-opus-5-5` | [2026-10-09-0.4.1-package.md](2026-10-09-0.4.1-package.md) |
 | 2026-10-09 | tam-deploy and tam-plugin 3.0.0 deploy packaged assemblies | Claude Code `2.1.295` | `claude-opus-5-5` | [2026-10-09-tam-deploy.md](2026-10-09-tam-deploy.md) |
 | 2026-10-09 | Lifecycle tools move into Tamlinux | Claude Code `2.1.295` | `claude-opus-5-5` | [2026-10-09-lifecycle-tools-move.md](2026-10-09-lifecycle-tools-move.md) |
 | 2026-10-09 | `tam-work` moves into Tamlinux | Claude Code `2.1.295` / agy `1.3.2` | `claude-opus-5-5` / `gemini-3.8-flash-high` | [2026-10-09-tam-work.md](2026-10-09-tam-work.md) |
