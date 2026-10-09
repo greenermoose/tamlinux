@@ -50,3 +50,19 @@ component.
   build of this branch, which runs every command's `make check` in the Nix
   sandbox. On the author's workstation `tam-plugin verify fred.clock` reports
   the installed digest recorded at the 0.4.1 acceptance.
+
+## Addendum: run modes
+
+- **Prompts**:
+  > Add the argument to tam-deploy run. But I want to be able to run any commit I see in the git graph for tamlinux-packages. Maybe you could warn if I'm attempting to run a commit that hasn't been tested yet. [...] the default tam-reploy run should be to run whatever test I'm currently on. I shouldn't have to remember or look up a commit hash. If I'm already running a main branch commit, then tam-deploy run could return a message to that effect.
+
+  > Require --untested, then implement it
+
+`run` takes an optional revision. Without one it promotes the installed Test or
+reports an installed `main` commit. With one it installs the revision if
+needed and fast-forwards `main`; a revision already on `main`, including an
+older one, moves no branch. A revision, or a component it pins, found only on
+`develop` or another branch is untested: `run` refuses it unless
+`--untested` is given, and then also moves `test` so `main` stays within
+`test`. A revision `main` cannot fast-forward to is refused. Test and Run share
+one install step. 25 tests cover each mode with real repositories.

@@ -8,9 +8,15 @@ status:       show the pinned assembly, what is installed and the generation.
 test [rev]:   pin a tamlinux-packages revision on `test` (default: its head)
               in the configuration lock, switch Home Manager, verify the
               installed paths and commit the pin.
-run:          promote the tested assembly: fast-forward `main` of each
-              component and of tamlinux-packages to the tested revisions.
-              Nothing is rebuilt; Test already installed these bytes.
+run [revision] [--untested]
+              make an assembly the daily one and move it onto `main`.
+              Without a revision, promote what is installed: a Test moves to
+              `main` (no rebuild); a `main` commit is reported as already
+              running. With a revision (any commit in the tamlinux-packages
+              history), install it if it is not installed, then
+              fast-forward `main` (and `test` for an untested commit). A
+              commit only on `develop` or another branch is untested and needs
+              --untested. Older `main` commits run without moving branches.
 back:         activate the previous generation and restore its pin.
 """
 from __future__ import annotations
@@ -243,10 +249,26 @@ class Deployment:
         if problems:
             raise DeploymentError("installed endpoints do not match the pinned assembly")
 
-    def test(self, ref: str = "origin/test") -> None:
-        revision = self.resolve(ref)
-        pins = self.components(revision)
-        self.require_on("test", revision, pins)
+    def fetch_all(self, pins: dict[str, str]) -> None:
+        for name in ["tamlinux-packages", *sorted(pins)]:
+            self.git(name, "fetch", "-q", "origin")
+
+    def stage_of(self, name: str, revision: str) -> str:
+        """The furthest-promoted branch holding a revision: main, test,
+        develop, or untracked (another branch or none)."""
+        for branch in ("main", "test", "develop"):
+            if self.on_branch(name, revision, branch):
+                return branch
+        return "untracked"
+
+    def follows_main(self, name: str, revision: str) -> bool:
+        """True when main can fast-forward to the revision."""
+        return subprocess.run(["git", "-C", str(self.repo(name)), "merge-base", "--is-ancestor",
+                               "origin/main", revision]).returncode == 0
+
+    def install(self, revision: str, pins: dict[str, str], stage: str) -> tuple[str, str]:
+        """Pin, switch and verify an assembly; on failure restore the lock
+        and the previous generation. Returns (previous generation, previous pin)."""
         self.preflight()
         previous, previous_pin = self.generation(), self.locked()
         before = self.lock.read_bytes()
@@ -264,35 +286,76 @@ class Deployment:
             raise
         generation = self.generation()
         files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
-                                                  "stage": "test", "generation": generation})
-        self.record(f"deploy: test tamlinux-packages {revision[:12]}", files)
-        self.save_state({"stage": "test", "packages": revision, "components": pins,
+                                                  "stage": stage, "generation": generation})
+        self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
+        self.save_state({"stage": stage, "packages": revision, "components": pins,
                          "generation": generation, "previousGeneration": previous,
                          "previousPin": previous_pin})
+        return previous, previous_pin
+
+    def test(self, ref: str = "origin/test") -> None:
+        revision = self.resolve(ref)
+        pins = self.components(revision)
+        self.require_on("test", revision, pins)
+        self.install(revision, pins, "test")
         self.status()
 
-    def run(self) -> None:
-        state = self.read_state()
-        revision = self.locked()
-        if state.get("stage") != "test" or state.get("packages") != revision:
-            raise DeploymentError("no deployed Test of the pinned assembly; run tam-deploy test first")
+    def run(self, ref: str | None = None, untested: bool = False) -> None:
+        installed = self.locked()
+        if ref is None:
+            revision = installed
+            self.git("tamlinux-packages", "fetch", "-q", "origin")
+        else:
+            try:
+                revision = self.resolve(ref)
+            except subprocess.CalledProcessError:
+                raise DeploymentError(f"no tamlinux-packages commit matches {ref}") from None
         pins = self.components(revision)
-        if pins != state.get("components"):
-            raise DeploymentError("assembly components differ from the tested record")
-        problems = self.verify(pins)
-        if problems:
-            raise DeploymentError("installed endpoints differ from the tested assembly:\n  " + "\n  ".join(problems))
-        self.require_on("test", revision, pins)
+        self.fetch_all(pins)
+        repos = {"tamlinux-packages": revision, **pins}
+        stages = {name: self.stage_of(name, rev) for name, rev in repos.items()}
+        needs_install = revision != installed or bool(self.verify(pins))
+
+        if all(stage == "main" for stage in stages.values()):
+            if not needs_install:
+                print(f"Already running main commit {revision}.")
+                return
+            # An older or newer main commit: install it; no branch moves.
+            self.install(revision, pins, "run")
+            print(f"Running main commit {revision}; no promotion needed.")
+            self.status()
+            return
+
+        unready = sorted(name for name, stage in stages.items() if stage in ("develop", "untracked"))
+        if unready:
+            listing = ", ".join(f"{name} {repos[name][:12]} ({stages[name]})" for name in unready)
+            if not untested:
+                raise DeploymentError(f"not tested yet: {listing}. To run it anyway, "
+                                      "rerun with --untested.")
+            print(f"warning: running untested commits: {listing}", file=sys.stderr)
+        blocked = sorted(name for name, stage in stages.items()
+                         if stage != "main" and not self.follows_main(name, repos[name]))
+        if blocked:
+            raise DeploymentError("main cannot fast-forward to: "
+                                  + ", ".join(f"{name} {repos[name][:12]}" for name in blocked))
+
+        if needs_install:
+            self.install(revision, pins, "run")
         # Components first, so main of tamlinux-packages never pins a
-        # component revision that is not on that component's main.
-        for name, rev in sorted(pins.items()):
-            self.git(name, "push", "-q", "origin", f"{rev}:refs/heads/main")
-        self.git("tamlinux-packages", "push", "-q", "origin", f"{revision}:refs/heads/main")
+        # component revision that is not on that component's main. An
+        # untested commit moves test too, keeping main within test.
+        for name in [*sorted(pins), "tamlinux-packages"]:
+            if stages[name] == "main":
+                continue
+            if stages[name] in ("develop", "untracked"):
+                self.git(name, "push", "-q", "origin", f"{repos[name]}:refs/heads/test")
+            self.git(name, "push", "-q", "origin", f"{repos[name]}:refs/heads/main")
         files = self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
                                  "stage": "run", "generation": self.generation()})
         if files:
             self.record(f"deploy: run tamlinux-packages {revision[:12]}", files)
-        self.save_state(dict(state, stage="run"))
+        self.save_state(dict(self.read_state(), stage="run", packages=revision, components=pins))
+        print(f"Promoted tamlinux-packages {revision[:12]} to main.")
         self.status()
 
     def back(self) -> None:
@@ -316,16 +379,37 @@ class Deployment:
         self.status()
 
 
+USAGE = "usage: tam-deploy status | test [revision] | run [revision] [--untested] | back"
+
+
+def parse(argv: list[str]) -> tuple[str, list, dict] | None:
+    if not argv:
+        return None
+    name, rest = argv[0], argv[1:]
+    if name in ("status", "back") and not rest:
+        return name, [], {}
+    if name == "test" and len(rest) <= 1 and not any(a.startswith("-") for a in rest):
+        return name, rest, {}
+    if name == "run":
+        flags = [a for a in rest if a.startswith("-")]
+        args = [a for a in rest if not a.startswith("-")]
+        if set(flags) <= {"--untested"} and len(args) <= 1:
+            return name, args, {"untested": "--untested" in flags}
+    return None
+
+
 def main(argv: list[str]) -> int:
     if argv in (["--help"], ["-h"]):
         print(__doc__)
         return 0
-    if argv not in (["status"], ["test"], ["run"], ["back"]) and not (len(argv) == 2 and argv[0] == "test"):
-        print("usage: tam-deploy status | test [revision] | run | back", file=sys.stderr)
+    parsed = parse(argv)
+    if parsed is None:
+        print(USAGE, file=sys.stderr)
         return 2
+    name, args, options = parsed
     try:
         deployment = Deployment()
-        getattr(deployment, argv[0])(*argv[1:])
+        getattr(deployment, name)(*args, **options)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
         print(f"tam-deploy: {exc}", file=sys.stderr)
         return 1

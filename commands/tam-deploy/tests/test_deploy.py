@@ -1,5 +1,6 @@
 import importlib.machinery
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -165,49 +166,111 @@ class TestStage(Fixture):
 
 
 class RunStage(Fixture):
-    def tested(self):
-        self.write_lock(self.packages_new, {})
-        self.app.save_state({"stage": "test", "packages": self.packages_new,
-                             "components": {"tamlinux": self.tamlinux_new},
+    def installed(self, revision, stage="test"):
+        self.write_lock(revision, {})
+        self.app.save_state({"stage": stage, "packages": revision,
                              "previousGeneration": "/nix/store/old", "previousPin": self.packages_main})
 
-    def test_promotes_components_then_assembly_without_switching(self):
-        self.tested()
-        with patch.object(self.app, "verify", return_value=[]), patch.object(self.app, "status"), \
-             patch.object(self.app, "record"), patch.object(self.app, "activate") as activate, \
-             patch.object(self.app, "generation", return_value="/nix/store/new"):
-            self.app.run()
-        activate.assert_not_called()
+    def deploy_run(self, *args, problems=(), **kwargs):
+        with patch.object(self.app, "verify", return_value=list(problems)), \
+             patch.object(self.app, "status"), patch.object(self.app, "record"), \
+             patch.object(self.app, "generation", return_value="/nix/store/new"), \
+             patch.object(self.app, "install") as install:
+            self.app.run(*args, **kwargs)
+        return install
+
+    def untested_assembly(self, *branches):
+        product = self.commit("tamlinux", "shell", "unreleased")
+        self.push("tamlinux", product, *branches)
+        assembly = self.commit("tamlinux-packages", "flake.lock", self.assembly(product))
+        self.push("tamlinux-packages", assembly, *branches)
+        return product, assembly
+
+    # tam-deploy run (no revision)
+
+    def test_promotes_the_installed_test_without_reinstalling(self):
+        self.installed(self.packages_new)
+        install = self.deploy_run()
+        install.assert_not_called()
         self.assertEqual(self.origin_head("tamlinux", "main"), self.tamlinux_new)
         self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_new)
         self.assertEqual(self.app.read_state()["stage"], "run")
 
-    def test_refuses_without_a_test_of_the_pinned_assembly(self):
-        self.write_lock(self.packages_new, {})
-        with self.assertRaisesRegex(deploy.DeploymentError, "no deployed Test"):
-            self.app.run()
-        self.tested()
-        self.write_lock(self.packages_main, {})
-        with self.assertRaisesRegex(deploy.DeploymentError, "no deployed Test"):
-            self.app.run()
+    def test_reports_an_installed_main_commit(self):
+        self.installed(self.packages_main, stage="run")
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            install = self.deploy_run()
+        install.assert_not_called()
+        self.assertIn(f"Already running main commit {self.packages_main}", out.getvalue())
         self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_main)
 
-    def test_refuses_when_the_install_changed_after_test(self):
-        self.tested()
-        with patch.object(self.app, "verify", return_value=["fred.clock resolves outside"]):
-            with self.assertRaisesRegex(deploy.DeploymentError, "differ from the tested"):
-                self.app.run()
-        self.assertEqual(self.origin_head("tamlinux", "main"), self.tamlinux_main)
+    def test_reinstalls_when_the_installation_drifted(self):
+        self.installed(self.packages_new)
+        install = self.deploy_run(problems=["fred.clock resolves outside"])
+        install.assert_called_once_with(self.packages_new, {"tamlinux": self.tamlinux_new}, "run")
+        self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_new)
+
+    # tam-deploy run <revision>
+
+    def test_unknown_revision_is_an_error(self):
+        self.installed(self.packages_new)
+        with self.assertRaisesRegex(deploy.DeploymentError, "no tamlinux-packages commit matches"):
+            self.deploy_run("0" * 40)
+
+    def test_main_commit_installs_without_moving_branches(self):
+        self.installed(self.packages_new)
+        install = self.deploy_run(self.packages_main[:12])
+        install.assert_called_once_with(self.packages_main, {"tamlinux": self.tamlinux_main}, "run")
+        self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_main)
+        self.assertEqual(self.origin_head("tamlinux-packages", "test"), self.packages_new)
+
+    def test_test_commit_installs_and_promotes(self):
+        self.installed(self.packages_main, stage="run")
+        install = self.deploy_run(self.packages_new)
+        install.assert_called_once_with(self.packages_new, {"tamlinux": self.tamlinux_new}, "run")
+        self.assertEqual(self.origin_head("tamlinux", "main"), self.tamlinux_new)
+        self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_new)
+
+    def test_develop_commit_needs_untested(self):
+        self.installed(self.packages_new)
+        product, assembly = self.untested_assembly("develop")
+        with self.assertRaisesRegex(deploy.DeploymentError, "not tested yet: .*--untested"):
+            self.deploy_run(assembly)
+        self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_main)
+        with patch("sys.stderr", new_callable=io.StringIO) as err:
+            install = self.deploy_run(assembly, untested=True)
+        self.assertIn("warning: running untested commits", err.getvalue())
+        install.assert_called_once()
+        for name, revision in (("tamlinux", product), ("tamlinux-packages", assembly)):
+            self.assertEqual(self.origin_head(name, "test"), revision)
+            self.assertEqual(self.origin_head(name, "main"), revision)
+
+    def test_feature_branch_commit_is_untested(self):
+        self.installed(self.packages_new)
+        _, assembly = self.untested_assembly("feature/try")
+        with self.assertRaisesRegex(deploy.DeploymentError, r"untracked"):
+            self.deploy_run(assembly)
 
     def test_main_is_only_fast_forwarded(self):
-        self.tested()
+        self.installed(self.packages_new)
+        git(self.workspace / "tamlinux", "checkout", "-q", self.tamlinux_main)
         diverged = self.commit("tamlinux", "other", "elsewhere")
         git(self.workspace / "tamlinux", "push", "-q", "-f", "origin", f"{diverged}:refs/heads/main")
-        with patch.object(self.app, "verify", return_value=[]), patch.object(self.app, "status"), \
-             patch.object(self.app, "record"), patch.object(self.app, "generation", return_value="/nix/store/new"):
-            with self.assertRaises(subprocess.CalledProcessError):
-                self.app.run()
+        with self.assertRaisesRegex(deploy.DeploymentError, "cannot fast-forward to: tamlinux "):
+            self.deploy_run()
         self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_main)
+
+
+class Arguments(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(deploy.parse(["run"]), ("run", [], {"untested": False}))
+        self.assertEqual(deploy.parse(["run", "abc", "--untested"]), ("run", ["abc"], {"untested": True}))
+        self.assertEqual(deploy.parse(["run", "--untested", "abc"]), ("run", ["abc"], {"untested": True}))
+        self.assertEqual(deploy.parse(["test"]), ("test", [], {}))
+        self.assertIsNone(deploy.parse(["run", "a", "b"]))
+        self.assertIsNone(deploy.parse(["run", "--force"]))
+        self.assertIsNone(deploy.parse(["test", "--untested"]))
+        self.assertIsNone(deploy.parse(["status", "x"]))
 
 
 class BackAndPin(Fixture):
