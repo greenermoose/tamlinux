@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-09 | Lifecycle tools move into Tamlinux | Claude Code `2.1.295` | `claude-opus-5-5` | [Session](2026-10-09-lifecycle-tools-move.md) |
 | 2026-10-09 | `tam-work` moves into Tamlinux | Claude Code `2.1.295` / agy `1.3.2` | `claude-opus-5-5` / `gemini-3.8-flash-high` | [Session](2026-10-09-tam-work.md) |
 | 2026-10-09 | 0.4.2 menu ownership and bounded reloads | Codex CLI `0.162.0` | `gpt-6.1-sol` | [Session](2026-10-09-0.4.2-menu.md) |
 | 2026-10-09 | Deployment state and current plan review | Codex CLI `0.162.0` | `gpt-6.1-sol` | [Session](2026-10-09-status-review.md) |
