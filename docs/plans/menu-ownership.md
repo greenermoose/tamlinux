@@ -4,6 +4,21 @@ Step 0.4.2 owns the menu without changing its retained applications, routes,
 navigation or power policy. This candidate is developed and tested in isolation;
 workstation acceptance remains a separate transition.
 
+**Package transition, 2026-10-09:** the menu implementation is retained on
+`develop` after the packaged 0.4.1 release was merged back. The product version
+is `0.4.2-a`. Delivery selects an exact source revision in a committed
+`tamlinux-packages` assembly; the consumer restores the owned menu extension
+with that assembly. Test and Run use the same package outputs and installed
+paths. The earlier independent shell/plugin snapshots are historical evidence,
+not the deployment mechanism for this candidate.
+
+The source candidate passed nine parser/reader/headless-service checks and
+18 existing service regressions after the merge. Consumer comparison confirms
+all 196 effective menu rows are unchanged. Before activation, verify the
+built package paths, version, plugin payloads, menu files, service environment,
+protocol-shadow identity and rollback artifact. Promotion to `test` and
+physical workstation checks require the user's Test instruction.
+
 The product supplies `desktop/menu/default.jsonc`, its upstream MIT notice and
 the `tam-menu` entry point. Delivery modules install defaults at
 `$XDG_CONFIG_HOME/tamlinux/menu/default.jsonc` and an optional personal extension

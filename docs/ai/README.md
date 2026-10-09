@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-09 | 0.4.2-a menu candidate after packaged release transition | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-09-0.4.2-assembly.md) |
 | 2026-10-09 | The Tamlinux 0.4.1 package | Claude Code `2.1.295` | `claude-opus-5-5` | [Session](2026-10-09-0.4.1-package.md) |
 | 2026-10-09 | tam-deploy and tam-plugin 3.0.0 deploy packaged assemblies | Claude Code `2.1.295` | `claude-opus-5-5` | [Session](2026-10-09-tam-deploy.md) |
 | 2026-10-09 | Lifecycle tools move into Tamlinux | Claude Code `2.1.295` | `claude-opus-5-5` | [Session](2026-10-09-lifecycle-tools-move.md) |

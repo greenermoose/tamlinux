@@ -41,6 +41,18 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.4.2-a - Unreleased
+
+- Product-owned menu defaults and `tam-menu`, with personal extensions at
+  `tamlinux/menu/extension.jsonc`. Retained rows, routes, aliases and actions
+  survive the ownership split.
+- Bounded JSONC parsing and file reads preserve quoted comment/comma text.
+  Failed reads, parses and invalid merged routes retain the last valid menu;
+  status and refresh IPC expose reload state.
+- The candidate is delivered as a pinned `tamlinux-packages` assembly through
+  the same Nix/Home Manager endpoint used for Run. Physical Test acceptance
+  remains pending.
+
 ## 0.4.1 - 2026-10-09
 
 - Fred accepted daily compositor protocol shadow observation on the current Hyprland desktop: “I accept tamlinux 4.0.1. Make a note of that.” This identifies the planned product step 0.4.1.
