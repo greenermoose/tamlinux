@@ -47,6 +47,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 - Retain the exact tested shell and its passive comparison logging; IPC still supplies authoritative compositor facts and display power.
 - Repair monitor runtime-permission handling in `fred.monitor` 2.0.3 and add regression tests. Deployment guards protect pending Test from accidental replacement or promotion of a different candidate.
 - Historical output disagreements and observation gaps remain open before protocol authority. Menu ownership and parser safety are next at 0.4.2.
+- The 0.4.1 package: the accepted plugin payloads now live in `desktop/plugins/`, and the product commands `tam-work`, `tam-deploy` and `tam-plugin` in `commands/`, so `tamlinux-packages` can assemble and deploy 0.4.1 from this revision. The shell is unchanged from the accepted `a0d7737`.
 
 ## 0.4.0 - 2026-10-08
 

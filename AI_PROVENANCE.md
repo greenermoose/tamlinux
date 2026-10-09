@@ -42,6 +42,7 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
+| **0.4.1 package** | 0.4.1 Test candidate | Claude Code `2.1.295` (`claude-opus-5-5`) | The accepted 0.4.1 shell with its accepted plugin payloads and the product commands, packaged for deployment through `tamlinux-packages`; plugin digests equal the acceptance record. [Session](docs/ai/2026-10-09-0.4.1-package.md). |
 | **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
 | **Claude Code** (`claude`) | `2.1.289` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
 | **Codex CLI** (`codex`) | `0.162.0` (verified 2026-10-08) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
