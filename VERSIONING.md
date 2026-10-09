@@ -30,8 +30,8 @@ removal (0.6), then Sway integration/package (0.7) and daily proof (0.8).
 The former prepared compositor 0.4 schedule is deferred; accepted 0.0–0.3
 versions and authored prototype records retain their identifiers. This
 documentation change left the product version at 0.3.3. Fred subsequently
-accepted settings/state step 0.4.0 on 2026-10-08; protocol shadow testing is
-next at 0.4.1.
+accepted settings/state step 0.4.0 on 2026-10-08 and daily protocol shadow
+observation at 0.4.1 on 2026-10-09. Menu ownership follows at 0.4.2.
 
 This scheme was adopted on 2026-10-05. Before it, minor versions were fixed
 milestones and work between them raised no number, so the steps accepted

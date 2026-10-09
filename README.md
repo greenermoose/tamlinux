@@ -10,11 +10,11 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.4.0](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | [0.4.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.4.0 — Non-theme settings/state/cache and shared key/bar helper accepted on 2026-10-08. The pinned Tamlinux shell and eight exercised 2.x plugins run normally on every screen. Menu/theme/package independence remains in progress. Not an installable image yet |
+| **Status** | 0.4.1 — Daily compositor protocol shadow observation accepted on 2026-10-09, following owned non-theme settings/state/cache and the shared key/bar helper. The tested shell and eight exercised 2.x plugins run on every screen; Hyprland IPC remains authoritative. Menu/theme/package independence remains in progress. Not an installable image yet |
 
 ---
 
@@ -52,9 +52,10 @@ repository yet.
 ## Current base and next steps
 
 The current workstation runs Tamlinux's deployed Quickshell shell and eight
-2.x plugins on Arch/Hyprland. Step 0.4.0 is accepted; non-theme user storage
-and the shared key/bar helper are owned. Next is 0.4.1 compositor protocol
-shadow testing, followed by menu cleanup. The remaining Omarchy
+2.x plugins on Arch/Hyprland. Step 0.4.1 is accepted; non-theme user storage
+and the shared key/bar helper are owned, and compositor protocol shadow
+observation continues alongside the IPC backend. Next is 0.4.2 menu ownership
+and parser safety. The remaining Omarchy
 dependencies are removed while retaining the working Hyprland desktop:
 
 1. **0.4: settings/state and menus.** Own user data, caches, helper entry points

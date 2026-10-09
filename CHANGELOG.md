@@ -29,6 +29,13 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.4.1 - 2026-10-09
+
+- Fred accepted daily compositor protocol shadow observation on the current Hyprland desktop: “I accept tamlinux 4.0.1. Make a note of that.” This identifies the planned product step 0.4.1.
+- Retain the exact tested shell and its passive comparison logging; IPC still supplies authoritative compositor facts and display power.
+- Repair monitor runtime-permission handling in `fred.monitor` 2.0.3 and add regression tests. Deployment guards protect pending Test from accidental replacement or promotion of a different candidate.
+- Historical output disagreements and observation gaps remain open before protocol authority. Menu ownership and parser safety are next at 0.4.2.
+
 ## 0.4.0 - 2026-10-08
 
 ### Changed

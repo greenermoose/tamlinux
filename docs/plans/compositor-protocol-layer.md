@@ -1,16 +1,18 @@
 # Compositor protocol layer
 
-**Status — 2026-10-09:** milestone B Test was interrupted, then restored
-and verified with exact `a0d7737`, unchanged observation identity, active
-collection and fresh equal records from **16:33:42 UTC**. All eight installed
-plugin payloads remain unchanged. Fred's 0.4.1 acceptance is pending; accepted
-product VERSION remains 0.4.0. The guarded delivery consumer is active in Test.
+**Status — 2026-10-09:** Fred explicitly accepted milestone B, Tamlinux
+**0.4.1**, after restoration and the monitor-plugin regression repair.
+The accepted exact shell is `a0d7737`, with unchanged observation identity,
+active collection and fresh equal records. The tested monitor fix is 2.0.3;
+other plugin payloads are preserved. Normal Run finalization is recorded in
+the current session record. Menu ownership follows at 0.4.2.
 
 The interrupted archive contains **25 output disagreements**, 14:05:00–14:28:32
 UTC, and two unexplained gaps. Reasons-only logs cannot identify which output
 field differed. Preserve this evidence and investigate with bounded snapshot
 diagnostics before authority. The original October 23 endpoint is invalid;
-a fresh auditable continuous window is required. Milestone C still requires
+one additional output disagreement was retained during this session, bringing
+the total to 26. A fresh auditable continuous window is required. Milestone C still requires
 14 consecutive days and three of every required event. Fresh agreement alone
 cannot dismiss previous differences or gaps.
 
@@ -19,7 +21,7 @@ collector/timer and fresh comparisons alongside normal desktop use. Package
 extraction and unaccepted plugin consolidation remain separate from acceptance.
 The initial candidate passed 409 desktop and 494 workstation configuration
 checks; guarded restoration passed all 496 current configuration checks and
-eight delivery checks. No physical acceptance is claimed.
+eight delivery checks. Fred's step acceptance is recorded; no unobserved physical event or protocol-authority acceptance is claimed.
 
 The shell gets its compositor facts from standard Wayland protocols wherever
 a protocol exists. Compositor IPC fills only the remaining gaps. The shared

@@ -53,3 +53,26 @@ Test preserves the accepted plugin for rollback; no plugin Run or product
 acceptance is claimed. The existing 0.4.1 shell Test stays selected, and
 post-restart archived comparisons agree. Source/storage tests do not claim a
 physical preview/rollback test; that remains a focused user acceptance check.
+
+## Fred's step acceptance
+
+> I accept tamlinux 4.0.1. Make a note of that. What's next? Are you done with this session? Should I have you release claim on work and start a new session now?
+
+The requested version refers to the current planned product step 0.4.1,
+following the clarification earlier in this session. Fred accepted the exact
+shadow shell candidate with the monitor 2.0.3 repair. Acceptance advances
+product VERSION to 0.4.1, preserves the tested payloads, and finalizes normal
+Run. It grants no protocol authority: historical differences/gaps, the minimum
+observation period and event coverage remain open. Next product implementation
+is 0.4.2 menu ownership and parser safety. Leave the command work with its
+current maintainer and preserve other sessions' unfinished shared UI changes.
+A fresh session is appropriate after Run verification and claim release.
+
+Normal Run verification completed: deployed and locked shell equal the accepted
+candidate, live version is 0.4.1, all eight plugin payload digests match Test,
+monitor 2.0.3 reports three outputs, and the native file selector is preserved.
+A second activation picked up concurrent unaccepted weather styling; payload
+verification detected it and restored the earlier matching immutable generation,
+leaving source edits intact. The collector remains active and fresh comparisons
+agree. One additional output disagreement is retained, so the archived total
+is now 26; no cause or authority readiness is inferred.
