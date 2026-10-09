@@ -1,10 +1,9 @@
 # Compositor protocol layer
 
-**Status — 2026-10-08:** milestone A developed and verified locally. The shared
-bound state, adapter refactor, reactive fixtures and isolated Hyprland proof
-are implemented. No protocol-layer deployment; product step 0.4.0 was
-accepted 2026-10-08. Its acceptance gate for milestone B has passed; daily
-shadow Test remains the next task at 0.4.1. Fred accepted the approach, schedule,
+**Status — 2026-10-09:** milestone B's daily logger and durable evidence collector
+are developed and verified in isolation; daily Test deployment is being prepared.
+Development tests do not establish the 14-day period. Milestone A and product
+step 0.4.0 were completed on 2026-10-08. Fred accepted the approach, schedule,
 acceptance period and display-power boundary on 2026-10-08.
 
 The shell gets its compositor facts from standard Wayland protocols wherever
@@ -203,3 +202,76 @@ does not currently expose corresponding facade fields. ShellScreen exposes
   both compositors. Rejected for now: switching to `wlopm` during the
   independence stages; a resident helper to read display power for the
   shadow comparison.
+
+## Daily shadow evidence
+
+Enable `TAMLINUX_PROTOCOL_SHADOW=1`. IPC remains authoritative, and
+`ProtocolShadow.qml` cannot dispatch actions. It compares the shared facts
+after 750 ms without a comparable change, logs status transitions, and emits
+a health heartbeat every minute. Repeated equal states do not flood the log.
+Sustained churn is reported as `settling`; loss of readiness is explicit.
+Records contain bounded reason identifiers and counts, never window titles.
+
+Set `TAMLINUX_SHELL_REVISION` to the deployed Git revision and
+`TAMLINUX_PROTOCOL_SHADOW_ID` to the SHA-256 of the concatenated contents of
+these files, in this order:
+
+1. `desktop/shell/host/ProtocolState.qml`
+2. `desktop/shell/host/protocol_model.js`
+3. `desktop/shell/host/ProtocolShadow.qml`
+4. `desktop/shell/host/HyprlandAdapter.qml`
+5. `desktop/protocol-shadow`
+
+An unrelated menu revision preserves the trial identity. Changing trial code,
+including the collector's interpretation, starts a new period; returning to
+an earlier identity also starts a new period. Development records without
+production identity/revision are refused by the collector.
+
+`desktop/protocol-shadow collect` archives the daily unit's journal records
+under `$XDG_STATE_HOME/tamlinux/protocol-shadow/evidence.sqlite3` (default
+`~/.local/state/tamlinux/protocol-shadow/`). It rereads a five-minute overlap,
+deduplicates journal cursors, and commits only a complete valid capture. The
+desktop deployment runs collection every five minutes and after user-manager
+startup. Archive failures remain visible in the collection unit's journal.
+
+Collect immediately before requesting a current summary:
+
+```sh
+tam-protocol-shadow collect
+tam-protocol-shadow summary
+```
+
+The summary gives the evidence span, revisions, disagreements, missing journal
+sequences, logging gaps and six event counts. It never treats calendar age or
+an absent log as agreement. A stale heartbeat or unexplained gap blocks
+readiness. Initial startup before the first equal comparison is excluded;
+later unready/different/settling records require review. Such records are kept
+even after agreement returns. The initial implementation is conservative:
+explaining a disagreement requires a later explicit evidence review; there is
+no command that silently dismisses it. `readyForAuthority` reports evidence
+readiness only; Fred's milestone acceptance is still required.
+
+Physical event notes use timezone-qualified start/end times and a concise
+description of what was observed:
+
+```sh
+tam-protocol-shadow event workspace-move \
+  --start '2026-10-09T12:00:00-04:00' --end '2026-10-09T12:00:20-04:00' \
+  --note 'Observed workspace 5 move between two connected displays'
+```
+
+Kinds are `display-sleep-wake`, `suspend-resume`,
+`output-disconnect-reconnect`, `workspace-move`, `desktop-mode-change` and
+`cold-boot`. Notes are attestations, not generated proof of physical success.
+They count only with equal comparisons within three minutes before and after
+the interval, and no non-equal record inside it. Overlapping/repeated notes
+cannot inflate the three-occurrence requirement. Supported suspend/boot notes
+can explain the corresponding heartbeat gap; other gaps remain visible.
+No physical event is forced to fill the matrix.
+
+Verification before deployment: all 408 desktop tests pass, including actual
+QML settling/heartbeat fixtures, journal retry/deduplication, missing-record
+detection, code-identity resets, stale/gapped evidence, supported/unsupported
+events, and a complete 14-day fixture with three of each event. The isolated
+`desktop/launch-protocol-proof --shadow` recorded agreement on three outputs
+and four workspaces, with no surfaces or dispatches.

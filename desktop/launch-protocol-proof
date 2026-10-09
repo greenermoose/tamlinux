@@ -8,6 +8,8 @@ The running shell and its settings are never used as a test target.
 from __future__ import annotations
 
 import os
+import argparse
+import hashlib
 import shutil
 import subprocess
 import tempfile
@@ -17,6 +19,9 @@ DESKTOP = Path(__file__).resolve().parent
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--shadow", action="store_true", help="also exercise the daily shadow logger")
+    args = parser.parse_args()
     if not os.environ.get("WAYLAND_DISPLAY") or not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         raise SystemExit("The read-only live proof requires a Hyprland Wayland session")
     with tempfile.TemporaryDirectory(prefix="tamlinux-protocol-proof-") as temporary:
@@ -24,11 +29,18 @@ def main() -> None:
         config = root / "config"
         (config / "host").mkdir(parents=True)
         shutil.copyfile(DESKTOP / "fixtures/protocol-live/shell.qml", config / "shell.qml")
-        for name in ("ProtocolState.qml", "protocol_model.js", "HyprlandAdapter.qml"):
+        for name in ("ProtocolState.qml", "protocol_model.js", "HyprlandAdapter.qml", "ProtocolShadow.qml"):
             shutil.copyfile(DESKTOP / "shell/host" / name, config / "host" / name)
         env = {"PATH": "/usr/bin", "HOME": str(root),
                "XDG_CONFIG_HOME": str(config), "XDG_CACHE_HOME": str(root / "cache"),
                "QT_QPA_PLATFORM": "wayland", "TAMLINUX_PROTOCOL_PROOF": "1"}
+        if args.shadow:
+            env["TAMLINUX_PROTOCOL_SHADOW"] = "1"
+            paths = ["shell/host/ProtocolState.qml", "shell/host/protocol_model.js",
+                     "shell/host/ProtocolShadow.qml", "shell/host/HyprlandAdapter.qml", "protocol-shadow"]
+            env["TAMLINUX_PROTOCOL_SHADOW_ID"] = hashlib.sha256(
+                b"".join((DESKTOP / path).read_bytes() for path in paths)).hexdigest()
+            env["TAMLINUX_SHELL_REVISION"] = "0" * 40  # isolated proof, never the daily unit
         for name in ("XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
             if os.environ.get(name):
                 env[name] = os.environ[name]
@@ -44,8 +56,10 @@ def main() -> None:
         word in log for word in ("TypeError", "ReferenceError", "PROTOCOL_LIVE_FAILED")
     ):
         raise SystemExit(log[-12000:])
+    if args.shadow and ('"status":"equal"' not in log or "protocol-shadow" not in log):
+        raise SystemExit("Daily shadow logger did not record equality:\n" + log[-12000:])
     for line in log.splitlines():
-        if "PROTOCOL_LIVE_OK" in line or "protocol-proof" in line:
+        if "PROTOCOL_LIVE_OK" in line or "protocol-proof" in line or "protocol-shadow" in line:
             print(line)
 
 

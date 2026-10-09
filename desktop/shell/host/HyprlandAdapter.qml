@@ -11,9 +11,10 @@ QtObject {
 
   property var host: null
   property var ipcSnapshot: null
-  // Develop-only comparison; no new protocol object on the daily IPC path.
+  // Both modes only observe. IPC still fills and publishes every facade field.
+  readonly property bool shadowEnabled: Quickshell.env("TAMLINUX_PROTOCOL_SHADOW") === "1"
   readonly property Loader protocolProof: Loader {
-    active: Quickshell.env("TAMLINUX_PROTOCOL_PROOF") === "1"
+    active: adapter.shadowEnabled || Quickshell.env("TAMLINUX_PROTOCOL_PROOF") === "1"
     source: "ProtocolState.qml"
     onLoaded: protocolSettle.restart()
   }
@@ -24,7 +25,7 @@ QtObject {
   readonly property Timer protocolSettle: Timer {
     interval: 750
     onTriggered: {
-      if (!protocolProof.item) return
+      if (!protocolProof.item || adapter.shadowEnabled) return
       var facts = protocolProof.item.snapshot
       var comparison = ProtocolModel.compare(facts, adapter.ipcSnapshot)
       adapter.note("protocol-proof " + JSON.stringify({
@@ -33,6 +34,11 @@ QtObject {
         problems: facts.problems
       }))
     }
+  }
+  readonly property ProtocolShadow protocolShadow: ProtocolShadow {
+    enabled: adapter.shadowEnabled
+    protocolSnapshot: adapter.protocolProof.item ? adapter.protocolProof.item.snapshot : null
+    ipcSnapshot: adapter.ipcSnapshot
   }
   // PopupCard creates one per popup: Hyprland's focus grab clears on a click
   // outside the listed windows.

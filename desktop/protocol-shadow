@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""Archive and summarize the read-only compositor shadow trial.
+
+collect: save journal records in private XDG state, deduplicated by cursor.
+summary: report evidence span, differences, missing coverage and logging gaps.
+event KIND --start ISO --end ISO --note TEXT: attest an observed physical event.
+
+Event entries are human/agent evidence notes, never inferred from a successful
+command. They count only with equal records before and after the interval and
+no disagreement inside it. No command here controls the compositor.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import tempfile
+import time
+from pathlib import Path
+
+MARKER = "TAMLINUX_EVIDENCE protocol-shadow "
+KINDS = ("display-sleep-wake", "suspend-resume", "output-disconnect-reconnect",
+         "workspace-move", "desktop-mode-change", "cold-boot")
+GAP_SECONDS = 180
+MAX_BYTES = 64 * 1024 * 1024
+MAX_RECORDS = 50000
+
+
+def timestamp(value: str) -> float:
+    parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("event timestamps require a timezone")
+    return parsed.timestamp()
+
+
+def database(path: Path) -> sqlite3.Connection:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise ValueError("refusing a symlink database")
+    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    os.close(fd)
+    db = sqlite3.connect(path)
+    db.execute("CREATE TABLE IF NOT EXISTS records (cursor TEXT PRIMARY KEY, "
+               "time REAL NOT NULL, boot TEXT NOT NULL, invocation TEXT NOT NULL, payload TEXT NOT NULL)")
+    db.execute("CREATE TABLE IF NOT EXISTS events (kind TEXT NOT NULL, start REAL NOT NULL, "
+               "end REAL NOT NULL, identity TEXT NOT NULL, note TEXT NOT NULL, "
+               "UNIQUE(kind, start, end, identity))")
+    return db
+
+
+def parse_record(line: str) -> tuple | None:
+    if len(line) > 16384:
+        raise ValueError("oversized journal record")
+    entry = json.loads(line)
+    message = entry.get("MESSAGE", "")
+    if not isinstance(message, str) or MARKER not in message:
+        return None
+    payload = json.loads(message.split(MARKER, 1)[1])
+    if not isinstance(payload, dict) or payload.get("schema") != 1:
+        raise ValueError("unknown shadow record schema")
+    for field, length in (("identity", 64), ("revision", 40)):
+        if not re.fullmatch(r"[0-9a-f]{" + str(length) + r"}", str(payload.get(field, ""))):
+            raise ValueError("shadow record lacks a production " + field)
+    status = payload.get("status")
+    if status not in ("equal", "different", "unready", "settling"):
+        raise ValueError("invalid shadow status")
+    reasons = payload.get("differences")
+    if not isinstance(reasons, list) or len(reasons) > 2 or any(
+        reason not in ("outputs", "workspaces", "not-ready") for reason in reasons
+    ):
+        raise ValueError("invalid shadow differences")
+    if (status == "equal" and reasons) or (status == "different" and not reasons):
+        raise ValueError("inconsistent shadow status")
+    for field in ("sequence", "comparisons", "outputs", "workspaces"):
+        value = payload.get(field)
+        if type(value) is not int or not 0 <= value <= 2147483647:
+            raise ValueError("invalid shadow counter: " + field)
+    if payload["outputs"] > 64 or payload["workspaces"] > 64:
+        raise ValueError("shadow list count exceeds bounds")
+    problems = payload.get("problems")
+    if not isinstance(problems, list) or len(problems) > 8 or any(
+        not isinstance(reason, str) or not re.fullmatch(r"[a-z-]{1,40}", reason) for reason in problems
+    ):
+        raise ValueError("invalid shadow problems")
+    cursor = entry.get("__CURSOR")
+    if not isinstance(cursor, str) or not cursor or len(cursor) > 2048:
+        raise ValueError("missing/invalid journal cursor")
+    when = int(entry["__REALTIME_TIMESTAMP"]) / 1000000
+    if not 0 < when < 1e12:
+        raise ValueError("invalid journal timestamp")
+    return cursor, when, str(entry.get("_BOOT_ID", "")), str(entry.get("_SYSTEMD_INVOCATION_ID", "")), json.dumps(payload, sort_keys=True)
+
+
+def collect(db: sqlite3.Connection) -> int:
+    # Re-read an overlap instead of trusting a cursor which may have been
+    # vacuumed. Cursor uniqueness makes retries/overlaps idempotent.
+    latest = db.execute("SELECT max(time) FROM records").fetchone()[0]
+    since = (latest - 300) if latest is not None else time.time() - 86400
+    argv = ["journalctl", "--user", "-u", "tamlinux-shell.service", "--no-pager",
+            "--output=json", "--grep=" + MARKER, "--since=@" + str(int(since))]
+    with tempfile.TemporaryFile() as output:
+        subprocess.run(argv, stdout=output, stderr=subprocess.PIPE, timeout=45, check=True)
+        if output.tell() > MAX_BYTES:
+            raise ValueError("journal capture exceeds 64 MiB; shorten the collection interval")
+        output.seek(0)
+        rows = []
+        for line in output:
+            record = parse_record(line.decode("utf-8"))
+            if record:
+                rows.append(record)
+            if len(rows) > MAX_RECORDS:
+                raise ValueError("journal capture exceeds 50000 records")
+    before = db.total_changes
+    with db:
+        db.executemany("INSERT OR IGNORE INTO records VALUES (?, ?, ?, ?, ?)", rows)
+    return db.total_changes - before
+
+
+def event_supported(records: list[dict], start: float, end: float) -> bool:
+    before = [row for row in records if start - GAP_SECONDS <= row["time"] <= start]
+    after = [row for row in records if end <= row["time"] <= end + GAP_SECONDS]
+    inside = [row for row in records if start <= row["time"] <= end]
+    return bool(before and after and before[-1]["status"] == after[0]["status"] == "equal"
+                and all(row["status"] == "equal" for row in inside))
+
+
+def summarize(db: sqlite3.Connection, now: float, identity: str | None = None) -> dict:
+    rows = [dict(json.loads(payload), time=when, boot=boot, invocation=invocation)
+            for when, boot, invocation, payload in db.execute(
+                "SELECT time, boot, invocation, payload FROM records ORDER BY time, cursor")]
+    if not rows:
+        return {"readyForAuthority": False, "blockers": ["no archived shadow records"]}
+    identity = identity or rows[-1]["identity"]
+    # A return to an old identity starts a new period; never join separated runs.
+    boundary = max((i + 1 for i, row in enumerate(rows) if row["identity"] != identity), default=0)
+    rows = [row for row in rows[boundary:] if row["identity"] == identity]
+    if not rows:
+        return {"readyForAuthority": False, "blockers": ["identity is not the latest continuous trial"]}
+    first_equal = next((i for i, row in enumerate(rows) if row["status"] == "equal"), None)
+    if first_equal is None:
+        return {"identity": identity, "readyForAuthority": False, "blockers": ["no ready equal comparison"]}
+    rows = rows[first_equal:]
+    raw_events = list(db.execute("SELECT kind, start, end, note FROM events WHERE identity=? ORDER BY start", (identity,)))
+    valid_events = [(kind, start, end, note) for kind, start, end, note in raw_events
+                    if rows[0]["time"] <= start <= end <= now and event_supported(rows, start, end)]
+    counts = {kind: sum(event[0] == kind for event in valid_events) for kind in KINDS}
+    # Repeated or overlapping attestations cannot create three occurrences.
+    for kind in KINDS:
+        previous_end = -1.0
+        counts[kind] = 0
+        for event_kind, start, end, _ in valid_events:
+            if event_kind == kind and start > previous_end:
+                counts[kind] += 1
+                previous_end = end
+    gaps = []
+    missing_records = 0
+    for left, right in zip(rows, rows[1:]):
+        if (left["boot"], left["invocation"]) == (right["boot"], right["invocation"]):
+            if right["sequence"] != left["sequence"] + 1:
+                missing_records += 1
+        if right["time"] - left["time"] > GAP_SECONDS:
+            explained = any(kind in ("suspend-resume", "cold-boot")
+                            and left["time"] <= start <= left["time"] + GAP_SECONDS
+                            and right["time"] - GAP_SECONDS <= end <= right["time"]
+                            for kind, start, end, _ in valid_events)
+            if not explained:
+                gaps.append({"start": left["time"], "end": right["time"]})
+    span = max(0, rows[-1]["time"] - rows[0]["time"])
+    bad = [row for row in rows if row["status"] != "equal"]
+    blockers = []
+    if span < 14 * 86400:
+        blockers.append("14-day observation period incomplete")
+    if now - rows[-1]["time"] > GAP_SECONDS:
+        blockers.append("latest heartbeat is stale")
+    if bad:
+        blockers.append("differences, unready state or sustained settling require review")
+    if gaps:
+        blockers.append("unexplained gaps in archived heartbeats")
+    if missing_records:
+        blockers.append("missing or reordered journal sequences")
+    if any(count < 3 for count in counts.values()):
+        blockers.append("required event coverage incomplete")
+    return {"identity": identity, "revisions": sorted({row["revision"] for row in rows}),
+            "firstEqual": rows[0]["time"], "lastRecord": rows[-1]["time"],
+            "observedDays": round(span / 86400, 4), "records": len(rows),
+            "nonEqualRecords": len(bad), "events": counts,
+            "sequenceGaps": missing_records,
+            "unsupportedEvents": len(raw_events) - len(valid_events),
+            "unexplainedGapCount": len(gaps), "gapExamples": gaps[:10],
+            "readyForAuthority": not blockers, "blockers": blockers}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
+    parser.add_argument("--database", type=Path, default=state / "tamlinux/protocol-shadow/evidence.sqlite3")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("collect")
+    summary = sub.add_parser("summary")
+    summary.add_argument("--identity")
+    event = sub.add_parser("event")
+    event.add_argument("kind", choices=KINDS)
+    event.add_argument("--start", required=True)
+    event.add_argument("--end", required=True)
+    event.add_argument("--note", required=True)
+    args = parser.parse_args()
+    try:
+        with database(args.database) as db:
+            if args.command == "collect":
+                print(json.dumps({"archived": collect(db)}))
+            elif args.command == "summary":
+                print(json.dumps(summarize(db, time.time(), args.identity), indent=2))
+            else:
+                start, end = timestamp(args.start), timestamp(args.end)
+                if not 0 < start <= end <= time.time() or not 1 <= len(args.note) <= 1024:
+                    raise ValueError("invalid event interval or note length")
+                result = summarize(db, time.time())
+                if "identity" not in result:
+                    raise ValueError("collect production shadow records before recording events")
+                db.execute("INSERT INTO events VALUES (?, ?, ?, ?, ?)",
+                           (args.kind, start, end, result["identity"], args.note))
+                print("Event attestation recorded; summary checks its comparison coverage.")
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error, subprocess.SubprocessError) as error:
+        parser.exit(1, f"protocol-shadow: {error}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
