@@ -48,6 +48,8 @@ class Fixture(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
         self.app = deploy.Deployment()
+        self.app.revision_file.parent.mkdir(parents=True, exist_ok=True)
+        self.app.revision_file.write_text(self.tamlinux_main + "\n")
 
     def commit_repo(self, name, path, text):
         origin = self.root / "origins" / f"{name}.git"
@@ -125,6 +127,29 @@ class TestStage(Fixture):
         self.assertEqual(state["previousPin"], self.packages_main)
         bom = json.loads((self.config / "system/bom.json").read_text())
         self.assertEqual(bom["components"]["tamlinux"]["stage"], "test")
+
+    def test_staged_lock_keeps_the_running_assembly_as_rollback_pin(self):
+        self.write_lock(self.packages_new, {})
+        self.app.save_state({"stage": "run", "packages": self.packages_main,
+                             "generation": "/nix/store/old-generation"})
+        self.deploy_test()
+        self.assertEqual(self.app.read_state()["previousPin"], self.packages_main)
+
+    def test_stale_record_does_not_override_the_matching_active_lock(self):
+        self.app.save_state({"packages": self.packages_new,
+                             "generation": "/nix/store/stale-generation"})
+        self.deploy_test()
+        self.assertEqual(self.app.read_state()["previousPin"], self.packages_main)
+
+    def test_unknown_active_assembly_refuses_activation(self):
+        self.write_lock(self.packages_new, {})
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "generation", return_value="/nix/store/old-generation"), \
+             patch.object(self.app, "pin") as pin, patch.object(self.app, "activate") as activate:
+            with self.assertRaisesRegex(deploy.DeploymentError, "active assembly for rollback"):
+                self.app.test()
+        pin.assert_not_called()
+        activate.assert_not_called()
 
     def test_refuses_an_assembly_that_is_not_on_test(self):
         unfinished = self.commit("tamlinux-packages", "flake.lock", self.assembly(self.tamlinux_new) + " ")
@@ -276,13 +301,16 @@ class Arguments(unittest.TestCase):
 class BackAndPin(Fixture):
     def test_back_reactivates_and_restores_the_previous_pin(self):
         generation = self.root / "nix-store-sim"
+        real_command = deploy.command
         self.write_lock(self.packages_new, {})
         self.app.save_state({"stage": "test", "packages": self.packages_new,
                              "previousGeneration": "/nix/store/old-generation", "previousPin": self.packages_main})
         with patch.object(deploy.Path, "is_file", return_value=True), \
-             patch.object(deploy, "command") as command, patch.object(self.app, "wait_ready"), \
+             patch.object(deploy, "command", side_effect=lambda *args, **kwargs:
+                          real_command(*args, **kwargs) if args[0] == "git" else "") as command, \
+             patch.object(self.app, "wait_ready"), \
              patch.object(self.app, "status"), patch.object(self.app, "record"), \
-             patch.object(self.app, "generation", return_value="/nix/store/new-generation"), \
+             patch.object(self.app, "generation", side_effect=["/nix/store/new-generation", "/nix/store/old-generation"]), \
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})) as pin:
             self.app.back()
         command.assert_any_call("/nix/store/old-generation/activate")
@@ -290,6 +318,10 @@ class BackAndPin(Fixture):
         state = self.app.read_state()
         self.assertEqual(state["previousPin"], self.packages_new)
         self.assertEqual(state["previousGeneration"], "/nix/store/new-generation")
+        self.assertEqual(state["generation"], "/nix/store/old-generation")
+        self.assertEqual(state["components"], {"tamlinux": self.tamlinux_main})
+        self.write_lock(self.packages_new, {})
+        self.assertEqual(self.app.rollback_pin("/nix/store/old-generation"), self.packages_main)
 
     def test_back_needs_a_recorded_deployment(self):
         with self.assertRaisesRegex(deploy.DeploymentError, "no recorded previous"):

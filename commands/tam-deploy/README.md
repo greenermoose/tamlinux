@@ -15,6 +15,12 @@ revision whose lock file pins every component.
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
 | `back` | Activate the previous generation and restore its pin. |
 
+The rollback pin identifies the assembly actually running, using the deployment
+record for the active generation. A prepared but inactive consumer lock is not
+the rollback assembly. Without a matching record, the current lock must match
+the installed source revision; otherwise deployment stops before activation.
+Back records the restored generation and components for subsequent deployments.
+
 Promote a candidate from `develop` to `test` (a fast-forward push) before
 `tam-deploy test`; `tam-deploy` never resolves a moving branch at build time.
 

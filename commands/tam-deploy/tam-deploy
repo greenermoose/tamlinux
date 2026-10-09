@@ -270,7 +270,8 @@ class Deployment:
         """Pin, switch and verify an assembly; on failure restore the lock
         and the previous generation. Returns (previous generation, previous pin)."""
         self.preflight()
-        previous, previous_pin = self.generation(), self.locked()
+        previous = self.generation()
+        previous_pin = self.rollback_pin(previous)
         before = self.lock.read_bytes()
         try:
             self.pin(revision)
@@ -292,6 +293,18 @@ class Deployment:
                          "generation": generation, "previousGeneration": previous,
                          "previousPin": previous_pin})
         return previous, previous_pin
+
+    def rollback_pin(self, generation: str) -> str:
+        """Identify the active assembly, even when the consumer lock is staged."""
+        state = self.read_state()
+        if state.get("generation") == generation and state.get("packages"):
+            revision = state["packages"]
+        else:
+            revision = self.locked()
+        if self.components(revision)["tamlinux"] != self.installed():
+            raise DeploymentError("cannot identify the active assembly for rollback; "
+                                  "restore a matching deployment record or consumer lock before deploying")
+        return revision
 
     def test(self, ref: str = "origin/test") -> None:
         revision = self.resolve(ref)
@@ -370,11 +383,14 @@ class Deployment:
         command(str(target / "activate"))
         command("tam-restart-shell")
         self.wait_ready()
+        restored = self.generation()
         self.pin(previous_pin)
         files = ["flake.lock"] + self.update_bom({"packages": previous_pin, "stage": "restored",
-                                                  "generation": self.generation()})
+                                                  "generation": restored})
         self.record(f"deploy: back to tamlinux-packages {previous_pin[:12]}", files)
-        self.save_state({"stage": "restored", "packages": previous_pin, "previousGeneration": current,
+        self.save_state({"stage": "restored", "packages": previous_pin,
+                         "generation": restored, "components": self.components(previous_pin),
+                         "previousGeneration": current,
                          "previousPin": current_pin})
         self.status()
 
