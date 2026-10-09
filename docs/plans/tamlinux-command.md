@@ -11,9 +11,12 @@ not a universal age cutoff.
 **Status:** First command slice approved by Fred on 2026-09-23;
 local component repository scaffold prepared on 2026-10-08; the command
 foundation (bare introduction, `--help`, `--version`, argument errors) was
-implemented and installed locally as `tam 0.0.1` on 2026-10-09. The command was
+implemented and installed locally as `tam 0.0.1` on 2026-10-09. Offline `browse`
+is now implemented in the [command source](https://github.com/greenermoose/tam),
+with a native C renderer/pager and plain-text pipe output. Further command work
+remains with that component's maintainer. The command was
 named `tam` on 2026-10-07; the package/data namespace remains `tamlinux`.
-Browsing, orientation, explanation and installation remain proposals. The
+Orientation, explanation and installation remain proposals. The
 approved first slice can develop independently and feeds 0.7 packaging; it does
 not block settings/menu/theme ownership or Omarchy removal.
 
@@ -52,6 +55,11 @@ whether Lynx is available and, if absent, show readable text and instructions
 for installing Lynx so that HTML can be rendered.
 
 ## Knowledge format
+
+The component currently renders semantic HTML in C and supplies plain-text pipe
+output without an external viewer. Its development plan governs implemented
+guide behavior. The following retains the earlier Lynx proposal, not a current
+command dependency.
 
 Ship a small, semantic HTML corpus with relative links and a plain-text
 fallback. Lynx is the optional terminal browser because it is already used on
@@ -115,8 +123,8 @@ interactive browsing when installed; plain-text help must work without it.
   and `cc` against an installed `libtam`, and installed to `/usr/local/bin`.
   `--version` reports the separate command version, the `libtam` version, and
   the installed cultivar version from `~/.config/tamlinux/version`. Toolchain
-  options and the cultivar packaging path are recorded in the
-  [`tam` C toolchain report](../../improvements-fred-tamlinux/reports/2026-10-09-tam-c-toolchain-and-build.md).
+  integration contract belongs in the component's
+  [development plan](https://github.com/greenermoose/tam/blob/main/docs/plans/development.md).
 - **2026-10-09:** Fred set the terminology for the whole-release identity: it
   is a **cultivar**. Grown versions will carry a cultivar *name* and a version
   number (e.g. "Tamlinux cultivar blue sparkler 1.0.0"); no name exists yet, so

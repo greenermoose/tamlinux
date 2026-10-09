@@ -1,13 +1,25 @@
 # Compositor protocol layer
 
-**Status — 2026-10-09:** milestone B is deployed in daily shadow Test from
-`a0d7737`, with agreeing records being archived. The current observation period
-starts at **2026-10-09 12:41:35 UTC**. All 409 desktop and 494 workstation
-configuration tests passed; daily panel checks passed on three displays with
-the eight plugin payloads and preferences unchanged. Fred's 0.4.1 acceptance
-is pending; the accepted product version remains 0.4.0. Milestone C still
-requires 14 consecutive days and three of every required event. Fred accepted
-the approach, schedule, period and display-power boundary on 2026-10-08.
+**Status — 2026-10-09:** milestone B Test was interrupted, then restored
+and verified with exact `a0d7737`, unchanged observation identity, active
+collection and fresh equal records from **16:33:42 UTC**. All eight installed
+plugin payloads remain unchanged. Fred's 0.4.1 acceptance is pending; accepted
+product VERSION remains 0.4.0. The guarded delivery consumer is active in Test.
+
+The interrupted archive contains **25 output disagreements**, 14:05:00–14:28:32
+UTC, and two unexplained gaps. Reasons-only logs cannot identify which output
+field differed. Preserve this evidence and investigate with bounded snapshot
+diagnostics before authority. The original October 23 endpoint is invalid;
+a fresh auditable continuous window is required. Milestone C still requires
+14 consecutive days and three of every required event. Fresh agreement alone
+cannot dismiss previous differences or gaps.
+
+Milestone B acceptance checks the deployed revision, shadow environment,
+collector/timer and fresh comparisons alongside normal desktop use. Package
+extraction and unaccepted plugin consolidation remain separate from acceptance.
+The initial candidate passed 409 desktop and 494 workstation configuration
+checks; guarded restoration passed all 496 current configuration checks and
+eight delivery checks. No physical acceptance is claimed.
 
 The shell gets its compositor facts from standard Wayland protocols wherever
 a protocol exists. Compositor IPC fills only the remaining gaps. The shared

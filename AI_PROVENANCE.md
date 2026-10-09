@@ -54,6 +54,9 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-09: current plan and shadow Test state reviewed with Codex CLI `0.162.0`,
+model `gpt-6.1-sol`; see the [session record](docs/ai/2026-10-09-status-review.md).
+
 2026-10-09: public package-delivery ownership was aligned with the four-repository
 split using Codex CLI `0.162.0`, model `gpt-6.1-sol`; see the
 [session record](docs/ai/2026-10-09-package-ownership.md).

@@ -19,12 +19,18 @@ The non-theme settings/state/cache migration and shared key/bar helper are
 verified; all 494 workstation configuration tests pass. The eight active
 store payloads match the exercised Test set, with temporary overrides off.
 
-**Next:** 0.4.1 compositor protocol shadow Test, then 0.4.2 menus and remaining
+**Next:** Fred tests the restored, verified 0.4.1 shadow candidate; investigate
+historical output disagreements before protocol authority. Then 0.4.2 menus and remaining
 non-theme compatibility cleanup. Then 0.5 theme/fonts/identity,
 0.6 native ownership and final removal when boot work permits it. Accept
 **Tamlinux on Hyprland without Omarchy** before Sway integration becomes the
 focus in 0.7. Prepared Sway adapters/helper candidates remain Develop evidence;
 they are not integrated daily helpers or physical monitor-recovery proof.
+
+The guarded delivery consumer is active in restored Test; consolidated plugin source
+differs from accepted installed payloads. Reconcile and test differences before
+selecting them. Generic menu/default behavior belongs here, deployment definitions
+in `tamlinux-packages`, and personal menu entries in consumer config.
 
 ## Goal and current evidence
 
