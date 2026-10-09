@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# tam-menu — open, close, or reload the command menu in the Tamlinux shell.
+#
+#   tam-menu [toggle|summon|close|refresh|ping|status] [route]
+#
+# Ported from omarchy 4.0.4 (omarchy-menu) for plan 18 R4.7; it calls the
+# host's menu target through tam-shell instead of omarchy-shell.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -euo pipefail
+
+verb="${1-toggle}"
+route="${2-root}"
+
+case "$verb" in
+  toggle | summon)
+    exec tam-shell menu "$verb" "$route"
+    ;;
+  close | refresh | ping | status)
+    exec tam-shell menu "$verb"
+    ;;
+  -h | --help | help)
+    cat <<USAGE
+Usage: tam-menu [verb] [route]
+
+Verbs:
+  toggle [route]   Open the menu at <route>, or close it if already open. Default verb.
+  summon [route]   Always open the menu (no close-if-visible toggle).
+  close            Close the menu if it is visible.
+  refresh          Re-read the menu JSONC files.
+  ping             Health check.
+  status           Report source paths, row count, and the last reload error.
+
+Route is an item id (e.g. setup.power) or alias (e.g. power). Defaults to
+"root", which opens the top-level menu. A route that names an action runs it.
+USAGE
+    exit 0
+    ;;
+  *)
+    echo "tam-menu: unknown verb '$verb'. Try 'tam-menu --help'." >&2
+    exit 2
+    ;;
+esac

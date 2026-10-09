@@ -55,6 +55,12 @@ Item {
 
   function ping() { return "ok" }
 
+  function modelStatus() {
+    return JSON.stringify({ ready: root.rowsLoaded, rows: root.itemOrder.length,
+      defaultPath: root.defaultMenuPath, extensionPath: root.userMenuPath,
+      error: defaultMenuFile.error || userMenuFile.error || root.menuError })
+  }
+
   function toggle(route) {
     if (root.opened) root.cancel()
     else root.openRoute(route || "root")
@@ -86,8 +92,7 @@ Item {
   // path doesn't have to shell out to bash + jq on every open.
   property string defaultMenuPath: Quickshell.env("TAMLINUX_MENU_DEFAULT") || (root.configDir + "/default.jsonc")
   property string userMenuPath: Quickshell.env("TAMLINUX_MENU_EXTENSION") || (root.configDir + "/extension.jsonc")
-  property var defaultMenuItems: []
-  property var userMenuItems: []
+  property string menuError: ""
   property bool opened: false
   property string mode: "menu"
   readonly property bool dmenuActive: mode === "select" || mode === "input"
@@ -285,7 +290,16 @@ Item {
   // on a per-key basis (so the user can tweak label/icon/action without
   // re-declaring the whole row).
   function rebuildItemsFromSources() {
-    var mergedMenu = MenuModel.mergeMenuSources(root.defaultMenuItems, root.userMenuItems)
+    if (!defaultMenuFile.ready || !userMenuFile.ready || !defaultMenuFile.valid) return
+    var mergedMenu
+    try {
+      mergedMenu = MenuModel.mergeMenuSources(defaultMenuFile.items, userMenuFile.items)
+    } catch (e) {
+      root.menuError = String(e)
+      console.warn("Tamlinux menu: retaining last valid model; " + root.menuError)
+      return
+    }
+    root.menuError = defaultMenuFile.error || userMenuFile.error
     root.providerRevision += 1
     root.providersLoaded = ({})
     root.providerQueue = []
@@ -977,27 +991,22 @@ Item {
     function close(): string { root.cancel(); return "ok" }
     function refresh(): string { return root.refresh() }
     function ping(): string { return "ok" }
+    function status(): string { return root.modelStatus() }
   }
 
   // The JSONC sources are watched so live edits to the default file (or the
   // extension) take effect without restarting the host.
-  FileView {
+  MenuSource {
     id: defaultMenuFile
     path: root.defaultMenuPath
-    watchChanges: true
-    printErrors: false
-    onLoaded: { root.defaultMenuItems = root.parseMenuJsonc(text()); root.rebuildItemsFromSources() }
-    onFileChanged: reload()
+    onUpdated: root.rebuildItemsFromSources()
   }
 
-  FileView {
+  MenuSource {
     id: userMenuFile
     path: root.userMenuPath
-    watchChanges: true
-    printErrors: false
-    onLoaded: { root.userMenuItems = root.parseMenuJsonc(text()); root.rebuildItemsFromSources() }
-    onLoadFailed: { root.userMenuItems = []; root.rebuildItemsFromSources() }
-    onFileChanged: reload()
+    optional: true
+    onUpdated: root.rebuildItemsFromSources()
   }
 
   // ---------------------------------------------------------------- guards

@@ -4,10 +4,88 @@
 // Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changed: the
 // guard batch answers the tam-* package and command checks itself.
 
+var MAX_SOURCE = 262144
+var MAX_ITEMS = 2048
+var MAX_DEPTH = 32
+
+// Lex comments and trailing commas only outside strings. Keep whitespace
+// where comments were so a comment cannot join two otherwise invalid tokens.
 function stripJsonc(raw) {
-  return String(raw || "")
-    .replace(/^\s*\/\/[^\n]*(\n|$)/gm, "")
-    .replace(/,(\s*[}\]])/g, "$1")
+  if (typeof raw !== "string" || raw.length > MAX_SOURCE) throw new Error("menu source size/type")
+  var out = [], quoted = false, escaped = false, depth = 0
+  for (var i = 0; i < raw.length; i++) {
+    var c = raw[i], next = raw[i + 1]
+    if (quoted) {
+      out.push(c)
+      if (escaped) escaped = false
+      else if (c === "\\") escaped = true
+      else if (c === '"') quoted = false
+    } else if (c === '"') { quoted = true; out.push(c) }
+    else if (c === "/" && next === "/") {
+      out.push(" "); i += 2
+      while (i < raw.length && raw[i] !== "\n" && raw[i] !== "\r") i++
+      if (i < raw.length) out.push(raw[i])
+    } else if (c === "/" && next === "*") {
+      out.push(" "); i += 2
+      while (i < raw.length && !(raw[i] === "*" && raw[i + 1] === "/")) {
+        if (raw[i] === "\n" || raw[i] === "\r") out.push(raw[i])
+        i++
+      }
+      if (i >= raw.length) throw new Error("unterminated menu comment")
+      i++
+    } else {
+      if (c === "{" || c === "[") {
+        depth++
+        if (depth > MAX_DEPTH) throw new Error("menu nesting limit")
+      } else if (c === "}" || c === "]") depth--
+      out.push(c)
+    }
+  }
+  if (quoted) throw new Error("unterminated menu string")
+  var text = out.join(""), clean = [], last = ""
+  quoted = false; escaped = false
+  for (var j = 0; j < text.length; j++) {
+    var ch = text[j]
+    if (!quoted && ch === ",") {
+      var k = j + 1
+      while (k < text.length && /\s/.test(text[k])) k++
+      if ((text[k] === "}" || text[k] === "]") && last && "{[,:".indexOf(last) < 0) continue
+    }
+    clean.push(ch)
+    if (quoted) {
+      if (escaped) escaped = false
+      else if (ch === "\\") escaped = true
+      else if (ch === '"') quoted = false
+    } else if (ch === '"') quoted = true
+    if (!/\s/.test(ch)) last = ch
+  }
+  return clean.join("")
+}
+
+function validId(id) {
+  return typeof id === "string" && id.length <= 256
+    && /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/.test(id)
+    && !/(^|\.)(__proto__|constructor|prototype)(\.|$)/.test(id)
+}
+
+function validateEntry(id, entry) {
+  if (!validId(id) || !entry || typeof entry !== "object" || Array.isArray(entry))
+    throw new Error("invalid menu row")
+  var strings = ["parent", "icon", "iconFont", "label", "title", "target", "description", "action", "provider", "when", "checked"]
+  var keys = Object.keys(entry)
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i], value = entry[key]
+    if (key === "aliases") {
+      var aliases = typeof value === "string" ? [value] : value
+      if (!Array.isArray(aliases) || aliases.length > 32) throw new Error("invalid menu aliases")
+      for (var a = 0; a < aliases.length; a++)
+        if (typeof aliases[a] !== "string" || aliases[a].length > 256) throw new Error("invalid menu alias")
+    } else if (strings.indexOf(key) < 0 || typeof value !== "string" || value.length > 16384 || value.indexOf("\0") >= 0)
+      throw new Error("invalid menu field")
+  }
+  if ((entry.action && (entry.target || entry.provider)) || (entry.target && entry.provider)) throw new Error("ambiguous menu row")
+  if (entry.parent && !validId(entry.parent)) throw new Error("invalid menu parent")
+  if (entry.target && !validId(entry.target)) throw new Error("invalid menu target")
 }
 
 function normalizeAliases(value) {
@@ -46,23 +124,17 @@ function normalizeItem(id, raw) {
 
 function parseMenuJsonc(raw) {
   var stripped = stripJsonc(raw)
-  if (!stripped.trim()) return []
-
-  var parsed
-  try {
-    parsed = JSON.parse(stripped)
-  } catch (e) {
-    return []
-  }
-  if (typeof parsed !== "object" || parsed === null) return []
-
-  var source = (parsed.items && typeof parsed.items === "object" && !Array.isArray(parsed.items))
-    ? parsed.items
-    : parsed
+  var parsed = JSON.parse(stripped)
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("menu must be an object")
+  var source = Object.prototype.hasOwnProperty.call(parsed, "items") ? parsed.items : parsed
+  if (!source || typeof source !== "object" || Array.isArray(source)) throw new Error("invalid menu items")
+  var ids = Object.keys(source)
+  if (ids.length > MAX_ITEMS) throw new Error("menu item limit")
   var out = []
-  for (var id in source) {
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i]
     var entry = source[id]
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue
+    validateEntry(id, entry)
     out.push(normalizeItem(id, entry))
   }
   return out
@@ -93,6 +165,21 @@ function mergeMenuSources(defaultItems, userItems) {
     nextOrder.unshift("root")
   }
   for (var k3 = 0; k3 < nextOrder.length; k3++) nextItems[nextOrder[k3]].order = k3
+
+  if (nextOrder.length > MAX_ITEMS) throw new Error("merged menu item limit")
+  if (nextItems.root.kind !== "menu" || nextItems.root.parent) throw new Error("invalid menu root")
+  for (var n = 0; n < nextOrder.length; n++) {
+    var row = nextItems[nextOrder[n]]
+    if (row.id !== "root" && (!row.parent || !nextItems[row.parent] || nextItems[row.parent].kind !== "menu"))
+      throw new Error("missing menu parent")
+    if (row.target && (!nextItems[row.target] || nextItems[row.target].kind !== "menu")) throw new Error("missing menu target")
+    var current = row, seen = {}, count = 0
+    while (current && current.id !== "root") {
+      if (seen[current.id] || ++count > MAX_DEPTH) throw new Error("menu route cycle/depth")
+      seen[current.id] = true
+      current = nextItems[current.target || current.parent]
+    }
+  }
 
   return {
     items: nextItems,

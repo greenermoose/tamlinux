@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-09 | 0.4.2 menu ownership and bounded reloads | Codex CLI `0.162.0` | `gpt-6.1-sol` | [Session](2026-10-09-0.4.2-menu.md) |
 | 2026-10-09 | Deployment state and current plan review | Codex CLI `0.162.0` | `gpt-6.1-sol` | [Session](2026-10-09-status-review.md) |
 | 2026-10-09 | Plugin suite consolidation into Tamlinux | OpenCode `1.18.35` / agy `1.2.16` | `big-pickle` / `gemini-3.8-flash-high` | [`2026-10-09-plugins-consolidation.md`](2026-10-09-plugins-consolidation.md) |
 | 2026-10-09 | Public package-delivery ownership | Codex CLI `0.162.0` | `gpt-6.1-sol` | [2026-10-09-package-ownership.md](2026-10-09-package-ownership.md) |
