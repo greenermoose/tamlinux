@@ -8,13 +8,19 @@ Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
-**Status — 2026-10-07:** 0.3.3 accepted after daily use; stage 0.3 complete.
+**Status — 2026-10-08:** 0.4.0 settings/state ownership accepted after tested
+normal Run, including physical logout/login. Stage 0.3 remains complete.
 The Tamlinux shell, its session services/panels and eight 2.x plugins are the
 daily desktop on Hyprland. Remaining inherited dependencies include user
-settings/state/cache paths, menu extensions, theme machinery, fonts, branding,
+menu extensions, theme machinery, fonts, branding,
 native packages, system files and boot ownership.
 
-**Next:** 0.4 settings/state and menu cleanup. Then 0.5 theme/fonts/identity,
+The non-theme settings/state/cache migration and shared key/bar helper are
+verified; all 494 workstation configuration tests pass. The eight active
+store payloads match the exercised Test set, with temporary overrides off.
+
+**Next:** 0.4.1 compositor protocol shadow Test, then 0.4.2 menus and remaining
+non-theme compatibility cleanup. Then 0.5 theme/fonts/identity,
 0.6 native ownership and final removal when boot work permits it. Accept
 **Tamlinux on Hyprland without Omarchy** before Sway integration becomes the
 focus in 0.7. Prepared Sway adapters/helper candidates remain Develop evidence;

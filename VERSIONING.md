@@ -29,7 +29,9 @@ fonts and identity (0.5), package/system ownership and boot-dependent final
 removal (0.6), then Sway integration/package (0.7) and daily proof (0.8).
 The former prepared compositor 0.4 schedule is deferred; accepted 0.0–0.3
 versions and authored prototype records retain their identifiers. This
-documentation change leaves the product version at 0.3.3.
+documentation change left the product version at 0.3.3. Fred subsequently
+accepted settings/state step 0.4.0 on 2026-10-08; protocol shadow testing is
+next at 0.4.1.
 
 This scheme was adopted on 2026-10-05. Before it, minor versions were fixed
 milestones and work between them raised no number, so the steps accepted

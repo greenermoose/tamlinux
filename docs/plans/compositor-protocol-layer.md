@@ -2,8 +2,9 @@
 
 **Status — 2026-10-08:** milestone A developed and verified locally. The shared
 bound state, adapter refactor, reactive fixtures and isolated Hyprland proof
-are implemented. No deployment; product version remains accepted 0.3.3.
-Milestone B waits for 0.4.0 acceptance. Fred accepted the approach, schedule,
+are implemented. No protocol-layer deployment; product step 0.4.0 was
+accepted 2026-10-08. Its acceptance gate for milestone B has passed; daily
+shadow Test remains the next task at 0.4.1. Fred accepted the approach, schedule,
 acceptance period and display-power boundary on 2026-10-08.
 
 The shell gets its compositor facts from standard Wayland protocols wherever

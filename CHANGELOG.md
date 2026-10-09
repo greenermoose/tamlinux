@@ -29,6 +29,27 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.4.0 - 2026-10-08
+
+### Changed
+
+- Non-theme user settings, state and caches use Tamlinux paths. Readers,
+  writers, watchers and collectors agree; migration respects XDG homes,
+  retains originals and valid existing destinations, and supports validated
+  rollback and resume. Desktop keys and bar actions share one active helper.
+- The eight exercised plugins use normal immutable Run payloads with all
+  temporary overrides removed. Theme, menu, branding and host exceptions
+  remain assigned to their later steps; the daily shell pin is unchanged.
+
+### Verification
+
+- Fred: “Yes, I've tested the current desktop and accept 0.4.0.”
+- All 494 workstation configuration tests passed. Three-display desktop
+  modes, movement and blank/wake, saved weather/tides choices, agent refresh
+  and sysinfo passed. Sixteen preference checks and all eight plugin payloads
+  survived physical logout/login and remained unchanged in normal Run.
+- 0.4.1 daily protocol shadow testing can now proceed as the next step.
+
 ## 0.3.3 - 2026-10-06
 
 The Tamlinux shell is the daily bar on all three screens. Stage 0.3 is
