@@ -129,6 +129,29 @@ in this development snapshot; no letter or assembly has been prepared.
 
 ## Delivery sequence
 
+**Next action, revised 2026-10-10:** review menu and keybinding capability
+dispositions before transferring more helpers. Menu concentration is a reason to
+settle scope early, not evidence that those functions are obsolete. List exact
+rows/chords, other callers, independent replacements, optional availability and
+proposed retirements. Keep previously agreed functions until a specific scope
+amendment is accepted. Missing implementation or a keyword such as `font`, `tui`
+or `security` does not by itself authorize deletion.
+
+The original output inventory has 81 of 108 unresolved names referenced by the
+menu, but only 68 exclusive to it; removing the entire menu would still leave 40
+lexical findings. The current terminal/editor snapshot has 77 of 103 menu-linked
+names, 67 exclusive, and 36 remaining under that hypothetical full deletion.
+Removing just the proposed installer/security/style prefix groups eliminates
+nine unresolved names, leaving 94 in the current snapshot. These comparisons
+exclude additional consumer keybinding/helper closure and are not readiness proof.
+
+Add a compact view to the existing delivery auditor, using selected built outputs
+and the same missing-output, pending-requirement and exit-status semantics. Keep
+the full JSON and identities for review. Report lexical candidates, caller
+overlap and explicit dispositions; do not use personal PATH or source-directory
+presence as proof of packaged commands. Prefer this bounded improvement over a
+second scanner or a five-tool development program on the critical path.
+
 The initial host contract is recorded in delivery's
 [`contracts/arch-hyprland.json`](https://github.com/greenermoose/tamlinux-packages/blob/develop/contracts/arch-hyprland.json).
 It assigns native programs and service-level facilities, declares required
@@ -194,6 +217,14 @@ Release remain explicit transitions; scope agreement does not activate packages
 or request a reboot.
 
 ## Fixed behavior and closure boundary
+
+Plan the focused input usability follow-up as **0.4.4**, after independent 0.4.3
+acceptance and before the visual redesign. Its first priorities are close/launch
+chord safety, predictable terminal selection/paste and TUI overrides, accessible
+close controls and discoverability. The exact keymap, Escape behavior and client
+coverage require review and tests; neither an arbitrary binding-count target nor
+blanket desktop right-click paste is a settled specification. This scheduling
+change does not silently retire 0.4.3 baseline functions.
 
 The behavior baseline is the accepted `0.4.2-d` desktop, its shipped menu,
 keybindings, eight plugins and the workflow list in gate I07 below. Preserve

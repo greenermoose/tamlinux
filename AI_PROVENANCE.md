@@ -242,3 +242,12 @@ and default helpers with package dependency closure. Nineteen installed-chain
 regressions, the Nix build/integration and fourteen isolated output probes pass.
 Command closure precedes session/native defaults and clean-host proof; no
 installed candidate changed. [Session](docs/ai/2026-10-10-terminal-editor-closure.md).
+
+## 0.4.3 independent acceleration review — 2026-10-10
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) independently checked menu caller overlap,
+input counts, prototype limitations and native ownership. Prioritized capability
+dispositions and compact built-output reporting; planned focused input usability
+as 0.4.4 after independent 0.4.3 acceptance. The 108 → 27 shortcut was rejected;
+no features were deleted or software deployed.
+[Session](docs/ai/2026-10-10-acceleration-review.md).
