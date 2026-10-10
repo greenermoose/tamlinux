@@ -55,6 +55,12 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-10: Codex CLI `0.162.1` (`gpt-6.1-sol`) specifies the 0.4.3 finite
+independence gate, migration/recovery and fixed-parity rules, and records
+delivery's initial clean-host contract/output audit. Seventeen audit tests pass;
+complete runtime proof remains pending.
+[Session record](docs/ai/2026-10-10-0.4.3-clean-host-contract.md).
+
 2026-10-10: Codex CLI `0.162.1` (`gpt-6.1-sol`) restores release history and
 plugin usage documentation, fixes exact assembly verification and rollback
 return identity, and prepares the distinct 0.4.2-d candidate.

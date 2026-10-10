@@ -5,6 +5,10 @@
 interfaces; notification endpoints and plugin discovery use owned names/sources. Complete assembly construction and clean-host installation proof
 remain pending. No new candidate has been installed.
 
+Delivery now has a [clean Arch/Hyprland contract and output audit](https://github.com/greenermoose/tamlinux-packages/blob/develop/docs/clean-host.md).
+Its first five-output inventory identifies unresolved helper references and
+inherited runtime identifiers; clean installation remains blocked.
+
 ## Outcome
 
 Graft Tamlinux as a desktop environment onto another Linux host. Prove the
@@ -125,6 +129,26 @@ in this development snapshot; no letter or assembly has been prepared.
 
 ## Delivery sequence
 
+The initial host contract is recorded in delivery's
+[`contracts/arch-hyprland.json`](https://github.com/greenermoose/tamlinux-packages/blob/develop/contracts/arch-hyprland.json).
+It assigns native programs and service-level facilities, declares required
+output payloads and leaves source/channel, assets, native integration and actual
+installation proof as explicit pending requirements. Its auditor checks only
+supplied package outputs, with optional offline host-root inspection; personal
+PATH tools cannot satisfy missing implementation. Seventeen regression tests
+pass locally and in an isolated Nix check.
+
+The [retained output inventory](https://github.com/greenermoose/tamlinux-packages/blob/develop/docs/evidence/0.4.3-clean-host-audit.json)
+covers 212 runtime files in the existing development outputs. It finds 108
+unresolved custom-command references and 54 inherited-name locations, including
+menu launch/theme/capture/control chains, plugin setters and desktop-mode UI/data.
+These are conservative lexical review candidates, not proven runtime dependency
+or defect counts. All declared baseline payloads are present and observed
+absolute tool names have native owners; that does not close the transitive
+command, asset or service requirements. This inventory advances step 1 below;
+the complete consumer/session contract and fresh-host smoke environment remain
+unfinished. No pins, candidate letters or installed state changed.
+
 1. **Define the clean-host contract.** Use a standard Arch base and Hyprland
    session, with no inherited distribution packages, repository, keyring or
    checkout. Record the required native host facilities and supplied package
@@ -158,7 +182,169 @@ integration requires its own exact artifact and recovery record. Test, Run and
 Release remain explicit transitions; scope agreement does not activate packages
 or request a reboot.
 
-## Acceptance evidence
+## Fixed behavior and closure boundary
+
+The behavior baseline is the accepted `0.4.2-d` desktop, its shipped menu,
+keybindings, eight plugins and the workflow list in gate I07 below. Preserve
+those functions and current appearance while changing software ownership and
+names. New features or later changes in the upstream parent do not expand this
+version's parity target. Upstream security/compatibility changes enter only
+through a demonstrated dependency or defect affecting this baseline; unrelated
+parent features stay in later work. This is a fixed acceptance target, not a
+permanent freeze on maintaining Tamlinux.
+
+An implementation enters 0.4.3 when an inventoried baseline caller needs it,
+when it is a transitive dependency of that caller, or when an independently
+reproduced defect prevents installation or a baseline workflow. Every addition
+records the caller, retained function, public source owner, installed package
+interface, runtime dependencies and verification. Classify each lexical audit
+hit first: cache/data names and dormant code are not automatically new commands.
+Personal extensions and optional selected applications do not make all software
+on the reference workstation a mandatory dependency. Required and optional
+capabilities must be declared before the candidate is tested; silent removal of
+baseline functions cannot make the closure pass.
+
+## Rename and migration contract
+
+Maintain a per-component cutover table alongside the dependency manifest. Each
+row records the old interface, new interface, callers/readers/writers, source and
+package owner, data conversion, verification and rollback. These rules govern
+the rows; the table must be populated from inspected software before Test:
+
+| Interface class | Cutover rule | Migration and rollback |
+| --- | --- | --- |
+| UI names, menu/icon/font identities and desktop-mode labels | Owned Tamlinux name; preserve behavior/glyphs/layout. Rename readers and assets together. | Convert saved enum/settings values once; retain source values and test all modes. |
+| Commands, services, environment and notification/browser protocol names | Package both endpoints under owned names and retarget every baseline caller. | No inherited runtime alias or fallback in the new desktop. The retained old assembly supplies old interfaces on rollback. |
+| User theme/background/font choices, menu selections, plugin settings, reminder/notification state and desktop-mode state | Owned XDG destinations and schema; map equivalent choices without replacing user selections with defaults. | Carry over only to absent destinations, validate contents and preserve originals; report conflicts without overwriting them. |
+| Internal compatibility keys or old software paths | Remove from normal runtime after conversion; they are not a blanket naming exception. | If conversion needs an old name, confine it to an explicitly inventoried offline upgrade input/converter, outside the fresh-host runtime audit scope. Retire it after migration. |
+| Licenses/provenance and inactive recovery artifacts | Retain factual ancestry, with explicit file/role classification. | Never execute or load them as a normal-runtime fallback. |
+| Existing hostname, UUID, mapper and partition identity | Preserve the host's values; new machines supply their own. | No cosmetic device rename; boot/recovery checks use the same real identifiers. |
+
+For the reference-machine upgrade, use the already established carry-over
+pattern: absent destination only, validation before use, preserved originals and
+idempotent retry. Inventory actual mutable readers/writers and old/new paths;
+include application/editor settings, browser registrations and theme selections
+as well as the desktop-mode files already migrated. Keep credentials and personal
+data out of public defaults/evidence. Missing source files use packaged defaults;
+existing destination conflicts, malformed data and partial migration produce a
+specific result and never an automatic destructive replacement.
+
+Take a protected mutable-state snapshot and record per-path conversion before
+Test. Rollback must retain changes made during Test: export new writes, restore
+or reverse-convert compatible data for the old assembly, and preserve incompatible
+new data separately with a reported disposition. Restoring an old Home Manager
+generation must not silently erase newer settings, reminders or history. Prove
+fresh installation separately from in-place upgrade, including conflicting
+destinations, interruption/retry and rollback after new writes.
+
+## Reusable clean-host recipe
+
+Delivery must commit a repeatable provisioning/test recipe before claiming a
+clean-host pass. Record the Arch ISO/image release, download origin, checksum
+and verified signature; architecture; native repository snapshot and exact
+package versions/signatures; kernel/firmware and Hyprland/Qt/Quickshell/driver
+identities; Nix/Home Manager locks; and the consumer example/recipe digest.
+Do not use a moving latest image or mirror as the identity of a test.
+
+Provision a fresh disposable host/image with no inherited distribution package,
+keyring/repository, checkout, user state or reference-machine configuration.
+Stage native archives and Nix closures from declared independent sources, then
+install/activate the desktop with that staged set and external egress disabled.
+Record the package database and effective repository configuration before and
+after. A reusable image recipe is not the later live-media installer milestone.
+
+Run fresh login and the fixed workflows in an isolated network environment.
+Capture DNS and attempted connections, black-hole the inventoried inherited
+domains/endpoints, and fail on an attempted lookup/connection even when blocked.
+Allow other traffic only through a declared workflow allowlist and record it;
+disable general egress for installation/offline workflows. Review literals and
+configured endpoints too, so a direct-IP request cannot evade a domain denylist.
+Monitoring must cover the session, helpers, applications and native services
+used by those workflows; absence of a successful connection alone is no proof.
+
+Reset to the recorded empty image for repeat runs. A VM/headless pass establishes
+only the cases it exercises; supported physical graphics, sleep/resume, display
+and capture cases still require their declared hardware evidence. A container or
+the existing workstation cannot substitute for clean graphical-host proof.
+The recipe, independent native source selection and actual host run are not yet
+implemented; the initial delivery contract and static audit are preparatory work.
+
+## Exact artifacts, promotion and recovery
+
+For each unused `0.4.3-<letter>` candidate, record one artifact tuple:
+
+1. Product revision/version and revisions of `tam`, `libtam`, `tamlinux-tools`
+   and every maintained native integration source.
+2. Delivery revision, lock digest, build/recipe/dependency identities, all Nix
+   output paths/closure identities and native package archives/checksums.
+3. Host-image/repository identity, independent provider/signature manifest,
+   consumer recipe digest and selected plugins/capabilities.
+4. Activation generation, resolved runtime endpoints, native installed ownership
+   and changed root/service/boot files.
+5. Prior exact assembly/generation and native archives; protected boot/config
+   backups; mutable-state snapshot/conversion record; and rollback/retry results.
+6. Independence gate result and referenced evidence digests bound to this tuple.
+
+Compute the selection digest from the immutable source/build/host/consumer and
+prepared recovery identities before running checks. Activation observations and
+gate results are attached evidence referring to that digest, outside the identity
+hash; a result must not recursively hash itself. Compare observed generation,
+endpoints and native state against the selected artifacts before accepting it.
+
+Private user data, raw environment and boot/credential backups remain protected;
+public evidence contains sanitized identities and outcomes. Changing source,
+dependencies, recipes, capabilities or runtime payloads creates a new candidate
+and invalidates the prior gate result. No prepared letter is reused.
+On explicit Test, promote/build/install the exact recorded candidate. On explicit
+Run, promote and use the same tested artifacts and managed endpoints. Release
+remains a separate explicit instruction after acceptance. Native/root migration
+and rollback are part of this record, not implied by Home Manager alone.
+
+## Independence gate — finite required checks
+
+Delivery will emit a versioned, machine-readable gate result with exactly the
+following required IDs, the artifact-tuple digest, runner identities, outcomes,
+evidence paths/digests and declared capability matrix. Overall pass requires
+every ID to pass with valid evidence for the same tuple. Missing evidence,
+unrun/blocked checks, unexpected IDs used as substitutes or a changed tuple fail
+closed. Required hardware cases stay pending until exercised. Optional capability
+exclusions must be declared in the tuple before the run and include the expected
+unavailable behavior; they cannot be invented to excuse a failed baseline case.
+
+| ID | Required pass condition | Evidence/check owner |
+| --- | --- | --- |
+| I01 — Artifact/source identity | Built and installed outputs/native packages equal the exact tuple; required implementation and independent provider origins/signatures are recorded. | Delivery package/closure and native ownership checks. |
+| I02 — Clean host/native ownership | Fresh host package DB and effective repo/keyring configuration contain no inherited package/channel; required settings/services/hooks have declared owners. | Provisioning recipe and native manifest audit. |
+| I03 — Delivered software audit | Binaries, QML/helpers, menus/templates/assets, registrations and generated config have no active inherited command/path/font/UI/environment/protocol/domain identifiers or missing baseline helper chain. | Delivery static/output checks plus component closure tests. |
+| I04 — Effective login/runtime | Fresh login environment, loaded QML/font/assets, unit definitions, command resolution and browser/notification endpoints satisfy the owned interfaces without personal PATH/state or old fallbacks. | Clean graphical session runtime collector and endpoint/workflow checks. |
+| I05 — Network independence | Install/offline work succeeds from staged independent artifacts; required workflow observation records zero attempted inherited DNS/endpoint/repository requests, including blocked attempts. | Isolated network recipe/logs and connection/DNS audit. |
+| I06 — Data migration | Fresh defaults and in-place conversion both pass, preserve originals/selections, handle conflicts and interruption idempotently, and keep new writes recoverable through rollback. | Migration manifest and fresh/upgrade/rollback tests. |
+| I07 — Fixed behavior/appearance | Startup/login, full baseline menu/launches, all eight plugins, notifications/actions/reminders, editor, theme/background/fonts, browser helpers, screenshot/recording/OCR/QR, panels and authorization/portals pass their declared cases. | Component tests and clean-host workflow/visual evidence, with relevant physical cases. |
+| I08 — Native update/recovery | Changed native/root integration preserves real IDs and proves boot, kernel/initramfs update, fallback, recovery and sleep/resume; inspected old-package removal has ready replacements. | Native/boot transaction and physical recovery checks. |
+| I09 — Promotion/rollback | Exact old/new artifacts and mutable recovery exist; Test installation and rollback resolve the recorded packages through the same endpoints and preserve post-migration writes. | Deployment/recovery verification and reference-machine Test evidence. |
+
+Use an explicit denylist seeded with inherited package/command names, active path
+and environment prefixes, font/UI/protocol/browser identities, known domains,
+repo/keyring/channel definitions and configured endpoints. Extend it when the
+inventory finds another spelling. Classify permissible ancestry/recovery files
+and host identifiers by exact file and role; no blanket substring suppression,
+whole-directory runtime exception or alias allowance. A static denylist alone
+cannot pass I04/I05/I07. The new output auditor supports part of I03; it does not
+implement or pass this complete gate. Gate aggregation and runtime collectors
+remain delivery work.
+
+I03 includes compiled payload string/byte inspection and declared shared-library
+dependencies (for example, `readelf` metadata), and resolved QML imports/modules.
+Skipping a binary because it is not UTF-8 cannot count as a passed binary audit.
+The current text auditor does not perform those compiled/library checks.
+
+Source/build/output and clean-host checks precede reference-machine Test. I06,
+I08 and I09 also require the actual in-place upgrade/native recovery results
+where relevant. The full gate must pass before proposing Run/0.4.3 completion;
+it does not itself authorize Test, package removal, Run or Release.
+
+The following evidence details clarify those nine checks rather than add an
+unbounded second acceptance list:
 
 - The clean host has no installed or required inherited distribution package.
   The assembly brings all required Tamlinux implementation from maintained
@@ -196,5 +382,11 @@ physical outputs divide evenly at their selected scales.
 
 Retain that evidence without making a shared geometry API, a mirroring redesign
 or a comprehensive image-conversion matrix prerequisites for 0.4.3. Make a
-small capture fix only after identifying the authoritative expected result and
-specific effect; carry broader compositor reconciliation into the Sway work.
+small capture fix only when its issue record includes a failing baseline
+workflow, an authoritative expected compositor/image result, an original-code
+reproducer and a bounded consumer change. The reproducer must fail before and
+pass after; retained capture cases and affected physical scale/transform cases
+must pass without changing compositor layout authority. Synthetic disagreement
+without demonstrated workflow impact does not meet this gate. A change needing
+a shared geometry redesign, new compositor contract or unbounded transform
+matrix stays in the later Sway/capture work; scope changes need explicit review.
