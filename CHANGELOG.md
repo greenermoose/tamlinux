@@ -41,7 +41,25 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
 
+## 0.4.2-b - Unreleased
+
+- Correct the monitor's displayed version to 2.0.4 and give footer-only
+  clock hovers the shared caption styling. Behavioral parser tests and
+  manifest/QML version checks cover all eight plugins.
+- Restore plugin manifest links to the Tamlinux product repository and
+  point the keyboard panel's repository link at its current source.
+- The workstation candidate retires installation of the frozen 1.x plugin
+  tree; retained package generations provide rollback.
+- Capture geometry reconciliation is scheduled for 0.4.3, covering fractional
+  scaling, rotation, mirroring and logical-to-image-pixel conversion.
+
 ## 0.4.2-a - Unreleased
+
+- Shared bar hover version styling and reusable panel version footers across
+  all eight plugins; weather and tides use the host's common hover surface.
+- Plugin patch versions: agents/workspaces 2.0.3, clock/sysinfo/tides/weather
+  2.0.2, keyboard 2.0.1 and monitor 2.0.4. Monitor's displayed version was
+  corrected in 0.4.2-b.
 
 - Product-owned menu defaults and `tam-menu`, with personal extensions at
   `tamlinux/menu/extension.jsonc`. Retained rows, routes, aliases and actions

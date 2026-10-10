@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Tam.Commons
+import "TooltipParser.js" as TooltipParser
 
 PanelWindow {
   id: win
@@ -17,18 +18,7 @@ PanelWindow {
   signal clockReady(var widget)
 
   property string tooltipText: ""
-  readonly property var parsedTooltip: {
-    var raw = win.tooltipText || ""
-    if (!raw) return { body: "", footer: "" }
-    var m = String(raw).match(/^([\s\S]*?)(?:\r?\n\s*)*\r?\n(fred\.[a-z0-9_.-]+\s+v\S+.*)$/i)
-    if (m) {
-      return {
-        body: m[1].replace(/\s+$/, ""),
-        footer: m[2].trim()
-      }
-    }
-    return { body: raw, footer: "" }
-  }
+  readonly property var parsedTooltip: TooltipParser.parse(win.tooltipText)
   // The hovered item's center along the bar; the tooltip centers on it and
   // is kept a gap inside both screen edges, as Omarchy's bar does.
   property real tooltipCenterX: 0

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -284,6 +286,30 @@ class FixtureTests(unittest.TestCase):
 
 
 class BarWindowTests(unittest.TestCase):
+    def test_tooltip_parser_handles_footer_only_and_body_text(self):
+        cases = [
+            ("", {"body": "", "footer": ""}),
+            ("fred.clock v2.0.2", {"body": "", "footer": "fred.clock v2.0.2"}),
+            ("5m remaining\n\nfred.clock v2.0.2", {"body": "5m remaining", "footer": "fred.clock v2.0.2"}),
+            ("Status\nFact\nfred.monitor v2.0.4", {"body": "Status\nFact", "footer": "fred.monitor v2.0.4"}),
+            ("Status\r\n\r\nfred.clock v2.0.2\r\n", {"body": "Status", "footer": "fred.clock v2.0.2"}),
+            ("\nfred.weather v2.0.2\n \n", {"body": "", "footer": "fred.weather v2.0.2"}),
+            ("ordinary help\n", {"body": "ordinary help\n", "footer": ""}),
+            ("fred.clock v2.0.2\nmore help", {"body": "fred.clock v2.0.2\nmore help", "footer": ""}),
+        ]
+        script = """
+const parser = require(process.argv[1]);
+const cases = JSON.parse(process.argv[2]);
+process.stdout.write(JSON.stringify(cases.map(([raw]) => parser.parse(raw))));
+"""
+        result = subprocess.run(["node", "-e", script,
+                                 str(DESKTOP / "shell/host/TooltipParser.js"), json.dumps(cases)],
+                                capture_output=True, text=True, timeout=10, check=True)
+        self.assertEqual(json.loads(result.stdout), [expected for _, expected in cases])
+        text = (DESKTOP / "shell/host/BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn('import "TooltipParser.js" as TooltipParser', text)
+        self.assertIn("parsedTooltip: TooltipParser.parse(win.tooltipText)", text)
+
     def test_daily_bar_reserves_its_own_height(self):
         # ExclusionMode.Normal reserves only an explicit exclusiveZone (0 by
         # default); Auto reserves the bar's height.
@@ -299,6 +325,31 @@ class BarWindowTests(unittest.TestCase):
         self.assertIn("Style.font.caption", text)
         self.assertIn("opacity: 0.45", text)
         self.assertIn("horizontalAlignment: Text.AlignHCenter", text)
+
+
+class PluginMetadataTests(unittest.TestCase):
+    def test_all_qml_version_declarations_match_the_manifest(self):
+        plugins = sorted((DESKTOP / "plugins").glob("fred.*"))
+        self.assertEqual(len(plugins), 8)
+        for plugin in plugins:
+            manifest = json.loads((plugin / "manifest.json").read_text())
+            declarations = []
+            for qml in plugin.rglob("*.qml"):
+                versions = re.findall(r'property\s+string\s+pluginVersion\s*:\s*"([^\"]+)"',
+                                      qml.read_text(encoding="utf-8"))
+                declarations.extend((qml.relative_to(plugin), version) for version in versions)
+            with self.subTest(plugin=plugin.name):
+                self.assertTrue(declarations, "plugin must expose its running version")
+            for qml, version in declarations:
+                with self.subTest(plugin=plugin.name, qml=str(qml)):
+                    self.assertEqual(version, manifest["version"])
+
+    def test_plugin_manifest_urls_point_to_the_product_repository(self):
+        for path in sorted((DESKTOP / "plugins").glob("fred.*/manifest.json")):
+            manifest = json.loads(path.read_text())
+            with self.subTest(plugin=manifest["id"]):
+                self.assertEqual(manifest["repository"], "https://github.com/greenermoose/tamlinux.git")
+                self.assertEqual(manifest["homepage"], "https://github.com/greenermoose/tamlinux")
 
 
 class AdapterTests(unittest.TestCase):

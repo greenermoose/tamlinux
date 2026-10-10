@@ -26,7 +26,7 @@ Item {
     if (resolved.indexOf("file://") === 0) {
       return decodeURIComponent(resolved.substring(7))
     }
-    return home + "/.config/omarchy/plugins/fred.agents/bin/tam-agent-usage-update"
+    return ""
   }
 
   readonly property var updateEnv: ({

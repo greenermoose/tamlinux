@@ -70,6 +70,7 @@ earlier future-stage schedules without changing accepted version identifiers.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Plugin and hover repairs** | 0.4.2-b candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Corrected displayed monitor version, footer-only hovers and product links; added parser/version regressions and backfilled the original session record. [Session](docs/ai/2026-10-09-0.4.2b-repair.md). |
 | **Menu candidate after the package transition** | 0.4.2-a Develop | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Rechecked the retained implementation after the release merge: nine menu tests, 18 service checks and all 196 consumer rows pass. Updated the changelog and package-based candidate plan; physical Test remains pending. [Session](docs/ai/2026-10-09-0.4.2-assembly.md). |
 | **Packaged deployment tools** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`) | `tam-deploy` replaces `tam-shell-deploy`: Test pins and verifies a `tamlinux-packages` assembly, Run fast-forwards `main` without rebuilding; `tam-plugin` 3.0.0 reads sources from `desktop/plugins` and leaves Test and Run to `tam-deploy`. 20 tests plus the lifecycle suite, passing in the Nix build. [Session](docs/ai/2026-10-09-tam-deploy.md). |
 | **Lifecycle tools in Tamlinux** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`) | `tam-shell-deploy` and `tam-plugin` become components under `commands/`; Home Manager configuration name and configuration checkout made configurable; 14 and seams tests pass. [Session](docs/ai/2026-10-09-lifecycle-tools-move.md). |
@@ -204,3 +205,11 @@ repositories into desktop/plugins/ in the Tamlinux product repository,
 preserving git history, branch lines, and namespaced tags. The standalone
 repositories are frozen as historical Omarchy 1.x reference.
 [Session record](docs/ai/2026-10-09-plugins-consolidation.md).
+
+## 2026-10-09 shared plugin hover and panel footers
+
+Antigravity CLI `agy 1.3.2` (`gemini-3.8-flash-high`) implemented shared
+hover rendering, panel footers and patch bumps in `907d46b`, on Fred's direct
+instruction. The record was backfilled from the original transcript; defects
+found during Test are tracked in the 0.4.2-b repair.
+[Original session record](docs/ai/2026-10-09-plugin-hover-footers.md).

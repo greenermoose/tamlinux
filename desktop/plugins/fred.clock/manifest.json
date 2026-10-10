@@ -5,8 +5,8 @@
   "version": "2.0.2",
   "author": "Fred (@greenermoose)",
   "description": "Date/time label with upcoming countdown badge, interactive agenda, multi-calendar sync, and local event management",
-  "repository": "https://github.com/greenermoose/clock-fred-tamlinux",
-  "homepage": "https://github.com/greenermoose/clock-fred-tamlinux",
+  "repository": "https://github.com/greenermoose/tamlinux.git",
+  "homepage": "https://github.com/greenermoose/tamlinux",
   "license": "GPL-3.0-or-later",
   "kinds": [
     "bar-widget"
