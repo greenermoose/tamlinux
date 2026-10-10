@@ -1,9 +1,9 @@
 # Tamlinux versioning
 
 Tamlinux uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The published number is the file [`VERSION`](VERSION) in this repository.
-The private workstation checkout keeps a matching `VERSION` so the running
-machine and this explainer agree.
+The product number is [`VERSION`](VERSION) in this repository and the
+matching `VERSION` in `tamlinux-packages`. The latter assembles exact source
+commits and dependencies into the package installed for Test and Run.
 
 ## What the numbers mean
 
@@ -68,9 +68,44 @@ versions in its manifest.
 Tamlinux. Installing on a second computer comes at 1.1, after the
 workstation package has replaced the inherited desktop on this machine.
 
-When Fred accepts a step, write its version in both `VERSION` files, log it
-in [`CHANGELOG.md`](CHANGELOG.md), and keep the two files identical. Tag a
-version when Fred asks for one.
+## Candidate letters and lifecycle branches
+
+Work toward a release uses letters: people say **0.4.2a**, **0.4.2b** and
+**0.4.2c**. `VERSION` and changelog headings use the SemVer forms `0.4.2-a`,
+`0.4.2-b` and `0.4.2-c`. Nix and native package recipes use `0.4.2pre.a`,
+`0.4.2pre.b` and `0.4.2pre.c`, so candidates sort after 0.4.1 and before
+0.4.2. The spelling `0.4.2a` is for conversation, not a package version.
+Candidate letters have no release tags or GitHub Releases.
+
+| Branch | Meaning | Promotion |
+| --- | --- | --- |
+| feature branches | Experiments and work not ready for integration | Merge into develop when ready |
+| `develop` | Work toward the next version; it may be broken | Selected on Fred's Test instruction |
+| `test` | The exact candidate Fred is testing | Promoted on Fred's Run instruction |
+| `main` | Code Fred runs; the default branch | Tagged only on Fred's Release or Ship instruction |
+
+This model applies to `tamlinux`, `tamlinux-packages`, `tam`, `libtam` and
+`tamlinux-tools`. Promotion is fast-forward only and moves the same selected
+commits, without a merge commit. Fixes found in Test go back through Develop
+and Test; they are not implicit Run acceptance. Keep unfinished work on feature
+branches so the develop candidate can be promoted whole.
+
+A Test selects an exact committed assembly in `tamlinux-packages`; its lock
+file pins the product, components and dependencies. Test and Run install the
+same immutable package outputs through the same managed endpoints. Changed
+source or package recipes create a new candidate requiring Test. Record the
+exact assembly and active generation, verify installed endpoints, and retain
+the prior generation plus any mutable-state recovery needed. The
+[deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md)
+describes this boundary.
+
+Before the final promotion for a release, change both `VERSION` files to the
+plain version (for example `0.4.2`), consolidate its changelog entries under
+that version, and record the exact component delivery. That produces a new
+package which needs Test before Run. Release tags the same accepted commits
+already on `main`: `X.Y.Z` and `vX.Y.Z`, plus floating `X.Y` and `vX.Y`, in
+both the product and delivery repositories, with release notes. Automated
+checks and version numbers do not replace Fred's physical acceptance.
 
 ## What Tamlinux version is not
 

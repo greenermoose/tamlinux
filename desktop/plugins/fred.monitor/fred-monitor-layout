@@ -371,7 +371,8 @@ def private_state_directory():
         base = os.path.join(home, ".local", "state")
     if not os.path.isabs(base):
         raise LayoutError("state home must be absolute")
-    plugin_dir = os.path.join(base, "fred.monitor")
+    base = os.path.join(base, "tamlinux")
+    plugin_dir = os.path.join(base, "monitor")
     backup_dir = os.path.join(plugin_dir, "backups")
     try:
         os.makedirs(base, mode=0o700, exist_ok=True)

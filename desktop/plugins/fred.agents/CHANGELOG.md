@@ -2,6 +2,10 @@
 
 All notable changes to `fred.agents` (`agents-fred-tamlinux`) will be documented in this file.
 
+## 2.0.4 - 2026-10-09
+
+- Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
+
 ## [2.0.1] - Unreleased
 
 ### Fixed

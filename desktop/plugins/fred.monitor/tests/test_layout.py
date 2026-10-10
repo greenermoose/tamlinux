@@ -92,7 +92,7 @@ class LayoutTests(unittest.TestCase):
             self.assertTrue(updated.startswith("before\n"))
             self.assertTrue(updated.endswith("\nafter\n"))
             self.assertNotIn("\nold\n", updated)
-            backups = list((config / "state" / "fred.monitor" / "backups").glob("*.lua"))
+            backups = list((config / "state" / "tamlinux" / "monitor" / "backups").glob("*.lua"))
             self.assertEqual(len(backups), 1)
             self.assertEqual(stat.S_IMODE(backups[0].stat().st_mode), 0o600)
 
@@ -138,7 +138,7 @@ class LayoutTests(unittest.TestCase):
                 finally:
                     os.close(dir_fd)
 
-                profile_file = pathlib.Path(temp) / "fred.monitor" / LAYOUT.PROFILES_FILE
+                profile_file = pathlib.Path(temp) / "tamlinux" / "monitor" / LAYOUT.PROFILES_FILE
                 self.assertEqual(stat.S_IMODE(profile_file.stat().st_mode), 0o600)
                 with self.assertRaises(LAYOUT.LayoutError):
                     LAYOUT.save_profile("desk")

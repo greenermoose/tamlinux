@@ -4,6 +4,11 @@ All notable changes to `fred.workspaces` (`workspaces-fred-tamlinux`) will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2.0.4 - 2026-10-09
+
+- Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
+- Restore the preferences command and detached display wake workaround.
+
 ## [2.0.1] - Unreleased
 
 ### Fixed

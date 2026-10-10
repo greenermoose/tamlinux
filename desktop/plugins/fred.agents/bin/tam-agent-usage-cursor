@@ -241,7 +241,7 @@ def scan_conversation_db(prompts_by_day, sessions_by_day, all_session_ids):
 
 
 def cache_root():
-  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "omarchy" / "agent-usage"
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "tamlinux" / "agents"
   root.mkdir(parents=True, exist_ok=True)
   return root
 

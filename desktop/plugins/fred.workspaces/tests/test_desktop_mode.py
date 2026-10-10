@@ -11,7 +11,7 @@ from unittest.mock import call, patch
 
 
 HELPER = Path(__file__).resolve().parents[1] / "tam-desktop-mode"
-HOST = Path(__file__).resolve().parents[2] / "tamlinux" / "desktop" / "shell" / "host"
+HOST = HELPER.parents[2] / "shell" / "host"
 os.environ["TAMLINUX_COMPOSITOR_COMMANDS"] = str(HOST)
 os.environ.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
 LOADER = SourceFileLoader("omarchy_desktop_mode", str(HELPER))
@@ -126,7 +126,7 @@ class MonitorDiscoveryTests(unittest.TestCase):
 class StateAndConfigTests(unittest.TestCase):
     def test_existing_shared_state_directory_keeps_its_mode(self):
         with tempfile.TemporaryDirectory() as state_home:
-            shared_dir = Path(state_home) / "omarchy"
+            shared_dir = Path(state_home) / "tamlinux"
             shared_dir.mkdir(mode=0o755)
             os.chmod(shared_dir, 0o755)
             with patch.dict(desktop_mode.os.environ, {"XDG_STATE_HOME": state_home}):
@@ -136,7 +136,7 @@ class StateAndConfigTests(unittest.TestCase):
 
     def test_status_and_indicator_do_not_create_or_update_state(self):
         with tempfile.TemporaryDirectory() as state_home:
-            shared_dir = Path(state_home) / "omarchy"
+            shared_dir = Path(state_home) / "tamlinux"
             with patch.dict(desktop_mode.os.environ, {"XDG_STATE_HOME": state_home}):
                 for command, expected in (("status", "mac\n"), ("indicator", "M\n")):
                     output = io.StringIO()
@@ -170,7 +170,7 @@ class StateAndConfigTests(unittest.TestCase):
 
     def test_config_read_follows_owned_regular_file_symlink(self):
         with tempfile.TemporaryDirectory() as config_home:
-            config_dir = Path(config_home) / "omarchy"
+            config_dir = Path(config_home) / "tamlinux"
             config_dir.mkdir()
             target = Path(config_home) / "desktop-mode-target.conf"
             target.write_text("left_monitor=DP-2\n")
@@ -520,11 +520,11 @@ class IdleBlankingTests(unittest.TestCase):
             self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
 
     def test_load_unused_monitor_timeout_from_env(self):
-        with patch.dict(desktop_mode.os.environ, {"OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT": "120"}):
+        with patch.dict(desktop_mode.os.environ, {"TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT": "120"}):
             self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 120)
 
     def test_load_unused_monitor_timeout_env_invalid_falls_back(self):
-        with patch.dict(desktop_mode.os.environ, {"OMARCHY_DESKTOP_UNUSED_MONITOR_TIMEOUT": "invalid"}), patch("os.open", side_effect=OSError):
+        with patch.dict(desktop_mode.os.environ, {"TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT": "invalid"}), patch("os.open", side_effect=OSError):
             self.assertEqual(desktop_mode.load_unused_monitor_timeout(), 300)
 
     def test_dpms_off_valid_monitor(self):
@@ -560,7 +560,10 @@ class IdleBlankingTests(unittest.TestCase):
         ):
             self.assertTrue(desktop_mode.dpms_on("DP-2"))
         run.assert_called_once_with("dpms", ["DP-2", "on"])
-        popen.assert_called_once_with([desktop_mode.os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround"), "--once"])
+        popen.assert_called_once_with(
+            [desktop_mode.os.path.expanduser("~/.local/bin/msi-mp161-resume-workaround"), "--once"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True)
 
     def test_dpms_on_dp2_without_live_actions_runs_no_workaround(self):
         # An isolated proof only records the dpms call; the real DP-2 never

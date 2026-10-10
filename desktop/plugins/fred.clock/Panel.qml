@@ -23,7 +23,7 @@ Panel {
   ipcTarget: "fred.clock"
   manageIpc: false
 
-  readonly property string pluginVersion: "2.0.2"
+  readonly property string pluginVersion: "2.0.3"
 
   property var anchorItem: null
 

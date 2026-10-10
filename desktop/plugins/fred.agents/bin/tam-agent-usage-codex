@@ -338,7 +338,7 @@ def scan_native_codex_sessions():
 
 
 def cache_root():
-  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "omarchy" / "agent-usage"
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "tamlinux" / "agents"
   root.mkdir(parents=True, exist_ok=True)
   return root
 
@@ -545,7 +545,7 @@ def limit_window(window):
 
 
 def previous_codex_limits(source):
-  path = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")) / "omarchy" / "agents" / "usage" / "codex.json"
+  path = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")) / "tamlinux" / "agents" / "usage" / "codex.json"
   try:
     if path.stat().st_size > 2 * 1024 * 1024:
       return {}

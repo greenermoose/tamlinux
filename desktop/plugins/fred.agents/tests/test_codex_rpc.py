@@ -89,7 +89,7 @@ class LimitsTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
-        self.state = self.root / "omarchy/agents/usage/codex.json"
+        self.state = self.root / "tamlinux/agents/usage/codex.json"
         self.state.parent.mkdir(parents=True)
         self.account = {"type": "chatgpt", "email": "test@example.test", "planType": "pro"}
         self.reset = datetime.now(timezone.utc) + timedelta(hours=1)

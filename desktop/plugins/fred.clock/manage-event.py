@@ -18,8 +18,8 @@ import sys
 import uuid
 import zoneinfo
 
-DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/fred.clock/calendars.json")
-DEFAULT_ICS_PATH = os.path.expanduser("~/.config/fred.clock/local.ics")
+DEFAULT_CONFIG_PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "tamlinux", "clock", "calendars.json")
+DEFAULT_ICS_PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "tamlinux", "clock", "local.ics")
 
 # Import helpers and limit constants from sibling fetch-events.py
 _FETCH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch-events.py")

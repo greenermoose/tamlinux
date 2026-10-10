@@ -14,7 +14,7 @@ Panel {
   ipcTarget: "fred.sysinfo"
   manageIpc: false
 
-  readonly property string pluginVersion: "2.0.2"
+  readonly property string pluginVersion: "2.0.3"
 
   property var stats: ({})
   property int phraseIndex: 0

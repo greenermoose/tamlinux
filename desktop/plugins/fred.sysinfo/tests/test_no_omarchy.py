@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get('TAM_BOUNDARY_ROOT') or Path(__file__).resolve().parents[1])
 
-FORBIDDEN = re.compile(r'\bomarchy-[a-z0-9]|/usr/share/omarchy|\bOMARCHY_[A-Z]')
+FORBIDDEN = re.compile(r'\bomarchy-[a-z0-9]|/usr/share/omarchy|\bOMARCHY_[A-Z]|/omarchy/|[\"\']omarchy[\"\']\s*/|/(?:\.cache|\.config)/fred\.(?:clock|tides|weather|sysinfo)|(?:join\([^\n]*,\s*|/\s*)[\"\']fred\.(?:monitor|sysinfo)[\"\']')
 COMMENT = ('//', '#', '/*', '*')
 SKIP_DIRS = {'.git', 'docs', 'tests', 'upstream', '__pycache__', 'node_modules'}
 SKIP_SUFFIXES = {'.md', '.png', '.svg', '.jpg', '.ics'}
@@ -80,12 +80,14 @@ class NoOmarchyDependency(unittest.TestCase):
             (base / 'b.py').write_text('# OMARCHY_X in a comment\nos.environ["OMARCHY_Y"]\n')
             self.assertEqual(offenders(base, []), [
                 'a.qml:2: exe: "/usr/share/omarchy/bin/x"',
+                'a.qml:3: path: home + "/.local/state/omarchy/x"',
                 'a.qml:4: WlrLayershell.namespace: "omarchy-x-panel"',
                 'a.qml:5: env: Quickshell.env("OMARCHY_PATH")',
                 'b.py:2: os.environ["OMARCHY_Y"]',
             ])
             self.assertEqual(offenders(base, [('b.py', r'OMARCHY_Y')]), [
                 'a.qml:2: exe: "/usr/share/omarchy/bin/x"',
+                'a.qml:3: path: home + "/.local/state/omarchy/x"',
                 'a.qml:4: WlrLayershell.namespace: "omarchy-x-panel"',
                 'a.qml:5: env: Quickshell.env("OMARCHY_PATH")',
             ])

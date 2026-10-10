@@ -6,60 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
-## [Unreleased]
-
-### Added
-
-- **`tam-work` for shared checkouts** (2026-10-09). The command that lets
-  several sessions, people or AI agents, work in the same Git checkouts
-  without overwriting each other is now part of Tamlinux, in
-  [`commands/tam-work/`](commands/tam-work/README.md). Sessions claim the
-  paths they will edit and overlapping claims are refused.
-  `TAM_WORK_WORKSPACE` and `TAM_WORK_REGISTRY` override the default
-  workspace (`~/Code/tamlinux`) and claim registry
-  (`<workspace>/worktrees/coordination`). `make check` runs its tests and
-  `make install` honours `PREFIX` and `DESTDIR`.
-
-### Changed
-
-- **Every accepted step is a version** (2026-10-05). The minor version names
-  a stage and the patch a step, so each change Fred accepts into daily use
-  raises the version. The stages after 0.1 are re-planned: 0.2 moves every key
-  binding and menu entry to Tamlinux's own commands, 0.3 is the Tamlinux bar,
-  0.4 the compositor contract, 0.5 Tamlinux's own look and name, 0.6 Omarchy
-  removed, 0.7 the workstation package beside Hyprland, and 0.8 the Sway
-  session as the daily driver; 1.0.0 still removes Hyprland.
-  [`VERSIONING.md`](VERSIONING.md) has the rules and the table. The planned
-  0.0.3 was never issued; its work is 0.1.0–0.1.22 below.
-- **"The Tamlinux shell"** (2026-10-05). The program that draws the bar and
-  runs the session services is called the Tamlinux shell, as its
-  predecessor was the Omarchy shell. "Host" now names only the part plugins
-  talk to (the host contract) and, for the workstation package, the
-  distribution it is installed on and its host adapter. Earlier records say
-  "the Tamlinux host" for the shell. See [`desktop/README.md`](desktop/README.md).
-- **"Ported"** (2026-10-05). Code taken over from Omarchy is *ported*:
-  copied with its MIT notice, adapted to Tamlinux, and maintained here.
-  Headers and docs say "Ported from"; earlier records say "vendored".
-
-## 0.4.2-b - Unreleased
-
-- Correct the monitor's displayed version to 2.0.4 and give footer-only
-  clock hovers the shared caption styling. Behavioral parser tests and
-  manifest/QML version checks cover all eight plugins.
-- Restore plugin manifest links to the Tamlinux product repository and
-  point the keyboard panel's repository link at its current source.
-- The workstation candidate retires installation of the frozen 1.x plugin
-  tree; retained package generations provide rollback.
-- Capture geometry reconciliation is scheduled for 0.4.3, covering fractional
-  scaling, rotation, mirroring and logical-to-image-pixel conversion.
-
-## 0.4.2-a - Unreleased
-
-- Shared bar hover version styling and reusable panel version footers across
-  all eight plugins; weather and tides use the host's common hover surface.
-- Plugin patch versions: agents/workspaces 2.0.3, clock/sysinfo/tides/weather
-  2.0.2, keyboard 2.0.1 and monitor 2.0.4. Monitor's displayed version was
-  corrected in 0.4.2-b.
+## 0.4.2-c - Unreleased
 
 - Product-owned menu defaults and `tam-menu`, with personal extensions at
   `tamlinux/menu/extension.jsonc`. Retained rows, routes, aliases and actions
@@ -67,9 +14,26 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 - Bounded JSONC parsing and file reads preserve quoted comment/comma text.
   Failed reads, parses and invalid merged routes retain the last valid menu;
   status and refresh IPC expose reload state.
-- The candidate is delivered as a pinned `tamlinux-packages` assembly through
-  the same Nix/Home Manager endpoint used for Run. Physical Test acceptance
-  remains pending.
+- Shared bar hover version styling and reusable panel version footers across
+  all eight plugins; weather and tides use the host's common hover surface.
+  Footer-only clock hovers use the same caption styling.
+- Plugin manifest links point to the Tamlinux product repository; the
+  keyboard panel's repository link points to its current product source.
+- Restore the accepted Tamlinux storage paths for clock helpers, workspace
+  state/preferences, saved display layouts, agent usage and sysinfo caches.
+  Restore the workspace preferences command and detached display wake helper.
+  Integration checks exercise actual helper outputs at the paths QML watches,
+  including calendar add/fetch/delete and migrated layout load/save.
+- Repaired plugin versions: agents/workspaces 2.0.4, clock/sysinfo 2.0.3 and
+  monitor 2.0.5. Keyboard remains 2.0.1; tides/weather remain 2.0.2.
+- The delivery assembly selects tam 0.9.1, including manual-page browsing,
+  standard-input paging and the binary's own guide corpus.
+- The workstation candidate retires installation of the frozen 1.x plugin
+  tree; retained package generations provide rollback.
+- Test and Run use the same pinned Nix/Home Manager package endpoints.
+  Physical acceptance of candidate c remains pending.
+- Capture geometry reconciliation remains scheduled for 0.4.3, covering
+  fractional scaling, rotation, mirroring and logical-to-image-pixel conversion.
 
 ## 0.4.1 - 2026-10-09
 

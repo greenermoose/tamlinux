@@ -4,20 +4,22 @@ Step 0.4.2 owns the menu without changing its retained applications, routes,
 navigation or power policy. This candidate is developed and tested in isolation;
 workstation acceptance remains a separate transition.
 
-**Package transition, 2026-10-09:** the menu implementation is retained on
-`develop` after the packaged 0.4.1 release was merged back. The product version
-is `0.4.2-a`. Delivery selects an exact source revision in a committed
-`tamlinux-packages` assembly; the consumer restores the owned menu extension
-with that assembly. Test and Run use the same package outputs and installed
-paths. The earlier independent shell/plugin snapshots are historical evidence,
-not the deployment mechanism for this candidate.
+**Candidate status, 2026-10-09:** 0.4.2-b was packaged and installed in
+Test. The repaired 0.4.2-c source restores accepted plugin storage contracts
+and updates the delivery selection to tam 0.9.1. Menu defaults, parsing and
+all 196 effective workstation rows remain unchanged from b. Delivery selects
+an exact source commit in a committed `tamlinux-packages` assembly; physical
+acceptance applies to that assembly and generation. No Run or Release
+acceptance is claimed by source or package checks.
 
-The source candidate passed nine parser/reader/headless-service checks and
-18 existing service regressions after the merge. Consumer comparison confirms
-all 196 effective menu rows are unchanged. Before activation, verify the
-built package paths, version, plugin payloads, menu files, service environment,
-protocol-shadow identity and rollback artifact. Promotion to `test` and
-physical workstation checks require the user's Test instruction.
+The candidate uses product-owned menu defaults and the optional consumer
+extension through the same Nix/Home Manager endpoints for Test and Run.
+The earlier independent shell/plugin snapshots are historical evidence,
+not the deployment mechanism. Before activation, verify built package paths,
+versions, plugin payloads, menu files, service environment, protocol-shadow
+identity and the rollback artifact. After activation, verify installed
+endpoints and menu readiness, then exercise focused-output routing, navigation,
+application launch, refresh/restart and the next natural login.
 
 The product supplies `desktop/menu/default.jsonc`, its upstream MIT notice and
 the `tam-menu` entry point. Delivery modules install defaults at

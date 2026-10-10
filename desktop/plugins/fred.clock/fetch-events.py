@@ -4,7 +4,7 @@ fetch-events.py — Background event fetcher for fred.clock.
 
 Fetches iCalendar (.ics) feeds from secret URLs or local files, expands
 recurring events (RRULE, EXDATE, RDATE), normalizes timezones, and writes
-an atomic JSON cache at ~/.cache/fred.clock/events.json (mode 0600).
+an atomic JSON cache at ~/.cache/tamlinux/clock/events.json (mode 0600).
 
 Pure Python 3 standard library only.
 """
@@ -28,8 +28,8 @@ import zoneinfo
 from typing import Any, Iterator
 
 USER_AGENT = "fred.clock/2.0.0"
-DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/fred.clock/calendars.json")
-DEFAULT_CACHE_PATH = os.path.expanduser("~/.cache/fred.clock/events.json")
+DEFAULT_CONFIG_PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "tamlinux", "clock", "calendars.json")
+DEFAULT_CACHE_PATH = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "tamlinux", "clock", "events.json")
 
 # Limits as defined in §5
 MAX_CONFIG_BYTES = 64 * 1024  # 64 KiB

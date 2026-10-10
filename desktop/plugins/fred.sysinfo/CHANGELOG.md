@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.3 - 2026-10-09
+
+- Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
+
 ## [2.0.0] - Unreleased
 
 ### Changed

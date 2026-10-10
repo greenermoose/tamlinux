@@ -15,7 +15,7 @@ BarWidget {
   id: root
   moduleName: "fred.clock"
 
-  readonly property string pluginVersion: "2.0.2"
+  readonly property string pluginVersion: "2.0.3"
 
   property date displayDate: clock.date
 

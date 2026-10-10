@@ -22,9 +22,9 @@ MAX_CACHE_BYTES = 65536
 def get_secure_cache_dir():
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
     if runtime_dir and os.path.isdir(runtime_dir):
-        return os.path.join(runtime_dir, "fred.sysinfo")
+        return os.path.join(runtime_dir, "tamlinux", "sysinfo")
     cache_home = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
-    return os.path.join(cache_home, "fred.sysinfo")
+    return os.path.join(cache_home, "tamlinux", "sysinfo")
 
 
 def open_secure_cache_dir(cache_dir=None):

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.5 - 2026-10-09
+
+- Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
+
 ## [2.0.3] - Unreleased
 
 - Fix empty display panels when another component has created the shared Tamlinux runtime directory with mode 0755. Accept a user-owned parent without group/world write permission, while retaining mode 0700 for monitor cache and preview/rollback state.
