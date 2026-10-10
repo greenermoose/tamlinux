@@ -1,12 +1,22 @@
 # Changelog
 
-All notable changes to `fred.clock` (`clock-fred-tamlinux`) will be documented in this file.
+All notable changes to `fred.clock` in `tamlinux/desktop/plugins/fred.clock` are documented here.
 
-## 2.0.3 - 2026-10-09
+The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
+
+## [2.0.3] - Tamlinux 0.4.2-c candidate
 
 - Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
 
-## [2.0.0] - Unreleased
+## [2.0.2] - Tamlinux 0.4.2-a/b candidate
+
+- Shared host hover version styling and a reusable panel version footer; footer-only hovers use the caption style.
+
+## [2.0.1] - Included in Tamlinux 0.4.1 - 2026-10-09
+
+- Move non-theme storage to XDG Tamlinux paths and remove legacy helper fallbacks.
+
+## [2.0.0] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or registers an `omarchy.clock` IPC target.

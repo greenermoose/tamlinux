@@ -1,25 +1,39 @@
 # Changelog
 
-All notable changes to `fred.workspaces` (`workspaces-fred-tamlinux`) will be documented in this file.
+All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.workspaces` are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
-## 2.0.4 - 2026-10-09
+## [2.0.5] - Tamlinux 0.4.2-d candidate
+
+- List the restored `preferences` command in help and usage text.
+
+## [2.0.4] - Tamlinux 0.4.2-c candidate
 
 - Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
 - Restore the preferences command and detached display wake workaround.
 
-## [2.0.1] - Unreleased
+## [2.0.3] - Tamlinux 0.4.2-a/b candidate
+
+- Shared host hover version styling; the panel uses the common version footer.
+
+## [2.0.2] - Included in Tamlinux 0.4.1 - 2026-10-09
+
+- Detach the MSI retrain subprocess so a monitor wake completes without holding the bar helper's output pipes open.
+
+- Move non-theme storage to XDG Tamlinux paths and remove legacy helper fallbacks.
+
+## [2.0.1] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Fixed
 - Moving the pointer into a blanked monitor, or focusing it, wakes it again. The Tamlinux shell read monitor power only at startup and kept reporting every monitor lit. Shortly after this bar blanked its monitor, it took that stale report as "lit" and cleared its dark state, so cursor entry found nothing to wake. A monitor this bar blanked now stays dark in its own state until the shell reports it dark. A later "lit" report still counts, for example after hypridle wakes every display.
 
-## [2.0.0] - Unreleased
+## [2.0.0] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.
 - Omarchy shell IPC targets are gone. Hyprland reads that this plugin already had stay in the plugin until the compositor contract.
-- `tam-desktop-mode` still reads the `OMARCHY_DESKTOP_*` configuration keys and session variables for compatibility; the boundary test allows exactly those four.
+- `tam-desktop-mode` uses `TAMLINUX_DESKTOP_*` session variables and the data-only Tamlinux desktop configuration; legacy environment keys are no longer accepted.
 - `tests/test_no_omarchy.py` fails on any `omarchy-*` command or layer name, `/usr/share/omarchy` path, or `OMARCHY_*` variable outside comments, documentation, and tests.
 
 ### Fixed

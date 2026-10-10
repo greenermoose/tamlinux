@@ -1,26 +1,20 @@
 # Agents Token Usage Reporter (`fred.agents`)
 
-Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment): a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. Replaces the stock `omarchy.agents`
-panel in place via `omarchy.clonedFrom` routing.
+Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment): a shell bar widget tracking usage and token spend for **Antigravity, Claude, Codex, and Cursor**. It runs in the Tamlinux shell.
 
-Version 1.1.2 is the first tagged release. This plugin is not submitted to the
-Omarchy Plugin Marketplace.
+The 2.x line ships with Tamlinux. The historical Omarchy 1.x line had its first tagged release at 1.1.2.
 
 ![fred.agents bar hover](assets/hover.png)
 
 ![fred.agents panel](assets/screenshot.png)
 
-## Install
+## Installation
 
-```bash
-omarchy plugin add https://github.com/greenermoose/agents-fred-tamlinux.git --enable
-```
+The 2.x plugin is included in the pinned [Tamlinux package assembly](https://github.com/greenermoose/tamlinux-packages). Its installed payload is at `~/.config/tamlinux/plugins/fred.agents/`; install and update it with the assembly through Home Manager. The standalone repository contains the frozen Omarchy 1.x line.
 
-The panel displays usage records that `omarchy-agent-usage-update` writes to
-`~/.local/state/omarchy/agents/usage/`.
-`Panel.qml` owns the bar button and the popup; `Main.qml` discovers and
-watches the records (and handles the optional cross-device aggregation);
-`Agent.qml` is the per-record file watcher.
+Place `{ "id": "fred.agents" }` in a `left`, `center`, or `right` list under `layout` in `~/.config/tamlinux/shell/layout.json`. The document uses `schemaVersion: 1`. Widget settings are the `fred.agents` entry under `entries` in `~/.config/tamlinux/shell/settings.json`, whose top-level `version` is `1`.
+
+See [plugin ownership](../README.md) and the [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md). Home and XDG paths below use their default locations; the helpers honor the corresponding `XDG_*_HOME` overrides.
 
 ## Panel
 
@@ -52,14 +46,13 @@ shows up at the next refresh, so nothing polls the disk waiting for it.
 
 ## Data
 
-Each agent is one JSON record in `~/.local/state/omarchy/agents/usage/`,
-written by the cloned `omarchy-agent-usage-update` that lives next to this
+Each agent is one JSON record in `~/.local/state/tamlinux/agents/usage/`,
+written by the bundled `tam-agent-usage-update` that lives next to this
 plugin's collectors. The widget invokes it on its refresh timer and whenever
 you ask for a refresh, and picks up any record that lands in the directory
 regardless of who wrote it.
 
-The collectors are vendored inside the plugin so nothing modifies
-`/usr/share/omarchy/`.
+The collectors are ported into this plugin; cache files use `$XDG_CACHE_HOME/tamlinux/agents`.
 
 | Collector | Limits | Local stats |
 |---|---|---|
@@ -82,13 +75,11 @@ the limits cache carry only percentages and reset times.
 - Bar icon: left = panel, right = launch agent, middle = next subscription.
 - Panel: `h`/`l` switch subscription, `j`/`k` scroll, `r` or Enter refresh,
   Tab moves to the neighboring bar panel, Esc closes.
-- IPC: `omarchy-shell omarchy.agents <open|close|toggle|refresh|next>` (kept
-  at the stock target so clone routing works in place).
+- IPC: `tam-shell fred.agents <open|close|toggle|refresh|next>`.
 
 ## Settings
 
-Settings live in the widget's entry in `~/.config/omarchy/shell.json`. The
-top-level keys can be set with `omarchy bar set fred.agents <key> <value>`:
+Settings live under `entries["fred.agents"]` in `~/.config/tamlinux/shell/settings.json`:
 
 | Key | Default | What it does |
 |---|---|---|
@@ -100,13 +91,13 @@ top-level keys can be set with `omarchy bar set fred.agents <key> <value>`:
 
 Per-agent enablement is nested:
 
-```bash
-omarchy bar set fred.agents providers '{
+```json
+{ "providers": {
   "claude": { "enabled": true },
   "codex": { "enabled": true },
   "antigravity": { "enabled": true },
   "cursor": { "enabled": true }
-}' --json
+}}
 ```
 
 `enabled` defaults to `true` for every discovered agent; set it to `false` to

@@ -94,13 +94,13 @@ nothing to install first.
 
 Node.js is needed only to run the tests.
 
-## Install
+## Installation
 
-```bash
-omarchy plugin add https://github.com/greenermoose/keyboard-fred-tamlinux.git --enable
-```
+The 2.x plugin is included in the pinned [Tamlinux package assembly](https://github.com/greenermoose/tamlinux-packages). Its installed payload is at `~/.config/tamlinux/plugins/fred.keyboard/`; install and update it with the assembly through Home Manager. The standalone repository contains the frozen Omarchy 1.x line.
 
-Remove with `omarchy plugin remove fred.keyboard`.
+Place `{ "id": "fred.keyboard" }` in a `left`, `center`, or `right` list under `layout` in `~/.config/tamlinux/shell/layout.json`. The document uses `schemaVersion: 1`. Widget settings are the `fred.keyboard` entry under `entries` in `~/.config/tamlinux/shell/settings.json`, whose top-level `version` is `1`.
+
+See [plugin ownership](../README.md) and the [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md). Home and XDG paths below use their default locations; the helpers honor the corresponding `XDG_*_HOME` overrides.
 
 ## Upstream code
 

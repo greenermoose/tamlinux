@@ -303,7 +303,9 @@ class BackAndPin(Fixture):
         generation = self.root / "nix-store-sim"
         real_command = deploy.command
         self.write_lock(self.packages_new, {})
+        self.app.revision_file.write_text(self.tamlinux_new + "\n")
         self.app.save_state({"stage": "test", "packages": self.packages_new,
+                             "generation": "/nix/store/new-generation",
                              "previousGeneration": "/nix/store/old-generation", "previousPin": self.packages_main})
         with patch.object(deploy.Path, "is_file", return_value=True), \
              patch.object(deploy, "command", side_effect=lambda *args, **kwargs:
@@ -321,7 +323,26 @@ class BackAndPin(Fixture):
         self.assertEqual(state["generation"], "/nix/store/old-generation")
         self.assertEqual(state["components"], {"tamlinux": self.tamlinux_main})
         self.write_lock(self.packages_new, {})
+        self.app.revision_file.write_text(self.tamlinux_main + "\n")
         self.assertEqual(self.app.rollback_pin("/nix/store/old-generation"), self.packages_main)
+
+    def test_back_uses_the_active_record_when_the_lock_is_staged(self):
+        # Candidate c is active; the consumer lock has already been prepared
+        # for d. Back to b must retain c, never d, as its roll-forward pin.
+        self.write_lock(self.packages_main, {})
+        self.app.revision_file.write_text(self.tamlinux_new)
+        self.app.save_state({"stage": "test", "packages": self.packages_new,
+                             "generation": "/nix/store/c-generation",
+                             "previousGeneration": "/nix/store/b-generation", "previousPin": self.packages_main})
+        with patch.object(deploy.Path, "is_file", return_value=True), \
+             patch.object(deploy, "command"), patch.object(self.app, "wait_ready"), \
+             patch.object(self.app, "status"), patch.object(self.app, "record"), \
+             patch.object(self.app, "generation", side_effect=["/nix/store/c-generation", "/nix/store/b-generation"]), \
+             patch.object(self.app, "components", side_effect=lambda rev: {"tamlinux": self.tamlinux_new if rev == self.packages_new else self.tamlinux_main}), \
+             patch.object(self.app, "pin"):
+            self.app.back()
+        self.assertEqual(self.app.read_state()["previousPin"], self.packages_new)
+        self.assertEqual(self.app.read_state()["previousGeneration"], "/nix/store/c-generation")
 
     def test_back_needs_a_recorded_deployment(self):
         with self.assertRaisesRegex(deploy.DeploymentError, "no recorded previous"):
@@ -342,32 +363,114 @@ class BackAndPin(Fixture):
 
 
 class Verify(Fixture):
-    def link(self, path, target):
+    def setUp(self):
+        super().setUp()
+        self.outputs = {
+            "shell": str(self.root / "store/c-tamlinux-shell"),
+            "plugins": str(self.root / "store/c-tamlinux-plugins"),
+            "commands": str(self.root / "store/c-tamlinux-commands"),
+            "tam": str(self.root / "store/tam-0.9.1"),
+            "tools": str(self.root / "store/tamlinux-tools"),
+            "pluginIds": ["fred.clock", "fred.workspaces"],
+            "commandNames": ["tam-deploy", "tam-plugin", "tam-work"],
+            "features": {"menu": True}, "manWrapper": True, "selectionRecord": True,
+        }
+        mock = patch.object(self.app, "expected_outputs", return_value=self.outputs)
+        mock.start()
+        self.addCleanup(mock.stop)
+
+    def endpoint(self, path, target, directory=False):
+        target = Path(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if directory:
+            target.mkdir(exist_ok=True)
+        else:
+            target.write_text("fixture")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.symlink_to(target)
 
-    def install(self, shell="/nix/store/a-tamlinux-shell-0.4.1/share/tamlinux/shell",
-                plugin="/nix/store/b-tamlinux-plugins-0.4.1/share/tamlinux/plugins/fred.clock",
-                command="/nix/store/c-tamlinux-commands-0.4.1/bin/tam-deploy"):
-        self.app.revision_file.parent.mkdir(parents=True, exist_ok=True)
+    def install(self, selected=None):
+        if selected is None:
+            selected = self.outputs["pluginIds"]
         self.app.revision_file.write_text(self.tamlinux_new + "\n")
-        self.link(self.app.shell_link, shell)
-        self.link(self.app.plugins_dir / "fred.clock", plugin)
-        self.link(self.app.bin_dir / "tam-deploy", command)
-        self.link(self.app.bin_dir / "tam", "/nix/store/d-tam-0.7.0/bin/tam")
+        self.app.selection_file.write_text(json.dumps({"revision": self.tamlinux_new, "plugins": selected}))
+        self.endpoint(self.app.shell_link, self.outputs["shell"] + "/share/tamlinux/shell", True)
+        for name in selected:
+            self.endpoint(self.app.plugins_dir / name, self.outputs["plugins"] + "/share/tamlinux/plugins/" + name, True)
+        for name in self.outputs["commandNames"]:
+            self.endpoint(self.app.bin_dir / name, self.outputs["commands"] + "/bin/" + name)
+        for name, package in [("tam", "tam"), ("tam-man", "tam"), ("tam-file-select", "tools"), ("tam-menu", "shell")]:
+            self.endpoint(self.app.bin_dir / name, self.outputs[package] + "/bin/" + name)
+        self.endpoint(self.app.plugins_dir.parent / "menu/default.jsonc", self.outputs["shell"] + "/share/tamlinux/menu/default.jsonc")
+
+    def verify(self):
+        return self.app.verify({"tamlinux": self.tamlinux_new}, self.packages_new)
 
     def test_matching_install(self):
         self.install()
-        self.assertEqual(self.app.verify({"tamlinux": self.tamlinux_new}), [])
+        self.assertEqual(self.verify(), [])
 
-    def test_reports_each_mismatch(self):
-        checkout = str(self.workspace / "tamlinux")
-        self.install(shell=checkout, plugin=checkout, command=checkout)
-        problems = self.app.verify({"tamlinux": self.tamlinux_main})
+    def test_selected_subset_and_empty_selection(self):
+        self.install(selected=["fred.clock"])
+        self.assertEqual(self.verify(), [])
+        (self.app.plugins_dir / "fred.clock").unlink()
+        self.app.selection_file.write_text(json.dumps({"revision": self.tamlinux_new, "plugins": []}))
+        self.assertEqual(self.verify(), [])
+
+    def test_mixed_assembly_outputs_are_rejected(self):
+        self.install()
+        for path in [self.app.shell_link, self.app.plugins_dir / "fred.clock", self.app.bin_dir / "tam-deploy", self.app.bin_dir / "tam"]:
+            target = Path(str(path.resolve()).replace("/store/", "/old-store/"))
+            path.unlink()
+            self.endpoint(path, target, path in [self.app.shell_link, self.app.plugins_dir / "fred.clock"])
+        problems = self.verify()
         self.assertEqual(len(problems), 4)
-        self.assertTrue(any("shell revision" in p for p in problems))
-        self.assertTrue(any("fred.clock" in p for p in problems))
-        self.assertTrue(any("tam-deploy" in p for p in problems))
+        self.assertTrue(all("expected" in p for p in problems))
+
+    def test_missing_endpoints_and_broken_links_are_rejected(self):
+        self.install()
+        for name in ["tam-plugin", "tam-work", "tam-menu", "tam-man", "tam-file-select"]:
+            (self.app.bin_dir / name).unlink()
+        (self.app.plugins_dir / "fred.clock").unlink()
+        (self.app.bin_dir / "tam").resolve().unlink()
+        problems = self.verify()
+        self.assertEqual(len(problems), 7)
+        self.assertTrue(all("missing" in p for p in problems))
+
+    def test_selection_record_cannot_hide_unknown_or_duplicate_plugins(self):
+        self.install()
+        for selected in [["fred.unknown"], ["fred.clock", "fred.clock"], "fred.clock", [1]]:
+            with self.subTest(selected=selected):
+                self.app.selection_file.write_text(json.dumps({"revision": self.tamlinux_new, "plugins": selected}))
+                self.assertTrue(any("selection record" in p for p in self.verify()))
+        self.app.selection_file.unlink()
+        self.assertTrue(any("selection record" in p for p in self.verify()))
+
+    def test_unexpected_installed_plugin_is_rejected(self):
+        self.install(selected=["fred.clock"])
+        self.endpoint(self.app.plugins_dir / "fred.extra", self.outputs["plugins"] + "/share/tamlinux/plugins/fred.extra", True)
+        self.assertTrue(any("unexpected installed plugin" in p for p in self.verify()))
+
+    def test_old_assembly_without_selection_record_remains_verifiable(self):
+        self.install()
+        self.outputs["selectionRecord"] = False
+        self.app.selection_file.unlink()
+        self.assertEqual(self.verify(), [])
+
+    def test_revision_mismatch_is_rejected(self):
+        self.install()
+        self.app.revision_file.write_text(self.tamlinux_main)
+        self.assertTrue(any("shell revision" in p for p in self.verify()))
+
+    def test_expected_outputs_are_evaluated_at_the_exact_commit_and_cached(self):
+        with patch.object(self.app, "expected_outputs", deploy.Deployment.expected_outputs.__get__(self.app)), \
+             patch.object(deploy, "command", return_value=json.dumps(self.outputs)) as command:
+            self.app.expected_outputs(self.packages_new)
+            self.app.expected_outputs(self.packages_new)
+        command.assert_called_once()
+        args = command.call_args.args
+        self.assertIn("--no-write-lock-file", args)
+        self.assertIn(f"git+file://{self.workspace / 'tamlinux-packages'}?rev={self.packages_new}#packages.{self.app.system}", args)
 
 
 class ConfigurationLookupTest(unittest.TestCase):

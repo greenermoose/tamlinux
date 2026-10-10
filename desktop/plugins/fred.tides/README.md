@@ -1,4 +1,4 @@
-# fred.tides (`tides-fred-tamlinux`)
+# fred.tides
 
 A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve panel for [Tamlinux](https://github.com/greenermoose/tamlinux) (Fred's personal Linux workstation environment), designed to sit directly adjacent to `fred.weather` on the bar. Displays current sea level height, rising/falling status, today's tidal range, upcoming highs and lows, and a scrubbable Catmull-Rom tidal curve.
 
@@ -12,7 +12,7 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 | **Cloned From** | `io.github.woogy7.tides` |
 | **License** | GPL-3.0-or-later |
 | **Inspiration** | [`Woogy7/omarchy-tides`](https://github.com/Woogy7/omarchy-tides) & [`ashuttl/linecast`](https://github.com/ashuttl/linecast) |
-| **Repository** | `greenermoose/tides-fred-tamlinux` |
+| **Repository** | `greenermoose/tamlinux`, `desktop/plugins/fred.tides` |
 | **Author** | Fred (@greenermoose) |
 
 ---
@@ -30,9 +30,9 @@ A security-hardened, multi-monitor tide bar widget and interactive 24-hour curve
 - **Configurable Units (Metric / Imperial):**
   Seamlessly toggle between meters (`meters`) and feet (`feet`) with a single click on the boxed unit indicator next to current sea level.
 - **Smart Location Sync & Independent Override:**
-  Follows the active weather location in `~/.local/state/omarchy/settings/weather.json` out of the box so weather and tides match. Click the location name to search for a specific beach or harbor (saved in `~/.local/state/omarchy/settings/tides.json`).
+  Follows the active weather location in `~/.local/state/tamlinux/settings/weather.json` out of the box so weather and tides match. Click the location name to search for a specific beach or harbor (saved in `~/.local/state/tamlinux/settings/tides.json`).
 - **Persistent Atomic Disk Caching:**
-  Saves valid tide predictions to `~/.cache/fred.tides/cache.json` using atomic descriptor writes. Cold starts display cached curves immediately with zero startup delay.
+  Saves valid tide predictions to `~/.cache/tamlinux/tides/cache.json` using atomic descriptor writes. Cold starts display cached curves immediately with zero startup delay.
 - **Hardened Security Baseline:**
   Executes all network fetches in a closed subshell environment (`LANG=C`, `PATH=/usr/bin:/bin`) with strict curl timeouts (5s connect, 10s max) and transfer buffer limits. Pure QML/JS with zero npm or pip runtime dependencies.
 - **Modular Provider Architecture (v1.0 & v1.1):**
@@ -52,31 +52,11 @@ See [`UPSTREAM.md`](UPSTREAM.md) for full attribution, original MIT license noti
 
 ## Installation
 
-```bash
-omarchy plugin add https://github.com/greenermoose/tides-fred-tamlinux.git --enable
-```
+The 2.x plugin is included in the pinned [Tamlinux package assembly](https://github.com/greenermoose/tamlinux-packages). Its installed payload is at `~/.config/tamlinux/plugins/fred.tides/`; install and update it with the assembly through Home Manager. The standalone repository contains the frozen Omarchy 1.x line.
 
-### Bar Layout Positioning
+Place `{ "id": "fred.tides" }` in a `left`, `center`, or `right` list under `layout` in `~/.config/tamlinux/shell/layout.json`. The document uses `schemaVersion: 1`. Widget settings are the `fred.tides` entry under `entries` in `~/.config/tamlinux/shell/settings.json`, whose top-level `version` is `1`.
 
-Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy/shell.json`:
-
-```json
-{
-  "bar": {
-    "layout": {
-      "center": [
-        { "id": "omarchy.clock" },
-        { "id": "omarchy.keyboard-layout" },
-        { "id": "fred.weather" },
-        { "id": "fred.tides" },
-        { "id": "omarchy.system-update" }
-      ]
-    }
-  }
-}
-```
-
----
+See [plugin ownership](../README.md) and the [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md). Home and XDG paths below use their default locations; the helpers honor the corresponding `XDG_*_HOME` overrides.
 
 ## Interactions
 
@@ -93,7 +73,7 @@ Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy
 
 ---
 
-## Versions & Release History
+## Historical Omarchy 1.x release history
 
 | Version | Status | Highlights |
 | :--- | :--- | :--- |
@@ -104,20 +84,9 @@ Place `"fred.tides"` directly adjacent to `"fred.weather"` in `~/.config/omarchy
 
 ---
 
-## Uninstallation
+## Removing the widget
 
-```bash
-omarchy plugin remove fred.tides
-```
-
-To remove custom beach settings and disk cache:
-
-```bash
-rm -f ~/.local/state/omarchy/settings/tides.json
-rm -rf ~/.cache/fred.tides
-```
-
----
+Remove its ID from the Tamlinux layout. To omit its installed payload, set `tamlinux.shell.plugins` to the IDs to retain and activate the matching Home Manager configuration. Saved settings and data remain available for re-enabling it.
 
 ## License
 

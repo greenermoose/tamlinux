@@ -594,7 +594,7 @@ def set_mode(mode: str, monitors: list[str], topology_size: int = DEFAULT_TOPOLO
     if mode not in VALID_MODES:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|reconcile}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|preferences|reconcile}}\n"
         )
         sys.exit(2)
     atomic_write_state("desktop-mode", mode + "\n")
@@ -1039,6 +1039,7 @@ def main() -> None:
         sys.stdout.write(f"""Usage: {prog} [command]
 
 Commands:
+  preferences     Print configured preferences as JSON
   status          Print current mode (omarchy, mac, windows)
   indicator       Print indicator character (O, M, W)
   toggle          Cycle through desktop modes (omarchy -> mac -> windows)
@@ -1057,7 +1058,7 @@ Commands:
     else:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|reconcile|dpms-off MONITOR|dpms-on MONITOR}}\n"
+            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|preferences|reconcile|dpms-off MONITOR|dpms-on MONITOR}}\n"
         )
         sys.exit(2)
 

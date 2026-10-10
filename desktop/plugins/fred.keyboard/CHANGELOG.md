@@ -1,9 +1,14 @@
 # Changelog
 
-All notable changes to `fred.keyboard` are documented here.
-Format follows Keep a Changelog; this project uses SemVer.
+All notable changes to `fred.keyboard` in `tamlinux/desktop/plugins/fred.keyboard` are documented here.
 
-## [2.0.0] - Unreleased
+The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
+
+## [2.0.1] - Tamlinux 0.4.2-a/b candidate
+
+- Shared host hover version styling and a reusable panel version footer; repository links identify the current product source.
+
+## [2.0.0] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.

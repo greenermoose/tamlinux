@@ -1,18 +1,28 @@
 # Changelog
 
-All notable changes to `fred.agents` (`agents-fred-tamlinux`) will be documented in this file.
+All notable changes to `fred.agents` in `tamlinux/desktop/plugins/fred.agents` are documented here.
 
-## 2.0.4 - 2026-10-09
+The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
+
+## [2.0.4] - Tamlinux 0.4.2-c candidate
 
 - Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
 
-## [2.0.1] - Unreleased
+## [2.0.3] - Tamlinux 0.4.2-a/b candidate
+
+- Shared host hover version styling and a reusable panel version footer.
+
+## [2.0.2] - Included in Tamlinux 0.4.1 - 2026-10-09
+
+- Move non-theme storage to XDG Tamlinux paths and remove legacy helper fallbacks.
+
+## [2.0.1] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Fixed
 - Codex account/usage replies arriving together with notifications no longer cause false `account/read` timeouts. The RPC reader consumes its byte buffer before waiting for more pipe data and handles fragmented replies, connection closure, and server errors explicitly.
 - A failed Codex refresh retains the last successful limits, labeled with their original reading time in the panel and bar tooltip. Reset windows expire from that fallback; sign-out and a detected account change clear it. Transient failures request an earlier retry.
 
-## [2.0.0] - Unreleased
+## [2.0.0] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.

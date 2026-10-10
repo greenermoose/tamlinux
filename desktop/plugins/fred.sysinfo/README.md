@@ -39,7 +39,7 @@ Comprehensive hardware telemetry, thermal sensors, and system information bar pl
 
 ## Security model and cache
 
-The probe stores CPU counters and static hardware details under `$XDG_RUNTIME_DIR/fred.sysinfo`, or `$XDG_CACHE_HOME/fred.sysinfo` when no runtime directory is available. It creates the directory with mode `0700` and refuses caching unless it is owned by the current user and private. It never caches directly in shared `/dev/shm` or `/tmp`.
+The probe stores CPU counters and static hardware details under `$XDG_RUNTIME_DIR/tamlinux/sysinfo`, or `$XDG_CACHE_HOME/tamlinux/sysinfo` when no runtime directory is available. It creates the directory with mode `0700` and refuses caching unless it is owned by the current user and private. It never caches directly in shared `/dev/shm` or `/tmp`.
 
 Each write creates an unpredictable `0600` temporary file using `O_EXCL` and `O_NOFOLLOW`, then atomically renames it relative to an open directory descriptor. Reads also use `O_NOFOLLOW` and validate owner, file type, mode, size, and age on the opened descriptor. A rejected cache leaves live telemetry available. Cache security tests run with `python3 -m unittest discover -s tests`.
 
@@ -57,39 +57,11 @@ Each write creates an unpredictable `0600` temporary file using `O_EXCL` and `O_
 
 ## Installation
 
-Install and enable the plugin directly using Omarchy's plugin manager:
+The 2.x plugin is included in the pinned [Tamlinux package assembly](https://github.com/greenermoose/tamlinux-packages). Its installed payload is at `~/.config/tamlinux/plugins/fred.sysinfo/`; install and update it with the assembly through Home Manager. The standalone repository contains the frozen Omarchy 1.x line.
 
-```bash
-omarchy plugin add https://github.com/greenermoose/sysinfo-fred-tamlinux.git --enable
-```
+Place `{ "id": "fred.sysinfo" }` in a `left`, `center`, or `right` list under `layout` in `~/.config/tamlinux/shell/layout.json`. The document uses `schemaVersion: 1`. Widget settings are the `fred.sysinfo` entry under `entries` in `~/.config/tamlinux/shell/settings.json`, whose top-level `version` is `1`.
 
-### Adding to Bar Layout
-
-If your bar configuration does not automatically position new widgets, add `fred.sysinfo` to the `right` section of `~/.config/omarchy/shell.json`:
-
-```json
-{
-  "bar": {
-    "layout": {
-      "right": [
-        { "id": "omarchy.tray" },
-        { "id": "omarchy.network" },
-        { "id": "omarchy.audio" },
-        { "id": "omarchy.monitor" },
-        { "id": "fred.sysinfo" }
-      ]
-    }
-  }
-}
-```
-
-Reload the shell to apply:
-
-```bash
-omarchy-shell shell rescanPlugins
-```
-
----
+See [plugin ownership](../README.md) and the [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md). Home and XDG paths below use their default locations; the helpers honor the corresponding `XDG_*_HOME` overrides.
 
 ## Interacting with the Plugin
 
@@ -107,23 +79,17 @@ You can run the underlying telemetry engine directly from the command line:
 
 ```bash
 # Formatted JSON output
-python3 ~/.config/omarchy/plugins/fred.sysinfo/sysinfo-probe.py | jq .
+python3 ~/.config/tamlinux/plugins/fred.sysinfo/sysinfo-probe.py | jq .
 
 # Performance benchmark
-python3 ~/.config/omarchy/plugins/fred.sysinfo/sysinfo-probe.py --bench
+python3 ~/.config/tamlinux/plugins/fred.sysinfo/sysinfo-probe.py --bench
 ```
 
 ---
 
-## Uninstallation
+## Removing the widget
 
-To remove the plugin:
-
-```bash
-omarchy plugin remove fred.sysinfo
-```
-
----
+Remove its ID from the Tamlinux layout. To omit its installed payload, set `tamlinux.shell.plugins` to the IDs to retain and activate the matching Home Manager configuration. Saved settings and data remain available for re-enabling it.
 
 ## License
 

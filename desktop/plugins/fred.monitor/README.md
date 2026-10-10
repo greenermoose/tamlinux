@@ -16,7 +16,7 @@ Display information, per-display control, saved layouts, and guarded link reset 
 | **Upstream Target** | `omarchy.monitor` |
 | **License** | GPL-3.0-or-later |
 | **Author** | Fred (@greenermoose) |
-| **Repository** | `https://github.com/greenermoose/monitor-fred-tamlinux` |
+| **Repository** | `https://github.com/greenermoose/tamlinux/tree/develop/desktop/plugins/fred.monitor` |
 
 ---
 
@@ -46,13 +46,11 @@ Display information, per-display control, saved layouts, and guarded link reset 
 
 ## Installation
 
-Install and enable the plugin via Omarchy:
+The 2.x plugin is included in the pinned [Tamlinux package assembly](https://github.com/greenermoose/tamlinux-packages). Its installed payload is at `~/.config/tamlinux/plugins/fred.monitor/`; install and update it with the assembly through Home Manager. The standalone repository contains the frozen Omarchy 1.x line.
 
-```bash
-omarchy plugin add https://github.com/greenermoose/monitor-fred-tamlinux.git --enable
-```
+Place `{ "id": "fred.monitor" }` in a `left`, `center`, or `right` list under `layout` in `~/.config/tamlinux/shell/layout.json`. The document uses `schemaVersion: 1`. Widget settings are the `fred.monitor` entry under `entries` in `~/.config/tamlinux/shell/settings.json`, whose top-level `version` is `1`.
 
-Because `fred.monitor` declares `clonedFrom: "omarchy.monitor"`, Omarchy automatically replaces the stock Display widget in place on the bar.
+See [plugin ownership](../README.md) and the [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md). Home and XDG paths below use their default locations; the helpers honor the corresponding `XDG_*_HOME` overrides.
 
 To persist an applied layout, `~/.config/hypr/monitors.lua` must contain one
 `fred.monitor` managed block. Put the monitor rules you want this plugin to

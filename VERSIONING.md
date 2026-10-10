@@ -75,7 +75,10 @@ Work toward a release uses letters: people say **0.4.2a**, **0.4.2b** and
 `0.4.2-b` and `0.4.2-c`. Nix and native package recipes use `0.4.2pre.a`,
 `0.4.2pre.b` and `0.4.2pre.c`, so candidates sort after 0.4.1 and before
 0.4.2. The spelling `0.4.2a` is for conversation, not a package version.
-Candidate letters have no release tags or GitHub Releases.
+Candidate letters have no release tags or GitHub Releases. Never reuse a letter
+for a changed assembly: once an assembly has been prepared under that letter, fixes use
+the next letter and preserve the earlier candidate's exact record. 0.4.2d
+(`0.4.2-d` / `0.4.2pre.d`) follows c.
 
 | Branch | Meaning | Promotion |
 | --- | --- | --- |

@@ -1,6 +1,18 @@
 # Changelog
 
-## [2.0.0] - Unreleased
+All notable changes to `fred.weather` in `tamlinux/desktop/plugins/fred.weather` are documented here.
+
+The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
+
+## [2.0.2] - Tamlinux 0.4.2-a/b candidate
+
+- Use the shared host hover surface and reusable panel version footer.
+
+## [2.0.1] - Included in Tamlinux 0.4.1 - 2026-10-09
+
+- Move non-theme storage to XDG Tamlinux paths and remove legacy helper fallbacks.
+
+## [2.0.0] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.

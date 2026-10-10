@@ -8,7 +8,7 @@ Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermo
 
 ## Overview
 
-`fred.workspaces` replaces the stock `omarchy.workspaces` bar widget in-place using Omarchy's `clonedFrom` routing, adding a desktop mode switcher tailored for multi-monitor and single-monitor workflows:
+`fred.workspaces` is the Tamlinux workspace bar widget, with a desktop mode switcher for multi-monitor and single-monitor workflows:
 
 | Mode | Indicator | Description |
 | :--- | :---: | :--- |
@@ -25,7 +25,7 @@ Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermo
 - **Rich Set Tooltips**: Hover over a desktop button to see windows from every member workspace, labeled Left/Center/Right for three displays.
 - **Dynamic Geometry Detection**: Queries `hyprctl monitors -j`, excludes disabled and mirrored outputs, and orders the remaining displays by `(x, y, name)`.
 - **Single-to-Many Monitor Support**: One formula handles laptops, the original two-monitor pair, three-monitor desks, and larger arrangements.
-- **Optional Endpoint Overrides**: `OMARCHY_DESKTOP_LEFT_MONITOR` and `OMARCHY_DESKTOP_RIGHT_MONITOR` customize Mac-mode endpoints without excluding displays from Windows mode.
+- **Optional Endpoint Overrides**: `TAMLINUX_DESKTOP_LEFT_MONITOR` and `TAMLINUX_DESKTOP_RIGHT_MONITOR` customize Mac-mode endpoints without excluding displays from Windows mode.
 - **Self-Contained Execution**: Bundles the standard-library-only `tam-desktop-mode` helper and launches it descriptor-relatively from the bar.
 
 ### Windows-mode mapping
@@ -53,15 +53,11 @@ workspace = (D - 1) * S + P + 1
 
 ## Installation
 
-Install directly with Omarchy's plugin manager:
+The 2.x plugin is included in the pinned [Tamlinux package assembly](https://github.com/greenermoose/tamlinux-packages). Its installed payload is at `~/.config/tamlinux/plugins/fred.workspaces/`; install and update it with the assembly through Home Manager. The standalone repository contains the frozen Omarchy 1.x line.
 
-```bash
-omarchy plugin add https://github.com/greenermoose/workspaces-fred-tamlinux.git --enable --yes
-```
+Place `{ "id": "fred.workspaces" }` in a `left`, `center`, or `right` list under `layout` in `~/.config/tamlinux/shell/layout.json`. The document uses `schemaVersion: 1`. Widget settings are the `fred.workspaces` entry under `entries` in `~/.config/tamlinux/shell/settings.json`, whose top-level `version` is `1`.
 
-Because this plugin declares `clonedFrom: "omarchy.workspaces"`, enabling it replaces the stock Omarchy workspace widget in-place in your bar layout.
-
----
+See [plugin ownership](../README.md) and the [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md). Home and XDG paths below use their default locations; the helpers honor the corresponding `XDG_*_HOME` overrides.
 
 ## Hyprland Keybindings
 
@@ -97,7 +93,7 @@ end
 
 > **Note**: If `tam-desktop-mode` is not in your `PATH`, you can symlink it into `~/.local/bin/`:
 > ```bash
-> ln -sf ~/.config/omarchy/plugins/fred.workspaces/tam-desktop-mode ~/.local/bin/tam-desktop-mode
+> ln -sf ~/.config/tamlinux/plugins/fred.workspaces/tam-desktop-mode ~/.local/bin/tam-desktop-mode
 > ```
 
 ---
@@ -108,6 +104,7 @@ The bundled `tam-desktop-mode` command provides scriptable desktop management:
 
 ```bash
 tam-desktop-mode status            # Print current mode (mac, windows, omarchy)
+tam-desktop-mode preferences       # Print unused-monitor timeout preferences as JSON
 tam-desktop-mode indicator         # Print single-letter indicator (M, W, O)
 tam-desktop-mode toggle            # Cycle mode (omarchy -> mac -> windows)
 tam-desktop-mode switch <NUMBER>   # Switch to desktop / workspace NUMBER
@@ -121,12 +118,12 @@ tam-desktop-mode monitors          # Print the ordered monitor set and endpoints
 
 ## Configuration & Overrides
 
-To override the left/right endpoints used by Mac mode, create `~/.config/omarchy/desktop-mode.conf`:
+To override the left/right endpoints used by Mac mode, create `~/.config/tamlinux/desktop-mode.conf`:
 
 ```bash
 # Explicit monitor names from `hyprctl monitors`
-OMARCHY_DESKTOP_LEFT_MONITOR="DP-2"
-OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
+left_monitor="DP-2"
+right_monitor="HDMI-A-1"
 ```
 
 > **Security & Format Notes**:
@@ -135,7 +132,7 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 > - Monitor names must be alphanumeric identifiers matching `^[A-Za-z0-9._-]{1,64}$`.
 > - Inline comments after values (e.g. `KEY=VAL # comment`) are rejected to avoid parsing ambiguities.
 > - A Home Manager symlink to a regular, user-owned config file is supported.
-> - The helper leaves the permissions of Omarchy's shared state directory unchanged.
+> - The helper stores mode and topology in `$XDG_STATE_HOME/tamlinux/desktop-mode` and `desktop-monitors`; it leaves legacy Omarchy storage untouched.
 > - `status` and `indicator` read the current mode without updating monitor state.
 > - Windows mode always uses every active, non-mirrored monitor. Endpoint overrides do not remove monitors from its set.
 
@@ -143,15 +140,12 @@ OMARCHY_DESKTOP_RIGHT_MONITOR="HDMI-A-1"
 
 Anything that focuses a window on a hidden workspace — an app that opens on a stale workspace, a window switcher, a single-monitor Hyprland dispatch — makes Hyprland move just that monitor. The `splitSet` widget setting decides whether that is allowed to split the set. It only applies to Windows mode; Omarchy and Mac modes treat each monitor individually.
 
-```bash
-omarchy bar set fred.workspaces splitSet true    # default
-omarchy bar set fred.workspaces splitSet false
-```
+Set `splitSet` to `true` (default) or `false` under `entries["fred.workspaces"]` in `~/.config/tamlinux/shell/settings.json`.
 
 - `true`: the set splits, shown per monitor. The monitor that left the set's desktop shows a hollow marker on its own desktop and **F** (it followed a window focus) as its mode letter; hover **F** to see where it is versus the set, click **F** to bring just that monitor back. Monitors still on the set's desktop keep the solid marker and **W**. Clicking any desktop, or `SUPER + number` (top row or keypad), moves the whole set.
 - `false`: the set never splits — every monitor follows to the focused monitor's desktop automatically.
 
-### Upgrading from v1.2.1
+### Historical 1.x upgrade note
 
 Windows mode now interprets workspace IDs using the active set size. On three displays, workspace `3` belongs to desktop 1 instead of desktop 2. Existing windows are not moved or renumbered automatically; selecting a desktop applies the new contiguous mapping.
 
@@ -162,18 +156,13 @@ The helper's monitor discovery, mapping, dispatch verification, and window-move 
 ```bash
 python -m unittest discover -s tests -v
 python -m py_compile tam-desktop-mode tests/test_desktop_mode.py
-omarchy plugin validate .
 ```
 
 ---
 
-## Uninstallation
- 
-To remove the plugin and automatically restore the stock Omarchy workspace widget:
- 
-```bash
-omarchy plugin remove fred.workspaces
-```
+## Removing the widget
+
+Remove its ID from the Tamlinux layout. To omit its installed payload, set `tamlinux.shell.plugins` to the IDs to retain and activate the matching Home Manager configuration. Saved settings and data remain available for re-enabling it.
 
 ## Acknowledgments
 

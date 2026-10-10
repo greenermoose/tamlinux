@@ -1,17 +1,27 @@
 # Changelog
 
-## 2.0.5 - 2026-10-09
+All notable changes to `fred.monitor` in `tamlinux/desktop/plugins/fred.monitor` are documented here.
+
+The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
+
+## [2.0.5] - Tamlinux 0.4.2-c candidate
 
 - Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
 
-## [2.0.3] - Unreleased
+## [2.0.4] - Tamlinux 0.4.2-a/b candidate
+
+- Shared host hover version styling and a reusable panel version footer. The displayed version is corrected to match the manifest.
+
+## [2.0.3] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 - Fix empty display panels when another component has created the shared Tamlinux runtime directory with mode 0755. Accept a user-owned parent without group/world write permission, while retaining mode 0700 for monitor cache and preview/rollback state.
 - Open and validate runtime directories without following symlinks. Unavailable brightness cache no longer prevents reading displays; unsafe layout transaction storage still fails closed.
 
-All notable changes to `fred.monitor` are documented here.
+## [2.0.2] - Included in Tamlinux 0.4.1 - 2026-10-09
 
-## [2.0.1] - Unreleased
+- Move non-theme storage to XDG Tamlinux paths and remove legacy helper fallbacks.
+
+## [2.0.1] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Fixed
 - Reset/retrain works again. `fred-monitor-reset` ran the Tamlinux backend as `python3 -I hyprland_backend.py`. Isolated mode leaves the script's directory off `sys.path`, so the backend's `import compositor_commands` failed. The helper discarded that error, read no monitors, and reported the display as not connected. It now puts only the backend directory on the path and calls the backend's `main`.
@@ -20,7 +30,7 @@ All notable changes to `fred.monitor` are documented here.
 ### Added
 - `tests/test_reset.py` runs the helper against a stand-in backend that imports a sibling module, as the real one does.
 
-## [2.0.0] - Unreleased
+## [2.0.0] - Included in Tamlinux 0.4.1 - 2026-10-09
 
 ### Changed
 - The widget loads in the Tamlinux shell through `Tam.Commons` and `Tam.Ui`. It no longer imports the Omarchy shell modules or calls `bar.run`.

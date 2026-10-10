@@ -10,18 +10,18 @@ Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Version** | [0.4.1](VERSION) — see [VERSIONING.md](VERSIONING.md) |
+| **Source version** | [0.4.2-d](VERSION), prepared for testing — see [VERSIONING.md](VERSIONING.md) |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.4.1 — Daily compositor protocol shadow observation accepted on 2026-10-09, following owned non-theme settings/state/cache and the shared key/bar helper. The tested shell and eight exercised 2.x plugins run on every screen; Hyprland IPC remains authoritative. Menu/theme/package independence remains in progress. Not an installable image yet |
+| **Status** | 0.4.1 is the accepted daily release. 0.4.2-c is in physical Test; 0.4.2-d prepares menu ownership, plugin repairs and stricter assembly verification. The shell and eight 2.x plugins run on every screen; Hyprland IPC remains authoritative. Theme/package independence remains in progress. Not an installable image yet |
 
 ---
 
 ## What Tamlinux is
 
 Tamlinux is a resource-efficient, high-performance, AI-ready user interface
-for laptop and desktop computers running Linux. Its goal is to be is a responsive,
+for laptop and desktop computers running Linux. Its goal is a responsive,
 reliable, accessible daily experience that gets the most from desktop systems,
 mini PCs, and laptops that can be kept in delightful, productive use for decades.
 

@@ -10,7 +10,7 @@ revision whose lock file pins every component.
 
 | Command | Effect |
 | --- | --- |
-| `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; report any installed path outside the assembly's packages. |
+| `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; compare required endpoints with the exact selected package outputs, rejecting missing/broken links and mixed assemblies. |
 | `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell, verify the installed paths and commit the pin. A failure restores the lock and the previous generation. |
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
 | `back` | Activate the previous generation and restore its pin. |
@@ -19,7 +19,7 @@ The rollback pin identifies the assembly actually running, using the deployment
 record for the active generation. A prepared but inactive consumer lock is not
 the rollback assembly. Without a matching record, the current lock must match
 the installed source revision; otherwise deployment stops before activation.
-Back records the restored generation and components for subsequent deployments.
+Back identifies its return pin from the active deployment record too, so a staged consumer lock cannot pair the old generation with a newer assembly. It records the restored generation and components for subsequent deployments.
 
 Promote a candidate from `develop` to `test` (a fast-forward push) before
 `tam-deploy test`; `tam-deploy` never resolves a moving branch at build time.
@@ -44,3 +44,15 @@ make install   # honours PREFIX and DESTDIR
 The configuration's `tamlinux-packages` input must name the repository
 without a revision (for example `github:greenermoose/tamlinux-packages`); the
 lock file holds the exact revision.
+
+## Exact endpoint verification
+
+The command evaluates `packages.<system>` at the committed assembly revision
+through its local Git history and compares resolved endpoints with those exact
+store outputs. It checks the shell, every selected plugin, every product
+command, tam, tam-file-select, and the menu/tam-man endpoints when the assembly
+provides them. Missing files, broken links, unexpected plugins and old packages
+fail verification. The installed `deployment-selection.json` records intentional
+plugin subsets; its IDs and product revision must agree with the assembly.
+Older assemblies without that record are checked against their full plugin set.
+Nix evaluation must succeed; no name-pattern fallback declares a match.

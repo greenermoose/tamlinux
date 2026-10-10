@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
-## 0.4.2-c - Unreleased
+## 0.4.2-d - Unreleased
+
+- Verify installed shell, plugin, command, menu and tool endpoints against the exact pinned assembly outputs; reject missing or broken links and mixed candidates. Record intentional plugin selections.
+- Rollback retains the active assembly as its return pin even when the consumer lock has already been prepared for a newer candidate.
+- Restore missing product/plugin changelog history, update plugin installation and storage documentation, and list workspace preferences in command help.
+- Candidate letters are unique: d supersedes c without changing c's recorded identity.
 
 - Product-owned menu defaults and `tam-menu`, with personal extensions at
   `tamlinux/menu/extension.jsonc`. Retained rows, routes, aliases and actions
@@ -24,7 +29,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   Restore the workspace preferences command and detached display wake helper.
   Integration checks exercise actual helper outputs at the paths QML watches,
   including calendar add/fetch/delete and migrated layout load/save.
-- Repaired plugin versions: agents/workspaces 2.0.4, clock/sysinfo 2.0.3 and
+- Repaired plugin versions: agents 2.0.4, workspaces 2.0.5, clock/sysinfo 2.0.3 and
   monitor 2.0.5. Keyboard remains 2.0.1; tides/weather remain 2.0.2.
 - The delivery assembly selects tam 0.9.1, including manual-page browsing,
   standard-input paging and the binary's own guide corpus.
@@ -36,6 +41,16 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
   fractional scaling, rotation, mirroring and logical-to-image-pixel conversion.
 
 ## 0.4.1 - 2026-10-09
+
+- **`tam-work` for shared checkouts** (2026-10-09). The command that lets
+  several sessions, people or AI agents, work in the same Git checkouts
+  without overwriting each other is now part of Tamlinux, in
+  [`commands/tam-work/`](commands/tam-work/README.md). Sessions claim the
+  paths they will edit and overlapping claims are refused.
+  `TAM_WORK_WORKSPACE` and `TAM_WORK_REGISTRY` override the default
+  workspace (`~/Code/tamlinux`) and claim registry
+  (`<workspace>/worktrees/coordination`). `make check` runs its tests and
+  `make install` honours `PREFIX` and `DESTDIR`.
 
 - Fred accepted daily compositor protocol shadow observation on the current Hyprland desktop: “I accept tamlinux 4.0.1. Make a note of that.” This identifies the planned product step 0.4.1.
 - Retain the exact tested shell and its passive comparison logging; IPC still supplies authoritative compositor facts and display power.
@@ -317,6 +332,26 @@ Tamlinux's own.
   transparency, saved width, and monitor scaling.
 
 ## 0.1.0 to 0.1.22 - 2026-10-04 to 2026-10-05
+
+- **Every accepted step is a version** (2026-10-05). The minor version names
+  a stage and the patch a step, so each change Fred accepts into daily use
+  raises the version. The stages after 0.1 are re-planned: 0.2 moves every key
+  binding and menu entry to Tamlinux's own commands, 0.3 is the Tamlinux bar,
+  0.4 the compositor contract, 0.5 Tamlinux's own look and name, 0.6 Omarchy
+  removed, 0.7 the workstation package beside Hyprland, and 0.8 the Sway
+  session as the daily driver; 1.0.0 still removes Hyprland.
+  This is the historical 2026-10-05 schedule; current
+  [`VERSIONING.md`](VERSIONING.md) supersedes its future-stage ordering. The planned
+  0.0.3 was never issued; its work is 0.1.0–0.1.22 below.
+- **"The Tamlinux shell"** (2026-10-05). The program that draws the bar and
+  runs the session services is called the Tamlinux shell, as its
+  predecessor was the Omarchy shell. "Host" now names only the part plugins
+  talk to (the host contract) and, for the workstation package, the
+  distribution it is installed on and its host adapter. Earlier records say
+  "the Tamlinux host" for the shell. See [`desktop/README.md`](desktop/README.md).
+- **"Ported"** (2026-10-05). Code taken over from Omarchy is *ported*:
+  copied with its MIT notice, adapted to Tamlinux, and maintained here.
+  Headers and docs say "Ported from"; earlier records say "vendored".
 
 Numbered on 2026-10-05, in the order each step was accepted into daily use.
 Not tagged.

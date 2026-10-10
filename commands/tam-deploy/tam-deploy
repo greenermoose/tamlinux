@@ -77,6 +77,9 @@ class Deployment:
         self.state_file = state / "tamlinux/deploy.json"
         self.profile = state / "nix/profiles/home-manager"
         self.lock = self.config / "flake.lock"
+        self.selection_file = data / "tamlinux/deployment-selection.json"
+        self.system = os.environ.get("TAMLINUX_NIX_SYSTEM", os.uname().machine + "-linux")
+        self._outputs = {}
 
     # Records -----------------------------------------------------------
 
@@ -185,26 +188,68 @@ class Deployment:
             time.sleep(0.2)
         raise DeploymentError("deployed shell did not become reachable through tam-shell")
 
-    def verify(self, pins: dict[str, str]) -> list[str]:
+    def expected_outputs(self, revision: str) -> dict:
+        """Evaluate the committed assembly, never the changing checkout or lock."""
+        if revision not in self._outputs:
+            expression = '''p: {
+              shell = toString p.tamlinux-shell;
+              plugins = toString p.tamlinux-plugins;
+              commands = toString p.tamlinux-commands;
+              tam = toString p.tam;
+              tools = toString p.tamlinux-tools;
+              pluginIds = p.tamlinux-plugins.passthru.ids;
+              commandNames = p.tamlinux-commands.passthru.names;
+              features = p.tamlinux-shell.passthru.features;
+              selectionRecord = p.tamlinux-shell.passthru.deploymentSelectionRecord or false;
+              manWrapper = p.tam.passthru.features.manWrapper or false;
+            }'''
+            self._outputs[revision] = json.loads(command(
+                "nix", "eval", "--json", "--no-write-lock-file",
+                f"git+file://{self.repo('tamlinux-packages')}?rev={revision}#packages.{self.system}",
+                "--apply", expression, capture=True))
+        return self._outputs[revision]
+
+    def verify(self, pins: dict[str, str], revision: str | None = None) -> list[str]:
         """Differences between the installed endpoints and the assembly."""
+        expected = self.expected_outputs(revision or self.locked())
         problems = []
         if self.installed() != pins["tamlinux"]:
             problems.append(f"shell revision {self.installed()} is not {pins['tamlinux']}")
-        target = os.path.realpath(self.shell_link)
-        if not (target.startswith("/nix/store/") and "-tamlinux-shell-" in target):
-            problems.append(f"shell resolves outside the shell package: {target}")
-        for plugin in sorted(self.plugins_dir.glob("fred.*")):
-            target = os.path.realpath(plugin)
-            if not (target.startswith("/nix/store/") and "-tamlinux-plugins-" in target):
-                problems.append(f"{plugin.name} resolves outside the plugin package: {target}")
-        packages = {"tam-deploy": "-tamlinux-commands-", "tam-plugin": "-tamlinux-commands-",
-                    "tam-work": "-tamlinux-commands-", "tam": "-tam-", "tam-file-select": "-tamlinux-tools-"}
-        for name, package in packages.items():
-            link = self.bin_dir / name
-            if link.exists() or link.is_symlink():
-                target = os.path.realpath(link)
-                if not (target.startswith("/nix/store/") and package in target):
-                    problems.append(f"{name} resolves outside its package: {target}")
+
+        def endpoint(label: str, path: Path, target: str) -> None:
+            if not path.exists():
+                problems.append(f"{label} is missing or its link is broken: {path}")
+            elif os.path.realpath(path) != target:
+                problems.append(f"{label} resolves to {os.path.realpath(path)}, expected {target}")
+
+        endpoint("shell", self.shell_link, expected["shell"] + "/share/tamlinux/shell")
+        selected = expected["pluginIds"]
+        if expected["selectionRecord"]:
+            try:
+                record = json.loads(self.selection_file.read_text())
+                selected = record["plugins"]
+                if (record["revision"] != pins["tamlinux"] or not isinstance(selected, list)
+                        or any(not isinstance(p, str) or p not in expected["pluginIds"] for p in selected)
+                        or len(selected) != len(set(selected))):
+                    raise ValueError("invalid product revision or plugin selection")
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                problems.append(f"deployment selection record is missing or invalid: {exc}")
+                selected = expected["pluginIds"]
+        for name in selected:
+            endpoint(name, self.plugins_dir / name, expected["plugins"] + "/share/tamlinux/plugins/" + name)
+        for plugin in self.plugins_dir.glob("fred.*"):
+            if plugin.name not in selected:
+                problems.append(f"unexpected installed plugin: {plugin.name}")
+        for name in expected["commandNames"]:
+            endpoint(name, self.bin_dir / name, expected["commands"] + "/bin/" + name)
+        endpoint("tam", self.bin_dir / "tam", expected["tam"] + "/bin/tam")
+        endpoint("tam-file-select", self.bin_dir / "tam-file-select", expected["tools"] + "/bin/tam-file-select")
+        if expected["manWrapper"]:
+            endpoint("tam-man", self.bin_dir / "tam-man", expected["tam"] + "/bin/tam-man")
+        if expected["features"].get("menu"):
+            endpoint("tam-menu", self.bin_dir / "tam-menu", expected["shell"] + "/bin/tam-menu")
+            endpoint("menu defaults", self.plugins_dir.parent / "menu/default.jsonc",
+                     expected["shell"] + "/share/tamlinux/menu/default.jsonc")
         return problems
 
     def record(self, message: str, files: list[str]) -> None:
@@ -243,7 +288,7 @@ class Deployment:
         print(f"installed shell: {self.installed()}")
         print("stage: " + (state.get("stage", "unrecorded") if state.get("packages") == locked else "unrecorded"))
         print(f"generation: {self.generation()}")
-        problems = self.verify(pins) if pins else []
+        problems = self.verify(pins, locked) if pins else []
         for problem in problems:
             print(f"mismatch: {problem}")
         if problems:
@@ -276,7 +321,7 @@ class Deployment:
         try:
             self.pin(revision)
             self.activate()
-            problems = self.verify(pins)
+            problems = self.verify(pins, revision)
             if problems:
                 raise DeploymentError("installed endpoints do not match the assembly:\n  " + "\n  ".join(problems))
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError):
@@ -327,7 +372,7 @@ class Deployment:
         self.fetch_all(pins)
         repos = {"tamlinux-packages": revision, **pins}
         stages = {name: self.stage_of(name, rev) for name, rev in repos.items()}
-        needs_install = revision != installed or bool(self.verify(pins))
+        needs_install = revision != installed or bool(self.verify(pins, revision))
 
         if all(stage == "main" for stage in stages.values()):
             if not needs_install:
@@ -379,7 +424,8 @@ class Deployment:
         target = Path(previous)
         if not str(target).startswith("/nix/store/") or not (target / "activate").is_file():
             raise DeploymentError("previous generation was removed or is invalid")
-        current, current_pin = self.generation(), self.locked()
+        current = self.generation()
+        current_pin = self.rollback_pin(current)
         command(str(target / "activate"))
         command("tam-restart-shell")
         self.wait_ready()

@@ -4,9 +4,11 @@ Step 0.4.2 owns the menu without changing its retained applications, routes,
 navigation or power policy. This candidate is developed and tested in isolation;
 workstation acceptance remains a separate transition.
 
-**Candidate status, 2026-10-09:** 0.4.2-b was packaged and installed in
-Test. The repaired 0.4.2-c source restores accepted plugin storage contracts
-and updates the delivery selection to tam 0.9.1. Menu defaults, parsing and
+**Candidate status, 2026-10-10:** 0.4.2-c is installed in Test, with
+accepted plugin storage contracts restored and tam 0.9.1 selected. Candidate
+0.4.2-d adds exact package-output verification, correct rollback return pins,
+restored history and current usage documentation. It is prepared for testing;
+physical acceptance remains pending. Menu defaults, parsing and
 all 196 effective workstation rows remain unchanged from b. Delivery selects
 an exact source commit in a committed `tamlinux-packages` assembly; physical
 acceptance applies to that assembly and generation. No Run or Release
