@@ -77,8 +77,8 @@ disk.
 Everything the plugin needs is part of a stock Tamlinux installation; there is
 nothing to install first.
 
-- **Omarchy 4.0.4 or newer** (developed and tested on 4.0.4). The plugin is a
-  standard `bar-widget` plugin using Omarchy's shell UI kit.
+- **The Tamlinux shell** from the matching package assembly. The bundled 2.x
+  widget uses `Tam.Commons` and `Tam.Ui`; the standalone Omarchy 1.x line is frozen.
 - **Hyprland** (tested on 0.56.2), for `hyprctl devices` and `hyprctl binds`,
   and for capture mode, which relies on the compositor implementing
   `keyboard-shortcuts-inhibit-unstable-v1`. Hyprland does; capture mode is

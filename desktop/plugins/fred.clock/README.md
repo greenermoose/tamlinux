@@ -20,7 +20,7 @@ Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermo
 | **Account Filter Chips** | Quick multi-account filtering (e.g. `All`, `Work`, `Personal`, `Projects`) directly in the agenda. |
 | **1-Click Meeting Join** | Automatically detects Google Meet, Zoom, Teams, and Webex links with safe, non-blocking `xdg-open` launches. |
 | **Markdown Copy** | Copy the selected day's complete agenda as structured Markdown (`y` hotkey or toolbar button). |
-| **Local Event Management** | Create, view, and delete local events directly in the agenda UI or via CLI/IPC without external calendar dependencies. Stored in standard RFC 5545 `.ics` format. |
+| **Local Event Management** | Create, view, and delete local events directly in the agenda UI or via CLI without external calendar dependencies. Stored in standard RFC 5545 `.ics` format. |
 
 ---
 
@@ -115,7 +115,7 @@ You can create and manage private local calendar events without external Google 
 - Enter the event title, choose all-day or specify start/end times (e.g. `14:00` – `15:30`), optionally enter a location, and click **Save Event** (or press Enter).
 - To delete a local event, click the trash can icon (**`󰆴`**) on any local event card.
 
-#### From the Command Line / IPC
+#### From the Command Line
 ```bash
 # Add an all-day local event
 python3 ~/.config/tamlinux/plugins/fred.clock/manage-event.py add --date 2026-09-15 --summary "Doctor's Appointment" --all-day
@@ -144,7 +144,7 @@ Widget settings in the `fred.clock` entry of `~/.config/tamlinux/shell/settings.
 ### Bar
 - **Left Click**: Open / close the calendar and agenda panel.
 - **Right Click**: Cycle through configured date and time formats.
-- **Middle Click**: Open the Omarchy timezone switcher (`omarchy-menu-timezone`).
+- **Middle Click**: Open the Tamlinux timezone switcher (`tam-menu-timezone`).
 
 ### Agenda Panel
 - **Click Day Cell**: Select that date and display its agenda.
@@ -170,13 +170,13 @@ Nothing in the plugin invokes ambient shells (`bash`), unconstrained execution (
 | Process | Trigger | Executable | Environment Allowlist | Deadline / Watchdog |
 | :--- | :--- | :--- | :--- | :--- |
 | **Event Fetcher** | Session start, 15m timer, panel open if stale (>5m), config change | `/usr/bin/python3` (`fetch-events.py`) | `HOME`, `TZ`, `LANG`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` | 60s QML watchdog (SIGTERM + SIGKILL after 3s); 45s self-imposed `signal.alarm` |
-| **Event Manager** | Add / delete local event in UI or IPC | `/usr/bin/python3` (`manage-event.py`) | `HOME`, `TZ`, `LANG`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` | 20s QML watchdog |
+| **Event Manager** | Add / delete local event in UI | `/usr/bin/python3` (`manage-event.py`) | `HOME`, `TZ`, `LANG`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` | 20s QML watchdog |
 | **Meeting URL Opener** | Click "Join Meeting" button in agenda | `/usr/bin/xdg-open` | `HOME`, `LANG`, `XDG_RUNTIME_DIR`, `WAYLAND_DISPLAY`, `DISPLAY`, `DBUS_SESSION_BUS_ADDRESS`, `XDG_CURRENT_DESKTOP`, `XDG_SESSION_TYPE`, `XDG_DATA_HOME`, `XDG_DATA_DIRS`, `XDG_CONFIG_HOME`, `XDG_CONFIG_DIRS`, `HYPRLAND_INSTANCE_SIGNATURE` | 10s QML watchdog |
 | **Clipboard Copy** | Press `y` or click agenda copy button | `/usr/bin/wl-copy` | `XDG_RUNTIME_DIR`, `WAYLAND_DISPLAY` | 10s QML watchdog (text piped directly to stdin) |
 | **Desktop Notifications** | Event added/deleted, agenda copied, or calendar busy | `tam-notification-send` through `TAMLINUX_BIN` (default `~/.local/bin`) | `HOME`, `XDG_RUNTIME_DIR`, `WAYLAND_DISPLAY`, `DBUS_SESSION_BUS_ADDRESS` | 10s QML watchdog |
 
 #### Component-Relative Helper Resolution
-Like all Omarchy shell plugins, the plugin installation directory is user-writable by design. Helper scripts (`fetch-events.py`, `manage-event.py`) are never resolved by guessing hard-coded paths; instead, they are dynamically resolved as sibling paths of the loaded QML component via `Model.helperPath(Qt.resolvedUrl(...))`.
+The bundled plugin payload is immutable in the Nix store; user configuration, state and cache live separately. Helper scripts (`fetch-events.py`, `manage-event.py`) are never resolved by guessing hard-coded paths; instead, they are dynamically resolved as sibling paths of the loaded QML component via `Model.helperPath(Qt.resolvedUrl(...))`.
 
 ### Resource Bounds and Aggregation Limits
 
