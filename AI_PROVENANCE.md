@@ -251,3 +251,11 @@ dispositions and compact built-output reporting; planned focused input usability
 as 0.4.4 after independent 0.4.3 acceptance. The 108 → 27 shortcut was rejected;
 no features were deleted or software deployed.
 [Session](docs/ai/2026-10-10-acceleration-review.md).
+
+## 0.4.3 menu disposition and browser launch closure — 2026-10-10
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented eight browser/focus interfaces,
+retained menu/keybinding workflow dispositions and compact package-output evidence.
+Sixteen installed launch regressions, 21 auditor regressions, Nix build/integration
+and 19 actual-output probes pass. Independent desktop acceptance remains pending.
+[Session](docs/ai/2026-10-10-0.4.3-menu-launch-closure.md).

@@ -1,0 +1,4947 @@
+{
+  "bindingSourceSha256": {
+    "applications.lua": "17587ea5cc08e36f980e70a005a80dd39008ccd58ff353704d7a4ab2d8da9588",
+    "clipboard.lua": "a74709cfde2dcc1708e74eeae2bbf735c8e8680a7b73f8c6f45ca409410355a2",
+    "media.lua": "9a1ad3a42be28c94285f54007c52c9dd7725a3f6d35ac660c05f255b6a4d2bf8",
+    "tiling.lua": "da9174794b50229bd96ee06e191816dbd9c9ce9381cfb6c41c918f96363c1970",
+    "utilities.lua": "13e3d0739d306dc1ffc1273b3bfbf3f68eb317f417c20dc46e367660bda33a52",
+    "voxtype.lua": "ff39dcab7a834082abc12a5563c3b37ce434a39a1969a1ecb2f025553b69c446"
+  },
+  "limits": "Menu is the maintained product default. Binding rows are the inspected reference Hyprland default sources pending public packaged session ownership; excludes personal overrides, evaluated Lua, dynamic loops, live binding activation and optional-provider installation. Output callers are lexical candidates, including data. No menu-only function is retired.",
+  "literalDefaultBindingRows": [
+    {
+      "chord": "SUPER + RETURN",
+      "customCommands": [
+        "tam-launch-terminal"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Terminal",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 2,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + RETURN",
+      "customCommands": [
+        "tam-launch-browser"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Browser",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 3,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + F",
+      "customCommands": [
+        "tam-launch-nautilus"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "File manager",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 4,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + ALT + SHIFT + F",
+      "customCommands": [
+        "tam-launch-nautilus-cwd"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "File manager (cwd)",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 5,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + B",
+      "customCommands": [
+        "tam-launch-browser"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Browser",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 6,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + B",
+      "customCommands": [
+        "tam-launch-browser"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Browser (private)",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 7,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + N",
+      "customCommands": [
+        "tam-launch-editor"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Editor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 8,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + ALT + RETURN",
+      "customCommands": [
+        "tam-launch-terminal-tmux"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Tmux",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 12,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + RETURN",
+      "customCommands": [
+        "tam-launch-terminal-herdr"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Herdr",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 13,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + M",
+      "customCommands": [
+        "tam-launch-spotify"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Music",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 14,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + M",
+      "customCommands": [
+        "tam-launch-or-focus-tui"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Music TUI",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 15,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + D",
+      "customCommands": [
+        "tam-launch-docker-tui",
+        "tam-launch-tui"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Docker",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 16,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + G",
+      "customCommands": [
+        "tam-launch-signal"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Signal",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 17,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + O",
+      "customCommands": [
+        "tam-launch-or-focus"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Obsidian",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 18,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + W",
+      "customCommands": [
+        "tam-launch-tui"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Micro",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 19,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + SLASH",
+      "customCommands": [
+        "tam-launch-1password"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Passwords",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 20,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + A",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "ChatGPT",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 22,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + A",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Grok",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 23,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + C",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Calendar",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 24,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + E",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Email",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 25,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + E",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "New email",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 26,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + Y",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "YouTube",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 27,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + G",
+      "customCommands": [
+        "tam-launch-or-focus-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "WhatsApp",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 28,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + CTRL + G",
+      "customCommands": [
+        "tam-launch-or-focus-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Google Messages",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 29,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + P",
+      "customCommands": [
+        "tam-launch-or-focus-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Google Photos",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 30,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + S",
+      "customCommands": [
+        "tam-launch-or-focus-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Google Maps",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 31,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + X",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "X",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 32,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + X",
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "X Post",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 33,
+      "source": "applications.lua"
+    },
+    {
+      "chord": "SUPER + C",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Universal copy",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 45,
+      "source": "clipboard.lua"
+    },
+    {
+      "chord": "SUPER + V",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Universal paste",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 46,
+      "source": "clipboard.lua"
+    },
+    {
+      "chord": "SUPER + X",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Universal cut",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 47,
+      "source": "clipboard.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + V",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Clipboard manager",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 48,
+      "source": "clipboard.lua"
+    },
+    {
+      "chord": "XF86AudioRaiseVolume",
+      "customCommands": [
+        "tam-audio-output-volume"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Volume up",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 2,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioLowerVolume",
+      "customCommands": [
+        "tam-audio-output-volume"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Volume down",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 3,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioMute",
+      "customCommands": [
+        "tam-audio-output-volume"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Mute",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 4,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioMicMute",
+      "customCommands": [
+        "tam-audio-input-mute"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Mute microphone",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 5,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86MonBrightnessUp",
+      "customCommands": [
+        "tam-brightness-display"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Brightness up",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 6,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86MonBrightnessDown",
+      "customCommands": [
+        "tam-brightness-display"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Brightness down",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 7,
+      "source": "media.lua"
+    },
+    {
+      "chord": "SHIFT + XF86MonBrightnessUp",
+      "customCommands": [
+        "tam-brightness-display"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Brightness maximum",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 8,
+      "source": "media.lua"
+    },
+    {
+      "chord": "SHIFT + XF86MonBrightnessDown",
+      "customCommands": [
+        "tam-brightness-display"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Brightness minimum",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 9,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86KbdBrightnessUp",
+      "customCommands": [
+        "tam-brightness-keyboard"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Keyboard brightness up",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 10,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86KbdBrightnessDown",
+      "customCommands": [
+        "tam-brightness-keyboard"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Keyboard brightness down",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 11,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86KbdLightOnOff",
+      "customCommands": [
+        "tam-brightness-keyboard"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Keyboard backlight cycle",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 12,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86TouchpadToggle",
+      "customCommands": [
+        "tam-toggle-input-device"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle touchpad",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 13,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86TouchpadOn",
+      "customCommands": [
+        "tam-toggle-input-device"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Enable touchpad",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 14,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86TouchpadOff",
+      "customCommands": [
+        "tam-toggle-input-device"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Disable touchpad",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 15,
+      "source": "media.lua"
+    },
+    {
+      "chord": "ALT + XF86AudioRaiseVolume",
+      "customCommands": [
+        "tam-audio-output-volume"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Volume up precise",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 18,
+      "source": "media.lua"
+    },
+    {
+      "chord": "ALT + XF86AudioLowerVolume",
+      "customCommands": [
+        "tam-audio-output-volume"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Volume down precise",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 19,
+      "source": "media.lua"
+    },
+    {
+      "chord": "ALT + XF86MonBrightnessUp",
+      "customCommands": [
+        "tam-brightness-display"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Brightness up precise",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 20,
+      "source": "media.lua"
+    },
+    {
+      "chord": "ALT + XF86MonBrightnessDown",
+      "customCommands": [
+        "tam-brightness-display"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Brightness down precise",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 21,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioNext",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Next track",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 24,
+      "source": "media.lua"
+    },
+    {
+      "chord": "ALT + XF86AudioPlay",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Next track",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 25,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioPause",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Pause",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 26,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioPlay",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Play",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 27,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioPrev",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Previous track",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 28,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86AudioStop",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Stop",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 29,
+      "source": "media.lua"
+    },
+    {
+      "chord": "ALT + SHIFT + XF86AudioPlay",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Previous track",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 30,
+      "source": "media.lua"
+    },
+    {
+      "chord": "XF86Eject",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Eject media",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 31,
+      "source": "media.lua"
+    },
+    {
+      "chord": "SHIFT + XF86AudioMute",
+      "customCommands": [
+        "tam-audio-output-switch"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Switch audio output",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 33,
+      "source": "media.lua"
+    },
+    {
+      "chord": "SHIFT + XF86AudioPause",
+      "customCommands": [
+        "tam-audio-source-switch"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Switch media source",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 34,
+      "source": "media.lua"
+    },
+    {
+      "chord": "SHIFT + XF86AudioPlay",
+      "customCommands": [
+        "tam-audio-source-switch"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Switch media source",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 35,
+      "source": "media.lua"
+    },
+    {
+      "chord": "SUPER + W",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Close window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 1,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "CTRL + ALT + DELETE",
+      "customCommands": [
+        "tam-hyprland-window-close-all"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Close all windows",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 2,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + J",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle window split",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 4,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + P",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Pseudo window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 5,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + T",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle window floating/tiling",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 6,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + F",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Full screen",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 7,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + F",
+      "customCommands": [
+        "tam-hyprland-window-tiled-fullscreen-toggle"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Tiled full screen",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 8,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + F",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Full width",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 9,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + O",
+      "customCommands": [
+        "tam-hyprland-window-pop"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Pop window out (float & pin)",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 10,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + Home",
+      "customCommands": [
+        "tam-hyprland-window-width"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Save window width",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 11,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + Home",
+      "customCommands": [
+        "tam-hyprland-window-width"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Restore window width",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 12,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + L",
+      "customCommands": [
+        "tam-hyprland-workspace-layout-toggle"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle workspace layout",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 13,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + LEFT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on left window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 15,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + RIGHT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on right window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 16,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + UP",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on above window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 17,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + DOWN",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on below window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 18,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + S",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle scratchpad",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 27,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + S",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move window to scratchpad",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 28,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Next workspace",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 30,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Previous workspace",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 31,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Former workspace",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 32,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + LEFT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move workspace to left monitor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 34,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + RIGHT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move workspace to right monitor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 35,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + UP",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move workspace to up monitor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 36,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + DOWN",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move workspace to down monitor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 37,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + LEFT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Swap window to the left",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 39,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + RIGHT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Swap window to the right",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 40,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + UP",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Swap window up",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 41,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + DOWN",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Swap window down",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 42,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "ALT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on next window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 44,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "ALT + SHIFT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on previous window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 45,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "ALT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Reveal active window on top",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 46,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "ALT + SHIFT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Reveal active window on top",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 47,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "CTRL + ALT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on next monitor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 49,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "CTRL + ALT + SHIFT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Focus on previous monitor",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 50,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + code:20",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Expand window left",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 52,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + code:21",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Shrink window left",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 53,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + code:20",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Shrink window up",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 54,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + code:21",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Expand window down",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 55,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + code:20",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Expand window left a little",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 57,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + code:21",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Shrink window left a little",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 58,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + code:20",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Shrink window up a little",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 59,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + code:21",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Expand window down a little",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 60,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + code:20",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Expand window left a lot",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 62,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + code:21",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Shrink window left a lot",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 63,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + SHIFT + code:20",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Shrink window up a lot",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 64,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + SHIFT + code:21",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Expand window down a lot",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 65,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + mouse_down",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Scroll active workspace forward",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 67,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + mouse_up",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Scroll active workspace backward",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 68,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + mouse:272",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 70,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + mouse:273",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Resize window",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 71,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + G",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle window grouping",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 73,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + G",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move active window out of group",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 74,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + LEFT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move window to group on left",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 76,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + RIGHT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move window to group on right",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 77,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + UP",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move window to group on top",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 78,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + DOWN",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move window to group on bottom",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 79,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Next window in group",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 81,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + SHIFT + TAB",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Previous window in group",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 82,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + LEFT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move grouped window focus left",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 84,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + RIGHT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Move grouped window focus right",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 85,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + mouse_down",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Next window in group",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 87,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + mouse_up",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Previous window in group",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 88,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SLASH",
+      "customCommands": [
+        "tam-hyprland-monitor-scaling"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Monitor scaling up",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 94,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + ALT + SLASH",
+      "customCommands": [
+        "tam-hyprland-monitor-scaling"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Monitor scaling down",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 95,
+      "source": "tiling.lua"
+    },
+    {
+      "chord": "SUPER + SPACE",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Omarchy menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 1,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + ALT + SPACE",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Apps menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 2,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + E",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Emojis",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 3,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + C",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Capture menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 4,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + O",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 5,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + H",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Hardware menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 6,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + code:201",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Omarchy menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 7,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + ESCAPE",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "System menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 8,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "XF86PowerOff",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Power menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 9,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + K",
+      "customCommands": [
+        "tam-menu-keybindings"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Keybindings",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 10,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + ALT + K",
+      "customCommands": [
+        "tam-menu-tmux-keybindings"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Tmux keybindings",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 11,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + K",
+      "customCommands": [
+        "tam-menu-herdr-keybindings"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Herdr keybindings",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 12,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + Q",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Calculator",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 13,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "XF86Calculator",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Calculator",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 14,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + SPACE",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle top bar",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 16,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + SPACE",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Background switcher",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 17,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + CTRL + SPACE",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Theme menu",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 18,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + BACKSPACE",
+      "customCommands": [
+        "tam-hyprland-window-transparency-toggle"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle window transparency",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 19,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + BACKSPACE",
+      "customCommands": [
+        "tam-hyprland-window-gaps-toggle"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle window gaps",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 20,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + BACKSPACE",
+      "customCommands": [
+        "tam-hyprland-window-single-square-aspect-toggle"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle single-window square aspect",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 21,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + comma",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Dismiss last notification",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 24,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + comma",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Dismiss all notifications",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 25,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + comma",
+      "customCommands": [
+        "tam-toggle-notification-silencing"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle silencing notifications",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 26,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + ALT + comma",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Invoke last notification",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 27,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + ALT + comma",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Open notification history",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 28,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + I",
+      "customCommands": [
+        "tam-toggle-idle"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle locking on idle",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 30,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + N",
+      "customCommands": [
+        "tam-toggle-nightlight"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle nightlight",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 31,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + Delete",
+      "customCommands": [
+        "tam-hyprland-monitor-internal"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle laptop display",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 32,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + Delete",
+      "customCommands": [
+        "tam-hyprland-monitor-internal-mirror"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle laptop display mirroring",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 33,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "switch:on:Lid Switch",
+      "customCommands": [
+        "tam-system-lid-close"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": null,
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 34,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "switch:off:Lid Switch",
+      "customCommands": [
+        "tam-hyprland-monitor-clamshell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": null,
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 35,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "PRINT",
+      "customCommands": [
+        "tam-capture-screenshot"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Screenshot",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 37,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "ALT + PRINT",
+      "customCommands": [
+        "tam-capture-screenrecording",
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Screenrecording",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 38,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + ALT + code:34",
+      "customCommands": [
+        "tam-capture-webcam-resize"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Make webcam overlay smaller",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 39,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + ALT + code:35",
+      "customCommands": [
+        "tam-capture-webcam-resize"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Make webcam overlay larger",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 40,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + PRINT",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Color picker",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 41,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + PRINT",
+      "customCommands": [
+        "tam-capture-text"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Extract text (OCR) from screenshot",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 42,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + S",
+      "customCommands": [
+        "tam-menu"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Share",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 84,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + PERIOD",
+      "customCommands": [
+        "tam-transcode"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Transcode",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 86,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + R",
+      "customCommands": [
+        "tam-reminder"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Set reminder",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 88,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + R",
+      "customCommands": [
+        "tam-reminder"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Show reminders",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 89,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + CTRL + R",
+      "customCommands": [
+        "tam-reminder"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Clear reminders",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 90,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + T",
+      "customCommands": [
+        "tam-notification-time"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Show time",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 92,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + B",
+      "customCommands": [
+        "tam-notification-battery"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Show battery remaining",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 93,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + W",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle weather",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 94,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + SHIFT + CTRL + A",
+      "customCommands": [
+        "tam-agent"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Agent",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 96,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + A",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Audio",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 97,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + B",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Bluetooth",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 98,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + D",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Display",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 99,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + D",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Calendar",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 100,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + W",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Network",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 101,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + P",
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Power",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 102,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + T",
+      "customCommands": [
+        "tam-launch-tui"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Activity",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 103,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + Z",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Zoom in",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 117,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + ALT + Z",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Reset zoom",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 122,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + L",
+      "customCommands": [
+        "tam-system-lock"
+      ],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Lock system",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 126,
+      "source": "utilities.lua"
+    },
+    {
+      "chord": "SUPER + CTRL + X",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Toggle dictation",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 2,
+      "source": "voxtype.lua"
+    },
+    {
+      "chord": "F9",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Start dictation (push-to-talk)",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 3,
+      "source": "voxtype.lua"
+    },
+    {
+      "chord": "F9",
+      "customCommands": [],
+      "disposition": "retain current chord and workflow; optional applications require independent providers",
+      "label": "Stop dictation (push-to-talk)",
+      "limits": "Static literal binding row; conditions and dynamic loops need packaged-session/live proof.",
+      "line": 4,
+      "source": "voxtype.lua"
+    }
+  ],
+  "menuRows": [
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "apps",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "provider": "apps"
+      },
+      "label": "Apps",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "about",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-launch-about"
+      },
+      "label": "About",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-screensaver"
+      ],
+      "disposition": "retained workflow",
+      "id": "system.screensaver",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-screensaver force"
+      },
+      "label": "Screensaver",
+      "otherOutputCallers": {
+        "tam-launch-screensaver": [
+          "shell:share/tamlinux/shell/services/idle/Service.qml:80"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-launch-screensaver"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-system-lock"
+      ],
+      "disposition": "retained workflow",
+      "id": "system.lock",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-system-lock"
+      },
+      "label": "Lock",
+      "otherOutputCallers": {
+        "tam-system-lock": [
+          "shell:share/tamlinux/shell/services/idle/Service.qml:90"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-system-lock"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-toggle-enabled"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "system.suspend",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "systemctl suspend",
+        "when": "! tam-toggle-enabled suspend-off"
+      },
+      "label": "Suspend",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-toggle-enabled"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hibernation-available"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "system.hibernate",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "systemctl hibernate",
+        "when": "tam-hibernation-available"
+      },
+      "label": "Hibernate",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hibernation-available"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-system-logout"
+      ],
+      "disposition": "retained workflow",
+      "id": "system.logout",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-system-logout"
+      },
+      "label": "Logout",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-system-logout"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-system-reboot"
+      ],
+      "disposition": "retained workflow",
+      "id": "system.reboot",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-system-reboot"
+      },
+      "label": "Reboot",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-system-reboot"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-system-shutdown"
+      ],
+      "disposition": "retained workflow",
+      "id": "system.shutdown",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-system-shutdown"
+      },
+      "label": "Shutdown",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-system-shutdown"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-menu-keybindings"
+      ],
+      "disposition": "retained workflow",
+      "id": "learn.keybindings",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-keybindings"
+      },
+      "label": "Keybindings",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-menu-keybindings"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "learn.hyprland",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-webapp 'https://wiki.hypr.land/'"
+      },
+      "label": "Hyprland",
+      "otherOutputCallers": {
+        "tam-launch-webapp": [
+          "commands:bin/.tam-launch-or-focus-webapp-wrapped:38",
+          "commands:bin/.tam-launch-webapp-wrapped:32"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "learn.arch",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-webapp 'https://wiki.archlinux.org/title/Main_page'"
+      },
+      "label": "Arch",
+      "otherOutputCallers": {
+        "tam-launch-webapp": [
+          "commands:bin/.tam-launch-or-focus-webapp-wrapped:38",
+          "commands:bin/.tam-launch-webapp-wrapped:32"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "learn.neovim",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-webapp 'https://www.lazyvim.org/keymaps'"
+      },
+      "label": "Neovim",
+      "otherOutputCallers": {
+        "tam-launch-webapp": [
+          "commands:bin/.tam-launch-or-focus-webapp-wrapped:38",
+          "commands:bin/.tam-launch-webapp-wrapped:32"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-webapp"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "learn.bash",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-webapp 'https://devhints.io/bash'"
+      },
+      "label": "Bash",
+      "otherOutputCallers": {
+        "tam-launch-webapp": [
+          "commands:bin/.tam-launch-or-focus-webapp-wrapped:38",
+          "commands:bin/.tam-launch-webapp-wrapped:32"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-menu-tmux-keybindings"
+      ],
+      "disposition": "retained workflow",
+      "id": "learn.tmux-keybindings",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-tmux-keybindings"
+      },
+      "label": "Tmux",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-menu-tmux-keybindings"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-menu-herdr-keybindings"
+      ],
+      "disposition": "retained workflow",
+      "id": "learn.herdr-keybindings",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-herdr-keybindings"
+      },
+      "label": "Herdr",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-menu-herdr-keybindings"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.emoji",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell emojis toggle"
+      },
+      "label": "Emoji",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-capture-screenshot"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.screenshot",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-screenshot"
+      },
+      "label": "Screenshot",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-capture-screenshot"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-capture-screenrecording"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.capture.screenrecord.stop",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-screenrecording --stop-recording",
+        "when": "pgrep -f '^gpu-screen-recorder'"
+      },
+      "label": "Stop Screenrecording",
+      "otherOutputCallers": {
+        "tam-capture-screenrecording": [
+          "shell:share/tamlinux/shell/bar/indicators/ScreenRecording.qml:44"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-capture-screenrecording"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-capture-text"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.text",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-text"
+      },
+      "label": "Text",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-capture-text"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-capture-qr"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.qr",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-qr"
+      },
+      "label": "QR Code",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-capture-qr"
+      ]
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.color",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "pkill hyprpicker || hyprpicker -a"
+      },
+      "label": "Color",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-capture-screenrecording"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.screenrecord.no-audio",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-screenrecording"
+      },
+      "label": "With no audio",
+      "otherOutputCallers": {
+        "tam-capture-screenrecording": [
+          "shell:share/tamlinux/shell/bar/indicators/ScreenRecording.qml:44"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-capture-screenrecording"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-capture-screenrecording"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.screenrecord.desktop-audio",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-screenrecording --with-desktop-audio"
+      },
+      "label": "With desktop audio",
+      "otherOutputCallers": {
+        "tam-capture-screenrecording": [
+          "shell:share/tamlinux/shell/bar/indicators/ScreenRecording.qml:44"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-capture-screenrecording"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-capture-screenrecording"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.capture.screenrecord.microphone",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-screenrecording --with-desktop-audio --with-microphone-audio"
+      },
+      "label": "With desktop + microphone audio",
+      "otherOutputCallers": {
+        "tam-capture-screenrecording": [
+          "shell:share/tamlinux/shell/bar/indicators/ScreenRecording.qml:44"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-capture-screenrecording"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-capture-screenrecording-with-webcam",
+        "tam-capture-webcam-list"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.capture.screenrecord.webcam",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-capture-screenrecording-with-webcam",
+        "when": "tam-capture-webcam-list | grep -q ."
+      },
+      "label": "With desktop + microphone audio + webcam",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-capture-screenrecording-with-webcam",
+        "tam-capture-webcam-list"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-transcode"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.transcode",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-transcode"
+      },
+      "label": "Transcode",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-transcode"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hw-laptop",
+        "tam-hyprland-monitor-internal"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.laptop-display",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-hyprland-monitor-internal toggle",
+        "when": "tam-hw-laptop"
+      },
+      "label": "Laptop Display",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hw-laptop",
+        "tam-hyprland-monitor-internal"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hw-laptop",
+        "tam-hyprland-monitor-internal-mirror"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.mirror-display",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-hyprland-monitor-internal-mirror toggle",
+        "when": "tam-hw-laptop"
+      },
+      "label": "Mirror Display",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hw-laptop",
+        "tam-hyprland-monitor-internal-mirror"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hw-hybrid-gpu",
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-toggle-hybrid-gpu"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.hybrid-gpu",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-toggle-hybrid-gpu",
+        "when": "tam-hw-hybrid-gpu"
+      },
+      "label": "Hybrid GPU",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-hw-hybrid-gpu",
+        "tam-toggle-hybrid-gpu"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hw-touchpad",
+        "tam-toggle-input-device"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.touchpad",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-input-device touchpad",
+        "when": "tam-hw-touchpad"
+      },
+      "label": "Touchpad",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hw-touchpad",
+        "tam-toggle-input-device"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-hw-dell-xps-haptic-touchpad"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.touchpad-haptics.low",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "dell-xps-touchpad-haptics set low",
+        "checked": "[[ \"$(dell-xps-touchpad-haptics get)\" == \"low\" ]]",
+        "when": "tam-hw-dell-xps-haptic-touchpad && tam-cmd-present dell-xps-touchpad-haptics"
+      },
+      "label": "low",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-hw-dell-xps-haptic-touchpad"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-hw-dell-xps-haptic-touchpad"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.touchpad-haptics.mid",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "dell-xps-touchpad-haptics set mid",
+        "checked": "[[ \"$(dell-xps-touchpad-haptics get)\" == \"mid\" ]]",
+        "when": "tam-hw-dell-xps-haptic-touchpad && tam-cmd-present dell-xps-touchpad-haptics"
+      },
+      "label": "mid",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-hw-dell-xps-haptic-touchpad"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-hw-dell-xps-haptic-touchpad"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.touchpad-haptics.high",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "dell-xps-touchpad-haptics set high",
+        "checked": "[[ \"$(dell-xps-touchpad-haptics get)\" == \"high\" ]]",
+        "when": "tam-hw-dell-xps-haptic-touchpad && tam-cmd-present dell-xps-touchpad-haptics"
+      },
+      "label": "high",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-hw-dell-xps-haptic-touchpad"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hw-touchscreen",
+        "tam-toggle-input-device"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.hardware.touchscreen",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-input-device touchscreen",
+        "when": "tam-hw-touchscreen"
+      },
+      "label": "Touchscreen",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hw-touchscreen",
+        "tam-toggle-input-device"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-reminder"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.reminder.set",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-reminder -i"
+      },
+      "label": "Set one",
+      "otherOutputCallers": {
+        "tam-reminder": [
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:27",
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:46",
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:60"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-reminder"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-reminder"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.reminder.show",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-reminder show"
+      },
+      "label": "Show all",
+      "otherOutputCallers": {
+        "tam-reminder": [
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:27",
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:46",
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:60"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-reminder"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-reminder"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.reminder.clear",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-reminder clear"
+      },
+      "label": "Clear all",
+      "otherOutputCallers": {
+        "tam-reminder": [
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:27",
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:46",
+          "shell:share/tamlinux/shell/bar/indicators/Reminder.qml:60"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-reminder"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-menu-share"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.share.clipboard",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-share clipboard"
+      },
+      "label": "Clipboard",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-menu-share"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-menu-share"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.share.file",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-share file"
+      },
+      "label": "File",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-menu-share"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-menu-share"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.share.folder",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-share folder"
+      },
+      "label": "Folder",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-menu-share"
+      ]
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "trigger.share.receive",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "uwsm-app -- localsend"
+      },
+      "label": "Receive",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-toggle-idle"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.idle-lock",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-idle"
+      },
+      "label": "Stay Awake",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-toggle-idle"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-toggle-notification-silencing"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.notifications",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-notification-silencing"
+      },
+      "label": "Notifications",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-toggle-notification-silencing"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-toggle-crash-capture"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.crash-capture",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-crash-capture"
+      },
+      "label": "Crash Capture",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-toggle-crash-capture"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-toggle-screensaver"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.screensaver",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-screensaver"
+      },
+      "label": "Screensaver",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-toggle-screensaver"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-toggle-nightlight"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.nightlight",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-toggle-nightlight"
+      },
+      "label": "Nightlight",
+      "otherOutputCallers": {
+        "tam-toggle-nightlight": [
+          "shell:share/tamlinux/shell/services/nightlight/Service.qml:61",
+          "shell:share/tamlinux/shell/services/nightlight/Service.qml:70"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-toggle-nightlight"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.top-bar",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell toggleBar"
+      },
+      "label": "Menu Bar",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-hw-laptop",
+        "tam-shell"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "trigger.toggle.battery-percentage",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell call tamlinux.power togglePercentage",
+        "when": "tam-hw-laptop"
+      },
+      "label": "Battery Percentage",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-hw-laptop"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hyprland-workspace-layout-toggle"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.workspace-layout",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-hyprland-workspace-layout-toggle"
+      },
+      "label": "Workspace Layout",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hyprland-workspace-layout-toggle"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hyprland-window-gaps-toggle"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.window-gaps",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-hyprland-window-gaps-toggle"
+      },
+      "label": "Window Gaps",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hyprland-window-gaps-toggle"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-hyprland-window-single-square-aspect-toggle"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.toggle.one-window-ratio",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-hyprland-window-single-square-aspect-toggle"
+      },
+      "label": "1-Window Ratio",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-hyprland-window-single-square-aspect-toggle"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.tests.network-speedtest",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell call tamlinux.network speedTest"
+      },
+      "label": "Network Speed Test",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "trigger.tests.disk-speedtest",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux.panels summon tamlinux.disk-speedtest"
+      },
+      "label": "Disk Speed Test",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-theme-set",
+        "tam-theme-switcher"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.theme",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "theme=$(tam-theme-switcher); [[ -n $theme ]] && tam-theme-set \"$theme\""
+      },
+      "label": "Theme",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-theme-set",
+        "tam-theme-switcher"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-theme-bg-set",
+        "tam-theme-bg-switcher"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.background",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "background=$(tam-theme-bg-switcher); [[ -n $background ]] && tam-theme-bg-set \"$background\""
+      },
+      "label": "Background",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-theme-bg-set",
+        "tam-theme-bg-switcher"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-plymouth-switcher"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.unlock",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "unlock=$(tam-plymouth-switcher); if [[ $unlock == default ]]; then tam-launch-floating-terminal-with-presentation omarchy-plymouth-reset; elif [[ -n $unlock ]]; then tam-launch-floating-terminal-with-presentation \"omarchy-plymouth-set-by-theme $(printf %q \"$unlock\")\"; fi"
+      },
+      "label": "Unlock",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-plymouth-switcher"
+      ]
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.font",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "provider": "fonts"
+      },
+      "label": "Font",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.bar.transparency",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell toggleBarTransparency"
+      },
+      "label": "Transparency",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.hyprland",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor \"$HOME/.config/hypr/looknfeel.lua\""
+      },
+      "label": "Hyprland",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.bar.position.top",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell setBarPosition top"
+      },
+      "label": "Top",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "style.bar.position.bottom",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell setBarPosition bottom"
+      },
+      "label": "Bottom",
+      "otherOutputCallers": {
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.about.text",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-branding-about text"
+      },
+      "label": "Edit Text",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.about.image",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-branding-about image"
+      },
+      "label": "Set From Image",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.about.default",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-branding-about reset"
+      },
+      "label": "Restore Default",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.screensaver.text",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-branding-screensaver text"
+      },
+      "label": "Edit Text",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.screensaver.image",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-branding-screensaver image"
+      },
+      "label": "Set From Image",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "style.screensaver.default",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-branding-screensaver reset"
+      },
+      "label": "Restore Default",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.monitors",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor \"$HOME/.config/hypr/monitors.lua\""
+      },
+      "label": "Monitors",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "setup.keybindings",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor \"$HOME/.config/hypr/bindings.lua\"",
+        "when": "[[ -f ~/.config/hypr/bindings.lua ]]"
+      },
+      "label": "Keybindings",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "setup.input",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor \"$HOME/.config/hypr/input.lua\"",
+        "when": "[[ -f ~/.config/hypr/input.lua ]]"
+      },
+      "label": "Input",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-dns"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.network.dns.dhcp",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-dns DHCP",
+        "checked": "[[ \"$(tam-dns)\" == \"DHCP\" ]]"
+      },
+      "label": "DHCP",
+      "otherOutputCallers": {
+        "tam-dns": [
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:671",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:481"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-dns"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-dns"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.network.dns.cloudflare",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-dns Cloudflare",
+        "checked": "[[ \"$(tam-dns)\" == \"Cloudflare\" ]]"
+      },
+      "label": "Cloudflare",
+      "otherOutputCallers": {
+        "tam-dns": [
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:671",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:481"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-dns"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-dns"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.network.dns.google",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-dns Google",
+        "checked": "[[ \"$(tam-dns)\" == \"Google\" ]]"
+      },
+      "label": "Google",
+      "otherOutputCallers": {
+        "tam-dns": [
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:671",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:481"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-dns"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-dns",
+        "tam-launch-floating-terminal-with-presentation"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.network.dns.custom",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation 'tam-dns Custom'",
+        "checked": "[[ \"$(tam-dns)\" == \"Custom\" ]]"
+      },
+      "label": "Custom",
+      "otherOutputCallers": {
+        "tam-dns": [
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:671",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:481"
+        ],
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-dns"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-network-status",
+        "tam-shell"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "setup.network.qr",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-shell tamlinux-shell call tamlinux.network showQr",
+        "when": "[[ $(tam-network-status) == wifi* ]]"
+      },
+      "label": "QR Code",
+      "otherOutputCallers": {
+        "tam-network-status": [
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:821",
+          "shell:share/tamlinux/shell/panels/speedtest/Panel.qml:178"
+        ],
+        "tam-shell": [
+          "commands:bin/.tam-menu-select-wrapped:111",
+          "commands:bin/.tam-shell-wrapped:49",
+          "commands:bin/.tam-shell-wrapped:52",
+          "commands:bin/tam-deploy:184",
+          "commands:bin/tam-deploy:189",
+          "shell:bin/tam-menu:38",
+          "shell:bin/tam-menu:41"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-network-status"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.claude",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent claude",
+        "checked": "[[ \"$(tam-default-agent)\" == \"claude\" ]]"
+      },
+      "label": "Claude",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.codex",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent codex",
+        "checked": "[[ \"$(tam-default-agent)\" == \"codex\" ]]"
+      },
+      "label": "Codex",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.copilot",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent copilot",
+        "checked": "[[ \"$(tam-default-agent)\" == \"copilot\" ]]"
+      },
+      "label": "Copilot",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.crush",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent crush",
+        "checked": "[[ \"$(tam-default-agent)\" == \"crush\" ]]"
+      },
+      "label": "Crush",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.cursor-agent",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent cursor-agent",
+        "checked": "[[ \"$(tam-default-agent)\" == \"cursor-agent\" ]]"
+      },
+      "label": "Cursor CLI",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.gemini",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent gemini",
+        "checked": "[[ \"$(tam-default-agent)\" == \"gemini\" ]]"
+      },
+      "label": "Gemini",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.grok",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent grok",
+        "checked": "[[ \"$(tam-default-agent)\" == \"grok\" ]]"
+      },
+      "label": "Grok",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.hermes",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent hermes",
+        "checked": "[[ \"$(tam-default-agent)\" == \"hermes\" ]]",
+        "when": "tam-default-agent --installed hermes"
+      },
+      "label": "Hermes",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.muse",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent muse",
+        "checked": "[[ \"$(tam-default-agent)\" == \"muse\" ]]"
+      },
+      "label": "Muse Code",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.omp",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent omp",
+        "checked": "[[ \"$(tam-default-agent)\" == \"omp\" ]]"
+      },
+      "label": "omp",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.openclaw",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent openclaw",
+        "checked": "[[ \"$(tam-default-agent)\" == \"openclaw\" ]]",
+        "when": "tam-default-agent --installed openclaw"
+      },
+      "label": "OpenClaw",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.opencode",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent opencode",
+        "checked": "[[ \"$(tam-default-agent)\" == \"opencode\" ]]"
+      },
+      "label": "OpenCode",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-default-agent"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.agent.pi",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-agent pi",
+        "checked": "[[ \"$(tam-default-agent)\" == \"pi\" ]]"
+      },
+      "label": "Pi",
+      "otherOutputCallers": {
+        "tam-default-agent": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:477"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-default-agent"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.chromium",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser chromium",
+        "checked": "[[ \"$(tam-default-browser)\" == \"chromium\" ]]",
+        "when": "tam-cmd-present chromium"
+      },
+      "label": "Chromium",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.chrome",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser chrome",
+        "checked": "[[ \"$(tam-default-browser)\" == \"chrome\" ]]",
+        "when": "tam-cmd-present google-chrome-stable"
+      },
+      "label": "Chrome",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.brave",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser brave",
+        "checked": "[[ \"$(tam-default-browser)\" == \"brave\" ]]",
+        "when": "tam-cmd-present brave"
+      },
+      "label": "Brave",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.brave-origin",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser brave-origin",
+        "checked": "[[ \"$(tam-default-browser)\" == \"brave-origin\" ]]",
+        "when": "tam-cmd-present brave-origin"
+      },
+      "label": "Brave Origin",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.edge",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser edge",
+        "checked": "[[ \"$(tam-default-browser)\" == \"edge\" ]]",
+        "when": "tam-cmd-present microsoft-edge-stable"
+      },
+      "label": "Edge",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.firefox",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser firefox",
+        "checked": "[[ \"$(tam-default-browser)\" == \"firefox\" ]]",
+        "when": "tam-cmd-present firefox"
+      },
+      "label": "Firefox",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-browser"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.browser.zen",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-browser zen",
+        "checked": "[[ \"$(tam-default-browser)\" == \"zen\" ]]",
+        "when": "tam-cmd-present zen-browser"
+      },
+      "label": "Zen",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-browser": [
+          "commands:bin/.tam-default-browser-wrapped:54",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:478"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-terminal"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.terminal.alacritty",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-terminal alacritty",
+        "checked": "[[ \"$(tam-default-terminal)\" == \"alacritty\" ]]",
+        "when": "tam-cmd-present alacritty"
+      },
+      "label": "Alacritty",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-terminal": [
+          "commands:bin/.tam-default-terminal-wrapped:50",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:480"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-terminal"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.terminal.foot",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-terminal foot",
+        "checked": "[[ \"$(tam-default-terminal)\" == \"foot\" ]]",
+        "when": "tam-cmd-present foot"
+      },
+      "label": "Foot",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-terminal": [
+          "commands:bin/.tam-default-terminal-wrapped:50",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:480"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-terminal"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.terminal.ghostty",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-terminal ghostty",
+        "checked": "[[ \"$(tam-default-terminal)\" == \"ghostty\" ]]",
+        "when": "tam-cmd-present ghostty"
+      },
+      "label": "Ghostty",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-terminal": [
+          "commands:bin/.tam-default-terminal-wrapped:50",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:480"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-terminal"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.terminal.kitty",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-terminal kitty",
+        "checked": "[[ \"$(tam-default-terminal)\" == \"kitty\" ]]",
+        "when": "tam-cmd-present kitty"
+      },
+      "label": "Kitty",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-terminal": [
+          "commands:bin/.tam-default-terminal-wrapped:50",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:480"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.neovim",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor nvim",
+        "checked": "[[ \"$(tam-default-editor)\" == \"nvim\" ]]",
+        "when": "tam-cmd-present nvim"
+      },
+      "label": "Neovim",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.vscode",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor code",
+        "checked": "[[ \"$(tam-default-editor)\" == \"code\" ]]",
+        "when": "tam-cmd-present code"
+      },
+      "label": "VSCode",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.cursor",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor cursor",
+        "checked": "[[ \"$(tam-default-editor)\" == \"cursor\" ]]",
+        "when": "tam-cmd-present cursor"
+      },
+      "label": "Cursor",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.zed",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor zed",
+        "checked": "[[ \"$(tam-default-editor)\" == \"zeditor\" ]]",
+        "when": "tam-cmd-present zeditor"
+      },
+      "label": "Zed",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.sublime",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor sublime_text",
+        "checked": "[[ \"$(tam-default-editor)\" == \"sublime_text\" ]]",
+        "when": "tam-cmd-present sublime_text"
+      },
+      "label": "Sublime Text",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.helix",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor helix",
+        "checked": "[[ \"$(tam-default-editor)\" == \"helix\" ]]",
+        "when": "tam-cmd-present helix"
+      },
+      "label": "Helix",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.vim",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor vim",
+        "checked": "[[ \"$(tam-default-editor)\" == \"vim\" ]]",
+        "when": "tam-cmd-present vim"
+      },
+      "label": "Vim",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-cmd-present",
+        "tam-default-editor"
+      ],
+      "disposition": "retained with independent optional application provider",
+      "id": "setup.default.editor.emacs",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-default-editor emacs",
+        "checked": "[[ \"$(tam-default-editor)\" == \"emacs\" ]]",
+        "when": "tam-cmd-present emacs"
+      },
+      "label": "Emacs",
+      "otherOutputCallers": {
+        "tam-cmd-present": [
+          "commands:bin/.tam-agent-wrapped:88",
+          "commands:bin/.tam-launch-editor-wrapped:49",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:513"
+        ],
+        "tam-default-editor": [
+          "commands:bin/.tam-default-editor-wrapped:52",
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:479"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-hw-fingerprint",
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-setup-security-fingerprint"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "setup.security.fingerprint",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-setup-security-fingerprint",
+        "when": "tam-hw-fingerprint"
+      },
+      "label": "Fingerprint",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-hw-fingerprint",
+        "tam-setup-security-fingerprint"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-setup-security-fido2"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.security.fido2",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-setup-security-fido2"
+      },
+      "label": "Fido2",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-setup-security-fido2"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-setup-security-sshd"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.security.sshd",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-setup-security-sshd"
+      },
+      "label": "SSHD",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-setup-security-sshd"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-sudo-passwordless"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.security.passwordless-sudo",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-sudo-passwordless"
+      },
+      "label": "Passwordless Sudo",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-sudo-passwordless"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-setup-security-sudoless-docker",
+        "tam-sudo-docker"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "setup.security.sudoless-docker",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-setup-security-sudoless-docker",
+        "when": "tam-sudo-docker --configured"
+      },
+      "label": "Sudoless Docker",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-setup-security-sudoless-docker",
+        "tam-sudo-docker"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.config.hyprland",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor \"$HOME/.config/hypr/hyprland.lua\""
+      },
+      "label": "Hyprland",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor",
+        "tam-restart-hyprsunset"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.config.hyprsunset",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor ~/.config/hypr/hyprsunset.conf && tam-restart-hyprsunset"
+      },
+      "label": "Hyprsunset",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-restart-hyprsunset"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-config-editor",
+        "tam-restart-xcompose"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.config.xcompose",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-config-editor ~/.XCompose && tam-restart-xcompose"
+      },
+      "label": "XCompose",
+      "otherOutputCallers": {
+        "tam-launch-config-editor": [
+          "commands:bin/.tam-launch-config-editor-wrapped:35"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-restart-xcompose"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation"
+      ],
+      "disposition": "retained workflow",
+      "id": "setup.direct-boot",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation omarchy-setup-direct-boot"
+      },
+      "label": "Direct Boot",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-pkg-install"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.package",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "xdg-terminal-exec --app-id=org.tamlinux.terminal tam-pkg-install"
+      },
+      "label": "Package",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-pkg-install"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-pkg-aur-install"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.aur",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "xdg-terminal-exec --app-id=org.tamlinux.terminal tam-pkg-aur-install"
+      },
+      "label": "AUR",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-pkg-aur-install"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-webapp-install"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.webapp",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-webapp-install"
+      },
+      "label": "Web App",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-webapp-install"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-tui-install"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.tui",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-tui-install"
+      },
+      "label": "TUI",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-tui-install"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.theme",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation omarchy-theme-install"
+      },
+      "label": "Theme",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [],
+      "disposition": "retained workflow",
+      "id": "install.style.background",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "omarchy-theme-bg-install"
+      },
+      "label": "Background",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-install-font"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.font.cascadia",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-install-font 'Cascadia Mono' ttf-cascadia-mono-nerd 'CaskaydiaMono Nerd Font'"
+      },
+      "label": "Cascadia Mono",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-install-font"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-install-font"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.font.meslo",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-install-font 'Meslo LG Mono' ttf-meslo-nerd 'MesloLGL Nerd Font'"
+      },
+      "label": "Meslo LG Mono",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-install-font"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-install-font"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.font.fira",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-install-font 'Fira Code' ttf-firacode-nerd 'FiraCode Nerd Font'"
+      },
+      "label": "Fira Code",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-install-font"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-install-font"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.font.victor",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-install-font 'Victor Code' ttf-victor-mono-nerd 'VictorMono Nerd Font'"
+      },
+      "label": "Victor Code",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-install-font"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-install-font"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.font.bitstream",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-install-font 'Bitstream Vera Code' ttf-bitstream-vera-mono-nerd 'BitstromWera Nerd Font'"
+      },
+      "label": "Bitstream Vera Mono",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-install-font"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-install-font"
+      ],
+      "disposition": "retained workflow",
+      "id": "install.style.font.iosevka",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-install-font Iosevka ttf-iosevka-nerd 'Iosevka Nerd Font Mono'"
+      },
+      "label": "Iosevka",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-install-font"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-pkg-remove"
+      ],
+      "disposition": "retained workflow",
+      "id": "remove.package",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "xdg-terminal-exec --app-id=org.tamlinux.terminal tam-pkg-remove"
+      },
+      "label": "Package",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-pkg-remove"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-webapp",
+        "tam-webapp-remove"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "remove.webapp",
+      "inheritedInterfaceRequiresCutover": true,
+      "interfaces": {
+        "action": "tam-webapp-remove",
+        "when": "grep -qE '^Exec=.*(tam-launch-webapp|omarchy-(launch-webapp|webapp-handler))' $HOME/.local/share/applications/*.desktop"
+      },
+      "label": "Web App",
+      "otherOutputCallers": {
+        "tam-launch-webapp": [
+          "commands:bin/.tam-launch-or-focus-webapp-wrapped:38",
+          "commands:bin/.tam-launch-webapp-wrapped:32"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-webapp-remove"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-tui-remove"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "remove.tui",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-tui-remove",
+        "when": "grep -qE '^Exec=.*(\\$TERMINAL|xdg-terminal-exec).*-e' $HOME/.local/share/applications/*.desktop"
+      },
+      "label": "TUI",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-tui-remove"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-theme-remove"
+      ],
+      "disposition": "retained workflow",
+      "id": "remove.theme",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-theme-remove"
+      },
+      "label": "Theme",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-theme-remove"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-pkg-present",
+        "tam-remove-security-fingerprint"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "remove.security.fingerprint",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-remove-security-fingerprint",
+        "when": "tam-pkg-present fprintd"
+      },
+      "label": "Fingerprint",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ],
+        "tam-pkg-present": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:511"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-pkg-present",
+        "tam-remove-security-fingerprint"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-pkg-present",
+        "tam-remove-security-fido2"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "remove.security.fido2",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-remove-security-fido2",
+        "when": "tam-pkg-present pam-u2f"
+      },
+      "label": "Fido2",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ],
+        "tam-pkg-present": [
+          "shell:share/tamlinux/shell/services/menu/MenuModel.js:511"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-pkg-present",
+        "tam-remove-security-fido2"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-remove-security-sshd"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "remove.security.sshd",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-remove-security-sshd",
+        "when": "systemctl is-enabled --quiet sshd"
+      },
+      "label": "SSHD",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-remove-security-sshd"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-remove-security-sudoless-docker",
+        "tam-sudo-docker"
+      ],
+      "disposition": "retained conditional workflow",
+      "id": "remove.security.sudoless-docker",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-remove-security-sudoless-docker",
+        "when": "! tam-sudo-docker --configured"
+      },
+      "label": "Sudoless Docker",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-remove-security-sudoless-docker",
+        "tam-sudo-docker"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-update"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.system",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-update"
+      },
+      "label": "System",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-update"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-update-firmware"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.firmware",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-update-firmware"
+      },
+      "label": "Firmware",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-update-firmware"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-menu-timezone"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.timezone",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-menu-timezone"
+      },
+      "label": "Timezone",
+      "otherOutputCallers": {
+        "tam-menu-timezone": [
+          "shell:share/tamlinux/shell/host/BarApi.qml:211"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-update-time"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.time",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-update-time"
+      },
+      "label": "Time",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-update-time"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-restart-hyprsunset"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.process.hyprsunset",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-restart-hyprsunset"
+      },
+      "label": "Hyprsunset",
+      "otherOutputCallers": {},
+      "unresolvedPackageNames": [
+        "tam-restart-hyprsunset"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-restart-shell"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.process.shell",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-restart-shell"
+      },
+      "label": "Shell",
+      "otherOutputCallers": {
+        "tam-restart-shell": [
+          "commands:bin/.tam-plugin-wrapped:89",
+          "commands:bin/tam-deploy:178",
+          "commands:bin/tam-deploy:331",
+          "commands:bin/tam-deploy:430"
+        ]
+      },
+      "unresolvedPackageNames": []
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-restart-audio"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.hardware.audio",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-restart-audio"
+      },
+      "label": "Audio",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-restart-audio"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-restart-wifi"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.hardware.wifi",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-restart-wifi"
+      },
+      "label": "Wi-Fi",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-restart-wifi"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-restart-bluetooth"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.hardware.bluetooth",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-restart-bluetooth"
+      },
+      "label": "Bluetooth",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-restart-bluetooth"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation",
+        "tam-restart-trackpad"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.hardware.trackpad",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-restart-trackpad"
+      },
+      "label": "Trackpad",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-restart-trackpad"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-drive-password",
+        "tam-launch-floating-terminal-with-presentation"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.password.drive",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation tam-drive-password"
+      },
+      "label": "Drive Encryption",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": [
+        "tam-drive-password"
+      ]
+    },
+    {
+      "customCommands": [
+        "tam-launch-floating-terminal-with-presentation"
+      ],
+      "disposition": "retained workflow",
+      "id": "update.password.user",
+      "inheritedInterfaceRequiresCutover": false,
+      "interfaces": {
+        "action": "tam-launch-floating-terminal-with-presentation passwd"
+      },
+      "label": "User",
+      "otherOutputCallers": {
+        "tam-launch-floating-terminal-with-presentation": [
+          "commands:bin/.tam-launch-floating-terminal-with-presentation-wrapped:43",
+          "shell:share/tamlinux/shell/panels/network/Panel.qml:680"
+        ]
+      },
+      "unresolvedPackageNames": []
+    }
+  ],
+  "menuSha256": "8f6fcccc0a515aac5c01d7869e7939ad2cc8418635f3411514bb424407236eec",
+  "schema": 1,
+  "stage": "Develop inventory; no binding/menu changes or retirements"
+}

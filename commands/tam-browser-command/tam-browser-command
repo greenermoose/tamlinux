@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Resolve a browser desktop entry to JSON argv without executing it."""
+import configparser
+import json
+import os
+from pathlib import Path
+import re
+import sys
+
+
+def unescape(value):
+    escapes = {"s": " ", "n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
+    return re.sub(r"\\([sntr\\])", lambda match: escapes[match[1]], value)
+
+
+def exec_tokens(value):
+    # Desktop Exec is an argv grammar, never a shell expression. Single quotes
+    # are literal reserved characters rather than shell-style quoting.
+    tokens, word = [], []
+    quoted = started = False
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if char == '"':
+            quoted = not quoted
+            started = True
+        elif char == "\\":
+            index += 1
+            if index == len(value):
+                raise ValueError("incomplete Exec escape")
+            word.append(value[index])
+            started = True
+        elif char.isspace() and not quoted:
+            if started:
+                tokens.append("".join(word))
+                word, started = [], False
+        else:
+            if not quoted and char in "'`$><~|&;*?#()":
+                raise ValueError("reserved Exec character must be quoted")
+            word.append(char)
+            started = True
+        index += 1
+    if quoted:
+        raise ValueError("unterminated Exec quote")
+    if started:
+        tokens.append("".join(word))
+    return tokens
+
+
+def resolve(desktop_id):
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+\.desktop", desktop_id) or desktop_id.startswith("."):
+        raise ValueError("expected a desktop-entry ID")
+    home = Path(os.environ["HOME"])
+    data_home = Path(os.environ.get("XDG_DATA_HOME") or home / ".local/share")
+    if not data_home.is_absolute():
+        data_home = home / ".local/share"
+    data_dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    roots = [data_home] + [Path(item) for item in data_dirs.split(":") if Path(item).is_absolute()]
+    # Nix's traditional user profile remains a supported provider when the
+    # session has not already exported it through XDG_DATA_DIRS.
+    roots.append(home / ".nix-profile/share")
+    path = next((root / "applications" / desktop_id for root in roots
+                 if (root / "applications" / desktop_id).is_file()), None)
+    if path is None:
+        raise ValueError(f"desktop entry is unavailable: {desktop_id}")
+    parser = configparser.ConfigParser(interpolation=None, strict=True)
+    parser.optionxform = str
+    parser.read_string(path.read_text())
+    entry = parser["Desktop Entry"]
+    if entry.get("Type", "Application") != "Application" or entry.getboolean("Hidden", fallback=False):
+        raise ValueError("desktop entry is hidden or not an application")
+    tokens = exec_tokens(unescape(entry["Exec"]))
+    argv = []
+    for token in tokens:
+        if token in ("%f", "%F", "%u", "%U", "%d", "%D", "%n", "%N", "%v", "%m"):
+            continue
+        if token == "%i":
+            if entry.get("Icon"):
+                argv.extend(("--icon", unescape(entry["Icon"])))
+            continue
+        def expand(match):
+            code = match[1]
+            if code == "%":
+                return "%"
+            if code == "c":
+                return unescape(entry.get("Name", ""))
+            if code == "k":
+                return str(path)
+            raise ValueError(f"unsupported or misplaced Exec field code: %{code}")
+        argv.append(re.sub(r"%(.)", expand, token))
+        if token.endswith("%") and not token.endswith("%%"):
+            raise ValueError("incomplete Exec field code")
+    if not argv or not argv[0] or "=" in argv[0]:
+        raise ValueError("desktop entry has no valid executable")
+    return argv
+
+
+def main():
+    try:
+        if len(sys.argv) != 2:
+            raise ValueError("usage: tam-browser-command <desktop-entry ID>")
+        print(json.dumps(resolve(sys.argv[1])))
+    except (OSError, ValueError, KeyError, configparser.Error) as error:
+        print(f"tam-browser-command: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
