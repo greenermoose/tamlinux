@@ -1,0 +1,6 @@
+#!/bin/bash
+# tam-restart-shell — restart the active managed Tamlinux shell.
+#
+# try-restart leaves an inactive unit inactive, so the command never starts a
+# second shell.
+exec systemctl --user try-restart tamlinux-shell.service

@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "sourceRevision": "8056bd9ca810594fbd39ddd4a511965bed2b41b2",
+  "kind": "synthetic comparison of executed existing helper expressions",
+  "limits": "Monitor model is a comparison consumer, not proof of compositor logical extent or captured image size. No image captured; physical transforms and non-divisible modes remain pending.",
+  "cases": [
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 0
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 1536x864",
+      "agrees": true
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 1
+      },
+      "region_picker": "-1536,72 864x1536",
+      "monitor_model": "-1536,72 864x1536",
+      "agrees": true
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 2
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 1536x864",
+      "agrees": true
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 3
+      },
+      "region_picker": "-1536,72 864x1536",
+      "monitor_model": "-1536,72 864x1536",
+      "agrees": true
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 4
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 1536x864",
+      "agrees": true
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 5
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 864x1536",
+      "agrees": false
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 6
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 1536x864",
+      "agrees": true
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1.25,
+        "transform": 7
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 864x1536",
+      "agrees": false
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1921,
+        "height": 1081,
+        "scale": 1.25,
+        "transform": 0
+      },
+      "region_picker": "-1536,72 1536x864",
+      "monitor_model": "-1536,72 1537x865",
+      "agrees": false
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1921,
+        "height": 1081,
+        "scale": 1.5,
+        "transform": 0
+      },
+      "region_picker": "-1536,72 1280x720",
+      "monitor_model": "-1536,72 1281x721",
+      "agrees": false
+    },
+    {
+      "input": {
+        "x": -1536,
+        "y": 72,
+        "width": 1920,
+        "height": 1080,
+        "scale": 2,
+        "transform": 0
+      },
+      "region_picker": "-1536,72 960x540",
+      "monitor_model": "-1536,72 960x540",
+      "agrees": true
+    }
+  ],
+  "regionExpression": "def format_geo:\n    .x as $x | .y as $y |\n    (.width / .scale | floor) as $w |\n    (.height / .scale | floor) as $h |\n    .transform as $t |\n    if $t == 1 or $t == 3 then\n      \"\\($x),\\($y) \\($h)x\\($w)\"\n    else\n      \"\\($x),\\($y) \\($w)x\\($h)\"\n    end; format_geo",
+  "comparisonModule": "desktop/plugins/fred.monitor/Model.js",
+  "comparisonFunctions": [
+    "logicalWidth",
+    "logicalHeight"
+  ]
+}

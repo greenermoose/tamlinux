@@ -1,0 +1,383 @@
+#!/usr/bin/env python3
+# tam-theme-payload — print one validated JSON theme payload for the Tamlinux
+# shell on stdout, and nothing else.
+#
+#   tam-theme-payload [--theme-dir PATH] [--override PATH] [--state PATH]
+#
+# It reads the current theme's colors.toml for the six palette roles, and
+# shell.toml plus the owned ~/.config/tamlinux/shell.toml override and the
+# ~/.local/state/tamlinux/shell.toml that Text Size writes (merged last) for
+# the surface roles and the two style numbers, then prints
+#
+#   {"palette": {...}, "surfaces": {...}, "style": {...}}
+#
+# as one compact line. It is an adapter, not a theme generator: nothing is
+# written, nothing is executed, and nothing is fetched. Reads are capped in
+# bytes; the shell caller also imposes a deadline for slow or endless streams.
+#
+# License: GPL-3.0-or-later
+
+import argparse
+from decimal import Decimal, ROUND_HALF_UP
+import json
+import math
+import os
+import re
+import sys
+import tomllib
+
+# One byte past the limit is how a bounded read spots an oversize file without
+# pulling the rest of it in.
+MAX_FILE_BYTES = 64 * 1024
+
+# How many aliases one value may hop through. A chain that loops is caught by
+# name; this catches a chain that merely never ends.
+MAX_RESOLUTIONS = 16
+
+# The six roles the shell asks for by name. Every one is always in the payload,
+# because a shell with no color to draw is a shell that cannot start.
+DEFAULT_PALETTE = {
+    'foreground': '#d7dde2',
+    'background': '#14181c',
+    'accent': '#8eb6c9',
+    'accentText': '#f4f7f8',
+    'urgent': '#c46b6b',
+    'muted': '#7d8790',
+}
+
+PALETTE_ROLES = ('foreground', 'background', 'accent', 'accentText', 'urgent', 'muted')
+
+# The colors.toml keys that can supply each role. Modern keys win over the
+# legacy colorN names.
+PALETTE_SOURCES = {
+    'foreground': ('foreground', 'color7'),
+    'background': ('background', 'color0'),
+    'accent': ('accent', 'color4'),
+    'urgent': ('red', 'color1'),
+}
+
+# accentText and muted have no legacy name of their own. Each takes the keys
+# below, then the resolved foreground, which is why neither ever falls back to
+# its own default.
+PALETTE_FALLBACKS = {
+    'accentText': ('light_foreground',),
+    'muted': ('muted', 'color8'),
+}
+
+# Only these surface roles reach the shell, flattened as `section.key`. Every
+# other key in shell.toml stays private to the shell that reads it.
+SURFACE_ROLES = {
+    'bar': ('background', 'text'),
+    'popups': ('background', 'text', 'border'),
+    'tooltip': ('background', 'text', 'border'),
+    'notifications': ('background', 'text', 'border', 'countdown'),
+    'menu': ('background', 'text', 'border', 'scrim', 'selected-background', 'selected-text'),
+    'polkit': ('background', 'text', 'text-error', 'border', 'border-error', 'accent', 'scrim'),
+    'image-picker': ('scrim', 'text', 'selected-border', 'unselected-border'),
+}
+
+# The alpha companion for a role is its own `key-alpha`, except where upstream
+# says otherwise: [polkit] documents one border-alpha for both border and
+# border-error, because the two states are mutually exclusive in time.
+ALPHA_COMPANIONS = {'polkit.border-error': 'border-alpha'}
+
+# Names a surface value may borrow from the resolved palette. `text` is the
+# foreground under the name shell.toml uses for it.
+PALETTE_REFERENCES = {
+    'foreground': 'foreground',
+    'text': 'foreground',
+    'background': 'background',
+    'accent': 'accent',
+    'urgent': 'urgent',
+    'muted': 'muted',
+}
+
+# JSON name, shell.toml section, key, smallest and largest allowed value.
+STYLE_SOURCES = (
+    ('fontBaseSize', 'font', 'base-size', 6, 48),
+    ('spacingScale', 'spacing', 'scale', 0.5, 3),
+)
+
+HEX6 = re.compile(r'#([0-9a-fA-F]{6})')
+HEX8 = re.compile(r'#([0-9a-fA-F]{8})')
+RGB6 = re.compile(r'rgb\(([0-9a-fA-F]{6})\)', re.IGNORECASE)
+RGBA8 = re.compile(r'rgba\(([0-9a-fA-F]{8})\)', re.IGNORECASE)
+
+# Qt wants #AARRGGBB, and `transparent` is the one name the shell understands
+# that carries no color of its own.
+TRANSPARENT = '#00000000'
+
+
+def load_toml(path):
+    """A bounded, decodable, valid TOML table, or an empty one.
+
+    Every way a file can be wrong — absent, unreadable, a directory, a symlink
+    loop, oversize, not UTF-8, not TOML — lands on the same answer, so a broken
+    theme costs its own values and nothing else.
+    """
+    if not path:
+        return {}
+    try:
+        with open(path, 'rb') as handle:
+            raw = handle.read(MAX_FILE_BYTES + 1)
+    except OSError:
+        return {}
+    if len(raw) > MAX_FILE_BYTES:
+        return {}
+    try:
+        table = tomllib.loads(raw.decode('utf-8'))
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        # tomllib can raise plain ValueError for Python's integer-digit limit
+        # and RecursionError for deeply nested arrays within the byte cap.
+        return {}
+    return table if isinstance(table, dict) else {}
+
+
+def hex_color(value):
+    """A six-digit hex string as lowercase #rrggbb, or None."""
+    if not isinstance(value, str):
+        return None
+    match = HEX6.fullmatch(value.strip())
+    return '#' + match.group(1).lower() if match else None
+
+
+def literal_color(text):
+    """The Qt color one token spells out, or None if it spells out no color.
+
+    Hex and rgb() carry their bytes as hex digits rather than as decimal
+    components, so `rgb(123456)` is #123456. Every 8-digit form is read in CSS
+    order (#RRGGBBAA, the order rgba() writes) and handed back in Qt order.
+    """
+    if text.lower() == 'transparent':
+        return TRANSPARENT
+    match = HEX6.fullmatch(text) or RGB6.fullmatch(text)
+    if match:
+        return '#' + match.group(1).lower()
+    match = HEX8.fullmatch(text) or RGBA8.fullmatch(text)
+    if match:
+        digits = match.group(1).lower()
+        return '#' + digits[6:] + digits[:6]
+    return None
+
+
+def alpha_byte(alpha, existing):
+    """One alpha byte, composed by multiplying, then rounded half up."""
+    scaled = Decimal(str(alpha)) * Decimal(existing)
+    return int(scaled.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def with_alpha(color, alpha):
+    """A Qt color string with an alpha companion folded into it.
+
+    An absent or unusable companion leaves the color exactly as it was, alpha
+    included; the 8-digit form is written back only while the alpha is short of
+    fully opaque.
+    """
+    if alpha is None:
+        return color
+    digits = color[1:]
+    existing, rgb = (int(digits[:2], 16), digits[2:]) if len(digits) == 8 else (0xff, digits)
+    byte = alpha_byte(alpha, existing)
+    return '#' + rgb if byte == 0xff else f'#{byte:02x}{rgb}'
+
+
+def valid_alpha(value):
+    """A companion alpha clamped into 0..1, or None when it is not one."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    # Clamp integers before conversion: arbitrary-size TOML integers are
+    # finite, but converting one to float can overflow.
+    return float(min(max(value, 0), 1))
+
+
+def named_color(colors, keys):
+    """The first of these keys holding a usable color, or None."""
+    for key in keys:
+        color = hex_color(colors.get(key))
+        if color:
+            return color
+    return None
+
+
+def build_palette(colors):
+    """The six palette roles: a value where one is valid, the default otherwise."""
+    palette = {role: named_color(colors, keys) or DEFAULT_PALETTE[role]
+               for role, keys in PALETTE_SOURCES.items()}
+    for role, keys in PALETTE_FALLBACKS.items():
+        palette[role] = named_color(colors, keys) or palette['foreground']
+    return {role: palette[role] for role in PALETTE_ROLES}
+
+
+def merge(base, override):
+    """Section-wise merge of shell.toml with the owned override.
+
+    The override wins key by key, so an override that names a key with a broken
+    value replaces the good one instead of being quietly ignored.
+    """
+    merged = dict(base)
+    for section, values in override.items():
+        if isinstance(values, dict) and isinstance(merged.get(section), dict):
+            merged[section] = {**merged[section], **values}
+        else:
+            merged[section] = values
+    return merged
+
+
+class Resolver:
+    """Resolves one shell.toml value against the merged tables.
+
+    Aliases are followed by name, remembering where it has been, so a cycle
+    stops at the alias it repeats instead of running on to the depth limit. A
+    chain longer than MAX_RESOLUTIONS, an unknown name, and a value of the
+    wrong type all end the same way: no color.
+    """
+
+    def __init__(self, table, palette):
+        self.table = table
+        self.palette = palette
+
+    def resolve(self, value):
+        """The Qt color for one raw value, or None."""
+        if not isinstance(value, str):
+            return None
+        text = value.strip()
+        return self.color(text, ()) if text else None
+
+    def color(self, text, visited):
+        literal = literal_color(text)
+        if literal:
+            return literal
+        tokens = text.split()
+        if len(tokens) > 1:
+            # A Hyprland-style gradient (`#123456 #abcdef 45deg`, or the
+            # `45deg rgba(..) rgba(..)` order the shell writes) has one flat
+            # answer here: the first stop that is a color, angle tokens skipped.
+            for token in tokens:
+                stop = literal_color(token)
+                if stop:
+                    return stop
+            return None
+        return self.reference(text, visited)
+
+    def reference(self, name, visited):
+        if name in visited or len(visited) >= MAX_RESOLUTIONS:
+            return None
+        if name in PALETTE_REFERENCES:
+            return self.palette[PALETTE_REFERENCES[name]]
+        section, dot, key = name.partition('.')
+        if not dot or not section or not key or '.' in key:
+            return None
+        values = self.table.get(section)
+        if not isinstance(values, dict) or not isinstance(values.get(key), str):
+            return None
+        return self.color(values[key].strip(), visited + (name,))
+
+
+def build_surfaces(table, palette):
+    """`section.key` to Qt color, for the recognized roles that resolve."""
+    resolver = Resolver(table, palette)
+    surfaces = {}
+    for section, keys in SURFACE_ROLES.items():
+        values = table.get(section)
+        if not isinstance(values, dict):
+            continue
+        for key in keys:
+            color = resolver.resolve(values.get(key))
+            if not color:
+                continue
+            companion = ALPHA_COMPANIONS.get(f'{section}.{key}', f'{key}-alpha')
+            alpha = valid_alpha(values.get(companion))
+            surfaces[f'{section}.{key}'] = with_alpha(color, alpha)
+    return surfaces
+
+
+def build_style(table):
+    """The two style numbers, only where the theme supplies a usable one.
+
+    No defaults here: the shell owns what these mean when they are missing, and
+    a number outside its range is a typo rather than a preference.
+    """
+    style = {}
+    for name, section, key, lowest, highest in STYLE_SOURCES:
+        values = table.get(section)
+        if not isinstance(values, dict):
+            continue
+        value = values.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        if lowest <= value <= highest and math.isfinite(value):
+            style[name] = value
+    return style
+
+
+def theme_file(directory, name):
+    """A file inside a theme directory, or nothing when there is no directory.
+
+    An unset HOME must not turn the default into a read relative to whatever
+    directory the shell happened to start in.
+    """
+    return os.path.join(directory, name) if directory else ''
+
+
+def payload(theme_dir, override, state=''):
+    """The whole payload for a theme directory, an override file, and the
+    state file the desktop's own settings write."""
+    palette = build_palette(load_toml(theme_file(theme_dir, 'colors.toml')))
+    table = merge(merge(load_toml(theme_file(theme_dir, 'shell.toml')), load_toml(override)),
+                  load_toml(state))
+    return {'palette': palette, 'surfaces': build_surfaces(table, palette),
+            'style': build_style(table)}
+
+
+def default_theme_dir():
+    """The selected theme under the user's owned XDG state directory."""
+    home = os.environ.get('HOME') or ''
+    state = os.environ.get('XDG_STATE_HOME') or (os.path.join(home, '.local', 'state') if home else '')
+    return os.path.join(state, 'tamlinux', 'current', 'theme') if state else ''
+
+
+def default_override():
+    """The user's shell.toml, the one file that overrides the theme."""
+    home = os.environ.get('HOME') or ''
+    if not home:
+        return ''
+    config = os.environ.get('XDG_CONFIG_HOME') or os.path.join(home, '.config')
+    return os.path.join(config, 'tamlinux', 'shell.toml')
+
+
+def default_state():
+    """What Text Size writes (plan 18 step 0.3.2 item 9, D87): machine state,
+    kept out of the tracked override."""
+    home = os.environ.get('HOME') or ''
+    if not home:
+        return ''
+    state = os.environ.get('XDG_STATE_HOME') or os.path.join(home, '.local', 'state')
+    return os.path.join(state, 'tamlinux', 'shell.toml')
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog='tam-theme-payload',
+        description='Print one validated JSON theme payload for the Tamlinux shell.')
+    parser.add_argument('--theme-dir', default=None,
+                        help='directory holding colors.toml and shell.toml '
+                             '(default: ${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/current/theme)')
+    parser.add_argument('--override', default=None,
+                        help='owned shell.toml override, merged last and winning '
+                             '(default: ${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/shell.toml)')
+    parser.add_argument('--state', default=None,
+                        help='shell.toml written by the desktop settings, merged after the override '
+                             '(default: ${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/shell.toml)')
+    args = parser.parse_args(argv)
+
+    result = payload(args.theme_dir if args.theme_dir is not None else default_theme_dir(),
+                     args.override if args.override is not None else default_override(),
+                     args.state if args.state is not None else default_state())
+    sys.stdout.write(json.dumps(result, separators=(',', ':')) + '\n')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

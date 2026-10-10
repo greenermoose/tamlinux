@@ -1,6 +1,6 @@
 // Ported from omarchy 4.0.4 shell/plugins/notifications (MIT; see
-// ../LICENSE-omarchy). Unchanged; the omarchy-* hint names are the wire
-// format tam-notification-send still uses.
+// ../LICENSE-omarchy). Tamlinux owns the toast identity and hint names
+// shared with the packaged tam-notification-send writer.
 function isChromiumDerived(app, appIcon) {
   var source = (String(app || "") + "\n" + String(appIcon || "")).toLowerCase()
   return source.indexOf("chrom") >= 0 || source.indexOf("brave") >= 0 ||
@@ -120,13 +120,13 @@ function summaryStartsWithGlyph(summary) {
 
 function shouldBypassDnd(notification, criticalUrgency) {
   var appName = String((notification && notification.appName) || "")
-  if (appName === "omarchy-action") return true
+  if (appName === "tamlinux-action") return true
   return appName === "notify-send" && notification && notification.urgency === criticalUrgency
 }
 
 function isEphemeralApp(appName) {
   var name = String(appName || "")
-  return name === "notify-send" || name === "omarchy-action"
+  return name === "notify-send" || name === "tamlinux-action"
 }
 
 function stringHint(hints, name) {
@@ -141,7 +141,7 @@ function stringHint(hints, name) {
 }
 
 function glyphFromHints(hints) {
-  return stringHint(hints, "omarchy-glyph")
+  return stringHint(hints, "tamlinux-glyph")
 }
 
 // The click action: a JSON argv string from tam-notification-send
@@ -150,10 +150,10 @@ function glyphFromHints(hints) {
 // Util.execArgv as bash positional parameters, never a shell string, so
 // attacker-controlled values (a title, a filename) can't become commands.
 function execArgvFromHints(hints) {
-  return stringHint(hints, "omarchy-exec-argv")
+  return stringHint(hints, "tamlinux-exec-argv")
 }
 
-// Validate a persisted omarchy-exec-argv into a runnable argv, or null. This is
+// Validate a persisted tamlinux-exec-argv into a runnable argv, or null. This is
 // a STRUCTURAL check only: it fails closed on a malformed hint (non-array, a
 // non-string or empty program, or a leading-dash program that argv would read as
 // an option). It does not judge intent — a well-formed ["bash","-c",…] is
@@ -278,8 +278,8 @@ function parseSettings(raw) {
 // ---------------------------------------------------- popup persistence
 //
 // Each on-screen popup is mirrored to its own file under
-// ~/.local/state/omarchy/notifications/ so toasts survive shell restarts
-// (e.g. the restart `omarchy-update` performs). The file exists exactly as
+// ${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/notifications/ so toasts survive shell restarts
+// (including package update restarts). The file exists exactly as
 // long as the popup is on screen: it is written when the toast appears and
 // moved into the history/ subdirectory when the toast expires, is dismissed,
 // or its action is invoked. History is those moved files, newest last-10.
@@ -304,7 +304,7 @@ function popupFileName(entry) {
 // ---------------------------------------------------- persisted images
 //
 // A notification's images only exist while it is live: Chromium-family
-// senders (all Omarchy web apps) delete their scoped /tmp files on close,
+// senders (including web apps) delete their scoped /tmp files on close,
 // and image-data hints surface as in-process image:// URLs that die with
 // the server object. Persisted entries therefore reference their own
 // copies, named by the entry's file stem so cleanup can find them from

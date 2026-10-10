@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # tam-plugin — Manage Fred's Tamlinux shell plugins (fred.*)
 #
-# Part of the Omarchy Fred Plugin Suite (https://github.com/greenermoose/plugin-fred-tamlinux)
+# Plugin implementations and this catalog are maintained in the Tamlinux product.
 # License: GPL-3.0-or-later
 
 set -euo pipefail
@@ -10,12 +10,10 @@ VERSION="3.0.0"
 
 # Directories
 LIVE_DIR="${FRED_LIVE_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/tamlinux/plugins}"
-CACHE_DIR="${HOME}/.cache/tam-plugin"
 STATE_ROOT="${FRED_STATE_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/tam-plugin}"
 DEV_ROOT="${FRED_DEV_ROOT:-${STATE_ROOT}/dev}"
 TEST_ROOT="${FRED_TEST_ROOT:-${STATE_ROOT}/test}"
 PUBLISHED_ROOT="${FRED_PUBLISHED_ROOT:-${HOME}/Code/tamlinux}"
-MARKETPLACE_REGISTRY_URL="https://raw.githubusercontent.com/omacom/omarchy-plugin-marketplace/main/registry.json"
 
 SHELL_DIR="${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}"
 REGISTRY="${TAMLINUX_REGISTRY:-$SHELL_DIR/host/registry.py}"
@@ -26,14 +24,14 @@ PLUGINS_SRC="${SOURCE_REPO}/desktop/plugins"
 
 # Known Fred plugins catalog
 declare -A CATALOG_REPOS=(
-  ["fred.workspaces"]="https://github.com/greenermoose/workspaces-fred-tamlinux.git"
-  ["fred.clock"]="https://github.com/greenermoose/clock-fred-tamlinux.git"
-  ["fred.sysinfo"]="https://github.com/greenermoose/sysinfo-fred-tamlinux.git"
-  ["fred.monitor"]="https://github.com/greenermoose/monitor-fred-tamlinux.git"
-  ["fred.weather"]="https://github.com/greenermoose/weather-fred-tamlinux.git"
-  ["fred.tides"]="https://github.com/greenermoose/tides-fred-tamlinux.git"
-  ["fred.keyboard"]="https://github.com/greenermoose/keyboard-fred-tamlinux.git"
-  ["fred.agents"]="https://github.com/greenermoose/agents-fred-tamlinux.git"
+  ["fred.workspaces"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.workspaces"
+  ["fred.clock"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.clock"
+  ["fred.sysinfo"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.sysinfo"
+  ["fred.monitor"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.monitor"
+  ["fred.weather"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.weather"
+  ["fred.tides"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.tides"
+  ["fred.keyboard"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.keyboard"
+  ["fred.agents"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.agents"
 )
 
 declare -A CATALOG_DESC=(
@@ -109,28 +107,19 @@ Usage:
 
 Subcommands:
   list              Show status of installed plugins (or all catalog plugins with --all)
-  info <id>         Inspect detailed plugin information, repository, and marketplace status
+  info <id>         Inspect detailed plugin information, maintained source, and installed version
   search [query]    Search available plugins in Fred's catalog
   diff <id>         [Developer] Diff the installed plugin against its Tamlinux source
   verify <id>       [Developer] Compare installed and source payload digests for behavior-bearing drift
   dev <id> on|off   [Developer] Point the running plugin at its Tamlinux source for fast iteration
                     (not a deployment; Test and Run use tam-deploy)
   restore <id>      [Developer] Restore managed plugin state from active override or stale recovery
-  upstream-diff     [Developer] Compare clonedFrom stamps against installed Omarchy
+  upstream-diff     [Developer] Retired; use verify <id> against maintained Tamlinux source
 USAGE
 }
 
 cmd_upstream_diff() {
-  local installed_ver recorded_ver plugin_id upstream
-  installed_ver=$(cat /usr/share/omarchy/version 2>/dev/null || echo "unknown")
-  for upstream in "$PLUGINS_SRC"/fred.*/UPSTREAM.md; do
-    [[ -f "$upstream" ]] || continue
-    plugin_id=$(basename "$(dirname "$upstream")")
-    recorded_ver=$(grep -i "Upstream Version:" "$upstream" | head -n 1 | awk '{print $NF}' | tr -d '`*')
-    if [[ -n "$recorded_ver" && "$recorded_ver" != "$installed_ver" ]]; then
-      warn "$plugin_id was cloned from Omarchy $recorded_ver, but installed Omarchy is $installed_ver"
-    fi
-  done
+  fail "upstream-diff is retired; use verify <id> against maintained Tamlinux source"
 }
 
 validate_plugin_id() {
@@ -229,58 +218,18 @@ compute_payload_digest() {
   fi
 }
 
-fetch_registry_json() {
-  local refresh="${1:-0}"
-  mkdir -p "$CACHE_DIR"
-  local cached_file="$CACHE_DIR/registry.json"
-
-  # Use cached file if newer than 3600 seconds and refresh not requested
-  if [[ "$refresh" -eq 0 && -f "$cached_file" ]]; then
-    local now mtime age
-    now=$(date +%s)
-    mtime=$(stat -c %Y "$cached_file" 2>/dev/null || stat -f %m "$cached_file" 2>/dev/null || echo 0)
-    age=$(( now - mtime ))
-    if (( age < 3600 )); then
-      cat "$cached_file"
-      return 0
-    fi
-  fi
-
-  if command -v curl >/dev/null 2>&1; then
-    local tmp="$cached_file.tmp.$$"
-    if curl -sSL --connect-timeout 5 --max-time 10 "$MARKETPLACE_REGISTRY_URL" -o "$tmp" 2>/dev/null; then
-      if [[ -s "$tmp" ]] && (command -v jq >/dev/null 2>&1 && jq empty "$tmp" 2>/dev/null); then
-        mv "$tmp" "$cached_file"
-        cat "$cached_file"
-        return 0
-      fi
-      rm -f "$tmp"
-    fi
-  fi
-
-  # Fallback to existing cache if offline/error
-  if [[ -f "$cached_file" ]]; then
-    cat "$cached_file"
-  else
-    echo "[]"
-  fi
-}
 
 cmd_list() {
   local show_all=0
-  local refresh=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --all|-a) show_all=1 ;;
-      --refresh|-r) refresh=1 ;;
+      --refresh|-r) : ;; # Catalog ships with the package; no remote cache.
       *) ;;
     esac
     shift
   done
-
-  local registry_json
-  registry_json="$(fetch_registry_json "$refresh")"
 
   # Collect plugin IDs
   local plugin_ids=()
@@ -322,7 +271,7 @@ cmd_list() {
   local plugin_entries_json
   plugin_entries_json="$(python3 -I "$REGISTRY" entries "$LIVE_DIR")"
 
-  printf "%-18s %-10s %-10s %-22s %s\n" "ID" "INSTALLED" "STATE" "MARKETPLACE" "LATEST GITHUB / LOCAL"
+  printf "%-18s %-10s %-10s %-22s %s\n" "ID" "INSTALLED" "STATE" "SOURCE" "SOURCE STATUS"
 
   for id in "${plugin_ids[@]}"; do
     local manifest=""
@@ -349,37 +298,22 @@ cmd_list() {
       state="staged"
     fi
 
-    # Check Marketplace Registry status
-    local mkt_status="Not Listed"
-    [[ -z "${CATALOG_UNPUBLISHED[$id]:-}" ]] || mkt_status="Coming soon"
-    if command -v jq >/dev/null 2>&1 && [[ "$registry_json" != "[]" ]]; then
-      local mkt_entry
-      mkt_entry="$(jq -c --arg id "$id" '.sources[]? | select((.plugins // {}) | has($id))' <<<"$registry_json" 2>/dev/null || true)"
-      if [[ -n "$mkt_entry" ]]; then
-        local outcome
-        outcome="$(jq -r '.automatedSecurityBaseline.outcome // "verified"' <<<"$mkt_entry" 2>/dev/null)"
-        if [[ "$outcome" == "passed" || "$outcome" == "verified" ]]; then
-          mkt_status="Verified"
-        else
-          mkt_status="In Review"
-        fi
-      fi
-    fi
+    local source_owner="Local"
+    [[ -z "${CATALOG_REPOS[$id]:-}" ]] || source_owner="Tamlinux"
 
-    # Check Published Tag / Git remote
-    local suffix="${id#fred.}"
+    # Report locally available source without fetching a repository.
     local pub_dir
     pub_dir="$(published_dir "$id")"
     local pub_tag="-"
     if [[ -n "${CATALOG_UNPUBLISHED[$id]:-}" ]]; then
       pub_tag="unpublished"
-    elif [[ -d "$pub_dir/.git" ]]; then
-      pub_tag="$(git -C "$pub_dir" describe --tags --exact-match 2>/dev/null || git -C "$pub_dir" describe --tags 2>/dev/null || echo "(dev)")"
+    elif [[ -d "$pub_dir" && -e "$SOURCE_REPO/.git" ]]; then
+      pub_tag="$(git -C "$SOURCE_REPO" describe --tags --exact-match 2>/dev/null || git -C "$SOURCE_REPO" describe --tags 2>/dev/null || echo "(dev)")"
     elif [[ -n "${CATALOG_REPOS[$id]:-}" ]]; then
       pub_tag="Available"
     fi
 
-    printf "%-18s %-10s %-10s %-22s %s\n" "$id" "$version" "$state" "$mkt_status" "$pub_tag"
+    printf "%-18s %-10s %-10s %-22s %s\n" "$id" "$version" "$state" "$source_owner" "$pub_tag"
   done
 }
 
@@ -387,14 +321,14 @@ cmd_info() {
   local id="${1:-}"
   [[ -n "$id" ]] || fail "info requires a plugin id (e.g. fred.clock)"
 
-  local repo_url="${CATALOG_REPOS[$id]:-https://github.com/greenermoose/omarchy-$id.git}"
+  validate_plugin_id "$id"
+  local repo_url="${CATALOG_REPOS[$id]:-Local plugin (no catalogued repository)}"
   local desc="${CATALOG_DESC[$id]:-Personal Tamlinux shell plugin}"
 
   echo "Plugin:      $id"
   echo "Description: $desc"
   echo "Repository:  $repo_url"
 
-  validate_plugin_id "$id"
   local live_path="$LIVE_DIR/$id"
   if [[ -d "$live_path" || -L "$live_path" ]]; then
     echo "Installed:   Yes ($live_path)"
@@ -408,22 +342,6 @@ cmd_info() {
     fi
   else
     echo "Installed:   No"
-  fi
-
-  # Query registry
-  local registry_json
-  registry_json="$(fetch_registry_json)"
-  if command -v jq >/dev/null 2>&1 && [[ "$registry_json" != "[]" ]]; then
-    local mkt_entry
-    mkt_entry="$(jq -c --arg id "$id" '.sources[]? | select((.plugins // {}) | has($id))' <<<"$registry_json" 2>/dev/null || true)"
-    if [[ -n "$mkt_entry" ]]; then
-      echo "Marketplace: Listed"
-      echo "  Added:     $(jq -r '.addedAt // "unknown"' <<<"$mkt_entry")"
-      echo "  Commit:    $(jq -r '.listingValidatedCommit // "unknown"' <<<"$mkt_entry")"
-      echo "  Security:  $(jq -r '.automatedSecurityBaseline.outcome // "passed"' <<<"$mkt_entry")"
-    else
-      echo "Marketplace: Not yet listed or review in progress"
-    fi
   fi
 }
 

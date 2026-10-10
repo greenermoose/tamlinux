@@ -32,8 +32,8 @@ toast() {
   busctl --user -- call \
     org.freedesktop.Notifications /org/freedesktop/Notifications \
     org.freedesktop.Notifications Notify susssasa{sv}i \
-    omarchy-action 0 "" "$1" "${2:-}" 0 \
-    2 urgency y 0 omarchy-glyph s "$glyph" \
+    tamlinux-action 0 "" "$1" "${2:-}" 0 \
+    2 urgency y 0 tamlinux-glyph s "$glyph" \
     -1 >/dev/null
 }
 

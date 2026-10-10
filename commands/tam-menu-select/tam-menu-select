@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# tam-menu-select — pick one option from the menu in the Tamlinux shell.
+#
+#   tam-menu-select <prompt> [option...] [-- --width <n> --maxheight <n>]
+#
+# Derived from Omarchy 4.0.4 (historical source attribution).
+# Implementation and integration are maintained by Tamlinux.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# An option may lead with an icon, as "<glyph><TAB><label>", and may trail a
+# subtext shown under the label, as "<glyph><TAB><label><TAB><subtext>". The
+# menu shows the glyph but never returns it. A plain option returns the label
+# alone; an option with a subtext returns "<label><TAB><subtext>", so callers
+# with same-named rows get the subtext back as the stable key.
+
+set -euo pipefail
+
+if (( $# < 1 )); then
+  echo "Usage: tam-menu-select <prompt> [option...] [-- menu args...]" >&2
+  exit 1
+fi
+
+prompt="$1"
+shift
+
+options=()
+menu_width=""
+menu_maxheight=""
+
+while (( $# > 0 )); do
+  if [[ $1 == "--" ]]; then
+    shift
+    while (( $# > 0 )); do
+      case "$1" in
+        --width)
+          shift
+          if (( $# == 0 )); then
+            echo "tam-menu-select: --width requires a value" >&2
+            exit 1
+          fi
+          menu_width="$1"
+          ;;
+        --height|--maxheight)
+          arg="$1"
+          shift
+          if (( $# == 0 )); then
+            echo "tam-menu-select: $arg requires a value" >&2
+            exit 1
+          fi
+          menu_maxheight="$1"
+          ;;
+      esac
+      shift
+    done
+    break
+  fi
+
+  options+=("$1")
+  shift
+done
+
+if (( ${#options[@]} == 0 )) && [[ ! -t 0 ]]; then
+  mapfile -t options
+fi
+
+if (( ${#options[@]} == 0 )); then
+  echo "Usage: tam-menu-select <prompt> [option...] [-- menu args...]" >&2
+  exit 1
+fi
+
+selection_file=$(mktemp)
+done_file=$(mktemp)
+rm -f "$done_file"
+trap 'rm -f "$selection_file" "$done_file"' EXIT
+
+options_json=$(perl -MEncode=decode -MJSON::PP=encode_json -e 'print encode_json([map { decode("UTF-8", $_) } @ARGV])' "${options[@]}")
+payload=$(perl -MEncode=decode -MJSON::PP=encode_json,decode_json -e '
+  my $payload = {
+    mode => "select",
+    prompt => decode("UTF-8", $ARGV[0]),
+    options => decode_json($ARGV[1]),
+    selectionFile => decode("UTF-8", $ARGV[2]),
+    doneFile => decode("UTF-8", $ARGV[3])
+  };
+  $payload->{width} = int($ARGV[4]) if length($ARGV[4] // "");
+  $payload->{maxHeight} = int($ARGV[5]) if length($ARGV[5] // "");
+  print encode_json($payload)
+' "$prompt" "$options_json" "$selection_file" "$done_file" "$menu_width" "$menu_maxheight")
+
+tam-shell menu open "$payload" >/dev/null || exit 1
+
+while [[ ! -e $done_file ]]; do
+  sleep 0.05
+done
+
+if [[ -s $selection_file ]]; then
+  cat "$selection_file"
+else
+  exit 1
+fi

@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# tam-shell — send an IPC call to the running Tamlinux shell
+# (tamlinux/desktop/shell). It does not start the host.
+#
+#   tam-shell [-q] <target> <method> [args...]
+#   tam-shell notifications dismissOne
+#
+# -q: quiet best-effort mode; succeed even when the host, target, or method
+# is missing.
+#
+# Derived from Omarchy 4.0.4 (historical source attribution).
+# Implementation and integration are maintained by Tamlinux.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+QUIET=0
+if [[ ${1:-} == "-q" ]]; then
+  QUIET=1
+  shift
+fi
+
+fail() {
+  (( QUIET )) && exit 0
+  echo "$1" >&2
+  exit 1
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  echo "Usage: tam-shell [-q] <target> <method> [args...]"
+  exit 0
+fi
+(( $# >= 2 )) || fail "Usage: tam-shell [-q] <target> <method> [args...]"
+
+shell_dir=${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}
+[[ -f $shell_dir/shell.qml ]] || fail "Tamlinux shell config not found: $shell_dir/shell.qml"
+# session_start.py resolves the immutable tree before starting Quickshell.
+# Quickshell keys IPC instances by the literal config path, not its symlink.
+shell_dir=$(readlink -f -- "$shell_dir") || fail "Cannot resolve Tamlinux shell config"
+
+# qs matches instances by display, and a caller from outside the session (ssh,
+# a TTY) has none, so recover it from the compositor socket.
+if [[ -z ${WAYLAND_DISPLAY:-} ]]; then
+  socket=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$UID}"/wayland-[0-9]* 2>/dev/null | grep -v '\.lock$' | head -n1)
+  [[ -n $socket ]] && export WAYLAND_DISPLAY=${socket##*/}
+fi
+
+# The -- keeps function names that shadow qs subcommands (e.g. show) as
+# positionals. qs reports connection failures with a nonzero exit, but
+# IPC-level failures (unknown target or function) go to stdout with exit 0.
+output=$(timeout --kill-after=1s "${TAMLINUX_SHELL_IPC_TIMEOUT:-2s}" qs ipc -n -p "$shell_dir" call -- "$@" 2>/dev/null)
+ipc_status=$?
+
+if (( ipc_status == 124 || ipc_status == 137 )); then
+  fail "Tamlinux shell is not responding"
+elif (( ipc_status != 0 )); then
+  fail "Tamlinux shell is not running"
+fi
+
+case $output in
+  "Target not found." | "Function not found." | "Too few arguments provided"* | "Too many arguments provided"*)
+    fail "$output"
+    ;;
+  # A starting shell answers on stdout and exits 0, so a ping reads it as up
+  # and the next call's answer as a result. It is as unreachable as none.
+  "Not ready to accept queries yet"*)
+    fail "Tamlinux shell is not ready"
+    ;;
+esac
+
+if (( !QUIET )) && [[ -n $output ]]; then
+  echo "$output"
+fi
+exit 0

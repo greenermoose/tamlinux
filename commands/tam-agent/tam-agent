@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# tam-agent — launch the default coding agent in a terminal.
+#
+#   tam-agent [--inline] [--pick] [--prompt <text>]
+#   tam-agent --current     print the default agent (nothing when unset)
+#
+# Derived from Omarchy 4.0.4 (historical source attribution).
+# Implementation and integration are maintained by Tamlinux.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+agent_file="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/defaults/agent"
+
+current_agent() {
+  local agent=""
+  [[ -f $agent_file ]] && read -r agent <"$agent_file"
+  # Silent when unset rather than defaulting: no agent is picked for you, so
+  # the menu leaves every entry unchecked until one is chosen.
+  [[ -n $agent ]] && echo "$agent"
+  return 0
+}
+
+inline=false
+pick=false
+
+# Flags only; a prompt goes through --prompt.
+while (($#)); do
+  case "$1" in
+    --current)
+      current_agent
+      exit 0
+      ;;
+    --inline)
+      inline=true
+      shift
+      ;;
+    --pick)
+      pick=true
+      shift
+      ;;
+    --prompt)
+      prompt=${2:?--prompt needs a value}
+      shift 2
+      ;;
+    *)
+      echo "Unexpected argument: $1" >&2
+      echo "To pass a prompt: tam-agent --prompt \"$*\"" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Agents refuse to remember trust for $HOME, so launches from the keybinding or
+# menu start in the work directory instead of re-asking on every session.
+[[ $PWD == "$HOME" && -d $HOME/Work ]] && cd "$HOME/Work"
+
+agent=$(current_agent)
+
+# There is no default until one is picked. --pick offers the choice instead of
+# the error, which is what the keybinding wants: a keypress that opens nothing
+# explains nothing.
+if [[ -z $agent ]]; then
+  [[ $pick == "true" ]] && exec tam-menu summon setup.default.agent
+  echo "Choose a default agent in Menu → Setup → Defaults → Agent" >&2
+  exit 1
+fi
+
+if ! tam-cmd-present "$agent"; then
+  echo "$agent is not installed. Choose an installed agent in Menu → Setup → Defaults → Agent" >&2
+  exit 1
+fi
+
+# Agents launched from the keybinding or menu run unattended, so each one starts
+# with its own spelling of "don't stop to ask". Pi has no approval prompts.
+case "$agent" in
+opencode)
+  command=(opencode --auto)
+  [[ -n ${prompt:-} ]] && command+=(--prompt "$prompt")
+  ;;
+gemini)
+  command=(gemini --yolo)
+  [[ -n ${prompt:-} ]] && command+=(--prompt-interactive "$prompt")
+  ;;
+copilot)
+  command=(copilot --allow-all)
+  [[ -n ${prompt:-} ]] && command+=(--interactive "$prompt")
+  ;;
+crush)
+  # --yolo belongs to the interactive command only; `crush run` never prompts.
+  if [[ -n ${prompt:-} ]]; then
+    command=(crush run "$prompt")
+  else
+    command=(crush --yolo)
+  fi
+  ;;
+claude)
+  command=(claude --permission-mode auto)
+  [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+  ;;
+grok)
+  command=(grok --permission-mode bypassPermissions)
+  [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+  ;;
+openclaw)
+  # The launcher owns onboarding and the gateway dance: OpenClaw's terminal UI
+  # must attach to the running gateway (the embedded `openclaw chat` refuses to
+  # start while the gateway owns the state directory). It has no permission
+  # prompts to skip, and --message seeds the session while keeping it
+  # interactive.
+  command=(tam-launch-openclaw --tui)
+  [[ -n ${prompt:-} ]] && command+=(--message "$prompt")
+  ;;
+codex)
+  command=(codex --approve-for-me)
+  [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+  ;;
+cursor-agent)
+  # --yolo covers commands only; the workspace trust dialog has its own flag.
+  # A one-word prompt naming a subcommand (update, login, help) still runs that
+  # subcommand after a bare --, so the agent subcommand is named outright, and
+  # -- after it keeps a prompt starting with a dash from being read as an option.
+  command=(cursor-agent --yolo --trust)
+  [[ -n ${prompt:-} ]] && command+=(agent -- "$prompt")
+  ;;
+hermes)
+  if [[ -n ${prompt:-} ]]; then
+    command=(env -u HERMES_SESSION_SOURCE hermes chat --yolo --tui "--query=$prompt")
+  else
+    command=(hermes --yolo)
+  fi
+  ;;
+muse)
+  # --approval-mode never skips the tool prompts but keeps Muse's own sandbox.
+  command=(muse --approval-mode never)
+  [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+  ;;
+omp)
+  command=(omp --auto-approve)
+  [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+  ;;
+pi)
+  command=(pi)
+  [[ -n ${prompt:-} ]] && command+=("$prompt")
+  ;;
+*)
+  echo "Unsupported default agent: $agent" >&2
+  exit 1
+  ;;
+esac
+
+if [[ $inline == "true" ]]; then
+  exec "${command[@]}"
+else
+  # A fixed app-id rather than the default org.tamlinux.<binary>, so every agent
+  # window shares one class for window rules and themes to single out.
+  exec tam-launch-tui --app-id=org.tamlinux.agent "${command[@]}"
+fi

@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "stage": "Development checks only; no Test candidate allocated or deployed",
+  "sourceSnapshot": "/nix/store/y1kl8yf1r8sv23r0n20hclfcv6pa4zr0-tamlinux-0.4.3-development",
+  "sourceVersionText": "0.4.2-d (baseline text retained during unprepared development)",
+  "commandOutput": "/nix/store/jrbz1dnaxh7jsz5znmr57cr0wfq7j88j-tamlinux-commands-0.4.2pre.d",
+  "shellOutput": "/nix/store/5s2j1dx4mmdaq8lilji7hjrb01xa2hch-tamlinux-shell-0.4.2pre.d",
+  "installedComponentCheck": "/nix/store/rzg8xf8k31fmx45wpdkszl9m961qzzr4-tamlinux-installed-components",
+  "commandsBuilt": [
+    "tam-agent",
+    "tam-cmd-present",
+    "tam-deploy",
+    "tam-launch-tui",
+    "tam-menu-select",
+    "tam-menu-timezone",
+    "tam-notification-send",
+    "tam-plugin",
+    "tam-qmlcache-purge",
+    "tam-restart-shell",
+    "tam-shell",
+    "tam-theme-payload",
+    "tam-work"
+  ],
+  "newHelperAndCatalogTests": 57,
+  "shellNamespaceTests": 24,
+  "serviceSourceTests": 18,
+  "installedProbe": {
+    "implementation": "tamlinux-packages/tests/installed-desktop-helpers.py",
+    "checks": [
+      "theme helper executes with its packaged Python interpreter",
+      "IPC resolves the installed shell with packaged runtime tools",
+      "menu selection resolves packaged IPC and Perl without host PATH",
+      "unset agent resolves the packaged menu without selecting an agent",
+      "offline product catalog resolves installed registry and runtime tools",
+      "notification jq/busctl resolve before the deliberately absent bus",
+      "cache purge resolves packaged find/hash tools and preserves unrelated files",
+      "command presence retains the declared host program boundary"
+    ],
+    "passed": 8,
+    "isolation": "Temporary XDG/home directories; PATH contains only recorded host IPC and blocked network clients. Both D-Bus addresses are unavailable."
+  },
+  "demonstratedPackagingRepairs": [
+    "Accept Nix-patched Python interpreter in the retained theme test",
+    "Patch the installed menu interpreter and its test source",
+    "Declare packaged menu output for agent selection",
+    "Provide helper runtime tools and same-output helper resolution"
+  ],
+  "limits": "The snapshot is uncommitted development source. Its metadata is not a new 0.4.2-d assembly or a prepared 0.4.3 candidate. Recorded IPC and absent buses do not prove visual or clean-host desktop operation. Source-only documentation is updated after the build."
+}

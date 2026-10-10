@@ -25,7 +25,6 @@ if not SCRATCH:
 
 
 TOKEN_RE = re.compile(r"(?<![A-Za-z0-9._-])omarchy-[A-Za-z0-9-]*[A-Za-z0-9]")
-WIRE_NAMES = frozenset({"omarchy-action", "omarchy-glyph", "omarchy-exec-argv"})
 SHELL_SUFFIXES = frozenset({".qml", ".js"})
 REGEX_PUNCT = frozenset("(:,=!&|?{};+-*%<>~^[(")
 REGEX_WORDS = frozenset({"return", "typeof", "case"})
@@ -149,8 +148,6 @@ def find_commands(shell: Path) -> list[tuple[str, int, str]]:
         relative = path.relative_to(shell).as_posix()
         text = path.read_text(encoding="utf-8", errors="replace")
         for line, token in _scan(text):
-            if token in WIRE_NAMES:
-                continue
             found.append((relative, line, token))
     found.sort()
     return found
@@ -275,14 +272,18 @@ class Scanner(unittest.TestCase):
         )
         self.assertEqual(found, [("a.js", 1, "omarchy-ret")])
 
-    def test_s12_wire_names_removed(self) -> None:
+    def test_s12_inherited_wire_names_are_now_forbidden(self) -> None:
         found = self.scan(
             {
                 "a.js": 'var a = "omarchy-action"; var b = \'omarchy-glyph\'; '
                 'var c = "omarchy-exec-argv"'
             }
         )
-        self.assertEqual(found, [])
+        self.assertEqual(found, [
+            ("a.js", 1, "omarchy-action"),
+            ("a.js", 1, "omarchy-exec-argv"),
+            ("a.js", 1, "omarchy-glyph"),
+        ])
 
     def test_s13_lookalike_wire_names_kept(self) -> None:
         found = self.scan(

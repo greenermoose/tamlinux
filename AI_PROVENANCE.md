@@ -219,3 +219,12 @@ hover rendering, panel footers and patch bumps in `907d46b`, on Fred's direct
 instruction. The record was backfilled from the original transcript; defects
 found during Test are tracked in the 0.4.2-b repair.
 [Original session record](docs/ai/2026-10-09-plugin-hover-footers.md).
+
+## 0.4.3 independent installation development — 2026-10-09–10
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) recorded the reviewed clean-host package
+boundary and transferred ten required desktop helpers into maintained product
+source. Notification endpoints now use owned names together; plugin discovery
+uses the shipped product catalog without inherited network/cache lookups.
+Development tests and package-build evidence do not establish clean-host or
+physical desktop acceptance. [Session](docs/ai/2026-10-09-start-0.4.3.md).

@@ -1,0 +1,32 @@
+#!/bin/bash
+# Drop Quickshell's compiled-QML cache entries for the local Tamlinux plugins.
+#
+# Qt validates ~/.cache/quickshell/qmlcache/<sha1(path)>.qmlc against the
+# source file's mtime only. Home Manager deploys plugins as symlinks into the
+# Nix store, where every file carries mtime 1970-01-01, so a new plugin
+# version at the same path looks identical to the cached compile and the
+# shell keeps running the old code across restarts. Purge before restarting.
+#
+# Usage: tam-qmlcache-purge [-q] [plugins-dir]
+
+set -euo pipefail
+
+quiet=0
+[[ ${1:-} == "-q" ]] && { quiet=1; shift; }
+plugins_dir="${1:-${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/plugins}"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/qmlcache"
+
+[[ -d $plugins_dir && -d $cache_dir ]] || exit 0
+
+removed=0
+while IFS= read -r -d '' src; do
+  hash=$(printf '%s' "$src" | sha1sum | cut -d' ' -f1)
+  for entry in "$cache_dir/$hash.qmlc" "$cache_dir/$hash.jsc"; do
+    [[ -e $entry ]] || continue
+    rm -f -- "$entry"
+    removed=$((removed + 1))
+    (( quiet )) || echo "purged qmlcache for ${src#"$plugins_dir"/}"
+  done
+done < <(find -L "$plugins_dir" -type f \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) -print0 2>/dev/null)
+
+(( quiet )) || echo "tam-qmlcache-purge: removed $removed cache entr$([[ $removed == 1 ]] && echo y || echo ies)"
