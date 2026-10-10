@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Clear the terminal and print the Tamlinux wordmark.
+
+clear
+printf '\n  \033[1;38;2;226;180;74mtam\033[0;1mlinux\033[0m\n\n'

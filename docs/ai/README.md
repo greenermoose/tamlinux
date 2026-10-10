@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-10 | 0.4.3 terminal/editor package closure and prioritized implementation | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-10-terminal-editor-closure.md) |
 | 2026-10-10 | 0.4.3 clean-host gate, migration rules and measured output gaps | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-10-0.4.3-clean-host-contract.md) |
 | 2026-10-09–10 | 0.4.3 owned desktop helpers, notification protocol and offline plugin catalog | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-09-start-0.4.3.md) |
 | 2026-10-10 | 0.4.2-d review fixes and distinct Test candidate preparation | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-10-0.4.2d-review-fixes.md) |

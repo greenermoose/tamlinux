@@ -149,6 +149,17 @@ command, asset or service requirements. This inventory advances step 1 below;
 the complete consumer/session contract and fresh-host smoke environment remain
 unfinished. No pins, candidate letters or installed state changed.
 
+The [prioritized implementation order and terminal/editor slice](0.4.3-terminal-editor-closure.md)
+now close nine more command interfaces. Nineteen installed-chain regressions and
+the Nix build pass, including two regressions that reject the original scripts;
+fourteen isolated real-output probes and the Nix installed-component check pass.
+The repeated five-output audit has 103 unresolved lexical command findings
+(previously 108), no newly unresolved command and 54 inherited-name locations.
+Terminal preferences honor XDG config, presentation argv is preserved and the
+Kitty/theme readers use owned names. Paired Kitty/theme producers and the full
+migration/native/clean-host work remain pending. No candidate or installation
+was changed.
+
 1. **Define the clean-host contract.** Use a standard Arch base and Hyprland
    session, with no inherited distribution packages, repository, keyring or
    checkout. Record the required native host facilities and supplied package

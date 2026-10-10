@@ -234,3 +234,11 @@ source. Notification endpoints now use owned names together; plugin discovery
 uses the shipped product catalog without inherited network/cache lookups.
 Development tests and package-build evidence do not establish clean-host or
 physical desktop acceptance. [Session](docs/ai/2026-10-09-start-0.4.3.md).
+
+## 0.4.3 terminal/editor closure — 2026-10-10
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented nine terminal/editor launch
+and default helpers with package dependency closure. Nineteen installed-chain
+regressions, the Nix build/integration and fourteen isolated output probes pass.
+Command closure precedes session/native defaults and clean-host proof; no
+installed candidate changed. [Session](docs/ai/2026-10-10-terminal-editor-closure.md).
