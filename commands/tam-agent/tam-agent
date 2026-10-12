@@ -133,13 +133,6 @@ cursor-agent)
   command=(cursor-agent --yolo --trust)
   [[ -n ${prompt:-} ]] && command+=(agent -- "$prompt")
   ;;
-hermes)
-  if [[ -n ${prompt:-} ]]; then
-    command=(env -u HERMES_SESSION_SOURCE hermes chat --yolo --tui "--query=$prompt")
-  else
-    command=(hermes --yolo)
-  fi
-  ;;
 muse)
   # --approval-mode never skips the tool prompts but keeps Muse's own sandbox.
   command=(muse --approval-mode never)

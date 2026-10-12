@@ -242,6 +242,12 @@ existing user selection and application data; an old OpenClaw selection cannot
 launch through `tam-agent`. Independently installed application software is not
 removed by this source change. This does not retire other agent choices.
 
+Hermes integration was also explicitly retired following owner review on
+2026-10-12. Both retired choices are excluded from the transferred setter and
+default menu; their stubs are never executed. Retained agent-default selection
+and the first microphone controls operation are now packaged and verified in
+the [current slice](0.4.3-agent-default-closure.md).
+
 An implementation enters 0.4.3 when an inventoried baseline caller needs it,
 when it is a transitive dependency of that caller, or when an independently
 reproduced defect prevents installation or a baseline workflow. Every addition

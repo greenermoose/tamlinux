@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# tam-default-agent — read/select a supported coding agent and launch it.
+# Uses the same owned XDG state as tam-agent. Optional applications remain
+# selected by the user; OpenClaw and Hermes integration is retired.
+# Derived from Omarchy 4.0.4 (historical source attribution).
+# Implementation and integration are maintained by Tamlinux.
+
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+agent_file="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/defaults/agent"
+
+usage() {
+  echo "Usage: tam-default-agent [--installed|--install] <pi|omp|opencode|claude|codex|grok|gemini|copilot|crush|cursor-agent|muse>" >&2
+  exit 1
+}
+
+if (($# == 0)); then
+  exec tam-agent --current
+fi
+
+mode=select
+case "$1" in
+--installed) mode=installed; shift ;;
+--install) mode=install; shift ;;
+esac
+(($# == 1)) || usage
+
+case "$1" in
+pi) agent=pi; name=Pi ;;
+omp | oh-my-pi) agent=omp; name="Oh My Pi"; agent_package="github:can1357/oh-my-pi" ;;
+opencode | open-code) agent=opencode; name=OpenCode ;;
+claude | claude-code) agent=claude; name="Claude Code" ;;
+codex) agent=codex; name=Codex ;;
+crush) agent=crush; name=Crush ;;
+grok) agent=grok; name=Grok; agent_package="npm:@xai-official/grok" ;;
+gemini | gemini-cli) agent=gemini; name=Gemini ;;
+copilot | github-copilot) agent=copilot; name="GitHub Copilot" ;;
+muse | muse-code | musecode)
+  agent=muse; name="Muse Code"
+  agent_package="http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]"
+  ;;
+cursor | cursor-agent) agent=cursor-agent; name="Cursor CLI" ;;
+*) usage ;;
+esac
+agent_package=${agent_package:-$agent}
+
+if [[ $mode == installed ]]; then
+  exec tam-cmd-present "$agent"
+fi
+
+# Preserve the user's own executable or symlink instead of shadowing it with
+# a Mise install. Read a Mise bootstrap stub without executing it.
+user_install() {
+  [[ -x $HOME/.local/bin/$agent ]] &&
+    { [[ -L $HOME/.local/bin/$agent ]] || ! grep -q '^mise use -g' "$HOME/.local/bin/$agent"; }
+}
+agent_present() { user_install || mise where "$agent_package" &>/dev/null; }
+
+if [[ $mode == select ]] && ! agent_present; then
+  exec tam-launch-floating-terminal-with-presentation tam-default-agent --install "$agent"
+fi
+
+if ! user_install && ! mise use -g "$agent_package"; then
+  echo "Could not install $name with mise; the default agent is unchanged" >&2
+  exit 1
+fi
+
+# Commit the new choice only after installation succeeds. An interrupted or
+# failed write must not truncate the previous selection.
+mkdir -p "$(dirname "$agent_file")" || exit 1
+selection=$(mktemp "$agent_file.XXXXXX") || exit 1
+trap 'rm -f "$selection"' EXIT
+printf '%s\n' "$agent" >"$selection" || exit 1
+mv -f -- "$selection" "$agent_file" || exit 1
+trap - EXIT
+
+if [[ $mode == install ]]; then
+  printf '\033[2J\033[3J\033[H'
+  exec tam-agent --inline
+else
+  exec tam-agent
+fi

@@ -109,7 +109,6 @@
   "setup.default.agent.cursor-agent": {"icon":"","iconFont":"omarchy","label":"Cursor CLI","checked":"[[ \"$(tam-default-agent)\" == \"cursor-agent\" ]]","action":"tam-default-agent cursor-agent"},
   "setup.default.agent.gemini": {"icon":"󰫢","label":"Gemini","checked":"[[ \"$(tam-default-agent)\" == \"gemini\" ]]","action":"tam-default-agent gemini"},
   "setup.default.agent.grok": {"icon":"","iconFont":"omarchy","label":"Grok","checked":"[[ \"$(tam-default-agent)\" == \"grok\" ]]","action":"tam-default-agent grok"},
-  "setup.default.agent.hermes": {"icon":"","iconFont":"omarchy","when":"tam-default-agent --installed hermes","label":"Hermes","checked":"[[ \"$(tam-default-agent)\" == \"hermes\" ]]","action":"tam-default-agent hermes"},
   "setup.default.agent.muse": {"icon":"󰛤","label":"Muse Code","checked":"[[ \"$(tam-default-agent)\" == \"muse\" ]]","action":"tam-default-agent muse"},
   "setup.default.agent.omp": {"icon":"","iconFont":"omarchy","label":"omp","checked":"[[ \"$(tam-default-agent)\" == \"omp\" ]]","action":"tam-default-agent omp"},
   "setup.default.agent.opencode": {"icon":"","iconFont":"omarchy","label":"OpenCode","checked":"[[ \"$(tam-default-agent)\" == \"opencode\" ]]","action":"tam-default-agent opencode"},

@@ -42,3 +42,49 @@ No comparative token or wall-time saving is claimed.
 - `git diff --check` passes.
 - Package-output builds, actual graphical launch, clean-host I01–I09 and physical
   acceptance remain outside this source-retirement verification.
+
+
+## Accepted follow-through: agent defaults and microphone controls
+
+Guiding prompt (excerpt; time/token discipline also followed):
+
+> I accept your assessment of Hermes. Proceed with that in mind. I also accept the following recommendations from your 18-step-0.4.3-next-slice report
+>
+> 1) Transfer tam-default-agent into tamlinux/commands
+> 2) Remove OpenClaw branches
+> 3) Inspect every helper and tool edge before adding delivery wrappers.
+> 4) Verify state read/write agreement with isolated HOME/XDG paths, alias selection,
+> installation failure without changing the default, unbuilt Hermes stubs, prompt
+> argv and retired selections.
+> 5) Extend the existing installed-helper harness;
+> reuse its recorded terminal/service boundaries without running real agents or
+> installers.
+> 6) Then build the changed command output and installed integration
+> under short exclusive claims, run actual-output probes, and audit all five outputs
+> with `--format compact --report /tmp/0.4.3-agent-audit.json`.
+> 7) Afterward, take one controls caller chain at a time: audio/network/power controls
+> and plugin setters. Inspect mutable writers before choosing the first controls
+> batch; monitor brightness/text size reach hardware, theme and terminal writers
+> and should not be treated as two isolated scripts.
+
+Codex transferred `tam-default-agent` with canonical alias checks, atomic XDG
+selection writes and declared coreutils/grep/Mise dependencies. Hermes integration
+was retired on the owner's accepted assessment. OpenClaw and Hermes requests are
+rejected before executing stubs, installing, launching or changing defaults.
+The first controls chain owns microphone default and existing capture-stream
+routing with `wpctl`, `pactl` and awk. Host sound servers own the resulting state;
+the prior best-effort behavior is retained. Other mutable controls chains were
+inspected before choosing this operation.
+
+Twenty-five installed-helper tests and five menu-parser tests pass; Nix command
+builds and installed-component integration pass. Original-code comparisons reject
+the previous retired-agent and alias behavior. The agent stage passes 23 isolated
+real-output probes, followed by 24 after microphone routing. The five-output
+audits report 99 then 98 unresolved lexical names, with 52 inherited-name locations.
+Readiness remains false, with nine pending requirements and no clean-host proof.
+
+[Current work and limits](../plans/0.4.3-agent-default-closure.md) records provider
+boundaries, actual-output evidence and the next three actions. No real agents,
+installers or live sound servers were run; no candidate pin/version/activation
+changed. Inspection used bounded ranges and compact artifacts, with repeat
+builds limited to the new controls code. No comparative savings are claimed.

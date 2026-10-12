@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = ROOT.parent
 PRODUCT = COMMANDS.parent
 NAMES = ['tam-shell', 'tam-menu-select', 'tam-menu-timezone', 'tam-agent',
+         'tam-default-agent', 'tam-launch-floating-terminal-with-presentation',
+         'tam-audio-input-set-default',
          'tam-cmd-present', 'tam-launch-tui', 'tam-notification-send',
          'tam-qmlcache-purge', 'tam-restart-shell']
 
@@ -55,7 +57,7 @@ class DesktopHelpers(unittest.TestCase):
         }
         for program in ('readlink', 'ls', 'grep', 'head', 'timeout', 'mktemp',
                         'rm', 'cat', 'sleep', 'perl', 'basename', 'jq',
-                        'find', 'sha1sum', 'cut'):
+                        'find', 'sha1sum', 'cut', 'dirname', 'mkdir', 'mv', 'awk'):
             target = shutil.which(program)
             if not target:
                 raise RuntimeError(f'Helper tests require {program}')
@@ -84,13 +86,21 @@ elif name == 'timedatectl':
     if args == ['list-timezones']: print('UTC\\nAmerica/New_York')
     else: sys.exit(int(os.environ.get('TEST_TIMEZONE_STATUS', '0')))
 elif name == 'busctl': print('u 42')
+elif name == 'mise':
+    key = 'TEST_MISE_WHERE_STATUS' if args[0] == 'where' else 'TEST_MISE_USE_STATUS'
+    sys.exit(int(os.environ.get(key, '0')))
+elif name == 'wpctl': sys.exit(int(os.environ.get('TEST_AUDIO_STATUS', '0')))
+elif name == 'pactl':
+    if args == ['list', 'short', 'source-outputs']:
+        print(os.environ.get('TEST_SOURCE_OUTPUTS', ''))
+    else: sys.exit(int(os.environ.get('TEST_AUDIO_STATUS', '0')))
 elif name == 'setsid': os.execvp(args[0], args)
 elif name == 'uwsm-app':
     assert args[0] == '--'
     os.execvp(args[1], args[1:])
 '''
         for program in ('qs', 'timedatectl', 'busctl', 'setsid', 'uwsm-app',
-                        'xdg-terminal-exec', 'codex'):
+                        'xdg-terminal-exec', 'codex', 'mise', 'wpctl', 'pactl'):
             path = self.bin / program
             path.write_text(source)
             path.chmod(0o755)
@@ -236,6 +246,107 @@ elif name == 'uwsm-app':
                 self.assertIn('Unsupported default agent: openclaw', result.stderr)
                 self.assertFalse(self.log.exists(), 'retired agent must not launch any process')
                 self.assertEqual(selection.read_text(), 'openclaw\n')
+
+    def test_agent_default_reader_uses_same_xdg_state_and_preserves_unset(self):
+        self.assertEqual(self.run_command('tam-default-agent').stdout, '')
+        self.assertFalse((self.config / 'tamlinux/defaults/agent').exists())
+        self.choose_agent('codex')
+        self.assertEqual(self.run_command('tam-default-agent').stdout, 'codex\n')
+        self.assertEqual(self.run_command('tam-agent', '--current').stdout, 'codex\n')
+        fallback = self.home / '.config/tamlinux/defaults/agent'
+        fallback.parent.mkdir(parents=True)
+        fallback.write_text('pi\n')
+        self.assertEqual(self.run_command('tam-default-agent', XDG_CONFIG_HOME='').stdout, 'pi\n')
+
+    def test_user_installed_agent_aliases_select_canonical_values_without_mise(self):
+        directory = self.home / '.local/bin'
+        directory.mkdir(parents=True)
+        for alias, canonical in [('claude-code', 'claude'), ('open-code', 'opencode'),
+                                 ('github-copilot', 'copilot'), ('gemini-cli', 'gemini'),
+                                 ('oh-my-pi', 'omp'), ('muse-code', 'muse'), ('cursor', 'cursor-agent')]:
+            with self.subTest(alias=alias):
+                shutil.copy2(self.bin / 'codex', self.bin / canonical)
+                (directory / canonical).symlink_to(self.bin / canonical)
+                result = self.run_command('tam-default-agent', alias)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.run_command('tam-agent', '--current').stdout, canonical + '\n')
+                self.assertEqual(self.run_command('tam-default-agent', '--installed', alias).returncode, 0)
+        self.assertFalse(self.calls('mise'))
+
+    def test_missing_agent_installation_is_presented_as_discrete_argv(self):
+        result = self.run_command('tam-default-agent', 'codex', TEST_MISE_WHERE_STATUS='1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        terminal = self.calls('xdg-terminal-exec')[0]['args']
+        self.assertEqual(terminal[-4:], ['argv', 'tam-default-agent', '--install', 'codex'])
+        self.assertFalse((self.config / 'tamlinux/defaults/agent').exists())
+        self.assertEqual(self.calls('mise')[0]['args'], ['where', 'codex'])
+
+    def test_failed_install_does_not_change_existing_selection(self):
+        self.choose_agent('pi')
+        result = self.run_command('tam-default-agent', '--install', 'codex', TEST_MISE_USE_STATUS='2')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('default agent is unchanged', result.stderr)
+        self.assertEqual(self.run_command('tam-default-agent').stdout, 'pi\n')
+        self.assertEqual(self.calls('mise')[0]['args'], ['use', '-g', 'codex'])
+        self.assertFalse(self.calls('codex'))
+        self.assertFalse(self.calls('xdg-terminal-exec'))
+
+    def test_successful_install_commits_state_then_launches_inline(self):
+        self.choose_agent('pi')
+        result = self.run_command('tam-default-agent', '--install', 'codex')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.run_command('tam-default-agent').stdout, 'codex\n')
+        self.assertEqual(self.calls('codex')[0]['args'], ['--approve-for-me'])
+        self.assertFalse(self.calls('xdg-terminal-exec'))
+        self.assertEqual(list((self.config / 'tamlinux/defaults').iterdir()),
+                         [self.config / 'tamlinux/defaults/agent'])
+
+    def test_retired_agents_reject_installed_or_unbuilt_stubs_without_effects(self):
+        for name in ('openclaw', 'hermes'):
+            with self.subTest(agent=name):
+                stub = self.bin / name
+                stub.write_text('#!/bin/bash\nmise use -g pipx:hermes-agent\n')
+                stub.chmod(0o755)
+                self.choose_agent(name)
+                for args in ((name,), ('--installed', name), ('--install', name)):
+                    result = self.run_command('tam-default-agent', *args)
+                    self.assertNotEqual(result.returncode, 0)
+                result = self.run_command('tam-agent', '--inline', '--prompt', 'a; $(literal)')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.run_command('tam-default-agent').stdout, name + '\n')
+                self.assertFalse(self.log.exists(), 'retired stub must never execute or install')
+
+    def test_invalid_default_agent_requests_fail_without_writes_or_installation(self):
+        for args in (('--install',), ('--installed',), ('unknown',), ('codex', 'extra'),
+                     ('--installed', 'codex', 'extra')):
+            with self.subTest(args=args):
+                self.assertNotEqual(self.run_command('tam-default-agent', *args).returncode, 0)
+        self.assertFalse(self.log.exists())
+        self.assertFalse((self.config / 'tamlinux/defaults/agent').exists())
+
+    def test_audio_input_selection_moves_existing_streams_with_literal_arguments(self):
+        source = 'alsa_input.literal; $(touch NEVER)'
+        result = self.run_command('tam-audio-input-set-default', '42', source,
+                                  TEST_SOURCE_OUTPUTS='17\tclient\n29\tother client')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls('wpctl')[0]['args'], ['set-default', '42'])
+        self.assertEqual([call['args'] for call in self.calls('pactl')],
+                         [['set-default-source', source], ['list', 'short', 'source-outputs'],
+                          ['move-source-output', '17', source], ['move-source-output', '29', source]])
+        self.assertFalse((self.home / 'NEVER').exists())
+        self.assertFalse(self.config.exists())
+
+    def test_audio_input_selection_retains_best_effort_behavior_on_provider_failure(self):
+        result = self.run_command('tam-audio-input-set-default', '42', 'microphone',
+                                  TEST_AUDIO_STATUS='1', TEST_SOURCE_OUTPUTS='17\tclient')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.calls('pactl')), 3)
+        self.assertFalse(self.config.exists())
+
+    def test_audio_input_selection_rejects_missing_arguments_without_calls(self):
+        for args in ((), ('42',), ('', 'microphone'), ('42', '')):
+            self.assertNotEqual(self.run_command('tam-audio-input-set-default', *args).returncode, 0)
+        self.assertFalse(self.log.exists())
 
     def test_cache_purge_removes_only_selected_plugin_code_entries(self):
         plugins = self.temp / 'plugins'

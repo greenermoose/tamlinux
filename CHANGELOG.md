@@ -8,6 +8,12 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## 0.4.3 - Develop
 
+- Own and package default-agent selection with paired XDG state, canonical aliases,
+  preserved user installs and atomic writes after successful Mise installation.
+- Retire dedicated Hermes menu/launcher integration; reject retired agents before
+  executing installation stubs or changing the selected default.
+- Own and package microphone default/capture-stream routing with declared audio
+  clients and isolated server-boundary checks.
 - Retire OpenClaw support: remove its default-agent menu choice and launch route.
   Existing selections and application data are preserved; choose a supported
   agent to launch through Tamlinux.

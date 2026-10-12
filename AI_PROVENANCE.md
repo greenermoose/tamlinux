@@ -268,3 +268,12 @@ tests and five menu-parser tests pass; the retirement regression rejects the
 previous launcher. Current handoffs now prioritize retained agent defaults and
 controls. No candidate was built or activated.
 [Session](docs/ai/2026-10-12-openclaw-retirement.md).
+
+## 0.4.3 retained agent defaults and microphone controls — 2026-10-12
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) transferred default-agent selection, retired
+Hermes integration and packaged the first microphone control operation. Twenty-five
+installed-helper regressions, five menu-parser checks, Nix builds/integration and
+24 final actual-output probes pass. The five-output audit reports 98 unresolved
+lexical names / 52 inherited locations; clean-host acceptance remains pending.
+[Session follow-through](docs/ai/2026-10-12-openclaw-retirement.md).

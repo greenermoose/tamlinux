@@ -14,6 +14,8 @@ The command package also delivers this direct desktop dependency chain:
 | `tam-menu-select` | Show options and return the chosen label | `tam-shell`, Perl (Encode/JSON::PP), coreutils |
 | `tam-menu-timezone` | Select and apply a system timezone, then confirm | `tam-menu-select`, `tam-notification-send`, systemd timedated and host polkit |
 | `tam-agent` | Read the default agent or launch/pick it | `tam-menu`, `tam-cmd-present`, `tam-launch-tui`, selected agent |
+| `tam-default-agent` | Read/select a retained default, installing through Mise when needed | `tam-agent`, `tam-cmd-present`, presentation terminal, coreutils, grep, Mise |
+| `tam-audio-input-set-default` | Select a microphone default and move existing capture streams | `wpctl`, `pactl`, awk; independent sound servers |
 | `tam-cmd-present` | Test command availability on PATH | Bash |
 | `tam-launch-tui` | Launch discrete command arguments in a terminal | coreutils, util-linux, UWSM `uwsm-app`, `xdg-terminal-exec`, selected terminal |
 
@@ -22,9 +24,9 @@ declared runtime tools. Quickshell, UWSM, terminal integration and authorization
 remain independent host prerequisites. The agent launcher uses the user's
 `${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/defaults/agent`; it picks no agent
 automatically. Agent-specific software and optional launch adapters must be
-declared when those choices are enabled. The default-agent setter remains to be
-transferred. OpenClaw support was retired from the product on 2026-10-12;
-an existing selection is preserved on disk but cannot launch through `tam-agent`.
+declared when those choices are enabled. The default-agent setter is now owned
+and packaged. OpenClaw and Hermes support were retired on 2026-10-12; existing
+selections are preserved on disk but cannot launch through `tam-agent`.
 
 Each command has a Makefile check/install interface and an MIT license. Run
 `make check` here for installed-command integration checks across the chain.
