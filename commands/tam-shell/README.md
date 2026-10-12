@@ -22,8 +22,9 @@ declared runtime tools. Quickshell, UWSM, terminal integration and authorization
 remain independent host prerequisites. The agent launcher uses the user's
 `${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/defaults/agent`; it picks no agent
 automatically. Agent-specific software and optional launch adapters must be
-declared when those choices are enabled. The OpenClaw adapter and default-agent
-setter have not been transferred in this batch.
+declared when those choices are enabled. The default-agent setter remains to be
+transferred. OpenClaw support was retired from the product on 2026-10-12;
+an existing selection is preserved on disk but cannot launch through `tam-agent`.
 
 Each command has a Makefile check/install interface and an MIT license. Run
 `make check` here for installed-command integration checks across the chain.

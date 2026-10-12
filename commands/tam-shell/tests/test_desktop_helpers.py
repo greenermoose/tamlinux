@@ -224,6 +224,19 @@ elif name == 'uwsm-app':
         self.assertEqual(self.run_command('tam-cmd-present', 'codex', 'qs').returncode, 0)
         self.assertNotEqual(self.run_command('tam-cmd-present', 'qs', 'absent').returncode, 0)
 
+    def test_retired_openclaw_selection_never_launches_even_when_installed(self):
+        for name in ('openclaw', 'tam-launch-openclaw'):
+            shutil.copy2(self.bin / 'codex', self.bin / name)
+        self.choose_agent('openclaw')
+        selection = self.config / 'tamlinux/defaults/agent'
+        for flags in ((), ('--inline', '--prompt', 'preserve this prompt')):
+            with self.subTest(flags=flags):
+                result = self.run_command('tam-agent', *flags)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('Unsupported default agent: openclaw', result.stderr)
+                self.assertFalse(self.log.exists(), 'retired agent must not launch any process')
+                self.assertEqual(selection.read_text(), 'openclaw\n')
+
     def test_cache_purge_removes_only_selected_plugin_code_entries(self):
         plugins = self.temp / 'plugins'
         plugins.mkdir()

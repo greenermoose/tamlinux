@@ -112,7 +112,6 @@
   "setup.default.agent.hermes": {"icon":"","iconFont":"omarchy","when":"tam-default-agent --installed hermes","label":"Hermes","checked":"[[ \"$(tam-default-agent)\" == \"hermes\" ]]","action":"tam-default-agent hermes"},
   "setup.default.agent.muse": {"icon":"󰛤","label":"Muse Code","checked":"[[ \"$(tam-default-agent)\" == \"muse\" ]]","action":"tam-default-agent muse"},
   "setup.default.agent.omp": {"icon":"","iconFont":"omarchy","label":"omp","checked":"[[ \"$(tam-default-agent)\" == \"omp\" ]]","action":"tam-default-agent omp"},
-  "setup.default.agent.openclaw": {"icon":"","iconFont":"omarchy","when":"tam-default-agent --installed openclaw","label":"OpenClaw","checked":"[[ \"$(tam-default-agent)\" == \"openclaw\" ]]","action":"tam-default-agent openclaw"},
   "setup.default.agent.opencode": {"icon":"","iconFont":"omarchy","label":"OpenCode","checked":"[[ \"$(tam-default-agent)\" == \"opencode\" ]]","action":"tam-default-agent opencode"},
   "setup.default.agent.pi": {"icon":"","iconFont":"omarchy","label":"Pi","checked":"[[ \"$(tam-default-agent)\" == \"pi\" ]]","action":"tam-default-agent pi"},
   "setup.default.browser": {"icon":"","label":"Browser","title":"Default Browser"},

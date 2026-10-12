@@ -235,6 +235,13 @@ through a demonstrated dependency or defect affecting this baseline; unrelated
 parent features stay in later work. This is a fixed acceptance target, not a
 permanent freeze on maintaining Tamlinux.
 
+**Explicit retirement, 2026-10-12:** OpenClaw support is removed from the product
+at the owner's instruction. Its default-agent menu choice, launch adapter and
+onboarding integration are outside the 0.4.3 parity/closure target. Preserve any
+existing user selection and application data; an old OpenClaw selection cannot
+launch through `tam-agent`. Independently installed application software is not
+removed by this source change. This does not retire other agent choices.
+
 An implementation enters 0.4.3 when an inventoried baseline caller needs it,
 when it is a transitive dependency of that caller, or when an independently
 reproduced defect prevents installation or a baseline workflow. Every addition

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.3 - Develop
+
+- Retire OpenClaw support: remove its default-agent menu choice and launch route.
+  Existing selections and application data are preserved; choose a supported
+  agent to launch through Tamlinux.
+
 ## 0.4.2-d - Unreleased
 
 - Verify installed shell, plugin, command, menu and tool endpoints against the exact pinned assembly outputs; reject missing or broken links and mixed candidates. Record intentional plugin selections.

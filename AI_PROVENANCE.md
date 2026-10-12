@@ -45,7 +45,7 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 | **0.4.1 package** | 0.4.1 Test candidate | Claude Code `2.1.295` (`claude-opus-5-5`) | The accepted 0.4.1 shell with its accepted plugin payloads and the product commands, packaged for deployment through `tamlinux-packages`; plugin digests equal the acceptance record. [Session](docs/ai/2026-10-09-0.4.1-package.md). |
 | **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
 | **Claude Code** (`claude`) | `2.1.289` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
-| **Codex CLI** (`codex`) | `0.162.1` (verified 2026-10-09) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
+| **Codex CLI** (`codex`) | `0.162.1` (verified 2026-10-12) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
 | **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
 | **Cursor** (`cursor`) | `3.21.16` | composer | **Implementation in this repository**: public explainer, suite branding, and 0.0.1 versioning. |
 | **OpenCode** (`opencode`) | `1.18.31` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux package specifics and shell configuration. |
@@ -259,3 +259,12 @@ retained menu/keybinding workflow dispositions and compact package-output eviden
 Sixteen installed launch regressions, 21 auditor regressions, Nix build/integration
 and 19 actual-output probes pass. Independent desktop acceptance remains pending.
 [Session](docs/ai/2026-10-10-0.4.3-menu-launch-closure.md).
+
+## 0.4.3 OpenClaw retirement — 2026-10-12
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) removed the OpenClaw menu choice and agent
+launch route on the owner's explicit instruction. Fifteen installed-helper
+tests and five menu-parser tests pass; the retirement regression rejects the
+previous launcher. Current handoffs now prioritize retained agent defaults and
+controls. No candidate was built or activated.
+[Session](docs/ai/2026-10-12-openclaw-retirement.md).
