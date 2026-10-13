@@ -26,11 +26,14 @@ the target and acceptance criteria.
 
 Version numbers are in [VERSIONING.md](../../VERSIONING.md).
 
-1. **Independent Hyprland baseline.** On the current Arch workstation,
-   accept settings/state/menu ownership (0.4), independent themes/fonts/identity
-   (0.5), then native package/system ownership and boot-dependent final removal
-   (0.6). Keep Hyprland and prove daily behavior, boot/update/recovery and sleep.
-   No portable installer or Sway backend is needed to establish this baseline.
+1. **Independent packaged Hyprland baseline.** 0.4.2-d is accepted in Run.
+   **0.4.3** delivers the preserved desktop on clean Arch/Hyprland, including
+   required themes/fonts/assets, provider/session/native/boot ownership and
+   migration/recovery. Build a reusable clean-host provisioning recipe and
+   obtain I01–I08 evidence before proposing reference Test; actual Test and
+   rollback I09 precede Run. The general portable installer remains later work.
+   [Current contract](non-theme-compatibility.md) and
+   [delivery proof](https://github.com/greenermoose/tamlinux-packages/blob/develop/docs/clean-host.md).
 2. **Sway integration and workstation package.** Only after 0.6 acceptance,
    complete both compositor adapters/helpers and install a verified Sway
    package/session beside the independent Hyprland fallback (0.7). Daily-drive
@@ -48,9 +51,10 @@ Version numbers are in [VERSIONING.md](../../VERSIONING.md).
    A musl-only problem should first be tested on Void glibc. On antiX, APT/dpkg
    owns native packages; do not mix native managers in the same root.
 
-Stage 0.6 supplies the first independent component/file/update-owner manifest.
-Build package automation from that proved baseline; do not require a portable
-installer before adopting the current host's files. Existing platform-specific
+Stage 0.4.3 requires the independent component/file/update-owner manifest and
+clean Arch installation proof. 0.4.4 adds focused input usability, 0.5 adds
+Tamarack visuals and 0.6 adds further native integration. Build general portable
+automation from that proved baseline. Existing platform-specific
 ownership remains native; observed state and secrets are external to package
 defaults. Sway packaging must preserve a recoverable Hyprland login.
 
@@ -190,7 +194,8 @@ Snapshots supplement an external backup.
 
 Try antiX Core if Void fails an essential requirement at acceptable maintenance
 cost. The daily workstation's base stays Arch until the pilot has evidence;
-its desktop is packaged at 0.7, accepted on Sway at 0.8, and drops Hyprland
+its independent Hyprland desktop is packaged at 0.4.3, Sway is integrated at
+0.7 and accepted for daily use at 0.8, and the desktop drops Hyprland
 at 1.0. Documentation changes do not bump the product version.
 
 ## Decision record
@@ -215,6 +220,11 @@ at 1.0. Documentation changes do not bump the product version.
   Every Tamlinux installation includes a C developer baseline. Product source
   and behavior stay in their owning components; this ownership extraction does
   not advance compositor, host/base, boot, or installer acceptance.
+
+- **2026-10-13 review of the revised scope:** Required independent source,
+  session/native/boot ownership and clean Arch/Hyprland installation are due
+  in 0.4.3. This supersedes the October 7 ownership deferrals. General portable
+  installer and Sway work remain later; accepted Run stays 0.4.2-d.
 
 Open: pilot hardware, disk layout, libc choice, supported existing
 distributions, the graphics bridge for Nix-built Sway, signed binary delivery, application licensing, graphics drivers/renderer,

@@ -8,29 +8,26 @@ Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
-**Status — 2026-10-08:** 0.4.0 settings/state ownership accepted after tested
-normal Run, including physical logout/login. Stage 0.3 remains complete.
-The Tamlinux shell, its session services/panels and eight 2.x plugins are the
-daily desktop on Hyprland. Remaining inherited dependencies include user
-menu extensions, theme machinery, fonts, branding,
-native packages, system files and boot ownership.
+**Status — reviewed 2026-10-13:** accepted Run is packaged **0.4.2-d**,
+product `8056bd9`, delivery `6486037`; the eight 2.x plugins remain the daily
+bar on Hyprland. 0.4.1 is released. **0.4.3 remains in Develop** with owned
+helper, capture and theme/font/assets implementations. Complete independent
+provider/session/native/application integration, migration/recovery and
+clean-host proof remain. [Current implementation](non-theme-compatibility.md)
+and [theme result](0.4.3-theme-closure.md) own the detailed evidence.
 
-The non-theme settings/state/cache migration and shared key/bar helper are
-verified; all 494 workstation configuration tests pass. The eight active
-store payloads match the exercised Test set, with temporary overrides off.
+**Next:** select exact independent providers and package effective fresh-login
+session defaults. Finish retained workflow closure and required native/boot
+ownership, then migration/recovery and clean Arch/Hyprland proof for one exact
+assembly before proposing reference Test. All ownership needed for independent
+installation belongs in **0.4.3**. Focused input usability follows at 0.4.4,
+Tamarack visuals at 0.5 and further native improvements at 0.6. Accept
+**Tamlinux on Hyprland without Omarchy** before Sway integration in 0.7.
+Prepared Sway adapters remain Develop evidence; IPC remains authoritative.
 
-**Next:** Fred tests the restored, verified 0.4.1 shadow candidate; investigate
-historical output disagreements before protocol authority. Then 0.4.2 menus and remaining
-non-theme compatibility cleanup. Then 0.5 theme/fonts/identity,
-0.6 native ownership and final removal when boot work permits it. Accept
-**Tamlinux on Hyprland without Omarchy** before Sway integration becomes the
-focus in 0.7. Prepared Sway adapters/helper candidates remain Develop evidence;
-they are not integrated daily helpers or physical monitor-recovery proof.
-
-The guarded delivery consumer is active in restored Test; consolidated plugin source
-differs from accepted installed payloads. Reconcile and test differences before
-selecting them. Generic menu/default behavior belongs here, deployment definitions
-in `tamlinux-packages`, and personal menu entries in consumer config.
+Generic menu/default behavior belongs here, deployment definitions in
+`tamlinux-packages`, and personal selections and machine values in consumer
+config. New source requires exact packaged selection and verification.
 
 ## Goal and current evidence
 
@@ -145,9 +142,10 @@ not raise the product version. Prototype Steps 1–5 below retain their names.
 | 0.1 | Session services and commands | Foundation/proof | 0.1.0–0.1.23 accepted. |
 | 0.2 | Keys/panels and package freeze | 0.1 | 0.2.0–0.2.6 accepted. |
 | 0.3 | Tamlinux daily bar and eight 2.x plugins | 0.2 | 0.3.0–0.3.3 accepted through 2026-10-07. |
-| **0.4** | Non-theme settings/state/cache and menu ownership | 0.3 | All consumers migrate coherently; bar and keys share one helper; XDG overrides, persistence, idempotence and rollback; remaining exceptions enumerated. |
-| **0.5** | Independent theme generation, fonts and identity | 0.4 | Both theme variants and supported app adapters; retained style/font functions; no inherited theme/font dependency. |
-| **0.6** | Package/system ownership and final removal | 0.5; boot handoff for removal | Independently owned native artifacts/files, fresh-login runtime audit, boot/update/recovery and sleep checks; accepted independent Hyprland daily baseline. **Gate A.** |
+| **0.4** | Packaged independent Arch/Hyprland desktop; 0.4.2-d accepted, 0.4.3 in Develop | 0.3; coordinated boot handoff | Required theme/font/assets, source/session/native/boot ownership; clean-host I01–I08, exact reference Test/rollback I09 and accepted independent Hyprland use. **Gate A.** |
+| **0.4.4** | Focused input usability | Independent 0.4.3 acceptance | Reviewed safe chords, terminal/TUI selection and paste, close controls and discoverability; preserve retained functions. |
+| **0.5** | Tamarack visual redesign | Independent 0.4.3 acceptance | New palette/token design, typography and glyph artwork, accessible variants and supported application appearance. |
+| **0.6** | Further native-source/update improvements | Independent 0.4.3 acceptance | Additional integration beyond the independent desktop; required installation ownership is already complete in 0.4.3. |
 | **0.7** | Compositor integration and Sway package/session | Gate A | Both adapters pass helper/night-light/capture checks; installed package/session verified; physical monitor recovery proved. |
 | **0.8** | Daily Sway parity with Hyprland fallback | 0.7 | All eight plugins and required workflows work on physical hardware in daily use. **Gate B.** |
 | **1.0** | Hyprland removal | Gate B; backup/recovery | Components/config removed and patches retired; Tamlinux on Arch. |

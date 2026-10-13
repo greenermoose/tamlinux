@@ -20,18 +20,19 @@ through it.
   number of their own. Development work and documentation do not raise the
   version.
 - **1.x** means Tamlinux no longer depends on [Omarchy](https://omarchy.com)
-  or Hyprland. The 0.x stages remove Omarchy first (0.6), while Hyprland keeps
+  or Hyprland. The 0.x stages remove Omarchy first (0.4.3), while Hyprland keeps
   running; **1.0.0** removes Hyprland. After 1.0.0 the same rule applies:
   stage 1.N, steps 1.N.k.
 
-**Sequence revised 2026-10-07:** settings/state and menus (0.4), theme system,
-fonts and identity (0.5), package/system ownership and boot-dependent final
-removal (0.6), then Sway integration/package (0.7) and daily proof (0.8).
-The former prepared compositor 0.4 schedule is deferred; accepted 0.0–0.3
-versions and authored prototype records retain their identifiers. This
-documentation change left the product version at 0.3.3. Fred subsequently
-accepted settings/state step 0.4.0 on 2026-10-08 and daily protocol shadow
-observation at 0.4.1 on 2026-10-09. Menu ownership follows at 0.4.2.
+**Current sequence, reviewed 2026-10-13:** 0.4.0 settings/state and 0.4.1
+protocol shadow are accepted; 0.4.1 is released. Menu ownership and packaged
+delivery are accepted in Run as **0.4.2-d**. **0.4.3** proves independent
+installation on clean Arch/Hyprland, including required theme/font/assets,
+session/native/boot ownership, migration and recovery. Focused input usability
+follows at 0.4.4, Tamarack visual redesign at 0.5 and further native integration
+at 0.6, then Sway integration/package at 0.7 and daily proof at 0.8. Required
+independence work is not deferred to 0.5/0.6. Accepted earlier versions and
+prototype records retain their identifiers; this review changes no VERSION.
 
 This scheme was adopted on 2026-10-05. Before it, minor versions were fixed
 milestones and work between them raised no number, so the steps accepted
@@ -45,9 +46,10 @@ planned but never issued.
 | **0.1** | The desktop's session services run in the Tamlinux shell beside the existing bar: notifications, on-screen display, clipboard history, emoji and image pickers, reminders, the command menu, the background, screenshots and screen capture, the polkit agent, media keys, idle and Stay Awake, battery warnings, and the lock screen; and the commands the desktop calls are Tamlinux's own. | Arch | Existing bar, Tamlinux services |
 | **0.2** | Every key binding and menu entry runs Tamlinux's own commands, including the keybinding viewer, night light, and the audio, Bluetooth, network, power, and speed-test panels. Only the bar's own keys and settings wait for 0.3, and the theme, branding, and boot-splash entries for 0.5 and the boot work. Reached 2026-10-05 (0.2.0–0.2.6). | Arch | Existing bar, Tamlinux services and panels |
 | **0.3** | The Tamlinux shell, with all eight rewritten plugins and its own tray, indicators, and status widgets, is the daily bar. | Arch | Tamlinux shell on Hyprland |
-| **0.4** | Tamlinux owns non-theme settings/state/cache, helper entry points and menu extensions. All readers/writers agree; theme and boot exceptions remain explicitly scheduled. | Arch | Tamlinux shell on Hyprland |
-| **0.5** | Tamlinux's own look and name: one theme source for every application, its own fonts, and its name on the login screen, menus, and About. | Arch | Tamlinux shell on Hyprland |
-| **0.6** | Package and system ownership are proved; Omarchy runtime dependencies are removed after independent boot/update/recovery is verified. Daily Tamlinux on Hyprland is accepted as the first proof gate. | Arch | Tamlinux on Hyprland |
+| **0.4** | Packaged desktop: 0.4.3 delivers the retained desktop on clean Arch/Hyprland with independent source/assets/session/native/boot ownership, migration/recovery and no active inherited runtime dependencies. Exact reference Test/rollback and daily acceptance close the first proof gate. | Arch | Tamlinux on Hyprland |
+| **0.4.4** | Focused input usability is reviewed and tested after independent 0.4.3 acceptance: safe chords, terminal/TUI selection and paste, close controls and discoverability. | Arch | Tamlinux on Hyprland |
+| **0.5** | Tamarack visual redesign: new tokens, typography, glyph artwork and accessible application appearance. Required independent software names/fonts/assets are already delivered in 0.4.3. | Arch | Tamlinux on Hyprland |
+| **0.6** | Further native-source/update integration beyond the complete independent 0.4.3 desktop. | Arch | Tamlinux on Hyprland |
 | **0.7** | Helpers, night light and capture pass the compositor contract on both adapters; the package installs a verified Sway session beside independent Hyprland, with physical monitor-recovery evidence. | Arch | Both sessions available |
 | **0.8** | Physical Sway daily use and all required workflow/plugin parity are accepted as the second proof gate, with independent Hyprland available as fallback. | Arch | Tamlinux on Sway |
 | **1.0** | Hyprland is removed from the workstation after accepted independent Hyprland and Sway daily-use proofs; the installed workstation package runs Sway only. | Arch | Tamlinux on Sway |
@@ -150,5 +152,6 @@ and applications started after a switch see the new number without a new
 login. A process that was already running keeps the number it started with.
 
 `$OMARCHY_CONFIG_VERSION` and `~/.config/omarchy/version` remain as
-compatibility aliases of `$TAMLINUX_VERSION` until 0.5 removes them. They are
-not a second product.
+compatibility aliases in the earlier installation. Their active software
+cutover belongs in 0.4.3's session/consumer migration with preserved recovery.
+They are not a second product; this documentation does not remove them.

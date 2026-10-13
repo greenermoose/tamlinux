@@ -1,9 +1,11 @@
 # Theme system, fonts and identity
 
-**Status — 2026-10-07:** design direction chosen; implementation planned for
-stage 0.5, after settings/menu ownership (0.4) and before native package/system
-ownership and final Omarchy removal (0.6). Hyprland remains the daily compositor.
-The Sway adapter is later integration, not a theme-system prerequisite.
+**Status — reviewed 2026-10-13:** retained theme generation, pickers, application
+adapters, fonts, assets and About/screensaver identity are implemented for
+**0.4.3**. Effective consumer wiring, native browser/boot ownership, interrupted
+migration/recovery and graphical proof remain. [Implementation and limits](0.4.3-theme-closure.md).
+**0.5** adds the chosen Tamarack visual redesign after independent 0.4.3
+acceptance. Hyprland remains the compositor; Sway integration is later.
 
 ## Purpose and design
 
@@ -33,9 +35,9 @@ An independently owned background link may be used by the background service.
 | Step | Deliverable | Evidence |
 | --- | --- | --- |
 | **0.5.0** | Token schema, dark/light variants, validation and consumer inventory | Contrast checks, invalid-input rejection, consistent shell preview. |
-| **0.5.1** | Deterministic generator, coherent apply/rollback and theme/background migration | Supported apps and every retained theme/background action work; persistence, idempotence and partial-failure recovery. |
-| **0.5.2** | Independently packaged fonts, glyphs and selection/install behavior | Readable roles and glyph coverage at supported scales; no legacy-font dependence. |
-| **0.5.3** | Mark/wordmark, menu/bar, login, About and screensaver identity | Actual surfaces and fallbacks verified; inherited branding/version aliases retired. |
+| **0.5.1** | Extend the owned generator/adapters for Tamarack tokens | Consistent dark/light application output, reload and recovery; baseline generation/migration is required in 0.4.3. |
+| **0.5.2** | New typography and glyph artwork | Readable roles and glyph coverage at supported scales; packaged independent baseline fonts and selection/install behavior are required in 0.4.3. |
+| **0.5.3** | New mark/wordmark and visual identity | Actual surfaces and fallbacks verified; required owned software identities and retained branding functions are delivered in 0.4.3. |
 
 Generate supported shell, Hyprland, terminal, btop, Neovim, GTK/Qt and Chromium
 output only after proving each adapter's format and reload behavior. Inventory
@@ -55,8 +57,9 @@ does not cause unnecessary writes or restarts. No background theme poller.
 
 Privileged login/boot output belongs to installed system owners, separate from
 ordinary user theme writes. Boot assets are integrated with the boot project
-and its recovery checks before final removal at 0.6. Theme acceptance cannot
-claim a pending boot change was applied. Host OS metadata remains accurate.
+and its recovery checks for independent installation/removal at 0.4.3.
+Theme acceptance cannot claim a pending boot change was applied. Host OS
+metadata remains accurate.
 
 Test actual apps, new terminal windows where needed, shell restart and login,
 dark/light and font changes and return, custom assets, missing glyph fallback
