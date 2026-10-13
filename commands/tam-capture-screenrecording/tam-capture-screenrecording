@@ -1,0 +1,395 @@
+#!/bin/bash
+
+# tam-capture-screenrecording — start or stop a screen recording.
+#
+#   tam-capture-screenrecording [--fullscreen] [--with-desktop-audio] [--with-microphone-audio]
+#     [--with-webcam] [--webcam-device=<device>] [--webcam-size=<small|medium|large>]
+#     [--resolution=<size>] [--stop-recording]
+#
+# Ported from omarchy 4.0.4 (omarchy-capture-screenrecording) for plan 18
+# R4.11. It picks with tam-capture-region, lists cameras with
+# tam-capture-webcam-list, sizes the overlay with tam-capture-webcam-resize,
+# and reads TAMLINUX_SCREENRECORD_DIR, TAMLINUX_SCREENRECORD_USE_PORTAL, and
+# TAMLINUX_SCREENRECORD_DEBUG. Running it while a recording is going stops it.
+#
+# Starting or stopping a recording refreshes the recording indicator on every
+# screen's bar (tamlinux-shell refreshIndicators); the indicator's click stops
+# a recording with this script.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Env: TAMLINUX_SCREENRECORD_USE_PORTAL=true skips the built-in slurp picker and
+# uses gpu-screen-recorder's xdg-desktop-portal capture backend instead. The
+# portal backend was originally added (omarchy PR #3401) for HDR-aware capture, support
+# for monitors driven by external GPUs, and window capture — enable it if any
+# of those matter to you. Off by default because the portal path can fail EGL
+# DMA-BUF modifier import on some configurations, leaving recording unable to
+# start.
+#
+# Env: TAMLINUX_SCREENRECORD_DEBUG=true appends gpu-screen-recorder's stderr (and
+# its picker target) to the private capture runtime directory's debug.log so
+# users can attach a log when reporting capture failures.
+
+set -o pipefail
+user_dirs="${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
+[[ -f $user_dirs ]] && source "$user_dirs"
+OUTPUT_DIR="${TAMLINUX_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}}"
+
+# Shared by the lifecycle writer, status readers and webcam position reader.
+CAPTURE_DIR="${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}}/tamlinux-capture"
+umask 077
+[[ ! -L $CAPTURE_DIR ]] || exit 1
+mkdir -p -- "$CAPTURE_DIR" || exit 1
+[[ -O $CAPTURE_DIR && $(stat -c %a "$CAPTURE_DIR") == 700 ]] || {
+  echo "Capture runtime directory must be private and owned by this user" >&2; exit 1;
+}
+RECORDING_FILE="$CAPTURE_DIR/filename"
+RECORDER_PID_FILE="$CAPTURE_DIR/recorder"
+WEBCAM_PID_FILE="$CAPTURE_DIR/webcam"
+REGION_FILE="$CAPTURE_DIR/region"
+LOG_FILE=$([[ ${TAMLINUX_SCREENRECORD_DEBUG:-false} == true ]] && echo "$CAPTURE_DIR/debug.log" || echo /dev/null)
+
+# A PID plus Linux start tick distinguishes our launched child from a recycled
+# PID. Nix wrapper execs preserve both, regardless of argv's store path.
+process_token() {
+  local pid=$1 line fields
+  [[ $pid =~ ^[0-9]+$ && -r /proc/$pid/stat ]] || return 1
+  IFS= read -r line <"/proc/$pid/stat" || return 1
+  read -ra fields <<<"${line##*) }"
+  [[ ${fields[0]} != Z && ${fields[19]} =~ ^[0-9]+$ ]] || return 1
+  printf '%s' "${fields[19]}"
+}
+
+owned_process() {
+  local file=$1 pid token extra current
+  [[ -f $file ]] || return 1
+  read -r pid token extra <"$file" || return 1
+  [[ -z $extra && $token =~ ^[0-9]+$ ]] || return 1
+  current=$(process_token "$pid") || return 1
+  [[ $current == "$token" ]] && kill -0 "$pid" 2>/dev/null || return 1
+  printf '%s' "$pid"
+}
+
+remember_process() {
+  local file=$1 pid=$2 token
+  token=$(process_token "$pid") || return 1
+  printf '%s %s\n' "$pid" "$token" >"$file.new" && mv -f -- "$file.new" "$file"
+}
+
+# Read-only status has no output and returns 0 while our recorder is alive.
+if [[ ${1:-} == --status && $# == 1 ]]; then
+  owned_process "$RECORDER_PID_FILE" >/dev/null
+  exit $?
+fi
+
+# Serialize start/stop so repeated keys cannot start two recorders or race state.
+exec 9>"$CAPTURE_DIR/lock"
+flock -n 9 || { echo "Capture action already in progress" >&2; exit 1; }
+
+DESKTOP_AUDIO="false"
+MICROPHONE_AUDIO="false"
+WEBCAM="false"
+WEBCAM_DEVICE=""
+WEBCAM_SIZE="medium"
+RESOLUTION=""
+FULLSCREEN="false"
+STOP_RECORDING="false"
+
+for arg in "$@"; do
+  case "$arg" in
+  --with-desktop-audio) DESKTOP_AUDIO="true" ;;
+  --with-microphone-audio) MICROPHONE_AUDIO="true" ;;
+  --with-webcam) WEBCAM="true" ;;
+  --webcam-device=*) WEBCAM_DEVICE="${arg#*=}" ;;
+  --webcam-size=*) WEBCAM_SIZE="${arg#*=}" ;;
+  --resolution=*) RESOLUTION="${arg#*=}" ;;
+  --fullscreen) FULLSCREEN="true" ;;
+  --stop-recording) STOP_RECORDING="true" ;;
+  *) echo "Unknown recording option: $arg" >&2; exit 1 ;;
+  esac
+done
+
+case $WEBCAM_SIZE in
+small | medium | large) ;;
+*)
+  echo "Invalid webcam size: $WEBCAM_SIZE (expected small, medium, or large)" >&2
+  exit 1
+  ;;
+esac
+
+start_webcam_overlay() {
+  cleanup_webcam
+
+  # Auto-detect first available webcam if none specified
+  if [[ -z $WEBCAM_DEVICE ]]; then
+    WEBCAM_DEVICE=$(tam-capture-webcam-list | sed -n '1s/[[:space:]].*//p')
+    if [[ -z $WEBCAM_DEVICE ]]; then
+      tam-notification-send -u critical -t 3000 "No webcam devices found"
+      return 1
+    fi
+  fi
+
+  # Try preferred 16:9 resolutions in order, use first available
+  local preferred_resolutions=("640x360" "1280x720" "1920x1080")
+  local capture_options="framerate=30"
+  local available_formats=$(v4l2-ctl --list-formats-ext -d "$WEBCAM_DEVICE" 2>/dev/null)
+
+  for resolution in "${preferred_resolutions[@]}"; do
+    if echo "$available_formats" | grep -q "$resolution"; then
+      capture_options="video_size=$resolution,$capture_options"
+      break
+    fi
+  done
+
+  mpv "av://v4l2:$WEBCAM_DEVICE" \
+    --profile=low-latency --untimed --no-cache \
+    --demuxer-lavf-o="$capture_options" \
+    '--vf=lavfi=[crop=ih*8/9:ih]' \
+    --title="WebcamOverlay" --wayland-app-id="WebcamOverlay-$WEBCAM_SIZE" \
+    --no-border --no-audio --no-osc --osd-level=0 \
+    --really-quiet 9>&- &>/dev/null &
+  local webcam_pid=$!
+  remember_process "$WEBCAM_PID_FILE" "$webcam_pid" || return 1
+
+  # The move has to settle before gpu-screen-recorder starts, or the camera is
+  # recorded sliding into its corner. Waiting for the map is what the blind
+  # second was partly guessing at, so the remainder is trimmed to hold the
+  # pre-capture delay where it was: starting later costs the first words spoken.
+  local waited=0
+  while ((waited < 40)) && ! hyprctl clients -j | jq -e --argjson pid "$webcam_pid" 'any(.[]; .title == "WebcamOverlay" and .pid == $pid)' >/dev/null 2>&1; do
+    owned_process "$WEBCAM_PID_FILE" >/dev/null || return 1
+    sleep 0.05
+    ((waited++))
+  done
+  if ((waited == 40)) || ! owned_process "$WEBCAM_PID_FILE" >/dev/null; then
+    echo "Webcam overlay failed to map" >&2
+    return 1
+  fi
+
+  [[ ${1:-} == region:* ]] && echo "${1#region:}" >"$REGION_FILE"
+  tam-capture-webcam-resize "$WEBCAM_SIZE"
+
+  sleep 0.6
+}
+
+cleanup_webcam() {
+  local pid
+  if pid=$(owned_process "$WEBCAM_PID_FILE"); then kill "$pid" 2>/dev/null || true; fi
+  rm -f -- "$WEBCAM_PID_FILE"
+  rm -f "$REGION_FILE"
+}
+
+focused_monitor() {
+  hyprctl monitors -j | jq -r '.[] | select(.focused == true).name'
+}
+
+default_resolution() {
+  local width height
+  read -r width height < <(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | "\(.width) \(.height)"')
+  if ((width > 3840 || height > 2160)); then
+    echo "3840x2160"
+  else
+    echo "0x0"
+  fi
+}
+
+# Echoes "monitor:NAME" when the selection matches an entire monitor (prefer
+# -w <monitor> over a region capture — same kms backend, but no scaling math
+# and full native res), otherwise "region:WxH+X+Y". Returns non-zero if the
+# user cancelled the picker.
+select_capture_target() {
+  local target
+  target=$(tam-capture-region smart --match-monitor) || return 1
+
+  if [[ $target == monitor:* ]]; then
+    echo "$target"
+    return
+  fi
+
+  [[ $target =~ ^(-?[0-9]+),(-?[0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]] || return 1
+
+  # gpu-screen-recorder wants region geometry in the compositor's logical
+  # coordinate space — same space slurp returns — so pass the values through
+  # untouched. (gsr scales to physical pixels itself based on the monitor.)
+  echo "region:${BASH_REMATCH[3]}x${BASH_REMATCH[4]}+${BASH_REMATCH[1]}+${BASH_REMATCH[2]}"
+}
+
+start_screenrecording() {
+  local capture_args=()
+  local target
+
+  # Opt-in path for HDR, external-GPU monitors, and window capture (all things
+  # the portal backend supports and the kms backend doesn't). Default flow uses
+  # slurp + the kms backend, which avoids the EGL DMA-BUF modifier import
+  # failures the portal path can hit on some configurations.
+  if [[ $FULLSCREEN == "true" ]]; then
+    target="monitor:$(focused_monitor)"
+    capture_args=(-w "${target#monitor:}" -s "${RESOLUTION:-$(default_resolution)}")
+  elif [[ ${TAMLINUX_SCREENRECORD_USE_PORTAL:-false} == "true" ]]; then
+    target="portal"
+    capture_args=(-w portal -s "${RESOLUTION:-$(default_resolution)}")
+  else
+    target=$(select_capture_target) || return 1
+
+    case $target in
+    monitor:*)
+      capture_args=(-w "${target#monitor:}" -s "${RESOLUTION:-$(default_resolution)}")
+      ;;
+    region:*)
+      capture_args=(-w "${target#region:}")
+      [[ -n $RESOLUTION ]] && capture_args+=(-s "$RESOLUTION")
+      ;;
+    esac
+  fi
+
+  if [[ $WEBCAM == "true" ]]; then start_webcam_overlay "$target" || return 1; fi
+
+  [[ -d $OUTPUT_DIR ]] || {
+    tam-notification-send -u critical -t 3000 "Screen recording directory does not exist: $OUTPUT_DIR" || true
+    return 1
+  }
+  local filename
+  filename=$(mktemp "$OUTPUT_DIR/screenrecording-$(date +'%Y-%m-%d_%H-%M-%S')-XXXXXX.mp4") || return 1
+  local audio_devices=""
+  local audio_args=()
+
+  [[ $DESKTOP_AUDIO == "true" ]] && audio_devices+="default_output"
+
+  if [[ $MICROPHONE_AUDIO == "true" ]]; then
+    # Merge audio tracks into one - separate tracks only play one at a time in most players
+    [[ -n $audio_devices ]] && audio_devices+="|"
+    audio_devices+="default_input"
+  fi
+
+  [[ -n $audio_devices ]] && audio_args+=(-a "$audio_devices" -ac aac)
+
+  echo "$(date '+%F %T') target: $target" >>"$LOG_FILE"
+  gpu-screen-recorder "${capture_args[@]}" -k auto -f 60 -fm cfr -fallback-cpu-encoding yes -o "$filename" "${audio_args[@]}" 9>&- </dev/null >/dev/null 2>>"$LOG_FILE" &
+  local pid=$! count=0
+  if ! remember_process "$RECORDER_PID_FILE" "$pid"; then
+    wait "$pid" 2>/dev/null
+    rm -f -- "$filename"
+    return 1
+  fi
+  printf '%s\n' "$filename" >"$RECORDING_FILE"
+
+  # Empty reservation alone does not prove the backend started. Bound waiting
+  # for output to five seconds, then clean up our child and partial output.
+  while owned_process "$RECORDER_PID_FILE" >/dev/null && [[ ! -s $filename ]] && ((count < 50)); do
+    sleep 0.1
+    count=$((count + 1))
+  done
+  if owned_process "$RECORDER_PID_FILE" >/dev/null && [[ -s $filename ]]; then
+    toggle_screenrecording_indicator
+    return 0
+  fi
+  terminate_recorder
+  rm -f -- "$filename" "$RECORDING_FILE" "$RECORDER_PID_FILE"
+  echo "Screen recording backend failed to start" >&2
+  return 1
+}
+
+terminate_recorder() {
+  local pid count=0
+  pid=$(owned_process "$RECORDER_PID_FILE") || return 0
+  kill -SIGINT "$pid" 2>/dev/null || true
+  while owned_process "$RECORDER_PID_FILE" >/dev/null && ((count < 50)); do
+    sleep 0.1
+    count=$((count + 1))
+  done
+  if owned_process "$RECORDER_PID_FILE" >/dev/null; then
+    kill -9 "$pid" 2>/dev/null || true
+    return 1
+  fi
+}
+
+stop_screenrecording() {
+  local filename preview
+  if ! terminate_recorder; then
+    cleanup_webcam
+    rm -f -- "$RECORDER_PID_FILE" "$RECORDING_FILE"
+    toggle_screenrecording_indicator
+    tam-notification-send -u critical -t 5000 "Screen recording error" "Recording process had to be force-killed. Video may be corrupted." || true
+    return 1
+  fi
+  rm -f -- "$RECORDER_PID_FILE"
+  cleanup_webcam
+  toggle_screenrecording_indicator
+  filename=$(cat "$RECORDING_FILE" 2>/dev/null)
+  [[ -f $filename ]] || { rm -f -- "$RECORDING_FILE"; return 1; }
+  finalize_recording
+  printf '%s\n' "$filename"
+  preview="${filename%.mp4}-preview.png"
+  ffmpeg -y -i "$filename" -ss 00:00:00.1 -vframes 1 -q:v 2 "$preview" -loglevel quiet 2>/dev/null || true
+  tam-notification-send "Screen recording saved" "Open with Super + Alt + , (or click this)" \
+    -t 10000 --image "$preview" --exec mpv -- "$filename" || true
+  (sleep 2; rm -f -- "$preview") 9>&- >/dev/null 2>&1 &
+  rm -f -- "$RECORDING_FILE"
+}
+
+# The recording dot on every screen's bar.
+toggle_screenrecording_indicator() {
+  tam-shell -q tamlinux-shell refreshIndicators || true
+}
+
+screenrecording_active() {
+  owned_process "$RECORDER_PID_FILE" >/dev/null
+}
+
+finalize_recording() {
+  local latest
+  latest=$(cat "$RECORDING_FILE" 2>/dev/null)
+  [[ -f $latest ]] || return
+
+  # Re-encode only when the first GOP contains discardable warmup packets — stream copy can't
+  # trim those (it rewinds to the keyframe). Clean recordings stay on the fast stream-copy path.
+  local video_codec=(-c:v copy)
+  if ffprobe -v error -select_streams v:0 -read_intervals %+0.2 -show_entries packet=flags -of csv=p=0 "$latest" 2>/dev/null | grep -q D; then
+    video_codec=(-c:v libx264 -preset veryfast -crf 20)
+  fi
+
+  # Trim the first frame, and normalize audio to -14 LUFS if present, in a single pass
+  local args=(-y -ss 0.1 -i "$latest" "${video_codec[@]}")
+  if ffprobe -v error -select_streams a -show_entries stream=codec_type -of csv=p=0 "$latest" 2>/dev/null | grep -q audio; then
+    # Hard-mute the first 400ms to drop the PipeWire capture-open pop (a near-clipping
+    # transient around 130-200ms that a gentle fade-in can't attenuate enough), then a
+    # 50ms fade avoids a click at the boundary before loudnorm normalizes the rest.
+    args+=(-af "volume=enable='lt(t,0.4)':volume=0,afade=t=in:st=0.4:d=0.05,loudnorm=I=-14:TP=-1.5:LRA=11")
+  fi
+
+  local processed="${latest%.mp4}-processed.mp4"
+  if ffmpeg "${args[@]}" "$processed" -loglevel quiet 2>/dev/null; then
+    mv "$processed" "$latest"
+  else
+    rm -f "$processed"
+  fi
+}
+
+if screenrecording_active; then
+  stop_screenrecording
+elif [[ $STOP_RECORDING == "true" ]]; then
+  exit 1
+else
+  cleanup_webcam
+  rm -f -- "$REGION_FILE" "$RECORDER_PID_FILE" "$RECORDING_FILE"
+  if ! start_screenrecording; then cleanup_webcam; exit 1; fi
+fi

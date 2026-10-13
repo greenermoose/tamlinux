@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-13 | 0.4.3 packaged capture chain and tool/decoder verification | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-13-0.4.3-capture-closure.md) |
 | 2026-10-12 | 0.4.3 independence gate and compiled/QML evidence | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-12-0.4.3-independence-gate.md) |
 | 2026-10-12 | 0.4.3 display and power helper closure | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-12-0.4.3-display-power-closure.md) |
 | 2026-10-12 | Network/power controls and paired setters | Codex CLI `0.162.1` | `gpt-6.1-sol` | [2026-10-12-0.4.3-control-closure.md](2026-10-12-0.4.3-control-closure.md) |

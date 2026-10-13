@@ -1,6 +1,6 @@
 // Tamlinux default menu. Ported from Omarchy 4.0.4 (MIT).
 // Copyright (c) David Heinemeier Hansson; see LICENSE-omarchy.
-// Theme/font/branding and boot actions retain their stage 0.5/D100 owners.
+// Theme/font/branding and boot actions await required 0.4.3 product/native ownership.
 {
   "apps": {"icon":"󰀻","label":"Apps","aliases":["app","applications"],"provider":"apps"},
   "learn": {"icon":"󰧑","label":"Learn"},
@@ -30,7 +30,7 @@
   "trigger.reminder": {"icon":"󰢌","label":"Reminder","aliases":["reminder"]},
   "trigger.capture": {"icon":"","label":"Capture","aliases":["capture","screenshot","screenrecord","screen-record","screenrecording"]},
   "trigger.capture.screenshot": {"icon":"","label":"Screenshot","action":"tam-capture-screenshot"},
-  "trigger.capture.screenrecord.stop": {"icon":"","label":"Stop Screenrecording","when":"pgrep -f '^gpu-screen-recorder'","action":"tam-capture-screenrecording --stop-recording"},
+  "trigger.capture.screenrecord.stop": {"icon":"","label":"Stop Screenrecording","when":"tam-capture-screenrecording --status","action":"tam-capture-screenrecording --stop-recording"},
   "trigger.capture.screenrecord": {"icon":"","label":"Screenrecord"},
   "trigger.capture.text": {"icon":"󰴑","label":"Text","action":"tam-capture-text"},
   "trigger.capture.qr": {"icon":"󰐲","label":"QR Code","action":"tam-capture-qr"},

@@ -19,7 +19,7 @@ BarIndicator {
 
   function refresh() {
     if (!root.bar || statusProc.running) return
-    statusProc.command = ["pgrep", "--quiet", "-f", "^gpu-screen-recorder"]
+    statusProc.command = ["tam-capture-screenrecording", "--status"]
     statusProc.running = true
   }
 

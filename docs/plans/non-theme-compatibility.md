@@ -490,3 +490,22 @@ Next work after this slice: theme/assets/branding and capture closure; independe
 selected native providers with packaged session defaults; executable migration and
 clean-host provisioning/runtime/network/physical collectors. Keep the exact
 artifact tuple and capability matrix stable through each evidence run.
+
+## Capture chain packaged — 2026-10-13
+
+The retained region/screenshot/recording/webcam/OCR/QR chain and owned annotation
+adapter are implemented with delivered tools and English OCR data. Both menu and
+bar read the recorder's PID/start-tick status. Failed/cancelled capture and
+backend startup return useful outcomes without lost clipboard contents or leaked
+freezes; requested webcam failure prevents recording. Geometry formulas remain
+unchanged. Native Tensaku and compositor/portal/DRM/KMS/camera/driver ownership
+and physical capture still require proof.
+
+21 capture regressions, 429 desktop checks (two skips), all 50 delivery unit
+checks, offline build/integration and 61 installed output probes pass. The
+real packaged OCR and QR decoders recognize fixed offline fixtures. Audit:
+382 runtime files, 61 unresolved lexical names, 51 inherited locations and false
+readiness. [Source transfer, exact output evidence and next work](0.4.3-capture-closure.md).
+Theme/background/font/assets/branding, independent providers and session/native
+defaults, executable mutable migration/recovery and clean-host I01–I09 remain.
+No candidate, pin, active desktop or Test/Run/Release transition changed.

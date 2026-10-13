@@ -1,0 +1,118 @@
+#!/bin/bash
+
+set -o pipefail
+
+# tam-capture-screenshot — take a screenshot.
+#
+#   tam-capture-screenshot [smart|region|windows|fullscreen] [slurp|copy|save] [--editor=<name>]
+#
+# Ported from omarchy 4.0.4 (omarchy-capture-screenshot) for plan 18 R4.9.
+# It picks with tam-capture-region and reads TAMLINUX_SCREENSHOT_DIR and
+# TAMLINUX_SCREENSHOT_EDITOR. Pressing the binding again while the picker is
+# open cancels it.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+user_dirs="${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
+[[ -f $user_dirs ]] && source "$user_dirs"
+OUTPUT_DIR="${TAMLINUX_SCREENSHOT_DIR:-${XDG_PICTURES_DIR:-$HOME/Pictures}}"
+
+if [[ ! -d $OUTPUT_DIR ]]; then
+  mkdir -p "$OUTPUT_DIR"
+  tam-notification-send "Created screenshot directory: $OUTPUT_DIR" -t 2000
+fi
+
+SCREENSHOT_EDITOR="${TAMLINUX_SCREENSHOT_EDITOR:-tam-capture-edit}"
+
+# Parse --editor flag from any position
+ARGS=()
+for arg in "$@"; do
+  if [[ $arg == --editor=* ]]; then
+    SCREENSHOT_EDITOR="${arg#--editor=}"
+  else
+    ARGS+=("$arg")
+  fi
+done
+set -- "${ARGS[@]}"
+
+MODE="${1:-smart}"
+PROCESSING="${2:-slurp}"
+case $MODE in smart|region|windows|fullscreen) ;; *) echo "Invalid capture mode" >&2; exit 1 ;; esac
+case $PROCESSING in slurp|copy|save) ;; *) echo "Invalid screenshot processing mode" >&2; exit 1 ;; esac
+(( $# <= 2 )) || exit 1
+
+pkill -x slurp && exit 0
+
+# The picker leaves the screen freeze running (PID on its first output line)
+# so grim captures the frozen overlay rather than live content shifting
+# during teardown.
+#
+# Software-composited cursors (Hyprland's fallback on GPUs without working
+# hardware cursors) are baked into the frames grim captures, so force
+# hardware cursors until after grim runs and restore the setting on exit.
+NO_HW_CURSORS=$(hyprctl getoption cursor:no_hardware_cursors -j | jq -er '.int | select(type == "number")') || exit 1
+[[ $NO_HW_CURSORS =~ ^[0-9]+$ ]] || exit 1
+
+set_no_hw_cursors() {
+  hyprctl eval "hl.config({ cursor = { no_hardware_cursors = $1 } })" &>/dev/null ||
+    hyprctl keyword cursor:no_hardware_cursors "$1" &>/dev/null
+}
+
+cleanup() {
+  [[ -n $FREEZE_PID ]] && kill $FREEZE_PID 2>/dev/null
+  [[ -n $COPY_FILE ]] && rm -f -- "$COPY_FILE"
+  set_no_hw_cursors "$NO_HW_CURSORS"
+}
+trap cleanup EXIT
+
+set_no_hw_cursors 0
+{ read -r FREEZE_PID; read -r SELECTION; } < <(tam-capture-region "$MODE" --keep-freeze)
+
+[[ -z $SELECTION ]] && exit 0
+
+FILEPATH=""
+if [[ $PROCESSING != copy ]]; then
+  FILEPATH=$(mktemp "$OUTPUT_DIR/screenshot-$(date +'%Y-%m-%d_%H-%M-%S')-XXXXXX.png") || exit 1
+fi
+
+case "$PROCESSING" in
+  slurp)
+    grim -g "$SELECTION" "$FILEPATH" || { rm -f -- "$FILEPATH"; exit 1; }
+    echo "$FILEPATH"
+    wl-copy --type image/png <"$FILEPATH" || exit 1
+
+    # Best-effort: the screenshot is already saved and on the clipboard, so a
+    # notification outage must not report the capture itself as failed.
+    tam-notification-send "Screenshot saved to clipboard and file" "Edit with Super + Alt + , (or click this)" \
+      --image "$FILEPATH" \
+      --exec "$SCREENSHOT_EDITOR" "$FILEPATH" || true
+    ;;
+  copy)
+    COPY_FILE=$(mktemp "${TMPDIR:-/tmp}/tamlinux-screenshot-XXXXXX.png") || exit 1
+    grim -g "$SELECTION" "$COPY_FILE" || exit 1
+    wl-copy --type image/png <"$COPY_FILE"
+    ;;
+  save)
+    grim -g "$SELECTION" "$FILEPATH" || { rm -f -- "$FILEPATH"; exit 1; }
+    echo "$FILEPATH"
+    ;;
+esac

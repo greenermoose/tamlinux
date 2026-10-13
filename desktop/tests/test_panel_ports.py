@@ -66,6 +66,7 @@ def port_line(line: str) -> str:
     if "WlrLayershell.namespace:" in line or "layerNamespace:" in line:
         line = line.replace('"omarchy-', '"tamlinux-')
     line = line.replace("omarchy.", "tamlinux.")
+    line = line.replace("omarchy_speaker_tuning", "tamlinux_speaker_tuning")
     line = CMD_PATTERN.sub(r"tam-\1", line)
     return line
 
@@ -197,7 +198,7 @@ class PanelPortTests(unittest.TestCase):
                     f"Expected {new_path} to differ from original",
                 )
 
-    def test_only_speaker_tuning_preserves_omarchy_name(self):
+    def test_panel_bodies_use_owned_names(self):
         matches: list[tuple[str, str]] = []
         for new_path, _, _ in PANEL_FILES:
             lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
@@ -205,14 +206,11 @@ class PanelPortTests(unittest.TestCase):
             for line in body.splitlines():
                 if re.search(r"omarchy", line, re.IGNORECASE):
                     matches.append((new_path, line.strip()))
-        self.assertEqual(
-            len(matches),
-            1,
-            f"Expected exactly 1 omarchy match in bodies, got: {matches}",
-        )
-        matched_file, matched_line = matches[0]
-        self.assertEqual(matched_file, "desktop/shell/panels/audio/Panel.qml")
-        self.assertIn("omarchy_speaker_tuning", matched_line)
+        self.assertEqual(matches, [], f"Inherited active panel names: {matches}")
+        panel = (ROOT / "desktop/shell/panels/audio/Panel.qml").read_text()
+        writer = (ROOT / "commands/tam-audio-tuning/tam-audio-tuning").read_text()
+        self.assertIn("tamlinux_speaker_tuning", panel)
+        self.assertIn("sink_name=tamlinux_speaker_tuning", writer)
 
     def test_bodies_drop_omarchy_path_and_remap_qs_imports(self):
         omarchy_present = OMARCHY.is_dir()

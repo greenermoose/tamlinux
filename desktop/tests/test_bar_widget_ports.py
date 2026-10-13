@@ -43,6 +43,10 @@ def port_line(line: str) -> str:
     line = line.replace("ownedByOmarchy", "ownedByShell")
     line = line.replace("omarchy's shell.qml", "the shell's shell.qml")
     line = line.replace("omarchy.", "tamlinux.")
+    # 0.4.3's packaged recorder owns the PID/start-tick lifecycle. Store-path
+    # argv cannot be detected by the inherited anchored process-name query.
+    line = line.replace('["pgrep", "--quiet", "-f", "^gpu-screen-recorder"]',
+                        '["tam-capture-screenrecording", "--status"]')
     line = CMD_PATTERN.sub(r"tam-\1", line)
     return line
 
