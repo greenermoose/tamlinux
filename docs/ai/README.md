@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-12 | Network/power controls and paired setters | Codex CLI `0.162.1` | `gpt-6.1-sol` | [2026-10-12-0.4.3-control-closure.md](2026-10-12-0.4.3-control-closure.md) |
 | 2026-10-12 | 0.4.3 retained audio source and recovery | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-12-0.4.3-audio-output-closure.md) |
 | 2026-10-12 | 0.4.3 retired integrations, agent defaults and microphone controls | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-12-openclaw-retirement.md) |
 | 2026-10-10 | 0.4.3 menu disposition and browser launch closure | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-10-0.4.3-menu-launch-closure.md) |

@@ -1,0 +1,114 @@
+#!/bin/bash
+
+# tam-powerprofiles-set — set the power profile for mains (ac) or battery
+# power, and remember a chosen one for that power source. With no profile it
+# restores the remembered one, else performance on ac (when offered) and
+# balanced otherwise. autodetect (the default) asks UPower which source is in
+# use. The Tamlinux shell's battery service runs it when the power source
+# changes, the menu's power-profile list when a profile is picked, and
+# autostart at login.
+#
+# Usage: tam-powerprofiles-set [autodetect|ac|battery] [power-saver|balanced|performance]
+#
+# The remembered profiles are files named ac and battery in
+# TAMLINUX_POWERPROFILES_STATE_DIR (default
+# ${XDG_STATE_HOME:-~/.local/state}/tamlinux/powerprofiles).
+#
+# Ported from omarchy 4.0.4 (omarchy-powerprofiles-set) for plan 18 R4.12;
+# it lists profiles with tam-powerprofiles-list.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+action="${1:-autodetect}"
+requested_profile="${2:-}"
+
+usage() {
+  echo "Usage: tam-powerprofiles-set [autodetect|ac|battery] [power-saver|balanced|performance]" >&2
+  exit 1
+}
+
+(( $# <= 2 )) || usage
+
+case "$action" in
+  autodetect)
+    # Use the same signal as the battery service (UPower.onBattery) so every entry point
+    # saves and restores the profile under the same ac/battery key.
+    if [[ $(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower OnBattery 2>/dev/null) == "b true" ]]; then
+      action=battery
+    else
+      action=ac
+    fi
+    ;;
+  ac | battery) ;;
+  *) usage ;;
+esac
+
+available=$(tam-powerprofiles-list) || {
+  echo "Power profile service is unavailable." >&2
+  exit 1
+}
+mapfile -t profiles <<<"$available"
+
+profile_available() {
+  [[ " ${profiles[*]} " == *" $1 "* ]]
+}
+
+state_dir="${TAMLINUX_POWERPROFILES_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/powerprofiles}"
+state_file="$state_dir/$action"
+
+if [[ -n $requested_profile ]]; then
+  profile_available "$requested_profile" || {
+    echo "Power profile is not available: $requested_profile" >&2
+    exit 1
+  }
+
+  profile="$requested_profile"
+elif [[ -r $state_file ]]; then
+  profile=$(<"$state_file")
+fi
+
+if [[ -z ${profile:-} ]] || ! profile_available "$profile"; then
+  if [[ $action == "ac" ]] && profile_available performance; then
+    profile=performance
+  else
+    profile=balanced
+  fi
+fi
+
+profile_available "$profile" || {
+  echo "No usable power profile is available." >&2
+  exit 1
+}
+
+if [[ -n $requested_profile ]]; then
+  previous=$(powerprofilesctl get) || exit 1
+  tam-settings-preserve powerprofiles --file "$state_file" \
+    --value active-profile "$previous" --value source "$action" >/dev/null || exit 1
+fi
+
+powerprofilesctl set "$profile" || exit
+
+if [[ -n $requested_profile ]]; then
+  umask 077
+  mkdir -p "$state_dir" || exit 1
+  tmp=$(mktemp "$state_file.XXXXXX") || exit 1
+  printf '%s\n' "$requested_profile" >"$tmp" && mv "$tmp" "$state_file" || exit 1
+fi

@@ -31,7 +31,7 @@ Item {
   readonly property string stayAwakeStatePath: {
     var configured = String(Quickshell.env("TAMLINUX_STAY_AWAKE_FILE") || "")
     if (configured.charAt(0) === "/" && configured.length > 1 && configured.charAt(configured.length - 1) !== "/") return configured
-    return root.home + "/.local/state/tamlinux/stay-awake"
+    return (Quickshell.env("XDG_STATE_HOME") || root.home + "/.local/state") + "/tamlinux/stay-awake"
   }
   readonly property string stayAwakeStateDir: stayAwakeStatePath.substring(0, stayAwakeStatePath.lastIndexOf("/")) || "/"
   readonly property int screensaverTimeoutSeconds: IdleModel.secondsFromConfig(Quickshell.env("TAMLINUX_IDLE_SCREENSAVER"))
@@ -203,9 +203,8 @@ Item {
       return
     }
 
-    stayAwakeStateWriter.command = value
-      ? ["bash", "-c", 'mkdir -p -- "$1" && touch -- "$2"', "bash", root.stayAwakeStateDir, root.stayAwakeStatePath]
-      : ["rm", "-f", "--", root.stayAwakeStatePath]
+    stayAwakeStateWriter.command = ["env", "TAMLINUX_STAY_AWAKE_FILE=" + root.stayAwakeStatePath,
+      "tam-toggle-idle", value ? "stay-awake" : "allow-idle"]
     stayAwakeStateWriter.running = true
   }
 

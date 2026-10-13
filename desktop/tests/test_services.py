@@ -284,9 +284,10 @@ class ServiceSourceTests(unittest.TestCase):
             self.assertIn("function " + method, text)
         # Stay Awake is one file, named by the environment, written by argument.
         self.assertIn('Quickshell.env("TAMLINUX_STAY_AWAKE_FILE")', text)
-        self.assertIn('"/.local/state/tamlinux/stay-awake"', text)
-        self.assertIn('\'mkdir -p -- "$1" && touch -- "$2"\', "bash", root.stayAwakeStateDir, root.stayAwakeStatePath]', text)
-        self.assertIn('["rm", "-f", "--", root.stayAwakeStatePath]', text)
+        self.assertIn('Quickshell.env("XDG_STATE_HOME")', text)
+        self.assertIn('"/tamlinux/stay-awake"', text)
+        self.assertIn('"TAMLINUX_STAY_AWAKE_FILE=" + root.stayAwakeStatePath', text)
+        self.assertIn('"tam-toggle-idle", value ? "stay-awake" : "allow-idle"', text)
         # The timeouts are off unless configured.
         self.assertIn('Quickshell.env("TAMLINUX_IDLE_SCREENSAVER")', text)
         self.assertIn('Quickshell.env("TAMLINUX_IDLE_LOCK")', text)

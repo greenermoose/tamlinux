@@ -1,0 +1,379 @@
+#!/bin/bash
+
+# tam-dns — show or set the system DNS provider.
+#
+#   tam-dns [Cloudflare|Google|DHCP|Custom]
+#
+# Ported from Omarchy 4.0.4 (omarchy-dns) for plan 18 R4.15g. Changed: root
+# comes from pkexec on this script's own Nix-store copy, so the session's
+# polkit agent asks for a password on every change (D68). There is no sudoers
+# rule, and a copy outside the store (a checkout under test) refuses to
+# elevate. The NetworkManager drop-in is 20-tamlinux-dns.conf.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -euo pipefail
+
+# The privileged half runs with a fixed PATH of system directories: every
+# helper it calls by bare name (dirname, install, tee, rm, nmcli, systemctl,
+# awk) is a system tool, and nothing user-writable may answer for one as root.
+if (( EUID == 0 )); then
+  export PATH=/usr/bin:/bin
+fi
+
+RECOVERY_DIR=/var/lib/tamlinux/network-recovery
+NM_DNS_CONF=/etc/NetworkManager/conf.d/20-tamlinux-dns.conf
+RESOLVED_CONF=/etc/systemd/resolved.conf
+
+# Tests read fixtures instead. Only the unprivileged read honours them; pkexec
+# clears the environment anyway, and root writes the fixed paths.
+if (( EUID != 0 )); then
+  NM_DNS_CONF=${TAMLINUX_NM_DNS_CONF:-$NM_DNS_CONF}
+  RESOLVED_CONF=${TAMLINUX_RESOLVED_CONF:-$RESOLVED_CONF}
+fi
+
+provider_from_arg() {
+  case "${1:-}" in
+  Cloudflare | cloudflare)
+    echo "Cloudflare"
+    ;;
+  Google | google)
+    echo "Google"
+    ;;
+  DHCP | dhcp)
+    echo "DHCP"
+    ;;
+  Custom | custom)
+    echo "Custom"
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
+# The copy pkexec runs as root: this script resolved to its Nix-store file.
+# Home Manager links ~/.local/bin/tam-dns into the store, which is read-only
+# and owned by root, so nothing running as the user can change what root runs.
+# Anything else (a checkout, a copy in a temporary directory) is refused rather
+# than run as root.
+store_copy() {
+  local self
+  self=$(readlink -f -- "${BASH_SOURCE[0]}") || return 1
+  [[ $self == /nix/store/* && $(stat -c %u -- "$self") == 0 && ! -w $self ]] || return 1
+  printf '%s\n' "$self"
+}
+
+require_root() {
+  local self
+
+  (( EUID == 0 )) && return
+
+  if ! self=$(store_copy); then
+    echo "tam-dns: refusing to run $(readlink -f -- "${BASH_SOURCE[0]}") as root; only the Nix-store copy may." >&2
+    exit 1
+  fi
+
+  [[ -x /usr/bin/pkexec ]] || { echo "Native Polkit authorization is unavailable." >&2; exit 1; }
+  exec /usr/bin/pkexec "$self" "$@"
+}
+
+# The privileged half uses native tools, fixed destinations and root-private
+# snapshots. No environment path override is accepted for privileged writes.
+preserve_dns() {
+  local path index=0 uuid type field
+  umask 077
+  install -d -m 0700 "$RECOVERY_DIR" || return 1
+  snapshot=$(mktemp -d "$RECOVERY_DIR/dns.XXXXXX") || return 1
+  for path in "$NM_DNS_CONF" "$RESOLVED_CONF"; do
+    printf '%s\t%s\n' "$index" "$path" >>"$snapshot/manifest.tsv" || return 1
+    if [[ -e $path || -L $path ]]; then
+      cp -a -- "$path" "$snapshot/$index.original" || return 1
+      cp -L -- "$path" "$snapshot/$index.content" || return 1
+    else
+      touch "$snapshot/$index.absent" || return 1
+    fi
+    index=$((index + 1))
+  done
+  LC_ALL=C nmcli -t -f UUID,TYPE connection show >"$snapshot/connections.tsv" || return 1
+  while IFS=: read -r uuid type; do
+    networkmanager_dns_connection "$type" || continue
+    [[ $uuid =~ ^[0-9a-fA-F-]{36}$ ]] || return 1
+    mkdir "$snapshot/$uuid" || return 1
+    for field in ipv4.ignore-auto-dns ipv4.dns ipv6.ignore-auto-dns ipv6.dns; do
+      LC_ALL=C nmcli -e no -g "$field" connection show uuid "$uuid" \
+        >"$snapshot/$uuid/$field" || return 1
+    done
+  done <"$snapshot/connections.tsv"
+  # These are observations, not authority to restore an unavailable service.
+  systemctl is-active NetworkManager.service >"$snapshot/networkmanager.active" 2>&1 || true
+  systemctl is-active systemd-resolved.service >"$snapshot/resolved.active" 2>&1 || true
+  echo "DNS originals preserved in $snapshot" >&2
+}
+
+networkmanager_global_dns() {
+  [[ -f $NM_DNS_CONF ]] || return 0
+
+  awk -F= '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*\[global-dns-domain-\*\][[:space:]]*$/ { in_default = 1; next }
+    /^[[:space:]]*\[/ { in_default = 0 }
+    in_default && /^[[:space:]]*servers[[:space:]]*=/ {
+      value = $0
+      sub(/^[^=]*=/, "", value)
+      print value
+      exit
+    }
+  ' "$NM_DNS_CONF"
+}
+
+resolved_dns() {
+  awk -F= '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*DNS[[:space:]]*=/ {
+      value=$0
+      sub(/^[^=]*=/, "", value)
+      print value
+      exit
+    }
+  ' "$RESOLVED_CONF" 2>/dev/null || true
+}
+
+current_dns_provider() {
+  local dns=""
+  local compact=""
+
+  dns=$(networkmanager_global_dns)
+  if [[ -z $(printf '%s' "$dns" | tr -d '[:space:],') ]]; then
+    dns=$(resolved_dns)
+  fi
+
+  compact=$(printf '%s' "$dns" | tr -d '[:space:],')
+
+  if [[ -z $compact ]]; then
+    echo "DHCP"
+  elif [[ $dns == *"cloudflare-dns.com"* || $dns == *"1.1.1.1"* || $dns == *"2606:4700:4700::1111"* ]]; then
+    echo "Cloudflare"
+  elif [[ $dns == *"dns.google"* || $dns == *"8.8.8.8"* || $dns == *"2001:4860:4860::8888"* ]]; then
+    echo "Google"
+  else
+    echo "Custom"
+  fi
+}
+
+normalize_servers() {
+  printf '%s\n' "$*" | tr ',\t\n' ' ' | xargs | tr ' ' ','
+}
+
+split_dns_servers() {
+  local servers="$1"
+  local server clean
+  ipv4_dns=""
+  ipv6_dns=""
+
+  for server in ${servers//,/ }; do
+    clean=${server#dns+tls://}
+    clean=${clean#dns+udp://}
+    clean=${clean%%#*}
+    clean=${clean#[}
+    clean=${clean%]}
+
+    [[ -n $clean ]] || continue
+    if [[ $clean == *:* ]]; then
+      ipv6_dns+="${ipv6_dns:+ }$clean"
+    else
+      ipv4_dns+="${ipv4_dns:+ }$clean"
+    fi
+  done
+}
+
+write_networkmanager_dns() {
+  local servers="$1"
+
+  install -d -m 0755 "$(dirname "$NM_DNS_CONF")"
+  # $servers is a normalized, single-line DNS server list written as data.
+  cat >"$NM_DNS_CONF" <<EOF
+# Managed by tam-dns. Remove this file or run tam-dns DHCP to use DHCP DNS again.
+[global-dns]
+
+[global-dns-domain-*]
+servers=$servers
+EOF
+}
+
+clear_networkmanager_dns() {
+  rm -f "$NM_DNS_CONF"
+}
+
+networkmanager_dns_connection() {
+  case "$1" in
+    802-11-wireless|802-3-ethernet) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+set_connection_dns() {
+  local uuid type
+  local ipv4_dns="${1:-}"
+  local ipv6_dns="${2:-}"
+
+  while IFS=: read -r uuid type; do
+    [[ -n $uuid ]] || continue
+    networkmanager_dns_connection "$type" || continue
+
+    nmcli connection modify "$uuid" \
+      ipv4.ignore-auto-dns yes \
+      ipv4.dns "$ipv4_dns" \
+      ipv6.ignore-auto-dns yes \
+      ipv6.dns "$ipv6_dns" \
+      >/dev/null
+  done <"$snapshot/connections.tsv"
+}
+
+clear_connection_dns() {
+  local uuid type
+
+  while IFS=: read -r uuid type; do
+    [[ -n $uuid ]] || continue
+    networkmanager_dns_connection "$type" || continue
+
+    nmcli connection modify "$uuid" \
+      ipv4.ignore-auto-dns no \
+      ipv4.dns "" \
+      ipv6.ignore-auto-dns no \
+      ipv6.dns "" \
+      >/dev/null
+  done <"$snapshot/connections.tsv"
+}
+
+reapply_active_dns_connections() {
+  local device type state
+
+  while IFS=: read -r device type state; do
+    [[ -n $device && $state == connected ]] || continue
+    case "$type" in
+      wifi|ethernet)
+        nmcli device reapply "$device" >/dev/null 2>&1 || true
+        ;;
+    esac
+  done < <(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE device status)
+}
+
+reload_dns_stack() {
+  if systemctl is-active --quiet NetworkManager.service 2>/dev/null; then
+    # Load the updated NetworkManager config first, then reapply the active
+    # profiles. A single conf,dns-full reload here pushes the old active DNS
+    # settings, making a menu toggle appear one selection behind.
+    nmcli general reload conf >/dev/null 2>&1 || systemctl reload NetworkManager.service 2>/dev/null || true
+    reapply_active_dns_connections
+  fi
+
+  systemctl reload systemd-resolved.service 2>/dev/null || systemctl restart systemd-resolved.service
+
+  if systemctl is-active --quiet NetworkManager.service 2>/dev/null; then
+    # A resolved reload/restart can leave per-link DNS stale or empty; ask
+    # NetworkManager to publish DNS after resolved has reread its config.
+    nmcli general reload dns-full >/dev/null 2>&1 || true
+  fi
+}
+
+usage() {
+  echo "Usage: tam-dns [Cloudflare|Google|DHCP|Custom]" >&2
+}
+
+if (( $# == 0 )); then
+  current_dns_provider
+  exit 0
+fi
+
+if (( $# > 1 )); then
+  usage
+  exit 1
+fi
+
+if ! provider=$(provider_from_arg "$1"); then
+  usage
+  exit 1
+fi
+
+require_root "$provider"
+
+preserve_dns || { echo "tam-dns: preservation failed; no DNS settings changed." >&2; exit 1; }
+
+case "$provider" in
+Cloudflare)
+  write_networkmanager_dns "1.1.1.1,1.0.0.1,2606:4700:4700::1111,2606:4700:4700::1001"
+  set_connection_dns "1.1.1.1 1.0.0.1" "2606:4700:4700::1111 2606:4700:4700::1001"
+  tee "$RESOLVED_CONF" >/dev/null <<'EOF'
+[Resolve]
+DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com
+FallbackDNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net 2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net
+DNSOverTLS=opportunistic
+EOF
+  ;;
+
+Google)
+  write_networkmanager_dns "8.8.8.8,8.8.4.4,2001:4860:4860::8888,2001:4860:4860::8844"
+  set_connection_dns "8.8.8.8 8.8.4.4" "2001:4860:4860::8888 2001:4860:4860::8844"
+  tee "$RESOLVED_CONF" >/dev/null <<'EOF'
+[Resolve]
+DNS=8.8.8.8#dns.google 8.8.4.4#dns.google 2001:4860:4860::8888#dns.google 2001:4860:4860::8844#dns.google
+FallbackDNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net 2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net
+DNSOverTLS=opportunistic
+EOF
+  ;;
+
+DHCP)
+  clear_networkmanager_dns
+  clear_connection_dns
+  tee "$RESOLVED_CONF" >/dev/null <<'EOF'
+[Resolve]
+DNSOverTLS=no
+EOF
+  ;;
+
+Custom)
+  echo "Enter your DNS servers (space-separated, e.g. '192.168.1.1 1.1.1.1'):"
+  if ! read -r dns_servers; then
+    dns_servers=""
+  fi
+
+  dns_servers=$(normalize_servers "$dns_servers")
+  if [[ -z $dns_servers ]]; then
+    echo "Error: No DNS servers provided." >&2
+    exit 1
+  fi
+
+  split_dns_servers "$dns_servers"
+  write_networkmanager_dns "$dns_servers"
+  set_connection_dns "$ipv4_dns" "$ipv6_dns"
+  # $dns_servers is a normalized, single-line DNS server list; the //,/ turns
+  # its comma separators into the spaces resolved.conf wants.
+  tee "$RESOLVED_CONF" >/dev/null <<EOF
+[Resolve]
+DNS=${dns_servers//,/ }
+FallbackDNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net 2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net
+EOF
+  ;;
+esac
+
+reload_dns_stack

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# tam-powerprofiles-list — list the power profiles this machine offers, one
+# per line, lowest power first. With --active-state, each line also has a tab
+# and 1 for the active profile or 0 for the others.
+#
+# Usage: tam-powerprofiles-list [--active-state]
+#
+# Ported from omarchy 4.0.4 (omarchy-powerprofiles-list) for plan 18 R4.12.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+if [[ ${1:-} != "" && ${1:-} != "--active-state" ]] || (($# > 1)); then
+  echo "Usage: tam-powerprofiles-list [--active-state]" >&2
+  exit 1
+fi
+
+set -o pipefail
+powerprofilesctl list |
+  awk -v with_state="${1:+1}" '/^\s*[* ]\s*[a-zA-Z0-9-]+:$/ {
+    active = ($1 == "*") ? 1 : 0
+    gsub(/^[*[:space:]]+|:$/, "")
+    print $0 (with_state ? "\t" active : "")
+  }' |
+  tac

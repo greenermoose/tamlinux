@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# tam-bluetooth-device — Control a Bluetooth device
+#
+# Ported from Omarchy 4.0.4 (omarchy-bluetooth-device) for plan 18 0.2.4–0.2.6.
+# Changed: owned command, variable, and path names.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -e
+
+usage() {
+  echo "Usage: tam-bluetooth-device [pair|connect|disconnect|forget] <address>" >&2
+  exit 1
+}
+
+action=${1:-}
+address=${2:-}
+
+[[ $action == "pair" || $action == "connect" || $action == "disconnect" || $action == "forget" ]] || usage
+[[ $address =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]] || usage
+
+power_on() {
+  [[ $(timeout 2s bluetoothctl show 2>/dev/null) == *"Powered: yes"* ]] && return
+  # Not bluetoothctl directly: Bluetooth is turned off by an rfkill soft block,
+  # and BlueZ refuses to power an adapter up while one is set.
+  tam-bluetooth-power on || true
+}
+
+trust_device() {
+  bluetoothctl trust "$address" >/dev/null 2>&1 || true
+}
+
+case "$action" in
+  pair)
+    power_on
+    timeout 20s bluetoothctl pair "$address" >/dev/null 2>&1 || true
+    trust_device
+    timeout 20s bluetoothctl connect "$address" >/dev/null 2>&1 || true
+    ;;
+  connect)
+    power_on
+    trust_device
+    timeout 20s bluetoothctl connect "$address" >/dev/null 2>&1 || true
+    ;;
+  disconnect)
+    timeout 10s bluetoothctl disconnect "$address" >/dev/null 2>&1 || true
+    ;;
+  forget)
+    power_on
+    timeout 10s bluetoothctl disconnect "$address" >/dev/null 2>&1 || true
+    timeout 10s bluetoothctl remove "$address" >/dev/null 2>&1 || true
+    ;;
+esac

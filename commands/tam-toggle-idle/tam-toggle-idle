@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# tam-toggle-idle — switch Stay Awake on or off. While it is on, the Tamlinux
+# host's idle service runs no idle cycle and suspend-unless-stay-awake (the
+# hypridle suspend) does not suspend.
+#
+#   tam-toggle-idle [toggle|stay-awake|allow-idle|status]
+#
+# The state is one file, TAMLINUX_STAY_AWAKE_FILE, by default
+# ${XDG_STATE_HOME:-~/.local/state}/tamlinux/stay-awake; the shell uses
+# the same path. Native suspend integration must share that selection.
+#
+# Ported from omarchy 4.0.4 (omarchy-toggle-idle) for plan 18 R4.12; it
+# reads the state file from TAMLINUX_STAY_AWAKE_FILE.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+STATE_FILE="${TAMLINUX_STAY_AWAKE_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake}"
+STATE_DIR="${STATE_FILE%/*}"
+
+stay_awake_enabled() {
+  [[ -f $STATE_FILE ]]
+}
+
+print_status() {
+  if stay_awake_enabled; then
+    printf '{"enabled":true,"class":"enabled","tooltip":"Allow Idle Lock & Screensaver"}\n'
+  else
+    printf '{"enabled":false,"class":"disabled","tooltip":"Stay Awake"}\n'
+  fi
+}
+
+print_idle_state() {
+  if stay_awake_enabled; then
+    printf 'disabled\n'
+  else
+    printf 'enabled\n'
+  fi
+}
+
+apply_state() {
+  tam-settings-preserve idle --file "$STATE_FILE" >/dev/null || exit 1
+  case "$1" in
+    stay-awake)
+      mkdir -p -- "$STATE_DIR" && touch -- "$STATE_FILE" || exit 1
+      ;;
+    allow-idle)
+      rm -f -- "$STATE_FILE" || exit 1
+      ;;
+  esac
+}
+
+case "${1:-toggle}" in
+  toggle)
+    if stay_awake_enabled; then
+      apply_state allow-idle
+    else
+      apply_state stay-awake
+    fi
+    print_idle_state
+    ;;
+  stay-awake|awake|on)
+    apply_state stay-awake
+    print_idle_state
+    ;;
+  allow-idle|idle|off)
+    apply_state allow-idle
+    print_idle_state
+    ;;
+  status|--status)
+    print_status
+    ;;
+  *)
+    echo "Usage: tam-toggle-idle [toggle|stay-awake|allow-idle|status]" >&2
+    exit 1
+    ;;
+esac

@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# tam-toggle-nightlight — toggle the night light screen temperature
+# (SUPER + CTRL + N, Trigger → Toggle → Nightlight).
+#
+#   tam-toggle-nightlight [--status]
+#
+# --status prints {"enabled":…,"temperature":…} as JSON and changes nothing.
+#
+# Ported from Omarchy 4.0.4 (omarchy-toggle-nightlight) for plan 18 0.2.3.
+# Changed: the Omarchy bar's indicator is told to refresh only while that
+# shell is installed; plan 18 0.3.2 removes the call with the bar.
+# Hyprland-only (hyprsunset); the compositor contract replaces it at 0.4.1.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+ON_TEMP=4000
+OFF_TEMP=6500
+IDENTITY_TEMP=6000
+
+current_temp() {
+  local output
+
+  output=$(hyprctl hyprsunset temperature 2>/dev/null) || return
+  grep -oE '[0-9]+' <<<"$output" | head -n1
+}
+
+status_json() {
+  local temp enabled
+
+  temp=$(current_temp)
+  if [[ -n $temp ]] && (( temp < IDENTITY_TEMP )); then
+    enabled=true
+  else
+    enabled=false
+  fi
+
+  jq -cn --argjson enabled "$enabled" --arg temp "$temp" \
+    '{enabled:$enabled, temperature:(($temp | tonumber?) // null)}'
+}
+
+if [[ ${1:-} == "--status" ]]; then
+  status_json
+  exit 0
+fi
+
+# Ensure hyprsunset is running
+if ! pgrep -x hyprsunset >/dev/null; then
+  setsid uwsm-app -- hyprsunset &
+fi
+
+# Query the current temperature
+CURRENT_TEMP=$(current_temp)
+
+if [[ -z $CURRENT_TEMP || $CURRENT_TEMP == $OFF_TEMP ]]; then
+  TARGET_TEMP=$ON_TEMP
+else
+  TARGET_TEMP=$OFF_TEMP
+fi
+
+# A freshly-started hyprsunset applies its default temperature at the end of
+# its boot, overriding anything set before then — so resend until it sticks
+for _ in {1..10}; do
+  hyprctl hyprsunset temperature $TARGET_TEMP >/dev/null 2>&1
+  sleep 0.2
+  [[ $(current_temp) == "$TARGET_TEMP" ]] && break
+done
+
+# The Tamlinux shell's night-light service and the bar's indicator.
+tam-shell -q nightlight refresh

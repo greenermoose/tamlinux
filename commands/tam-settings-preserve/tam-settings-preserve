@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Preserve selected user files/observations before a settings mutation.
+
+Print the private snapshot directory only after every requested item is saved.
+Restoration is explicit: preserve later writes first, then review manifest.json.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import sys
+import tempfile
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('kind')
+    parser.add_argument('--file', action='append', default=[])
+    parser.add_argument('--value', nargs=2, action='append', default=[])
+    args = parser.parse_args()
+    if not re.fullmatch(r'[a-z][a-z0-9-]{0,63}', args.kind):
+        parser.error('invalid snapshot kind')
+    os.umask(0o077)
+    state = Path(os.environ.get('XDG_STATE_HOME') or Path.home() / '.local/state')
+    base = state / 'tamlinux/settings-recovery'
+    base.mkdir(parents=True, exist_ok=True)
+    snapshot = Path(tempfile.mkdtemp(prefix=args.kind + '.', dir=base))
+    manifest = {'schema': 1, 'kind': args.kind, 'files': [],
+                'observations': dict(args.value)}
+    for index, name in enumerate(args.file):
+        source = Path(name).absolute()
+        item = {'path': str(source), 'present': source.exists() or source.is_symlink()}
+        if item['present']:
+            # Save both the link identity and the bytes its consumer reads.
+            if source.is_symlink():
+                item['symlink'] = os.readlink(source)
+            saved = str(index)
+            shutil.copy2(source, snapshot / saved)
+            item['saved'] = saved
+        manifest['files'].append(item)
+    (snapshot / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    print(snapshot)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError) as error:
+        sys.exit(f'tam-settings-preserve: preservation failed: {error}')

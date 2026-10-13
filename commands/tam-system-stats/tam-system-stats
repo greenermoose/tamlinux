@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# tam-system-stats — Print CPU and memory stats for the shell
+#
+# Ported from Omarchy 4.0.4 (omarchy-system-stats) for plan 18 0.2.4–0.2.6.
+# Changed: owned command, variable, and path names.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+bar_widget_stats() {
+  awk '
+    NR == 1 {
+      idle = $5
+      total = 0
+      for (i = 2; i <= NF; i++) total += $i
+      printf "cpu\t%s\t%s\n", idle, total
+    }
+  ' /proc/stat
+
+  awk '
+    /^MemTotal:/ { total = $2 }
+    /^MemAvailable:/ { avail = $2 }
+    END {
+      if (total > 0) printf "memory\t%.2f\n", ((total - avail) / total) * 100
+    }
+  ' /proc/meminfo
+
+  awk '{ print "load\t" $1 }' /proc/loadavg
+}
+
+case "${1:-}" in
+  "")
+    ;;
+  --bar-widget)
+    bar_widget_stats
+    exit
+    ;;
+  *)
+    echo "Usage: tam-system-stats [--bar-widget]" >&2
+    exit 1
+    ;;
+esac
+
+cpu=$(top -bn1 | awk '/^%?Cpu/ {
+  gsub(/,/, "")
+  for (i = 1; i <= NF; i++) {
+    if ($(i + 1) == "id") {
+      printf "%.0f%%", 100 - $i
+      exit
+    }
+  }
+}')
+
+awk -v cpu="$cpu" '
+  /^MemTotal:/ { total = $2 }
+  /^MemAvailable:/ { avail = $2 }
+  END {
+    used = total - avail
+    printf "cpu\t%s\n", cpu
+    printf "memory\t%.1fGB / %.0fGB\n", used / 1024 / 1024, total / 1024 / 1024
+  }
+' /proc/meminfo

@@ -1,0 +1,310 @@
+#!/bin/bash
+
+# tamlinux:summary=Scale text everywhere — the shell, GTK apps, and terminals
+# tamlinux:args=[size|reset]
+# tamlinux:examples=tam-display-text-size | tam-display-text-size 16 | tam-display-text-size reset
+
+# Ported from Omarchy 4.0.4 (omarchy-display-text-size) for plan 18 0.3.0.
+# Changed: owned command names (tam-cmd-present, tam-notification-send, and
+# tam-font-set in comments) and the Foot notification id file's name.
+# The shell size goes to ~/.local/state/tamlinux/shell.toml instead of the
+# original's shell config, which tam-theme-payload merges last (plan 18 0.3.2
+# item 9, D87), and the Tamlinux shell reloads its theme.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# One knob for apparent text size across the desktop. It drives three settings
+# in lockstep, all anchored to the shell default of 12px:
+#   • the shell's font base-size (~/.local/state/tamlinux/shell.toml [font])
+#   • GNOME/GTK's text-scaling-factor    (12px -> 1.0, quantized so the GTK
+#     interface font lands on a whole point size, so 16 -> 15pt/11pt = 1.3636)
+#   • the terminal font point size       (12px -> 9pt, so terminal_pt = px * 9/12)
+# The shell override layers on top of the active theme (so the size survives
+# theme switches) and the shell watches the file, so shell text re-flows live.
+# Accepts an integer from 9 to 20 (px).
+
+set -e
+
+MIN=9
+MAX=20
+GKEY_SCHEMA="org.gnome.desktop.interface"
+GKEY_NAME="text-scaling-factor"
+
+# Anchors: 12px shell base == factor 1.0 == 9pt terminal font.
+TERM_DEFAULT_PT=9
+SHELL_DEFAULT_PX=12
+
+shell_config="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/shell.toml"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+usage() {
+  echo "Usage: tam-display-text-size [size|reset]"
+  echo "  (no args)   print the current text size, GTK factor, and terminal size"
+  echo "  <size>      set text size in px ($MIN–$MAX); shell + GTK + terminals together"
+  echo "  reset       return all three to their defaults (12px / 1.0 / 9pt)"
+}
+
+# Preserve the same files read by the shell/terminals and the GTK user value.
+# Reject immutable symlink targets before changing any of the paired settings.
+preserve_settings() {
+  local path factor user_value
+  for path in "$shell_config" "$config_home/alacritty/alacritty.toml" \
+      "$config_home/kitty/kitty.conf" "$config_home/ghostty/config" "$config_home/foot/foot.ini"; do
+    if [[ -e $path && ! -w $path ]]; then
+      echo "tam-display-text-size: settings file is not writable: $path" >&2
+      return 1
+    fi
+  done
+  factor=$(gsettings get "$GKEY_SCHEMA" "$GKEY_NAME") || return 1
+  user_value=$(dconf read /org/gnome/desktop/interface/text-scaling-factor) || return 1
+  tam-settings-preserve text-size --file "$shell_config" \
+    --file "$config_home/alacritty/alacritty.toml" --file "$config_home/kitty/kitty.conf" \
+    --file "$config_home/ghostty/config" --file "$config_home/foot/foot.ini" \
+    --value gtk-factor "$factor" --value gtk-user-value "$user_value" >/dev/null
+}
+
+# ---- shell base-size: the rem root every shell type size derives from ----
+
+# Print the base-size currently set under [font], or nothing if unset.
+current_base_size() {
+  base_size_in "$shell_config"
+}
+
+base_size_in() {
+  local shell_config="$1"
+  [[ -f $shell_config ]] || return 0
+  awk '
+    /^[[:space:]]*\[/ { in_font = ($0 ~ /^[[:space:]]*\[font\]([[:space:]]|$)/); next }
+    in_font && /^[[:space:]]*base-size[[:space:]]*=/ {
+      v = $0
+      sub(/^[^=]*=[[:space:]]*/, "", v)
+      sub(/[[:space:]]*(#.*)?$/, "", v)
+      print v
+      exit
+    }
+  ' "$shell_config"
+}
+
+# Upsert base-size under [font]: replace it in place if present, insert it into
+# an existing [font] section, or append a fresh [font] section otherwise. Other
+# sections and keys in the user override are left untouched.
+set_base_size() {
+  local size="$1" shell_config="$2"
+  mkdir -p "$(dirname "$shell_config")"
+
+  if [[ ! -f $shell_config ]]; then
+    printf '[font]\nbase-size = %s\n' "$size" >"$shell_config"
+    return
+  fi
+
+  local tmp
+  tmp="$(mktemp "$shell_config.XXXXXX")"
+  awk -v val="$size" '
+    function emit_base() { print "base-size = " val; done = 1 }
+    /^[[:space:]]*\[/ {
+      if (in_font && !done) emit_base()
+      in_font = ($0 ~ /^[[:space:]]*\[font\]([[:space:]]|$)/)
+      print
+      next
+    }
+    in_font && /^[[:space:]]*base-size[[:space:]]*=/ {
+      if (!done) emit_base()
+      next
+    }
+    { print }
+    END {
+      if (in_font && !done) emit_base()
+      if (!done) {
+        if (NR > 0) print ""
+        print "[font]"
+        emit_base()
+      }
+    }
+  ' "$shell_config" >"$tmp"
+  mv "$tmp" "$shell_config"
+}
+
+# Drop the base-size line, returning the shell to the theme/default size.
+reset_base_size() {
+  local shell_config="$1"
+  [[ -f $shell_config ]] || return 0
+  local tmp
+  tmp="$(mktemp "$shell_config.XXXXXX")"
+  awk '
+    /^[[:space:]]*\[/ { in_font = ($0 ~ /^[[:space:]]*\[font\]([[:space:]]|$)/) }
+    in_font && /^[[:space:]]*base-size[[:space:]]*=/ { next }
+    { print }
+  ' "$shell_config" >"$tmp"
+  mv "$tmp" "$shell_config"
+}
+
+# ---- GTK text-scaling-factor ----
+
+# Point size of the GTK interface font (font-name), used to quantize the
+# scaling factor. Falls back to the GNOME default when unreadable.
+gtk_font_pt() {
+  local name pt
+  name="$(gsettings get "$GKEY_SCHEMA" font-name 2>/dev/null)"
+  pt="${name%\'}"
+  pt="${pt##* }"
+  if [[ $pt =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "$pt"
+  else
+    echo 11
+  fi
+}
+
+set_factor() {
+  local observed
+  gsettings set "$GKEY_SCHEMA" "$GKEY_NAME" "$1"
+  observed=$(gsettings get "$GKEY_SCHEMA" "$GKEY_NAME")
+  # gsettings may exit zero after an asynchronous dconf commit failure.
+  # Require the requested value before changing the paired file settings.
+  awk -v expected="$1" -v actual="$observed" 'BEGIN { exit !(actual == expected) }' || {
+    echo "tam-display-text-size: GTK did not accept the text scale; originals retained." >&2
+    return 1
+  }
+}
+
+# ---- terminal font point size ----
+
+# px base-size -> terminal point size, rounded to the nearest integer.
+term_pt_for() {
+  awk -v s="$1" -v p="$TERM_DEFAULT_PT" -v b="$SHELL_DEFAULT_PX" \
+    'BEGIN { printf "%d", int(s * p / b + 0.5) }'
+}
+
+# Set the font point size in terminal configs, creating Kitty overrides when
+# it inherits its size from the system config. Family is left
+# untouched — that is tam-font-set's job. Live-reload signals mirror
+# tam-font-set; foot has no reload signal, so running instances are nudged.
+set_terminal_size() {
+  local pt="$1"
+
+  if [[ -f "$config_home"/alacritty/alacritty.toml ]]; then
+    sed -i -E "s/^size[[:space:]]*=.*/size = $pt/" "$config_home"/alacritty/alacritty.toml
+  fi
+
+  if [[ -f "$config_home"/kitty/kitty.conf ]] || tam-cmd-present kitty; then
+    mkdir -p "$config_home"/kitty
+    if grep -qE '^[[:space:]]*font_size[[:space:]]+' "$config_home"/kitty/kitty.conf 2>/dev/null; then
+      sed --follow-symlinks -i -E "s/^[[:space:]]*font_size[[:space:]]+.*/font_size $pt.0/" "$config_home"/kitty/kitty.conf
+    else
+      printf '\nfont_size %s.0\n' "$pt" >>"$config_home"/kitty/kitty.conf
+    fi
+    pkill -USR1 kitty 2>/dev/null || true
+  fi
+
+  if [[ -f "$config_home"/ghostty/config ]]; then
+    sed -i -E "s/^font-size = .*/font-size = $pt/" "$config_home"/ghostty/config
+    pkill -SIGUSR2 ghostty 2>/dev/null || true
+  fi
+
+  if [[ -f "$config_home"/foot/foot.ini ]]; then
+    sed -i -E "s/(:size=)[0-9.]+/\1$pt/" "$config_home"/foot/foot.ini
+    # Foot has no config-reload signal, so a running instance keeps its startup
+    # size until relaunched (new windows pick up the change). Nudge the user —
+    # but reuse the same notification id (freedesktop replaces_id) so dragging
+    # through several sizes refreshes one toast instead of stacking a pile.
+    if pgrep -x foot >/dev/null 2>&1; then
+      local id_file="${XDG_RUNTIME_DIR:-/tmp}/tam-display-text-size.foot-notif-id"
+      local prev_id=""
+      [[ -f $id_file ]] && read -r prev_id <"$id_file" 2>/dev/null
+      local replace=()
+      [[ $prev_id =~ ^[0-9]+$ ]] && replace=(-r "$prev_id")
+      local new_id
+      new_id="$(tam-notification-send \
+        "Restart Foot to apply the new terminal font size" \
+        "${replace[@]}" -p 2>/dev/null)" || true
+      [[ $new_id =~ ^[0-9]+$ ]] && printf '%s\n' "$new_id" >"$id_file"
+    fi
+  fi
+  return 0
+}
+
+# Report the current terminal point size from whichever config we find first.
+term_current_pt() {
+  if [[ -f "$config_home"/ghostty/config ]]; then
+    grep -oP '^font-size = \K[0-9.]+' "$config_home"/ghostty/config | head -1
+  elif [[ -f "$config_home"/alacritty/alacritty.toml ]]; then
+    grep -oP '^size[[:space:]]*=[[:space:]]*\K[0-9.]+' "$config_home"/alacritty/alacritty.toml | head -1
+  elif [[ -f "$config_home"/kitty/kitty.conf ]]; then
+    local pt
+    pt=$(grep -oP '^[[:space:]]*font_size[[:space:]]+\K[0-9.]+' "$config_home"/kitty/kitty.conf | tail -1)
+    echo "${pt:-$TERM_DEFAULT_PT}"
+  elif [[ -f "$config_home"/foot/foot.ini ]]; then
+    grep -oP ':size=\K[0-9.]+' "$config_home"/foot/foot.ini | head -1
+  elif tam-cmd-present kitty; then
+    echo "$TERM_DEFAULT_PT"
+  fi
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  "")
+    cur="$(current_base_size)"
+    size="${cur:-12 (default)}"
+    factor="$(gsettings get "$GKEY_SCHEMA" "$GKEY_NAME" 2>/dev/null)"
+    term="$(term_current_pt)"
+    printf 'text size: %s px\ngtk text-scaling-factor: %s\nterminal font: %s pt\n' \
+      "$size" "$factor" "${term:-n/a}"
+    exit 0
+    ;;
+  reset | default)
+    preserve_settings
+    gsettings reset "$GKEY_SCHEMA" "$GKEY_NAME"
+    [[ -z $(dconf read /org/gnome/desktop/interface/text-scaling-factor) ]] || {
+      echo "tam-display-text-size: GTK reset did not clear the user value." >&2
+      exit 1
+    }
+    reset_base_size "$shell_config"
+    tam-shell -q theme reload
+    set_terminal_size "$TERM_DEFAULT_PT"
+    exit 0
+    ;;
+esac
+
+size="$1"
+if [[ ! $size =~ ^[0-9]+$ ]] || ((size < MIN || size > MAX)); then
+  echo "Size must be an integer between $MIN and $MAX (px)." >&2
+  usage >&2
+  exit 1
+fi
+
+preserve_settings
+
+# GTK side: multiplier anchored so 12px == 1.0, quantized so the interface
+# font renders at a whole point size. Raw ratios yield fractional point sizes,
+# which GTK4 menus clip at the ascenders on scale-1 monitors.
+factor="$(awk -v s="$size" -v b="$SHELL_DEFAULT_PX" -v f="$(gtk_font_pt)" \
+  'BEGIN { printf "%.4f", int(f * s / b + 0.5) / f }')"
+set_factor "$factor"
+
+# Shell side: base-size in px (the shell's rem root).
+set_base_size "$size" "$shell_config"
+tam-shell -q theme reload
+
+# Terminal side: point size anchored so 12px == 9pt.
+set_terminal_size "$(term_pt_for "$size")"

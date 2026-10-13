@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# tamlinux:summary=Show or set the location used for weather reports
+# tamlinux:args=[--set <name> [lat,lon]|--clear]
+
+# Ported from Omarchy 4.0.4 (omarchy-weather-location) for plan 18 0.3.0.
+# The Tamlinux weather and tides panels share its owned XDG state path.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# State lives in $XDG_STATE_HOME/tamlinux/settings/weather.json as
+# {"name": ..., "latitude": ..., "longitude": ...}. A missing file means the
+# location is auto-detected from the IP address. Coordinates make the weather
+# panel exact; a hand-written {"name": "Malibu"} alone works too.
+#
+#   (no args)           the current location: the stored name, or the
+#                       IP-detected city when nothing is set
+#   --set <name> [lat,lon]  store a location
+#   --clear             return to IP auto-detect
+
+LOC_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/settings/weather.json"
+COORDS_PATTERN='^(-?[0-9]+(\.[0-9]+)?),(-?[0-9]+(\.[0-9]+)?)$'
+
+case "${1:-}" in
+"")
+  name=""
+  [[ -f $LOC_FILE ]] && name=$(jq -r '.name // "" | if type == "string" then . else "" end' "$LOC_FILE" 2>/dev/null)
+  if [[ -z $name ]]; then
+    name=$(curl -fsS --max-time 4 "https://wttr.in/?format=%l" 2>/dev/null)
+    name=${name%%,*}
+  fi
+  [[ -n $name ]] && echo "$name"
+  ;;
+--set)
+  [[ -n ${2:-} ]] || { echo "Usage: tam-weather-location --set <name> [lat,lon]" >&2; exit 1; }
+  if [[ -n ${3:-} ]]; then
+    [[ ${3} =~ $COORDS_PATTERN ]] || { echo "Invalid coordinates: $3 (expected lat,lon)" >&2; exit 1; }
+    location=$(jq -n --arg name "$2" --argjson latitude "${3%,*}" --argjson longitude "${3#*,}" '{$name, $latitude, $longitude}')
+  else
+    location=$(jq -n --arg name "$2" '{$name}')
+  fi
+  jq -e '(.name | type == "string" and length <= 1024) and
+    ((has("latitude") | not) or
+     (.latitude >= -90 and .latitude <= 90 and .longitude >= -180 and .longitude <= 180))' <<<"$location" >/dev/null || exit 1
+  tam-settings-preserve weather --file "$LOC_FILE" >/dev/null || exit 1
+  umask 077
+  mkdir -p "$(dirname "$LOC_FILE")" || exit 1
+  tmp=$(mktemp "${LOC_FILE}.XXXXXX") || exit 1
+  printf '%s\n' "$location" >"$tmp" && mv "$tmp" "$LOC_FILE"
+  ;;
+--clear)
+  tam-settings-preserve weather --file "$LOC_FILE" >/dev/null || exit 1
+  rm -f "$LOC_FILE"
+  ;;
+*)
+  echo "Usage: tam-weather-location [--set <name> [lat,lon]|--clear]" >&2
+  exit 1
+  ;;
+esac
