@@ -1,0 +1,629 @@
+/* ============================================================
+ * IMPORTANT: GTK4 CSS does NOT support the `!important` keyword.
+ * Adding it to any property triggers a "Junk at end of value"
+ * parser warning at app startup and the property declaration is
+ * silently dropped, falling back to the GTK theme default.
+ *
+ * Our CssProvider runs at `STYLE_PROVIDER_PRIORITY_APPLICATION`
+ * (800) which already outranks the Adwaita theme (600), so plain
+ * rules win without needing `!important`. Do not add `!important`
+ * here — write a more specific selector instead if a theme rule
+ * is winning.
+ * ============================================================ */
+
+.root {
+    /* No explicit min-width — GTK already takes the natural size of
+       the toolbars into account, and a hard min was forcing the
+       window wider than small/medium screenshots actually needed,
+       wasting padding on both sides of the top menu. */
+    min-height: 10rem;
+}
+
+.outer_box {
+    background-color: @headerbar_bg_color;
+}
+
+.toolbar {
+    color: @headerbar_fg_color;
+    background-color: @headerbar_bg_color;
+}
+
+/* The 12 tool buttons live in a FlowBox, which wraps each one in a
+ * GtkFlowBoxChild. Adwaita paints that wrapper its own hover/selection
+ * background and a focus outline that's larger than the button — reading
+ * as a double ring / extra outer colour around the active tool. Neutralise
+ * the wrapper entirely so ONLY the inner button paints, exactly like the
+ * plain buttons in the left (history) and right (colour/save) clusters. */
+.toolbar flowbox,
+.toolbar flowboxchild {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    outline: none;
+}
+.toolbar flowboxchild:focus,
+.toolbar flowboxchild:focus-within,
+.toolbar flowboxchild:focus-visible,
+.toolbar flowboxchild:hover,
+.toolbar flowboxchild:selected,
+.toolbar flowboxchild:active {
+    background: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* One uniform keyboard focus ring for every toolbar button — the history
+ * cluster, the tool buttons, the colour/save cluster, and the bottom bar —
+ * so all three groups match in outline style. `:focus-visible` keeps it
+ * keyboard-only (no ring on mouse click). Negative offset hugs the button
+ * so the ring sits just inside its edge like the tools' selected fill. */
+.toolbar-top button:focus-visible,
+.toolbar-bottom button:focus-visible {
+    outline: 2px solid alpha(#3584e4, 0.8);
+    outline-offset: -2px;
+}
+
+/* Square the top-bar icon buttons. Their clusters set `valign: center`
+ * (so the buttons take their natural size instead of stretching to fill the
+ * 42 px row), and symmetric padding around the square icon makes the
+ * hover / selected / focus fill square. The equal `min-width`/`min-height`
+ * floor keeps every icon button the same size regardless of glyph. Scoped
+ * to icon buttons: crop-mode text controls (.compact-control) and dropdown
+ * chips (.combo) keep their natural width. */
+.toolbar-top button:not(.compact-control):not(.combo) {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 3px;
+}
+.toast {
+    color: #f9f9f9;
+    background-color: #00000099;
+    border-radius: 6px;
+    margin-top: 50px;
+}
+
+.outer_box .toolbar-bottom,
+.outer_box .toolbar-top {
+    border-radius: 0px 0px 0px 0px;
+}
+
+.overlay .toolbar-bottom { border-radius: 6px 6px 0px 0px; }
+.overlay .toolbar-top { border-radius: 0px 0px 6px 6px; }
+
+.bottom_row {
+    background-color: @headerbar_bg_color;
+}
+.zoom-indicator {
+    /* Dimmed by default so the chrome reads as ambient state, not
+     * a primary control. Brightens to full foreground on hover,
+     * focus, or while the popover is open (`:checked` is set by
+     * GtkMenuButton while the popover is showing). No CSS
+     * `transition` here — GTK4 keeps issuing draw frames for the
+     * duration of any declared transition (even when the value
+     * happens to match the start), and we saw that show up as
+     * sustained UI lag on every mouse pass over the indicator. */
+    color: alpha(@headerbar_fg_color, 0.55);
+    padding: 2px 8px;
+    min-width: 48px;
+    font-size: 0.9em;
+}
+.zoom-indicator:hover,
+.zoom-indicator:focus,
+.zoom-indicator:active,
+.zoom-indicator:checked {
+    color: @headerbar_fg_color;
+}
+
+/* Shared "narrow" sizing for the bottom-row dropdowns + buttons
+ * (annotation-size button, tool-specific dropdowns like Arrow
+ * Style / Blur / Text Background). The Adwaita button theme sets
+ * `min-height` and `padding` with high specificity, so we use
+ * `!important` to make sure our values land. Earlier versions
+ * cascaded `!important` over every descendant via `.compact-control *`
+ * which showed up as visible UI stutter on every relayout — keep
+ * the rule pinned to the specific node names that actually need it. */
+.compact-control,
+.compact-control > button,
+.compact-control > button.combo {
+    min-height: 32px;
+    /* `padding-top/bottom: 0` so the rendered widget hits 34 px
+     * total (32 px min-height + 1 px border on each side) instead
+     * of 36 px with the original 1-px vertical padding. Adwaita's
+     * default button label fits comfortably in the 32-px inner. */
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 0.9em;
+}
+/* GtkDropDown wraps its visible chip in an inner button.combo. With
+ * only `min-height: 0` the chip collapses to Adwaita's small-button
+ * baseline (~32 px) regardless of the outer `set_height_request: 34`.
+ * Pinning a 32 px min-height on the combo button makes the visible
+ * dropdown chip match the regular compact buttons in the same row. */
+dropdown.compact-control > button.combo {
+    min-height: 32px;
+}
+/* The crop-mode aspect ("Freeform") and image-size ("600 × 400 px")
+ * dropdowns read cramped with the default 8 px compact-control padding
+ * around their label + chevron. Give them more horizontal breathing room.
+ * Scoped to the dropdown chips so the W/H entries (also .compact-control)
+ * keep their tight 2 px hug. NB: GtkDropDown's chip is a plain `button`
+ * (no `.combo` — that's the deprecated GtkComboBox), so we target the
+ * direct child button. */
+/* Adwaita pins the dropdown / menubutton button `padding` with a precedence
+ * we can't beat by specificity (and this GTK rejects `!important` — it
+ * parse-errors on it), so we can't widen the chip via button padding.
+ * Instead add margin around the LABEL text, which Adwaita doesn't lock
+ * down — same visual effect (more horizontal breathing room around the
+ * "Freeform" / "600 × 400 px" text). Scoped to the crop-mode aspect and
+ * image-size controls. */
+.toolbar-top dropdown.compact-control > button label,
+.toolbar-top .image-size-menubtn > button label,
+/* The "pixels/percent" dropdown lives in the resize popover (a separate
+ * surface), so the `.toolbar-top` selectors above don't reach it — match it
+ * via the popover's own class so its label gets the same breathing room. */
+.resize-popover dropdown > button label {
+    margin-left: 6px;
+    margin-right: 6px;
+}
+.compact-control label,
+.compact-control button label {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* Companion class for the size slider so it doesn't tower over the
+ * compact buttons. Targets only the specific GTK Scale node names
+ * (trough/slider/marks/mark/indicator/label) — earlier versions
+ * used a `.compact-slider *` blast that cascaded `!important`
+ * across hundreds of descendant CSS nodes per relayout and showed
+ * up as UI stutter. */
+.compact-slider {
+    min-height: 0;
+}
+.compact-slider trough {
+    min-height: 3px;
+}
+.compact-slider slider {
+    min-width: 10px;
+    min-height: 10px;
+    margin: -4px;
+}
+.compact-slider marks {
+    min-height: 0;
+}
+.compact-slider mark {
+    min-height: 0;
+}
+.compact-slider mark indicator {
+    min-height: 3px;
+}
+.compact-slider mark label {
+    font-size: 12px;
+    /* Reserve enough vertical box height to fit the size-slider's
+     * default-letter highlight (Pango `size="large"` ≈ 14.4px glyph)
+     * without growing the row. Without this, bolding/enlarging a
+     * single mark label inflates the slider's natural height, which
+     * grows the toolbar, which grows the window. min-height pins the
+     * reserved space at 18 px so every label — plain or large/heavy
+     * — fits into the same allocated box. The line-height match
+     * keeps the glyph vertically centered inside that box. */
+    line-height: 18px;
+    min-height: 18px;
+    margin: 0;
+    padding: 0;
+}
+.compact-slider contents,
+.compact-slider value {
+    min-height: 0;
+}
+.zoom-indicator-popover contents {
+    padding: 4px;
+}
+
+/* Crop-mode W/H text inputs. The default `.compact-control`
+ * padding (8 px left + right) makes 3-digit dimension entries
+ * read triple-wide; we tighten to 2 px so the entry hugs its
+ * value. The natural width still respects `width_request: 48`
+ * (set on the widget) so single-digit input doesn't collapse
+ * the entry below readability. */
+.crop-dim-entry > text {
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+/* "Image size: W × H px" MenuButton in the crop-mode top toolbar.
+ * Adwaita's default for a MenuButton in a toolbar context renders
+ * frameless until hover (button blends into the toolbar). Pin a
+ * subtle alpha-tinted background so it reads as a clickable
+ * control at rest, brightening on hover. */
+.image-size-menubtn > button {
+    background-color: alpha(@headerbar_fg_color, 0.10);
+}
+.image-size-menubtn > button:hover {
+    background-color: alpha(@headerbar_fg_color, 0.18);
+}
+
+/* Crop-tool "Snap to edges" controls. The checkbox + accompanying hint
+ * label sit in the bottom-row alongside the zoom indicator while the
+ * Crop tool is active; defaults read as oversized next to the slim
+ * compact-control chrome. We only trim the label/hint font sizes here
+ * and let the `check` indicator keep its native Adwaita rendering —
+ * forcing `min-width`/`min-height` on the check node distorts the
+ * circular Adwaita indicator into a chunky blob (and `-gtk-icon-size`
+ * has no effect on a `check` node, only on icons). */
+.snap-toggle {
+    font-size: 0.9em;
+    /* Shape the keyboard focus ring to match the zoom indicator: padding
+     * on all sides so the ring sits off the checkbox/label rather than
+     * hugging them. `valign: center` keeps it from stretching the row. */
+    min-height: 0;
+    /* Left padding matches the vertical padding so the focus ring sits
+     * the same distance above, below, and to the left of the check
+     * indicator. The right side keeps more room for the trailing text. */
+    padding: 6px 10px 6px 6px;
+}
+.snap-toggle > check {
+    margin: 0 4px 0 0;
+    /* Shrink the indicator toward the label's text height — the default
+     * check is taller than the "100%" text, which made the focus ring
+     * read as tighter top/bottom than the zoom's. */
+    min-height: 16px;
+    min-width: 16px;
+    -gtk-icon-size: 14px;
+}
+.snap-toggle > label {
+    margin: 0;
+}
+.snap-hint {
+    font-size: 0.9em;
+}
+.zoom-indicator-row {
+    padding: 6px 12px;
+    min-width: 160px;
+}
+
+/* Unified color picker — let the inner GtkButton inside the MenuButton
+ * handle hover/focus/press exactly like every other toolbar button. The
+ * outer .color-picker-button shell stays a passthrough. */
+.color-picker-button {
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+.color-picker-popover,
+.color-picker-popover > arrow,
+.color-picker-popover > contents {
+    min-width: 0;
+    min-height: 0;
+}
+.color-picker-popover {
+    padding: 0;
+    margin: 0;
+}
+.color-picker-popover > contents {
+    /* 20 px symmetric padding on every side of the contents node.
+     * With the grid's 14 px column-spacing the two columns measure
+     * 24 + 14 + 24 = 62 px wide naturally; the popover hugs that
+     * content and the 20 px padding is what reads as the gap from
+     * popover edge to first swatch. */
+    padding: 20px;
+}
+.inline-picker-stack,
+.color-picker-content,
+.color-picker-left {
+    /* Strip Stack/Box default theme padding + min-sizes so the
+     * collapsed popover shrinks to exactly its visible content
+     * width (left column + 14 px CSS padding on each side). */
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    min-height: 0;
+}
+/* The colored swatch itself is drawn into the pixbuf with rounded
+ * corners (see `create_icon_pixbuf` in src/ui/toolbars.rs) — CSS
+ * `border-radius` on a GtkImage doesn't clip pixel data in GTK4, so the
+ * shape has to be baked in. Hover/checked rings below pick up the same
+ * 4px radius so they read as a unified set of slightly rounded
+ * squares — matching the dashed `.color-slot-empty` placeholders. */
+.color-swatch {
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
+    /* Disable the GTK theme's inherited transitions on the outline /
+     * box-shadow / background so the hover/:checked ring appears
+     * instantly. The default Adwaita transition animates outline
+     * from `outline-offset: 0` toward `outline-offset: -2px` on
+     * hover-in, which briefly draws the ring outside the swatch's
+     * bounds — that intermediate frame gets clipped by the parent
+     * widgets the same way the static outset shadow did. */
+    transition: none;
+}
+/* Hover/checked feedback uses CSS `outline` with negative
+ * `outline-offset` — the outline is drawn INSIDE the swatch's
+ * widget bounds (2 px in from the edge), so it's never clipped
+ * by any ancestor widget AND it's painted ABOVE the swatch's
+ * pixbuf content (unlike `inset box-shadow`, which renders below
+ * the content and would be hidden by the image). The previous
+ * outset `box-shadow` ring extended outside the swatch and got
+ * covered by `picker_revealer`'s paint pass on the right side of
+ * the rightmost saved-customs column — no amount of ancestor
+ * `Overflow::Visible` or gutter widgets could move the swatch's
+ * paint above its sibling's paint in tree order.
+ * `border-radius: 5px` matches the pixbuf's baked corner radius. */
+.color-swatch:hover {
+    outline: 2px solid alpha(#3584e4, 0.55);
+    outline-offset: -2px;
+    border-radius: 5px;
+}
+.color-swatch:checked {
+    outline: 2px solid #ffffff;
+    outline-offset: -2px;
+    border-radius: 5px;
+}
+/* While a reorder drag is in flight the `.dragging` class is set on
+ * the popover; suppress the blue hover ring then so the only on-cursor
+ * affordance is the brighter `.color-slot-ghost` drop preview. Two
+ * rings competing reads as visual noise. */
+.color-picker-popover.dragging .color-swatch:hover {
+    outline: none;
+}
+/* Empty custom-color slots — dashed outline that visually indicates
+ * "this slot can hold a color you've saved". Radius matches the
+ * swatches (pixbuf-baked at 5 logical) so the picker reads as a
+ * consistent set of slightly rounded squares. */
+.color-slot-empty {
+    border: 1px dashed alpha(@headerbar_fg_color, 0.35);
+    border-radius: 5px;
+}
+/* Pre-targeted empty slot — set when the user clicks a dashed
+ * placeholder before clicking "+ Add to custom colors", marking it
+ * as the destination for the next save. Brighter solid outline so
+ * it's distinguishable from the inert dashed cells around it and
+ * from a `.color-slot-ghost` drop preview (which uses a similar
+ * tone but appears only during a drag). */
+.color-slot-empty-selected {
+    border: 2px solid alpha(@accent_bg_color, 0.85);
+    background-color: alpha(@accent_bg_color, 0.10);
+}
+/* Drag-preview ghost slot — drawn at `dragging_preview_slot` while a
+ * saved-custom swatch is in flight. Brighter solid outline (vs. the
+ * dashed empty slots) so the user sees exactly where the swatch will
+ * land if they release now. */
+.color-slot-ghost {
+    border: 2px solid alpha(@headerbar_fg_color, 0.75);
+    border-radius: 5px;
+    background-color: alpha(@headerbar_fg_color, 0.08);
+}
+/* Merged "open the color mixer" button at the bottom of the popover.
+ * Stretches the full width of the swatch grid above it; padding is
+ * zeroed so the paint icon (halign:Start) and caret icon (halign:End)
+ * sit flush with the button's outer bounds — that lines them up
+ * exactly with the centers of the leftmost / rightmost grid columns,
+ * which carry the same SWATCH_DISPLAY_SIZE swatches and use this row
+ * as their column footer. */
+.picker-expand-button {
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+}
+.picker-expand-button > box {
+    padding: 0;
+}
+/* Inline expanded picker panel — the actual sizing of the
+ * GtkColorChooserWidget's internal nodes (colorplane, colorscale)
+ * is done in Rust by `shrink_color_chooser_internals` since GTK
+ * only honors CSS `min-*` (no `max-*`) and those leaves have
+ * `vexpand=TRUE` baked in by GtkColorEditor. The rules here cover
+ * the surrounding chrome (preview swatch, hex entry padding) that
+ * CSS can shape freely. */
+.inline-picker-panel colorswatch {
+    min-width: 24px;
+    min-height: 24px;
+}
+.inline-picker-panel entry {
+    min-height: 22px;
+    padding: 2px 6px;
+}
+/* "+ Add" button: same border-radius and visual weight as the
+ * swatches above it, height set in Rust to SWATCH_DISPLAY_SIZE, so
+ * the button reads as a sibling of the palette grid. Background /
+ * foreground colors are written from Rust via a per-popover
+ * CssProvider that tracks the inline picker's current rgba — see
+ * `add_btn_css_for` in toolbars.rs. */
+.add-color-btn {
+    padding: 0 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    min-height: 0;
+}
+
+/* Center-of-canvas toast that announces the new variant after a
+ * double-tap cycle (Arrow / Blur / Text). Sits on top of the canvas
+ * via the App's overlay; the Revealer parent handles the fade and
+ * the label inside takes the pill shape via these rules. The toast
+ * is non-interactive (can_target=false in Rust) so it never steals
+ * clicks during a quick mid-stroke cycle. */
+.cycle-toast-label {
+    padding: 8px 18px;
+    background: alpha(black, 0.75);
+    color: white;
+    border-radius: 16px;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+/* Layer panel — left-edge revealer-mounted sidebar. */
+.layer_panel {
+    background: alpha(black, 0.15);
+    border-right: 1px solid alpha(black, 0.3);
+    padding: 4px;
+}
+.layer_panel .layer_row {
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
+.layer_panel .layer_row:hover {
+    background: alpha(white, 0.05);
+}
+.layer_panel .layer_row.selected {
+    background: alpha(#4f9cf0, 0.35);
+}
+.layer_panel .layer_row.hidden_layer label,
+.layer_panel .layer_row.hidden_layer image {
+    opacity: 0.45;
+}
+.layer_panel button.layer_icon_btn {
+    padding: 2px;
+    min-width: 22px;
+    min-height: 22px;
+}
+.layer_panel_footer {
+    border-top: 1px solid alpha(black, 0.3);
+    padding-top: 4px;
+    margin-top: 4px;
+}
+/* Drop indicators: sharp horizontal line at the top or bottom of the
+ * hovered row, showing exactly where the dragged layer will land.
+ * `border-radius: 0` overrides the row's normal rounded corners
+ * during the drop hover so the indicator reads as a clean line
+ * rather than tracing a rounded shape. */
+.layer_panel .layer_row.drop_above {
+    box-shadow: inset 0 2px 0 0 #4f9cf0;
+    border-radius: 0;
+}
+.layer_panel .layer_row.drop_below {
+    box-shadow: inset 0 -2px 0 0 #4f9cf0;
+    border-radius: 0;
+}
+/* In-place placeholder for a layer currently being dragged. The
+ * WidgetPaintable used as the drag icon mirrors the source widget
+ * live, so applying the same `selected`-style background + outline
+ * here makes the ghost (which follows the cursor) read as "this
+ * layer is in flight". No opacity dim — dimming the source would
+ * dim the mirrored ghost too, since they share a paintable. */
+.layer_panel .layer_row.dragging {
+    background: alpha(#4f9cf0, 0.35);
+    box-shadow: inset 0 0 0 1px #4f9cf0;
+}
+/* Resize handle to the right of the panel — thin column, visible
+ * on hover so the affordance is discoverable without being chatty. */
+.layer_panel_resize_handle {
+    background: alpha(black, 0.25);
+    border-right: 1px solid alpha(black, 0.35);
+}
+.layer_panel_resize_handle:hover {
+    background: alpha(#4f9cf0, 0.55);
+}
+
+/* Pinned capture: a layer-surface window with no titlebar, so the
+   rounded corner and the shadow have to come from here. The controls
+   sit on top of the image, so they carry their own scrim rather than
+   relying on whatever happens to be underneath. */
+.pin-window {
+  background: transparent;
+}
+
+/* Only used off Hyprland. There, the compositor draws the border and
+   the shadow around a floating window and a mat of our own would be a
+   second frame inside the first; elsewhere there is no promise of one
+   around an undecorated window, so the pin brings its own. */
+.pin-frame {
+  background: rgba(28, 28, 30, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  padding: 6px;
+}
+
+.pin-frame picture {
+  border-radius: 7px;
+}
+
+.pin-controls {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+/* Confirmation strip: sits over the bottom of the pinned image for a
+   moment after a copy lands. Same scrim as the controls so the two
+   read as one piece of furniture. */
+.pin-toast {
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.85em;
+  padding: 3px 10px;
+}
+
+/* The pin's name, committed from the right-click entry. It wears the
+   Text tool's background styles — none, pill, outline — so a named
+   pin looks like the annotations the same preference dresses. Dark
+   glyphs, like the outline style's reasoning for a white halo:
+   screenshots are mostly light UI. */
+.pin-name {
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.pin-name-none {
+  color: #1c1c1e;
+}
+
+/* The Text tool's cream pill. */
+.pin-name-pill {
+  color: #1c1c1e;
+  background: rgb(248, 245, 235);
+  border-radius: 6px;
+  padding: 2px 10px;
+}
+
+/* No text-outline in CSS, so the halo is eight hard shadows. */
+.pin-name-outline {
+  color: #1c1c1e;
+  text-shadow: -1px -1px 0 #ffffff, 0 -1px 0 #ffffff, 1px -1px 0 #ffffff,
+               -1px 0 0 #ffffff, 1px 0 0 #ffffff,
+               -1px 1px 0 #ffffff, 0 1px 0 #ffffff, 1px 1px 0 #ffffff;
+}
+
+/* The naming entry: same scrim as the toast and the controls, so the
+   three read as one set of furniture over the image. */
+.pin-name-entry {
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  caret-color: #ffffff;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+/* The drag handle reads as a grip rather than a command: same size as
+   its neighbours, dimmer until hovered. */
+.pin-drag-handle {
+  opacity: 0.7;
+}
+
+.pin-drag-handle:hover {
+  opacity: 1;
+}
+
+.pin-controls button {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 2px;
+  color: #ffffff;
+}

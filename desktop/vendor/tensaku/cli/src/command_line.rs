@@ -1,0 +1,399 @@
+use clap::{Parser, ValueEnum};
+use serde::Deserialize;
+use std::str::FromStr;
+
+/// The key `--wire-capture-key` takes over when given no other. Omarchy
+/// binds it to its own grim+slurp capture, so it is the one worth
+/// replacing — and the one `--doctor` reports on.
+pub const DEFAULT_CAPTURE_KEY: &str = "PRINT";
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None, name="tensaku")]
+pub struct CommandLine {
+    /// Show manpage. Pipe to man -l -.
+    #[arg(long, exclusive = true)]
+    pub man: bool,
+
+    /// Show license.
+    #[arg(long, exclusive = true)]
+    pub license: bool,
+
+    /// Install the desktop entry and app icon into the user's XDG data
+    /// directory (~/.local/share), then exit. Run this once after
+    /// `cargo install tensaku`; package installs (AUR, make install)
+    /// register these files already.
+    #[arg(long, exclusive = true)]
+    pub install_desktop: bool,
+
+    /// Report whether the optional external tools Tensaku relies on
+    /// (grim, slurp, wl-copy) are installed and the session looks
+    /// right, then exit.
+    #[arg(long, exclusive = true)]
+    pub doctor: bool,
+
+    /// Bind a key to Tensaku's own capture overlay (drag a region, Space
+    /// snaps to a window, F for the whole screen, S for scrolling), replacing
+    /// the desktop screenshot binding, then exit. Defaults to Print Screen;
+    /// pass a Hyprland key spec to use another, e.g. --wire-capture-key
+    /// "SUPER + SHIFT + S".
+    #[arg(
+        long,
+        exclusive = true,
+        num_args = 0..=1,
+        default_missing_value = DEFAULT_CAPTURE_KEY,
+        value_name = "KEY"
+    )]
+    pub wire_capture_key: Option<String>,
+
+    /// Path to the config file. Otherwise will be read from XDG_CONFIG_DIR/tensaku/config.toml
+    #[arg(short, long)]
+    pub config: Option<String>,
+
+    /// Path to input image or '-' to read from stdin
+    #[arg(short, long, conflicts_with = "input")]
+    pub filename: Option<String>,
+
+    /// Path to input image or '-' to read from stdin. Omit to open the file launcher.
+    #[arg(value_name = "IMAGE")]
+    pub input: Option<String>,
+
+    /// Dev-only smoke test for real mouse-wheel injection used by Auto-Scroll.
+    /// Sends three wheel notches beneath the current pointer.
+    #[arg(long)]
+    pub auto_scroll_test: bool,
+
+    /// Enter scrolling-screenshot capture mode: opens a fullscreen overlay,
+    /// drag to select a region, then capture by manual scroll or auto-scroll.
+    #[arg(long)]
+    pub scroll_capture: bool,
+
+    /// Choose what to capture, then edit it: a fullscreen overlay where you
+    /// drag a region, press Space to snap to a window, F for the whole
+    /// screen, or S to switch to scrolling capture.
+    #[arg(long)]
+    pub capture: bool,
+
+    /// Dev-only smoke test for the scrolling-screenshot capture pipeline.
+    /// `FULL` captures the whole focused output; `x,y,w,h` captures a region.
+    /// The captured frame is fed into tensaku's normal annotation canvas.
+    #[arg(long, value_name = "FULL|X,Y,W,H", value_parser = ScrollCaptureTest::from_str)]
+    pub scroll_capture_test: Option<ScrollCaptureTest>,
+
+    /// Start Tensaku in fullscreen mode. Since 0.20.1, takes optional parameter.
+    /// --fullscreen without parameter is equivalent to --fullscreen current.
+    /// Mileage may vary depending on compositor.
+    #[arg(long, num_args = 0..=1, default_missing_value = "current-screen", value_enum)]
+    pub fullscreen: Option<Fullscreen>,
+
+    /// Resize to coordinates or use smart mode (0.20.1).
+    /// --resize without parameter is equivalent to --resize smart
+    /// [possible values: smart, WxH.]
+    #[arg(long, num_args=0..=1, value_name="MODE|WIDTHxHEIGHT", default_missing_value = "smart", value_parser = Resize::from_str)]
+    pub resize: Option<Resize>,
+
+    /// Try to enforce floating (0.20.1).
+    /// Mileage may vary depending on compositor.
+    #[arg(long)]
+    pub floating_hack: bool,
+
+    /// Filename to use for saving action; its extension selects the image format. Use '-' to print PNG to stdout.
+    /// Omit to disable saving to file. Might contain format
+    /// specifiers: <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>.
+    /// Since 0.20.0, can contain tilde (~) for home dir
+    #[arg(short, long)]
+    pub output_filename: Option<String>,
+
+    /// Exit directly after copy/save action. 0.20.1: This does not apply to "save as".
+    #[arg(long)]
+    pub early_exit: bool,
+
+    /// Experimental (0.20.1): Exit directly after save as
+    #[arg(long)]
+    pub early_exit_save_as: bool,
+
+    /// Draw corners of rectangles round if the value is greater than 0
+    /// (Defaults to 12) (0 disables rounded corners)
+    #[arg(long)]
+    pub corner_roundness: Option<f32>,
+
+    /// Select the tool on startup
+    #[arg(long, value_name = "TOOL", visible_alias = "init-tool")]
+    pub initial_tool: Option<Tools>,
+
+    /// Configure the command to be called on copy, for example `wl-copy`
+    #[arg(long)]
+    pub copy_command: Option<String>,
+
+    /// Increase or decrease the size of the annotations
+    #[arg(long)]
+    pub annotation_size_factor: Option<f32>,
+
+    /// After copying the screenshot, save it to a file as well
+    /// Preferably use the `action_on_copy` option instead.
+    #[arg(long)]
+    pub save_after_copy: bool,
+
+    /// Automatically copy to clipboard after every annotation change (0.21.0)
+    #[arg(long)]
+    pub auto_copy: bool,
+
+    /// Actions to perform when pressing Enter
+    #[arg(long, value_delimiter = ',')]
+    pub actions_on_enter: Option<Vec<Action>>,
+
+    /// Actions to perform when pressing Escape
+    #[arg(long, value_delimiter = ',')]
+    pub actions_on_escape: Option<Vec<Action>>,
+
+    /// Actions to perform when hitting the copy Button.
+    #[arg(long, value_delimiter = ',')]
+    pub actions_on_right_click: Option<Vec<Action>>,
+
+    /// Hide toolbars by default
+    #[arg(short, long)]
+    pub default_hide_toolbars: bool,
+
+    /// Experimental (since 0.20.0): Whether to toggle toolbars based on focus. Doesn't affect initial state.
+    #[arg(long)]
+    pub focus_toggles_toolbars: bool,
+
+    /// Experimental feature (since 0.20.0): Fill shapes by default
+    #[arg(long)]
+    pub default_fill_shapes: bool,
+
+    /// Font family to use for text annotations
+    #[arg(long)]
+    pub font_family: Option<String>,
+
+    /// Font style to use for text annotations
+    #[arg(long)]
+    pub font_style: Option<String>,
+
+    /// The primary highlighter to use, secondary is accessible with CTRL
+    #[arg(long)]
+    pub primary_highlighter: Option<Highlighters>,
+
+    /// Disable notifications
+    #[arg(long)]
+    pub disable_notifications: bool,
+
+    /// Print profiling
+    #[arg(long)]
+    pub profile_startup: bool,
+
+    /// Disable the window decoration (title bar, borders, etc.)
+    /// Please note that the compositor has the final say in this.
+    /// Requires xdg-decoration-unstable-v1
+    #[arg(long)]
+    pub no_window_decoration: bool,
+
+    /// Experimental feature: How many points to use for the brush smoothing
+    /// algorithm.
+    /// 0 disables smoothing.
+    /// The default value is 0 (disabled).
+    #[arg(long)]
+    pub brush_smooth_history_size: Option<usize>,
+
+    /// How many Chaikin corner-cutting passes to run over a brush stroke
+    /// once the user releases (post-stroke smoothing).
+    /// 0 disables. Defaults to 5.
+    #[arg(long)]
+    pub brush_post_smooth_iterations: Option<usize>,
+
+    /// Experimental feature (0.20.1): The zoom factor to use for the image.
+    /// 1.0 means no zoom.
+    /// defaults to 1.1
+    #[arg(long)]
+    pub zoom_factor: Option<f32>,
+
+    /// Experimental feature (0.20.1): The pan step size to use when panning with arrow keys.
+    /// defaults to 50.0
+    #[arg(long)]
+    pub pan_step_size: Option<f32>,
+
+    /// Experimental feature (0.20.1): The length to move the text when using the arrow keys.
+    /// defaults to 50.0
+    #[arg(long)]
+    pub text_move_length: Option<f32>,
+
+    /// Experimental feature (0.20.1): Scale the default window size to fit different displays. Note that this is ignored with explicit resize.
+    #[arg(long)]
+    pub input_scale: Option<f32>,
+
+    /// Experimental feature (0.21.0): Set window title
+    #[arg(long)]
+    pub title: Option<String>,
+
+    /// Experimental feature (0.21.0): Set toplevel app_id. Note that this has to match D-Bus well known name format, otherwise GTK does not accept it.
+    #[arg(long)]
+    pub app_id: Option<String>,
+
+    // --- deprecated options ---
+    /// Right click to copy.
+    /// Preferably use the `action_on_right_click` option instead.
+    #[arg(long)]
+    pub right_click_copy: bool,
+    /// Action to perform when pressing Enter.
+    /// Preferably use the `actions_on_enter` option instead.
+    #[arg(long, value_delimiter = ',')]
+    pub action_on_enter: Option<Action>,
+    // ---
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, ValueEnum, PartialEq)]
+#[value(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
+pub enum Fullscreen {
+    All,
+    CurrentScreen,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "kebab-case", tag = "mode")]
+pub enum Resize {
+    Size { width: i32, height: i32 },
+    Smart,
+}
+
+impl FromStr for Resize {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim().to_lowercase();
+        match s.as_str() {
+            "smart" => Ok(Resize::Smart),
+            _ => {
+                let (w, h) = s.split_once('x').ok_or("Expected size=WxH")?;
+                let w: i32 = w.parse().map_err(|_| "Invalid width".to_string())?;
+                let h: i32 = h.parse().map_err(|_| "Invalid height".to_string())?;
+                Ok(Resize::Size {
+                    width: w,
+                    height: h,
+                })
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum Tools {
+    #[default]
+    Pointer,
+    Crop,
+    Line,
+    Arrow,
+    Rectangle,
+    Ellipse,
+    Text,
+    Marker,
+    Blur,
+    Highlight,
+    Brush,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum Action {
+    SaveToClipboard,
+    SaveToFile,
+    SaveToFileAs,
+    CopyFilepathToClipboard,
+    Exit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ScrollCaptureTest {
+    Full,
+    Region {
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+    },
+}
+
+impl FromStr for ScrollCaptureTest {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let trimmed = s.trim();
+        if trimmed.eq_ignore_ascii_case("full") {
+            return Ok(ScrollCaptureTest::Full);
+        }
+        let parts: Vec<&str> = trimmed.split(',').collect();
+        if parts.len() != 4 {
+            return Err("expected FULL or x,y,w,h".into());
+        }
+        let parse_i = |label: &str, v: &str| -> Result<i32, String> {
+            v.trim()
+                .parse::<i32>()
+                .map_err(|_| format!("invalid {label}: {v}"))
+        };
+        Ok(ScrollCaptureTest::Region {
+            x: parse_i("x", parts[0])?,
+            y: parse_i("y", parts[1])?,
+            width: parse_i("w", parts[2])?,
+            height: parse_i("h", parts[3])?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum Highlighters {
+    #[default]
+    Block,
+    Freehand,
+}
+
+impl std::fmt::Display for Tools {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Tools::*;
+        let s = match self {
+            Pointer => "pointer",
+            Crop => "crop",
+            Line => "line",
+            Arrow => "arrow",
+            Rectangle => "rectangle",
+            Ellipse => "ellipse",
+            Text => "text",
+            Marker => "marker",
+            Blur => "blur",
+            Highlight => "highlight",
+            Brush => "brush",
+        };
+        f.write_str(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CommandLine;
+    use clap::Parser;
+
+    #[test]
+    fn accepts_launcher_files_and_stdin() {
+        let launcher = CommandLine::try_parse_from(["tensaku"]).unwrap();
+        assert!(launcher.filename.is_none() && launcher.input.is_none());
+        for file in ["photo.jpg", "-", "an image.png"] {
+            let positional = CommandLine::try_parse_from(["tensaku", file]).unwrap();
+            assert_eq!(positional.input.as_deref(), Some(file));
+            for flag in ["-f", "--filename"] {
+                let named = CommandLine::try_parse_from(["tensaku", flag, file]).unwrap();
+                assert_eq!(named.filename.as_deref(), Some(file));
+            }
+        }
+        let dashed = CommandLine::try_parse_from(["tensaku", "--", "-photo.png"]).unwrap();
+        assert_eq!(dashed.input.as_deref(), Some("-photo.png"));
+        assert!(CommandLine::try_parse_from(["tensaku", "--filename", "a.png", "b.png"]).is_err());
+        assert!(CommandLine::try_parse_from(["tensaku", "a.png", "b.png"]).is_err());
+    }
+
+    #[test]
+    fn capture_and_utility_modes_still_work_without_an_image() {
+        for flag in [
+            "--capture",
+            "--scroll-capture",
+            "--doctor",
+            "--install-desktop",
+        ] {
+            assert!(CommandLine::try_parse_from(["tensaku", flag]).is_ok());
+        }
+    }
+}

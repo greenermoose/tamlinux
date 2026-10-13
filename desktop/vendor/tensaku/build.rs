@@ -1,0 +1,132 @@
+#[allow(dead_code)]
+use std::borrow::BorrowMut;
+use std::fs;
+use std::io;
+use std::path::PathBuf;
+
+use clap::CommandFactory;
+use clap_complete::{Shell, generate_to};
+use clap_complete_fig::Fig;
+use clap_complete_nushell::Nushell;
+use clap_mangen::Man;
+
+use tensaku_cli::command_line;
+
+fn main() -> Result<(), io::Error> {
+    let out_dir =
+        std::path::PathBuf::from(std::env::var_os("OUT_DIR").ok_or(std::io::ErrorKind::NotFound)?);
+    let mut cmd = command_line::CommandLine::command();
+    let cmd2 = cmd.borrow_mut();
+    let bin = "tensaku";
+    let completions = if cfg!(feature = "ci-release") {
+        PathBuf::from("completions")
+    } else {
+        // make cargo publish happy about OUT_DIR ;)
+        out_dir.join(PathBuf::from("completions"))
+    };
+
+    fs::create_dir_all(completions.as_path())?;
+    generate_to(Shell::Bash, cmd2, bin, &completions)?;
+    generate_to(Shell::Fish, cmd2, bin, &completions)?;
+    generate_to(Shell::Zsh, cmd2, bin, &completions)?;
+    generate_to(Shell::Elvish, cmd2, bin, &completions)?;
+    generate_to(Nushell, cmd2, bin, &completions)?;
+    generate_to(Fig, cmd2, bin, &completions)?;
+
+    let man = Man::new(cmd);
+    let mut buffer: Vec<u8> = Default::default();
+    man.title(bin).render(&mut buffer)?;
+    if cfg!(feature = "ci-release") {
+        let man_dir = PathBuf::from("man");
+        fs::create_dir_all(man_dir.as_path())?;
+        std::fs::write(man_dir.join(format!("{}.1", bin)), buffer.clone())?;
+    }
+    std::fs::write(out_dir.join(format!("{}.1", bin)), buffer)?;
+
+    relm4_icons_build::bundle_icons(
+        "icon_names.rs",
+        Some("dev.tensaku.Tensaku"),
+        None,
+        None::<&str>,
+        [
+            "pen-regular",
+            "color-regular",
+            "cursor-regular",
+            "number-circle-1-regular",
+            "drop-regular",
+            "highlight-regular",
+            "flashlight-regular",
+            "arrow-redo-filled",
+            "arrow-undo-filled",
+            "recycling-bin",
+            "save-regular",
+            "save-multiple-regular",
+            "copy-regular",
+            "text-case-title-regular",
+            "text-font-regular",
+            "minus-large",
+            "checkbox-unchecked-regular",
+            "circle-regular",
+            // Filled counterparts for the shape buttons, whose glyph
+            // follows that shape's own fill. Fluent has no `square-*`
+            // family; `stop-filled` is the solid rounded box matching
+            // `checkbox-unchecked-regular`'s outline exactly.
+            "stop-filled",
+            "circle-filled",
+            "crop-filled",
+            "arrow-up-right-filled",
+            "rectangle-landscape-regular",
+            "paint-bucket-filled",
+            "paint-bucket-regular",
+            "page-fit-regular",
+            "resize-large-regular",
+            // Preferences gear.
+            "settings-regular",
+            // Crop-mode toolbar additions.
+            "arrow-swap-regular",
+            // Material's `rotate-90-degrees-ccw-symbolic` is the
+            // glyph: a small tilted-square
+            // with a curved CCW arrow overhead. Reads as "rotate
+            // the framed image" rather than a bare circular arrow.
+            "rotate-90-degrees-ccw",
+            "flip-horizontal-regular",
+            // Blur-style picker.
+            "tetris-app-regular",
+            "shield-lock-regular",
+            "weather-moon-regular",
+            // Highlighter-style picker — i-beam (vertical stem with
+            // serifs top and bottom) signals the text-locked / snap-
+            // to-text-rows mode that pairs with the i-beam cursor the
+            // tool puts on screen.
+            "text-regular",
+            // Pin-to-desktop: the toolbar the pinned window shows on
+            // hover, plus the toolbar button that creates it.
+            "pin-regular",
+            "dismiss-regular",
+            "link-regular",
+            // The pin's drag-out handle: six dots, the same shape file
+            // managers use for "pick this up and take it somewhere".
+            "re-order-dots-horizontal-regular",
+            // The capture button on a restored region.
+            "camera-regular",
+            // (The arrow-style picker uses cairo-drawn previews
+            // matching the real arrow shapes; no icons needed.)
+            // Layer-panel toggle button (F7).
+            "layer-diagonal-regular",
+            // Per-row visibility + lock toggles.
+            "eye-regular",
+            "eye-off-regular",
+            "lock-closed-regular",
+            "lock-open-regular",
+            // Reorder footer buttons.
+            "arrow-up-regular",
+            "arrow-down-regular",
+            "chevron-double-up-regular",
+            "chevron-double-down-regular",
+            // Pasted-image drawables (Ctrl+V paste).
+            "image-regular",
+        ],
+    );
+
+    Ok(())
+}

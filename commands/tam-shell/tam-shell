@@ -67,7 +67,8 @@ fi
 # The -- keeps function names that shadow qs subcommands (e.g. show) as
 # positionals. qs reports connection failures with a nonzero exit, but
 # IPC-level failures (unknown target or function) go to stdout with exit 0.
-output=$(timeout --kill-after=1s "${TAMLINUX_SHELL_IPC_TIMEOUT:-2s}" qs ipc -n -p "$shell_dir" call -- "$@" 2>/dev/null)
+ipc=${TAMLINUX_QUICKSHELL_IPC:-qs}
+output=$(timeout --kill-after=1s "${TAMLINUX_SHELL_IPC_TIMEOUT:-2s}" "$ipc" ipc -n -p "$shell_dir" call -- "$@" 2>/dev/null)
 ipc_status=$?
 
 if (( ipc_status == 124 || ipc_status == 137 )); then

@@ -59,7 +59,11 @@ def main() -> int:
     env, notes = session_environment(dict(os.environ))
     for note in notes:
         print(f"tamlinux-shell: {note}", file=sys.stderr, flush=True)
-    os.execve(QUICKSHELL, [QUICKSHELL, "-p", str(SHELL)], env)
+    quickshell = env.get("TAMLINUX_QUICKSHELL") or QUICKSHELL
+    if not Path(quickshell).is_absolute():
+        print("tamlinux-shell: selected Quickshell executable must be absolute", file=sys.stderr)
+        return 2
+    os.execve(quickshell, [quickshell, "-p", str(SHELL)], env)
     return 1
 
 

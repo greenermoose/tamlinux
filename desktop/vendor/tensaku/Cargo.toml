@@ -1,0 +1,104 @@
+[package]
+name = "tensaku"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+include = [
+  "src/**/*",
+  "Cargo.toml",
+  "Cargo.lock",
+  "LICENSE*",
+  "NOTICE",
+  "README.md",
+  "assets/",
+  "build.rs",
+  "dev.tensaku.Tensaku.desktop"
+]
+
+[features]
+ci-release = []
+
+[dependencies]
+tensaku_cli.workspace = true
+relm4 = { version = "0.10.1", features = ["macros", "libadwaita", "gnome_42"] }
+tokio = { version = "1.52.3", features = ["time", "rt", "macros", "net", "sync"] }
+
+# error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# command line
+clap.workspace = true
+
+# configuration file
+xdg = "^3.0"
+toml = "1.1.0"
+toml_edit = "0.25.11"
+serde.workspace = true
+serde_derive = "1.0"
+serde_json = "1"
+hex_color = {version = "3", features = ["serde"]}
+chrono = "0.4.44"
+
+# opengl rendering backend
+femtovg = "0.25"
+libloading = "0.9"
+epoxy = "0.1.0"
+glow = "0.17.0"
+resource = "0.6.1"  # font emedding
+fontconfig = "0.10.2"  # font loading
+keycode = "1.0.0"
+
+# scroll-capture shortcut recorder: read the chord directly from evdev
+# (the WM grabs Super before GTK sees it) and resolve keysyms/modifiers
+# via the system keymap with xkbcommon — the same mechanism the cohort
+# apps (vernier / hyprcorrect) use. `evdev` is pure-Rust; `xkbcommon`
+# links libxkbcommon, which GTK/Pango already pull in.
+evdev = "0.13"
+xkbcommon = "0.8"
+
+# wayland capture (scrolling screenshots)
+wayland-client = "0.31"
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-protocols-misc = { version = "0.3", features = ["client"] }
+smithay-client-toolkit = { version = "0.19", default-features = false }
+rustix = { version = "1.1", features = ["fs"] }
+gtk4-layer-shell = "0.7"
+
+# auto-scroll uses zwlr_virtual_pointer_manager_v1 from wayland-protocols-wlr above
+
+[dependencies.relm4-icons]
+version = "0.10.0"
+
+
+[build-dependencies]
+clap.workspace = true
+clap_complete = "4.6.5"
+clap_complete_nushell = "4.6.0"
+tensaku_cli.workspace = true
+clap_complete_fig = "4.5.2"
+relm4-icons-build = "0.11"
+clap_mangen = "0.3.0"
+
+[workspace]
+members = [ "cli" ]
+
+[workspace.package]
+version = "0.29.0"
+edition = "2024"
+# Tensaku is a fork of Satty; Matthias Gabriel is retained as the
+# original author per the MPL-2.0 (see NOTICE).
+authors = ["Matthias Gabriel <gabm+aur@mailbox.org>", "Jon Kinney"]
+description = "Modern Screenshot Annotation."
+homepage = "https://tensaku.dev"
+repository = "https://github.com/jondkinney/tensaku"
+license = "MPL-2.0"
+
+[workspace.dependencies]
+clap = { version = "4.6.1", features = ["derive"] }
+tensaku_cli = { path = "cli", version = "0.29.0" }
+serde = { version = "1.0", features = ["derive"] }

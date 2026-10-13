@@ -1,0 +1,1981 @@
+use std::{
+    any::Any,
+    borrow::Cow,
+    cell::RefCell,
+    collections::HashMap,
+    fmt::{Debug, Display},
+    rc::Rc,
+};
+
+use anyhow::Result;
+use femtovg::{Canvas, FontId, Paint, Path as FemtoPath, renderer::OpenGl};
+use relm4::gtk::gdk_pixbuf::{
+    glib::{Variant, VariantTy},
+    prelude::{StaticVariantType, ToVariant},
+};
+
+use relm4::gtk::glib::variant::FromVariant;
+use relm4::{
+    Sender,
+    gtk::{self, IMMulticontext},
+};
+use serde_derive::Deserialize;
+
+use crate::{
+    math::{Rect, Vec2D},
+    sketch_board::{InputEvent, KeyEventMsg, MouseEventMsg, SketchBoardInput, TextEventMsg},
+    style::Style,
+};
+
+use tensaku_cli::command_line;
+
+mod arrow;
+mod blur;
+mod brush;
+mod crop;
+mod ellipse;
+mod highlight;
+mod line;
+mod marker;
+mod pasted_image;
+mod pointer;
+mod rectangle;
+mod spotlight;
+mod text;
+
+pub enum ToolEvent {
+    Activated,
+    Deactivated,
+    Input(InputEvent),
+    StyleChanged(Style),
+}
+
+pub trait Tool {
+    fn handle_event(&mut self, event: ToolEvent) -> ToolUpdateResult {
+        match event {
+            ToolEvent::Activated => self.handle_activated(),
+            ToolEvent::Deactivated => self.handle_deactivated(),
+            ToolEvent::Input(e) => self.handle_input_event(e),
+            ToolEvent::StyleChanged(s) => self.handle_style_event(s),
+        }
+    }
+
+    fn handle_activated(&mut self) -> ToolUpdateResult {
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_deactivated(&mut self) -> ToolUpdateResult {
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_input_event(&mut self, event: InputEvent) -> ToolUpdateResult {
+        match event {
+            InputEvent::Mouse(e) => self.handle_mouse_event(e),
+            InputEvent::Key(e) => self.handle_key_event(e),
+            InputEvent::KeyRelease(e) => self.handle_key_release_event(e),
+            InputEvent::Text(e) => self.handle_text_event(e),
+        }
+    }
+
+    fn handle_text_event(&mut self, event: TextEventMsg) -> ToolUpdateResult {
+        let _ = event;
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_mouse_event(&mut self, event: MouseEventMsg) -> ToolUpdateResult {
+        let _ = event;
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_key_event(&mut self, event: KeyEventMsg) -> ToolUpdateResult {
+        let _ = event;
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_key_release_event(&mut self, event: KeyEventMsg) -> ToolUpdateResult {
+        let _ = event;
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_style_event(&mut self, style: Style) -> ToolUpdateResult {
+        let _ = style;
+        ToolUpdateResult::Unmodified
+    }
+
+    fn active(&self) -> bool {
+        false
+    }
+
+    fn input_enabled(&self) -> bool;
+
+    fn set_input_enabled(&mut self, value: bool);
+
+    fn handle_undo(&mut self) -> ToolUpdateResult {
+        ToolUpdateResult::Unmodified
+    }
+
+    fn handle_redo(&mut self) -> ToolUpdateResult {
+        ToolUpdateResult::Unmodified
+    }
+
+    fn set_im_context(&mut self, _context: Option<InputContext>) {}
+
+    fn get_drawable(&self) -> Option<&dyn Drawable>;
+
+    /// Optional overlay drawn on top of the in-progress drawable
+    /// (e.g. selection handles). Computed fresh each frame so visuals stay in
+    /// sync after undo/redo or external mutations.
+    ///
+    /// `selected` is the live drawable matching `selected_drawable()` from the
+    /// renderer's stack, passed in to avoid the tool re-entering the renderer
+    /// (which already holds a borrow during the render path).
+    ///
+    /// `device_pixel_ratio` is the host display's DPR (1 on standard, 2 on
+    /// retina). Tools use it to size visuals in CSS pixels while still
+    /// looking sharp on HiDPI screens.
+    fn build_overlay(
+        &self,
+        _selected: Option<&dyn Drawable>,
+        _device_pixel_ratio: f32,
+    ) -> Option<Box<dyn Drawable>> {
+        None
+    }
+
+    /// If the tool has a current selection, return its id. Used by the renderer
+    /// to know which drawable is selected (for selection visuals when not dragging).
+    fn selected_drawable(&self) -> Option<DrawableId> {
+        self.selected_drawables().first().copied()
+    }
+
+    /// All currently-selected drawable ids. Default returns single selection
+    /// (or empty); tools that support multi-selection override.
+    fn selected_drawables(&self) -> Vec<DrawableId> {
+        Vec::new()
+    }
+
+    /// If the tool is actively dragging an existing drawable, return its id.
+    /// Used by the renderer to skip rendering the original (the tool's
+    /// `get_drawable()` returns a moved copy during the drag).
+    fn dragging_drawable_id(&self) -> Option<DrawableId> {
+        None
+    }
+
+    /// Extra in-flight drawables beyond `get_drawable()` — the *other*
+    /// members of a group/move drag, rendered as moved copies. Default
+    /// empty; the Pointer tool overrides it when dragging a
+    /// multi-selection as a group.
+    fn extra_dragging_drawables(&self) -> Vec<&dyn Drawable> {
+        Vec::new()
+    }
+
+    /// Ids of the extra group-drag members (paired with
+    /// `extra_dragging_drawables`). The renderer skips these from the
+    /// normal stack so only their moved copies show. Default empty.
+    fn extra_dragging_ids(&self) -> Vec<DrawableId> {
+        Vec::new()
+    }
+
+    /// True when the tool is currently dragging a resize handle (vs a
+    /// body / move drag). Sketch_board hides the cursor during a resize
+    /// drag so the user can see exactly where the dragged edge or
+    /// corner lands.
+    fn is_resizing(&self) -> bool {
+        false
+    }
+
+    /// The text band the tool is locked onto for an in-flight stroke,
+    /// if any. The Highlighter sets this on `BeginDrag` and clears it
+    /// on `EndDrag`; other tools always return `None`.
+    /// `update_hover_cursor` reads this so the cursor texture stays
+    /// stable across the whole drag — without this hook, every motion
+    /// event would re-run local band detection and the cursor would
+    /// morph mid-stroke as the pointer crossed other text elements.
+    fn locked_text_band(&self) -> Option<crate::text_bands::TextBand> {
+        None
+    }
+
+    fn get_tool_type(&self) -> Tools;
+
+    fn set_sender(&mut self, sender: Sender<SketchBoardInput>);
+
+    /// Inject a handle the tool can use to query the committed-drawable stack.
+    /// Currently only the pointer tool needs this (for hit-testing and pulling
+    /// a working copy of a selection).
+    fn set_drawable_store(&mut self, _store: Rc<dyn DrawableStore>) {}
+
+    /// Inform the tool which drawing tool is currently the user-selected
+    /// active tool — only meaningful for `PointerTool` when it's being
+    /// consulted in implicit mode. Default no-op so sketch_board can
+    /// broadcast without checking tool type.
+    fn set_implicit_other_tool(&mut self, _tool: Option<Tools>) {}
+
+    /// Switch the arrow geometry (only meaningful for `ArrowTool`). Default
+    /// no-op so the toolbar can broadcast without checking tool type.
+    fn set_arrow_style(&mut self, _style: ArrowStyle) {}
+
+    /// Switch the blur algorithm (only meaningful for `BlurTool`).
+    /// Default no-op for the same reason as `set_arrow_style`.
+    fn set_blur_style(&mut self, _style: BlurStyle) {}
+
+    /// Switch the background style for new text drawables (only
+    /// meaningful for `TextTool`). Default no-op so the toolbar can
+    /// broadcast without checking tool type.
+    fn set_text_background(&mut self, _bg: TextBackground) {}
+
+    /// Switch the highlighter style (TextLocked vs Normal). Only the
+    /// HighlightTool acts on this; default no-op for everyone else
+    /// so the toolbar can broadcast without per-tool dispatch.
+    fn set_highlighter_style(&mut self, _style: HighlighterStyle) {}
+
+    /// Current highlighter style — Highlighter returns its active
+    /// value; everyone else returns `None`. Read by sketch_board's
+    /// hover-cursor path so the cursor knows whether to do the
+    /// band lookup (TextLocked) or fall through to the
+    /// style.size-derived freehand cursor (Normal).
+    fn highlighter_style(&self) -> Option<HighlighterStyle> {
+        None
+    }
+
+    /// Replace the tool's selected-drawable set. Only the PointerTool
+    /// owns a selection; default no-op for the rest. Used by
+    /// `SketchBoard::duplicate_selection` to move the active
+    /// selection onto the newly-created copies so subsequent edits
+    /// (Delete, nudge, etc.) operate on the duplicates.
+    fn set_selected_drawables(&mut self, _ids: Vec<DrawableId>) {}
+
+    /// Resume editing an existing committed text drawable. Only `TextTool`
+    /// implements this; the default no-op lets sketch_board dispatch
+    /// uniformly. Returns true if the tool accepted the request.
+    fn enter_text_edit_mode(&mut self, _id: DrawableId, _drawable: Box<dyn Drawable>) -> bool {
+        false
+    }
+
+    /// Handles attached to the tool's in-progress drawable that should
+    /// participate in cursor hit-testing (resize cursors on hover).
+    /// Used by sketch_board's `update_hover_cursor` so editing-mode
+    /// handles light up the same way committed-selection handles do.
+    /// Default empty — only `TextTool` currently exposes editing
+    /// handles outside the committed `Drawable::handles()` path.
+    fn editing_handles(&self) -> Vec<Handle> {
+        Vec::new()
+    }
+
+    /// Image-space rect covering the tool's in-progress editable body,
+    /// used by sketch_board's `update_hover_cursor` to swap to an
+    /// i-beam when the pointer is over an actively-editing region
+    /// (currently only `TextTool` populates this). `None` means "no
+    /// active editing body" and the cursor falls through to the
+    /// default tool cursor.
+    fn editing_body_rect(&self) -> Option<Rect> {
+        None
+    }
+
+    /// Park a hover-only preview of what a click here would create,
+    /// or clear it with `None`. Only the Counter answers — its ghost
+    /// badge. Returns whether anything changed, so the caller can skip
+    /// a redraw when the pointer hasn't moved far enough to matter.
+    fn set_hover_preview(&mut self, _pos: Option<Vec2D>) -> bool {
+        false
+    }
+}
+
+/// Read-only view of the committed-drawable stack, exposed to tools that need
+/// to do hit-testing or pull working copies of existing drawables.
+pub trait DrawableStore {
+    fn hit_test(&self, point: Vec2D, tolerance: f32) -> Option<DrawableId>;
+    fn clone_drawable(&self, id: DrawableId) -> Option<Box<dyn Drawable>>;
+    /// Drawable ids whose bounds overlap `rect`. Used for marquee / lasso
+    /// selection.
+    fn drawables_in_rect(&self, rect: Rect) -> Vec<DrawableId>;
+    /// All committed drawable ids (back-to-front order). Used for Ctrl+A.
+    fn all_drawable_ids(&self) -> Vec<DrawableId>;
+    /// True if some other *visible* drawable above `id` in the stack has
+    /// bounds that intersect `id`'s bounds — i.e. raising `id` would
+    /// actually change what the user sees. Locked drawables still count
+    /// (they're visually present); hidden drawables don't. Drives the
+    /// auto-raise heuristic in the pointer tool.
+    fn has_visible_overlapper_above(&self, id: DrawableId) -> bool;
+    /// True when the drawable is currently locked. The pointer tool
+    /// reads this on Delete/Backspace to spare locked drawables from
+    /// being removed by accident (works for both single-selection
+    /// deletion and Ctrl+A + Delete bulk paths). Returns false for
+    /// missing ids so callers don't need a separate existence check.
+    fn is_drawable_locked(&self, id: DrawableId) -> bool;
+}
+
+#[derive(Clone, Debug)]
+pub struct InputContext {
+    pub im_context: IMMulticontext,
+    pub widget: gtk::Widget,
+}
+
+// the clone method below has been adapted from: https://stackoverflow.com/questions/30353462/how-to-clone-a-struct-storing-a-boxed-trait-object
+// it feels "strange" and especially the fact that drawable has to derive from DrawableClone feels "wrong".
+pub trait DrawableClone {
+    fn clone_box(&self) -> Box<dyn Drawable>;
+}
+
+impl<T> DrawableClone for T
+where
+    T: 'static + Drawable + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Drawable> {
+        Box::new(self.clone())
+    }
+}
+
+/// A whole-canvas geometry transform — a 90°-granularity flip/turn, or a
+/// non-uniform scale (image resize). Drives `Drawable::apply_canvas_transform`
+/// so annotations remap with the background instead of staying put. All
+/// maps use the PRE-transform image width `w` / height `h`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CanvasTransform {
+    /// Mirror left↔right about the vertical centerline (dims unchanged).
+    FlipHorizontal,
+    /// Rotate the image 90° counter-clockwise (width/height swap).
+    RotateCcw,
+    /// Rotate the image 90° clockwise (width/height swap). Not a
+    /// user-facing op — it's the inverse of `RotateCcw`, used by undo.
+    RotateCw,
+    /// Scale geometry about the origin by `(sx, sy)` — an image resize.
+    Scale { sx: f32, sy: f32 },
+}
+
+impl CanvasTransform {
+    /// Map an ABSOLUTE image-space point from pre- to post-transform
+    /// space. CCW: `(x,y) → (y, w−x)`; CW: `(x,y) → (h−y, x)`; flip:
+    /// `(x,y) → (w−x, y)`; scale: `(x,y) → (x·sx, y·sy)`.
+    pub fn map_point(self, p: Vec2D, w: f32, h: f32) -> Vec2D {
+        match self {
+            CanvasTransform::FlipHorizontal => Vec2D::new(w - p.x, p.y),
+            CanvasTransform::RotateCcw => Vec2D::new(p.y, w - p.x),
+            CanvasTransform::RotateCw => Vec2D::new(h - p.y, p.x),
+            CanvasTransform::Scale { sx, sy } => Vec2D::new(p.x * sx, p.y * sy),
+        }
+    }
+
+    /// Map a RELATIVE offset vector (the translation component cancels):
+    /// flip negates x; CCW sends `(dx,dy) → (dy, −dx)`; CW sends
+    /// `(dx,dy) → (−dy, dx)`; scale multiplies per axis. Used by the
+    /// offset-encoded freehand strokes (brush / highlighter / spotlight).
+    pub fn map_offset(self, d: Vec2D) -> Vec2D {
+        match self {
+            CanvasTransform::FlipHorizontal => Vec2D::new(-d.x, d.y),
+            CanvasTransform::RotateCcw => Vec2D::new(d.y, -d.x),
+            CanvasTransform::RotateCw => Vec2D::new(-d.y, d.x),
+            CanvasTransform::Scale { sx, sy } => Vec2D::new(d.x * sx, d.y * sy),
+        }
+    }
+
+    /// Map an axis-aligned rect by mapping opposite corners and
+    /// re-canonicalizing (flip/90°/scale all keep boxes axis-aligned).
+    pub fn map_rect(self, r: Rect, w: f32, h: f32) -> Rect {
+        Rect::from_corners(
+            self.map_point(r.top_left(), w, h),
+            self.map_point(r.bottom_right(), w, h),
+        )
+    }
+
+    /// New `(width, height)` after applying to a `w`×`h` image.
+    pub fn new_size(self, w: f32, h: f32) -> (f32, f32) {
+        match self {
+            CanvasTransform::FlipHorizontal => (w, h),
+            CanvasTransform::RotateCcw | CanvasTransform::RotateCw => (h, w),
+            CanvasTransform::Scale { sx, sy } => (w * sx, h * sy),
+        }
+    }
+
+    /// The transform that exactly undoes `self` (applied to the
+    /// POST-`self` geometry): flip is self-inverse, CCW↔CW, scale
+    /// reciprocates per axis.
+    pub fn inverse(self) -> CanvasTransform {
+        match self {
+            CanvasTransform::FlipHorizontal => CanvasTransform::FlipHorizontal,
+            CanvasTransform::RotateCcw => CanvasTransform::RotateCw,
+            CanvasTransform::RotateCw => CanvasTransform::RotateCcw,
+            CanvasTransform::Scale { sx, sy } => CanvasTransform::Scale {
+                sx: 1.0 / sx,
+                sy: 1.0 / sy,
+            },
+        }
+    }
+}
+
+pub trait Drawable: DrawableClone + Debug {
+    fn draw(&self, canvas: &mut Canvas<OpenGl>, font: FontId, bounds: (Vec2D, Vec2D))
+    -> Result<()>;
+    fn handle_undo(&mut self) {}
+    fn handle_redo(&mut self) {}
+
+    /// Marker for spotlight drawables. The renderer skips these in the
+    /// main draw pass and applies them as a single inverse-mask overlay
+    /// at the end (so multiple spotlight shapes union correctly into one
+    /// dark layer, with the global slider value controlling its alpha).
+    /// Default false; only `spotlight::SpotlightKind` overrides.
+    fn is_spotlight(&self) -> bool {
+        false
+    }
+
+    /// Add this drawable's silhouette to `path` in image-space units.
+    /// Used by the renderer's spotlight pass to build the punch-out mask
+    /// — the renderer fills `path` with composite=DestinationOut, so
+    /// each spotlight's shape erases the dark overlay where the user
+    /// drew it. Default no-op; only spotlight drawables implement it.
+    fn append_spotlight_path(&self, _path: &mut FemtoPath) {}
+
+    /// Type-erased downcast hook. Returns `&self` typed as `&dyn Any` so
+    /// callers that need concrete-type access (e.g. PointerTool's
+    /// double-click-to-edit-text path) can `downcast_ref::<ConcreteType>()`.
+    /// Each impl provides the one-line override; the trait itself can't
+    /// default this because `&self` is type-erased at the trait-object
+    /// boundary.
+    fn as_any(&self) -> &dyn Any;
+
+    /// Axis-aligned bounding box in image coordinates. `None` means "not selectable"
+    /// (e.g. an in-progress drawable still being drawn).
+    fn bounds(&self) -> Option<Rect> {
+        None
+    }
+
+    /// Whether `point` (image coordinates) hits this drawable.
+    /// `tolerance` is extra picking slack in image-space pixels — sketch_board passes
+    /// a value scaled to the current zoom.
+    /// Default falls through to bounds-containment, which is correct for filled shapes.
+    fn hit_test(&self, point: Vec2D, tolerance: f32) -> bool {
+        self.bounds()
+            .map(|b| b.inflated(tolerance).contains(point))
+            .unwrap_or(false)
+    }
+
+    /// Whether `point` hits this drawable's *border* rather than its
+    /// interior.
+    ///
+    /// Only meaningful for drawables with a large opaque body — a
+    /// filled shape, a blur, a spotlight, a pasted image, a text pill.
+    /// Those cover enough canvas that treating every interior pixel as
+    /// "grab me" makes the area under them unusable for drawing: you
+    /// cannot start a text annotation inside a filled rectangle,
+    /// because the click selects the rectangle instead.
+    ///
+    /// So while a drawing tool is armed, only a border hit grabs the
+    /// annotation and the interior passes through to that tool. The
+    /// Pointer tool is unaffected — it selects anywhere, which is what
+    /// it is for.
+    ///
+    /// Defaults to `hit_test`, which is right for everything thin: a
+    /// line, an arrow, a brush stroke and a counter have no interior
+    /// distinct from their edge, so their whole body stays grabbable.
+    fn edge_hit_test(&self, point: Vec2D, tolerance: f32) -> bool {
+        self.hit_test(point, tolerance)
+    }
+
+    /// Loupe factor for a spotlight: 1.0 is an ordinary spotlight,
+    /// above that the renderer magnifies what the opening reveals.
+    /// Read by the spotlight pass, which is the only place a
+    /// spotlight renders at all.
+    fn spotlight_magnification(&self) -> f32 {
+        1.0
+    }
+
+    /// A hover-only preview of an annotation that hasn't been created
+    /// yet. It is editor furniture: drawn on screen, never exported.
+    fn is_hover_preview(&self) -> bool {
+        false
+    }
+
+    /// Which band this drawable is committed into. See [`StackBand`].
+    fn stack_band(&self) -> StackBand {
+        StackBand::of(self.tool_type())
+    }
+
+    /// Translate the drawable by `delta` (image coordinates).
+    /// Default is a no-op so non-movable drawables (e.g. crop overlays) don't need
+    /// to implement it.
+    fn translate(&mut self, _delta: Vec2D) {}
+
+    /// Remap this drawable's geometry for a whole-canvas flip/rotate so
+    /// annotations move WITH the image (non-destructive — no
+    /// rasterizing). `w`/`h` are the PRE-transform image dimensions.
+    /// Vector shapes fully transform; text repositions but stays upright
+    /// and readable; pasted images also transform their pixels. Default
+    /// no-op for drawables with no image-space geometry.
+    fn apply_canvas_transform(&mut self, _t: CanvasTransform, _w: f32, _h: f32) {}
+
+    /// Handles to expose for direct manipulation when this drawable is selected.
+    /// Default is empty (move-only).
+    fn handles(&self) -> Vec<Handle> {
+        Vec::new()
+    }
+
+    /// Move a handle to `to` (image coordinates). The drawable updates itself
+    /// according to the handle's semantics (e.g. arrow endpoint, rect corner).
+    /// Default is a no-op.
+    fn move_handle(&mut self, _handle: HandleId, _to: Vec2D) {}
+
+    /// Apply a new style to the drawable (color, size, fill, …). Used when the
+    /// user picks a different color/size in the toolbar while a drawable is
+    /// selected, so the toolbar acts on the selection rather than only on
+    /// future shapes. Default is a no-op for drawables that don't carry a
+    /// mutable style.
+    fn set_style(&mut self, _style: Style) {}
+
+    /// Current style of the drawable, when it has one. Used by the
+    /// sketch board to sync toolbar controls (size slider, color
+    /// chip, fill toggle) to whichever shape is currently selected —
+    /// so the user sees the *current* shape's size in the slider
+    /// rather than the last-typed value. Default `None` for drawables
+    /// that don't carry a mutable style.
+    fn style(&self) -> Option<Style> {
+        None
+    }
+
+    /// Apply the text-pill background style (Plain vs Rounded) to a
+    /// committed Text drawable. Default no-op — only Text overrides
+    /// this so the dropdown in the StyleToolbar can restyle a
+    /// selected text after the fact, not just at creation time.
+    fn set_text_background(&mut self, _bg: TextBackground) {}
+
+    /// Read the text-pill background style (Plain vs Rounded) off a
+    /// Text drawable. `None` for any drawable that doesn't carry a
+    /// text background — the toolbar uses this on selection-sync to
+    /// flip its dropdown to the just-selected drawable's value so
+    /// the on-screen affordance reflects whatever is currently
+    /// clicked.
+    fn text_background(&self) -> Option<TextBackground> {
+        None
+    }
+
+    /// Apply / read the arrow-geometry variant on an Arrow drawable.
+    /// Symmetric with the text-background pair so popover picks,
+    /// double-tap cycles, and selection-driven re-syncs all work
+    /// against the *selected* drawable instead of just the tool's
+    /// default. Default `None` / no-op for non-arrows.
+    fn set_arrow_style_on_drawable(&mut self, _style: ArrowStyle) {}
+    fn arrow_style(&self) -> Option<ArrowStyle> {
+        None
+    }
+
+    /// Short human label for the layer panel row ("Rectangle", "Arrow", …).
+    /// The panel appends a running ordinal so duplicates read as "Arrow 2",
+    /// "Arrow 3"; the per-Drawable override just supplies the type word.
+    fn kind_label(&self) -> &'static str {
+        "Shape"
+    }
+
+    /// Layer-panel label variant that may include per-instance state in
+    /// the kind word — e.g. `Arrow` prepends its style so a Pointy arrow
+    /// reads "Pointy Arrow 1" rather than just "Arrow 1". Default returns
+    /// `kind_label` as a `String`. The panel still appends a running
+    /// ordinal so callers don't need to track numbering.
+    fn panel_label_kind(&self) -> String {
+        self.kind_label().to_string()
+    }
+
+    /// What to draw in the kind-icon slot of the layer-panel row.
+    /// Default `Icon` keeps the gtk::Image fallback (no color tint);
+    /// shape-like drawables override to return a cairo-rendered
+    /// variant so the silhouette honors the drawable's actual color
+    /// and fill state. Caller passes the variant to
+    /// `draw_panel_preview` in sketch_board.
+    fn panel_preview(&self) -> PanelPreview {
+        PanelPreview::Icon
+    }
+
+    /// What to paint in the leftmost (swatch) slot of the row.
+    /// Default reads the drawable's primary color from `style()` and
+    /// returns `Color(...)` if present, else `None` — drawables with
+    /// non-color "effects" (Blur, Spotlight) override to return a
+    /// dedicated icon or fixed tone.
+    fn panel_swatch(&self) -> PanelSwatch {
+        match self.style() {
+            Some(s) => PanelSwatch::Color(s.color),
+            None => PanelSwatch::None,
+        }
+    }
+
+    /// Icon resource name for the layer panel row. Should match an entry in
+    /// bundled by `build.rs`. Defaults to the pen icon so any new Drawable still
+    /// shows *something* before its override lands.
+    fn icon_name(&self) -> &'static str {
+        "pen-regular"
+    }
+
+    /// Apply / read the blur algorithm on a Blur drawable. Same
+    /// shape as `set_arrow_style_on_drawable` / `arrow_style`.
+    fn set_blur_style_on_drawable(&mut self, _style: BlurStyle) {}
+    fn blur_style(&self) -> Option<BlurStyle> {
+        None
+    }
+
+    /// Highlighter style of a committed Highlight stroke
+    /// (TextLocked vs Normal). `None` for all other drawables. The
+    /// layer panel uses this to label rows as
+    /// "Text-locked Highlight 1" vs "Normal Highlight 1".
+    fn highlighter_style(&self) -> Option<HighlighterStyle> {
+        None
+    }
+
+    /// Apply / read the post-stroke smoothing iteration count on a
+    /// Brush drawable. The drawable caches its raw (online-smoothed)
+    /// input so calling `set_smooth_level` after commit re-runs the
+    /// smoothing pipeline from the same baseline — the user can keep
+    /// nudging the slider with the annotation selected and the
+    /// stroke morphs progressively without compounding smoothing on
+    /// already-smoothed data. `None` / no-op for non-brush drawables.
+    fn smooth_level(&self) -> Option<usize> {
+        None
+    }
+    fn set_smooth_level(&mut self, _level: usize) {}
+
+    /// Which tool created this drawable. Used by sketch_board to
+    /// auto-switch the active tool when the user selects an existing
+    /// drawable, so the toolbar's tool-specific controls (arrow
+    /// style chip, blur algorithm, text-background dropdown, etc.)
+    /// match the picked shape. `None` for internal drawables that
+    /// shouldn't trigger a switch (selection overlay).
+    fn tool_type(&self) -> Option<Tools> {
+        None
+    }
+
+    /// Render a selection "glow" — a semi-transparent blue trace of the
+    /// shape, drawn under the original. Each shape's impl chooses how
+    /// to map `HALO_PAD` (a CSS-pixel target) into image units using
+    /// `glow_scale_image_units` so the halo appears at constant on-screen
+    /// thickness regardless of zoom or DPR.
+    fn render_glow(
+        &self,
+        canvas: &mut Canvas<OpenGl>,
+        _font: FontId,
+        _bounds: (Vec2D, Vec2D),
+        device_pixel_ratio: f32,
+    ) -> Result<()> {
+        let Some(b) = self.bounds() else {
+            return Ok(());
+        };
+        canvas.save();
+        let halo = halo_in_image_units(canvas, device_pixel_ratio);
+        let inflate = halo / 2.0;
+        let mut path = FemtoPath::new();
+        path.rounded_rect(
+            b.pos.x - inflate,
+            b.pos.y - inflate,
+            b.size.x + inflate * 2.0,
+            b.size.y + inflate * 2.0,
+            6.0,
+        );
+        let mut paint = Paint::color(GLOW_COLOR);
+        paint.set_line_width(halo);
+        canvas.stroke_path(&path, &paint);
+        canvas.restore();
+        Ok(())
+    }
+}
+
+/// What kind of preview the layer panel should paint for a drawable.
+/// `Icon` defers to `Drawable::icon_name`; the other variants pick a
+/// cairo silhouette painted in the drawable's primary color so the row
+/// visually mirrors the canvas shape.
+#[derive(Debug, Clone, Copy)]
+pub enum PanelPreview {
+    Icon,
+    Rectangle { filled: bool },
+    Ellipse { filled: bool },
+    Line,
+    Arrow(ArrowStyle),
+}
+
+/// What to paint in the row's swatch slot. The default mapping is
+/// `style().color → Color`, or `None` for drawables without a style —
+/// individual drawable types override to surface a more useful
+/// indicator (e.g. Spotlight returns the `SpotlightOverlay` variant
+/// because its effect is a dim global mask, not a stroke color).
+#[derive(Debug, Clone, Copy)]
+pub enum PanelSwatch {
+    /// Filled color, clickable to open the color picker. The standard
+    /// case for shapes and strokes that carry a `Style::color`.
+    Color(crate::style::Color),
+    /// Grey-outlined empty box, non-interactive. Used for drawables
+    /// that have no mutable color (Image, Crop) so the swatch slot
+    /// remains visually balanced with neighbouring colored rows.
+    None,
+    /// 2×2 transparency-checkerboard pattern — Blur uses this since
+    /// "what you see through the blur" depends on the canvas content,
+    /// not a single color.
+    Checkerboard,
+    /// Dark fill with a 1px light border and a small white rounded
+    /// "highlight" box inside, representing the spotlight tool's
+    /// dim-overlay-with-cutout effect at swatch scale.
+    SpotlightOverlay,
+}
+
+/// Convert `HALO_PAD` (CSS pixels) into image units given the canvas's
+/// current image→canvas transform and the host display's DPR. Use this
+/// inside any `render_glow` impl that wants a halo of constant on-screen
+/// thickness.
+pub fn halo_in_image_units(canvas: &Canvas<OpenGl>, device_pixel_ratio: f32) -> f32 {
+    // Image px per canvas px. 1.0 is the 100% view.
+    let zoom = canvas.transform().average_scale().max(0.0001);
+    // A constant on-screen halo is right when zoomed IN — the halo is
+    // UI, and UI shouldn't grow with the artwork. Zoomed OUT the same
+    // rule turns against us: the halo keeps its screen width while the
+    // annotation shrinks, so below roughly half scale it outweighs the
+    // thing it decorates. On a tapered arrow, whose tail is *designed*
+    // to vanish to a point, the result is a long blue hairline with no
+    // visible arrow inside it — which reads as a rendering fault
+    // rather than as a selection.
+    //
+    // So hold it constant only while zooming in, and let it shrink
+    // with the artwork past 100%, down to a floor that keeps a
+    // selection perceptible on a heavily zoomed-out canvas.
+    halo_css_pad(zoom) * device_pixel_ratio / zoom
+}
+
+/// On-screen halo width (CSS px) at a given zoom — see
+/// [`halo_in_image_units`], which converts it back into image units.
+fn halo_css_pad(zoom: f32) -> f32 {
+    (HALO_PAD * zoom.min(1.0)).max(MIN_HALO_PAD)
+}
+
+/// Picking slack for a border grab, in CSS pixels on screen —
+/// [`edge_hit_tolerance`] converts it into image units at the current
+/// zoom. Deliberately fatter than [`HIT_TOLERANCE`]: the border is
+/// the *only* way to grab a large annotation while a drawing tool is
+/// armed, so it has to be forgiving to aim at, and it is aimed at
+/// with a pointer on a screen rather than at image pixels.
+pub const EDGE_HIT_TOLERANCE: f32 = 18.0;
+
+/// Whether `point` falls in the band straddling `rect`'s perimeter.
+///
+/// Inside and outside by `tolerance` both count, so the target is
+/// `2 * tolerance` wide and a slightly-missed grab still lands.
+/// Where a newly committed annotation lands in the stack.
+///
+/// A new annotation normally goes on top of everything, which buries a
+/// text box under the next filled rectangle drawn over it. Labels are
+/// the thing you least want covered, so they get their own bands: a
+/// new annotation is inserted at the top of ITS band rather than the
+/// top of the stack, leaving text above the artwork and counters above
+/// the text.
+///
+/// This only decides where something lands when it is created.
+/// Reordering afterwards — the layer panel, the canvas context menu —
+/// moves it anywhere, and nothing drags it back. The rule is a good
+/// default, not a constraint the editor keeps re-imposing, which also
+/// keeps the layer panel's order honest about what gets drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StackBand {
+    /// Everything that makes up the picture: shapes, arrows, brush,
+    /// blur, spotlight, pasted images.
+    Artwork,
+    /// Text, above the artwork so a shape drawn over a label doesn't
+    /// swallow it.
+    Text,
+    /// Counters, above even text — a number stamped on a label is the
+    /// whole point of stamping it there.
+    Counter,
+}
+
+impl StackBand {
+    pub fn of(tool: Option<Tools>) -> Self {
+        match tool {
+            Some(Tools::Text) => StackBand::Text,
+            Some(Tools::Marker) => StackBand::Counter,
+            _ => StackBand::Artwork,
+        }
+    }
+
+    /// Where a new drawable of `band` lands in a stack whose existing
+    /// bands are `existing`, bottom-first: just above the last entry
+    /// that isn't in a higher band. Newest-on-top holds within a band,
+    /// so this only changes which annotations a new one goes under.
+    ///
+    /// `existing` is read as-is rather than assumed sorted — after a
+    /// manual reorder the bands can interleave, and the insert still
+    /// has to land somewhere sensible.
+    pub fn insert_position(existing: &[StackBand], band: StackBand) -> usize {
+        existing
+            .iter()
+            .rposition(|b| *b <= band)
+            .map_or(0, |pos| pos + 1)
+    }
+}
+
+/// The framebuffer rectangle covered by the image-space rect
+/// `(pos, size)`, clamped to the canvas — `(x, y, w, h)` in canvas
+/// pixels, or `None` when the rect lands entirely off-canvas.
+///
+/// Shared by the tools that read back what is under them: the blur
+/// resamples it, the spotlight magnifies it.
+pub fn canvas_region(
+    canvas: &Canvas<OpenGl>,
+    pos: Vec2D,
+    size: Vec2D,
+) -> Option<(usize, usize, usize, usize)> {
+    let transform = canvas.transform();
+    let origin = transform.transform_point(pos.x, pos.y);
+    let extent = size * transform.average_scale();
+    let cw = canvas.width() as f32;
+    let ch = canvas.height() as f32;
+    let x0 = origin.0.floor().clamp(0.0, cw);
+    let y0 = origin.1.floor().clamp(0.0, ch);
+    let x1 = (origin.0 + extent.x).ceil().clamp(0.0, cw);
+    let y1 = (origin.1 + extent.y).ceil().clamp(0.0, ch);
+    let (w, h) = ((x1 - x0) as usize, (y1 - y0) as usize);
+    (w > 0 && h > 0).then_some((x0 as usize, y0 as usize, w, h))
+}
+
+/// Does a click at `point` grab `drawable`, or fall through to the
+/// drawing tool `armed` behind it? `armed` is `None` when the Pointer
+/// tool is active, which grabs anywhere.
+///
+/// Both the click handler and the hover cursor ask this, so the cursor
+/// can't promise a grab the click won't perform.
+pub fn click_grabs_drawable(armed: Option<Tools>, drawable: &dyn Drawable, point: Vec2D) -> bool {
+    grab_rule(
+        armed,
+        drawable.tool_type(),
+        drawable.edge_hit_test(point, edge_hit_tolerance()),
+    )
+}
+
+/// The border-grab band in image units, sized so it stays
+/// [`EDGE_HIT_TOLERANCE`] CSS pixels wide on screen at any zoom.
+///
+/// A fixed band in image units is the wrong shape for this: a 6K
+/// capture is usually viewed at well under half scale, where 14 image
+/// pixels is barely five on screen and the border is a hairline to
+/// aim at. Aiming happens on screen, so the tolerance belongs there.
+pub fn edge_hit_tolerance() -> f32 {
+    let dpr = crate::femtovg_area::current_device_pixel_ratio().max(0.0001);
+    // Image px per CSS px: 1.0 at the 100% view on a non-HiDPI screen.
+    let zoom = (crate::femtovg_area::current_render_scale() / dpr).max(0.0001);
+    EDGE_HIT_TOLERANCE / zoom
+}
+
+/// The rule behind `click_grabs_drawable`, split from the `Drawable`
+/// so it can be tested without standing up a whole annotation.
+fn grab_rule(armed: Option<Tools>, target: Option<Tools>, edge_hit: bool) -> bool {
+    let Some(armed) = armed else {
+        return true;
+    };
+    // The counter is a stamp: the click IS the whole gesture, and the
+    // thing you most often want to number is a piece of text. So it
+    // overrides text's always-grabbable rule and stamps on top. Every
+    // other tool keeps that rule, because for them a click on a text
+    // box means "move this", not "start something here".
+    if armed == Tools::Marker && target == Some(Tools::Text) {
+        return false;
+    }
+    edge_hit
+}
+
+pub fn bbox_edge_hit(rect: Rect, point: Vec2D, tolerance: f32) -> bool {
+    if !rect.inflated(tolerance).contains(point) {
+        return false;
+    }
+    // Inside the deflated rect is the interior proper — a miss. A rect
+    // thinner than the band has no interior left, so every hit on it is
+    // an edge hit.
+    let inner = Rect {
+        pos: Vec2D::new(rect.pos.x + tolerance, rect.pos.y + tolerance),
+        size: Vec2D::new(rect.size.x - 2.0 * tolerance, rect.size.y - 2.0 * tolerance),
+    };
+    if inner.size.x <= 0.0 || inner.size.y <= 0.0 {
+        return true;
+    }
+    !inner.contains(point)
+}
+
+/// Selection accent colour (used for handles + glow + hover cursor halo).
+pub const SELECTION_BLUE: femtovg::Color = femtovg::Color {
+    r: 0.18,
+    g: 0.53,
+    b: 0.87,
+    a: 1.0,
+};
+/// Semi-transparent variant for the glow trace.
+pub const GLOW_COLOR: femtovg::Color = femtovg::Color {
+    r: 0.18,
+    g: 0.53,
+    b: 0.87,
+    a: 0.45,
+};
+/// Visible halo width (in CSS pixels) — the band of GLOW_COLOR shown
+/// outside each selected drawable's silhouette. Per-shape `render_glow`
+/// impls translate this into stroke widths, fill insets, etc., and
+/// scale it via `halo_in_image_units` so the on-screen size is constant
+/// regardless of zoom or DPR.
+pub const HALO_PAD: f32 = 4.0;
+
+/// Floor for the halo's on-screen width (CSS pixels). Below this a
+/// selection stops being readable at all, so a heavily zoomed-out
+/// canvas keeps a thin trace rather than nothing.
+pub const MIN_HALO_PAD: f32 = 1.0;
+
+/// Visual shape used by the SelectionOverlay to render a handle.
+/// Round is the standard "resize a side/corner" affordance;
+/// Square signals a different semantic (e.g. text's bottom-right
+/// corner scales font size + width together, not just resize).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HandleKind {
+    #[default]
+    Round,
+    Square,
+}
+
+/// A handle exposed by a drawable for direct manipulation.
+#[derive(Debug, Clone, Copy)]
+pub struct Handle {
+    pub id: HandleId,
+    pub pos: Vec2D,
+    /// Hit-test radius in image units. Defaults to `HANDLE_HIT_RADIUS`;
+    /// drawables can opt into a bigger target (e.g. Curved/Double arrows
+    /// where the midpoint handle sits on a wide shaft) via `with_hit_radius`.
+    pub hit_radius: f32,
+    /// Visual style — Round (default) or Square. Per-handle so a single
+    /// drawable can mix shapes (e.g. text uses Round side handles + a
+    /// Square bottom-right corner).
+    pub kind: HandleKind,
+}
+
+impl Handle {
+    pub fn new(id: HandleId, pos: Vec2D) -> Self {
+        Self {
+            id,
+            pos,
+            hit_radius: pointer::HANDLE_HIT_RADIUS,
+            kind: HandleKind::Round,
+        }
+    }
+
+    pub fn with_hit_radius(mut self, r: f32) -> Self {
+        self.hit_radius = r;
+        self
+    }
+
+    pub fn with_kind(mut self, kind: HandleKind) -> Self {
+        self.kind = kind;
+        self
+    }
+}
+
+/// Render a list of selection / editing handles to `canvas` using a
+/// white-ring + blue-disc visual. Round handles draw circles; Square
+/// handles draw rounded squares half the round diameter — signals a
+/// different semantic (e.g. text's bottom-right scales font size +
+/// width together rather than purely resizing).
+///
+/// `css_to_image` converts CSS-pixel diameters into image units so the
+/// on-screen size stays constant across zoom + DPR. Callers compute it
+/// as `device_pixel_ratio / canvas.transform.average_scale()`.
+pub fn render_handles(canvas: &mut Canvas<OpenGl>, handles: &[Handle], css_to_image: f32) {
+    // CSS-pixel diameters. The pipeline is image_units →
+    // (image_to_canvas scale) → physical pixels (canvas is sized
+    // in physical px); to display N CSS px we want N × DPR physical
+    // px, which is (N × DPR) ÷ image_to_canvas in image units. The
+    // caller has already folded both factors into `css_to_image`.
+    const INNER_DIAMETER: f32 = 12.0;
+    const RING: f32 = 2.0;
+    let inner_r = (INNER_DIAMETER / 2.0) * css_to_image;
+    let outer_r = (INNER_DIAMETER / 2.0 + RING) * css_to_image;
+    // Square handles draw at HALF the round diameter per the standard pattern
+    // text-tool reference — smaller + different shape distinguishes the
+    // "this corner has a special semantic" handle from plain resizes.
+    let sq_inner_half = (INNER_DIAMETER / 4.0) * css_to_image;
+    let sq_outer_half = (INNER_DIAMETER / 4.0 + RING) * css_to_image;
+    let sq_corner = 1.5 * css_to_image;
+    let white_fill = Paint::color(femtovg::Color::white());
+    let blue_fill = Paint::color(SELECTION_BLUE);
+    for h in handles {
+        match h.kind {
+            HandleKind::Round => {
+                let mut outer = FemtoPath::new();
+                outer.circle(h.pos.x, h.pos.y, outer_r);
+                canvas.fill_path(&outer, &white_fill);
+                let mut inner = FemtoPath::new();
+                inner.circle(h.pos.x, h.pos.y, inner_r);
+                canvas.fill_path(&inner, &blue_fill);
+            }
+            HandleKind::Square => {
+                let mut outer = FemtoPath::new();
+                outer.rounded_rect(
+                    h.pos.x - sq_outer_half,
+                    h.pos.y - sq_outer_half,
+                    sq_outer_half * 2.0,
+                    sq_outer_half * 2.0,
+                    sq_corner,
+                );
+                canvas.fill_path(&outer, &white_fill);
+                let mut inner = FemtoPath::new();
+                inner.rounded_rect(
+                    h.pos.x - sq_inner_half,
+                    h.pos.y - sq_inner_half,
+                    sq_inner_half * 2.0,
+                    sq_inner_half * 2.0,
+                    sq_corner,
+                );
+                canvas.fill_path(&inner, &blue_fill);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HandleId {
+    /// Linear-shape endpoints (arrow, line).
+    Start,
+    End,
+    /// Mid-shape control point (curved/double arrow Bezier control).
+    Control,
+    /// Bounding-box corners.
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    /// Bounding-box edge midpoints.
+    Top,
+    Right,
+    Bottom,
+    Left,
+}
+
+/// 8 standard bounding-box handles (4 corners, 4 edge midpoints).
+/// Shared by rectangle / ellipse / blur / highlight-block.
+pub fn bbox_handles(rect: Rect) -> Vec<Handle> {
+    let tl = rect.top_left();
+    let tr = rect.top_right();
+    let bl = rect.bottom_left();
+    let br = rect.bottom_right();
+    let center = rect.center();
+    vec![
+        Handle::new(HandleId::TopLeft, tl),
+        Handle::new(HandleId::TopRight, tr),
+        Handle::new(HandleId::BottomLeft, bl),
+        Handle::new(HandleId::BottomRight, br),
+        Handle::new(HandleId::Top, Vec2D::new(center.x, tl.y)),
+        Handle::new(HandleId::Bottom, Vec2D::new(center.x, br.y)),
+        Handle::new(HandleId::Left, Vec2D::new(tl.x, center.y)),
+        Handle::new(HandleId::Right, Vec2D::new(br.x, center.y)),
+    ]
+}
+
+/// Resize a canonical bounding box given a handle being dragged to `to`.
+/// Returns a canonicalized rect.
+pub fn bbox_resize(rect: Rect, handle: HandleId, to: Vec2D) -> Rect {
+    let tl = rect.top_left();
+    let br = rect.bottom_right();
+    let (new_tl, new_br) = match handle {
+        HandleId::TopLeft => (to, br),
+        HandleId::TopRight => (Vec2D::new(tl.x, to.y), Vec2D::new(to.x, br.y)),
+        HandleId::BottomLeft => (Vec2D::new(to.x, tl.y), Vec2D::new(br.x, to.y)),
+        HandleId::BottomRight => (tl, to),
+        HandleId::Top => (Vec2D::new(tl.x, to.y), br),
+        HandleId::Bottom => (tl, Vec2D::new(br.x, to.y)),
+        HandleId::Left => (Vec2D::new(to.x, tl.y), br),
+        HandleId::Right => (tl, Vec2D::new(to.x, br.y)),
+        _ => return rect,
+    };
+    Rect::from_corners(new_tl, new_br)
+}
+
+/// Constrain a corner-handle target so the resulting bbox preserves the
+/// original aspect ratio. Used when Shift is held while dragging a corner.
+///
+/// The dominant axis (whichever the user has scaled more, measured from
+/// the pinned opposite corner) wins; the other axis is snapped to match.
+/// Returns `to` unchanged if `handle` is not a corner or `orig` is degenerate.
+pub fn aspect_lock_corner_target(orig: Rect, handle: HandleId, to: Vec2D) -> Vec2D {
+    let anchor = match handle {
+        HandleId::TopLeft => orig.bottom_right(),
+        HandleId::TopRight => orig.bottom_left(),
+        HandleId::BottomLeft => orig.top_right(),
+        HandleId::BottomRight => orig.top_left(),
+        _ => return to,
+    };
+    if orig.size.x <= f32::EPSILON || orig.size.y <= f32::EPSILON {
+        return to;
+    }
+    let dx = to.x - anchor.x;
+    let dy = to.y - anchor.y;
+    let scale_x = dx.abs() / orig.size.x;
+    let scale_y = dy.abs() / orig.size.y;
+    let scale = scale_x.max(scale_y);
+    let sign_x = if dx >= 0.0 { 1.0 } else { -1.0 };
+    let sign_y = if dy >= 0.0 { 1.0 } else { -1.0 };
+    Vec2D::new(
+        anchor.x + sign_x * scale * orig.size.x,
+        anchor.y + sign_y * scale * orig.size.y,
+    )
+}
+
+/// For a side-handle drag with Shift held, compute the opposite side's
+/// handle id and the mirrored target that produces symmetric resize about
+/// the original bbox's center on the dragged axis.
+///
+/// Returns `None` if `handle` is not a side handle. Callers should apply
+/// `move_handle(handle, to)` first, then `move_handle(opp, mirrored)` so
+/// shapes with vertex-scaling resize (brush, highlight) compose correctly.
+pub fn mirror_side_target(orig: Rect, handle: HandleId, to: Vec2D) -> Option<(HandleId, Vec2D)> {
+    let tl = orig.top_left();
+    let br = orig.bottom_right();
+    match handle {
+        HandleId::Top => {
+            let mirrored_y = br.y - (to.y - tl.y);
+            Some((HandleId::Bottom, Vec2D::new(br.x, mirrored_y)))
+        }
+        HandleId::Bottom => {
+            let mirrored_y = tl.y - (to.y - br.y);
+            Some((HandleId::Top, Vec2D::new(tl.x, mirrored_y)))
+        }
+        HandleId::Left => {
+            let mirrored_x = br.x - (to.x - tl.x);
+            Some((HandleId::Right, Vec2D::new(mirrored_x, br.y)))
+        }
+        HandleId::Right => {
+            let mirrored_x = tl.x - (to.x - br.x);
+            Some((HandleId::Left, Vec2D::new(mirrored_x, tl.y)))
+        }
+        _ => None,
+    }
+}
+
+/// Identifier for a committed drawable on the sketch stack.
+/// Stable across moves, edits, and undo/redo cycles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DrawableId(pub u64);
+
+/// A drawable that has been committed to the stack, paired with its stable ID
+/// and per-instance UI state (visibility + lock + optional custom name).
+///
+/// `visible = false` hides the drawable from rendering, hit-testing, and
+/// marquee selection — but it stays in the stack and still contributes to
+/// canvas auto-resize bounds (hiding ≠ deleting). `locked = true` keeps the
+/// drawable visible but skips it from hit-testing and marquee selection so
+/// background annotations can't be grabbed by accident. `custom_name`, when
+/// `Some`, overrides the auto-generated "Rectangle 3" label in the layer
+/// panel — set via click-to-rename.
+#[derive(Debug)]
+pub struct Stacked {
+    pub id: DrawableId,
+    pub drawable: Box<dyn Drawable>,
+    pub visible: bool,
+    pub locked: bool,
+    pub custom_name: Option<String>,
+    /// Ordinal assigned at commit time, monotonically increasing within
+    /// each `kind_label`. Frozen for the lifetime of the drawable so
+    /// reorders don't renumber rows ("Rectangle 3" stays "Rectangle 3"
+    /// even if it gets dragged to the top of the panel). Custom names
+    /// supersede this for display.
+    pub auto_label_index: u32,
+}
+
+impl Stacked {
+    pub fn new(id: DrawableId, drawable: Box<dyn Drawable>, auto_label_index: u32) -> Self {
+        Self {
+            id,
+            drawable,
+            visible: true,
+            locked: false,
+            custom_name: None,
+            auto_label_index,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ToolUpdateResult {
+    Commit(Box<dyn Drawable>),
+    /// Replace the existing drawable identified by `DrawableId` with the new one.
+    /// Recorded as a single Modify undo action.
+    ModifyDrawable(DrawableId, Box<dyn Drawable>),
+    /// Replace many drawables atomically (Batch undo). Used for multi-select
+    /// restyle.
+    ModifyDrawables(Vec<(DrawableId, Box<dyn Drawable>)>),
+    /// Same as `ModifyDrawable` but merge with the previous undo entry
+    /// if it's already a Modify for the same id. Used by arrow-key
+    /// nudge so a held-down arrow produces one undo step rather than
+    /// one per OS auto-repeat tick.
+    ModifyDrawableCoalesce(DrawableId, Box<dyn Drawable>),
+    /// Multi-select counterpart of `ModifyDrawableCoalesce`.
+    ModifyDrawablesCoalesce(Vec<(DrawableId, Box<dyn Drawable>)>),
+    /// Raise the drawable with this id to the top of the stack (coalesced
+    /// `Reorder` undo), then redraw and stop propagation. Used by the
+    /// pointer-tool auto-raise: when a click selects a drawable that's
+    /// overlapped from above, sketch_board promotes it to the top so the
+    /// last-interacted shape sits on top of its neighbors.
+    RaiseAndRedrawStop(DrawableId),
+    /// Remove the drawable from the stack. Recorded as a Remove undo action so
+    /// it can be restored.
+    DeleteDrawable(DrawableId),
+    /// Remove a set of drawables atomically. Recorded as a single Batch undo
+    /// action so one Ctrl+Z restores them all.
+    DeleteDrawables(Vec<DrawableId>),
+    /// Request that sketch_board switch to the Text tool and resume
+    /// editing the drawable with this id. Emitted by `PointerTool` on
+    /// double-click of a Text drawable. The drawable itself is not
+    /// passed — sketch_board fetches it via the renderer.
+    EditTextDrawable(DrawableId),
+    Redraw,
+    Unmodified,
+    StopPropagation,
+    RedrawAndStopPropagation,
+}
+
+/// A reversible change to the drawable stack. Stored on undo/redo stacks.
+///
+/// Same variant moves between stacks for `Modify`. `Add` and `Remove` are paired:
+/// undoing an `Add` produces a `Remove` on the redo stack (and vice versa), since
+/// the live drawable storage location differs between the two states.
+#[derive(Debug)]
+pub enum UndoAction {
+    /// A drawable with this id was added; it currently lives in the stack.
+    Add(DrawableId),
+    /// A drawable was removed; this action holds it until restored. Carries
+    /// the per-instance visibility/lock state so undo restores the drawable
+    /// exactly as it was.
+    Remove {
+        id: DrawableId,
+        idx: usize,
+        drawable: Box<dyn Drawable>,
+        visible: bool,
+        locked: bool,
+        custom_name: Option<String>,
+        auto_label_index: u32,
+    },
+    /// A drawable was modified. `prev` is the state to restore on the next swap.
+    /// (After a swap, `prev` becomes the *new* previous, so the same variant can
+    /// move between undo/redo stacks symmetrically.)
+    Modify {
+        id: DrawableId,
+        prev: Box<dyn Drawable>,
+    },
+    /// Group of actions applied/reversed atomically — single Ctrl+Z undoes
+    /// the whole group. Used for multi-select operations like deleting a set
+    /// of drawables at once.
+    Batch(Vec<UndoAction>),
+    /// The drawable stack was reordered. `prev_order` is the full id sequence
+    /// (back-to-front) to restore on undo. `last_raised` is set when the
+    /// action came from `reorder_to_top_coalesce`; the next auto-raise of
+    /// the same id collapses into this entry instead of pushing a new one,
+    /// so a chain of click-to-raises on one shape is undone in a single step.
+    Reorder {
+        prev_order: Vec<DrawableId>,
+        last_raised: Option<DrawableId>,
+    },
+    /// A drawable's per-instance UI flags (visibility, lock) changed.
+    /// `prev_visible` / `prev_locked` are the values to restore on undo.
+    /// One variant carries both so a future "toggle both" action remains
+    /// reversible with a single Ctrl+Z.
+    SetLayerFlags {
+        id: DrawableId,
+        prev_visible: bool,
+        prev_locked: bool,
+    },
+    /// A drawable's custom panel name changed. `prev` is the string to
+    /// restore on undo; `None` means "no custom name was set" (back to
+    /// the auto-generated label).
+    Rename {
+        id: DrawableId,
+        prev: Option<String>,
+    },
+    /// Canvas was auto-extended to fit a drawable that spilled past the
+    /// previous image bounds. Holds the pre-extension Pixbuf, the
+    /// `(left, top)` translation applied to the listed drawables when
+    /// the strips were prepended, and the ids of drawables that were
+    /// translated. The triggering Add/Modify's drawable is excluded
+    /// from `translated_ids` because the Add's stored payload or the
+    /// Modify's `prev` were captured pre-translation, so the
+    /// inverse-of-inverse cycle would translate them twice. Always
+    /// paired with the triggering `Add` / `Modify` inside a `Batch`
+    /// so one Ctrl+Z reverses both. Batch order: ResizeCanvas first,
+    /// triggering action second.
+    ResizeCanvas {
+        prev_image: gtk::gdk_pixbuf::Pixbuf,
+        applied_offset: Vec2D,
+        translated_ids: Vec<DrawableId>,
+    },
+    /// A whole-canvas geometry op (flip / rotate / image-resize). Holds
+    /// the background + protected-rect to swap back in, and the geometry
+    /// `transform` (with the dims `w`/`h` it maps in) to apply to every
+    /// live drawable. On apply-inverse it swaps the raster and remaps the
+    /// drawables, returning the opposite op (post-image + inverse
+    /// transform). The raster is restored from the stored snapshot, so a
+    /// resize undo is lossless even though the forward resample isn't.
+    /// No `translate_history` is needed: this op sits on the undo stack,
+    /// so LIFO ordering guarantees it's reversed before any older
+    /// annotation snapshot (captured in the prior space) is touched.
+    CanvasOp {
+        image: gtk::gdk_pixbuf::Pixbuf,
+        original_rect: Rect,
+        transform: CanvasTransform,
+        w: f32,
+        h: f32,
+    },
+}
+
+pub use arrow::{ArrowStyle, ArrowTool};
+pub use blur::{BlurStyle, BlurTool};
+pub use crop::{AspectRatio, CropBgColor, CropHit, CropTool};
+pub use ellipse::EllipseTool;
+pub use highlight::{HighlightTool, HighlighterStyle, Highlighters};
+pub use line::LineTool;
+pub use pasted_image::PastedImage;
+pub use rectangle::RectangleTool;
+pub use spotlight::{MAX_SPOTLIGHT_MAGNIFICATION, MIN_SPOTLIGHT_MAGNIFICATION, SpotlightTool};
+pub use text::{Text, TextBackground, TextTool};
+
+use self::{brush::BrushTool, marker::MarkerTool, pointer::PointerTool};
+
+// Re-export pointer-tool tunables that other modules (e.g. sketch_board's
+// hover cursor) want to share.
+pub use self::pointer::{HANDLE_HIT_RADIUS, HIT_TOLERANCE};
+
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Deserialize, serde::Serialize,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Tools {
+    Pointer = 0,
+    Crop = 1,
+    Line = 2,
+    Arrow = 3,
+    Rectangle = 4,
+    Ellipse = 5,
+    Text = 6,
+    Marker = 7,
+    Blur = 8,
+    Highlighter = 9,
+    Brush = 10,
+    Spotlight = 11,
+}
+
+impl Tools {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Tools::Pointer => "Pointer",
+            Tools::Crop => "Crop",
+            Tools::Brush => "Pen",
+            Tools::Line => "Line",
+            Tools::Arrow => "Arrow",
+            Tools::Rectangle => "Rectangle",
+            Tools::Ellipse => "Ellipse",
+            Tools::Text => "Text",
+            Tools::Marker => "Counter",
+            Tools::Blur => "Blur",
+            Tools::Highlighter => "Highlighter",
+            Tools::Spotlight => "Spotlight",
+        }
+    }
+
+    /// Starting annotation size for a tool when the user has saved no
+    /// per-tool default. `None` means "use the global default"
+    /// (Medium); Counters read best at the small size.
+    pub fn builtin_default_size(&self) -> Option<crate::style::Size> {
+        match self {
+            Tools::Marker => Some(crate::style::Size::Small),
+            _ => None,
+        }
+    }
+}
+
+// used for printing
+impl Display for Tools {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pointer => write!(f, "pointer"),
+            Self::Crop => write!(f, "crop"),
+            Self::Line => write!(f, "line"),
+            Self::Arrow => write!(f, "arrow"),
+            Self::Rectangle => write!(f, "rectangle"),
+            Self::Ellipse => write!(f, "ellipse"),
+            Self::Text => write!(f, "text"),
+            Self::Marker => write!(f, "marker"),
+            Self::Blur => write!(f, "blur"),
+            Self::Highlighter => write!(f, "highlighter"),
+            Self::Brush => write!(f, "brush"),
+            Self::Spotlight => write!(f, "spotlight"),
+        }
+    }
+}
+
+pub struct ToolsManager {
+    tools: HashMap<Tools, Rc<RefCell<dyn Tool>>>,
+    crop_tool: Rc<RefCell<CropTool>>,
+}
+
+impl ToolsManager {
+    pub fn new() -> Self {
+        let mut tools: HashMap<Tools, Rc<RefCell<dyn Tool>>> = HashMap::new();
+        //tools.insert(Tools::Crop, Rc::new(RefCell::new(CropTool::default())));
+        tools.insert(
+            Tools::Pointer,
+            Rc::new(RefCell::new(PointerTool::default())),
+        );
+        tools.insert(Tools::Line, Rc::new(RefCell::new(LineTool::default())));
+        tools.insert(Tools::Arrow, Rc::new(RefCell::new(ArrowTool::default())));
+        tools.insert(
+            Tools::Rectangle,
+            Rc::new(RefCell::new(RectangleTool::default())),
+        );
+        tools.insert(
+            Tools::Ellipse,
+            Rc::new(RefCell::new(EllipseTool::default())),
+        );
+        tools.insert(Tools::Text, Rc::new(RefCell::new(TextTool::default())));
+        tools.insert(Tools::Blur, Rc::new(RefCell::new(BlurTool::default())));
+        tools.insert(
+            Tools::Highlighter,
+            Rc::new(RefCell::new(HighlightTool::default())),
+        );
+        tools.insert(Tools::Marker, Rc::new(RefCell::new(MarkerTool::default())));
+        tools.insert(Tools::Brush, Rc::new(RefCell::new(BrushTool::default())));
+        tools.insert(
+            Tools::Spotlight,
+            Rc::new(RefCell::new(SpotlightTool::default())),
+        );
+
+        let crop_tool = Rc::new(RefCell::new(CropTool::default()));
+        Self { tools, crop_tool }
+    }
+
+    pub fn get(&self, tool: &Tools) -> Rc<RefCell<dyn Tool>> {
+        match tool {
+            Tools::Crop => self.crop_tool.clone(),
+            _ => self
+                .tools
+                .get(tool)
+                .unwrap_or_else(|| {
+                    panic!("Did you add the requested too {tool:#?} to the tools HashMap?")
+                })
+                .clone(),
+        }
+    }
+
+    pub fn get_crop_tool(&self) -> Rc<RefCell<CropTool>> {
+        self.crop_tool.clone()
+    }
+}
+
+impl StaticVariantType for Tools {
+    fn static_variant_type() -> Cow<'static, VariantTy> {
+        Cow::Borrowed(VariantTy::UINT32)
+    }
+}
+
+impl ToVariant for Tools {
+    fn to_variant(&self) -> Variant {
+        Variant::from(*self as u32)
+    }
+}
+
+impl FromVariant for Tools {
+    fn from_variant(variant: &Variant) -> Option<Self> {
+        variant.get::<u32>().and_then(|v| match v {
+            0 => Some(Tools::Pointer),
+            1 => Some(Tools::Crop),
+            2 => Some(Tools::Line),
+            3 => Some(Tools::Arrow),
+            4 => Some(Tools::Rectangle),
+            5 => Some(Tools::Ellipse),
+            6 => Some(Tools::Text),
+            7 => Some(Tools::Marker),
+            8 => Some(Tools::Blur),
+            9 => Some(Tools::Highlighter),
+            10 => Some(Tools::Brush),
+            11 => Some(Tools::Spotlight),
+            _ => None,
+        })
+    }
+}
+
+impl From<command_line::Tools> for Tools {
+    fn from(tool: command_line::Tools) -> Self {
+        match tool {
+            command_line::Tools::Pointer => Self::Pointer,
+            command_line::Tools::Crop => Self::Crop,
+            command_line::Tools::Line => Self::Line,
+            command_line::Tools::Arrow => Self::Arrow,
+            command_line::Tools::Rectangle => Self::Rectangle,
+            command_line::Tools::Ellipse => Self::Ellipse,
+            command_line::Tools::Text => Self::Text,
+            command_line::Tools::Marker => Self::Marker,
+            command_line::Tools::Blur => Self::Blur,
+            command_line::Tools::Highlight => Self::Highlighter,
+            command_line::Tools::Brush => Self::Brush,
+        }
+    }
+}
+
+#[cfg(test)]
+mod halo_tests {
+    use super::{HALO_PAD, MIN_HALO_PAD, halo_css_pad};
+
+    /// Zooming IN must not fatten the halo: it is UI, and UI keeps its
+    /// screen size.
+    #[test]
+    fn halo_is_constant_on_screen_when_zoomed_in() {
+        for zoom in [1.0, 1.5, 4.0, 20.0] {
+            assert_eq!(halo_css_pad(zoom), HALO_PAD, "zoom {zoom}");
+        }
+    }
+
+    /// Zooming OUT must shrink it with the artwork. Holding it
+    /// constant is what made a selected annotation read as a stray
+    /// blue line: at 42% a 4 px halo wrapped an arrow only a pixel or
+    /// so wide, so the selection outweighed the annotation.
+    #[test]
+    fn halo_shrinks_with_the_artwork_when_zoomed_out() {
+        assert_eq!(halo_css_pad(0.5), HALO_PAD * 0.5);
+        assert_eq!(halo_css_pad(0.42), HALO_PAD * 0.42);
+        // Strictly decreasing, so there is no zoom at which zooming
+        // out further makes the selection heavier.
+        let mut prev = halo_css_pad(1.0);
+        for zoom in [0.9, 0.75, 0.6, 0.5, 0.4, 0.3] {
+            let cur = halo_css_pad(zoom);
+            assert!(cur < prev, "zoom {zoom}: {cur} !< {prev}");
+            prev = cur;
+        }
+    }
+
+    /// ...but never to nothing, or a selection becomes invisible on a
+    /// heavily zoomed-out canvas.
+    #[test]
+    fn halo_never_falls_below_the_floor() {
+        for zoom in [0.2, 0.05, 0.001] {
+            assert_eq!(halo_css_pad(zoom), MIN_HALO_PAD, "zoom {zoom}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod resize_constraint_tests {
+    use super::*;
+
+    fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
+        Rect::new(Vec2D::new(x, y), Vec2D::new(w, h))
+    }
+
+    fn vec(x: f32, y: f32) -> Vec2D {
+        Vec2D::new(x, y)
+    }
+
+    fn approx(a: Vec2D, b: Vec2D) {
+        assert!(
+            (a.x - b.x).abs() < 1e-4 && (a.y - b.y).abs() < 1e-4,
+            "expected {:?}, got {:?}",
+            b,
+            a
+        );
+    }
+
+    #[test]
+    fn aspect_lock_grows_dominant_axis() {
+        // 100×100 square, drag BottomRight from (100,100) to (200,110).
+        // X dominates → both axes scale to 2.0, target → (200, 200).
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        let got = aspect_lock_corner_target(r, HandleId::BottomRight, vec(200.0, 110.0));
+        approx(got, vec(200.0, 200.0));
+    }
+
+    #[test]
+    fn aspect_lock_preserves_non_unit_ratio() {
+        // 200×100 (2:1). BottomRight drag to (300, 110): scale_x=0.5,
+        // scale_y=0.1 → scale=0.5 → new = (200 + 0.5*200, 100 + 0.5*100) = (300, 150).
+        let r = rect(0.0, 0.0, 200.0, 100.0);
+        let got = aspect_lock_corner_target(r, HandleId::BottomRight, vec(300.0, 110.0));
+        approx(got, vec(300.0, 150.0));
+    }
+
+    #[test]
+    fn aspect_lock_topleft_handles_negative_signs() {
+        // 100×100 at (50, 50). TopLeft drag to (20, 0): anchor=BottomRight=(150,150).
+        // dx=-130, dy=-150, scale_x=1.3, scale_y=1.5 → scale=1.5.
+        // Result: (150 - 1.5*100, 150 - 1.5*100) = (0, 0).
+        let r = rect(50.0, 50.0, 100.0, 100.0);
+        let got = aspect_lock_corner_target(r, HandleId::TopLeft, vec(20.0, 0.0));
+        approx(got, vec(0.0, 0.0));
+    }
+
+    #[test]
+    fn aspect_lock_passthrough_for_non_corner() {
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        let p = vec(42.0, 17.0);
+        assert_eq!(aspect_lock_corner_target(r, HandleId::Top, p), p);
+        assert_eq!(aspect_lock_corner_target(r, HandleId::Start, p), p);
+    }
+
+    #[test]
+    fn aspect_lock_passthrough_for_degenerate_rect() {
+        let r = rect(0.0, 0.0, 0.0, 100.0);
+        let p = vec(42.0, 17.0);
+        assert_eq!(aspect_lock_corner_target(r, HandleId::BottomRight, p), p);
+    }
+
+    #[test]
+    fn mirror_top_reflects_bottom_across_center() {
+        // Bbox (0,0)-(100,100), center.y=50. Drag Top to y=30 (Δ=30) →
+        // expect opposite Bottom at y=70 (br.y - Δ).
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        let (opp, target) = mirror_side_target(r, HandleId::Top, vec(0.0, 30.0)).unwrap();
+        assert_eq!(opp, HandleId::Bottom);
+        approx(target, vec(100.0, 70.0));
+    }
+
+    #[test]
+    fn mirror_bottom_reflects_top_across_center() {
+        // Drag Bottom from y=100 to y=80 (Δ=-20) → Top moves from 0 to 20.
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        let (opp, target) = mirror_side_target(r, HandleId::Bottom, vec(0.0, 80.0)).unwrap();
+        assert_eq!(opp, HandleId::Top);
+        approx(target, vec(0.0, 20.0));
+    }
+
+    #[test]
+    fn mirror_left_reflects_right_across_center() {
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        let (opp, target) = mirror_side_target(r, HandleId::Left, vec(15.0, 0.0)).unwrap();
+        assert_eq!(opp, HandleId::Right);
+        approx(target, vec(85.0, 100.0));
+    }
+
+    #[test]
+    fn mirror_right_reflects_left_across_center() {
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        let (opp, target) = mirror_side_target(r, HandleId::Right, vec(80.0, 0.0)).unwrap();
+        assert_eq!(opp, HandleId::Left);
+        approx(target, vec(20.0, 0.0));
+    }
+
+    #[test]
+    fn mirror_returns_none_for_non_side() {
+        let r = rect(0.0, 0.0, 100.0, 100.0);
+        assert!(mirror_side_target(r, HandleId::TopLeft, vec(0.0, 0.0)).is_none());
+        assert!(mirror_side_target(r, HandleId::Start, vec(0.0, 0.0)).is_none());
+    }
+
+    /// Sanity check that the combined operation (move dragged side, then
+    /// move opposite to mirrored target) leaves the bbox symmetric about
+    /// the original center. Mirrors what pointer.rs does for side+shift.
+    #[test]
+    fn side_pair_keeps_bbox_centered() {
+        let orig = rect(0.0, 0.0, 100.0, 100.0);
+        let target = vec(0.0, 30.0); // drag Top down by 30
+        let after_first = bbox_resize(orig, HandleId::Top, target);
+        let (opp, mirrored) = mirror_side_target(orig, HandleId::Top, target).unwrap();
+        let after_second = bbox_resize(after_first, opp, mirrored);
+        // Final: top=30, bottom=70, height=40 — symmetric about y=50.
+        approx(after_second.top_left(), vec(0.0, 30.0));
+        approx(after_second.bottom_right(), vec(100.0, 70.0));
+    }
+}
+
+#[cfg(test)]
+mod canvas_transform_tests {
+    use super::*;
+
+    fn v(x: f32, y: f32) -> Vec2D {
+        Vec2D::new(x, y)
+    }
+
+    fn close(a: Vec2D, b: Vec2D) {
+        assert!(
+            (a.x - b.x).abs() < 1e-4 && (a.y - b.y).abs() < 1e-4,
+            "expected {b:?}, got {a:?}"
+        );
+    }
+
+    // Image is 100 wide × 60 tall.
+    const W: f32 = 100.0;
+    const H: f32 = 60.0;
+
+    #[test]
+    fn flip_maps_point_about_vertical_centerline() {
+        let t = CanvasTransform::FlipHorizontal;
+        close(t.map_point(v(0.0, 10.0), W, H), v(100.0, 10.0));
+        close(t.map_point(v(100.0, 10.0), W, H), v(0.0, 10.0));
+        close(t.map_point(v(30.0, 45.0), W, H), v(70.0, 45.0));
+        assert_eq!(t.new_size(W, H), (W, H));
+    }
+
+    #[test]
+    fn flip_is_its_own_inverse() {
+        let t = CanvasTransform::FlipHorizontal;
+        let p = v(37.0, 12.0);
+        close(t.map_point(t.map_point(p, W, H), W, H), p);
+    }
+
+    #[test]
+    fn rotate_ccw_maps_corners_and_swaps_size() {
+        let t = CanvasTransform::RotateCcw;
+        // (x,y) -> (y, W - x). Top-right -> top-left, etc.
+        close(t.map_point(v(0.0, 0.0), W, H), v(0.0, 100.0));
+        close(t.map_point(v(100.0, 0.0), W, H), v(0.0, 0.0));
+        close(t.map_point(v(0.0, 60.0), W, H), v(60.0, 100.0));
+        assert_eq!(t.new_size(W, H), (H, W));
+    }
+
+    #[test]
+    fn rotate_ccw_four_times_is_identity() {
+        let p = v(23.0, 41.0);
+        // Each turn swaps dims, so feed the current dims each time.
+        let t = CanvasTransform::RotateCcw;
+        let (mut w, mut h) = (W, H);
+        let mut q = p;
+        for _ in 0..4 {
+            q = t.map_point(q, w, h);
+            let (nw, nh) = t.new_size(w, h);
+            w = nw;
+            h = nh;
+        }
+        close(q, p);
+    }
+
+    #[test]
+    fn offset_has_no_translation_component() {
+        // An offset transforms like the difference of two mapped points.
+        let t = CanvasTransform::RotateCcw;
+        let a = v(10.0, 20.0);
+        let b = v(35.0, 50.0);
+        let off = b - a;
+        let mapped = t.map_point(b, W, H) - t.map_point(a, W, H);
+        close(t.map_offset(off), mapped);
+
+        let f = CanvasTransform::FlipHorizontal;
+        let mapped_f = f.map_point(b, W, H) - f.map_point(a, W, H);
+        close(f.map_offset(off), mapped_f);
+    }
+
+    #[test]
+    fn scale_multiplies_points_offsets_and_rects() {
+        let t = CanvasTransform::Scale { sx: 2.0, sy: 0.5 };
+        close(t.map_point(v(10.0, 20.0), W, H), v(20.0, 10.0));
+        // offsets scale like points (no translation component).
+        close(t.map_offset(v(4.0, 8.0)), v(8.0, 4.0));
+        let r = t.map_rect(Rect::new(v(5.0, 10.0), v(10.0, 20.0)), W, H);
+        close(r.pos, v(10.0, 5.0));
+        close(r.size, v(20.0, 10.0));
+        assert_eq!(t.new_size(W, H), (W * 2.0, H * 0.5));
+    }
+
+    #[test]
+    fn inverse_round_trips_a_point_for_each_op() {
+        // For each op T: applying T then T.inverse() (at the post-T dims)
+        // returns the original point — the invariant undo relies on.
+        let p = v(23.0, 41.0);
+        for t in [
+            CanvasTransform::FlipHorizontal,
+            CanvasTransform::RotateCcw,
+            CanvasTransform::RotateCw,
+            CanvasTransform::Scale { sx: 2.0, sy: 0.5 },
+        ] {
+            let fwd = t.map_point(p, W, H);
+            let (pw, ph) = t.new_size(W, H); // dims after T
+            let back = t.inverse().map_point(fwd, pw, ph);
+            close(back, p);
+        }
+    }
+
+    #[test]
+    fn rotate_cw_is_inverse_of_ccw() {
+        assert_eq!(
+            CanvasTransform::RotateCcw.inverse(),
+            CanvasTransform::RotateCw
+        );
+        assert_eq!(
+            CanvasTransform::RotateCw.inverse(),
+            CanvasTransform::RotateCcw
+        );
+    }
+
+    #[test]
+    fn map_rect_stays_axis_aligned_and_canonical() {
+        let t = CanvasTransform::RotateCcw;
+        let r = Rect::new(v(10.0, 5.0), v(20.0, 15.0));
+        let m = t.map_rect(r, W, H);
+        // size swaps under a quarter turn; result is canonical (non-negative).
+        close(m.size, v(15.0, 20.0));
+        assert!(m.size.x >= 0.0 && m.size.y >= 0.0);
+    }
+}
+
+#[cfg(test)]
+mod edge_hit_tests {
+    use super::{EDGE_HIT_TOLERANCE, HIT_TOLERANCE, Tools, bbox_edge_hit, grab_rule};
+    use crate::math::{Rect, Vec2D};
+
+    /// A band sized in screen pixels has to widen as the canvas
+    /// zooms out — that is the whole point of measuring it there.
+    /// A 6K capture at 40% is the common case, and a fixed image-space
+    /// band leaves a five-pixel hairline to aim at.
+    #[test]
+    fn the_band_widens_as_the_canvas_shrinks() {
+        // Same shape as `edge_hit_tolerance`, without the thread-local
+        // the renderer publishes (no frame has been drawn in a test).
+        fn band(zoom: f32) -> f32 {
+            EDGE_HIT_TOLERANCE / zoom.max(0.0001)
+        }
+        assert_eq!(band(1.0), EDGE_HIT_TOLERANCE);
+        assert!(band(0.4) > band(1.0) * 2.0);
+        assert!(band(2.0) < band(1.0));
+        // ... and the on-screen width is the same at every zoom,
+        // which is the property being bought.
+        for zoom in [0.25_f32, 0.4, 1.0, 3.0] {
+            assert!((band(zoom) * zoom - EDGE_HIT_TOLERANCE).abs() < 0.01);
+        }
+    }
+
+    /// The counter stamps over a text box; every other armed tool
+    /// still grabs it anywhere, which is what stops the Text tool
+    /// from stacking a second box on an existing one.
+    #[test]
+    fn the_counter_stamps_over_text_and_nothing_else_does() {
+        let text = Some(Tools::Text);
+        assert!(!grab_rule(Some(Tools::Marker), text, false));
+        assert!(!grab_rule(Some(Tools::Marker), text, true));
+        assert!(grab_rule(Some(Tools::Text), text, true));
+        assert!(grab_rule(Some(Tools::Arrow), text, true));
+        // ... and the counter still grabs a counter, so a stamped
+        // number can be repositioned without switching tools.
+        assert!(grab_rule(Some(Tools::Marker), Some(Tools::Marker), true));
+    }
+
+    /// The Pointer tool grabs anywhere on anything — that is what
+    /// switching to it is for.
+    #[test]
+    fn the_pointer_grabs_the_interior() {
+        assert!(grab_rule(None, Some(Tools::Text), false));
+        assert!(grab_rule(None, Some(Tools::Rectangle), false));
+    }
+
+    fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
+        Rect::new(Vec2D::new(x, y), Vec2D::new(w, h))
+    }
+
+    /// The interior of a large annotation is NOT an edge hit — that is
+    /// the whole point: it stays available to the armed drawing tool.
+    #[test]
+    fn the_interior_is_not_an_edge() {
+        let r = rect(100.0, 100.0, 400.0, 300.0);
+        for p in [(300.0, 250.0), (150.0, 150.0), (450.0, 350.0)] {
+            assert!(
+                !bbox_edge_hit(r, Vec2D::new(p.0, p.1), EDGE_HIT_TOLERANCE),
+                "{p:?} should be interior"
+            );
+        }
+    }
+
+    /// The border grabs from either side, so a slightly-missed aim
+    /// still lands. The band is 2x the tolerance wide.
+    #[test]
+    fn the_border_grabs_from_inside_and_outside() {
+        let r = rect(100.0, 100.0, 400.0, 300.0);
+        let t = EDGE_HIT_TOLERANCE;
+        for p in [
+            (100.0, 250.0),           // exactly on the left edge
+            (100.0 + t - 1.0, 250.0), // just inside it
+            (100.0 - t + 1.0, 250.0), // just outside it
+            (300.0, 100.0),           // top edge
+            (500.0, 400.0),           // bottom-right corner
+        ] {
+            assert!(
+                bbox_edge_hit(r, Vec2D::new(p.0, p.1), t),
+                "{p:?} should grab"
+            );
+        }
+    }
+
+    /// Well outside is a miss — the fat target must not make a large
+    /// annotation grabbable from across the canvas.
+    #[test]
+    fn far_outside_is_a_miss() {
+        let r = rect(100.0, 100.0, 400.0, 300.0);
+        assert!(!bbox_edge_hit(
+            r,
+            Vec2D::new(50.0, 250.0),
+            EDGE_HIT_TOLERANCE
+        ));
+    }
+
+    /// An annotation thinner than the band has no interior left, so
+    /// every hit on it grabs — a thin shape must not become
+    /// ungrabbable just because it is thinner than the tolerance.
+    #[test]
+    fn a_thin_annotation_is_grabbable_throughout() {
+        let sliver = rect(100.0, 100.0, 400.0, 6.0);
+        assert!(bbox_edge_hit(
+            sliver,
+            Vec2D::new(300.0, 103.0),
+            EDGE_HIT_TOLERANCE
+        ));
+    }
+
+    /// The grab target is deliberately fatter than ordinary picking,
+    /// since the border is now the only way to grab a large annotation
+    /// while a tool is armed.
+    #[test]
+    fn the_border_target_is_fatter_than_ordinary_picking() {
+        const { assert!(EDGE_HIT_TOLERANCE > HIT_TOLERANCE) };
+    }
+}
+
+#[cfg(test)]
+mod stack_band_tests {
+    use super::{StackBand, Tools};
+
+    /// Labels sit above the picture, and a counter above the label it
+    /// numbers.
+    #[test]
+    fn the_bands_rank_labels_over_artwork() {
+        assert!(StackBand::of(Some(Tools::Rectangle)) < StackBand::of(Some(Tools::Text)));
+        assert!(StackBand::of(Some(Tools::Text)) < StackBand::of(Some(Tools::Marker)));
+        // Everything that isn't a label is picture, including the
+        // tools that have no drawable of their own.
+        for tool in [
+            Tools::Arrow,
+            Tools::Blur,
+            Tools::Brush,
+            Tools::Ellipse,
+            Tools::Highlighter,
+            Tools::Line,
+            Tools::Spotlight,
+        ] {
+            assert_eq!(StackBand::of(Some(tool)), StackBand::Artwork, "{tool}");
+        }
+        assert_eq!(StackBand::of(None), StackBand::Artwork);
+    }
+
+    /// The case that started this: a shape drawn over a text box goes
+    /// behind it, not over it.
+    #[test]
+    fn artwork_lands_under_the_labels_already_placed() {
+        let stack = [StackBand::Artwork, StackBand::Text, StackBand::Counter];
+        assert_eq!(StackBand::insert_position(&stack, StackBand::Artwork), 1);
+        assert_eq!(StackBand::insert_position(&stack, StackBand::Text), 2);
+        assert_eq!(StackBand::insert_position(&stack, StackBand::Counter), 3);
+    }
+
+    /// Within a band the newest still wins, so two rectangles stack in
+    /// the order they were drawn.
+    #[test]
+    fn newest_still_goes_on_top_within_a_band() {
+        let stack = [StackBand::Artwork, StackBand::Artwork];
+        assert_eq!(StackBand::insert_position(&stack, StackBand::Artwork), 2);
+    }
+
+    #[test]
+    fn an_empty_stack_takes_anything_at_the_bottom() {
+        for band in [StackBand::Artwork, StackBand::Text, StackBand::Counter] {
+            assert_eq!(StackBand::insert_position(&[], band), 0);
+        }
+    }
+
+    /// After a manual reorder the bands interleave. The insert still
+    /// lands above the last thing it belongs over, rather than
+    /// searching for a band boundary that no longer exists.
+    #[test]
+    fn an_interleaved_stack_still_takes_an_insert() {
+        let stack = [StackBand::Counter, StackBand::Artwork, StackBand::Text];
+        assert_eq!(StackBand::insert_position(&stack, StackBand::Artwork), 2);
+        assert_eq!(StackBand::insert_position(&stack, StackBand::Counter), 3);
+    }
+}

@@ -1,0 +1,14 @@
+{
+  "archiveSha256": "3112a6d5fc51a204c96ef9d27187577c6efc80b952e37a77969efbd0124e81d3",
+  "component": "asdcontrol",
+  "origin": "https://github.com/omakasui/asdcontrol",
+  "originalFiles": {
+    "LICENSE": "dcc100d4161cc0b7177545ab6e47216f84857cda3843847c792a25289852dcaa",
+    "Makefile": "bf6db8bd43fa7061c2b783a71fa68c8ad8591a10c65d10c2993188dba71c0cf9",
+    "README.md": "28a1e852a5396dd4e347e202d96953ecd4f084af1f31d01d68cc05655ca53b00",
+    "asdcontrol.cpp": "969c278c52a6f6c493f5ec7a84296fbf8462643d6178d79242625f3e0851f3c7"
+  },
+  "ref": "v0.6.0",
+  "schema": 1,
+  "version": "0.6.0"
+}

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Opens Tensaku to annotate a screenshot.
+#
+# Omarchy's screenshot scripts hand a single bare image path to the
+# `tensaku-edit` command by default (or to $OMARCHY_SCREENSHOT_EDITOR when
+# explicitly overridden). Tensaku has no positional filename argument, so
+# this wrapper supplies the corresponding flags.
+#
+# `tensaku` is invoked by bare name so this works regardless of how
+# Tensaku was installed (~/.cargo/bin, /usr/bin, /usr/local/bin, …);
+# Omarchy's screenshot scripts run in the user session, where the
+# install dir is on $PATH.
+exec tensaku \
+  --filename "$1" \
+  --output-filename "$1" \
+  --actions-on-enter save-to-clipboard \
+  --save-after-copy \
+  --copy-command wl-copy

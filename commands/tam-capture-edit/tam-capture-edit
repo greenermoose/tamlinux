@@ -1,6 +1,7 @@
 #!/bin/bash
 # Tamlinux screenshot annotation adapter. Native Tensaku is an explicit provider.
 [[ $# == 1 && -f $1 ]] || { echo "Usage: tam-capture-edit <image>" >&2; exit 1; }
-command -v tensaku >/dev/null || { echo "Screenshot editing requires Tensaku" >&2; exit 1; }
-exec tensaku --filename "$1" --output-filename "$1" \
+annotator=${TAMLINUX_TENSAKU:-tensaku}
+command -v "$annotator" >/dev/null || { echo "Screenshot editing requires Tensaku" >&2; exit 1; }
+exec "$annotator" --filename "$1" --output-filename "$1" \
   --actions-on-enter save-to-clipboard --save-after-copy --copy-command wl-copy

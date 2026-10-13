@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "quickshellExecutableEnvironment": "TAMLINUX_QUICKSHELL",
+  "quickshellIpcEnvironment": "TAMLINUX_QUICKSHELL_IPC",
+  "nativeCompositor": "/usr/bin/Hyprland",
+  "nativeSessionManager": "/usr/bin/uwsm",
+  "compositorEntry": "entry.lua",
+  "userOverrides": "$XDG_CONFIG_HOME/tamlinux/hypr",
+  "stage": "Develop; native policies, retained helper closure, migration and clean-host acceptance pending"
+}

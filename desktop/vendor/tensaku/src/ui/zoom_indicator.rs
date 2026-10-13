@@ -1,0 +1,211 @@
+use relm4::{
+    ComponentParts, ComponentSender, SimpleComponent,
+    gtk::{self, prelude::*},
+};
+
+use crate::sketch_board::ZoomCommand;
+use crate::ui::toolbars::RobustTooltipExt;
+
+/// Compact zoom dropdown that lives in the lower-left of the canvas.
+///
+/// Acts as both a *display* (label tracks the renderer's current
+/// `scale_factor` via `SetCurrentZoom` from the parent) and a *control*
+/// (the popover emits `ZoomCommand`s back through `ZoomIndicatorOutput`).
+pub struct ZoomIndicator {
+    /// Current effective scale factor (1.0 = 100%, 0.5 = 50%, etc.).
+    /// Updated externally whenever the renderer reports a new scale.
+    current_scale: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ZoomIndicatorInput {
+    SetCurrentZoom(f32),
+    Emit(ZoomCommand),
+    RequestCanvasFocus,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ZoomIndicatorOutput {
+    Command(ZoomCommand),
+    FocusCanvas,
+}
+
+#[relm4::component(pub)]
+impl SimpleComponent for ZoomIndicator {
+    type Init = f32;
+    type Input = ZoomIndicatorInput;
+    type Output = ZoomIndicatorOutput;
+
+    view! {
+        #[name = "menu_button"]
+        gtk::MenuButton {
+            add_css_class: "zoom-indicator",
+            add_css_class: "flat",
+            set_focusable: true,
+            set_focus_on_click: false,
+            set_halign: gtk::Align::Start,
+            set_valign: gtk::Align::Center,
+            set_margin_start: 8,
+            set_margin_top: 4,
+            set_margin_bottom: 4,
+            // Hover tooltip uses the same 750 ms custom-popover system
+            // as the rest of the toolbar buttons — GTK's built-in
+            // tooltip takes too long to surface and doesn't match the
+            // chrome.
+            install_tooltip_above_markup: "Zoom (<span face=\"Adwaita Sans\">⌃</span> Scroll)",
+
+            #[watch]
+            set_label: &format_zoom(model.current_scale),
+        }
+    }
+
+    fn init(
+        init: Self::Init,
+        root: Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = ZoomIndicator {
+            current_scale: init,
+        };
+        let widgets = view_output!();
+
+        // Build the popover ourselves so the rows can carry custom labels
+        // and shortcuts; gio::Menu doesn't give us enough control over
+        // styling.
+        let popover = gtk::Popover::builder()
+            .has_arrow(false)
+            .position(gtk::PositionType::Top)
+            .build();
+        popover.add_css_class("zoom-indicator-popover");
+        let list = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(0)
+            .build();
+
+        let zoom_in = make_row("Zoom In", Some("Ctrl  ="));
+        let zoom_out = make_row("Zoom Out", Some("Ctrl  −"));
+        let fit = make_row("Fit Canvas", Some("Ctrl  1"));
+        let p50 = make_row("50%", Some("Ctrl  9"));
+        let p100 = make_row("100%", Some("Ctrl  0"));
+        let p200 = make_row("200%", Some("Ctrl  2"));
+        let p300 = make_row("300%", Some("Ctrl  3"));
+        let p400 = make_row("400%", Some("Ctrl  4"));
+        let p500 = make_row("500%", Some("Ctrl  5"));
+
+        list.append(&zoom_in);
+        list.append(&zoom_out);
+        list.append(&separator());
+        list.append(&fit);
+        list.append(&separator());
+        list.append(&p50);
+        list.append(&p100);
+        list.append(&p200);
+        list.append(&p300);
+        list.append(&p400);
+        list.append(&p500);
+
+        popover.set_child(Some(&list));
+        widgets.menu_button.set_popover(Some(&popover));
+
+        // Same focus_on_click(false) → "second click doesn't
+        // dismiss" workaround as the color picker in toolbars.rs.
+        // Capture-phase click pops the popover down before the
+        // autohide-then-re-popup chain has a chance to re-open it.
+        {
+            let popover_for_click = popover.clone();
+            let click = gtk::GestureClick::new();
+            click.set_button(gtk::gdk::BUTTON_PRIMARY);
+            click.set_propagation_phase(gtk::PropagationPhase::Capture);
+            click.connect_pressed(move |g, _, _, _| {
+                if popover_for_click.is_visible() {
+                    popover_for_click.popdown();
+                    g.set_state(gtk::EventSequenceState::Claimed);
+                }
+            });
+            widgets.menu_button.add_controller(click);
+        }
+
+        // Refocus the canvas when the popover closes so keyboard
+        // shortcuts resume working without the user having to click the
+        // canvas — mirrors the color-picker popover in toolbars.rs.
+        {
+            let sender = sender.clone();
+            popover.connect_closed(move |_| {
+                sender.input(ZoomIndicatorInput::RequestCanvasFocus);
+            });
+        }
+
+        // Wire each row to send its command and dismiss the popover.
+        wire_row(&zoom_in, &popover, sender.clone(), ZoomCommand::In);
+        wire_row(&zoom_out, &popover, sender.clone(), ZoomCommand::Out);
+        wire_row(&fit, &popover, sender.clone(), ZoomCommand::FitCanvas);
+        wire_row(&p50, &popover, sender.clone(), ZoomCommand::Abs(0.5));
+        wire_row(&p100, &popover, sender.clone(), ZoomCommand::Abs(1.0));
+        wire_row(&p200, &popover, sender.clone(), ZoomCommand::Abs(2.0));
+        wire_row(&p300, &popover, sender.clone(), ZoomCommand::Abs(3.0));
+        wire_row(&p400, &popover, sender.clone(), ZoomCommand::Abs(4.0));
+        wire_row(&p500, &popover, sender.clone(), ZoomCommand::Abs(5.0));
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+        match msg {
+            ZoomIndicatorInput::SetCurrentZoom(scale) => self.current_scale = scale,
+            ZoomIndicatorInput::Emit(cmd) => {
+                let _ = sender.output(ZoomIndicatorOutput::Command(cmd));
+            }
+            ZoomIndicatorInput::RequestCanvasFocus => {
+                let _ = sender.output(ZoomIndicatorOutput::FocusCanvas);
+            }
+        }
+    }
+}
+
+fn format_zoom(scale: f32) -> String {
+    let pct = (scale * 100.0).round() as i32;
+    format!("{pct}%")
+}
+
+fn make_row(label: &str, shortcut: Option<&str>) -> gtk::Button {
+    let row = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .spacing(16)
+        .hexpand(true)
+        .build();
+    let lbl = gtk::Label::builder()
+        .label(label)
+        .halign(gtk::Align::Start)
+        .hexpand(true)
+        .build();
+    row.append(&lbl);
+    if let Some(s) = shortcut {
+        let s_lbl = gtk::Label::builder()
+            .label(s)
+            .halign(gtk::Align::End)
+            .build();
+        s_lbl.add_css_class("dim-label");
+        row.append(&s_lbl);
+    }
+    let button = gtk::Button::builder().child(&row).focusable(false).build();
+    button.add_css_class("flat");
+    button.add_css_class("zoom-indicator-row");
+    button
+}
+
+fn separator() -> gtk::Separator {
+    gtk::Separator::new(gtk::Orientation::Horizontal)
+}
+
+fn wire_row(
+    row: &gtk::Button,
+    popover: &gtk::Popover,
+    sender: ComponentSender<ZoomIndicator>,
+    cmd: ZoomCommand,
+) {
+    let popover = popover.clone();
+    row.connect_clicked(move |_| {
+        sender.input(ZoomIndicatorInput::Emit(cmd));
+        popover.popdown();
+    });
+}

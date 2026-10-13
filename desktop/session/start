@@ -1,0 +1,9 @@
+#!/bin/sh
+# Entry point for the native Arch/UWSM provider; no configuration is copied.
+set -eu
+config="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/session/hyprland.lua"
+if [ ! -f "$config" ]; then
+  echo "Tamlinux session defaults are not installed: $config" >&2
+  exit 1
+fi
+exec /usr/bin/uwsm start -- /usr/bin/Hyprland --config "$config"

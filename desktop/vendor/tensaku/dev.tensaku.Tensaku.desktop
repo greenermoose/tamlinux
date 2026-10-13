@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Tensaku
+GenericName=Modern Screenshot Annotation.
+TryExec=tensaku
+Exec=tensaku %f
+Terminal=false
+Type=Application
+Keywords=wayland;snapshot;annotation;editing;
+Icon=dev.tensaku.Tensaku
+Categories=Utility;Graphics;
+StartupNotify=true
+MimeType=image/png;image/jpeg;
+StartupWMClass=dev.tensaku.Tensaku

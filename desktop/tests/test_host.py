@@ -181,6 +181,24 @@ class SessionStartTests(unittest.TestCase):
         self.assertNotIn("TAMLINUX_PLUGIN_ENTRIES", env)
         self.assertNotIn("TAMLINUX_BAR_LAYOUT", env)
 
+    def test_selected_immutable_provider_receives_resolved_shell_and_environment(self):
+        from unittest.mock import patch
+        chosen = "/nix/store/selected-provider/bin/quickshell"
+        with patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": chosen, "TAMLINUX_BAR": "0"}), \
+             patch.object(session_start.os, "execve") as execute:
+            session_start.main()
+        executable, argv, env = execute.call_args.args
+        self.assertEqual(executable, chosen)
+        self.assertEqual(argv, [chosen, "-p", str(session_start.SHELL)])
+        self.assertEqual(env["TAMLINUX_QUICKSHELL"], chosen)
+
+    def test_relative_provider_is_rejected_without_execution(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": "qs", "TAMLINUX_BAR": "0"}), \
+             patch.object(session_start.os, "execve") as execute:
+            self.assertEqual(session_start.main(), 2)
+        execute.assert_not_called()
+
     def test_bar_maps_the_deployed_plugins_and_names_the_layout(self):
         with tempfile.TemporaryDirectory() as temporary:
             config = Path(temporary) / "config"
