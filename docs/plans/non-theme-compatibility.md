@@ -129,8 +129,10 @@ in this development snapshot; no letter or assembly has been prepared.
 
 ## Delivery sequence
 
-**Next action, revised 2026-10-10:** review menu and keybinding capability
-dispositions before transferring more helpers. Menu concentration is a reason to
+**Next action, revised 2026-10-12:** implement tuple-bound independence aggregation
+and compiled/QML I03 evidence, then transfer remaining theme/assets/branding and
+capture chains. The menu/keybinding review retained baseline workflows, with
+subsequent explicit OpenClaw/Hermes retirements. Menu concentration is a reason to
 settle scope early, not evidence that those functions are obsolete. List exact
 rows/chords, other callers, independent replacements, optional availability and
 proposed retirements. Keep previously agreed functions until a specific scope
@@ -384,14 +386,16 @@ repo/keyring/channel definitions and configured endpoints. Extend it when the
 inventory finds another spelling. Classify permissible ancestry/recovery files
 and host identifiers by exact file and role; no blanket substring suppression,
 whole-directory runtime exception or alias allowance. A static denylist alone
-cannot pass I04/I05/I07. The new output auditor supports part of I03; it does not
-implement or pass this complete gate. Gate aggregation and runtime collectors
-remain delivery work.
+cannot pass I04/I05/I07. The output inventory supports part of I03. Delivery now implements the
+[tuple-bound evidence gate and partial compiled/QML collector](0.4.3-independence-gate.md);
+complete runtime/network/migration/native/physical evidence remains pending.
 
 I03 includes compiled payload string/byte inspection and declared shared-library
 dependencies (for example, `readelf` metadata), and resolved QML imports/modules.
 Skipping a binary because it is not UTF-8 cannot count as a passed binary audit.
-The current text auditor does not perform those compiled/library checks.
+The text auditor remains lexical; the separate compiled/QML collector now
+performs byte and ELF checks, resolves import paths and blocks missing static
+provider proof. Neither collector alone passes I03.
 
 Source/build/output and clean-host checks precede reference-machine Test. I06,
 I08 and I09 also require the actual in-place upgrade/native recovery results
@@ -445,3 +449,44 @@ must pass without changing compositor layout authority. Synthetic disagreement
 without demonstrated workflow impact does not meet this gate. A change needing
 a shared geometry redesign, new compositor contract or unbounded transform
 matrix stays in the later Sway/capture work; scope changes need explicit review.
+
+## Review reconciliation and executable gate slice — 2026-10-12
+
+Readiness remains false. The evidence gate precedes further closure so each
+remaining requirement has a finite artifact-bound completion record.
+
+| Finding | Plan change and evidence owner |
+| --- | --- |
+| Gate/collectors absent | Implement delivery aggregation now, with tuple-bound cases and evidence digests; add compiled bytes/readelf and resolved-QML inspection for I03. Runtime, network and physical collectors remain explicit subsequent work. |
+| Independent providers | Delivery records exact source, revision/recipe, signature/trust/channel and capabilities for Hyprland's Lua IPC, Quickshell modules, ttfx, asdcontrol and every required native dependency before assembly/clean provisioning. Product owns native integration interfaces. Package names are insufficient. |
+| Version boundary | 0.4.3 owns all required names/assets/native/system integration. 0.5 adds Tamarack visual design; 0.6 adds further native improvements. Required ownership is not deferred by later design milestones. |
+| Retained branding/font/boot rows | Explicit disposition below; required 0.4.3 functions, no automatic retirement. |
+| Capture ambiguity | Product transfers current screenshot/recording/OCR/QR helpers and dependencies (grim/slurp/Satty/recorder/ffmpeg/OCR/QR providers selected after tracing). Delivery packages them; geometry redesign remains deferred under the reproducer rule. |
+| Migration still design-only | Product provides offline converters; delivery owns mutable-path manifest and fresh/upgrade/conflict/interruption/new-write rollback tests. Per-command snapshots are inputs, not recovery proof. |
+| Physical environment | Clean Arch/Hyprland VM or spare installation with empty XDG state exercises login/PAM/portals/workflows/network/update/recovery. The reference system, only after explicit Test and prepared rollback, exercises real lock/authentication, Bluetooth, each present brightness device, monitor scale/transform capture and suspend/resume. Unsupported optional devices are declared before execution with unavailable behavior; required cases cannot be excused by VM success. |
+| Naming/provenance/consumer leftovers | Preserve licenses, factual ancestry and third-party names; use owned product branding without implying upstream endorsement. Each source move records origin/license/AI provenance. Consumer cutover inventories stale default menu and shell.json.bak.*: prove they are inactive, preserve/archive originals in protected recovery, then stop delivering duplicate defaults. Do not delete backups or edit live-linked config during Develop. |
+
+### Retained menu disposition (required in 0.4.3)
+
+| Current interface | Maintained replacement / slice | Proof |
+| --- | --- | --- |
+| omarchy-launch-about | tam-launch-about; product theme/assets/branding slice | Owned version/source and retained About behavior. |
+| omarchy-branding-about / omarchy-branding-screensaver | tam-branding-about / tam-branding-screensaver, paired assets/writers | Text/image/reset behavior and offline conversion/recovery. |
+| omarchy-theme-install / omarchy-theme-bg-install | tam-theme-install / tam-theme-bg-install, paired pickers/theme consumers | Independent sources, background/theme selection and return to baseline. |
+| omarchy-plymouth-reset / omarchy-plymouth-set-by-theme | Product/native packaged equivalents coordinated with boot integration | Unlock selection/reset, native authorization and boot/recovery proof; not a 0.5 deferral. |
+| omarchy-setup-direct-boot | Product/native packaged equivalent coordinated with boot integration | Retained selection, inspected generated boot state and recovery; no real identifier rename. |
+| Seven iconFont: omarchy rows plus shell/font consumers | Owned font family and licensed packaged glyph payload preserving current appearance | Resolve actual font files/modules on empty-state login. New glyph artwork remains 0.5. |
+
+The immediate slice is the executable evidence gate and compiled/QML collector.
+It must reject omitted/duplicate/unknown checks, stale tuples, changed evidence,
+missing runners/cases, optional capability exclusions invented after selection,
+and an unresolved compiled/QML scan. Synthetic positive fixtures validate the
+tool; they do not establish desktop readiness. I01–I08 clean-host/build proofs
+precede a reference Test proposal; I09 includes reference Test/rollback evidence
+and the complete gate precedes Run. Thus pending I09 does not create a circular
+requirement to complete Test before proposing Test. No checker authorizes a stage.
+
+Next work after this slice: theme/assets/branding and capture closure; independently
+selected native providers with packaged session defaults; executable migration and
+clean-host provisioning/runtime/network/physical collectors. Keep the exact
+artifact tuple and capability matrix stable through each evidence run.
