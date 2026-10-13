@@ -225,7 +225,7 @@ class ServiceSourceTests(unittest.TestCase):
             self.assertIn("function " + method, text)
         self.assertIn("function themeTransition(fromPath: string, path: string, finalPath: string, colorsB64: string, shellB64: string)", text)
         self.assertIn('Quickshell.env("TAMLINUX_BACKGROUND_LINK")', text)
-        self.assertIn('"/tamlinux/background"', text)
+        self.assertIn('"/tamlinux/current/background"', text)
         # The link is watched by a child that dies with the host, and read by argument.
         self.assertIn('["setpriv", "--pdeathsig", "TERM", "inotifywait"', text)
         self.assertIn('["readlink", "-f", root.currentBackgroundLink]', text)

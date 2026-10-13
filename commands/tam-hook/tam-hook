@@ -1,0 +1,31 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Run a named hook from "${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux"/hooks/<name> and "${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux"/hooks/<name>.d/.
+# tamlinux:args=[name] [args...]
+
+set -e
+
+if (( $# < 1 )); then
+  echo "Usage: tam-hook [name] [args...]"
+  exit 1
+fi
+
+HOOK=$1
+HOOK_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hooks/$1"
+HOOK_DIR="$HOOK_PATH.d"
+shift
+
+if [[ -f $HOOK_PATH ]]; then
+  bash "$HOOK_PATH" "$@" || echo "Hook failed: $HOOK_PATH"
+fi
+
+if [[ -d $HOOK_DIR ]]; then
+  for hook in "$HOOK_DIR"/*; do
+    [[ -f $hook ]] || continue
+    [[ $hook == *.sample ]] && continue
+    bash "$hook" "$@" || echo "Hook failed: $hook"
+  done
+fi

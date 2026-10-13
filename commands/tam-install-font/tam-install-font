@@ -1,0 +1,52 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tam-install-font — Install a font package and select its family.
+#
+#   tam-install-font <display-name> <package> <family>
+#
+# Ported from Tamlinux 4.0.4 (tam-install-font) for plan 18 0.2.1.
+# Changed: owned launcher, package installer, and font setter.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+name="${1-}"
+package="${2-}"
+family="${3-}"
+
+if [[ -z $name || -z $package || -z $family ]]; then
+  echo "Usage: tam-install-font <display-name> <package> <family>" >&2
+  exit 1
+fi
+
+if [[ ! $package =~ ^[a-zA-Z0-9][a-zA-Z0-9@._+-]*$ ]]; then
+  echo "Invalid font package" >&2
+  exit 1
+fi
+printf -v install_message '%q' "Installing ${name}..."
+printf -v package_arg '%q' "$package"
+printf -v family_arg '%q' "$family"
+
+exec tam-launch-floating-terminal-with-presentation \
+  "echo ${install_message}; tam-pkg-add ${package_arg} && sleep 2 && tam-font-set ${family_arg}"

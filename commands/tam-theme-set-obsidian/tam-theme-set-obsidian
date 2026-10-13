@@ -1,0 +1,36 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Sync Tamlinux theme to all Obsidian vaults
+# tamlinux:hidden=true
+
+# Standalone setter calls preserve the same application files as theme-set.
+if [[ ${TAMLINUX_THEME_JOURNALED:-} != 1 ]]; then
+  tam-theme-journal >/dev/null || exit $?
+fi
+
+CURRENT_THEME_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/current/theme"
+
+[[ -f $CURRENT_THEME_DIR/obsidian.css ]] || exit 0
+
+jq -r '.vaults | values[].path' "${XDG_CONFIG_HOME:-$HOME/.config}"/obsidian/obsidian.json 2>/dev/null | while read -r vault_path; do
+  [[ -d $vault_path/.obsidian ]] || continue
+
+  theme_dir="$vault_path/.obsidian/themes/Tamlinux"
+  mkdir -p "$theme_dir"
+
+  [[ -f $theme_dir/manifest.json ]] || cat >"$theme_dir/manifest.json" <<'EOF'
+{
+  "name": "Tamlinux",
+  "version": "1.0.0",
+  "minAppVersion": "0.16.0",
+  "description": "Automatically syncs with your current Tamlinux system theme colors and fonts",
+  "author": "Tamlinux",
+  "authorUrl": "https://github.com/greenermoose/tamlinux"
+}
+EOF
+
+  cp "$CURRENT_THEME_DIR/obsidian.css" "$theme_dir/theme.css"
+done

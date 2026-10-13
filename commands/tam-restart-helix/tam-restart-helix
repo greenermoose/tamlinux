@@ -1,0 +1,10 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Reload Helix configuration
+
+if pgrep -x helix >/dev/null; then
+  pkill -USR1 helix
+fi

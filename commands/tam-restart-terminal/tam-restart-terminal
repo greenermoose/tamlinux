@@ -1,0 +1,18 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Reload supported terminal emulators after config changes
+
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}"/alacritty/alacritty.toml ]]; then
+  touch "${XDG_CONFIG_HOME:-$HOME/.config}"/alacritty/alacritty.toml
+fi
+
+if pgrep -x kitty >/dev/null; then
+  killall -SIGUSR1 kitty >/dev/null
+fi
+
+if pgrep -x ghostty >/dev/null; then
+  killall -SIGUSR2 ghostty
+fi

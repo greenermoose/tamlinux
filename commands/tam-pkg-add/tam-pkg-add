@@ -1,0 +1,21 @@
+#!/bin/bash
+# Maintained Arch native package client. GPL-3.0-or-later.
+set -euo pipefail
+(( $# > 0 )) || { echo "Expected at least one package name" >&2; exit 2; }
+for package in "$@"; do
+  [[ $package =~ ^[a-zA-Z0-9][a-zA-Z0-9@._+-]*$ ]] || { echo "Invalid package name" >&2; exit 2; }
+done
+if pacman -Q -- "$@" >/dev/null 2>&1; then exit 0; fi
+# The preflight includes dependencies. Any resolution failure or inherited
+# provider refuses the transaction; there is no prompt to permit a fallback.
+transaction=$(pacman -Sp --needed --print-format '%r %n' -- "$@") || exit $?
+if awk '$1 == "omarchy" || $2 ~ /^omarchy($|-)/ || $2 ~ /^linux-omarchy($|-)/ {found=1} END {exit !found}' <<< "$transaction"; then
+  echo "Refusing an inherited package source; select an independent native provider" >&2
+  exit 1
+fi
+if (( EUID == 0 )); then
+  /usr/bin/pacman -S --needed --noconfirm -- "$@"
+else
+  pkexec /usr/bin/pacman -S --needed --noconfirm -- "$@"
+fi
+pacman -Q -- "$@" >/dev/null

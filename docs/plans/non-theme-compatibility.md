@@ -129,9 +129,10 @@ in this development snapshot; no letter or assembly has been prepared.
 
 ## Delivery sequence
 
-**Next action, revised 2026-10-12:** implement tuple-bound independence aggregation
-and compiled/QML I03 evidence, then transfer remaining theme/assets/branding and
-capture chains. The menu/keybinding review retained baseline workflows, with
+**Next action, revised 2026-10-13:** theme/font/assets/branding and capture
+source/tool transfers are implemented. Select independent providers and package
+effective session/native defaults, then complete migration/recovery and clean-host
+collectors. [Theme result](0.4.3-theme-closure.md). The menu/keybinding review retained baseline workflows, with
 subsequent explicit OpenClaw/Hermes retirements. Menu concentration is a reason to
 settle scope early, not evidence that those functions are obsolete. List exact
 rows/chords, other callers, independent replacements, optional availability and
@@ -477,7 +478,7 @@ remaining requirement has a finite artifact-bound completion record.
 | omarchy-setup-direct-boot | Product/native packaged equivalent coordinated with boot integration | Retained selection, inspected generated boot state and recovery; no real identifier rename. |
 | Seven iconFont: omarchy rows plus shell/font consumers | Owned font family and licensed packaged glyph payload preserving current appearance | Resolve actual font files/modules on empty-state login. New glyph artwork remains 0.5. |
 
-The immediate slice is the executable evidence gate and compiled/QML collector.
+The executable evidence gate and compiled/QML collector are implemented.
 It must reject omitted/duplicate/unknown checks, stale tuples, changed evidence,
 missing runners/cases, optional capability exclusions invented after selection,
 and an unresolved compiled/QML scan. Synthetic positive fixtures validate the
@@ -486,7 +487,7 @@ precede a reference Test proposal; I09 includes reference Test/rollback evidence
 and the complete gate precedes Run. Thus pending I09 does not create a circular
 requirement to complete Test before proposing Test. No checker authorizes a stage.
 
-Next work after this slice: theme/assets/branding and capture closure; independently
+Next work after the theme and capture transfers: independently
 selected native providers with packaged session defaults; executable migration and
 clean-host provisioning/runtime/network/physical collectors. Keep the exact
 artifact tuple and capability matrix stable through each evidence run.
@@ -506,6 +507,16 @@ checks, offline build/integration and 61 installed output probes pass. The
 real packaged OCR and QR decoders recognize fixed offline fixtures. Audit:
 382 runtime files, 61 unresolved lexical names, 51 inherited locations and false
 readiness. [Source transfer, exact output evidence and next work](0.4.3-capture-closure.md).
-Theme/background/font/assets/branding, independent providers and session/native
-defaults, executable mutable migration/recovery and clean-host I01–I09 remain.
+The subsequent [theme/font/assets/branding source transfer](0.4.3-theme-closure.md)
+is implemented. Independent providers and effective session/native defaults,
+executable mutable migration/recovery and clean-host I01–I09 remain.
 No candidate, pin, active desktop or Test/Run/Release transition changed.
+
+## Theme, fonts and branding packaged — 2026-10-13
+
+[Owned source/tool transfer and limits](0.4.3-theme-closure.md) packages the
+retained generators, pickers, application adapters, fonts/assets and branding
+writers. All seven icon rows use Tamlinux Icons; the font build preserves glyph
+outlines/metrics. Journals preserve file originals and failed applies restore
+saved selections. Installed output, graphical appearance, native browser/boot
+policy, session consumer wiring and migration/recovery remain distinct proofs.

@@ -1,0 +1,8 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Reload btop configuration (used by the Tamlinux theme switching).
+
+pkill -SIGUSR2 btop

@@ -1,0 +1,8 @@
+#!/bin/bash
+# Maintained Arch native package client. GPL-3.0-or-later.
+set -euo pipefail
+(( $# > 0 )) || { echo "Expected at least one package name" >&2; exit 2; }
+for package in "$@"; do
+  [[ $package =~ ^[a-zA-Z0-9][a-zA-Z0-9@._+-]*$ ]] || { echo "Invalid package name" >&2; exit 2; }
+done
+exec pacman -Q -- "$@" >/dev/null 2>&1

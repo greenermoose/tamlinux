@@ -1,0 +1,10 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Apply the current theme keyboard color to supported keyboards
+# tamlinux:hidden=true
+
+tam-theme-set-keyboard-asus-rog
+tam-theme-set-keyboard-f16

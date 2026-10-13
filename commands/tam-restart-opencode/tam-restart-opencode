@@ -1,0 +1,10 @@
+#!/bin/bash
+# Derived from Omarchy 4.0.4 by David Heinemeier Hansson (MIT).
+# Maintained by Tamlinux; see LICENSE for historical attribution.
+
+
+# tamlinux:summary=Reload opencode configuration (used by the Tamlinux theme switching).
+
+if pgrep -x opencode >/dev/null; then
+  killall -SIGUSR2 opencode
+fi

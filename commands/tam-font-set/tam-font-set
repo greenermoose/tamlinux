@@ -1,0 +1,3 @@
+#!/bin/bash
+# Owned writer; implementation and journal contract in share/tamlinux/theme.
+exec python3 "${TAMLINUX_THEME_ENGINE:-$(dirname "$(readlink -f "$0")")/../share/tamlinux/theme/engine.py}" font-set "$@"

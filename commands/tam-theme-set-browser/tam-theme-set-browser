@@ -1,0 +1,23 @@
+#!/bin/bash
+# Maintained browser tint client. GPL-3.0-or-later.
+set -euo pipefail
+browsers=()
+for command in chromium google-chrome-stable google-chrome microsoft-edge-stable brave brave-origin; do
+  if command -v "$command" >/dev/null 2>&1; then browsers+=("$command"); fi
+done
+(( ${#browsers[@]} > 0 )) || exit 0
+theme_file="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/current/theme/chromium.theme"
+color="#1c2027"
+if [[ -f $theme_file ]]; then
+  color=$(python3 -c 'import sys; from pathlib import Path; rgb=[int(x.strip()) for x in Path(sys.argv[1]).read_text().strip().split(",")]; assert len(rgb)==3 and all(0<=x<=255 for x in rgb); print("#"+"".join(f"{x:02x}" for x in rgb))' "$theme_file")
+fi
+[[ $color =~ ^#[0-9a-f]{6}$ ]] || exit 1
+adapter=/usr/bin/tam-theme-set-browser-policy
+if [[ ! -x $adapter ]]; then
+  echo "Required native browser policy adapter is unavailable: $adapter" >&2
+  exit 1
+fi
+pkexec "$adapter" "${color#\#}" || exit $?
+for browser in "${browsers[@]}"; do
+  "$browser" --refresh-platform-policy --no-startup-window >/dev/null 2>&1 || true
+done
