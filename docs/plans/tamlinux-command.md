@@ -8,17 +8,18 @@ Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
-**Status:** First command slice approved by Fred on 2026-09-23;
-local component repository scaffold prepared on 2026-10-08; the command
-foundation (bare introduction, `--help`, `--version`, argument errors) was
-implemented and installed locally as `tam 0.0.1` on 2026-10-09. Offline `browse`
-is now implemented in the [command source](https://github.com/greenermoose/tam),
-with a native C renderer/pager and plain-text pipe output. Further command work
-remains with that component's maintainer. The command was
-named `tam` on 2026-10-07; the package/data namespace remains `tamlinux`.
-Orientation, explanation and installation remain proposals. The
-approved first slice can develop independently and feeds 0.7 packaging; it does
-not block settings/menu/theme ownership or Omarchy removal.
+**Status:** First command slice approved by Fred on 2026-09-23; the component
+repository now implements milestones 1–5 (command foundation, offline guide,
+orientation/explanation, installation inspection, engine enhancements) and is
+at `tam 0.9.1`, with a native C renderer/pager, a native manual-page subsystem
+(`tam show`, `tam man`) and plain-text pipe output, in the
+[command source](https://github.com/greenermoose/tam). Milestones 6–9 (a corpus
+index and `tam search`, a content-depth ladder, read-only self-inspection, and
+an opt-in grounded `ask`) are planned in the component's
+[development plan](https://github.com/greenermoose/tam/blob/main/docs/plans/development.md).
+The command was named `tam` on 2026-10-07; the package/data namespace remains
+`tamlinux`. The approved first slice developed independently and feeds 0.7
+packaging; it does not block settings/menu/theme ownership or Omarchy removal.
 
 ## Purpose
 
@@ -74,19 +75,28 @@ external; opening the local guide must not fetch network content.
 
 ## Later slices
 
+- A **corpus index and `tam search`** replacing the hand-written keyword table,
+  with a depth ladder (Beginner/Intermediate/Expert) over the curated topics —
+  the component plan's milestones 6–7.
+- **Read-only self-inspection** findings and a check contract (milestone 8),
+  extending `tam install inspect`, before any installer `plan`/`apply`/`verify`.
+- An **opt-in, grounded `ask`** surface (milestone 9): offline by default, no
+  daemon, and never fetching without interactive consent.
 - Expand `explain` from curated terms to safe parsing of command lines,
   options, pipes, and redirection. The parser must only describe input; it
-  must never execute it. Man-page integration can follow once formatting and
-  links are reliable.
+  must never execute it.
 - Add `tam ai` after hardware estimates can report their assumptions and
   uncertainty. A calculated speed is an estimate, not a measured benchmark.
 - Add `tam config` once each setting has a clear owner and reversible
-  operation. Read-only inspection should come first.
+  operation. Read-only inspection comes first.
 
-These are development directions, not features in the first release. The
-first implementation uses C with the separate `libtam` foundation library,
-following Fred's 2026-10-08 language directive. The built-in native C renderer
-and pager handle interactive browsing; plain-text output works cleanly when piped.
+The component's
+[development plan](https://github.com/greenermoose/tam/blob/main/docs/plans/development.md)
+is authoritative for the implementation sequence and acceptance. These are
+development directions, not features in the first release. The implementation
+uses C with the separate `libtam` foundation library, following Fred's
+2026-10-08 language directive. The built-in native C renderer and pager handle
+interactive browsing; plain-text output works cleanly when piped.
 
 ## Implementation order and review points
 
@@ -134,3 +144,9 @@ and pager handle interactive browsing; plain-text output works cleanly when pipe
   with zero external browser dependencies.
 - **Still open:** The later compound-command `explain`, `ai`, and `config`
   expansions need their own review before implementation.
+- **2026-10-12:** Aligned this product plan with the component plan's milestones
+  6–9 (corpus index and `search`, depth ladder, read-only self-inspection, opt-in
+  grounded `ask`) from the `tam` help and self-inspection requirements. The
+  component development plan is authoritative for their sequence and acceptance.
+  The `why`/depth axes and a computer-science track remain exploratory and are
+  not committed here.
