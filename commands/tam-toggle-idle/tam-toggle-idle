@@ -34,7 +34,11 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-STATE_FILE="${TAMLINUX_STAY_AWAKE_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake}"
+STATE_FILE="${TAMLINUX_STAY_AWAKE_FILE:-}"
+# Match the shell's selection for absent or invalid overrides.
+if [[ $STATE_FILE != /* || $STATE_FILE == / || $STATE_FILE == */ ]]; then
+  STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake"
+fi
 STATE_DIR="${STATE_FILE%/*}"
 
 stay_awake_enabled() {

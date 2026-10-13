@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Suspend the system, unless the Stay Awake switch is engaged.
+#
+# tam-toggle-idle and the Tamlinux shell write this state file when Stay Awake
+# is turned on, and the shell's idle service skips the screensaver and lock
+# while it exists. hypridle has
+# no knowledge of that flag, so honor it here to keep one toggle in charge of
+# all idle behavior.
+#
+# suspend-then-hibernate: suspend to RAM now, arm the RTC wake alarm, and after
+# the native host's HibernateDelaySec wake just long enough to hibernate to its configured swap.
+# Timeout, swap, RTC and hibernation support are native host policy. If the hibernate
+# stage fails, systemd goes back to suspend rather than waking the desktop.
+
+STATE_FILE="${TAMLINUX_STAY_AWAKE_FILE:-}"
+# Match the shell's selection for absent or invalid overrides.
+if [[ $STATE_FILE != /* || $STATE_FILE == / || $STATE_FILE == */ ]]; then
+  STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake"
+fi
+readonly fault_g_log_tag="fault-g-preflight"
+
+render_hibernate_preflight() {
+  local trigger=$1
+  local attempt_id captured_at image_size_bytes
+
+  attempt_id="$(date -u '+%Y%m%dT%H%M%SZ')-$$"
+  captured_at="$(date --iso-8601=seconds)"
+  image_size_bytes="$(cat /sys/power/image_size 2>/dev/null || printf 'unavailable')"
+
+  # Fault G can fail before the hibernation image reaches disk. Capture the
+  # RAM/swap state at the idle trigger so a later ENOMEM can be compared with
+  # successful attempts. Keep this event-driven: no sampler runs while awake.
+  {
+    printf 'section=summary captured_at=%s image_size_bytes=%s\n' \
+      "$captured_at" "$image_size_bytes"
+    printf 'section=free_m begin\n'
+    free -m 2>&1
+    printf 'section=free_m end\n'
+    printf 'section=zramctl begin\n'
+    zramctl --bytes /dev/zram0 2>&1
+    printf 'section=zramctl end\n'
+    printf 'section=swapon_bytes begin\n'
+    swapon --show --bytes 2>&1
+    printf 'section=swapon_bytes end\n'
+    printf 'section=meminfo begin\n'
+    grep -E '^(Shmem|Unevictable|Mlocked)' /proc/meminfo 2>&1
+    printf 'section=meminfo end\n'
+  } | sed "s/^/attempt=$attempt_id trigger=$trigger /"
+}
+
+capture_hibernate_preflight() {
+  render_hibernate_preflight idle-suspend | logger -t "$fault_g_log_tag" -p user.info
+}
+
+case "${1:-}" in
+  --capture-only)
+    # Safe validation path: print a capture without logging or sleeping.
+    render_hibernate_preflight manual-test
+    exit 0
+    ;;
+  "")
+    ;;
+  *)
+    printf 'usage: %s [--capture-only]\n' "${0##*/}" >&2
+    exit 2
+    ;;
+esac
+
+[[ -f $STATE_FILE ]] && exit 0
+
+capture_hibernate_preflight || true
+exec systemctl suspend-then-hibernate
