@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# tam-audio-output-switch — switch to the next audio output, keeping its mute state.
+#
+# Ported from omarchy 4.0.4 (omarchy-audio-output-switch) for plan 18 R4.2;
+# it shows the OSD through tam-osd.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# Skip the physical sink an active speaker tuning fronts: rotating onto it would
+# silently bypass the tuning rather than pick a different output.
+fronted=$(tam-audio-tuning fronted-sink 2>/dev/null || true)
+
+sinks=$(timeout 2 pactl -f json list sinks |
+  jq --arg fronted "$fronted" '[.[]
+    | select((.ports | length == 0) or ([.ports[]? | .availability != "not available"] | any))
+    | select($fronted == "" or .name != $fronted)]')
+sinks_count=$(jq 'length' <<<"$sinks")
+
+if (( sinks_count == 0 )); then
+  tam-osd -m "No audio devices found"
+  exit 1
+fi
+
+current_sink_name=$(timeout 2 pactl get-default-sink)
+current_sink_index=$(jq -r --arg name "$current_sink_name" 'map(.name) | index($name)' <<<"$sinks")
+
+if [[ $current_sink_index != "null" ]]; then
+  next_sink_index=$(((current_sink_index + 1) % sinks_count))
+else
+  next_sink_index=0
+fi
+
+next_sink=$(jq -c ".[$next_sink_index]" <<<"$sinks")
+next_sink_name=$(jq -r '.name' <<<"$next_sink")
+next_sink_description=$(jq -r '.description // .properties."device.description" // .name' <<<"$next_sink")
+# A tuning sink sits at a fixed 100% and unmuted while real loudness lives on the
+# physical sink beneath it, so read the level from whichever sink actually carries
+# it or the OSD contradicts the volume keys.
+next_sink_effective=$(tam-audio-output-sink "$next_sink_name")
+next_sink_volume=$(timeout 2 pactl get-sink-volume "$next_sink_effective" 2>/dev/null |
+  awk 'NR == 1 {for (i = 1; i <= NF; i++) if ($i ~ /%$/) {sub("%", "", $i); print $i; exit}}')
+[[ -n $next_sink_volume ]] || next_sink_volume=$(jq -r '.volume | to_entries[0].value.value_percent | sub("%"; "") | tonumber' <<<"$next_sink")
+if [[ $(timeout 2 pactl get-sink-mute "$next_sink_effective" 2>/dev/null) == *yes ]]; then
+  next_sink_is_muted=true
+else
+  next_sink_is_muted=false
+fi
+
+if [[ $next_sink_is_muted == "true" ]] || (( next_sink_volume == 0 )); then
+  icon_state="muted"
+elif (( next_sink_volume <= 33 )); then
+  icon_state="low"
+elif (( next_sink_volume <= 66 )); then
+  icon_state="medium"
+else
+  icon_state="high"
+fi
+
+if [[ $next_sink_name != $current_sink_name ]]; then
+  tam-audio-output-set-default "$(jq -r '.index' <<<"$next_sink")" "$next_sink_name"
+fi
+
+tam-osd -i "volume-${icon_state}" -m "$next_sink_description"

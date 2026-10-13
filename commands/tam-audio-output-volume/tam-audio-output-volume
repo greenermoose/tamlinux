@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# tam-audio-output-volume — adjust output volume and show the OSD.
+#
+#   tam-audio-output-volume <raise|lower|mute-toggle|+N|-N>
+#
+# Ported from omarchy 4.0.4 (omarchy-audio-output-volume) for plan 18 R4.2;
+# it shows the OSD through tam-osd.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+action="${1:-}"
+
+if [[ -z $action ]]; then
+  echo "Usage: tam-audio-output-volume <raise|lower|mute-toggle|+N|-N>"
+  exit 1
+fi
+
+# Resolve through any DSP sink to the physical one, so the keys always move real
+# loudness and the processing always sees full-scale input. Shared with the audio
+# panel and the output switcher.
+sink="$(tam-audio-output-sink)"
+if [[ -z $sink ]]; then
+  echo "Could not resolve an audio sink to control." >&2
+  exit 1
+fi
+
+# pactl reports the same percentage scale wpctl does (both are the raw volume
+# over PA_VOLUME_NORM), so the OSD reads identically either way.
+volume_percent() {
+  pactl get-sink-volume "$sink" 2>/dev/null |
+    awk 'NR == 1 {
+      for (i = 1; i <= NF; i++)
+        if ($i ~ /%$/) {sub("%", "", $i); print $i; exit}
+    }'
+}
+
+volume_muted() {
+  [[ $(pactl get-sink-mute "$sink" 2>/dev/null) == *yes ]]
+}
+
+case "$action" in
+  raise) action="+5" ;;
+  lower) action="-5" ;;
+esac
+
+if [[ $action == "mute-toggle" ]]; then
+  runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+  debounce_file="$runtime_dir/tam-audio-output-volume-mute-toggle.last"
+  now=$(date +%s%3N)
+  last=0
+  [[ -r $debounce_file ]] && read -r last <"$debounce_file" || true
+  if ((now - last < 250)); then
+    exit 0
+  fi
+  printf '%s\n' "$now" >"$debounce_file"
+
+  pactl set-sink-mute "$sink" toggle
+elif [[ $action =~ ^([+-])([0-9]+)$ ]]; then
+  direction="${BASH_REMATCH[1]}"
+  step="${BASH_REMATCH[2]}"
+
+  current="$(volume_percent)"
+  if [[ -z $current ]]; then
+    echo "Could not read volume for $sink." >&2
+    exit 1
+  fi
+
+  if [[ $direction == "+" ]]; then
+    next=$((current + step))
+    ((next <= 100)) || next=100
+  else
+    next=$((current - step))
+    ((next >= 0)) || next=0
+  fi
+
+  pactl set-sink-mute "$sink" 0
+  pactl set-sink-volume "$sink" "${next}%"
+else
+  echo "Unknown volume action: $action"
+  exit 1
+fi
+
+percent=$(volume_percent)
+if volume_muted || ((${percent:-0} == 0)); then
+  icon="volume-muted"
+else
+  icon="volume-high"
+fi
+
+tam-osd -i "$icon" -p "${percent:-0}"

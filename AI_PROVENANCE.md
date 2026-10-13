@@ -277,3 +277,7 @@ installed-helper regressions, five menu-parser checks, Nix builds/integration an
 24 final actual-output probes pass. The five-output audit reports 98 unresolved
 lexical names / 52 inherited locations; clean-host acceptance remains pending.
 [Session follow-through](docs/ai/2026-10-12-openclaw-retirement.md).
+
+2026-10-12: retained audio source/delivery and recovery interfaces were implemented
+with Codex CLI `0.162.1`, model `gpt-6.1-sol`; see the
+[session record](docs/ai/2026-10-12-0.4.3-audio-output-closure.md).

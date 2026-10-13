@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# tam-audio-sink-availability — Print PulseAudio sink availability for the shell
+#
+# Ported from Omarchy 4.0.4 (omarchy-audio-sink-availability) for plan 18 0.2.4–0.2.6.
+# Changed: owned command, variable, and path names.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# A speaker tuning is a virtual sink in front of the real speakers. Both exist
+# in the graph, but selecting the physical one would only bypass the tuning, so
+# report it unavailable and keep it out of the output list.
+fronted="$(tam-audio-tuning fronted-sink 2>/dev/null || true)"
+
+pactl list sinks 2>/dev/null | awk -v fronted="$fronted" '
+  function emit_sink() {
+    if (name == "") return
+    if (fronted != "" && name == fronted) {
+      print name "\t0"
+      return
+    }
+    print name "\t" ((port_count == 0 || available) ? 1 : 0)
+  }
+
+  /^Sink #/ {
+    emit_sink()
+    name = ""
+    in_ports = 0
+    port_count = 0
+    available = 0
+    next
+  }
+
+  /^[[:space:]]*Name:/ {
+    name = $2
+    next
+  }
+
+  /^[[:space:]]*Ports:$/ {
+    in_ports = 1
+    next
+  }
+
+  in_ports && /^\tActive Port:/ {
+    in_ports = 0
+    next
+  }
+
+  in_ports && /^\t\t/ {
+    port_count++
+    if ($0 !~ /not available/) available = 1
+    next
+  }
+
+  END {
+    emit_sink()
+  }
+'
