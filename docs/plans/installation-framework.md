@@ -52,8 +52,12 @@ Version numbers are in [VERSIONING.md](../../VERSIONING.md).
    owns native packages; do not mix native managers in the same root.
 
 Stage 0.4.3 requires the independent component/file/update-owner manifest and
-clean Arch installation proof. 0.4.4 adds focused input usability, 0.5 adds
-Tamarack visuals and 0.6 adds further native integration. Build general portable
+clean Arch installation proof. Stage 0.5 opens with focused input usability
+at 0.5.0, followed by Tamarack visuals in later 0.5.x steps. Stage 0.6 proves
+a dependable baseline: Fault F/G disposition, maintained pinned patches with
+upstream status, routine update/rollback and a host-safe second laptop on Arch.
+The laptop installation may start after 0.4.3 Run; 1.1 retains only the
+different-distribution proof. Build general portable
 automation from that proved baseline. Existing platform-specific
 ownership remains native; observed state and secrets are external to package
 defaults. Sway packaging must preserve a recoverable Hyprland login.

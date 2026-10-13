@@ -221,7 +221,7 @@ or request a reboot.
 
 ## Fixed behavior and closure boundary
 
-Plan the focused input usability follow-up as **0.4.4**, after independent 0.4.3
+Plan the focused input usability follow-up as **0.5.0**, after independent 0.4.3
 acceptance and before the visual redesign. Its first priorities are close/launch
 chord safety, predictable terminal selection/paste and TUI overrides, accessible
 close controls and discoverability. The exact keymap, Escape behavior and client
@@ -460,7 +460,7 @@ remaining requirement has a finite artifact-bound completion record.
 | --- | --- |
 | Gate/collectors absent | Implement delivery aggregation now, with tuple-bound cases and evidence digests; add compiled bytes/readelf and resolved-QML inspection for I03. Runtime, network and physical collectors remain explicit subsequent work. |
 | Independent providers | Delivery records exact source, revision/recipe, signature/trust/channel and capabilities for Hyprland's Lua IPC, Quickshell modules, ttfx, asdcontrol and every required native dependency before assembly/clean provisioning. Product owns native integration interfaces. Package names are insufficient. |
-| Version boundary | 0.4.3 owns all required names/assets/native/system integration. 0.5 adds Tamarack visual design; 0.6 adds further native improvements. Required ownership is not deferred by later design milestones. |
+| Version boundary | 0.4.3 owns all required names/assets/native/system integration. 0.5.0 opens focused input usability, followed by Tamarack in later 0.5.x; 0.6 proves dependable Arch/Hyprland use, maintained patches, routine update/rollback and a host-safe second laptop. Required ownership is not deferred by later design milestones. |
 | Retained branding/font/boot rows | Explicit disposition below; required 0.4.3 functions, no automatic retirement. |
 | Capture ambiguity | Product transfers current screenshot/recording/OCR/QR helpers and dependencies (grim/slurp/Satty/recorder/ffmpeg/OCR/QR providers selected after tracing). Delivery packages them; geometry redesign remains deferred under the reproducer rule. |
 | Migration still design-only | Product provides offline converters; delivery owns mutable-path manifest and fresh/upgrade/conflict/interruption/new-write rollback tests. Per-command snapshots are inputs, not recovery proof. |

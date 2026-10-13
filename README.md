@@ -51,29 +51,26 @@ repository yet.
 
 ## Current base and next steps
 
-The current workstation runs Tamlinux's deployed Quickshell shell and eight
-2.x plugins on Arch/Hyprland. Step 0.4.1 is accepted; non-theme user storage
-and the shared key/bar helper are owned, and compositor protocol shadow
-observation continues alongside the IPC backend. Next is 0.4.2 menu ownership
-and parser safety. The remaining Omarchy
-dependencies are removed while retaining the working Hyprland desktop:
+The current workstation runs Tamlinux's packaged Quickshell shell and eight
+2.x plugins on Arch/Hyprland. Step 0.4.2-d is accepted in Run; compositor
+protocol shadow observation continues alongside the authoritative IPC backend.
 
-1. **0.4: settings/state and menus.** Own user data, caches, helper entry points
-   and menu extensions, keeping keys and bar actions consistent.
-2. **0.5: theme system, fonts and identity.** One validated source generates
-   supported app themes; independently owned fonts/glyphs and Tamlinux surfaces.
-3. **0.6: packages/system ownership and final removal.** Preserve current
-   effective settings and workflows; remove remaining components after the
-   independent boot/update/recovery path is verified. Accept Tamlinux on
-   Hyprland without Omarchy.
-4. **0.7–1.0: Sway.** Complete compositor integration and install the Nix
-   workstation package with a native Arch host adapter beside the accepted
-   Hyprland fallback (0.7). Prove physical daily parity (0.8), then remove
-   Hyprland (1.0). The package includes the planned `tam` terminal command.
-5. **1.1–1.3: other hosts and a minimal base.** Verify another distribution,
-   then Void + runit + seatd + Btrfs and native `xbps-src` source delivery;
-   compare musl/glibc. antiX Core/runit is the fallback for a Void showstopper.
-   Repeatable installation and terminal-only profiles follow evidence.
+1. **0.4.3: independent desktop.** Deliver the retained desktop on clean
+   Arch/Hyprland with owned software, defaults, assets, native integration and
+   migration/recovery. Exact reference Test and rollback close Gate A.
+2. **0.5: input and appearance.** Focused input usability starts at 0.5.0;
+   Tamarack visual redesign follows in later 0.5.x steps.
+3. **0.6: dependable baseline.** Resolve the remaining display fault conditions
+   or accept mitigations, pin carried patches with upstream status, establish
+   routine updates/rollback, and run a host-safe Arch install on a second laptop.
+   Laptop installation may start after 0.4.3 Run.
+4. **0.7–1.0: Sway.** Complete compositor integration and install the package
+   beside the dependable Hyprland fallback (0.7). Prove physical daily parity
+   (0.8), then remove Hyprland (1.0).
+5. **1.1–1.3: other distributions and a minimal base.** Verify a different
+   distribution, then Void + runit + seatd + Btrfs and native `xbps-src` source
+   delivery; compare musl/glibc. antiX Core/runit is the fallback for a Void
+   showstopper. Repeatable installation and terminal-only profiles follow.
 
 These are two separate desktop proofs. Prepared Sway adapters are retained;
 they do not move Sway integration ahead of accepted independence on Hyprland.

@@ -20,8 +20,9 @@ and [theme result](0.4.3-theme-closure.md) own the detailed evidence.
 session defaults. Finish retained workflow closure and required native/boot
 ownership, then migration/recovery and clean Arch/Hyprland proof for one exact
 assembly before proposing reference Test. All ownership needed for independent
-installation belongs in **0.4.3**. Focused input usability follows at 0.4.4,
-Tamarack visuals at 0.5 and further native improvements at 0.6. Accept
+installation belongs in **0.4.3**. Focused input usability follows at 0.5.0,
+Tamarack visuals in later 0.5.x steps and the dependable Arch/Hyprland baseline
+at 0.6. The second laptop may start after 0.4.3 Run. Accept
 **Tamlinux on Hyprland without Omarchy** before Sway integration in 0.7.
 Prepared Sway adapters remain Develop evidence; IPC remains authoritative.
 
@@ -143,13 +144,13 @@ not raise the product version. Prototype Steps 1–5 below retain their names.
 | 0.2 | Keys/panels and package freeze | 0.1 | 0.2.0–0.2.6 accepted. |
 | 0.3 | Tamlinux daily bar and eight 2.x plugins | 0.2 | 0.3.0–0.3.3 accepted through 2026-10-07. |
 | **0.4** | Packaged independent Arch/Hyprland desktop; 0.4.2-d accepted, 0.4.3 in Develop | 0.3; coordinated boot handoff | Required theme/font/assets, source/session/native/boot ownership; clean-host I01–I08, exact reference Test/rollback I09 and accepted independent Hyprland use. **Gate A.** |
-| **0.4.4** | Focused input usability | Independent 0.4.3 acceptance | Reviewed safe chords, terminal/TUI selection and paste, close controls and discoverability; preserve retained functions. |
-| **0.5** | Tamarack visual redesign | Independent 0.4.3 acceptance | New palette/token design, typography and glyph artwork, accessible variants and supported application appearance. |
-| **0.6** | Further native-source/update improvements | Independent 0.4.3 acceptance | Additional integration beyond the independent desktop; required installation ownership is already complete in 0.4.3. |
+| **0.5.0** | Focused input usability | Independent 0.4.3 acceptance | Reviewed safe chords, terminal/TUI selection and paste, close controls and discoverability; preserve retained functions. |
+| **Later 0.5.x** | Tamarack visual redesign | Independent 0.4.3 acceptance | New palette/token design, typography and glyph artwork, accessible variants and supported application appearance. |
+| **0.6** | Dependable Arch/Hyprland baseline | Independent 0.4.3 acceptance | Fault F durably fixed or accepted mitigation; Fault G retired or accepted alternative; carried patches pinned with upstream status; routine update/rollback over a period Fred accepts; host-safe Arch installation on a second laptop. Laptop work may start after 0.4.3 Run. |
 | **0.7** | Compositor integration and Sway package/session | Gate A | Both adapters pass helper/night-light/capture checks; installed package/session verified; physical monitor recovery proved. |
 | **0.8** | Daily Sway parity with Hyprland fallback | 0.7 | All eight plugins and required workflows work on physical hardware in daily use. **Gate B.** |
 | **1.0** | Hyprland removal | Gate B; backup/recovery | Components/config removed and patches retired; Tamlinux on Arch. |
-| 1.1 | Second distribution/machine | 1.0; host-safe deployment | Same package verified; host-adapter differences recorded. |
+| 1.1 | Different-distribution proof | 1.0; host-safe deployment | Same package verified; host-adapter differences recorded. |
 | 1.2 | Void/runit/Btrfs pilot | Accepted desktop; pilot selection | Native source delivery, libc comparison, required apps, native services and coordinated recovery. antiX Core/runit if Void has a showstopper. |
 | 1.3 | Repeatable media/activation and terminal-only profile | 1.2 | Multi-hardware install/recovery evidence. |
 
