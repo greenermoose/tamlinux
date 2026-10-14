@@ -150,6 +150,58 @@ class Recovery(unittest.TestCase):
             with self.assertRaises(ValueError):r.restore(self.roots,self.journal,audio={})
             provider.assert_not_called()
 
+    def test_native_missing_tuning_unit_requires_confirmed_not_found(self):
+        with patch.object(r, 'audio_call', side_effect=['', 'not-found']):
+            self.assertEqual(r.audio_enablement({}), 'not-found')
+        with patch.object(r, 'audio_call', side_effect=['', 'loaded']):
+            self.assertEqual(r.audio_enablement({}), '')
+        with patch.object(r, 'audio_call', side_effect=['', ValueError('refused bus')]):
+            with self.assertRaises(ValueError): r.audio_enablement({})
+
+    def test_persistent_routes_require_quiescence_and_archive_retry_writes(self):
+        route = self.write('state', 'wireplumber/default-routes', b'original routes', 0o640)
+        outside = self.write('config', 'tamlinux/current.json', b'leave other settings')
+        quiet = subprocess.CompletedProcess([], 0, 'ActiveState=inactive\nSubState=dead\n', '')
+        active = subprocess.CompletedProcess([], 0, 'ActiveState=active\nSubState=running\n', '')
+        with patch.object(r.subprocess, 'run', return_value=active):
+            with self.assertRaisesRegex(ValueError, 'Stop WirePlumber'):
+                r.preserve(self.roots, self.journal, audio_state='/bin/systemctl')
+        self.assertFalse(self.journal.exists())
+        with patch.object(r.subprocess, 'run', return_value=quiet):
+            saved = r.preserve(self.roots, self.journal, audio_state='/bin/systemctl')
+        self.assertEqual(saved['selection'], 'audio-state')
+        route.write_bytes(b'later routes'); route.chmod(0o600)
+        with patch.object(r.subprocess, 'run', return_value=active):
+            with self.assertRaisesRegex(ValueError, 'Stop WirePlumber'):
+                r.restore(self.roots, self.journal, audio_state='/bin/systemctl')
+        self.assertEqual(route.read_bytes(), b'later routes')
+        with patch.object(r.subprocess, 'run', return_value=quiet):
+            self.assertEqual(r.restore(self.roots, self.journal, stop_after=1, audio_state='/bin/systemctl')['status'], 'restoring')
+            route.write_bytes(b'write after interruption')
+            self.assertEqual(r.restore(self.roots, self.journal, audio_state='/bin/systemctl')['status'], 'restored')
+            self.assertEqual(r.restore(self.roots, self.journal, audio_state='/bin/systemctl')['status'], 'restored')
+        self.assertEqual(route.read_bytes(), b'original routes')
+        self.assertEqual(route.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(outside.read_bytes(), b'leave other settings')
+        blobs = [p.read_bytes() for p in (self.journal/'blobs').iterdir()]
+        self.assertIn(b'later routes', blobs)
+        self.assertIn(b'write after interruption', blobs)
+        with self.assertRaises(ValueError): r.load(self.journal, self.roots)
+
+    def test_persistent_absence_and_scope_cannot_be_expanded(self):
+        quiet = subprocess.CompletedProcess([], 0, 'ActiveState=inactive\nSubState=dead\n', '')
+        with patch.object(r.subprocess, 'run', return_value=quiet):
+            r.preserve(self.roots, self.journal, audio_state='/bin/systemctl')
+            added = self.write('state', 'wireplumber/stream-properties', b'later stream selection')
+            r.restore(self.roots, self.journal, audio_state='/bin/systemctl')
+            self.assertFalse(added.exists())
+            self.assertFalse(added.parent.exists())
+            doc = json.loads((self.journal/'checkpoint.json').read_text())
+            doc['entries'].append({'path': str(self.roots['config']), 'exclude': []})
+            r.save(self.journal/'checkpoint.json', doc)
+            with self.assertRaises(ValueError):
+                r.restore(self.roots, self.journal, audio_state='/bin/systemctl')
+
     def test_custom_application_and_vault_roots_restore_without_touching_other_data(self):
         locations={**self.roots,'claude':self.base/'custom-claude','t3code':self.base/'custom-t3',
                    'obsidianVault0':self.base/'vault'}

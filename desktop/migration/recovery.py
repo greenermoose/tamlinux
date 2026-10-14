@@ -99,13 +99,15 @@ def relative(value):
     return path
 
 
-def selections(locations):
+def selections(locations, audio_state=False):
     manifest = json.loads(MANIFEST.read_text())
     entries = []
-    selected = list(manifest['paths'])
-    if 'settingsSource' in locations:
+    selected = list(manifest['audioStatePaths'] if audio_state else manifest['paths'])
+    if not audio_state and 'settingsSource' in locations:
         selected += [{**item, 'root': 'settingsSource'} for item in manifest['paths'] if item['root'] == 'config']
     for name, root in locations.items():
+        if audio_state:
+            continue
         if name in ('claude', 't3code'):
             default = locations['home'] / ('.claude' if name == 'claude' else '.t3')
             if root == default:
@@ -188,15 +190,30 @@ def gtk_read(executable, keys):
     return values
 
 
-def preserve(locations, directory, dconf=None, audio=None):
-    manifest, entries = selections(locations)
+def audio_state_quiet(systemctl):
+    if not systemctl or not Path(systemctl).is_absolute():
+        raise ValueError('Persistent audio recovery requires an absolute systemctl provider')
+    result = subprocess.run([str(systemctl), '--user', 'show', 'wireplumber.service',
+                             '--property=ActiveState', '--property=SubState'],
+                            capture_output=True, text=True, check=True, timeout=20)
+    if set(result.stdout.splitlines()) != {'ActiveState=inactive', 'SubState=dead'}:
+        raise ValueError('Stop WirePlumber before persistent audio capture/restoration; resume it afterwards')
+
+
+def preserve(locations, directory, dconf=None, audio=None, audio_state=None):
+    if audio_state:
+        if dconf or audio:
+            raise ValueError('Persistent audio uses a separate quiescent checkpoint from live GTK/audio')
+        audio_state_quiet(audio_state)
+    manifest, entries = selections(locations, bool(audio_state))
     parents(directory)
     directory.mkdir(parents=True, mode=0o700, exist_ok=False)
     trusted(directory, True)
     doc = {'schema': 1, 'kind': 'settings-checkpoint', 'status': 'collecting',
            'manifestSHA256': digest(MANIFEST.read_bytes()),
            'roots': {k: str(v) for k, v in locations.items()}, 'entries': entries,
-           'scope': manifest['scope'], 'externalOwners': manifest['externalOwners']}
+           'scope': manifest['scope'], 'externalOwners': manifest['externalOwners'],
+           'selection': 'audio-state' if audio_state else 'settings'}
     save(directory / 'checkpoint.json', doc)
     doc['files'] = capture(entries, directory / 'blobs')
     # A managed link can lead to mutable checkout bytes. Retaining the link
@@ -217,6 +234,8 @@ def preserve(locations, directory, dconf=None, audio=None):
             raise ValueError('Mutable configuration link target is not covered by selected recovery roots: '+str(path))
     doc['gtk'] = gtk_read(dconf, manifest['gtkKeys']) if dconf else None
     doc['audio'] = audio_read(audio) if audio else None
+    if audio_state:
+        audio_state_quiet(audio_state)
     validate_files(doc['files'], entries, directory / 'blobs')
     doc['status'] = 'preserved'
     save(directory / 'checkpoint.json', doc)
@@ -264,15 +283,16 @@ def validate_files(files, entries, blobs):
         raise ValueError('Recovery bytes exceed limit')
 
 
-def load(directory, locations):
+def load(directory, locations, audio_state=False):
     parents(directory)
     trusted(directory, True)
     doc = json.loads(read(directory / 'checkpoint.json', MAX_RECORD))
-    manifest, entries = selections(locations)
+    manifest, entries = selections(locations, audio_state)
     if (doc.get('schema') != 1 or doc.get('kind') != 'settings-checkpoint'
             or doc.get('manifestSHA256') != digest(MANIFEST.read_bytes())
             or doc.get('roots') != {k: str(v) for k, v in locations.items()}
-            or doc.get('entries') != entries):
+            or doc.get('entries') != entries
+            or doc.get('selection', 'settings') != ('audio-state' if audio_state else 'settings')):
         raise ValueError('Checkpoint does not match selected user/manifest')
     if doc.get('status') not in ('preserved', 'restoring', 'restored'):
         raise ValueError('Checkpoint did not complete preservation')
@@ -286,8 +306,12 @@ def load(directory, locations):
     return doc
 
 
-def restore(locations, directory, dconf=None, stop_after=None, audio=None):
-    doc = load(directory, locations)
+def restore(locations, directory, dconf=None, stop_after=None, audio=None, audio_state=None):
+    doc = load(directory, locations, bool(audio_state))
+    if audio_state:
+        if dconf or audio:
+            raise ValueError('Persistent audio uses a separate quiescent checkpoint from live GTK/audio')
+        audio_state_quiet(audio_state)
     current = capture(doc['entries'], directory / 'blobs')
     gtk = gtk_read(dconf, list(doc['gtk'])) if doc['gtk'] is not None else None
     audio_current = audio_read(audio) if doc.get('audio') is not None else None
@@ -375,6 +399,8 @@ def restore(locations, directory, dconf=None, stop_after=None, audio=None):
         raise ValueError('Settings changed during restoration; originals and later writes remain saved')
     if audio_current is not None:
         audio_restore(audio, doc['audio'])
+    if audio_state:
+        audio_state_quiet(audio_state)
     doc['status'] = 'restored'
     save(directory / 'checkpoint.json', doc)
     return doc
@@ -425,7 +451,7 @@ def audio_validate(doc):
 
 def audio_read(tools):
     active = audio_call(tools, 'systemctl', '--user', 'is-active', AUDIO_UNIT, negative=True)
-    enabled = audio_call(tools, 'systemctl', '--user', 'is-enabled', AUDIO_UNIT, negative=True)
+    enabled = audio_enablement(tools)
     devices = {}; defaults = {}
     for kind in ('sink', 'source'):
         rows = json.loads(audio_call(tools, 'pactl', '--format=json', 'list', kind + 's'))
@@ -445,10 +471,20 @@ def audio_read(tools):
     return doc
 
 
+def audio_enablement(tools):
+    enabled = audio_call(tools, 'systemctl', '--user', 'is-enabled', AUDIO_UNIT, negative=True)
+    # Native systemd prints no stdout for an absent unit. Do not confuse a
+    # refused bus query with an absent owner: confirm the native load state.
+    if not enabled and audio_call(tools, 'systemctl', '--user', 'show', AUDIO_UNIT,
+                                  '--property=LoadState', '--value') == 'not-found':
+        return 'not-found'
+    return enabled
+
+
 def audio_restore(tools, original):
     audio_validate(original)
     audio_call(tools, 'systemctl', '--user', 'daemon-reload')
-    enabled = audio_call(tools, 'systemctl', '--user', 'is-enabled', AUDIO_UNIT, negative=True)
+    enabled = audio_enablement(tools)
     if enabled != original['enabled']:
         raise ValueError('Tuning enablement differs; inspect unselected service links before retry')
     if original['active'] == 'active':

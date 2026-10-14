@@ -253,6 +253,7 @@ def main():
     parser.add_argument('action',choices=['plan','apply','rollback','status','preserve','restore','checkpoint-status'])
     parser.add_argument('journal',type=Path)
     parser.add_argument('--audio', action='store_true', help='Include owned tuning service, connected audio volumes/mutes and defaults')
+    parser.add_argument('--audio-state', action='store_true', help='Separate persistent WirePlumber state checkpoint; requires WirePlumber stopped')
     parser.add_argument('--gtk', action='store_true', help='Include the four owned GTK user values through dconf')
     parser.add_argument('--settings-source',type=Path,help='Absolute source config root for live-linked user settings; same finite config paths')
     parser.add_argument('--claude-root',type=Path,help='Claude configuration root; defaults to a configured CLAUDE_CONFIG_DIR')
@@ -288,14 +289,17 @@ def main():
             if args.gtk and not dconf: raise ValueError('GTK recovery requires the delivered dconf client')
             audio={name:shutil.which(name) for name in ('systemctl','pactl')} if args.audio else None
             if args.audio and not all(audio.values()): raise ValueError('Audio recovery requires delivered systemctl and pactl clients')
-            if args.action=='preserve': doc=recovery.preserve(checkpoint_roots,directory,dconf,audio)
-            elif args.action=='restore': doc=recovery.restore(checkpoint_roots,directory,dconf,audio=audio)
-            else: doc=recovery.load(directory,checkpoint_roots)
+            audio_state=shutil.which('systemctl') if args.audio_state else None
+            if args.audio_state and (not audio_state or args.audio or args.gtk or args.settings_source or args.claude_root or args.t3code_root or args.obsidian_vault):
+                raise ValueError('Persistent audio requires systemctl and its own checkpoint without settings options')
+            if args.action=='preserve': doc=recovery.preserve(checkpoint_roots,directory,dconf,audio,audio_state=audio_state)
+            elif args.action=='restore': doc=recovery.restore(checkpoint_roots,directory,dconf,audio=audio,audio_state=audio_state)
+            else: doc=recovery.load(directory,checkpoint_roots,audio_state=args.audio_state)
             print(json.dumps({'status':doc['status'],'files':len(doc['files']),
-                'gtkCaptured':doc['gtk'] is not None,'audioCaptured':doc.get('audio') is not None,'journal':str(directory),
+                'gtkCaptured':doc['gtk'] is not None,'audioCaptured':doc.get('audio') is not None,'audioStateCaptured':doc.get('selection')=='audio-state','journal':str(directory),
                 'scope':doc['scope'],'externalOwners':doc['externalOwners']}))
             return 0
-        if args.audio or args.gtk or args.settings_source or args.claude_root or args.t3code_root or args.obsidian_vault:
+        if args.audio or args.audio_state or args.gtk or args.settings_source or args.claude_root or args.t3code_root or args.obsidian_vault:
             raise ValueError('Checkpoint options are only valid for settings checkpoint actions')
         if args.action=='plan': doc=prepare(locations,directory)
         elif args.action=='apply': doc=apply(directory,locations)

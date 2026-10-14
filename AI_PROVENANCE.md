@@ -338,3 +338,6 @@ pending; the same session record describes the exact limits.
 Codex CLI `0.162.1` (`gpt-6.1-sol`) corrected the workspace layout reader and
 removed invented physical geometry from connector-only topology.
 [Session](docs/ai/2026-10-14-monitor-persistence.md).
+
+Desktop recovery and 0.4.3-a preparation: Codex CLI 0.162.1, `gpt-6.1-sol`.
+See [session record](docs/ai/2026-10-14-desktop-recovery-kit.md).
