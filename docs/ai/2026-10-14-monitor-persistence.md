@@ -89,3 +89,14 @@ only by the shell. A new `tam-desktop-mode` command installs the same engine
 with paired immutable backend modules and an explicit live-action environment.
 Existing direct consumer links to the raw plugin need removal from the eventual
 Test consumer. The current normal-account session remains unchanged.
+
+The user confirms keypad workspace switching with Num Lock on and off after
+the standalone command is deployed in the separate preview account. A native
+VM proof changes to a different workspace despite absent shell-only environment
+and unpaired caller overrides, then restores original workspaces. Its cleanup
+harness is corrected from legacy/nonexecuting dispatchers to executable Lua
+dispatch. The refreshed preview resolves all 222 commands and eight plugins,
+with zero runtime findings and unchanged saved monitor layout bytes. All 76
+exact paired installed-output probes pass. Full component integration passes
+separately with development metadata. The owned native archive is retained and
+has no installed package-file conflicts; normal-account Test remains open.
