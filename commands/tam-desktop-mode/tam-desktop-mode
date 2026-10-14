@@ -1,0 +1,7 @@
+#!/bin/bash
+# Standalone entry for the same workspace engine used by the desktop bar.
+set -euo pipefail
+prefix="$(dirname "$(dirname "$(readlink -f "$0")")")"
+export TAMLINUX_COMPOSITOR_COMMANDS="$prefix/share/tamlinux/workspaces"
+export TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1
+exec python3 -I "$prefix/share/tamlinux/workspaces/tam-desktop-mode" "$@"

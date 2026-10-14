@@ -203,7 +203,7 @@ elif name=='ttfx': sys.exit(0)
         self.assertEqual(result.returncode,2)
         body=(installed.COMMANDS/'tam-brightness-display-apple/tam-brightness-display-apple').read_text()
         self.assertNotIn('sudo ',body)
-        self.assertIn('/usr/bin/pkexec /usr/bin/asdcontrol',body)
+        self.assertIn('/usr/bin/pkexec /usr/lib/tamlinux/asdcontrol',body)
 
     def test_screensaver_effect_uses_packaged_text_and_restores_cursor(self):
         result=self.run_command('tam-screensaver',input='x',TEST_EFFECT_RUNNING='1')
@@ -240,7 +240,7 @@ elif name=='ttfx': sys.exit(0)
         # No authorization service or real hardware is called by this test.
         original=(installed.COMMANDS/'tam-brightness-display-apple/tam-brightness-display-apple').read_text()
         device=self.temp/'hiddev0'; device.touch()
-        body=original.replace('/usr/bin/asdcontrol',str(self.bin/'asdcontrol')).replace('/usr/bin/pkexec',str(self.bin/'pkexec'))
+        body=original.replace('/usr/lib/tamlinux/asdcontrol',str(self.bin/'asdcontrol')).replace('/usr/bin/pkexec',str(self.bin/'pkexec'))
         body=body.replace('/dev/usb/hiddev* /dev/hiddev*',str(device)).replace('/dev/hiddev*',str(self.temp)+'/hiddev*').replace('/dev/usb/hiddev*',str(self.temp)+'/hiddev*').replace('-c $cached','-f $cached').replace('-c $device','-f $device')
         body=body.replace("awk -F: '/^\\/dev\\/(usb\\/)?hiddev/{ print $1; exit }'", "awk -F: '{ print $1; exit }'")
         script=self.temp/'apple'; script.write_text(body); script.chmod(0o755)
