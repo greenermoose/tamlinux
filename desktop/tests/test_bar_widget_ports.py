@@ -97,6 +97,11 @@ class BarWidgetPortTests(unittest.TestCase):
         if not OMARCHY.is_dir():
             self.skipTest(f"Omarchy root {OMARCHY} not present")
         for new_path, orig_path, _ in WIDGET_FILES:
+            # Recording clicks now use typed host actions, rather than the
+            # original generic command runner. The actual QML press/argv
+            # regression in test_recording_indicator covers both branches.
+            if new_path == "desktop/shell/bar/indicators/ScreenRecording.qml":
+                continue
             orig_text = (OMARCHY / orig_path).read_text(encoding="utf-8")
             expected_body = port(orig_text)
             lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)

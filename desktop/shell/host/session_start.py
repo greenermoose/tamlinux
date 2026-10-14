@@ -8,8 +8,8 @@ plugin that fails validation is left off the bar and named in the journal;
 it does not stop the shell. With TAMLINUX_BAR=0 (services only) it only
 starts Quickshell.
 
-Anything already set in the environment wins, so a test can point the shell
-at other plugins or another layout.
+Tamlinux overrides already set in the environment win, so a test can point the
+shell at other plugins or another layout. Prior-owner variables are discarded.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ def config_home(environ: dict[str, str]) -> Path:
 
 def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[str]]:
     """The shell's environment, and what to say in the journal."""
-    env = dict(environ)
+    env = {key: value for key, value in environ.items() if not key.startswith("OMARCHY_")}
     notes: list[str] = []
     env.setdefault("QML_IMPORT_PATH", str(SHELL / "modules"))
     # Plugin helpers (fred.workspaces, fred.monitor) and the Sway adapter load

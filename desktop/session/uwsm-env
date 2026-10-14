@@ -1,4 +1,8 @@
 # Product defaults; UWSM subsequently loads the user's env and env.d choices.
+for tamlinux_inherited_variable in "${!OMARCHY_@}"; do
+  unset "$tamlinux_inherited_variable"
+done
+unset tamlinux_inherited_variable
 export TERMINAL="${TERMINAL:-xdg-terminal-exec}"
 export EDITOR="${EDITOR:-tam-launch-editor --inline}"
 export TAMLINUX_SESSION=1

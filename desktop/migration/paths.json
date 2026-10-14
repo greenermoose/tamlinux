@@ -78,6 +78,76 @@
       "source": "omarchy/defaults/editor",
       "target": "tamlinux/defaults/editor",
       "conversion": "editor"
+    },
+    {
+      "id": "bar-off",
+      "root": "state",
+      "source": "omarchy/toggles/bar-off",
+      "target": "tamlinux/toggles/bar-off",
+      "conversion": "bytes"
+    },
+    {
+      "id": "suspend-off",
+      "root": "state",
+      "source": "omarchy/toggles/suspend-off",
+      "target": "tamlinux/toggles/suspend-off",
+      "conversion": "bytes"
+    },
+    {
+      "id": "screensaver-off",
+      "root": "state",
+      "source": "omarchy/toggles/screensaver-off",
+      "target": "tamlinux/toggles/screensaver-off",
+      "conversion": "bytes"
+    },
+    {
+      "id": "crash-capture-off",
+      "root": "state",
+      "source": "omarchy/toggles/crash-capture-off",
+      "target": "tamlinux/toggles/crash-capture-off",
+      "conversion": "bytes"
+    },
+    {
+      "id": "skip-vscode-theme-changes",
+      "root": "state",
+      "source": "omarchy/toggles/skip-vscode-theme-changes",
+      "target": "tamlinux/toggles/skip-vscode-theme-changes",
+      "conversion": "bytes"
+    },
+    {
+      "id": "skip-vscode-insiders-theme-changes",
+      "root": "state",
+      "source": "omarchy/toggles/skip-vscode-insiders-theme-changes",
+      "target": "tamlinux/toggles/skip-vscode-insiders-theme-changes",
+      "conversion": "bytes"
+    },
+    {
+      "id": "skip-codium-theme-changes",
+      "root": "state",
+      "source": "omarchy/toggles/skip-codium-theme-changes",
+      "target": "tamlinux/toggles/skip-codium-theme-changes",
+      "conversion": "bytes"
+    },
+    {
+      "id": "skip-cursor-theme-changes",
+      "root": "state",
+      "source": "omarchy/toggles/skip-cursor-theme-changes",
+      "target": "tamlinux/toggles/skip-cursor-theme-changes",
+      "conversion": "bytes"
+    },
+    {
+      "id": "touchpad-disabled-name",
+      "root": "state",
+      "source": "omarchy/toggles/hypr/touchpad-disabled-name",
+      "target": "tamlinux/toggles/hypr/touchpad-disabled-name",
+      "conversion": "device-name"
+    },
+    {
+      "id": "touchscreen-disabled-name",
+      "root": "state",
+      "source": "omarchy/toggles/hypr/touchscreen-disabled-name",
+      "target": "tamlinux/toggles/hypr/touchscreen-disabled-name",
+      "conversion": "device-name"
     }
   ],
   "preserveOnly": [
@@ -92,7 +162,7 @@
   ],
   "externalOwners": [
     "native package/service/PAM/device settings",
-    "browser and GTK native settings",
+    "browser native settings; GTK user keys use the separate settings checkpoint",
     "separate workstation boot provider and recovery",
     "audio profile/route processing and kernel effects"
   ]

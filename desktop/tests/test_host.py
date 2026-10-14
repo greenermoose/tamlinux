@@ -186,13 +186,15 @@ class SessionStartTests(unittest.TestCase):
         chosen = "/nix/store/selected-provider/bin/quickshell"
         with tempfile.TemporaryDirectory() as directory, \
              patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": chosen, "TAMLINUX_BAR": "0", "HOME": directory,
-                                     "XDG_CONFIG_HOME": directory + "/config"}), \
+                                     "XDG_CONFIG_HOME": directory + "/config", "OMARCHY_PATH": "/prior-owner",
+                                     "OMARCHY_CUSTOM": "prior-user-setting"}), \
              patch.object(session_start.os, "execve") as execute:
             session_start.main()
         executable, argv, env = execute.call_args.args
         self.assertEqual(executable, chosen)
         self.assertEqual(argv, [chosen, "-p", str(session_start.SHELL)])
         self.assertEqual(env["TAMLINUX_QUICKSHELL"], chosen)
+        self.assertFalse(any(key.startswith("OMARCHY_") for key in env))
 
     def test_relative_provider_is_rejected_without_execution(self):
         from unittest.mock import patch

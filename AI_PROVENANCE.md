@@ -55,6 +55,12 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-13–14: Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented finite settings
+checkpoints with live-linked source and later-write recovery, extended retained
+flag/device migration and repaired recording-indicator actions. Actual QML
+press/argv and isolated GTK regressions cover the new behavior.
+[Session](docs/ai/2026-10-13-0.4.3-recovery-continuation.md).
+
 2026-10-13: Codex CLI `0.162.1` (`gpt-6.1-sol`) reviewed 0.4.3 readiness,
 selected independent provider/fresh-login assembly integration as the next
 work and reconciled stale public milestone deferrals. Existing immutable

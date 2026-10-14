@@ -70,7 +70,7 @@ class ActionBoundaryTests(unittest.TestCase):
         bar = (DESKTOP / "shell" / "host" / "BarApi.qml").read_text(encoding="utf-8")
         util = (DESKTOP / "shell" / "modules" / "Tam" / "Commons" / "Util.qml").read_text(encoding="utf-8")
         border = (DESKTOP / "shell" / "modules" / "Tam" / "Commons" / "Border.qml").read_text(encoding="utf-8")
-        for name in ("pickAgent", "openTerminal", "notify", "openTimezoneMenu", "run"):
+        for name in ("pickAgent", "openTerminal", "notify", "openTimezoneMenu", "screenRecording", "run"):
             self.assertIn(f"function {name}", bar)
         self.assertIn('recordAction("open-terminal btop")', bar)
         self.assertNotIn("execDetached", bar)

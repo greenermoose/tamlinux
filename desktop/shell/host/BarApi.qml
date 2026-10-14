@@ -165,6 +165,19 @@ QtObject {
     reportUnsupported(String(command || "run"))
   }
 
+  function screenRecording(action) {
+    if (action === "menu") {
+      recordAction("screen-recording-menu")
+      return startAction([tamlinuxBin + "/tam-menu", "toggle", "trigger.capture.screenrecord"], 15000, true)
+    }
+    if (action === "stop") {
+      recordAction("screen-recording-stop")
+      return startAction([tamlinuxBin + "/tam-capture-screenrecording", "--stop-recording"], 600000, true)
+    }
+    reportUnsupported("screen-recording")
+    return false
+  }
+
   function pickAgent() {
     recordAction("pick-agent")
     return startAction([tamlinuxBin + "/tam-agent", "--pick"], 600000, true)

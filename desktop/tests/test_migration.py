@@ -104,6 +104,30 @@ class Migration(unittest.TestCase):
         with self.assertRaises(ValueError):m.apply(self.journal,self.roots)
         self.assertEqual(outside.read_bytes(),b'keep')
 
+    def test_retained_flags_and_device_data_migrate_without_executing_generated_lua(self):
+        flags=['bar-off','suspend-off','screensaver-off','crash-capture-off',
+               'skip-vscode-theme-changes','skip-vscode-insiders-theme-changes',
+               'skip-codium-theme-changes','skip-cursor-theme-changes']
+        for flag in flags:self.write('state','omarchy/toggles/'+flag,b'')
+        self.write('state','omarchy/toggles/hypr/touchpad-disabled-name',b'personal-touchpad\n')
+        legacy=self.write('state','omarchy/toggles/hypr/touchscreen-disabled.lua',b'error("never execute")')
+        doc=m.prepare(self.roots,self.journal)
+        self.assertEqual(len(doc['rows']),9)
+        m.apply(self.journal,self.roots)
+        for flag in flags:self.assertTrue((self.roots['state']/'tamlinux/toggles'/flag).is_file())
+        self.assertEqual((self.roots['state']/'tamlinux/toggles/hypr/touchpad-disabled-name').read_bytes(),b'personal-touchpad\n')
+        self.assertEqual(legacy.read_bytes(),b'error("never execute")')
+        self.assertFalse((self.roots['state']/'tamlinux/toggles/hypr/touchscreen-disabled.lua').exists())
+        m.rollback(self.journal,self.roots)
+        for flag in flags:self.assertFalse((self.roots['state']/'tamlinux/toggles'/flag).exists())
+
+    def test_multiline_device_state_blocks_the_entire_migration(self):
+        mode,_,_=self.seed()
+        self.write('state','omarchy/toggles/hypr/touchpad-disabled-name',b'name\nunexpected\n')
+        self.assertEqual(m.prepare(self.roots,self.journal)['status'],'blocked')
+        with self.assertRaises(ValueError):m.apply(self.journal,self.roots)
+        self.assertEqual(mode.read_bytes(),b'omarchy\n')
+
     def test_redirected_parent_is_refused_without_outside_modification(self):
         mode,app,source=self.seed();outside=self.base/'outside';outside.mkdir()
         (self.roots['config']/'tamlinux').symlink_to(outside)

@@ -41,7 +41,7 @@ BarIndicator {
 
   onPressed: function() {
     if (root.bar) {
-      root.bar.run(root.recording ? "tam-capture-screenrecording --stop-recording" : "tam-menu toggle trigger.capture.screenrecord")
+      root.bar.screenRecording(root.recording ? "stop" : "menu")
     }
   }
 }

@@ -9,11 +9,13 @@ import argparse
 import base64
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import re
 import stat
+import shutil
 import tempfile
 
 HERE = Path(__file__).resolve().parent
@@ -99,6 +101,11 @@ def convert(kind, data, commands):
         if value not in ('helix','hx','nvim','vim','emacs','code','cursor','zeditor','sublime_text'):
             raise ValueError('Unknown editor selection')
         return ('helix\n' if value=='hx' else value+'\n').encode()
+    if kind=='device-name':
+        value=text.removesuffix('\n')
+        if not value or any(ord(c)<32 or ord(c)==127 for c in value):
+            raise ValueError('Input device name must be one nonempty plain-data line')
+        return data
     if kind=='webapp':
         # Only the executable in the first Desktop Entry section is changed.
         section=''; result=[]; changed=False
@@ -243,8 +250,10 @@ def rollback(directory, locations):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['plan','apply','rollback','status'])
+    parser.add_argument('action',choices=['plan','apply','rollback','status','preserve','restore','checkpoint-status'])
     parser.add_argument('journal',type=Path)
+    parser.add_argument('--gtk', action='store_true', help='Include the four owned GTK user values through dconf')
+    parser.add_argument('--settings-source',type=Path,help='Absolute source config root for live-linked user settings; same finite config paths')
     args=parser.parse_args(); locations=roots(os.environ)
     base=locations['state']/'tamlinux/migration';safe(base);base.mkdir(parents=True,mode=0o700,exist_ok=True)
     directory=args.journal.absolute()
@@ -253,6 +262,23 @@ def main():
     descriptor=os.open(base/'.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
     try:
         fcntl.flock(descriptor,fcntl.LOCK_EX)
+        if args.action in ('preserve','restore','checkpoint-status'):
+            spec=importlib.util.spec_from_file_location('settings_recovery',HERE/'recovery.py')
+            recovery=importlib.util.module_from_spec(spec);spec.loader.exec_module(recovery)
+            checkpoint_roots={**locations,'home':Path(os.environ['HOME'])}
+            if args.settings_source:
+                if not args.settings_source.is_absolute(): raise ValueError('Settings source root must be absolute')
+                checkpoint_roots['settingsSource']=args.settings_source
+            dconf=shutil.which('dconf') if args.gtk else None
+            if args.gtk and not dconf: raise ValueError('GTK recovery requires the delivered dconf client')
+            if args.action=='preserve': doc=recovery.preserve(checkpoint_roots,directory,dconf)
+            elif args.action=='restore': doc=recovery.restore(checkpoint_roots,directory,dconf)
+            else: doc=recovery.load(directory,checkpoint_roots)
+            print(json.dumps({'status':doc['status'],'files':len(doc['files']),
+                'gtkCaptured':doc['gtk'] is not None,'journal':str(directory),
+                'scope':doc['scope'],'externalOwners':doc['externalOwners']}))
+            return 0
+        if args.gtk or args.settings_source: raise ValueError('Checkpoint options are only valid for settings checkpoint actions')
         if args.action=='plan': doc=prepare(locations,directory)
         elif args.action=='apply': doc=apply(directory,locations)
         elif args.action=='rollback': doc=rollback(directory,locations)

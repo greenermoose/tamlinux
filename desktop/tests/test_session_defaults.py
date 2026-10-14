@@ -36,6 +36,19 @@ dofile(arg[1])
 
 @unittest.skipUnless(LUA, 'Lua interpreter unavailable')
 class SessionDefaults(unittest.TestCase):
+    def test_uwsm_boundary_discards_prior_owner_variables_and_keeps_user_roots(self):
+        result = subprocess.run(['/bin/bash', '-c', '. "$1"; /usr/bin/env', 'test',
+                                 str(ROOT / 'uwsm-env')],
+            env={'HOME': '/user-home', 'PATH': '/usr/bin', 'XDG_CONFIG_HOME': '/personal-config',
+                 'OMARCHY_PATH': '/prior-owner', 'OMARCHY_CUSTOM': 'prior-choice',
+                 'TAMLINUX_MENU_EXTENSION': '/personal-menu'},
+            capture_output=True, text=True, timeout=10, check=True)
+        env = dict(line.split('=', 1) for line in result.stdout.splitlines())
+        self.assertFalse(any(key.startswith('OMARCHY_') for key in env))
+        self.assertEqual(env['XDG_CONFIG_HOME'], '/personal-config')
+        self.assertEqual(env['TAMLINUX_MENU_EXTENSION'], '/personal-menu')
+        self.assertEqual(env['TAMLINUX_SESSION'], '1')
+
     def run_defaults(self, prepare=None):
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary)
