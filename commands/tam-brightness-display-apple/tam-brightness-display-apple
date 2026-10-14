@@ -33,7 +33,7 @@ request="${1:-}"
 [[ $request == --no-osd ]] && request="${2:-}"
 [[ -z $request || $request =~ ^(\+?[0-9]+%|[0-9]+%-)$ ]] || exit 2
 # Native optional driver and Polkit own HID access; never search caller PATH.
-[[ -x /usr/bin/asdcontrol && -x /usr/bin/pkexec ]] || { echo "Native asdcontrol/Polkit unavailable" >&2; exit 1; }
+[[ -x /usr/lib/tamlinux/asdcontrol && -x /usr/bin/pkexec ]] || { echo "Native asdcontrol/Polkit unavailable" >&2; exit 1; }
 device_cache=""
 if [[ -n ${XDG_RUNTIME_DIR:-} ]]; then
   device_cache="$XDG_RUNTIME_DIR/tam-brightness-display-apple.device"
@@ -54,7 +54,7 @@ detect_apple_display_device() {
 
   (( ${#devices[@]} > 0 )) || return 1
 
-  /usr/bin/pkexec /usr/bin/asdcontrol --detect "${devices[@]}" 2>/dev/null | awk -F: '/^\/dev\/(usb\/)?hiddev/{ print $1; exit }'
+  /usr/bin/pkexec /usr/lib/tamlinux/asdcontrol --detect "${devices[@]}" 2>/dev/null | awk -F: '/^\/dev\/(usb\/)?hiddev/{ print $1; exit }'
 }
 
 find_apple_display_device() {
@@ -86,7 +86,7 @@ find_apple_display_device() {
 current_brightness() {
   local device="$1"
 
-  /usr/bin/pkexec /usr/bin/asdcontrol "$device" 2>/dev/null | awk -F= '
+  /usr/bin/pkexec /usr/lib/tamlinux/asdcontrol "$device" 2>/dev/null | awk -F= '
     /BRIGHTNESS=/ {
       print int($2 * 100 / 60000)
       found = 1
@@ -127,9 +127,9 @@ if [[ $step =~ ^([0-9]+)%-$ ]]; then
   step="-${BASH_REMATCH[1]}%"
 fi
 
-if ! /usr/bin/pkexec /usr/bin/asdcontrol "$device" -- "$step" >/dev/null; then
+if ! /usr/bin/pkexec /usr/lib/tamlinux/asdcontrol "$device" -- "$step" >/dev/null; then
   retry_with_fresh_device
-  /usr/bin/pkexec /usr/bin/asdcontrol "$device" -- "$step" >/dev/null || exit 1
+  /usr/bin/pkexec /usr/lib/tamlinux/asdcontrol "$device" -- "$step" >/dev/null || exit 1
 fi
 
 if (( ! no_osd )); then
