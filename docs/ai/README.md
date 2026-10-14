@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-14 | Owned Chromium extensions and native messaging | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-14-browser-endpoints.md) |
 | 2026-10-13–14 | Settings recovery, live source preservation and typed recording clicks | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-13-0.4.3-recovery-continuation.md) |
 | 2026-10-13 | Independent providers, fresh-session defaults and clean VM preparation | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-13-0.4.3-provider-session-closure.md) |
 | 2026-10-13 | 0.4.3 testing readiness review and prerequisite selection | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-13-0.4.3-testing-readiness.md) |

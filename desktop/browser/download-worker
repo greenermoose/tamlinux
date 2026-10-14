@@ -1,0 +1,172 @@
+#!/bin/bash
+
+# Download worker adapted from the retained MIT implementation.
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+set -euo pipefail
+
+
+
+DOWNLOAD_DIR="${TAMLINUX_YTDLP_DIR:-$HOME/Videos}"
+
+# A printed path is only usable if it is a regular file inside DOWNLOAD_DIR.
+# Forged records (leading-dash mpv options, paths with control chars, or
+# anything that escaped the download directory) must not reach the click command.
+resolve_download_file() {
+  local candidate=$1 file_real dir_real
+
+  [[ -n $candidate ]] || return 1
+  [[ $candidate != *$'\n'* && $candidate != *$'\r'* && $candidate != *$'\t'* ]] || return 1
+  [[ -f $candidate ]] || return 1
+
+  # Read to a NUL: command substitution strips trailing newlines, which would
+  # resolve a name ending in one to a different file that may well exist.
+  IFS= read -r -d '' file_real < <(realpath -ze -- "$candidate") || return 1
+  IFS= read -r -d '' dir_real < <(realpath -ze -- "$DOWNLOAD_DIR") || return 1
+
+  [[ $file_real != *$'\n'* && $file_real != *$'\r'* && $file_real != *$'\t'* ]] || return 1
+  # Trim the slash so a download directory of "/" still leaves a usable prefix.
+  [[ $file_real == "${dir_real%/}"/* ]] || return 1
+
+  printf '%s' "$file_real"
+}
+
+# yt-dlp prints the title JSON-encoded, so a newline or tab in page metadata is an
+# escape sequence rather than a record boundary. This is toast text, never a command.
+decode_title() {
+  local decoded
+
+  decoded=$(jq -r 'if type == "string" then . else empty end' <<<"$1" 2>/dev/null) || return 1
+  decoded=${decoded%%[[:cntrl:]]*} # keep what a person would read, drop the forgery
+  [[ -n $decoded && $decoded != -* ]] || return 1
+
+  printf '%s' "$decoded"
+}
+
+title_from_file() {
+  local name=${1##*/}
+  name=${name%.*}
+  name=${name//[$'\n\r\t']/}
+  if [[ -z $name || $name == -* ]]; then
+    printf '%s' "Video"
+  else
+    printf '%s' "$name"
+  fi
+}
+
+# Drive the Quickshell OSD — a single overlay that updates in place (like the
+# volume/brightness bar), so download progress never stacks like notifications.
+osd_progress() {
+  tam-osd -i 󰇚 -p "$1" -d 8000 >/dev/null 2>&1 || true
+}
+
+osd_close() {
+  tam-shell -q osd close >/dev/null 2>&1 || true
+}
+
+download_url() {
+  local url="$1"
+
+  mkdir -p "$DOWNLOAD_DIR"
+
+  # Don't show anything until yt-dlp confirms there's actually a video to grab.
+  if ! yt-dlp --ignore-config --no-playlist --simulate --quiet --no-warnings --no-exec --no-exec-before-download -- "$url" >/dev/null 2>&1; then
+    tam-notification-send -u critical -g 󰅖 "No video found for download" "$url"
+    exit 0
+  fi
+
+  osd_progress 0
+
+  # Stream the download: TAMLINUX_PROG carries the percent (drives the OSD), and
+  # TAMLINUX_FILE and TAMLINUX_TITLE (printed only after a successful move) carry the
+  # path and the title. The title is JSON-encoded so metadata cannot forge a record,
+  # and the file is named after it: yt-dlp strips control characters from a filename
+  # with or without --restrict-filenames, so a record is still only ever one line.
+  local line pct intpct last="" er nowms lastms=0 title="" filepath="" resolved
+  while IFS= read -r line; do
+    case $line in
+    TAMLINUX_PROG*)
+      pct=${line#TAMLINUX_PROG$'\t'}
+      intpct=${pct%%.*}
+      intpct=${intpct//[^0-9]/}
+      [[ -n $intpct && $intpct != "$last" ]] || continue # skip no-op repeats
+      # Throttle to ~4 redraws/sec so fast downloads don't spawn a flurry of processes.
+      er=$EPOCHREALTIME
+      nowms=$((${er%[.,]*} * 1000 + 10#${er##*[.,]} / 1000))
+      ((nowms - lastms >= 250)) || continue
+      last=$intpct
+      lastms=$nowms
+      osd_progress "$intpct"
+      ;;
+    TAMLINUX_FILE*)
+      resolved=$(resolve_download_file "${line#TAMLINUX_FILE$'\t'}") || continue
+      filepath=$resolved
+      ;;
+    TAMLINUX_TITLE*)
+      title=$(decode_title "${line#TAMLINUX_TITLE$'\t'}") || title=""
+      ;;
+    esac
+  done < <(PYTHONUNBUFFERED=1 yt-dlp --ignore-config --no-playlist --no-simulate \
+    --quiet --no-warnings --no-exec --no-exec-before-download --progress --newline \
+    --progress-template $'download:TAMLINUX_PROG\t%(progress._percent_str)s' \
+    --paths "$DOWNLOAD_DIR" -o '%(title)s.%(ext)s' \
+    --print $'after_move:TAMLINUX_FILE\t%(filepath)s' \
+    --print $'after_move:TAMLINUX_TITLE\t%(title)j' \
+    -- "$url" 2>&1)
+
+  osd_close
+
+  # after_move only prints on a successful download+move, so a captured path == success.
+  if [[ -n $filepath ]]; then
+    [[ -n $title ]] || title=$(title_from_file "$filepath")
+    ((${#title} > 50)) && title="${title:0:50}…" # keep the toast compact
+
+    # Square, center-cropped thumbnail so the notification preview isn't stretched.
+    local preview
+    preview="$(mktemp --suffix=.jpg)"
+    timeout 15 ffmpeg -y -i "$filepath" -ss 00:00:00.1 -vframes 1 \
+      -vf "crop='min(iw,ih)':'min(iw,ih)',scale=256:256" -q:v 2 \
+      "$preview" -loglevel quiet 2>/dev/null || true
+
+    # Best-effort: the download already succeeded, and under `set -e` a failed
+    # toast would exit before the thumbnail cleanup below is ever scheduled.
+    # `--` keeps mpv from parsing a leading-dash filename as an option; the path
+    # is one discrete argument, so it never reaches a shell.
+    tam-notification-send -g 󰄬 "Download complete" "$title" \
+      -t 10000 --image "${preview:-$filepath}" \
+      --exec mpv -- "$filepath" || true
+
+    # The shell loads the thumbnail into memory when the toast appears and never
+    # re-reads the file, so the preview only has to outlive that load, not the
+    # toast.
+    (
+      sleep 2
+      rm -f "$preview"
+    ) &
+  else
+    tam-notification-send -u critical -g 󰅖 "Download failed" "$url"
+  fi
+
+  exit 0
+}
+
+[[ ${1:-} == --download && $# == 2 ]] || exit 64
+download_url "$2"

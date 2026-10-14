@@ -55,6 +55,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-14: Codex CLI `0.162.1` (`gpt-6.1-sol`) packages owned Chromium
+extensions and bounded native messaging hosts, with browser settings recovery
+and real clipboard/download verification. [Session](docs/ai/2026-10-14-browser-endpoints.md).
+
 2026-10-13–14: Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented finite settings
 checkpoints with live-linked source and later-write recovery, extended retained
 flag/device migration and repaired recording-indicator actions. Actual QML

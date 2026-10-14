@@ -14,6 +14,8 @@
     {"root": "config", "path": "fontconfig", "exclude": []},
     {"root": "config", "path": "xdg-terminals.list", "exclude": []},
     {"root": "config", "path": "mimeapps.list", "exclude": []},
+    {"root": "config", "path": "chromium/NativeMessagingHosts", "exclude": []},
+    {"root": "config", "path": "chromium-flags.conf", "exclude": []},
     {"root": "config", "path": "tmux", "exclude": []},
     {"root": "config", "path": "Code/User/settings.json", "exclude": []},
     {"root": "config", "path": "Code - Insiders/User/settings.json", "exclude": []},
