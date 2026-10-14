@@ -319,6 +319,56 @@ class ResilienceTests(unittest.TestCase):
         {"output": "HDMI-A-1", "mode": "1920x1080@60", "position": "3840x360", "scale": 1.0, "x": 3840, "y": 360},
     ]
 
+    def test_reconcile_uses_the_session_layout_instead_of_a_stale_legacy_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            legacy = config / "hypr/monitors.lua"
+            legacy.parent.mkdir()
+            legacy.write_text('hl.monitor({ output = "Virtual-1", position = "0x0" })\n')
+            current = config / "tamlinux/hypr/monitors.lua"
+            current.parent.mkdir(parents=True)
+            current.write_text('\n'.join([
+                'hl.monitor({ output = "LEFT", mode = "1920x1080@60", position = "0x0", scale = 1 })',
+                'hl.monitor({ output = "Virtual-1", mode = "1280x800@75", position = "1920x0", scale = 1 })',
+                'hl.monitor({ output = "RIGHT", mode = "1920x1080@60", position = "3200x0", scale = 1 })',
+            ]))
+            live = [{"name": name, "x": x, "y": 0} for name, x in
+                    [("LEFT", 0), ("Virtual-1", 1920), ("RIGHT", 3200)]]
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}), \
+                 patch.object(desktop_mode, "run_named", return_value=completed(stdout=json.dumps(live))) as run:
+                desktop_mode.ensure_contiguous_layout([m["name"] for m in live])
+                self.assertEqual(run.call_args_list, [call("monitors")])
+
+    def test_saved_layout_keeps_signed_coordinates_and_sort_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tamlinux/hypr/monitors.lua"
+            path.parent.mkdir(parents=True)
+            path.write_text('\n'.join([
+                'hl.monitor({ output = "CENTER", position = "0x0", scale = 1 })',
+                'hl.monitor({ output = "LEFT", position = "-1920x-360", scale = 1 })',
+            ]))
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}):
+                canonical = desktop_mode.load_canonical_topology()
+            self.assertEqual([m["output"] for m in canonical], ["LEFT", "CENTER"])
+            live = [{"name": "LEFT", "x": 1920, "y": 0}, {"name": "CENTER", "x": 0, "y": 0}]
+            with patch.object(desktop_mode, "run_named", side_effect=[completed(stdout=json.dumps(live)), completed()]) as run:
+                desktop_mode.ensure_contiguous_layout(["LEFT", "CENTER"], canonical)
+            self.assertEqual(run.call_args_list[1], call("monitor-rule", ["LEFT", "preferred", "-1920x-360", 1.0]))
+
+    def test_topology_names_do_not_invent_monitor_positions(self):
+        state = json.dumps({"topology": ["LEFT", "CENTER", "RIGHT"]})
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}, clear=True), \
+             patch.object(desktop_mode, "read_state_file", return_value=state):
+            for topology in ("", "LEFT,CENTER,RIGHT"):
+                with self.subTest(topology=topology), \
+                     patch.dict(os.environ, {"TAMLINUX_DESKTOP_TOPOLOGY": topology}), \
+                     patch.object(desktop_mode, "run_named") as run:
+                    canonical = desktop_mode.load_canonical_topology()
+                    self.assertEqual([m["output"] for m in canonical], ["LEFT", "CENTER", "RIGHT"])
+                    desktop_mode.ensure_contiguous_layout(["LEFT", "CENTER", "RIGHT"], canonical)
+                    run.assert_not_called()
+
     def test_topology_anchored_workspace_mapping_normal(self):
         with (
             patch.object(desktop_mode, "load_canonical_topology", return_value=self.CANONICAL_TOPO),

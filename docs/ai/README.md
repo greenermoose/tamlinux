@@ -107,3 +107,5 @@ side and any rework: [`delegations.md`](delegations.md).
 ## 2026-09-28 provenance audit and publish
 
 - [Claude Code session record](2026-09-28-provenance-audit-and-publish.md).
+
+- [2026-10-14 — Monitor geometry during workspace reconciliation](2026-10-14-monitor-persistence.md)

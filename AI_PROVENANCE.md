@@ -332,3 +332,9 @@ Continuation: retained helpers, fresh application consumers, finite preserving
 migration and an independently built native integration package were developed
 and checked in the isolated Arch VM. Full readiness and boot handoff remain
 pending; the same session record describes the exact limits.
+
+## Saved monitor geometry — 2026-10-14
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) corrected the workspace layout reader and
+removed invented physical geometry from connector-only topology.
+[Session](docs/ai/2026-10-14-monitor-persistence.md).

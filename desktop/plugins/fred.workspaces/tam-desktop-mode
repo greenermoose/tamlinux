@@ -17,6 +17,7 @@ import subprocess
 import sys
 
 MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+POSITION_RE = re.compile(r"^(-?\d{1,6})x(-?\d{1,6})$")
 CONFIG_LINE_RE = re.compile(
     r"^(?:export\s+)?(TAMLINUX_DESKTOP_LEFT_MONITOR|TAMLINUX_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor|topology|topology_size|TAMLINUX_DESKTOP_TOPOLOGY|unused_monitor_timeout|TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT)\s*=\s*(.*)$"
 )
@@ -237,7 +238,8 @@ def load_unused_monitor_timeout() -> int:
 
 def load_monitors_lua() -> list[dict]:
     config_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    lua_file = os.path.join(config_dir, "hypr", "monitors.lua")
+    # Read the same mutable layout as the session entry and Display panel.
+    lua_file = os.path.join(config_dir, "tamlinux", "hypr", "monitors.lua")
     fd = -1
     try:
         fd = os.open(lua_file, os.O_RDONLY | os.O_NOFOLLOW)
@@ -275,9 +277,9 @@ def load_monitors_lua() -> list[dict]:
                     scale_val = float(s_str)
                 except ValueError:
                     scale_val = 1.0
-            pos_str = pos.group(1).strip() if pos else "0x0"
+            pos_str = pos.group(1).strip() if pos else "auto"
             x, y = 0, 0
-            m_pos = re.match(r"^(\d+)x(\d+)$", pos_str)
+            m_pos = POSITION_RE.fullmatch(pos_str)
             if m_pos:
                 x, y = int(m_pos.group(1)), int(m_pos.group(2))
             mode_str = mode.group(1).strip() if mode else "preferred"
@@ -307,8 +309,8 @@ def load_canonical_topology() -> list[dict]:
         names = [n.strip() for n in topo_str.split(",") if MONITOR_RE.match(n.strip())]
         if names:
             return [
-                {"output": name, "mode": "preferred", "position": f"{idx * 1920}x0", "scale": 1.0, "x": idx * 1920, "y": 0}
-                for idx, name in enumerate(names)
+                {"output": name}
+                for name in names
             ]
 
     try:
@@ -319,8 +321,8 @@ def load_canonical_topology() -> list[dict]:
                 names = [n for n in data["topology"] if isinstance(n, str) and MONITOR_RE.match(n)]
                 if names:
                     return [
-                        {"output": name, "mode": "preferred", "position": f"{idx * 1920}x0", "scale": 1.0, "x": idx * 1920, "y": 0}
-                        for idx, name in enumerate(names)
+                        {"output": name}
+                        for name in names
                     ]
     except Exception:
         pass
@@ -486,6 +488,11 @@ def ensure_contiguous_layout(active_monitors: list[str], canonical_info: list[di
     if canonical_info is None:
         canonical_info = load_canonical_topology()
 
+    # Connector names fix workspace slots, but carry no physical geometry.
+    # Auto positions and Lua expressions remain under compositor control.
+    if not canonical_info or not all(POSITION_RE.fullmatch(m.get("position", "")) for m in canonical_info):
+        return
+
     canonical_map = {m["output"]: m for m in canonical_info}
     live_details: dict[str, dict] = {}
     try:
@@ -509,7 +516,7 @@ def ensure_contiguous_layout(active_monitors: list[str], canonical_info: list[di
             cur_x = live.get("x", 0)
             cur_y = live.get("y", 0)
             c_pos = c.get("position", "")
-            m_pos = re.match(r"^(\d+)x(\d+)$", c_pos)
+            m_pos = POSITION_RE.fullmatch(c_pos)
             if m_pos:
                 can_x, can_y = int(m_pos.group(1)), int(m_pos.group(2))
                 if cur_x != can_x or cur_y != can_y:
