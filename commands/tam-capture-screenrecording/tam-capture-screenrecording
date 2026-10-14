@@ -283,7 +283,13 @@ start_screenrecording() {
   [[ -n $audio_devices ]] && audio_args+=(-a "$audio_devices" -ac aac)
 
   echo "$(date '+%F %T') target: $target" >>"$LOG_FILE"
-  gpu-screen-recorder "${capture_args[@]}" -k auto -f 60 -fm cfr -fallback-cpu-encoding yes -o "$filename" "${audio_args[@]}" 9>&- </dev/null >/dev/null 2>>"$LOG_FILE" &
+  recorder="${TAMLINUX_GPU_SCREEN_RECORDER:-/usr/bin/gpu-screen-recorder}"
+  if [[ $recorder != /* || ! -x $recorder ]]; then
+    echo "Recording requires the selected absolute native recorder provider" >&2
+    rm -f -- "$filename"
+    return 1
+  fi
+  "$recorder" "${capture_args[@]}" -k auto -f 60 -fm cfr -fallback-cpu-encoding yes -o "$filename" "${audio_args[@]}" 9>&- </dev/null >/dev/null 2>>"$LOG_FILE" &
   local pid=$! count=0
   if ! remember_process "$RECORDER_PID_FILE" "$pid"; then
     wait "$pid" 2>/dev/null

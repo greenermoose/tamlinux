@@ -1,0 +1,33 @@
+#!/bin/bash
+# Independent fwupd entry point; EFI setup belongs to the boot provider.
+# GPL-3.0-or-later.
+set -euo pipefail
+case "${1:---apply}" in
+  --check) mode=check ;;
+  --apply) mode=apply ;;
+  *) echo "Usage: tam-update-firmware [--check|--apply]" >&2; exit 2 ;;
+esac
+(( $# <= 1 )) || exit 2
+[[ -x /usr/bin/fwupdmgr ]] || { echo "Firmware checks require native Arch fwupd." >&2; exit 1; }
+if [[ $mode == check ]]; then
+  exec /usr/bin/fwupdmgr get-updates
+fi
+record=/var/lib/tamlinux/recovery/firmware-update-ready.json
+[[ -f $record && ! -L $record && $(/usr/bin/stat -c %u "$record") == 0 && $(/usr/bin/stat -c %a "$record") == 644 ]] || {
+  echo "Firmware application requires the boot provider's recovery handoff." >&2; exit 1;
+}
+/usr/bin/python3 -I - "$record" <<'PYTHON'
+import hashlib,json,sys
+from pathlib import Path
+d=json.loads(Path(sys.argv[1]).read_text())
+if d.get('schema')!=1 or d.get('ready') is not True or d.get('operation')!='firmware-update' or not isinstance(d.get('recoveryArtifacts'),list) or not d['recoveryArtifacts']:
+    sys.exit('Firmware recovery record is incomplete')
+for artifact in d['recoveryArtifacts']:
+    path=Path(artifact['path'])
+    if not path.is_absolute() or not path.is_file() or path.is_symlink():sys.exit('Recovery artifact is unavailable')
+    with path.open('rb') as handle:
+        if hashlib.file_digest(handle,'sha256').hexdigest()!=artifact['sha256']:sys.exit('Recovery artifact changed')
+PYTHON
+# fwupd owns the transaction and authorization. This entry point never copies
+# firmware/EFI files, creates an ESP path or edits boot configuration.
+exec /usr/bin/fwupdmgr update

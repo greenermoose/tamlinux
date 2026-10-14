@@ -1,0 +1,68 @@
+#!/bin/bash
+# Independent native system update entry point. GPL-3.0-or-later.
+set -euo pipefail
+case "${1:---apply}" in
+  --check) mode=check ;;
+  --apply) mode=apply ;;
+  *) echo "Usage: tam-update [--check|--apply]" >&2; exit 2 ;;
+esac
+(( $# <= 1 )) || exit 2
+# Never reactivate a retired repository/guard or substitute another updater.
+if /usr/bin/pacman -Sl 2>/dev/null | /usr/bin/grep -qi 'omarchy'; then
+  echo "Remove inherited active repositories before native updates." >&2
+  exit 1
+fi
+if [[ -x /usr/bin/checkupdates ]]; then
+  result=0
+  updates=$(/usr/bin/checkupdates) || result=$?
+  [[ -z $updates ]] || printf '%s\n' "$updates"
+  (( result == 0 || result == 2 )) || exit "$result"
+else
+  echo "Native checkupdates is required (Arch pacman-contrib)." >&2
+  exit 1
+fi
+[[ $mode == apply ]] || exit 0
+# Full upgrades exercise kernel/initramfs hooks. The separate boot owner must
+# provide recovery readiness before this desktop entry point can run them.
+record=/var/lib/tamlinux/recovery/native-update-ready.json
+if [[ ! -f $record || -L $record || $(/usr/bin/stat -c %u "$record") != 0 || $(/usr/bin/stat -c %a "$record") != 644 ]]; then
+  echo "Native updates require the separate boot provider's recovery handoff: $record" >&2
+  exit 1
+fi
+/usr/bin/python3 -I - "$record" "$updates" <<'PYTHON'
+import hashlib,json,sys
+from pathlib import Path
+p=Path(sys.argv[1]);d=json.loads(p.read_text())
+if d.get('schema')!=1 or d.get('ready') is not True or d.get('operation')!='native-update' or not isinstance(d.get('recoveryArtifacts'),list) or not d['recoveryArtifacts']:
+    sys.exit('Native/boot recovery record is incomplete')
+for artifact in d['recoveryArtifacts']:
+    path=Path(artifact['path'])
+    if not path.is_absolute() or not path.is_file() or path.is_symlink():
+        sys.exit('Recovery artifact is unavailable')
+    with path.open('rb') as handle:
+        if hashlib.file_digest(handle,'sha256').hexdigest()!=artifact['sha256']:
+            sys.exit('Recovery artifact changed')
+# Carried compositor patches must be staged/reviewed for this exact transaction.
+approved=d.get('approvedProviderVersions',{})
+for line in sys.argv[2].splitlines():
+    fields=line.split()
+    if len(fields)!=4 or fields[2]!='->':sys.exit('Unexpected native update preview')
+    if fields[0] in ('hyprland','aquamarine') and approved.get(fields[0])!=fields[3]:
+        sys.exit('Stage the maintained '+fields[0]+' provider for '+fields[3]+' before updating')
+PYTHON
+# Native confirmation remains interactive. A failed snapshot stops the update.
+if /usr/bin/pacman -Qq | /usr/bin/grep -qi 'omarchy'; then
+  echo "Full system/AUR updating awaits the old-package cutover." >&2
+  exit 1
+fi
+/usr/bin/sudo /usr/bin/snapper -c root create -d "pre: Tamlinux native update" || exit 1
+/usr/bin/systemd-inhibit --what=sleep:idle --why="Tamlinux native update" \
+  /usr/bin/sudo /usr/bin/pacman -Syu
+
+# The independently packaged user AUR helper retains build/transaction review.
+if command -v yay >/dev/null; then
+  yay -Sua
+else
+  echo "AUR updates require the selected independent yay provider." >&2
+  exit 1
+fi

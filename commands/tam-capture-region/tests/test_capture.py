@@ -92,6 +92,7 @@ class Capture(unittest.TestCase):
                        width=2560, height=1440, scale=2, transform=0,
                        activeWorkspace={'id': 1})
         self.env = os.environ | {
+            'TAMLINUX_GPU_SCREEN_RECORDER': str(self.bin / 'gpu-screen-recorder'),
             'HOME': str(self.root / 'home'), 'XDG_CONFIG_HOME': str(self.root / 'config'),
             'XDG_RUNTIME_DIR': str(self.root / 'runtime'),
             'XDG_STATE_HOME': str(self.root / 'state'),
@@ -253,6 +254,14 @@ class Capture(unittest.TestCase):
     def test_record_invalid_options(self):
         for option in ('--unknown', '--webcam-size=huge'):
             self.assertNotEqual(self.run_helper('screenrecording', option, ok=False).returncode, 0)
+        self.assertFalse(self.calls('gpu-screen-recorder'))
+
+    def test_recorder_provider_must_be_an_absolute_executable(self):
+        for selected in ('gpu-screen-recorder', str(self.root/'missing-provider')):
+            result=self.run_helper('screenrecording','--fullscreen',
+                extra={'TAMLINUX_GPU_SCREEN_RECORDER':selected},ok=False)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('selected absolute native recorder',result.stderr)
         self.assertFalse(self.calls('gpu-screen-recorder'))
 
     def test_region_recording_target_preserves_logical_coordinates(self):
