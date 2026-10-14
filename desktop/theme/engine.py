@@ -160,7 +160,7 @@ def application_paths():
         paths += [Path(v['path']) / '.obsidian/themes/Tamlinux' for v in vaults]
     return paths
 
-def set_theme(value, refresh=False):
+def set_theme(value, refresh=False, apply=True):
     theme = name(value)
     builtin, user = ASSETS / 'themes' / theme, CONFIG / 'tamlinux/themes' / theme
     if not builtin.is_dir() and not user.is_dir():
@@ -188,7 +188,7 @@ def set_theme(value, refresh=False):
         for item in stage.glob('*'):
             if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css'} and '{{' in item.read_text():
                 raise ValueError(f'unresolved template in {item.name}')
-        paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + application_paths()
+        paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
         with transaction('theme', paths):
             # Old actual directories are saved before converting to the stable
             # generated-theme link; no inherited folder is read or deleted.
@@ -202,18 +202,18 @@ def set_theme(value, refresh=False):
                     old = (CURRENT / 'background').resolve()
                     index = next((i for i,p in enumerate(choices) if p.resolve() == old), -1)
                     atomic(CURRENT / 'background', link=choices[(index + 1) % len(choices)])
-            if not os.environ.get('TAMLINUX_THEME_OFFLINE'):
+            if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE'):
                 for adapter in ADAPTERS: run('tam-theme-set-' + adapter, env=dict(os.environ, TAMLINUX_THEME_JOURNALED='1'))
                 for app in ('terminal', 'hyprctl', 'btop', 'opencode', 'helix'):
                     run('tam-restart-' + app, check=False)
                 run('tam-hook', 'theme-set', theme)
-        sync_shell()
+        if apply: sync_shell()
     except BaseException:
         # Preserve a published generation for forensic/recovery use. Unpublished
         # staging is disposable and cannot be the target of a saved selection.
         if (CURRENT / 'theme').resolve() != stage:
             remove(stage)
-        sync_shell()
+        if apply: sync_shell()
         raise
 
 def set_background(value):
@@ -310,10 +310,16 @@ def main():
     action, *args = sys.argv[1:]
     os.umask(0o077)
     CURRENT.mkdir(parents=True, exist_ok=True)
-    mutating = action in {'set', 'refresh', 'bg-set', 'bg-next', 'remove', 'install', 'font-set', 'branding-about', 'branding-screensaver'}
+    mutating = action in {'initialize', 'set', 'refresh', 'bg-set', 'bg-next', 'remove', 'install', 'font-set', 'branding-about', 'branding-screensaver'}
     with (open(CURRENT / '.theme.lock', 'a') if mutating else contextlib.nullcontext()) as lock:
         if mutating: fcntl.flock(lock, fcntl.LOCK_EX)
-        if action == 'journal' and not args: print(Journal('theme-application', application_paths()).directory)
+        if action == 'initialize' and not args:
+            # Initialization owns only absent fresh state. Existing selections,
+            # even dangling links, require explicit recovery/user action.
+            if not any(path.exists() or path.is_symlink() for path in (CURRENT / 'theme', CURRENT / 'theme.name')):
+                background = CURRENT / 'background'
+                set_theme('tokyo-night', refresh=background.exists() or background.is_symlink(), apply=False)
+        elif action == 'journal' and not args: print(Journal('theme-application', application_paths()).directory)
         elif action == 'set' and len(args) == 1: set_theme(args[0])
         elif action == 'refresh' and not args: set_theme(selected(), refresh=True)
         elif action == 'current' and not args: print(selected().replace('-', ' ').title())

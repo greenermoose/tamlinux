@@ -112,6 +112,7 @@ elif name == 'ls' and args == ['/usr/lib/lv2/lsp-plugins.lv2/limiter_stereo.ttl'
 elif name == 'sleep': pass
 elif name == 'setsid': os.execvp(args[0], args)
 elif name == 'uwsm-app':
+    if args[:2] == ['-t', 'service']: args = args[2:]
     assert args[0] == '--'
     os.execvp(args[1], args[1:])
 '''

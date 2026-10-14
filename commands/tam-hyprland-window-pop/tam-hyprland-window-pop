@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# tam-hyprland-window-pop — toggle to pop-out a tile to stay fixed on a
+# display basis.
+#
+#   tam-hyprland-window-pop [width height x y]
+#
+# Ported from Omarchy 4.0.4 (omarchy-hyprland-window-pop) for plan 18 R4.15i.
+# Unchanged.
+# Hyprland-only, copied verbatim; the Sway package replaces it.
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+width=${1:-1300}
+height=${2:-900}
+x=${3:-}
+y=${4:-}
+(( $# <= 4 )) && [[ $width =~ ^[0-9]+$ && $height =~ ^[0-9]+$ ]] || exit 2
+(( ${#width} <= 5 && ${#height} <= 5 )) || exit 2
+(( 10#$width > 0 && 10#$width <= 16384 && 10#$height > 0 && 10#$height <= 16384 )) || exit 2
+if [[ -n $x || -n $y ]]; then
+  [[ $x =~ ^-?[0-9]+$ && $y =~ ^-?[0-9]+$ && ${#x} -le 7 && ${#y} -le 7 ]] || exit 2
+fi
+
+active=$(hyprctl activewindow -j)
+pinned=$(echo "$active" | jq ".pinned")
+addr=$(echo "$active" | jq -r ".address")
+[[ $addr =~ ^0x[0-9a-fA-F]+$ ]] || exit 1
+window="address:$addr"
+
+hypr_dispatch() {
+  local lua="$1"
+  shift
+
+  hyprctl dispatch "$lua" >/dev/null 2>&1 || hyprctl dispatch "$@" >/dev/null
+}
+
+if [[ $pinned == "true" ]]; then
+  hypr_dispatch "hl.dsp.window.pin({ window = \"$window\" })" pin "$window"
+  hypr_dispatch "hl.dsp.window.float({ window = \"$window\", action = \"toggle\" })" togglefloating "$window"
+  hypr_dispatch "hl.dsp.window.tag({ window = \"$window\", tag = \"-pop\" })" tagwindow -pop "$window"
+elif [[ -n $addr ]]; then
+  hypr_dispatch "hl.dsp.window.float({ window = \"$window\", action = \"toggle\" })" togglefloating "$window"
+  hypr_dispatch "hl.dsp.window.resize({ window = \"$window\", x = $width, y = $height })" resizeactive exact "$width" "$height" "$window"
+
+  if [[ -n $x && -n $y ]]; then
+    hypr_dispatch "hl.dsp.window.move({ window = \"$window\", x = $x, y = $y })" moveactive "$x" "$y" "$window"
+  else
+    hypr_dispatch "hl.dsp.window.center({ window = \"$window\" })" centerwindow "$window"
+  fi
+
+  hypr_dispatch "hl.dsp.window.pin({ window = \"$window\" })" pin "$window"
+  hypr_dispatch "hl.dsp.window.alter_zorder({ window = \"$window\", mode = \"top\" })" alterzorder top "$window"
+  hypr_dispatch "hl.dsp.window.tag({ window = \"$window\", tag = \"+pop\" })" tagwindow +pop "$window"
+fi

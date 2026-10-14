@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# tam-pkg-install — pick packages from the Arch repositories in a fuzzy
+# finder and install them (Menu → Install → Package).
+#
+#   tam-pkg-install
+#
+# Ported from Omarchy 4.0.4 (omarchy-pkg-install) for plan 18 R4.15h.
+# Changed: the list leaves out the [omarchy] repository, which plan 18
+# removes, and the choice installs through tam-pkg-add, which asks before
+# taking a dependency from it (agent/docs/agent-guides/package-management.md).
+# Packages already installed are left as they are, not reinstalled.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+fzf_args=(
+  --multi
+  --preview 'pacman -Sii {1}'
+  --preview-label='alt-p: toggle description, alt-j/k: scroll, tab: multi-select'
+  --preview-label-pos='bottom'
+  --preview-window 'down:65%:wrap'
+  --bind 'alt-p:toggle-preview'
+  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
+  --bind 'alt-k:preview-up,alt-j:preview-down'
+  --color 'pointer:green,marker:green'
+)
+
+# Every sync repository but [omarchy]; a name in two repositories is listed once.
+pkg_names=$(pacman -Sl | awk '$1 != "omarchy" && !seen[$2]++ { print $2 }' | fzf "${fzf_args[@]}")
+
+if [[ -n $pkg_names ]]; then
+  mapfile -t packages <<<"$pkg_names"
+  tam-pkg-add "${packages[@]}" || exit 1
+  tam-show-done
+fi

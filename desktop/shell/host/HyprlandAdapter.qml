@@ -210,7 +210,7 @@ QtObject {
       if (toplevel.wayland && toplevel.wayland.appId) cls = String(toplevel.wayland.appId)
       else if (ipc["class"]) cls = String(ipc["class"])
       if (cls.toLowerCase().indexOf(needle) !== -1) return windowAddress(toplevel.address)
-      if (agent === "" && String(ipc.initialClass || "") === "org.omarchy.agent"
+      if (agent === "" && String(ipc.initialClass || "") === "org.tamlinux.agent"
           && String(ipc.initialTitle || "").toLowerCase().indexOf(needle) !== -1)
         agent = windowAddress(toplevel.address)
     }

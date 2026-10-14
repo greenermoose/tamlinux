@@ -46,6 +46,9 @@ else
   editor="nvim"
 fi
 
+if [[ $editor == "helix" ]] && ! tam-cmd-present helix && tam-cmd-present hx; then
+  editor="hx"
+fi
 tam-cmd-present "$editor" || editor="nvim"
 
 case "${editor##*/}" in
@@ -57,6 +60,6 @@ nvim | vim | nano | micro | hx | helix | fresh)
   fi
   ;;
 *)
-  exec setsid uwsm-app -- "$editor" "$@"
+  exec setsid uwsm-app -t service -- "$editor" "$@"
   ;;
 esac

@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 HOST = Path(__file__).resolve().parent
@@ -55,6 +56,35 @@ def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[s
     return env, notes
 
 
+def initialize_defaults(environ: dict[str, str]) -> None:
+    """Publish absent mutable defaults atomically, preserving existing files/links."""
+    if not environ.get("HOME") and not environ.get("XDG_CONFIG_HOME"):
+        raise ValueError("HOME or XDG_CONFIG_HOME is required for mutable defaults")
+    config = config_home(environ) / "tamlinux" / "shell"
+    layout = Path(environ.get("TAMLINUX_BAR_LAYOUT") or config / "layout.json")
+    defaults = [(config / "settings.json", '{"version": 1, "entries": {}}\n')]
+    if environ.get("TAMLINUX_BAR") != "0":
+        defaults.append((layout, (SHELL / "bar" / "default-layout.json").read_text()))
+    if any(not target.is_absolute() for target, _ in defaults):
+        raise ValueError("Mutable default destinations must be absolute")
+    for target, contents in defaults:
+        if target.exists() or target.is_symlink():
+            continue
+        target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        descriptor, temporary = tempfile.mkstemp(prefix=".tamlinux-default-", dir=target.parent)
+        try:
+            with os.fdopen(descriptor, "w") as stream:
+                stream.write(contents)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, target)
+            except FileExistsError:
+                pass  # A concurrent writer owns the destination now.
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+
+
 def main() -> int:
     env, notes = session_environment(dict(os.environ))
     for note in notes:
@@ -63,6 +93,7 @@ def main() -> int:
     if not Path(quickshell).is_absolute():
         print("tamlinux-shell: selected Quickshell executable must be absolute", file=sys.stderr)
         return 2
+    initialize_defaults(env)
     os.execve(quickshell, [quickshell, "-p", str(SHELL)], env)
     return 1
 

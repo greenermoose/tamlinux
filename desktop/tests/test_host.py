@@ -184,7 +184,9 @@ class SessionStartTests(unittest.TestCase):
     def test_selected_immutable_provider_receives_resolved_shell_and_environment(self):
         from unittest.mock import patch
         chosen = "/nix/store/selected-provider/bin/quickshell"
-        with patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": chosen, "TAMLINUX_BAR": "0"}), \
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": chosen, "TAMLINUX_BAR": "0", "HOME": directory,
+                                     "XDG_CONFIG_HOME": directory + "/config"}), \
              patch.object(session_start.os, "execve") as execute:
             session_start.main()
         executable, argv, env = execute.call_args.args
@@ -195,9 +197,11 @@ class SessionStartTests(unittest.TestCase):
     def test_relative_provider_is_rejected_without_execution(self):
         from unittest.mock import patch
         with patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": "qs", "TAMLINUX_BAR": "0"}), \
-             patch.object(session_start.os, "execve") as execute:
+             patch.object(session_start.os, "execve") as execute, \
+             patch.object(session_start, "initialize_defaults") as initialize:
             self.assertEqual(session_start.main(), 2)
         execute.assert_not_called()
+        initialize.assert_not_called()
 
     def test_bar_maps_the_deployed_plugins_and_names_the_layout(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -390,6 +394,37 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("TAMLINUX_CLOCK_OFFLINE", added)
         self.assertIn('reportUnsupported("timezone")', added)
         self.assertIn('reportUnsupported("event-edit")', added)
+
+
+class FreshSessionDefaults(unittest.TestCase):
+    def test_empty_home_receives_all_eight_plugins_and_mutable_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = {'HOME': directory, 'XDG_CONFIG_HOME': directory + '/config'}
+            session_start.initialize_defaults(env)
+            root = Path(directory) / 'config/tamlinux/shell'
+            layout = json.loads((root / 'layout.json').read_text())
+            ids = {entry['id'] for section in layout['layout'].values() for entry in section}
+            self.assertEqual({name for name in ids if name.startswith('fred.')}, {
+                'fred.workspaces', 'fred.clock', 'fred.weather', 'fred.tides',
+                'fred.agents', 'fred.keyboard', 'fred.monitor', 'fred.sysinfo'})
+            self.assertEqual(json.loads((root / 'settings.json').read_text()), {'version': 1, 'entries': {}})
+            self.assertEqual(list(root.glob('.tamlinux-default-*')), [])
+
+    def test_relative_layout_is_rejected_before_any_default_is_published(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(ValueError):
+                session_start.initialize_defaults({'HOME': directory, 'TAMLINUX_BAR_LAYOUT': 'relative.json'})
+            self.assertFalse((Path(directory) / '.config').exists())
+
+    def test_existing_data_and_dangling_links_are_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / '.config/tamlinux/shell'
+            root.mkdir(parents=True)
+            (root / 'settings.json').write_text('personal bytes')
+            (root / 'layout.json').symlink_to('unavailable-user-file')
+            session_start.initialize_defaults({'HOME': directory})
+            self.assertEqual((root / 'settings.json').read_text(), 'personal bytes')
+            self.assertEqual(os.readlink(root / 'layout.json'), 'unavailable-user-file')
 
 
 if __name__ == "__main__":

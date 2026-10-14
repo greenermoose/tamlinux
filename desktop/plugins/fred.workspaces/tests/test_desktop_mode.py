@@ -25,6 +25,18 @@ def completed(returncode=0, stdout="ok\n", stderr=""):
     return subprocess.CompletedProcess([], returncode, stdout, stderr)
 
 
+class OwnedModeTests(unittest.TestCase):
+    def test_owned_global_mode_retains_single_workspace_focus(self):
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.dict(os.environ, {'XDG_STATE_HOME': directory}), \
+             patch.object(desktop_mode, 'read_state_file', return_value='tamlinux'), \
+             patch.object(desktop_mode, 'dispatch_focus_workspace', return_value=True) as focus:
+            self.assertEqual(desktop_mode.current_mode(), 'tamlinux')
+            desktop_mode.switch_desktop('3', ['LEFT', 'RIGHT'], 'LEFT', 'RIGHT')
+            focus.assert_called_once_with(3)
+            self.assertEqual((Path(directory) / 'tamlinux/desktop-current').read_text(), '3\n')
+
+
 class MappingTests(unittest.TestCase):
     def test_workspace_sets_for_one_two_three_and_four_monitors(self):
         expected = {

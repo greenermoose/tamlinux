@@ -1,31 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 # Tamlinux native browser policy adapter. GPL-3.0-or-later.
-# Installed by the selected root-owned native provider as
-# /usr/bin/tam-theme-set-browser-policy, never launched from a user checkout.
-set -euo pipefail
-export PATH=/usr/bin:/bin
-if (( EUID != 0 )) || (( $# != 1 )) || [[ ! $1 =~ ^[0-9a-f]{6}$ ]]; then
-  echo "Expected root and one six-digit lowercase color" >&2
-  exit 1
-fi
-for directory in /etc/chromium/policies/managed /etc/opt/chrome/policies/managed /etc/opt/edge/policies/managed /etc/brave/policies/managed; do
-  [[ -d $directory && ! -L $directory ]] || continue
-  parent="$directory"
-  while [[ $parent != / ]]; do
-    if [[ -L $parent || $(stat -c %u "$parent") != 0 || $(stat -c %a "$parent") != 755 ]]; then
-      echo "Browser policy ancestors require root-owned 0755 directories: $parent" >&2
-      exit 1
-    fi
-    parent=$(dirname "$parent")
-  done
-  destination="$directory/tamlinux-color.json"
-  if [[ -L $destination || -d $destination ]]; then
-    echo "Conflicting browser policy endpoint: $destination" >&2
-    exit 1
-  fi
-  temporary=$(mktemp "$directory/.tamlinux-color.XXXXXX")
-  trap 'rm -f -- "$temporary"' EXIT
-  printf '{"BrowserThemeColor":"#%s","BrowserColorScheme":"device"}\n' "$1" > "$temporary"
-  chmod 0644 "$temporary"
-  mv -fT "$temporary" "$destination"
-done
+# Native /usr/bin/python3 and root-owned module; no user environment selectors.
+set -eu
+exec /usr/bin/python3 -I /usr/lib/tamlinux/browser_policy.py "$@"

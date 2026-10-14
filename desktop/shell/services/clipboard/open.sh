@@ -39,7 +39,7 @@ open_image() {
   local path="$1"
 
   [[ -r $path ]] || exit 1
-  exec setsid uwsm-app -- tensaku-edit "$path"
+  exec "${TAMLINUX_BIN:-$HOME/.local/bin}/tam-capture-edit" "$path"
 }
 
 open_text() {
@@ -55,7 +55,7 @@ open_text() {
   fi
 
   if [[ -n $url ]]; then
-    exec setsid uwsm-app -- xdg-open "$url"
+    exec setsid uwsm-app -t service -- xdg-open "$url"
   fi
 
   open_dir="$state_dir/open"
@@ -66,7 +66,7 @@ open_text() {
   # $EDITOR may carry arguments, so split it into words like a shell would.
   read -ra editor <<<"${VISUAL:-${EDITOR:-nvim}}"
   (( ${#editor[@]} > 0 )) || editor=(nvim)
-  exec setsid uwsm-app -- xdg-terminal-exec --app-id=tamlinux.clipboard -e "${editor[@]}" "$open_file"
+  exec setsid uwsm-app -t service -- xdg-terminal-exec --app-id=tamlinux.clipboard -e "${editor[@]}" "$open_file"
 }
 
 case "$entry_type" in

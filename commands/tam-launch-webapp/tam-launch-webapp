@@ -40,4 +40,4 @@ esac
 browser_json=$(tam-browser-command "$browser") || exit 1
 mapfile -d '' -t browser_command < <(printf '%s' "$browser_json" | jq -j '.[] | . + "\u0000"')
 ((${#browser_command[@]})) || exit 1
-exec setsid uwsm-app -- "${browser_command[@]}" --app="$1" "${@:2}"
+exec setsid uwsm-app -t service -- "${browser_command[@]}" --app="$1" "${@:2}"

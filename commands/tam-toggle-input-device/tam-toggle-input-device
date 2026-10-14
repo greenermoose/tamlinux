@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# tam-toggle-input-device — enable, disable, or toggle a Hyprland input device.
+#
+#   tam-toggle-input-device <touchpad|touchscreen> [on|off|toggle]
+#
+# Ported from omarchy 4.0.4 (omarchy-toggle-input-device) for plan 18 R4.2;
+# it shows the OSD through tam-osd and, since R4.15e, finds the device through
+# tam-hw-touchpad or tam-hw-touchscreen. The disabled-device state file keeps
+# its path, which config/hypr/tamlinux/disabled-input-device.lua reads.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+KIND="${1:-}"
+ACTION="${2:-toggle}"
+
+usage() {
+  echo "Usage: tam-toggle-input-device <touchpad|touchscreen> [on|off|toggle]" >&2
+}
+
+case "$KIND" in
+  touchpad) LABEL="Touchpad" ICON="touchpad" ;;
+  touchscreen) LABEL="Touchscreen" ICON="touch" ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
+
+# The persisted disable is the device name stored as plain data; on every
+# reload default/hypr/disabled-input-device.lua reads it back and disables the
+# device. Names come from USB descriptors and must not be interpolated into
+# shell or Lua. The path is hardcoded to ~/.local/state like the sibling
+# toggle tools, so it keeps working when XDG_STATE_HOME diverges.
+NAME_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/toggles/hypr/$KIND-disabled-name"
+
+device="$("tam-hw-$KIND")"
+
+require_device() {
+  if [[ -z $device ]]; then
+    echo "No $KIND device found" >&2
+    exit 1
+  fi
+
+  if [[ $device == *[[:cntrl:]]* ]]; then
+    echo "Invalid $KIND device name" >&2
+    exit 1
+  fi
+}
+
+apply_device() {
+  local enabled=$1
+  local quoted=${device//\\/\\\\}
+  quoted=${quoted//\"/\\\"}
+  hyprctl eval "hl.device({ name = \"$quoted\", enabled = $enabled })" >/dev/null
+}
+
+enable() {
+  # Clear the persisted state before requiring a usable device, so a device
+  # that stops reporting a valid name can never wedge the disable in place.
+  tam-settings-preserve input-device --file "$NAME_FILE" >/dev/null || return 1
+  rm -f "$NAME_FILE" || return 1
+  require_device
+  apply_device true
+  tam-osd -i "$ICON" -m "$LABEL enabled"
+}
+
+disable() {
+  require_device
+  tam-settings-preserve input-device --file "$NAME_FILE" >/dev/null || return 1
+  apply_device false || return 1
+  mkdir -p "$(dirname "$NAME_FILE")"
+  printf '%s\n' "$device" >"$NAME_FILE"
+  tam-osd -i "$ICON" -m "$LABEL disabled"
+}
+
+case "$ACTION" in
+  on) enable ;;
+  off) disable ;;
+  toggle) if [[ -f $NAME_FILE ]]; then enable; else disable; fi ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac

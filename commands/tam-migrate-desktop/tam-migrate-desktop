@@ -1,0 +1,5 @@
+#!/bin/bash
+# Explicit Tamlinux user-state conversion and recovery. GPL-3.0-or-later.
+set -euo pipefail
+root="$(dirname "$(dirname "$(readlink -f "$0")")")/share/tamlinux"
+exec python3 "$root/migration/engine.py" "$@"

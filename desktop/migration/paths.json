@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "scope": "Finite user-state conversion; native/boot/GTK/device effects require their separate recovery owners.",
+  "paths": [
+    {
+      "id": "desktop-mode",
+      "root": "state",
+      "source": "tamlinux/desktop-mode",
+      "target": "tamlinux/desktop-mode",
+      "conversion": "desktop-mode"
+    },
+    {
+      "id": "bar-layout",
+      "root": "config",
+      "source": "omarchy/shell.json",
+      "target": "tamlinux/shell/layout.json",
+      "conversion": "bar-layout"
+    },
+    {
+      "id": "webapps",
+      "root": "data",
+      "source": "applications/*.desktop",
+      "target": "applications/*.desktop",
+      "conversion": "webapp"
+    },
+    {
+      "id": "hypr-monitors",
+      "root": "config",
+      "source": "hypr/monitors.lua",
+      "target": "tamlinux/hypr/monitors.lua",
+      "conversion": "hypr"
+    },
+    {
+      "id": "hypr-input",
+      "root": "config",
+      "source": "hypr/input.lua",
+      "target": "tamlinux/hypr/input.lua",
+      "conversion": "hypr"
+    },
+    {
+      "id": "hypr-bindings",
+      "root": "config",
+      "source": "hypr/bindings.lua",
+      "target": "tamlinux/hypr/bindings.lua",
+      "conversion": "hypr"
+    },
+    {
+      "id": "hypr-looknfeel",
+      "root": "config",
+      "source": "hypr/looknfeel.lua",
+      "target": "tamlinux/hypr/looknfeel.lua",
+      "conversion": "hypr"
+    },
+    {
+      "id": "hypr-autostart",
+      "root": "config",
+      "source": "hypr/autostart.lua",
+      "target": "tamlinux/hypr/autostart.lua",
+      "conversion": "hypr"
+    },
+    {
+      "id": "hypr-local",
+      "root": "config",
+      "source": "hypr/local.lua",
+      "target": "tamlinux/hypr/local.lua",
+      "conversion": "hypr"
+    },
+    {
+      "id": "stay-awake",
+      "root": "state",
+      "source": "omarchy/indicators/stay-awake",
+      "target": "tamlinux/stay-awake",
+      "conversion": "bytes"
+    },
+    {
+      "id": "editor",
+      "root": "state",
+      "source": "omarchy/defaults/editor",
+      "target": "tamlinux/defaults/editor",
+      "conversion": "editor"
+    }
+  ],
+  "preserveOnly": [
+    "$XDG_CONFIG_HOME/omarchy/shell.json.bak.*",
+    "$XDG_CONFIG_HOME/omarchy/menu.json",
+    "$XDG_CONFIG_HOME/omarchy/themes",
+    "$XDG_CONFIG_HOME/omarchy/current",
+    "$XDG_STATE_HOME/omarchy/toggles",
+    "$XDG_CONFIG_HOME/uwsm",
+    "$XDG_CONFIG_HOME/{alacritty,foot,kitty,ghostty,helix}",
+    "$XDG_STATE_HOME/tamlinux/{settings-recovery,current}"
+  ],
+  "externalOwners": [
+    "native package/service/PAM/device settings",
+    "browser and GTK native settings",
+    "separate workstation boot provider and recovery",
+    "audio profile/route processing and kernel effects"
+  ]
+}

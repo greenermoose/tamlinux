@@ -1,0 +1,5 @@
+#!/bin/bash
+# Tamlinux preserving fresh application defaults. GPL-3.0-or-later.
+set -euo pipefail
+root="$(dirname "$(dirname "$(readlink -f "$0")")")/share/tamlinux"
+exec python3 "$root/session/initialize.py" "$root/assets"

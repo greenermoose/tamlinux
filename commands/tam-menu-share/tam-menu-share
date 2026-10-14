@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# tam-menu-share — share the clipboard, files, or a folder with LocalSend.
+#
+#   tam-menu-share <clipboard|file|folder> [path...]
+#
+# Ported from omarchy 4.0.4 (omarchy-menu-share) for plan 18 R4.15e; it picks
+# through tam-file-select and notifies through tam-notification-send.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+if (($# == 0)); then
+  echo "Usage: tam-menu-share [clipboard|file|folder]"
+  exit 1
+fi
+
+MODE="$1"
+shift
+
+if [[ $MODE == "clipboard" ]]; then
+  TEMP_FILE=$(mktemp --suffix=.txt)
+  wl-paste >"$TEMP_FILE"
+  FILE_ARRAY=("$TEMP_FILE")
+elif (($# > 0)); then
+  FILE_ARRAY=("$@")
+else
+  if [[ $MODE == "folder" ]]; then
+    select_args=(--title "Share folder" --directory)
+  else
+    select_args=(--title "Share files" --multiple)
+  fi
+
+  # Command substitution so the chooser's exit status survives: reading it
+  # through a process substitution reports success for a chooser that never
+  # opened, which is indistinguishable here from someone deciding not to share.
+  picked=$(tam-file-select "${select_args[@]}") || status=$?
+
+  if ((${status:-0} > 1)); then
+    tam-notification-send -g "" -u critical "Could not share" "The file chooser did not open"
+    exit 1
+  fi
+
+  [[ -n $picked ]] || exit 0
+  readarray -t FILE_ARRAY <<<"$picked"
+fi
+
+# Run LocalSend in its own systemd service (detached from terminal)
+systemd-run --user --quiet --collect localsend --headless send "${FILE_ARRAY[@]}"
+
+# Note: Temporary file will remain until system cleanup for clipboard mode
+# This ensures the file content is available for the LocalSend GUI
+
+exit 0

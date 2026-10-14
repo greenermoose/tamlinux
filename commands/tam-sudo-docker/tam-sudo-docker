@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# tam-sudo-docker — succeed when Docker needs sudo, fail when it is usable directly.
+#
+#   tam-sudo-docker [--configured]
+#
+# Ported from Omarchy 4.0.4 (omarchy-sudo-docker) for plan 18 R4.15g.
+# Changed: tests point it at another socket with TAMLINUX_DOCKER_SOCKET.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# The docker group is root-equivalent, so Tamlinux leaves users out of it by
+# default and reaches the daemon through a prompt instead. Everything that has
+# to make that choice asks here rather than testing group membership itself.
+#
+# Two questions, because they have different answers between toggling sudoless
+# Docker and the reboot that applies it (group membership is fixed when the
+# session is created):
+#
+#   (default)      Does Docker need sudo *right now*? Answered by whether this
+#                  process can actually reach the socket, which is what decides
+#                  if a command must elevate. Still true in the window after
+#                  sudoless Docker is enabled but before the reboot.
+#   --configured   Will it need sudo once the account's groups take effect?
+#                  Answered from the account's configured groups, so the menu
+#                  offers the toggle that can actually change state.
+#
+# Succeeds (exit 0) when sudo is needed, so it reads as `if tam-sudo-docker`.
+
+DOCKER_SOCKET="${TAMLINUX_DOCKER_SOCKET:-/var/run/docker.sock}"
+
+case "${1:-}" in
+--configured)
+  # An account in the docker group will not need sudo after the next login.
+  id -nG "$USER" 2>/dev/null | grep -qw docker && exit 1
+  exit 0
+  ;;
+"")
+  # A socket we can write is a daemon we can drive without elevating. A missing
+  # socket counts as needing sudo: reaching it means starting it as root anyway.
+  [[ -w $DOCKER_SOCKET ]] && exit 1
+  exit 0
+  ;;
+*)
+  echo "Usage: tam-sudo-docker [--configured]" >&2
+  exit 2
+  ;;
+esac

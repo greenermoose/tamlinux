@@ -129,8 +129,12 @@ class ServiceSourceTests(unittest.TestCase):
             self.assertTrue((CLIPBOARD / name).stat().st_mode & 0o111, name + " is not executable")
         # Sensitive selections (password managers) are never recorded.
         self.assertIn("x-kde-passwordManagerHint", (CLIPBOARD / "capture.sh").read_text(encoding="utf-8"))
-        # Opened programs run in their own scope, not the services unit.
-        self.assertEqual((CLIPBOARD / "open.sh").read_text(encoding="utf-8").count("exec setsid uwsm-app --"), 3)
+        # Native app lifetimes belong to UWSM services; annotation uses the
+        # paired owned provider adapter, rather than an undeclared wrapper.
+        opened = (CLIPBOARD / "open.sh").read_text(encoding="utf-8")
+        self.assertEqual(opened.count("exec setsid uwsm-app -t service --"), 2)
+        self.assertIn('/tam-capture-edit" "$path"', opened)
+        self.assertNotIn("tensaku-edit", opened)
 
     def test_emojis_target_data_and_helper(self):
         text = (EMOJIS / "Service.qml").read_text(encoding="utf-8")

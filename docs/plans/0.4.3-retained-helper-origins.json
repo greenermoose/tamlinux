@@ -1,0 +1,351 @@
+{
+  "originalFiles": {
+    "tam-agent-crash": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "a901970350ce3ef1acbafee06151de8e501fcb8e06060e905288266385586a93"
+    },
+    "tam-audio-input-mute": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "51311a2581a52233c1413615945ec927a0016bb2b4e2f78e96c6551822cd0bab"
+    },
+    "tam-audio-source-switch": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "55570d8e3a9bdd6c9413a4c310c9a3bed0d61c0f134459cd5dc045b892e95e02"
+    },
+    "tam-battery-low": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "9fa82a866a3d0dbfe5379c48a8a005818bde8081f3373792cb99fa307bd7b75f"
+    },
+    "tam-crash-watch": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "18a7e6964dfc588cf5bef023cdb8bafe2b5528604bd33b0c0eb9d73fb15a1db8"
+    },
+    "tam-disk-speedtest": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "f9efee6a7c6d83ae7fd60fcdd9b42768e235d5013823bb49a06f0b9e5ffccd34"
+    },
+    "tam-drive-info": "33371cc06bd02d29f4db15f44f8165947f5bf5d0108c2e93f6f83bf69058807c",
+    "tam-drive-password": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "88b371978ddc3570e184d24744a0bf7540b9b154f3a68b7d0093d6b2d4b32b92"
+    },
+    "tam-drive-select": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "92546c7afc8a386573f40fd085d55eed8531ee7ae7f3ccf41e3d32b6026142f0"
+    },
+    "tam-hibernation-available": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "46bd4a9eedd0060e79844eb9c8fe7642dbe0fa64081c8f5bc7e973bed70a5320"
+    },
+    "tam-hw-dell-xps-haptic-touchpad": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "472422cace7a38f7bea284bd92a838d12daf8f0f20772557aa3d54fdfc2be8c0"
+    },
+    "tam-hw-fingerprint": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "6cc9962feffe63b282e881c1ba2da23eccfd2f3fbacff8f1e4db222b0ac5ed40"
+    },
+    "tam-hw-hybrid-gpu": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "cade15edbc487c7d38a5fedc23ec3bf0c78924f0f7b0469d33a0abe7aa306ae1"
+    },
+    "tam-hw-laptop": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "3a552da92581b9cf45c11623aeeb68b8667ae2de5741fa6e2eb4d84f8d29f8f8"
+    },
+    "tam-hw-touchpad": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "02190eee1f24fe2fa8d996e366466ddadd73fe9d0c474769545a838316b25cdb"
+    },
+    "tam-hw-touchscreen": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "4486a85b0beef61e70a3bfc97733645f9a6402f8b50bad9923ea8a62ababa29b"
+    },
+    "tam-hyprland-monitor-modeless": {
+      "ancestry": "Retained monitor recovery adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "27ccd4b614241cbb98be934bad656c3184dfcb987da318cb6fbe1b6c4eeb6767"
+    },
+    "tam-hyprland-monitor-scaling": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "185f2e7166b704c57016bd85a735c2e270549a257f63f651b73adbe7bf9bd0f1"
+    },
+    "tam-hyprland-monitor-watch": {
+      "ancestry": "Retained monitor recovery adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "d826760cc04c3cf698c0fe385b009ba02a24e8813a2b7f16e398b714207971f1"
+    },
+    "tam-hyprland-reload-guard": {
+      "ancestry": "Retained monitor recovery adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "35532b78f5d88d831dd70bd365740a8b6a3799db68503fc7c0eac9e4ca112288"
+    },
+    "tam-hyprland-window-close-all": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "8986fb283dbc0a5c6554cb6b8d8164fdad16b8c2c341f884d7f72633bc9dcd78"
+    },
+    "tam-hyprland-window-gaps-toggle": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "ee956a37ab3622ac5beb94c722d22ffca38e35cf66e314eb132f1ee60c2d3a01"
+    },
+    "tam-hyprland-window-pop": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "111b3dc988533ce267e71837e9aeeb253ae448128ce74a8433b81d7929f564f2"
+    },
+    "tam-hyprland-window-single-square-aspect-toggle": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "2d3130c2cb7a5abb626175c7c2e3fe793e211026643608f4faec7ad6289767ad"
+    },
+    "tam-hyprland-window-tiled-fullscreen-toggle": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "4bdfbdd00f07cb42063f5f6a5f25d7e04784bcd947683225d21bd835888366fb"
+    },
+    "tam-hyprland-window-transparency-toggle": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "ee363031751856c7e181e5b2989547698dc63923a261ec91df9ff084f9f919e0"
+    },
+    "tam-hyprland-window-width": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "a84289a9037d154338c315489a377178b1f3f45a6d2bcbd19c24e3b3bf420ff9"
+    },
+    "tam-hyprland-workspace-layout-toggle": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "2f2c348173f5e183f1688dd09bea9457653375a148877d5b2d345634e6a7ff0b"
+    },
+    "tam-launch-docker-tui": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "99787f4ee47bfa964b6877a64e43adb56f72807fe853a778bf6601ac811406e1"
+    },
+    "tam-menu-file": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "569a3b44d3410cb58ee327006233175e6de9a91492e49304dd0e9be63b5b9bd8"
+    },
+    "tam-menu-herdr-keybindings": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "072fb45542bfa50ddbd8f79a1663a32d9f577d24353ac6d09dbd159e7cce7d84"
+    },
+    "tam-menu-keybindings": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "07add7ff353456277cca9c25c4790f65d59c3ed661c7339279dd5f214bfddd5c"
+    },
+    "tam-menu-share": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "b8f14d87a138fd804a7f560f5ebe6ea0d00dab04ec0d13c669dbbbca4fbb678f"
+    },
+    "tam-menu-tmux-keybindings": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "1e326c7a377ca45449d5a1192c928ec3f9c7a2317b2f1f7dd9f49a3318ef4fc0"
+    },
+    "tam-notification-battery": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "0313b72a4f1ec28a28f69cb63c654d2d9e4b929dc152052d0bcf28d7f27bcf88"
+    },
+    "tam-notification-time": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "308c65eacb7694de02bd098294d323786793e64b5e11049358b5746395c69357"
+    },
+    "tam-notification-wait": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "4950c1f6daf6d3f984ff0df44605fd7e5f12c8372ebca7a4c68b3ea257f675ce"
+    },
+    "tam-pkg-aur-install": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "5049006ddc9a2b91b323742d6b4d192b14c2bce066088b933e2f11e4926d2f8a"
+    },
+    "tam-pkg-drop": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "ab2b11650b04999c55d35eb06ed0fb696a5595a0377e8380911ff5e35429bad6"
+    },
+    "tam-pkg-install": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "e4518cadd8888e6d6effd5e96b67a52e4e5b7e1dce573507085a82a35a846274"
+    },
+    "tam-pkg-remove": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "06cdcde10e30f5afe61b0545e311bbfba024c18fd557ce1e464a7cdb7e654933"
+    },
+    "tam-reminder": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "GPL-3.0-or-later",
+      "originalSha256": "d174f690bf346c35058bc4a15d369ea5051d7ed70ab985442f8f3cf1b1582ae5"
+    },
+    "tam-remove-launcher-entry": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "f331d92ca7ec57f9ea00ad2b3e098591f5024eb9defe380311a5d38e96b18ece"
+    },
+    "tam-remove-security-fido2": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "54d47a58df2b649297af5d03c9ab2b569206ad794bb24fcf509b834ab5b364b4"
+    },
+    "tam-remove-security-fingerprint": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "b9a09fd4fe28352f8372d23251dc23172f717810040ace2c0c1280f00ad9c5b3"
+    },
+    "tam-remove-security-sshd": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "7a2ae1853beebb4ebc68e44c026d2bd0779e3a72a981781b04f32d796421ad28"
+    },
+    "tam-remove-security-sudoless-docker": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "4c0d29653ce52e05b4eccc77aaa07817e2bcfe8fdb26479b70cbdc5be80608aa"
+    },
+    "tam-restart-trackpad": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "5090bfcecce46c53abc0e1081613c061346f70ca0d80a09a9e0722abd7b5f03f"
+    },
+    "tam-restart-xcompose": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "5addbc7e4c5bacd667f195e72cdb4e0d466f7d32227ea2eb0f27cc68acd8907c"
+    },
+    "tam-setup-security-fido2": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "67892519657a5696821ea4932eb873164b700779e746b3f126d10431b17c99cd"
+    },
+    "tam-setup-security-fingerprint": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "4bc5f67f9241d9efa6ec6f9a647b3ad18a2502fbd2bb93655b5b7a7492028126"
+    },
+    "tam-setup-security-sshd": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "b899f80cdc93149298bfe075c9a5e9581db7e625707668ab6dc8e604b679d139"
+    },
+    "tam-setup-security-sudoless-docker": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "8e6f57bf3d585ab19781d4f1a9fb89df448f2738764088212264e0292b160c89"
+    },
+    "tam-sudo-docker": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "467331dd9cc4e08d84430dda782d388a6f86b8fa1e4fc4e508d5b17e20abb1dc"
+    },
+    "tam-sudo-keepalive": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "7e2e76646964d47d83384205ab40364ffbdd5fd4957dd887612eb855b275c0ad"
+    },
+    "tam-sudo-passwordless": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "131c6392dfb51ec1974743f8cff1d381a6294eecfd61d9c249b0b16e0fd4dca5"
+    },
+    "tam-system-lid-close": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "dafabc3afd21d5a422f3db3ab51403b2925165aca7ef7f3bfcbeaf776a5f8ddf"
+    },
+    "tam-system-logout": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "21d698133c57bb146cddc31e68a4ce9aa16115d2129b919a23d85a30681393aa"
+    },
+    "tam-system-reboot": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "fab70869dc07cfbd0b7773b2185585b555cf231c5f22b3e2712f366b7543ad49"
+    },
+    "tam-system-shutdown": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "0c8172ad303819ce1b2f01affeb336717edbeef952b0da41c0b4f17ee5e67cfd"
+    },
+    "tam-toggle-crash-capture": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "9ab66286a3cc9462feadbc8fb8f0a0a83ebe97902ba2f1ff73bf7c2b0c614a8b"
+    },
+    "tam-toggle-hybrid-gpu": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "cf1e8a9085e9b0202568ccec97fbb9ddcad3ee2e7f7793c115dffc7da73aa1e0"
+    },
+    "tam-toggle-input-device": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "MIT",
+      "originalSha256": "e4d851c594ff5bfdaa0bd043b62eb6641d34a88c9da20be66675a4de1fcfd4ed"
+    },
+    "tam-toggle-notification-silencing": {
+      "ancestry": "Retained previously maintained desktop adaptation; upstream notices in source",
+      "license": "GPL-3.0-or-later",
+      "originalSha256": "fc7f7d7bc2317f5fa85bea0e43b3a22f9915e0eaf9f0d718908027cb61896f78"
+    },
+    "tam-transcode": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "f18fb5cbf14f903a1078d6579357c30439bd7af0c52f7ef6976fa5545f35e09c"
+    },
+    "tam-tui-install": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "6a1ffa63ca94cd5f9ef1f2e00f71041e10e75bceba68138b27052e1bc291625f"
+    },
+    "tam-tui-remove": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "df38ca271b1caf99a3bf9ee7fbd3c633c27c18e87020b257233e2b1e8542aec3"
+    },
+    "tam-update-time": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "cbc1f70c38341aef6f88363f1fe13ce8bdaeb8561847afee92acd29f3f64df94"
+    },
+    "tam-webapp-install": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "7aeef3d082cc1e2f03c05beb6e9434251b558322931ee1015c4ad55fd721b084"
+    },
+    "tam-webapp-remove": {
+      "ancestry": "Retained previously maintained desktop adaptation; original notices preserved",
+      "license": "MIT",
+      "originalSha256": "ff48e1205174e755155a3a57efb3720ca4f0875dc7ad38ba82585ff10ebcc3fa"
+    }
+  },
+  "schema": 1
+}

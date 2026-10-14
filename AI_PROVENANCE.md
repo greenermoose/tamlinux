@@ -317,3 +317,8 @@ a signed isolated clean Arch VM. Complete testing readiness remains pending.
 
 The same session aligns unstarted future milestones: focused input at 0.5.0,
 Tamarack in later 0.5.x, dependable Arch/Hyprland and the second laptop at 0.6.
+
+Continuation: retained helpers, fresh application consumers, finite preserving
+migration and an independently built native integration package were developed
+and checked in the isolated Arch VM. Full readiness and boot handoff remain
+pending; the same session record describes the exact limits.

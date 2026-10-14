@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Tamlinux</vendor>
+  <action id="org.tamlinux.native.browser-theme">
+    <description>Change managed browser theme color</description>
+    <message>Authentication is required to change the browser policy.</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_admin</allow_active></defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/tam-theme-set-browser-policy</annotate>
+  </action>
+  <action id="org.tamlinux.native.apple-brightness">
+    <description>Change Apple display brightness</description>
+    <message>Authentication is required to control the Apple display.</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_admin</allow_active></defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/asdcontrol</annotate>
+  </action>
+</policyconfig>

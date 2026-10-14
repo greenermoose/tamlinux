@@ -1634,7 +1634,7 @@ Panel {
             Text {
               width: parent.width
               textFormat: Text.PlainText
-              text: "Text Size changes fonts in the Omarchy shell, GTK apps, and terminals everywhere. Per-monitor Scale changes the size of all content on that display and its usable workspace."
+              text: "Text Size changes fonts in the Tamlinux shell, GTK apps, and terminals everywhere. Per-monitor Scale changes the size of all content on that display and its usable workspace."
               color: Qt.darker(root.bar.foreground, 1.5)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.caption

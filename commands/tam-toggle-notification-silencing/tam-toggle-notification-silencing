@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# tam-toggle-notification-silencing — toggle do-not-disturb in the Tamlinux
+# host's notification service and say which way it went. Replaces
+# omarchy-toggle-notification-silencing (plan 18 R4). The toast uses
+# tam-notification-send's default app name, which DND lets through, so
+# both directions are visible while the Omarchy bar's DND indicator can no
+# longer see the state.
+
+set -uo pipefail
+
+state=$(tam-shell notifications toggleDnd) || exit 1
+case $state in
+  on) tam-notification-send -u low -g 󰂛 "Notifications silenced" ;;
+  off) tam-notification-send -u low -g 󰂚 "Notifications on" ;;
+  *) echo "unexpected DND state: $state" >&2; exit 1 ;;
+esac

@@ -29,4 +29,4 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-exec setsid uwsm-app -- xdg-terminal-exec --dir="$(tam-cmd-terminal-cwd)" "$@"
+exec setsid uwsm-app -t service -- xdg-terminal-exec --dir="$(tam-cmd-terminal-cwd)" "$@"

@@ -51,7 +51,7 @@ if (($# == 1)); then
 else
   mode=argv
 fi
-exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.tamlinux.terminal --title=Tamlinux -e bash -c '
+exec setsid uwsm-app -t service -- xdg-terminal-exec --app-id=org.tamlinux.terminal --title=Tamlinux -e bash -c '
   tam-show-logo
   mode=$1
   shift

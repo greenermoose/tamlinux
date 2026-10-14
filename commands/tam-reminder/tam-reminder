@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# tam-reminder — set, list, and clear desktop reminders through the Tamlinux
+# host (plan 18 R4.6). Replaces omarchy-reminder.
+#
+#   tam-reminder [-i|--interactive]       open the reminder card
+#   tam-reminder <minutes> [message]
+#   tam-reminder show [-j|--json]
+#   tam-reminder clear
+#
+# The card is the host's reminders service; everything else is its helper,
+# services/reminders/reminder.sh in the deployed shell. Reminders are
+# transient user timers (tamlinux-reminder-*) and do not survive a logout.
+
+set -euo pipefail
+
+shell_dir=${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}
+
+case ${1:-} in
+-i | --interactive) exec tam-shell reminders open ;;
+"")
+  echo "Usage: tam-reminder [-i|--interactive] | <minutes> [message] | show [-j|--json] | clear" >&2
+  exit 1
+  ;;
+esac
+
+exec "$shell_dir/services/reminders/reminder.sh" "$@"

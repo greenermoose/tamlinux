@@ -67,8 +67,8 @@ class LayoutTests(unittest.TestCase):
     def test_persist_layout_only_replaces_managed_block(self):
         with tempfile.TemporaryDirectory() as temp:
             config = pathlib.Path(temp)
-            hypr = config / "hypr"
-            hypr.mkdir()
+            hypr = config / "tamlinux" / "hypr"
+            hypr.mkdir(parents=True)
             target = hypr / "monitors.lua"
             target.write_text("before\n" + LAYOUT.START_MARKER + "\nold\n" + LAYOUT.END_MARKER + "\nafter\n")
             previous = os.environ.get("XDG_CONFIG_HOME")
@@ -99,8 +99,8 @@ class LayoutTests(unittest.TestCase):
     def test_persist_layout_records_without_the_live_flag(self):
         with tempfile.TemporaryDirectory() as temp:
             config = pathlib.Path(temp)
-            hypr = config / "hypr"
-            hypr.mkdir()
+            hypr = config / "tamlinux" / "hypr"
+            hypr.mkdir(parents=True)
             target = hypr / "monitors.lua"
             original = "before\n" + LAYOUT.START_MARKER + "\nold\n" + LAYOUT.END_MARKER + "\nafter\n"
             target.write_text(original)

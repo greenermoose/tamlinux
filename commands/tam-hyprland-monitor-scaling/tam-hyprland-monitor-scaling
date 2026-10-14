@@ -1,0 +1,248 @@
+#!/bin/bash
+
+# tam-hyprland-monitor-scaling — show, set, or adjust focused Hyprland monitor
+# scaling.
+#
+#   tam-hyprland-monitor-scaling [up|down|SCALE]
+#
+# Ported from Omarchy 4.0.4 (omarchy-hyprland-monitor-scaling) for plan 18
+# R4.15i.
+# Owned XDG overrides persist the selected connector scale. Original source
+# and license are retained; legacy generic variables are converted offline.
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -euo pipefail
+
+SCALES=(1 1.25 1.6 2 3 4)
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux"
+SCALE_LOG="$STATE_DIR/monitor-scaling.log"
+
+usage() {
+  echo "Usage: tam-hyprland-monitor-scaling [up|down|SCALE]"
+}
+
+focused_monitor_scale() {
+  hyprctl monitors -j | jq -er '.[] | select(.focused == true) | .scale'
+}
+
+cmdline_for_pid() {
+  local pid="$1"
+
+  [[ -r /proc/$pid/cmdline ]] || return 0
+  tr '\0\t\n' '   ' <"/proc/$pid/cmdline" | sed -E 's/[[:space:]]+/ /g; s/[[:space:]]+$//'
+}
+
+audit_scale_change() {
+  local requested="$1"
+  local active_monitor="$2"
+  local current_scale="$3"
+  local new_scale="$4"
+  local parent_pid="$PPID"
+  local grandparent_pid
+  local parent_cmd
+  local grandparent_cmd
+
+  mkdir -p "$STATE_DIR" || return 0
+
+  grandparent_pid=$(ps -o ppid= -p "$parent_pid" 2>/dev/null | tr -d ' ')
+  parent_cmd=$(cmdline_for_pid "$parent_pid")
+  grandparent_cmd=$(cmdline_for_pid "$grandparent_pid")
+
+  printf 'at=%s\trequested=%s\tcurrent=%s\tnew=%s\tmonitor=%s\tpid=%s\tppid=%s\tparent=%s\tgppid=%s\tgrandparent=%s\n' \
+    "$(date --iso-8601=seconds)" \
+    "$requested" \
+    "$current_scale" \
+    "$new_scale" \
+    "$active_monitor" \
+    "$$" \
+    "$parent_pid" \
+    "$parent_cmd" \
+    "$grandparent_pid" \
+    "$grandparent_cmd" >>"$SCALE_LOG"
+}
+
+# Hyprland only accepts scales where the mode divides into whole logical
+# pixels (in 1/120 steps), so clean scales are divisors of gcd(w*120, h*120).
+# Round the requested scale up to the nearest clean value.
+clean_scale() {
+  awk -v scale="$1" -v width="$2" -v height="$3" '
+    function gcd(a, b, t) { while (b) { t = a % b; a = b; b = t } return a }
+    BEGIN {
+      g = gcd(width * 120, height * 120)
+      k = int(scale * 120 + 0.5)
+      if (k > g) k = g
+      while (g % k != 0) k++
+      printf "%g\n", k / 120
+    }'
+}
+
+normalize_scale() {
+  awk 'NR == 1 { printf "%g\n", $0 }'
+}
+
+set_scale() {
+  local requested_scale="$1"
+  local requested="${2:-$requested_scale}"
+  local monitor_info
+  monitor_info=$(hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)') || return 2
+  local active_monitor="$(echo "$monitor_info" | jq -r '.name')"
+  local current_scale="$(echo "$monitor_info" | jq -r '.scale')"
+  local width="$(echo "$monitor_info" | jq -r '.width')"
+  local height="$(echo "$monitor_info" | jq -r '.height')"
+  local refresh_rate="$(echo "$monitor_info" | jq -r '.refreshRate')"
+
+  # active_monitor is written into the Lua string eval'd below, so only a plain
+  # connector name may pass; a hostile output name could execute otherwise.
+  if [[ ! $active_monitor =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "Refusing unsafe monitor name" >&2
+    exit 1
+  fi
+
+  [[ $width =~ ^[0-9]+$ && $height =~ ^[0-9]+$ && ${#width} -le 5 && ${#height} -le 5 ]] || return 2
+  (( 10#$width > 0 && 10#$height > 0 && 10#$width <= 32768 && 10#$height <= 32768 )) || return 2
+  [[ $refresh_rate =~ ^[0-9]+([.][0-9]+)?$ && $current_scale =~ ^[0-9]+([.][0-9]+)?$ ]] || return 2
+  awk -v refresh="$refresh_rate" -v scale="$current_scale" 'BEGIN { exit !(refresh > 0 && refresh <= 1000 && scale > 0 && scale <= 16) }' || return 2
+
+  local new_scale="$(clean_scale "$requested_scale" "$width" "$height")"
+  local monitor_lua="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/monitors.lua"
+  [[ $monitor_lua == /* && ! -L $monitor_lua ]] || { echo "Unsafe monitor override path" >&2; return 2; }
+  [[ ! -e $monitor_lua || -f $monitor_lua ]] || return 2
+  mkdir -p -- "${monitor_lua%/*}"
+  tam-settings-preserve monitor-scaling --file "$monitor_lua" >/dev/null
+  local staged
+  staged=$(mktemp "${monitor_lua%/*}/.scaling.XXXXXX")
+  # Only replace our connector block; leave personal monitor rules intact.
+  python3 - "$monitor_lua" "$staged" "$active_monitor" "$new_scale" <<'PYTHON'
+from pathlib import Path
+import sys
+source,stage,name,scale=sys.argv[1:]
+p=Path(source); text=p.read_text() if p.exists() else ''
+begin='-- Tamlinux scaling '+name+' begin\n'; end='-- Tamlinux scaling '+name+' end\n'
+if begin in text:
+    if text.count(begin)!=1 or text.count(end)!=1 or text.index(end)<text.index(begin):
+        raise SystemExit('Conflicting scaling markers')
+    a=text.index(begin); b=text.index(end)+len(end); text=text[:a]+text[b:]
+text=text.rstrip('\n')+'\n'+begin+'hl.monitor({ output = "'+name+'", mode = "preferred", position = "auto", scale = '+scale+' })\n'+end
+Path(stage).write_text(text)
+PYTHON
+  if ! hyprctl eval "hl.monitor({ output = \"$active_monitor\", mode = \"${width}x${height}@${refresh_rate}\", position = \"auto\", scale = $new_scale })" >/dev/null; then
+    rm -f -- "$staged"
+    return 1
+  fi
+  if ! mv -f -- "$staged" "$monitor_lua"; then
+    hyprctl eval "hl.monitor({ output = \"$active_monitor\", mode = \"${width}x${height}@${refresh_rate}\", position = \"auto\", scale = $current_scale })" >/dev/null || true
+    rm -f -- "$staged"
+    return 1
+  fi
+  audit_scale_change "$requested" "$active_monitor" "$current_scale" "$new_scale"
+
+}
+
+scale_from_current() {
+  local direction="${1:-}"
+  local width="${2:-}"
+  local height="${3:-}"
+
+  awk -v direction="$direction" -v list="${SCALES[*]}" -v width="$width" -v height="$height" '
+    function gcd(a, b, t) { while (b) { t = a % b; a = b; b = t } return a }
+    function clean(scale,    g, k) {
+      g = gcd(width * 120, height * 120)
+      k = int(scale * 120 + 0.5)
+      if (k > g) k = g
+      while (g % k != 0) k++
+      return k / 120
+    }
+    NR == 1 { scale = $0; found = 1 }
+    END {
+      if (!found) exit 1
+
+      preset_count = split(list, presets, " ")
+      for (i = 1; i <= preset_count; i++) {
+        effective = clean(presets[i])
+        key = sprintf("%.8f", effective)
+        distance = presets[i] - effective
+        if (distance < 0) distance = -distance
+
+        # Multiple presets can collapse to the same clean scale. Keep only the
+        # closest label so stepping always moves to a distinct effective value.
+        if (!(key in effective_index)) {
+          effective_index[key] = ++n
+          effective_scales[n] = effective
+          scales[n] = presets[i]
+          distances[n] = distance
+        } else {
+          idx = effective_index[key]
+          if (distance < distances[idx]) {
+            scales[idx] = presets[i]
+            distances[idx] = distance
+          }
+        }
+      }
+
+      # Snap to the nearest effective scale first. Hyprland reports floating
+      # point values, so exact comparisons can otherwise get stuck.
+      best = 1; best_diff = 1e9
+      for (i = 1; i <= n; i++) {
+        diff = scale - effective_scales[i]; if (diff < 0) diff = -diff
+        if (diff < best_diff) { best_diff = diff; best = i }
+      }
+
+      if (direction == "next") {
+        print scales[(best < n ? best + 1 : n)]
+      } else if (direction == "previous") {
+        print scales[(best > 1 ? best - 1 : 1)]
+      } else {
+        print scales[best]
+      }
+    }'
+}
+
+case "${1:-}" in
+"")
+  focused_monitor_scale | normalize_scale
+  ;;
+-h | --help)
+  usage
+  ;;
+up)
+  monitor_info=$(hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)')
+  set_scale "$(echo "$monitor_info" | jq -r '.scale' | scale_from_current next \
+    "$(echo "$monitor_info" | jq -r '.width')" "$(echo "$monitor_info" | jq -r '.height')")" "up"
+  ;;
+down)
+  monitor_info=$(hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)')
+  set_scale "$(echo "$monitor_info" | jq -r '.scale' | scale_from_current previous \
+    "$(echo "$monitor_info" | jq -r '.width')" "$(echo "$monitor_info" | jq -r '.height')")" "down"
+  ;;
+1 | 1.25 | 1.6 | 2 | 3 | 4)
+  set_scale "$1" "$1"
+  ;;
+*)
+  if [[ $1 =~ ^[0-9]+([.][0-9]+)?$ ]] &&
+    awk -v scale="$1" 'BEGIN { exit !(scale >= 1 && scale <= 4) }'; then
+    set_scale "$1" "$1"
+  else
+    usage >&2
+    exit 1
+  fi
+  ;;
+esac

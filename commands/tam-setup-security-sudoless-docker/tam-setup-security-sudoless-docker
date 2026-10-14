@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# tam-setup-security-sudoless-docker — add you to the docker group, after a
+# warning that it is root-equivalent.
+#
+# Ported from Omarchy 4.0.4 (omarchy-setup-security-sudoless-docker) for
+# plan 18 R4.15g. Changed: it checks through tam-sudo-docker and reboots
+# through tam-system-reboot. It sets no reboot-required flag, because nothing
+# reads one any more, and the update migration's deferred-reboot switch is gone.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -e
+
+# Ask about the configured groups, not this session's: once enabled it stays
+# enabled for the account even before the reboot that lets this session use it.
+if ! tam-sudo-docker --configured; then
+  echo "Sudoless Docker is already enabled: $USER is in the docker group."
+  echo "To disable it again, run: tam-remove-security-sudoless-docker"
+  exit 0
+fi
+
+echo ""
+echo "⚠️  WARNING: Enabling sudoless Docker adds you to the 'docker' group."
+echo ""
+echo "The Docker daemon runs as root, so membership in the docker group is"
+echo "equivalent to passwordless root. Any process running as your user could"
+echo "then run, for example:"
+echo ""
+echo "    docker run -v /:/host alpine   # full read/write of the host, as root"
+echo ""
+echo "and take over the machine with no password prompt. A single rogue script,"
+echo "dependency, or plugin running as you is enough. It is convenient for"
+echo "development, but it removes the protection Tamlinux keeps by default, where"
+echo "Docker access goes through a polkit/sudo prompt."
+echo ""
+
+if gum confirm "Enable sudoless Docker? This gives anything running as you passwordless root."; then
+  sudo usermod -aG docker "$USER"
+  # A new docker group membership is only picked up by a fresh session, and in
+  # practice logging out or newgrp isn't enough — only a reboot reliably
+  # applies it, so offer to do it now.
+  echo ""
+  echo "Sudoless Docker ENABLED. It takes effect after a reboot."
+  echo "To disable it again: Remove > Security > Sudoless Docker."
+  echo ""
+  if gum confirm "Reboot now to apply?"; then
+    tam-system-reboot
+  fi
+else
+  echo "Aborted. No changes made. Docker access still goes through a prompt."
+fi

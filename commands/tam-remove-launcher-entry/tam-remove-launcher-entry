@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# tam-remove-launcher-entry — remove or uninstall the selected launcher entry.
+#
+#   tam-remove-launcher-entry <desktop-id> <name>
+#
+# Ported from Omarchy 4.0.4 (omarchy-remove-launcher-entry) for plan 18 R4.15h.
+# Changed: the usage message names tam-remove-launcher-entry, one shared
+# WEBAPP_EXEC pattern recognizes tam-launch-webapp and the inherited launchers
+# alike, the web-app and TUI removers are the owned ones and are asked to stay
+# quiet with TAMLINUX_REMOVE_NOTIFY=false, and the uninstall hands off to
+# tam-launch-floating-terminal-with-presentation and tam-cmd-present.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -e
+
+# Web-app launchers run tam-launch-webapp; ones made before Tamlinux run the
+# inherited launcher or a URL handler.
+WEBAPP_EXEC='tam-launch-webapp'
+
+desktop_id="${1-}"
+entry_name="${2-}"
+
+if [[ -z $desktop_id || $desktop_id == */* || $desktop_id == . || $desktop_id == .. || $desktop_id =~ [[:cntrl:]] ]]; then
+  echo "Usage: tam-remove-launcher-entry <desktop-id> <name>" >&2
+  exit 1
+fi
+
+desktop_file_name="$desktop_id"
+if [[ $desktop_file_name != *.desktop ]]; then
+  desktop_file_name="$desktop_file_name.desktop"
+fi
+
+user_desktop_dirs=()
+desktop_dirs=()
+if [[ -n ${XDG_DATA_HOME-} ]]; then
+  user_desktop_dirs+=("$XDG_DATA_HOME/applications")
+else
+  user_desktop_dirs+=("$HOME/.local/share/applications")
+fi
+desktop_dirs+=("${user_desktop_dirs[@]}")
+
+if [[ -n ${XDG_DATA_DIRS-} ]]; then
+  IFS=: read -ra data_dirs <<<"$XDG_DATA_DIRS"
+  for data_dir in "${data_dirs[@]}"; do
+    desktop_dirs+=("$data_dir/applications")
+  done
+else
+  desktop_dirs+=("/usr/local/share/applications" "/usr/share/applications")
+fi
+
+desktop_file=""
+for dir in "${desktop_dirs[@]}"; do
+  candidate="$dir/$desktop_file_name"
+  if [[ -f $candidate ]]; then
+    desktop_file="$candidate"
+    break
+  fi
+done
+
+if [[ -z $desktop_file ]]; then
+  echo "Could not find launcher entry: $desktop_file_name" >&2
+  exit 1
+fi
+
+is_user_desktop_file() {
+  local dir desktop_dir
+
+  desktop_dir="${desktop_file%/*}"
+  for dir in "${user_desktop_dirs[@]}"; do
+    [[ $desktop_dir == $dir ]] && return 0
+  done
+
+  return 1
+}
+
+desktop_name="${desktop_file##*/}"
+desktop_name="${desktop_name%.desktop}"
+exec_line="$(sed -n 's/^Exec=//p' "$desktop_file" | head -1)"
+
+if [[ $exec_line =~ $WEBAPP_EXEC ]]; then
+  TAMLINUX_REMOVE_NOTIFY=false tam-webapp-remove "$desktop_name"
+  exit 0
+fi
+
+if [[ $exec_line =~ (^|[[:space:]])(\$TERMINAL|xdg-terminal-exec)[[:space:]].*-e([[:space:]]|$) ]]; then
+  TAMLINUX_REMOVE_NOTIFY=false tam-tui-remove "$desktop_name"
+  exit 0
+fi
+
+if is_user_desktop_file; then
+  display_name="${entry_name:-$desktop_name}"
+  tam-settings-preserve launcher-remove --file "$desktop_file" >/dev/null || exit 1
+  rm -f -- "$desktop_file"
+  update-desktop-database "${desktop_file%/*}" &>/dev/null || true
+  exit 0
+fi
+
+if package_name="$(pacman -Qqo "$desktop_file" 2>/dev/null | head -1)" && [[ -n $package_name ]]; then
+  display_name="${entry_name:-$desktop_name}"
+  quoted_package="$(printf '%q' "$package_name")"
+  quoted_display="$(printf '%q' "$display_name")"
+  exec tam-launch-floating-terminal-with-presentation "echo Uninstalling $quoted_display...; sudo pacman -Rns $quoted_package"
+fi
+
+if tam-cmd-present flatpak && flatpak info "${desktop_file_name%.desktop}" >/dev/null 2>&1; then
+  flatpak_id="${desktop_file_name%.desktop}"
+  quoted_flatpak="$(printf '%q' "$flatpak_id")"
+  exec tam-launch-floating-terminal-with-presentation "flatpak uninstall $quoted_flatpak"
+fi
+
+echo "Don't know how to uninstall $desktop_file_name" >&2
+exit 1

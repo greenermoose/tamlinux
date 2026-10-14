@@ -56,6 +56,11 @@ zen) desktop_id="zen.desktop"; name="Zen"; glyph=󰖟 ;;
   ;;
 esac
 
+previous=$(env -u BROWSER xdg-settings get default-web-browser) || exit 1
+tam-settings-preserve default-browser \
+  --file "${XDG_CONFIG_HOME:-$HOME/.config}/mimeapps.list" \
+  --file "${XDG_DATA_HOME:-$HOME/.local/share}/applications/mimeapps.list" \
+  --value default-web-browser "$previous" >/dev/null || exit 1
 env -u BROWSER xdg-settings set default-web-browser "$desktop_id" || exit 1
 
 tam-notification-send -g $glyph "$name is now the default browser"

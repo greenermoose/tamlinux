@@ -1,0 +1,131 @@
+#!/bin/bash
+
+# tam-tui-install — create a desktop launcher for a terminal UI app.
+#
+#   tam-tui-install [name command window-style icon-url-or-name]
+#
+# Ported from Omarchy 4.0.4 (omarchy-tui-install) for plan 18 R4.15h.
+# Changed: a bare icon name reads as one from the installed icon themes.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -e
+
+ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/256x256/apps"
+
+safe_icon_name() {
+  printf '%s\n' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^[:alnum:]]\+/-/g; s/^-//; s/-$//'
+}
+
+icon_name_from_ref() {
+  local ref="$1"
+  local name
+  name=$(basename "$ref")
+
+  if [[ $name == *.* ]]; then
+    safe_icon_name "${name%.*}"
+  else
+    printf '%s\n' "$name"
+  fi
+}
+
+install_user_icon() {
+  local source="$1"
+  local name="$2"
+  local ext="${source##*.}"
+
+  [[ $ext == "$source" ]] && ext="png"
+  mkdir -p "$ICON_DIR"
+  cp "$source" "$ICON_DIR/$name.$ext"
+  gtk-update-icon-cache "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor" &>/dev/null || true
+  printf '%s\n' "$name"
+}
+
+if (( $# != 4 )); then
+  echo -e "\e[32mLet's create a TUI shortcut you can start with the app launcher.\n\e[0m"
+  APP_NAME=$(gum input --prompt "Name> " --placeholder "My TUI")
+  APP_EXEC=$(gum input --prompt "Launch Command> " --placeholder "lazydocker or bash -c 'dust; read -n 1 -s'")
+  WINDOW_STYLE=$(gum choose --header "Window style" float tile)
+  ICON_REF=$(gum input --prompt "Icon URL/name> " --placeholder "See https://dashboardicons.com or enter an installed icon name")
+else
+  APP_NAME="$1"
+  APP_EXEC="$2"
+  WINDOW_STYLE="$3"
+  ICON_REF="$4"
+fi
+
+if [[ -z $APP_NAME || -z $APP_EXEC || -z $ICON_REF ]]; then
+  echo "You must set app name, app command, and icon URL/name!"
+  exit 1
+fi
+
+[[ $APP_NAME != */* && $APP_NAME != . && $APP_NAME != .. && ! $APP_NAME =~ [[:cntrl:]] ]] || { echo "Invalid launcher name" >&2; exit 2; }
+[[ $WINDOW_STYLE == float || $WINDOW_STYLE == tile ]] || exit 2
+[[ ! $APP_EXEC =~ [[:cntrl:]] && ! $ICON_REF =~ [[:cntrl:]] ]] || exit 2
+DESKTOP_FILE="${XDG_DATA_HOME:-$HOME/.local/share}/applications/$APP_NAME.desktop"
+mkdir -p "$(dirname "$DESKTOP_FILE")"
+
+if [[ $ICON_REF =~ ^https?:// ]]; then
+  ICON_VALUE=$(safe_icon_name "$APP_NAME")
+  mkdir -p "$ICON_DIR"
+  if ! curl -sL -o "$ICON_DIR/$ICON_VALUE.png" "$ICON_REF"; then
+    echo "Error: Failed to download icon."
+    exit 1
+  fi
+  gtk-update-icon-cache "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor" &>/dev/null || true
+elif [[ -f $ICON_REF ]]; then
+  ICON_VALUE=$(install_user_icon "$ICON_REF" "$(safe_icon_name "$APP_NAME")")
+else
+  # A bare name is an icon from the installed icon themes.
+  ICON_VALUE=$(icon_name_from_ref "$ICON_REF")
+fi
+
+if [[ $WINDOW_STYLE == "float" ]]; then
+  APP_CLASS="TUI.float"
+else
+  APP_CLASS="TUI.tile"
+fi
+
+[[ ! -L $DESKTOP_FILE && ( ! -e $DESKTOP_FILE || -f $DESKTOP_FILE ) ]] || exit 2
+tam-settings-preserve launcher-install --file "$DESKTOP_FILE" >/dev/null || exit 1
+STAGED_DESKTOP=$(mktemp "${DESKTOP_FILE%/*}/.launcher.XXXXXX")
+trap 'rm -f -- "$STAGED_DESKTOP"' EXIT
+cat >"$STAGED_DESKTOP" <<EOF
+[Desktop Entry]
+Version=1.0
+Name=$APP_NAME
+Comment=$APP_NAME
+Exec=xdg-terminal-exec --app-id=$APP_CLASS -e $APP_EXEC
+Terminal=false
+Type=Application
+Icon=$ICON_VALUE
+StartupNotify=true
+EOF
+
+chmod 755 "$STAGED_DESKTOP"
+mv -f -- "$STAGED_DESKTOP" "$DESKTOP_FILE"
+
+if (( $# != 4 )); then
+  echo -e "You can now find $APP_NAME using the app launcher (SUPER + SPACE)\n"
+fi

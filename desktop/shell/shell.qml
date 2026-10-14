@@ -760,7 +760,7 @@ ShellRoot {
       proof.updateEntryInline("tamlinux.fixture", { "marker": "step2" })
     }
     function rejectSettings(): void {
-      proof.updateEntryInline("omarchy.osd", { "marker": "no" })
+      proof.updateEntryInline("foreign.osd", { "marker": "no" })
     }
     function compositorFocusWorkspace(id: string): void {
       if (proof.compositor) proof.compositor.focusWorkspace(id)
@@ -787,7 +787,6 @@ ShellRoot {
     evidence("shell-id tamlinux-clock-proof")
     evidence("ipc-owner tamlinux-shell")
     evidence("scale " + Style.uiScale)
-    evidence("omarchy " + (Quickshell.env("OMARCHY_PATH") ? "set" : "unset"))
     var panelPath = String(Quickshell.env("TAMLINUX_PANEL_ENTRY") || "")
     var compositorPath = String(Quickshell.env("TAMLINUX_COMPOSITOR_ENTRY") || "")
     var uiPath = String(Quickshell.env("TAMLINUX_UI_ENTRY") || "")

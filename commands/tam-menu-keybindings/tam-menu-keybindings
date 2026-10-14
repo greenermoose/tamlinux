@@ -1,0 +1,303 @@
+#!/bin/bash
+
+# tam-menu-keybindings — search the desktop's keybindings and run the chosen
+# one (Menu → Learn → Keybindings, SUPER + K).
+#
+#   tam-menu-keybindings [--print|-p]
+#
+# --print writes the list to stdout instead of opening the menu.
+#
+# Ported from Omarchy 4.0.4 (omarchy-menu-keybindings) for plan 18 0.2.2.
+# Changed: the rows come from the Tamlinux shell's keybindings service, which
+# reads the compositor facade's bindings; this script keeps the Lua command
+# scan and the dispatch, so Enter runs the binding's command. Both are
+# Hyprland-only. The menu is tam-menu-select.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Hyprland's Lua config provider reports Lua binds as dispatcher __lua in
+# `hyprctl binds`, without the command. Load the config with a stub `hl` and
+# print "modmask<TAB>description<TAB>key<TAB>kind<TAB>arg" for each bind with
+# a description, so the service can match each row to its command.
+scan_commands() {
+  tam-cmd-present lua || return 0
+
+  lua <<'LUA'
+local modifiers = { SHIFT = 1, CTRL = 4, CONTROL = 4, ALT = 8, SUPER = 64 }
+
+local function split_keys(keys)
+  local modmask = 0
+  local key = ""
+
+  for part in string.gmatch(tostring(keys or ""), "[^+]+") do
+    local value = part:gsub("^%s+", ""):gsub("%s+$", "")
+    local modifier = modifiers[string.upper(value)]
+
+    if modifier then
+      modmask = modmask + modifier
+    else
+      key = value
+    end
+  end
+
+  return modmask, key
+end
+
+local function lua_literal(value)
+  local value_type = type(value)
+
+  if value_type == "string" then
+    return string.format("%q", value)
+  elseif value_type == "number" or value_type == "boolean" then
+    return tostring(value)
+  elseif value_type == "table" then
+    local parts = {}
+    local keys = {}
+    local array_length = #value
+
+    for index = 1, array_length do
+      parts[#parts + 1] = lua_literal(value[index])
+    end
+
+    for key in pairs(value) do
+      if not (type(key) == "number" and key >= 1 and key <= array_length and math.floor(key) == key) then
+        keys[#keys + 1] = key
+      end
+    end
+
+    table.sort(keys, function(left, right)
+      return tostring(left) < tostring(right)
+    end)
+
+    for _, key in ipairs(keys) do
+      local key_prefix
+      if type(key) == "string" and key:match("^[%a_][%w_]*$") then
+        key_prefix = key .. " = "
+      else
+        key_prefix = "[" .. lua_literal(key) .. "] = "
+      end
+
+      parts[#parts + 1] = key_prefix .. lua_literal(value[key])
+    end
+
+    return "{ " .. table.concat(parts, ", ") .. " }"
+  elseif value_type == "nil" then
+    return "nil"
+  else
+    return "nil"
+  end
+end
+
+local function call_expression(path, ...)
+  local args = {}
+
+  for index = 1, select("#", ...) do
+    args[index] = lua_literal(select(index, ...))
+  end
+
+  return path .. "(" .. table.concat(args, ", ") .. ")"
+end
+
+local function dispatcher(kind, arg, expr)
+  return {
+    __tam_dispatcher = true,
+    kind = kind or "",
+    arg = arg or "",
+    expr = expr or "",
+  }
+end
+
+local function dsp_proxy(path)
+  return setmetatable({ path = path }, {
+    __index = function(self, key)
+      return dsp_proxy(self.path .. "." .. tostring(key))
+    end,
+    __call = function(self, ...)
+      local first_arg = ...
+      local expr = call_expression(self.path, ...)
+
+      if self.path == "hl.dsp.exec_cmd" and type(first_arg) == "string" then
+        return dispatcher("exec", first_arg, expr)
+      end
+
+      return dispatcher("lua", expr, expr)
+    end,
+  })
+end
+
+local noop
+noop = setmetatable({}, {
+  __index = function()
+    return noop
+  end,
+  __call = function()
+    return noop
+  end,
+})
+
+hl = setmetatable({
+  dsp = dsp_proxy("hl.dsp"),
+  bind = function(keys, bind_dispatcher, opts)
+    opts = opts or {}
+
+    if opts.description and opts.description ~= "" then
+      local modmask, key = split_keys(keys)
+      local kind = ""
+      local arg = ""
+
+      if type(bind_dispatcher) == "table" and bind_dispatcher.__tam_dispatcher then
+        kind = bind_dispatcher.kind or ""
+        arg = bind_dispatcher.arg or bind_dispatcher.expr or ""
+      elseif type(bind_dispatcher) == "string" and bind_dispatcher ~= "" then
+        kind = "exec"
+        arg = bind_dispatcher
+      end
+
+      print(table.concat({ tostring(modmask), opts.description, key, kind, arg }, "\t"))
+    end
+
+    return noop
+  end,
+  get_config = function()
+    return nil
+  end,
+}, {
+  __index = function()
+    return noop
+  end,
+})
+
+local config_home = os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")
+local config = config_home .. "/tamlinux/session/hyprland.lua"
+local file = io.open(config, "r")
+
+if file then
+  file:close()
+  local ok, err = pcall(dofile, config)
+  if not ok and os.getenv("DEBUG") == "1" then
+    io.stderr:write("[DEBUG] lua bind scan failed: " .. tostring(err) .. "\n")
+  end
+end
+LUA
+}
+
+trim() {
+  local value="$1"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  printf '%s\n' "$value"
+}
+
+lua_string() {
+  jq -Rnr --arg value "$1" '$value | @json'
+}
+
+dispatch_lua_expression() {
+  local expression="$1"
+  local output status
+
+  output=$(hyprctl dispatch "$expression" 2>&1)
+  status=$?
+
+  if (( status == 0 )) && [[ -z $output || $output == "ok" ]]; then
+    [[ -n $output ]] && printf '%s\n' "$output"
+    return 0
+  fi
+
+  return 1
+}
+
+dispatch_exec_binding() {
+  local command="$1"
+
+  dispatch_lua_expression "hl.dsp.exec_cmd($(lua_string "$command"))" || hyprctl dispatch exec "$command"
+}
+
+dispatch_sendshortcut_binding() {
+  local arg="$1"
+  local mods key window rest
+
+  IFS=, read -r mods key window rest <<<"$arg"
+  mods=$(trim "$mods")
+  key=$(trim "$key")
+  window=$(trim "$window")
+
+  [[ -z $window ]] && window="activewindow"
+
+  if [[ -n $key ]] && dispatch_lua_expression "hl.dsp.send_key_state({ mods = $(lua_string "$mods"), key = $(lua_string "$key"), state = \"down\", window = $(lua_string "$window") })"; then
+    sleep 0.05
+    dispatch_lua_expression "hl.dsp.send_key_state({ mods = $(lua_string "$mods"), key = $(lua_string "$key"), state = \"up\", window = $(lua_string "$window") })"
+    return
+  fi
+
+  hyprctl dispatch sendshortcut "$arg"
+}
+
+dispatch_binding() {
+  local dispatcher="$1"
+  local arg="$2"
+
+  case "$dispatcher" in
+    exec)
+      [[ -n $arg ]] && dispatch_exec_binding "$arg"
+      ;;
+    sendshortcut)
+      [[ -n $arg ]] && dispatch_sendshortcut_binding "$arg"
+      ;;
+    lua)
+      [[ -n $arg ]] && hyprctl dispatch "$arg"
+      ;;
+    "") return 1 ;;
+    *)
+      if [[ -n $arg ]]; then
+        hyprctl dispatch "$dispatcher" "$arg"
+      else
+        hyprctl dispatch "$dispatcher"
+      fi
+      ;;
+  esac
+}
+
+records=$(tam-shell keybindings records "$(scan_commands)") || exit 1
+
+if [[ -z $records ]]; then
+  echo "tam-menu-keybindings: the Tamlinux shell reported no keybindings" >&2
+  exit 1
+fi
+
+if [[ $1 == "--print" || $1 == "-p" ]]; then
+  cut -f1 <<<"$records"
+  exit 0
+fi
+
+selection=$(cut -f1 <<<"$records" |
+  tam-menu-select 'Keybindings' -- --width 800 --height 500)
+
+if [[ -n $selection ]]; then
+  record=$(awk -F '\t' -v selection="$selection" '$1 == selection { print; exit }' <<<"$records")
+  dispatcher=$(cut -f2 <<<"$record")
+  arg=$(cut -f3- <<<"$record")
+
+  dispatch_binding "$dispatcher" "$arg"
+fi

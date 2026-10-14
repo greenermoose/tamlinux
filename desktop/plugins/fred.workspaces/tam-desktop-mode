@@ -1,8 +1,8 @@
 #!/usr/bin/python3 -I
 """
-Multi-monitor workspace engine for Omarchy.
+Multi-monitor workspace engine for Tamlinux.
 Supports:
-  - Omarchy mode: standard 1-5 workspace presentation on all displays.
+  - Tamlinux mode: standard 1-5 workspace presentation on all displays.
   - Mac mode: per-monitor independent workspaces (odd on left, even on right).
   - Windows mode: synchronized workspace sets anchored to fixed topology slots.
 """
@@ -20,7 +20,7 @@ MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 CONFIG_LINE_RE = re.compile(
     r"^(?:export\s+)?(TAMLINUX_DESKTOP_LEFT_MONITOR|TAMLINUX_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor|topology|topology_size|TAMLINUX_DESKTOP_TOPOLOGY|unused_monitor_timeout|TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT)\s*=\s*(.*)$"
 )
-VALID_MODES = ("omarchy", "mac", "windows")
+VALID_MODES = ("tamlinux", "mac", "windows")
 ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors")
 MAX_MONITORS = 16
 MAX_MONITOR_RECORDS = 64
@@ -562,7 +562,7 @@ def current_mode() -> str:
 
 def notify_mode(mode: str, monitor_count: int) -> None:
     labels = {
-        "omarchy": ("Omarchy Desktop mode", "Both bars show 1–5; odd workspaces open left and even workspaces open right."),
+        "tamlinux": ("Tamlinux Desktop mode", "Both bars show 1–5; odd workspaces open left and even workspaces open right."),
         "mac": ("Mac Desktop mode", "Number keys switch one monitor; odd workspaces on left, even on right."),
         "windows": (
             "Windows Desktop mode",
@@ -594,7 +594,7 @@ def set_mode(mode: str, monitors: list[str], topology_size: int = DEFAULT_TOPOLO
     if mode not in VALID_MODES:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|preferences|reconcile}}\n"
+            f"Usage: {prog} {{toggle|tamlinux|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|preferences|reconcile}}\n"
         )
         sys.exit(2)
     atomic_write_state("desktop-mode", mode + "\n")
@@ -982,7 +982,7 @@ def main() -> None:
         sys.stdout.write(current_mode() + "\n")
         return
     if cmd == "indicator":
-        ind = {"omarchy": "O", "mac": "M", "windows": "W"}.get(current_mode(), "M")
+        ind = {"tamlinux": "T", "mac": "M", "windows": "W"}.get(current_mode(), "M")
         sys.stdout.write(ind + "\n")
         return
     if cmd == "preferences":
@@ -993,9 +993,9 @@ def main() -> None:
 
     if cmd == "toggle":
         curr = current_mode()
-        next_mode = "mac" if curr == "omarchy" else ("windows" if curr == "mac" else "omarchy")
+        next_mode = "mac" if curr == "tamlinux" else ("windows" if curr == "mac" else "tamlinux")
         set_mode(next_mode, monitors, topology_size)
-    elif cmd in ("omarchy", "mac", "windows"):
+    elif cmd in ("tamlinux", "mac", "windows"):
         set_mode(cmd, monitors, topology_size)
     elif cmd == "switch":
         if len(sys.argv) < 3:
@@ -1040,10 +1040,10 @@ def main() -> None:
 
 Commands:
   preferences     Print configured preferences as JSON
-  status          Print current mode (omarchy, mac, windows)
+  status          Print current mode (tamlinux, mac, windows)
   indicator       Print indicator character (O, M, W)
-  toggle          Cycle through desktop modes (omarchy -> mac -> windows)
-  omarchy         Switch to Omarchy mode
+  toggle          Cycle through desktop modes (tamlinux -> mac -> windows)
+  tamlinux         Switch to Tamlinux mode
   mac             Switch to Mac mode
   windows         Switch to Windows mode
   switch NUM      Switch to workspace / monitor-set desktop NUM (1-10, 0=10)
@@ -1058,7 +1058,7 @@ Commands:
     else:
         prog = os.path.basename(sys.argv[0])
         sys.stderr.write(
-            f"Usage: {prog} {{toggle|omarchy|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|preferences|reconcile|dpms-off MONITOR|dpms-on MONITOR}}\n"
+            f"Usage: {prog} {{toggle|tamlinux|mac|windows|status|indicator|switch NUMBER|move NUMBER|move-silent NUMBER|realign MONITOR NUMBER|monitors|preferences|reconcile|dpms-off MONITOR|dpms-on MONITOR}}\n"
         )
         sys.exit(2)
 

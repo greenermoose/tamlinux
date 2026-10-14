@@ -44,7 +44,7 @@ code) editor="code"; name="VSCode"; glyph= ;;
 cursor) editor="cursor"; name="Cursor"; glyph= ;;
 zed | zeditor) editor="zeditor"; name="Zed"; glyph= ;;
 sublime_text) editor="sublime_text"; name="Sublime Text"; glyph= ;;
-helix) editor="helix"; name="Helix"; glyph= ;;
+helix | hx) editor="helix"; name="Helix"; glyph= ;;
 vim) editor="vim"; name="Vim"; glyph= ;;
 emacs) editor="emacs"; name="Emacs"; glyph= ;;
 nvim) editor="nvim"; name="Neovim"; glyph= ;;
@@ -54,7 +54,11 @@ nvim) editor="nvim"; name="Neovim"; glyph= ;;
   ;;
 esac
 
-mkdir -p "$(dirname "$editor_file")"
-printf '%s\n' "$editor" >"$editor_file"
+tam-settings-preserve default-editor --file "$editor_file" >/dev/null || exit 1
+mkdir -p "$(dirname "$editor_file")" || exit 1
+stage=$(mktemp "${editor_file%/*}/.editor.XXXXXX") || exit 1
+trap 'rm -f -- "$stage"' EXIT
+printf '%s\n' "$editor" >"$stage" || exit 1
+mv -f -- "$stage" "$editor_file" || exit 1
 
 tam-notification-send -g $glyph "$name is now the default editor"

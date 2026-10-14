@@ -235,7 +235,7 @@ BarWidget {
         : [2, 4, 6, 8, 10]
     }
 
-    if (desktopMode === "omarchy") return [1, 2, 3, 4, 5]
+    if (desktopMode === "tamlinux") return [1, 2, 3, 4, 5]
 
     var ids = [1, 2, 3, 4, 5]
     var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
@@ -252,7 +252,7 @@ BarWidget {
 
   property int windowsRevision: 0
 
-  // Windows mode only (Omarchy and Mac modes treat each monitor on its own):
+  // Windows mode only (Tamlinux and Mac modes treat each monitor on its own):
   // may a window focus split the set? When a focus lands on a hidden
   // workspace (an app opening on a stale workspace, a window switcher, a
   // single-monitor dispatch) Hyprland moves just that monitor.
@@ -260,7 +260,7 @@ BarWidget {
   //                     and F until it is returned (click F) or the set is
   //                     moved (desktop click, SUPER+N)
   //   false           - the whole set follows to the focused monitor's desktop
-  //   omarchy bar set fred.workspaces splitSet true|false
+  //   tam-shell bar set fred.workspaces splitSet true|false
   readonly property bool splitSetAllowed: {
     var raw = root.setting("splitSet", true)
     if (typeof raw === "boolean") return raw
@@ -786,16 +786,16 @@ BarWidget {
           tip = macLines.join("\n")
         }
       } else {
-        var omarchyWindows = workspaceWindowSummaries(displayId)
-        if (omarchyWindows.length === 0) {
+        var tamlinuxWindows = workspaceWindowSummaries(displayId)
+        if (tamlinuxWindows.length === 0) {
           tip = "Workspace " + displayId + headerSuffix + "\n(Empty)"
         } else {
           var oLines = ["Workspace " + displayId + headerSuffix]
-          for (var o = 0; o < Math.min(omarchyWindows.length, 6); o++) {
-            oLines.push(omarchyWindows[o])
+          for (var o = 0; o < Math.min(tamlinuxWindows.length, 6); o++) {
+            oLines.push(tamlinuxWindows[o])
           }
-          if (omarchyWindows.length > 6) {
-            oLines.push("+" + (omarchyWindows.length - 6) + " more")
+          if (tamlinuxWindows.length > 6) {
+            oLines.push("+" + (tamlinuxWindows.length - 6) + " more")
           }
           tip = oLines.join("\n")
         }
@@ -922,7 +922,7 @@ BarWidget {
   function loadDesktopMode(raw) {
     var mode = String(raw || "").trim()
     if (mode.length > 16) return
-    root.desktopMode = mode === "omarchy" || mode === "windows" ? mode : "mac"
+    root.desktopMode = mode === "tamlinux" || mode === "windows" ? mode : "mac"
   }
 
   function loadMonitors(raw) {
@@ -972,13 +972,13 @@ BarWidget {
   }
 
   function nextDesktopMode() {
-    if (desktopMode === "omarchy") return "mac"
+    if (desktopMode === "tamlinux") return "mac"
     if (desktopMode === "mac") return "windows"
-    return "omarchy"
+    return "tamlinux"
   }
 
   function desktopModeLetter() {
-    if (desktopMode === "omarchy") return "O"
+    if (desktopMode === "tamlinux") return "T"
     if (desktopMode === "windows") return "W"
     return "M"
   }
@@ -1137,11 +1137,11 @@ BarWidget {
             + " (" + root.splitDetail() + ").\nClick to return this display to desktop "
             + state.setDesktop + ", or pick a desktop from the bar / SUPER+number to move the whole set."
         } else {
-          var base = root.desktopMode === "omarchy"
-            ? "Omarchy Desktop mode — click for Mac mode"
+          var base = root.desktopMode === "tamlinux"
+            ? "Tamlinux Desktop mode — click for Mac mode"
             : (root.desktopMode === "mac"
               ? "Mac Desktop mode — click for Windows mode"
-              : "Windows Desktop mode — click for Omarchy mode")
+              : "Windows Desktop mode — click for Tamlinux mode")
           if (root.degradedMode && root.desktopMode === "windows") {
             base += " [" + root.effectiveMonitorNames().length + "/" + root.topologySize + " Displays Active]"
           }

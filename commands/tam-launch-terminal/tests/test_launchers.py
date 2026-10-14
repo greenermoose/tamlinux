@@ -14,7 +14,7 @@ COMMANDS = Path(__file__).resolve().parents[2]
 NAMES = ['tam-launch-terminal', 'tam-cmd-terminal-cwd', 'tam-launch-editor',
          'tam-launch-config-editor', 'tam-launch-floating-terminal-with-presentation',
          'tam-show-logo', 'tam-show-done', 'tam-default-editor', 'tam-default-terminal',
-         'tam-cmd-present', 'tam-launch-tui', 'tam-notification-send']
+         'tam-cmd-present', 'tam-launch-tui', 'tam-notification-send', 'tam-settings-preserve']
 
 
 class InstalledLaunchers(unittest.TestCase):
@@ -47,7 +47,7 @@ class InstalledLaunchers(unittest.TestCase):
                     'PATH': f'{self.prefix}/bin:{self.bin}', 'TEST_LOG': str(self.log),
                     'TEST_CWD': str(self.work), 'LANG': 'C', 'TERM': 'dumb'}
         for name in ('bash', 'awk', 'grep', 'tail', 'readlink', 'mkdir', 'dirname',
-                     'cat', 'basename', 'jq'):
+                     'cat', 'basename', 'jq', 'python3', 'mktemp', 'mv', 'rm'):
             program = shutil.which(name)
             if not program:
                 raise RuntimeError(f'Tests require {name}')
@@ -61,6 +61,7 @@ with open(os.environ['TEST_LOG'], 'a') as out:
                           'gum': os.environ.get('GUM_INPUT_PROMPT_FOREGROUND')}) + '\\n')
 if name in ('setsid', 'uwsm-app'):
     if name == 'uwsm-app':
+        if args[:2] == ['-t', 'service']: args = args[2:]
         assert args[0] == '--'
         args = args[1:]
     os.execvp(args[0], args)
@@ -112,6 +113,23 @@ else:
         self.assertFalse(self.state.exists())
         self.assertFalse(self.config.exists())
 
+    def test_editor_choice_preserves_previous_selection_before_replacement(self):
+        prior=self.state/'tamlinux/defaults/editor';prior.parent.mkdir(parents=True)
+        prior.write_text('vim\n')
+        self.assertEqual(self.run_command('tam-default-editor','helix').returncode,0)
+        snapshots=list((self.state/'tamlinux/settings-recovery').glob('default-editor.*'))
+        self.assertEqual(len(snapshots),1)
+        self.assertEqual((snapshots[0]/'0').read_text(),'vim\n')
+        self.assertEqual(prior.read_text(),'helix\n')
+
+    def test_terminal_recovery_failure_prevents_preference_write(self):
+        target=self.config/'xdg-terminals.list';target.parent.mkdir(parents=True)
+        target.write_text('personal terminal preference\n')
+        self.state.mkdir();(self.state/'tamlinux').write_text('conflicting state parent')
+        result=self.run_command('tam-default-terminal','kitty')
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(target.read_text(),'personal terminal preference\n')
+
     def test_editor_selector_and_launcher_share_owned_state(self):
         result = self.run_command('tam-default-editor', 'code')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -119,6 +137,14 @@ else:
         self.assertEqual(self.run_command('tam-launch-editor', 'file with spaces').returncode, 0)
         self.assertEqual(self.calls('code')[0]['args'], ['file with spaces'])
         self.assertFalse((self.home / '.local').exists())
+
+    def test_canonical_helix_selection_resolves_native_hx_executable(self):
+        self.choose_editor('helix')
+        (self.bin / 'hx').write_text((self.bin / 'vim').read_text())
+        (self.bin / 'hx').chmod(0o755)
+        result = self.run_command('tam-launch-editor', '--inline', 'file with spaces')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls('hx')[0]['args'], ['file with spaces'])
 
     def test_unsupported_editor_preserves_selection(self):
         path = self.choose_editor('vim')
@@ -129,7 +155,7 @@ else:
     def test_all_editor_choices_round_trip(self):
         for choice, value in [('code', 'code'), ('cursor', 'cursor'), ('zed', 'zeditor'),
                               ('zeditor', 'zeditor'), ('sublime_text', 'sublime_text'),
-                              ('helix', 'helix'), ('vim', 'vim'), ('emacs', 'emacs'),
+                              ('helix', 'helix'), ('hx', 'helix'), ('vim', 'vim'), ('emacs', 'emacs'),
                               ('nvim', 'nvim')]:
             with self.subTest(choice=choice):
                 self.assertEqual(self.run_command('tam-default-editor', choice).returncode, 0)

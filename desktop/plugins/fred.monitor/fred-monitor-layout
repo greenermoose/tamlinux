@@ -332,7 +332,7 @@ def persist_layout(layout):
         if not home or not os.path.isabs(home):
             raise LayoutError("configuration home is unavailable")
         config_home = os.path.join(home, ".config")
-    requested = Path(config_home) / "hypr" / "monitors.lua"
+    requested = Path(config_home) / "tamlinux" / "hypr" / "monitors.lua"
     try:
         target = requested.resolve(strict=True)
         directory = target.parent

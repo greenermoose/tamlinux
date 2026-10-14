@@ -12,7 +12,7 @@ COMMANDS = Path(__file__).resolve().parents[2]
 NAMES = ('tam-browser-command', 'tam-default-browser', 'tam-launch-browser',
          'tam-launch-webapp', 'tam-hyprland-focus-app', 'tam-launch-or-focus',
          'tam-launch-or-focus-webapp', 'tam-launch-or-focus-tui', 'tam-launch-tui',
-         'tam-notification-send')
+         'tam-notification-send', 'tam-settings-preserve')
 
 
 class BrowserChain(unittest.TestCase):
@@ -56,7 +56,10 @@ elif name == 'systemd-run':
     i = args.index('uwsm-app')
     os.execvp(args[i], args[i:])
 elif name in ('setsid', 'uwsm-app'):
-    if name == 'uwsm-app': args = args[1:]
+    if name == 'uwsm-app':
+        if args[:2] == ['-t', 'service']: args = args[2:]
+        assert args[0] == '--'
+        args = args[1:]
     os.execvp(args[0], args)
 elif name == 'hyprctl':
     if args[:2] == ['clients', '-j']: print(os.environ.get('TEST_CLIENTS', '[]'))

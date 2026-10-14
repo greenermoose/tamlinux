@@ -27,7 +27,7 @@ TOGGLES_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/toggles/hypr"
 CLAMSHELL_FLAG="$TOGGLES_DIR/internal-monitor-clamshell.lua"
 MANUAL_DISABLE_FLAG="$TOGGLES_DIR/internal-monitor-disable.lua"
 SCALE_STATE="$TOGGLES_DIR/internal-monitor-scale"
-MONITOR_LUA="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/monitors.lua"
+MONITOR_LUA="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/monitors.lua"
 
 INTERNAL=$(tam-hyprland-monitor-laptop)
 

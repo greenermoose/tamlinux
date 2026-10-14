@@ -53,11 +53,15 @@ kitty) desktop_id="kitty.desktop"; name="Kitty"; glyph= ;;
 esac
 
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
+tam-settings-preserve default-terminal --file "$config_dir/xdg-terminals.list" >/dev/null || exit 1
 mkdir -p "$config_dir" || exit 1
-cat >"$config_dir/xdg-terminals.list" <<EOF
+stage=$(mktemp "$config_dir/.terminals.XXXXXX") || exit 1
+trap 'rm -f -- "$stage"' EXIT
+cat >"$stage" <<EOF
 # Terminal emulator preference order for xdg-terminal-exec
 # The first found and valid terminal will be used
 $desktop_id
 EOF
+mv -f -- "$stage" "$config_dir/xdg-terminals.list" || exit 1
 
 tam-notification-send -g $glyph "$name is now the default terminal"

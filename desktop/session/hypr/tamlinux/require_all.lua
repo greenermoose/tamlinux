@@ -1,5 +1,5 @@
 -- Require every *.lua file in a directory in sorted order.
--- Used for extension-style folders such as hypr/tamlinux/apps and ~/.local/state/omarchy/toggles/hypr.
+-- Used for extension-style folders such as hypr/tamlinux/apps and XDG_STATE_HOME/tamlinux/toggles/hypr.
 -- Pass a module prefix for normal package.path modules, e.g.
 --   require_all.files(paths.tamlinux_hypr .. "/apps", "hypr.tamlinux.apps")
 -- Pass nil as the prefix when the directory itself has been added to package.path.

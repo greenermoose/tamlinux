@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# tam-menu-file — pick a file from the Tamlinux menu, newest first.
+#
+#   tam-menu-file <label> <paths> <formats> [menu args...]
+#
+# Ported from omarchy 4.0.4 (omarchy-menu-file) for plan 18 R4.15e; it opens
+# tam-menu-select.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -euo pipefail
+
+if (( $# < 3 )); then
+  echo "Usage: tam-menu-file <label> <paths> <formats> [menu args...]" >&2
+  exit 1
+fi
+
+label="$1"
+paths_arg="$2"
+formats_arg="$3"
+shift 3
+
+IFS=: read -r -a paths <<<"$paths_arg"
+read -r -a formats <<<"$formats_arg"
+
+if (( ${#paths[@]} == 0 || ${#formats[@]} == 0 )); then
+  echo "Usage: tam-menu-file <label> <paths> <formats> [menu args...]" >&2
+  exit 1
+fi
+
+for path in "${paths[@]}"; do
+  [[ -e $path ]] || { echo "Path not found: $path" >&2; exit 1; }
+done
+
+find_args=("${paths[@]}" "(" -type d -name ".*" ! -name "." -prune ")" -o -type f ! -name ".*" "(")
+first_format=true
+for format in "${formats[@]}"; do
+  if [[ $first_format == "true" ]]; then
+    first_format=false
+  else
+    find_args+=(-o)
+  fi
+
+  format="${format#.}"
+  find_args+=(-iname "*.$format")
+done
+find_args+=(")" -printf '%T@\t%p\n')
+
+find "${find_args[@]}" 2>/dev/null | sort -rn | cut -f2- |
+  tam-menu-select "$label" -- --width 800 --maxheight 500 "$@"

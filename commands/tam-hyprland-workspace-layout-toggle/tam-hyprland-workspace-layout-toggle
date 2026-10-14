@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# tam-hyprland-workspace-layout-toggle — switch the active workspace between
+# the dwindle and scrolling layouts, and remember the choice.
+#
+# Ported from omarchy 4.0.4 (omarchy-hyprland-workspace-layout-toggle) for
+# plan 18 R4.15e; it notifies through tam-notification-send. The saved layouts
+# keep their path, which config/hypr/tamlinux/workspace-layouts.lua reads.
+# Hyprland-specific (R6).
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+ACTIVE_WORKSPACE=$(hyprctl activeworkspace -j | jq -r '.id')
+[[ $ACTIVE_WORKSPACE =~ ^-?[0-9]+$ ]] || exit 1
+CURRENT_LAYOUT=$(hyprctl activeworkspace -j | jq -r '.tiledLayout')
+LAYOUTS_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/workspace-layouts"
+LAYOUT_FILE="$LAYOUTS_DIR/$ACTIVE_WORKSPACE.lua"
+
+case "$CURRENT_LAYOUT" in
+  dwindle) NEW_LAYOUT=scrolling ;;
+  *) NEW_LAYOUT=dwindle ;;
+esac
+
+tam-settings-preserve workspace-layout --file "$LAYOUT_FILE" >/dev/null || exit 1
+mkdir -p "$LAYOUTS_DIR" || exit 1
+stage=$(mktemp "$LAYOUTS_DIR/.layout.XXXXXX") || exit 1
+trap 'rm -f -- "$stage"' EXIT
+printf 'hl.workspace_rule({ workspace = "%s", layout = "%s" })\n' "$ACTIVE_WORKSPACE" "$NEW_LAYOUT" >"$stage" || exit 1
+mv -- "$stage" "$LAYOUT_FILE" || exit 1
+
+hyprctl eval "hl.workspace_rule({ workspace = \"$ACTIVE_WORKSPACE\", layout = \"$NEW_LAYOUT\" })" >/dev/null 2>&1 || \
+  hyprctl keyword workspace "$ACTIVE_WORKSPACE, layout:$NEW_LAYOUT"
+tam-notification-send -g 󱂬 "Workspace layout set to $NEW_LAYOUT"

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# tam-launch-docker-tui — open the Docker TUI (lazydocker) on the Docker daemon.
+#
+#   tam-launch-docker-tui
+#
+# Ported from Omarchy 4.0.4 (omarchy-launch-docker-tui) for plan 18 R4.15h.
+# Changed: the access check is the owned tam-sudo-docker, and the opt-in
+# command in the comment is tam-setup-security-sudoless-docker.
+#
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# By default the install user is NOT in the docker group: membership is
+# root-equivalent (a container can bind-mount / and rewrite the host as root),
+# so a single process running as the user could otherwise escalate to root with
+# no prompt. lazydocker needs the root-owned Docker socket, so when the group is
+# absent, gate that access behind a polkit prompt. If the user has opted into
+# sudoless Docker (tam-setup-security-sudoless-docker), the socket is already
+# reachable, so run lazydocker directly — tam-sudo-docker answers that for
+# this session, so the prompt stays until the reboot that grants the group.
+# pkexec sanitizes the environment, so carry TERM through for the TUI to render
+# and run lazydocker from root's PATH.
+if tam-sudo-docker; then
+  exec pkexec /usr/bin/env TERM="${TERM:-xterm-256color}" lazydocker
+else
+  exec lazydocker
+fi

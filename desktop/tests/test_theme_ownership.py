@@ -58,6 +58,24 @@ class ThemeOwnership(unittest.TestCase):
         self.call('set','Tokyo Night')
         self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
 
+    def test_fresh_initialize_generates_owned_state_without_application_adapters(self):
+        self.stub('tam-theme-set-foot', 'exit 17')
+        self.call('initialize', env={'TAMLINUX_THEME_OFFLINE': ''})
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+        self.assertTrue((self.current/'background').is_symlink())
+        self.assertFalse(self.config.exists())
+        before = os.readlink(self.current/'theme')
+        self.call('initialize')
+        self.assertEqual(os.readlink(self.current/'theme'), before)
+
+    def test_initialize_preserves_existing_selected_name_and_dangling_theme_link(self):
+        self.current.mkdir(parents=True)
+        (self.current/'theme').symlink_to('user-generation-currently-unavailable')
+        (self.current/'theme.name').write_text('personal selection')
+        self.call('initialize')
+        self.assertEqual(os.readlink(self.current/'theme'), 'user-generation-currently-unavailable')
+        self.assertEqual((self.current/'theme.name').read_text(), 'personal selection')
+
     def test_invalid_input_cannot_mutate_selection(self):
         self.call('set','tokyo-night'); before=os.readlink(self.current/'theme')
         for value in ('../escape','--foo','missing','a\nname'):

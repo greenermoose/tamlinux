@@ -6,4 +6,6 @@ if [ ! -f "$config" ]; then
   echo "Tamlinux session defaults are not installed: $config" >&2
   exit 1
 fi
+"${TAMLINUX_BIN:-$HOME/.local/bin}/tam-theme-init" || exit $?
+"${TAMLINUX_BIN:-$HOME/.local/bin}/tam-session-init" >/dev/null || exit $?
 exec /usr/bin/uwsm start -- /usr/bin/Hyprland --config "$config"

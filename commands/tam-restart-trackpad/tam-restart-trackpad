@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# tam-restart-trackpad — reset the trackpad by unbinding and rebinding its
+# driver.
+#
+#   tam-restart-trackpad
+#
+# Ported from Omarchy 4.0.4 (omarchy-restart-trackpad) for plan 18 R4.15i.
+# Unchanged.
+
+# Copyright (c) David Heinemeier Hansson
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+for dev in /sys/bus/i2c/drivers/i2c_hid_acpi/i2c-*; do
+  [[ -e $dev ]] || continue
+  I2C_DEVICE=$(basename "$dev")
+  echo "Resetting $I2C_DEVICE via i2c_hid_acpi unbind/rebind..."
+  echo "$I2C_DEVICE" | sudo tee /sys/bus/i2c/drivers/i2c_hid_acpi/unbind > /dev/null
+  sleep 1
+  echo "$I2C_DEVICE" | sudo tee /sys/bus/i2c/drivers/i2c_hid_acpi/bind > /dev/null
+  echo "Done"
+done
+
+# Also try THC path
+if lsmod | grep -q intel_quicki2c; then
+  echo "Reloading intel_quicki2c..."
+  sudo modprobe -r intel_quicki2c && sudo modprobe intel_quicki2c
+fi

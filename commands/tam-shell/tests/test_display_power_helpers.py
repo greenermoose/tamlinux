@@ -154,7 +154,9 @@ elif name=='ttfx': sys.exit(0)
         self.assertTrue(self.calls('setsid')); self.assertFalse(self.calls('systemctl'))
 
     def test_sleep_lock_running_process_is_only_recorded_observation(self):
-        self.pam(); result=self.run_command('tam-system-sleep-lock','500',TEST_LOCKED='1')
+        # The Python IPC recorders run under build contention; this case checks
+        # the observed process, while the preceding case checks the deadline.
+        self.pam(); result=self.run_command('tam-system-sleep-lock','2000',TEST_LOCKED='1')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertFalse(self.calls('setsid')); self.assertFalse(self.calls('systemctl'))
 
