@@ -40,8 +40,14 @@
     {"root": "home", "path": ".pi/agent/settings.json", "exclude": []},
     {"root": "home", "path": ".claude/themes/tamlinux.json", "exclude": []},
     {"root": "home", "path": ".claude/settings.json", "exclude": []},
-    {"root": "home", "path": ".t3/userdata/themes/tamlinux.json", "exclude": []}
+    {"root": "home", "path": ".t3/userdata/themes/tamlinux.json", "exclude": []},
+    {"root": "config", "path": "obsidian/obsidian.json", "exclude": []}
   ],
+  "applicationRoots": {
+    "claude": ["themes/tamlinux.json", "settings.json"],
+    "t3code": ["userdata/themes/tamlinux.json"],
+    "obsidianVault": [".obsidian/themes/Tamlinux"]
+  },
   "gtkKeys": [
     "/org/gnome/desktop/interface/color-scheme",
     "/org/gnome/desktop/interface/gtk-theme",
@@ -51,8 +57,8 @@
   "externalOwners": [
     "Home Manager managed endpoints and prior generation: tam-deploy back",
     "Native browser-color policies: tam-theme-set-browser-policy --restore",
-    "NetworkManager/DNS/service/security/device/audio effects: separate native recovery",
-    "Custom CLAUDE_CONFIG_DIR/T3CODE_HOME and Obsidian vaults: explicit application recovery",
+    "Native DNS/profile fields: tam-dns --restore",
+    "Service/security/device/audio effects: separate native recovery",
     "Boot, EFI, native packages and root snapshots: separate cutover project"
   ]
 }

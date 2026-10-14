@@ -254,6 +254,9 @@ def main():
     parser.add_argument('journal',type=Path)
     parser.add_argument('--gtk', action='store_true', help='Include the four owned GTK user values through dconf')
     parser.add_argument('--settings-source',type=Path,help='Absolute source config root for live-linked user settings; same finite config paths')
+    parser.add_argument('--claude-root',type=Path,help='Claude configuration root; defaults to a configured CLAUDE_CONFIG_DIR')
+    parser.add_argument('--t3code-root',type=Path,help='T3 Code root; defaults to a configured T3CODE_HOME')
+    parser.add_argument('--obsidian-vault',type=Path,action='append',default=[],help='Explicit Obsidian vault root; only its Tamlinux theme is checkpointed')
     args=parser.parse_args(); locations=roots(os.environ)
     base=locations['state']/'tamlinux/migration';safe(base);base.mkdir(parents=True,mode=0o700,exist_ok=True)
     directory=args.journal.absolute()
@@ -269,6 +272,17 @@ def main():
             if args.settings_source:
                 if not args.settings_source.is_absolute(): raise ValueError('Settings source root must be absolute')
                 checkpoint_roots['settingsSource']=args.settings_source
+            for kind,explicit,variable in [('claude',args.claude_root,'CLAUDE_CONFIG_DIR'),('t3code',args.t3code_root,'T3CODE_HOME')]:
+                value=explicit or os.environ.get(variable)
+                if value:
+                    path=Path(value)
+                    if not path.is_absolute() or '..' in path.parts: raise ValueError('Application roots must be absolute without parent traversal')
+                    checkpoint_roots[kind]=path
+            if len(args.obsidian_vault)>recovery.MAX_VAULTS or len(set(args.obsidian_vault))!=len(args.obsidian_vault):
+                raise ValueError('Expected at most 32 distinct Obsidian vault roots')
+            for index,path in enumerate(sorted(args.obsidian_vault)):
+                if not path.is_absolute() or '..' in path.parts: raise ValueError('Vault roots must be absolute without parent traversal')
+                checkpoint_roots['obsidianVault'+str(index)]=path
             dconf=shutil.which('dconf') if args.gtk else None
             if args.gtk and not dconf: raise ValueError('GTK recovery requires the delivered dconf client')
             if args.action=='preserve': doc=recovery.preserve(checkpoint_roots,directory,dconf)
@@ -278,7 +292,8 @@ def main():
                 'gtkCaptured':doc['gtk'] is not None,'journal':str(directory),
                 'scope':doc['scope'],'externalOwners':doc['externalOwners']}))
             return 0
-        if args.gtk or args.settings_source: raise ValueError('Checkpoint options are only valid for settings checkpoint actions')
+        if args.gtk or args.settings_source or args.claude_root or args.t3code_root or args.obsidian_vault:
+            raise ValueError('Checkpoint options are only valid for settings checkpoint actions')
         if args.action=='plan': doc=prepare(locations,directory)
         elif args.action=='apply': doc=apply(directory,locations)
         elif args.action=='rollback': doc=rollback(directory,locations)

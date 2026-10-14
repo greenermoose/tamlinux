@@ -28,3 +28,15 @@ pass. Three VM trials preserve saved positions after VT transitions and output
 reconnection. The physical preview retains its previous generation and GTK/settings
 checkpoint with unchanged saved layout bytes. The user reports, “Order and mouse
 path stay correct,” after two returns to the preview desktop.
+
+Recovery preparation adds explicit custom Claude/T3 Code and Obsidian vault roots
+to the finite checkpoint, including the vault registry. The CLI binds restoration
+to the captured roots; personal vault notes remain outside the selected theme
+tree. Twenty-one settings recovery checks pass, including actual GTK values.
+
+Native DNS gains an explicit read-only checkpoint and restoring operation. The
+fixed native executor captures both DNS files, original permission modes and
+absences, four fields per Ethernet/Wi-Fi profile and service states. It archives
+later values, validates original digests/destinations, refuses concurrent changes
+and supports retry after partial restoration. Eight regressions pass against real
+files and a bounded daemon fixture; installed native verification follows.

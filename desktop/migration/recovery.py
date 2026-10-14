@@ -19,6 +19,7 @@ MAX_FILE = 64 * 1024 * 1024
 MAX_TOTAL = 1024 * 1024 * 1024
 MAX_ENTRIES = 20000
 MAX_RECORD = 16 * 1024 * 1024
+MAX_VAULTS = 32
 
 
 def digest(data):
@@ -104,10 +105,24 @@ def selections(locations):
     selected = list(manifest['paths'])
     if 'settingsSource' in locations:
         selected += [{**item, 'root': 'settingsSource'} for item in manifest['paths'] if item['root'] == 'config']
+    for name, root in locations.items():
+        if name in ('claude', 't3code'):
+            default = locations['home'] / ('.claude' if name == 'claude' else '.t3')
+            if root == default:
+                continue  # The standard HOME paths already cover this root.
+            application = name
+        elif re.fullmatch(r'obsidianVault(?:[0-9]|[12][0-9]|3[01])', name):
+            application = 'obsidianVault'
+        else:
+            continue
+        selected += [{'root': name, 'path': path, 'exclude': []}
+                     for path in manifest['applicationRoots'][application]]
     for item in selected:
         root = locations[item['root']]
         if not root.is_absolute():
             raise ValueError('Recovery roots must be absolute')
+        if '..' in root.parts:
+            raise ValueError('Recovery roots must not contain parent traversal')
         path = root / relative(item['path'])
         excluded = [str(path / relative(value)) for value in item['exclude']]
         entries.append({'path': str(path), 'exclude': excluded})
@@ -190,13 +205,16 @@ def preserve(locations, directory, dconf=None):
     for name,value in doc['files'].items():
         path=Path(name)
         config_roots=[locations['config']]+([locations['settingsSource']] if 'settingsSource' in locations else [])
+        config_roots += [locations['home']/'.claude', locations['home']/'.t3']
+        config_roots += [root for key,root in locations.items()
+                         if key in ('claude','t3code') or key.startswith('obsidianVault')]
         if value['kind']!='link' or not any(path.is_relative_to(root) for root in config_roots) or not path.exists():
             continue
         target=path.resolve()
         covered=any((target==Path(entry['path']) or Path(entry['path']) in target.parents)
                     and not any(target==Path(p) or Path(p) in target.parents for p in entry['exclude']) for entry in entries)
         if not target.is_relative_to('/nix/store') and not covered:
-            raise ValueError('Mutable configuration link target is not covered; supply its settings source root: '+str(path))
+            raise ValueError('Mutable configuration link target is not covered by selected recovery roots: '+str(path))
     doc['gtk'] = gtk_read(dconf, manifest['gtkKeys']) if dconf else None
     validate_files(doc['files'], entries, directory / 'blobs')
     doc['status'] = 'preserved'

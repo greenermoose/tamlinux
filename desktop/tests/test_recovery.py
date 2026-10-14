@@ -69,6 +69,78 @@ class Recovery(unittest.TestCase):
         self.assertIn(str(new), files)
         self.assertEqual((self.roots['config']/'personal-unrelated').read_bytes(), b'leave me')
 
+    def test_custom_application_and_vault_roots_restore_without_touching_other_data(self):
+        locations={**self.roots,'claude':self.base/'custom-claude','t3code':self.base/'custom-t3',
+                   'obsidianVault0':self.base/'vault'}
+        files=[]
+        for root,name,data in [('claude','settings.json',b'old Claude settings'),
+                               ('claude','themes/tamlinux.json',b'old Claude theme'),
+                               ('t3code','userdata/themes/tamlinux.json',b'old T3 theme'),
+                               ('obsidianVault0','.obsidian/themes/Tamlinux/theme.css',b'old vault theme')]:
+            path=locations[root]/name;path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_bytes(data);path.chmod(0o640);files.append((path,data))
+        notes=locations['obsidianVault0']/'notes.md';notes.write_bytes(b'personal notes')
+        registry=self.write('config','obsidian/obsidian.json',b'{"vaults":{"original":{}}}')
+        r.preserve(locations,self.journal)
+        for path,_ in files:path.write_bytes(b'later application writes');path.chmod(0o600)
+        registry.write_bytes(b'{"vaults":{"later":{}}}')
+        added=locations['obsidianVault0']/'.obsidian/themes/Tamlinux/new.css';added.write_bytes(b'later generated file')
+        notes.write_bytes(b'later personal notes')
+        self.assertEqual(r.restore(locations,self.journal,stop_after=2)['status'],'restoring')
+        self.assertEqual(r.restore(locations,self.journal)['status'],'restored')
+        for path,data in files:
+            self.assertEqual(path.read_bytes(),data);self.assertEqual(path.stat().st_mode&0o777,0o640)
+        self.assertEqual(registry.read_bytes(),b'{"vaults":{"original":{}}}')
+        self.assertFalse(added.exists());self.assertEqual(notes.read_bytes(),b'later personal notes')
+        self.assertTrue(any(p.read_bytes()==b'later application writes' for p in (self.journal/'blobs').iterdir()))
+        self.assertTrue(any(p.read_bytes()==b'later generated file' for p in (self.journal/'blobs').iterdir()))
+
+    def test_custom_roots_must_match_and_cannot_expand_journal_destinations(self):
+        locations={**self.roots,'claude':self.base/'custom-claude'}
+        file=locations['claude']/'settings.json';file.parent.mkdir();file.write_bytes(b'original')
+        r.preserve(locations,self.journal);file.write_bytes(b'keep later')
+        with self.assertRaises(ValueError):r.restore(self.roots,self.journal)
+        doc=json.loads((self.journal/'checkpoint.json').read_text())
+        doc['entries'].append({'path':str(self.base/'unrelated'),'exclude':[]})
+        r.save(self.journal/'checkpoint.json',doc)
+        with self.assertRaises(ValueError):r.restore(locations,self.journal)
+        self.assertEqual(file.read_bytes(),b'keep later')
+
+    def test_standard_application_roots_do_not_overlap_the_home_manifest(self):
+        file=self.write('home','.claude/settings.json',b'original')
+        locations={**self.roots,'claude':self.roots['home']/'.claude','t3code':self.roots['home']/'.t3'}
+        r.preserve(locations,self.journal);file.write_bytes(b'later')
+        r.restore(locations,self.journal)
+        self.assertEqual(file.read_bytes(),b'original')
+
+    def test_custom_root_link_to_uncovered_mutable_settings_blocks_completion(self):
+        root=self.base/'custom-claude';root.mkdir();outside=self.base/'outside';outside.write_bytes(b'keep')
+        (root/'settings.json').symlink_to(outside)
+        locations={**self.roots,'claude':root}
+        with self.assertRaises(ValueError):r.preserve(locations,self.journal)
+        with self.assertRaises(ValueError):r.load(self.journal,locations)
+        self.assertEqual(outside.read_bytes(),b'keep')
+
+    def test_cli_binds_custom_roots_and_vaults_to_original_and_later_writes(self):
+        vault=self.base/'vault';theme=vault/'.obsidian/themes/Tamlinux/theme.css'
+        theme.parent.mkdir(parents=True);theme.write_bytes(b'old theme')
+        claude=self.base/'custom-claude';claude.mkdir();settings=claude/'settings.json';settings.write_bytes(b'old settings')
+        env={**os.environ,'HOME':str(self.roots['home'])}
+        env.update({'XDG_'+key.upper()+'_HOME':str(self.roots[key]) for key in ('config','state','data')})
+        env['CLAUDE_CONFIG_DIR']=str(claude);env.pop('T3CODE_HOME',None)
+        def call(action,*args):
+            return subprocess.run([shutil.which('python3'),'-B',str(ROOT/'desktop/migration/engine.py'),action,str(self.journal),*args],
+                                  env=env,capture_output=True,text=True)
+        self.assertEqual(call('preserve','--obsidian-vault',str(vault)).returncode,0)
+        settings.write_bytes(b'later settings');theme.write_bytes(b'later theme')
+        # Restore from the explicit captured root even after the runtime override changes.
+        env['CLAUDE_CONFIG_DIR']=str(self.base/'different-claude')
+        self.assertNotEqual(call('restore','--obsidian-vault',str(vault)).returncode,0)
+        result=call('restore','--claude-root',str(claude),'--obsidian-vault',str(vault))
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(settings.read_bytes(),b'old settings');self.assertEqual(theme.read_bytes(),b'old theme')
+        self.assertTrue(any(p.read_bytes()==b'later theme' for p in (self.journal/'blobs').iterdir()))
+
     def test_new_tree_deleted_tree_and_file_directory_replacements_restore(self):
         file = self.write('config', 'tamlinux/file', b'file before')
         child = self.write('config', 'foot/nested/config', b'child before')

@@ -44,6 +44,19 @@ RECOVERY_DIR=/var/lib/tamlinux/network-recovery
 NM_DNS_CONF=/etc/NetworkManager/conf.d/20-tamlinux-dns.conf
 RESOLVED_CONF=/etc/systemd/resolved.conf
 
+dns_recovery() {
+  local prefix
+  prefix=$(dirname "$(dirname "$(readlink -f -- "${BASH_SOURCE[0]}")")")
+  /usr/bin/python3 -I "$prefix/share/tamlinux/native/dns_recovery.py" "$@"
+}
+
+lock_dns() {
+  local directory
+  directory=$(dns_recovery directory) || return 1
+  exec 9>"$directory/.lock"
+  flock -x 9
+}
+
 # Tests read fixtures instead. Only the unprivileged read honours them; pkexec
 # clears the environment anyway, and root writes the fixed paths.
 if (( EUID != 0 )); then
@@ -100,33 +113,7 @@ require_root() {
 # The privileged half uses native tools, fixed destinations and root-private
 # snapshots. No environment path override is accepted for privileged writes.
 preserve_dns() {
-  local path index=0 uuid type field
-  umask 077
-  install -d -m 0700 "$RECOVERY_DIR" || return 1
-  snapshot=$(mktemp -d "$RECOVERY_DIR/dns.XXXXXX") || return 1
-  for path in "$NM_DNS_CONF" "$RESOLVED_CONF"; do
-    printf '%s\t%s\n' "$index" "$path" >>"$snapshot/manifest.tsv" || return 1
-    if [[ -e $path || -L $path ]]; then
-      cp -a -- "$path" "$snapshot/$index.original" || return 1
-      cp -L -- "$path" "$snapshot/$index.content" || return 1
-    else
-      touch "$snapshot/$index.absent" || return 1
-    fi
-    index=$((index + 1))
-  done
-  LC_ALL=C nmcli -t -f UUID,TYPE connection show >"$snapshot/connections.tsv" || return 1
-  while IFS=: read -r uuid type; do
-    networkmanager_dns_connection "$type" || continue
-    [[ $uuid =~ ^[0-9a-fA-F-]{36}$ ]] || return 1
-    mkdir "$snapshot/$uuid" || return 1
-    for field in ipv4.ignore-auto-dns ipv4.dns ipv6.ignore-auto-dns ipv6.dns; do
-      LC_ALL=C nmcli -e no -g "$field" connection show uuid "$uuid" \
-        >"$snapshot/$uuid/$field" || return 1
-    done
-  done <"$snapshot/connections.tsv"
-  # These are observations, not authority to restore an unavailable service.
-  systemctl is-active NetworkManager.service >"$snapshot/networkmanager.active" 2>&1 || true
-  systemctl is-active systemd-resolved.service >"$snapshot/resolved.active" 2>&1 || true
+  snapshot=$(dns_recovery preserve) || return 1
   echo "DNS originals preserved in $snapshot" >&2
 }
 
@@ -297,8 +284,22 @@ reload_dns_stack() {
 }
 
 usage() {
-  echo "Usage: tam-dns [Cloudflare|Google|DHCP|Custom]" >&2
+  echo "Usage: tam-dns [Cloudflare|Google|DHCP|Custom] | --checkpoint | --restore /var/lib/tamlinux/network-recovery/dns.CHECKPOINT" >&2
 }
+
+if [[ ${1:-} == --checkpoint ]] && (( $# == 1 )); then
+  require_root "$@"
+  lock_dns || exit 1
+  dns_recovery preserve
+  exit $?
+fi
+
+if [[ ${1:-} == --restore ]] && (( $# == 2 )); then
+  require_root "$@"
+  lock_dns || exit 1
+  dns_recovery restore "$2"
+  exit $?
+fi
 
 if (( $# == 0 )); then
   current_dns_provider
@@ -316,6 +317,7 @@ if ! provider=$(provider_from_arg "$1"); then
 fi
 
 require_root "$provider"
+lock_dns || exit 1
 
 preserve_dns || { echo "tam-dns: preservation failed; no DNS settings changed." >&2; exit 1; }
 
