@@ -21,3 +21,10 @@ compositor.
 Verification: the original helper fails the new stale-layout and invented-position
 regressions. All 57 workspace helper tests pass after correction, including signed
 coordinate restoration. Installed-output transition checks are recorded separately.
+
+Paired committed-output verification: 512 desktop checks pass with one existing
+skip; the fresh-session contract builds and 76 isolated installed-output probes
+pass. Three VM trials preserve saved positions after VT transitions and output
+reconnection. The physical preview retains its previous generation and GTK/settings
+checkpoint with unchanged saved layout bytes. The user reports, “Order and mouse
+path stay correct,” after two returns to the preview desktop.
