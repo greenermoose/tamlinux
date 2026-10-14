@@ -33,7 +33,7 @@ class Controls(unittest.TestCase):
         self.env['XDG_STATE_HOME'] = str(self.temp / 'state')
         for name in ('python3', 'sort', 'tr', 'tac', 'stat', 'xargs', 'tee', 'flock'):
             (self.bin / name).symlink_to(shutil.which(name))
-        source = self.recorder_source + '''
+        source = self.recorder_source.replace("elif name == 'systemctl':", "elif name == 'systemctl' and args[0] != 'is-active':") + '''
 elif name == 'nmcli':
     key = ' '.join(args)
     response = json.loads(os.environ.get('TEST_NM_RESPONSES', '{}')).get(key, '')
