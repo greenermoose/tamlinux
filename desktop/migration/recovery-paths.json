@@ -41,7 +41,14 @@
     {"root": "home", "path": ".claude/themes/tamlinux.json", "exclude": []},
     {"root": "home", "path": ".claude/settings.json", "exclude": []},
     {"root": "home", "path": ".t3/userdata/themes/tamlinux.json", "exclude": []},
-    {"root": "config", "path": "obsidian/obsidian.json", "exclude": []}
+    {"root": "config", "path": "obsidian/obsidian.json", "exclude": []},
+    {"root": "config", "path": "pipewire/tamlinux-speaker-tuning.conf", "exclude": []},
+    {"root": "config", "path": "pipewire/tamlinux-speaker-tuning.conf.d/90-tuning.conf", "exclude": []},
+    {"root": "config", "path": "systemd/user/tamlinux-speaker-tuning.service", "exclude": []},
+    {"root": "config", "path": "systemd/user/graphical-session.target.wants/tamlinux-speaker-tuning.service", "exclude": []},
+    {"root": "config", "path": "pipewire/pipewire.conf.d/90-tamlinux-speaker-tuning.conf", "exclude": []},
+    {"root": "config", "path": "wireplumber/wireplumber.conf.d/90-tamlinux-speaker-tuning.conf", "exclude": []},
+    {"root": "config", "path": "pipewire/filter-chain.conf.d/90-tamlinux-speaker-tuning.conf", "exclude": []}
   ],
   "applicationRoots": {
     "claude": ["themes/tamlinux.json", "settings.json"],

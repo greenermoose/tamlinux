@@ -188,7 +188,7 @@ def gtk_read(executable, keys):
     return values
 
 
-def preserve(locations, directory, dconf=None):
+def preserve(locations, directory, dconf=None, audio=None):
     manifest, entries = selections(locations)
     parents(directory)
     directory.mkdir(parents=True, mode=0o700, exist_ok=False)
@@ -216,6 +216,7 @@ def preserve(locations, directory, dconf=None):
         if not target.is_relative_to('/nix/store') and not covered:
             raise ValueError('Mutable configuration link target is not covered by selected recovery roots: '+str(path))
     doc['gtk'] = gtk_read(dconf, manifest['gtkKeys']) if dconf else None
+    doc['audio'] = audio_read(audio) if audio else None
     validate_files(doc['files'], entries, directory / 'blobs')
     doc['status'] = 'preserved'
     save(directory / 'checkpoint.json', doc)
@@ -281,19 +282,26 @@ def load(directory, locations):
             or any(v is not None and (not isinstance(v, str) or len(v) > 65536)
                    for v in doc['gtk'].values())):
         raise ValueError('Invalid GTK recovery inventory')
+    audio_validate(doc.get('audio'))
     return doc
 
 
-def restore(locations, directory, dconf=None, stop_after=None):
+def restore(locations, directory, dconf=None, stop_after=None, audio=None):
     doc = load(directory, locations)
     current = capture(doc['entries'], directory / 'blobs')
     gtk = gtk_read(dconf, list(doc['gtk'])) if doc['gtk'] is not None else None
+    audio_current = audio_read(audio) if doc.get('audio') is not None else None
     # Save the complete current tree before the first deletion/replacement.
-    later = {'schema': 1, 'files': current, 'gtk': gtk}
+    later = {'schema': 1, 'files': current, 'gtk': gtk, 'audio': audio_current}
     name = digest(json.dumps(later, sort_keys=True).encode()) + '.json'
     save(directory / 'new-writes' / name, later)
     doc['status'] = 'restoring'
     save(directory / 'checkpoint.json', doc)
+    if audio_current is not None:
+        if audio_read(audio) != audio_current:
+            raise ValueError('Audio changed after archival; retry to preserve newer values')
+        if audio_current['active'] == 'active':
+            audio_call(audio, 'systemctl', '--user', 'stop', AUDIO_UNIT)
     original = doc['files']
     changes = 0
     def changed():
@@ -365,6 +373,102 @@ def restore(locations, directory, dconf=None, stop_after=None):
             raise ValueError('GTK restore did not reach recorded user values')
     if capture(doc['entries'], directory / 'blobs') != original:
         raise ValueError('Settings changed during restoration; originals and later writes remain saved')
+    if audio_current is not None:
+        audio_restore(audio, doc['audio'])
     doc['status'] = 'restored'
     save(directory / 'checkpoint.json', doc)
     return doc
+
+
+AUDIO_UNIT = 'tamlinux-speaker-tuning.service'
+
+
+def audio_call(tools, name, *args, negative=False):
+    if not tools or set(tools) != {'systemctl', 'pactl'} or not all(
+            Path(value).is_absolute() for value in tools.values()):
+        raise ValueError('Audio recovery requires absolute systemctl and pactl providers')
+    result = subprocess.run([str(tools[name]), *args], capture_output=True, text=True, timeout=20)
+    if len(result.stdout) > 2 * 1024 * 1024:
+        raise ValueError('Audio response exceeds limit')
+    if result.returncode and not negative:
+        raise ValueError('Audio provider refused ' + name + ' ' + args[0])
+    return result.stdout.strip()
+
+
+def audio_validate(doc):
+    if doc is None:
+        return
+    if not isinstance(doc, dict) or set(doc) != {'unit', 'active', 'enabled', 'defaults', 'devices'}:
+        raise ValueError('Invalid audio recovery inventory')
+    if doc['unit'] != AUDIO_UNIT or doc['active'] not in ('active', 'inactive') or doc['enabled'] not in ('enabled', 'disabled', 'static', 'not-found'):
+        raise ValueError('Unsupported tuning service state')
+    if not isinstance(doc['defaults'], dict) or set(doc['defaults']) != {'sink', 'source'}:
+        raise ValueError('Invalid audio default inventory')
+    if not isinstance(doc['devices'], dict) or set(doc['devices']) != {'sink', 'source'}:
+        raise ValueError('Invalid audio device inventory')
+    for kind, devices in doc['devices'].items():
+        if not isinstance(devices, dict) or not 1 <= len(devices) <= 128:
+            raise ValueError('Expected bounded connected audio devices')
+        if doc['defaults'][kind] not in devices:
+            raise ValueError('Audio default is not a captured device')
+        for name, value in devices.items():
+            if not isinstance(name, str) or not name or name.startswith('-') or len(name) > 512 or any(c in name for c in '\0\n\r'):
+                raise ValueError('Invalid audio device name')
+            if not isinstance(value, dict) or set(value) != {'mute', 'volume'} or type(value['mute']) is not bool:
+                raise ValueError('Invalid audio device settings')
+            volume = value['volume']
+            if not isinstance(volume, dict) or not 1 <= len(volume) <= 64 or any(
+                    not isinstance(channel, str) or not channel or type(level) is not int or not 0 <= level <= 2147483647
+                    for channel, level in volume.items()):
+                raise ValueError('Unsupported audio channels/volume; preserve separately')
+
+
+def audio_read(tools):
+    active = audio_call(tools, 'systemctl', '--user', 'is-active', AUDIO_UNIT, negative=True)
+    enabled = audio_call(tools, 'systemctl', '--user', 'is-enabled', AUDIO_UNIT, negative=True)
+    devices = {}; defaults = {}
+    for kind in ('sink', 'source'):
+        rows = json.loads(audio_call(tools, 'pactl', '--format=json', 'list', kind + 's'))
+        if not isinstance(rows, list) or len(rows) > 128:
+            raise ValueError('Invalid audio provider device list')
+        devices[kind] = {}
+        for row in rows:
+            name = row['name']
+            if name in devices[kind]:
+                raise ValueError('Duplicate audio device name')
+            devices[kind][name] = {'mute': row['mute'], 'volume': {
+                channel: value['value'] for channel, value in row['volume'].items()}}
+        defaults[kind] = audio_call(tools, 'pactl', 'get-default-' + kind)
+    doc = {'unit': AUDIO_UNIT, 'active': active, 'enabled': enabled,
+           'defaults': defaults, 'devices': devices}
+    audio_validate(doc)
+    return doc
+
+
+def audio_restore(tools, original):
+    audio_validate(original)
+    audio_call(tools, 'systemctl', '--user', 'daemon-reload')
+    enabled = audio_call(tools, 'systemctl', '--user', 'is-enabled', AUDIO_UNIT, negative=True)
+    if enabled != original['enabled']:
+        raise ValueError('Tuning enablement differs; inspect unselected service links before retry')
+    if original['active'] == 'active':
+        audio_call(tools, 'systemctl', '--user', 'start', AUDIO_UNIT)
+    current = audio_read(tools)
+    # Original endpoints/channels must still exist; no substitutions by index.
+    for kind, devices in original['devices'].items():
+        for name, value in devices.items():
+            channels = current['devices'][kind].get(name, {}).get('volume', {})
+            if set(channels) != set(value['volume']):
+                raise ValueError('Original audio device/channels unavailable: ' + name)
+    for kind, devices in original['devices'].items():
+        for name, value in devices.items():
+            channels = current['devices'][kind][name]['volume']
+            audio_call(tools, 'pactl', 'set-' + kind + '-volume', name,
+                       *[str(value['volume'][channel]) for channel in channels])
+            audio_call(tools, 'pactl', 'set-' + kind + '-mute', name, '1' if value['mute'] else '0')
+        audio_call(tools, 'pactl', 'set-default-' + kind, original['defaults'][kind])
+    observed = audio_read(tools)
+    if observed['active'] != original['active'] or observed['enabled'] != original['enabled'] or observed['defaults'] != original['defaults'] or any(
+            observed['devices'][kind].get(name) != value
+            for kind, devices in original['devices'].items() for name, value in devices.items()):
+        raise ValueError('Audio restoration did not reach original values')

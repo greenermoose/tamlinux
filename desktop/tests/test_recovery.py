@@ -69,6 +69,87 @@ class Recovery(unittest.TestCase):
         self.assertIn(str(new), files)
         self.assertEqual((self.roots['config']/'personal-unrelated').read_bytes(), b'leave me')
 
+    def audio_fixture(self):
+        import copy
+        state = {'unit': r.AUDIO_UNIT, 'active': 'active', 'enabled': 'enabled',
+                 'defaults': {'sink': 'speakers', 'source': 'microphone'}, 'devices': {
+                 'sink': {'speakers': {'mute': False, 'volume': {'front-left': 32768, 'front-right': 16384}}},
+                 'source': {'microphone': {'mute': True, 'volume': {'mono': 8192}}}}}
+        original = copy.deepcopy(state)
+        def call(tools, provider, *args, **kwargs):
+            if provider == 'systemctl':
+                if args[1] == 'is-enabled': return state['enabled']
+                if args[1] == 'stop': state['active'] = 'inactive'
+                if args[1] == 'start': state['active'] = 'active'
+                return
+            operation, name, *values = args
+            if operation.startswith('set-default-'):
+                state['defaults'][operation.removeprefix('set-default-')] = name
+            elif operation.endswith('-volume'):
+                kind = operation.removeprefix('set-').removesuffix('-volume')
+                channels = state['devices'][kind][name]['volume']
+                state['devices'][kind][name]['volume'] = dict(zip(channels, map(int, values)))
+            else:
+                kind = operation.removeprefix('set-').removesuffix('-mute')
+                state['devices'][kind][name]['mute'] = values == ['1']
+        def read(tools):
+            if tools is None: raise ValueError('Missing audio clients')
+            return copy.deepcopy(state)
+        return state, original, call, read
+
+    def test_tuning_files_links_audio_and_later_values_restore_with_retry(self):
+        state, original, call, read = self.audio_fixture()
+        unit = self.write('config','systemd/user/'+r.AUDIO_UNIT,b'original unit',0o640)
+        link=self.roots['config']/('systemd/user/graphical-session.target.wants/'+r.AUDIO_UNIT)
+        link.parent.mkdir(parents=True);link.symlink_to('../'+r.AUDIO_UNIT)
+        host=self.write('config','pipewire/tamlinux-speaker-tuning.conf',b'original host')
+        stale=self.write('config','wireplumber/wireplumber.conf.d/90-tamlinux-speaker-tuning.conf',b'prior config')
+        tools={'systemctl':'/bin/systemctl','pactl':'/bin/pactl'}
+        with patch.object(r,'audio_read',side_effect=read), patch.object(r,'audio_call',side_effect=call):
+            saved=r.preserve(self.roots,self.journal,audio=tools)
+            self.assertEqual(saved['audio'],original)
+            host.write_bytes(b'later tuning');unit.write_bytes(b'later unit');stale.unlink()
+            state['devices']['sink']['speakers']['volume']['front-left']=50000
+            state['devices']['source']['microphone']['mute']=False
+            later=json.loads(json.dumps(state))
+            with self.assertRaises(ValueError): r.restore(self.roots,self.journal)
+            self.assertEqual(host.read_bytes(),b'later tuning')
+            self.assertEqual(r.restore(self.roots,self.journal,audio=tools,stop_after=1)['status'],'restoring')
+            # A completed original may have different service state after the partial stop.
+            result=r.restore(self.roots,self.journal,audio=tools)
+            self.assertEqual(result['status'],'restored');self.assertEqual(state,original)
+        self.assertEqual(host.read_bytes(),b'original host');self.assertEqual(unit.read_bytes(),b'original unit')
+        self.assertEqual(unit.stat().st_mode&0o777,0o640);self.assertEqual(stale.read_bytes(),b'prior config')
+        self.assertEqual(link.readlink(),Path('../'+r.AUDIO_UNIT))
+        records=[json.loads(p.read_text()) for p in (self.journal/'new-writes').glob('*.json')]
+        self.assertTrue(any(doc['audio']==later for doc in records))
+        self.assertTrue(any(p.read_bytes()==b'later tuning' for p in (self.journal/'blobs').iterdir()))
+
+    def test_audio_restore_checks_device_names_and_channels_before_volume_mutation(self):
+        state,original,call,read=self.audio_fixture();state['active']='inactive'
+        # Channel enumeration changes; restoration still sends values in current order.
+        state['devices']['sink']['speakers']['volume']={'front-right':9000,'front-left':50000}
+        def provider(tools,name,*args,**kwargs):
+            if name=='systemctl' and args[1]=='is-enabled':return 'enabled'
+            return call(tools,name,*args,**kwargs)
+        with patch.object(r,'audio_read',side_effect=read),patch.object(r,'audio_call',side_effect=provider):
+            r.audio_restore({},original)
+            self.assertEqual(state,original)
+            state['devices']['sink']['different']=state['devices']['sink'].pop('speakers')
+            with self.assertRaisesRegex(ValueError,'unavailable'):r.audio_restore({},original)
+        r.audio_validate(original)
+        original['devices']['sink']['speakers']['volume']['front-left']=2147483648
+        with self.assertRaises(ValueError):r.audio_validate(original)
+
+    def test_edited_audio_unit_inventory_cannot_control_an_unlisted_service(self):
+        state,original,call,read=self.audio_fixture()
+        with patch.object(r,'audio_read',side_effect=read):r.preserve(self.roots,self.journal,audio={'systemctl':'/bin/systemctl','pactl':'/bin/pactl'})
+        doc=json.loads((self.journal/'checkpoint.json').read_text());doc['audio']['unit']='arbitrary.service'
+        r.save(self.journal/'checkpoint.json',doc)
+        with patch.object(r,'audio_call') as provider:
+            with self.assertRaises(ValueError):r.restore(self.roots,self.journal,audio={})
+            provider.assert_not_called()
+
     def test_custom_application_and_vault_roots_restore_without_touching_other_data(self):
         locations={**self.roots,'claude':self.base/'custom-claude','t3code':self.base/'custom-t3',
                    'obsidianVault0':self.base/'vault'}
