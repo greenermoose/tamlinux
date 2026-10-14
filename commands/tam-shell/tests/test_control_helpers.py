@@ -31,7 +31,7 @@ class Controls(unittest.TestCase):
     def setUp(self):
         installed.DesktopHelpers.setUp(self)
         self.env['XDG_STATE_HOME'] = str(self.temp / 'state')
-        for name in ('python3', 'sort', 'tr', 'tac', 'stat', 'xargs', 'tee'):
+        for name in ('python3', 'sort', 'tr', 'tac', 'stat', 'xargs', 'tee', 'flock'):
             (self.bin / name).symlink_to(shutil.which(name))
         source = self.recorder_source + '''
 elif name == 'nmcli':
@@ -39,7 +39,7 @@ elif name == 'nmcli':
     response = json.loads(os.environ.get('TEST_NM_RESPONSES', '{}')).get(key, '')
     print(response, end='\\n' if response else '')
     if args[:2] == ['connection', 'up'] and os.environ.get('TEST_REASSOC_FAIL'): sys.exit(1)
-    if os.environ.get('TEST_NM_FAIL') and args == ['-t', '-f', 'UUID,TYPE', 'connection', 'show']: sys.exit(1)
+    if os.environ.get('TEST_NM_FAIL') and args in (['-t', '-f', 'UUID,TYPE', 'connection', 'show'], ['-t', '-e', 'no', '-f', 'UUID,TYPE', 'connection', 'show']): sys.exit(1)
 elif name == 'iw': print(os.environ.get('TEST_IW_LINK', 'SSID: Fixture\\nfreq: 5180'))
 elif name == 'ip': print(os.environ.get('TEST_ROUTE', ''))
 elif name == 'qrencode':
@@ -323,11 +323,23 @@ elif name == 'cp':
         source = source.replace('RESOLVED_CONF=/etc/systemd/resolved.conf', 'RESOLVED_CONF=' + str(self.dns_resolved))
         source = source.replace('export PATH=/usr/bin:/bin', 'export PATH=' + self.env['PATH'])
         source = source.replace('require_root "$provider"', ': # recorded root authorization boundary')
+        helper = (self.prefix/'share/tamlinux/native/dns_recovery.py').read_text()
+        helper = helper.replace("BASE = Path('/var/lib/tamlinux/network-recovery')",
+                                'BASE = Path(' + repr(str(self.dns_dir/'recovery')) + ')')
+        helper = helper.replace("FILES = (Path('/etc/NetworkManager/conf.d/20-tamlinux-dns.conf'), Path('/etc/systemd/resolved.conf'))",
+                                'FILES = (Path(' + repr(str(self.dns_nm)) + '), Path(' + repr(str(self.dns_resolved)) + '))')
+        helper = helper.replace('uid=0', 'uid=os.getuid()').replace('if os.getuid() != 0:', 'if False:')
+        helper = helper.replace("['/usr/bin/' + tool, *args]", "[os.environ['TEST_BIN'] + '/' + tool, *args]")
+        helper = helper.replace("env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'}", 'env=dict(os.environ)')
+        native_fixture = self.temp/'dns-native-fixture.py';native_fixture.write_text(helper)
+        source = source.replace('/usr/bin/python3 -I "$prefix/share/tamlinux/native/dns_recovery.py"',
+                                sys.executable + ' -I "' + str(native_fixture) + '"')
+        self.env['TEST_BIN'] = str(self.bin)
         path = self.temp / 'dns-body'
         path.write_text(source)
         path.chmod(0o755)
         self.dns_script = path
-        self.dns_responses = {'-t -f UUID,TYPE connection show': UUID + ':802-11-wireless\n' +
+        self.dns_responses = {'-t -e no -f UUID,TYPE connection show': UUID + ':802-11-wireless\n' +
                              '66666666-7777-8888-9999-aaaaaaaaaaaa:vpn'}
         for field, value in {'ipv4.dns': '192.0.2.53', 'ipv6.dns': '',
                              'ipv4.ignore-auto-dns': 'no', 'ipv6.ignore-auto-dns': 'no'}.items():
@@ -343,9 +355,10 @@ elif name == 'cp':
         result = self.run_dns_body('Google')
         self.assertEqual(result.returncode, 0, result.stderr)
         snapshot, = (self.dns_dir / 'recovery').glob('dns.*')
-        self.assertTrue((snapshot / '0.absent').exists())
-        self.assertEqual((snapshot / '1.content').read_text(), '[Resolve]\nDNS=192.0.2.1\n# original\n')
-        self.assertEqual((snapshot / UUID / 'ipv4.dns').read_text(), '192.0.2.53\n')
+        original = json.loads((snapshot/'checkpoint.json').read_text())['before']
+        self.assertEqual(original['files'][str(self.dns_nm)], {'present': False})
+        self.assertEqual(__import__('base64').b64decode(original['files'][str(self.dns_resolved)]['bytes']).decode(), '[Resolve]\nDNS=192.0.2.1\n# original\n')
+        self.assertEqual(original['profiles'][UUID]['fields']['ipv4.dns'], '192.0.2.53')
         self.assertIn('servers=8.8.8.8', self.dns_nm.read_text())
         self.assertIn('DNS=8.8.8.8#dns.google', self.dns_resolved.read_text())
         self.assertEqual(len([c for c in self.calls('nmcli') if c['args'][:2] == ['connection', 'modify']]), 1)
@@ -353,11 +366,15 @@ elif name == 'cp':
     def test_dns_backup_or_profile_query_failure_stops_every_mutation(self):
         self.dns_fixture()
         before = self.dns_resolved.read_text()
-        for env in ({'TEST_COPY_FAIL': '1'}, {'TEST_NM_FAIL': '1'}):
-            result = self.run_dns_body('Google', **env)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(self.dns_resolved.read_text(), before)
-            self.assertFalse(self.dns_nm.exists())
+        saved = self.dns_dir/'original.resolved';self.dns_resolved.rename(saved);self.dns_resolved.symlink_to(saved)
+        result = self.run_dns_body('Google')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.dns_resolved.read_text(), before)
+        self.dns_resolved.unlink();saved.rename(self.dns_resolved)
+        result = self.run_dns_body('Google', TEST_NM_FAIL='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.dns_resolved.read_text(), before)
+        self.assertFalse(self.dns_nm.exists())
         self.assertFalse([c for c in self.calls('nmcli') if c['args'][:2] == ['connection', 'modify']])
 
     def test_dns_source_mutation_refuses_untrusted_copy(self):
