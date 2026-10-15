@@ -44,8 +44,24 @@ render_hibernate_preflight() {
     swapon --show --bytes 2>&1
     printf 'section=swapon_bytes end\n'
     printf 'section=meminfo begin\n'
-    grep -E '^(Shmem|Unevictable|Mlocked)' /proc/meminfo 2>&1
+    grep -E '^(MemTotal|MemFree|SwapCached|Active|Inactive|AnonPages|Shmem|Unevictable|Mlocked|SReclaimable|SUnreclaim|KernelStack|PageTables|VmallocUsed|GPUActive)' /proc/meminfo 2>&1
     printf 'section=meminfo end\n'
+    # The image must fit in about half of RAM, and pages in tmpfs and zram
+    # stay in RAM through hibernation: zram outranks disk swap, so reclaim
+    # only recompresses them. Large tmpfs files swapped into zram can make
+    # preallocation fail ("Image allocation is N pages short"). Record what
+    # pins RAM: zram's raw counters (huge_pages are stored uncompressed),
+    # every tmpfs mount, and the largest entries in /tmp.
+    printf 'section=zram_mm_stat begin\n'
+    printf 'orig_data_size compr_data_size mem_used_total mem_limit mem_used_max same_pages pages_compacted huge_pages huge_pages_since\n'
+    cat /sys/block/zram0/mm_stat 2>&1
+    printf 'section=zram_mm_stat end\n'
+    printf 'section=tmpfs_bytes begin\n'
+    df -B1 --output=target,used,size -t tmpfs 2>&1
+    printf 'section=tmpfs_bytes end\n'
+    printf 'section=tmp_top_bytes begin\n'
+    timeout 10 du -x -B1 -d1 /tmp 2>/dev/null | sort -rn | head -n 11
+    printf 'section=tmp_top_bytes end\n'
   } | sed "s/^/attempt=$attempt_id trigger=$trigger /"
 }
 
