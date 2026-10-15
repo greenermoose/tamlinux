@@ -8,6 +8,9 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## 0.4.3-d - Develop
 
+- Refresh browser policy only for an existing local default profile, with a
+  deadline, so changing themes does not start and wait on a closed browser.
+
 - Isolate the shell's paired graphics provider at every inheriting QML child
   launch, restoring the caller's original graphics settings for host programs.
 - Preserve explicitly empty caller values and remove internal provider markers.
