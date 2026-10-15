@@ -27,6 +27,7 @@
     {"root": "state", "path": "omarchy", "exclude": []},
     {"root": "home", "path": ".bashrc", "exclude": []},
     {"root": "home", "path": ".bash_profile", "exclude": []},
+    {"root": "home", "path": ".gnupg/dirmngr.conf", "exclude": []},
     {"root": "data", "path": "applications", "exclude": []},
     {"root": "home", "path": ".vscode/extensions/tam-theme", "exclude": []},
     {"root": "home", "path": ".vscode/extensions/extensions.json", "exclude": []},

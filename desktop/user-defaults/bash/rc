@@ -1,0 +1,7 @@
+TAMLINUX_BASH_DIR="$HOME/.config/bash/tamlinux"
+source "$TAMLINUX_BASH_DIR/envs"
+source "$TAMLINUX_BASH_DIR/shell"
+source "$TAMLINUX_BASH_DIR/aliases"
+source "$TAMLINUX_BASH_DIR/functions"
+source "$TAMLINUX_BASH_DIR/init"
+[[ $- == *i* ]] && bind -f "$TAMLINUX_BASH_DIR/inputrc"

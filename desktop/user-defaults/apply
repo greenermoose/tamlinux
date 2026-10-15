@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Give this user the Tamlinux bash defaults and GnuPG keyserver list, once.
+
+~/.bashrc: a regular file gets two marked blocks (env first, so SSH and
+non-interactive shells get the paths; rc last, so the defaults are not
+overridden by the distribution's skeleton). The original is kept once under
+$XDG_STATE_HOME/tamlinux/user-defaults. A link means another manager owns the
+file; it is left alone. ~/.gnupg/dirmngr.conf is written only when missing,
+and never again after the user deletes it. --remove takes out exactly what
+this wrote and keeps every other change.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+LIMIT = 1024 * 1024
+ENV_BLOCK = (
+    "# >>> tamlinux env >>>\n"
+    "# Added once by Tamlinux; delete both marked blocks to opt out.\n"
+    "[[ -r ~/.config/bash/tamlinux/env ]] && . ~/.config/bash/tamlinux/env\n"
+    "# <<< tamlinux env <<<\n")
+RC_BLOCK = (
+    "\n# >>> tamlinux rc >>>\n"
+    "[[ $- == *i* && -r ~/.config/bash/tamlinux/rc ]] && . ~/.config/bash/tamlinux/rc\n"
+    "# <<< tamlinux rc <<<\n")
+MARKERS = ("# >>> tamlinux env >>>", "# >>> tamlinux rc >>>")
+
+
+def locations(environ):
+    home = Path(environ["HOME"])
+    state = Path(environ.get("XDG_STATE_HOME") or home / ".local/state")
+    if not home.is_absolute() or not state.is_absolute():
+        raise ValueError("HOME and XDG_STATE_HOME must be absolute")
+    return home, state / "tamlinux/user-defaults"
+
+
+def regular(path):
+    """Return (bytes, mode) for an owned bounded regular file, None if absent, 'link' for a link."""
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if stat.S_ISLNK(info.st_mode):
+        return "link"
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_size > LIMIT:
+        raise ValueError("Expected an owned bounded regular file: " + str(path))
+    return path.read_bytes(), stat.S_IMODE(info.st_mode)
+
+
+def directory(path, mode):
+    if path.is_symlink():
+        raise ValueError("Redirected directory: " + str(path))
+    path.mkdir(mode=mode, parents=True, exist_ok=True)
+
+
+def write(path, data, mode):
+    descriptor, name = tempfile.mkstemp(prefix=".tamlinux-defaults-", dir=path.parent)
+    try:
+        os.write(descriptor, data)
+        os.fchmod(descriptor, mode)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    try:
+        os.replace(name, path)
+    except BaseException:
+        Path(name).unlink(missing_ok=True)
+        raise
+
+
+def apply(home, record):
+    result = {}
+    bashrc = home / ".bashrc"
+    current = regular(bashrc)
+    if current == "link":
+        result["bashrc"] = "managed elsewhere; unchanged"
+    elif current is not None and any(m.encode() in current[0] for m in MARKERS):
+        result["bashrc"] = "already present"
+    else:
+        data, mode = current if current else (b"", 0o644)
+        text = data.decode("utf-8")
+        directory(record, 0o700)
+        original = record / "bashrc.original"
+        if not original.exists():
+            write(original, json.dumps({"kind": "file" if current else "absent", "text": text, "mode": mode}).encode(), 0o600)
+        write(bashrc, (ENV_BLOCK + text + RC_BLOCK).encode(), mode)
+        result["bashrc"] = "blocks added"
+
+    conf = home / ".gnupg/dirmngr.conf"
+    marker = record / "dirmngr.json"
+    if conf.exists() or conf.is_symlink():
+        result["dirmngr"] = "present; unchanged"
+    elif marker.exists():
+        result["dirmngr"] = "removed by user; not recreated"
+    else:
+        data = (HERE / "gnupg/dirmngr.conf").read_bytes()
+        directory(home / ".gnupg", 0o700)
+        directory(record, 0o700)
+        write(conf, data, 0o600)
+        write(marker, json.dumps({"sha256": hashlib.sha256(data).hexdigest()}).encode(), 0o600)
+        result["dirmngr"] = "written"
+    return result
+
+
+def remove(home, record):
+    result = {}
+    bashrc = home / ".bashrc"
+    current = regular(bashrc)
+    if current is None or current == "link":
+        result["bashrc"] = "nothing to remove"
+    else:
+        text = current[0].decode("utf-8")
+        if not any(m in text for m in MARKERS):
+            result["bashrc"] = "nothing to remove"
+        elif text.count(ENV_BLOCK) != 1 or text.count(RC_BLOCK) != 1:
+            raise ValueError("Tamlinux blocks in ~/.bashrc were edited; remove them by hand")
+        else:
+            rest = text.replace(ENV_BLOCK, "", 1).replace(RC_BLOCK, "", 1)
+            original = record / "bashrc.original"
+            created = original.exists() and json.loads(original.read_text())["kind"] == "absent"
+            if created and not rest:
+                bashrc.unlink()
+            else:
+                write(bashrc, rest.encode(), current[1])
+            result["bashrc"] = "blocks removed"
+
+    conf = home / ".gnupg/dirmngr.conf"
+    marker = record / "dirmngr.json"
+    current = regular(conf)
+    if not marker.exists():
+        result["dirmngr"] = "nothing to remove"
+    elif current is None:
+        marker.unlink()
+        result["dirmngr"] = "already absent"
+    elif current != "link" and hashlib.sha256(current[0]).hexdigest() == json.loads(marker.read_text())["sha256"]:
+        conf.unlink()
+        marker.unlink()
+        result["dirmngr"] = "removed"
+    else:
+        result["dirmngr"] = "changed since written; kept"
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--remove", action="store_true", help="take out exactly what this added")
+    args = parser.parse_args()
+    try:
+        home, record = locations(os.environ)
+        result = remove(home, record) if args.remove else apply(home, record)
+    except (OSError, ValueError, UnicodeError) as error:
+        parser.exit(2, "tamlinux-user-defaults: " + str(error) + "\n")
+    print(json.dumps(result, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
