@@ -3,19 +3,38 @@ import Quickshell
 import Quickshell.WindowManager
 import "protocol_model.js" as Model
 
-// Bind the lazy models and all nested fields used by snapshot(). The binding
-// tracks active/urgent/projection and screen geometry changes, not only lists.
+// Poll the protocol models; never bind to them. Quickshell commits an
+// ext-workspace batch inside one Qt property update group. A QML binding over
+// those bindable fields re-captures its observers during the group's
+// notification pass, and Qt can then call a freed observer (2026-10-14 TTY1
+// crashes). Plain reads in a timer handler register no observers.
 QtObject {
   id: state
-  property var windowsets: WindowManager.windowsets
-  property var screens: Quickshell.screens
-  readonly property var snapshot: Model.snapshot(windowsets, screens)
+  // Fixtures assign lists here; null reads the live compositor models.
+  property var windowsets: null
+  property var screens: null
+  property int pollInterval: 250
+  property var snapshot: Model.snapshot([], [])
+  property string snapshotKey: ""
+
+  function currentSets() { return windowsets !== null ? windowsets : WindowManager.windowsets }
+  function currentScreens() { return screens !== null ? screens : Quickshell.screens }
+
+  // Publish only real changes so snapshotChanged keeps meaning "facts moved".
+  function refresh() {
+    var next = Model.snapshot(currentSets(), currentScreens())
+    var key = JSON.stringify(next)
+    if (key === snapshotKey) return
+    snapshotKey = key
+    snapshot = next
+  }
 
   function activate(number) {
     var id = Model.workspaceNumber(number)
     if (!id) return false
-    for (var i = 0; i < windowsets.length && i < Model.listLimit; i++) {
-      var set = windowsets[i]
+    var sets = currentSets() || []
+    for (var i = 0; i < sets.length && i < Model.listLimit; i++) {
+      var set = sets[i]
       if (!set || Model.workspaceNumber(set.name) !== id) continue
       // Active workspaces commonly cannot activate; that is already success.
       if (set.active) return true
@@ -29,13 +48,15 @@ QtObject {
   function assign(number, outputName) {
     var id = Model.workspaceNumber(number)
     if (!id || !Model.validName(outputName)) return false
+    var outputs = currentScreens() || []
     var screen = null
-    for (var s = 0; s < screens.length && s < Model.listLimit; s++) {
-      if (screens[s] && screens[s].name === outputName) screen = screens[s]
+    for (var s = 0; s < outputs.length && s < Model.listLimit; s++) {
+      if (outputs[s] && outputs[s].name === outputName) screen = outputs[s]
     }
     if (!screen) return false
-    for (var i = 0; i < windowsets.length && i < Model.listLimit; i++) {
-      var set = windowsets[i]
+    var sets = currentSets() || []
+    for (var i = 0; i < sets.length && i < Model.listLimit; i++) {
+      var set = sets[i]
       if (!set || Model.workspaceNumber(set.name) !== id) continue
       if (!set.canSetProjection) return false
       var projection = WindowManager.screenProjection(screen)
@@ -45,4 +66,12 @@ QtObject {
     }
     return false
   }
+
+  readonly property Timer poll: Timer {
+    interval: state.pollInterval
+    running: true
+    repeat: true
+    onTriggered: state.refresh()
+  }
+  Component.onCompleted: refresh()
 }
