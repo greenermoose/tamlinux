@@ -1,5 +1,5 @@
 {
-  "name": "Omarchy",
+  "name": "Tamlinux",
   "appearance": "{{ mode }}",
   "canvas": "{{ background }}",
   "accent": "{{ accent }}",

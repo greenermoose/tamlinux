@@ -111,3 +111,5 @@ side and any rework: [`delegations.md`](delegations.md).
 - [2026-10-14 — Monitor geometry during workspace reconciliation](2026-10-14-monitor-persistence.md)
 
 - [2026-10-14 — Desktop recovery preparation](2026-10-14-desktop-recovery-kit.md)
+
+- [2026-10-14 — Desktop Test b preparation](2026-10-14-desktop-test-b.md)

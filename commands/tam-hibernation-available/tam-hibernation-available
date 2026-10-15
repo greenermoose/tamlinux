@@ -37,7 +37,31 @@ SWAPSIZE=$(( 1024 * ${SWAPSIZE_KB:-0} ))
 
 HIBERNATION_IMAGE_SIZE=$(cat /sys/power/image_size)
 
-if (( SWAPSIZE > HIBERNATION_IMAGE_SIZE )) && [[ -f ${TAM_RESUME_CONF:-/etc/mkinitcpio.conf.d/tamlinux_resume.conf} ]]; then
+# Resume is configured when the kernel names a resume device and the effective
+# initramfs HOOKS run a resume step (the resume hook, or systemd's own). This
+# reads the boot provider's result rather than one provider's file name, so it
+# holds before and after the boot handoff. TAM_RESUME_CONF still forces a file.
+resume_configured() {
+  if [[ -n ${TAM_RESUME_CONF:-} ]]; then
+    [[ -f $TAM_RESUME_CONF ]]
+    return
+  fi
+  grep -qE '(^| )resume=[^ ]' "${TAM_KERNEL_CMDLINE:-/proc/cmdline}" 2>/dev/null || return 1
+  local main=${TAM_MKINITCPIO_CONF:-/etc/mkinitcpio.conf}
+  local dir=${TAM_MKINITCPIO_CONF_DIR:-/etc/mkinitcpio.conf.d}
+  # mkinitcpio sources the main file, then conf.d in order; later HOOKS win.
+  local hooks
+  hooks=$(
+    HOOKS=()
+    for conf in "$main" "$dir"/*.conf; do
+      [[ -r $conf ]] && . "$conf" >/dev/null 2>&1
+    done
+    printf ' %s ' "${HOOKS[@]}"
+  ) || return 1
+  [[ $hooks == *" resume "* || $hooks == *" systemd "* ]]
+}
+
+if (( SWAPSIZE > HIBERNATION_IMAGE_SIZE )) && resume_configured; then
   exit 0
 else
   exit 1

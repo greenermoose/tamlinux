@@ -341,3 +341,8 @@ removed invented physical geometry from connector-only topology.
 
 Desktop recovery and 0.4.3-a preparation: Codex CLI 0.162.1, `gpt-6.1-sol`.
 See [session record](docs/ai/2026-10-14-desktop-recovery-kit.md).
+
+## Desktop Test b preparation
+
+Reviewed peer patches, approved background removal and exact inactive kit preparation.
+[Session record](docs/ai/2026-10-14-desktop-test-b.md).

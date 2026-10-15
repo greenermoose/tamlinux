@@ -129,6 +129,28 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual((self.current/'background').resolve(),image)
         self.call('bg-next'); self.assertNotEqual((self.current/'background').resolve(),image)
 
+    def test_refresh_retires_bundled_background_and_journals_original(self):
+        self.call('set', 'tokyo-night')
+        old_generation = (self.current/'theme').resolve()
+        old = old_generation/'backgrounds/6-oma.jpg'
+        old.write_bytes(b'retained original image')
+        self.call('bg-set', old)
+        self.call('refresh')
+        self.assertNotEqual((self.current/'background').resolve(), old)
+        self.assertTrue((self.current/'background').is_file())
+        self.assertEqual(old.read_bytes(), b'retained original image')
+        journals = [json.loads(p.read_text()) for p in
+                    (self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json')]
+        self.assertTrue(any(any(f.get('symlink') == str(old) for f in j['files'])
+                            for j in journals))
+
+    def test_refresh_preserves_same_named_personal_background(self):
+        self.call('set', 'tokyo-night')
+        personal = self.base/'6-oma.jpg'; personal.write_bytes(b'personal image')
+        self.call('bg-set', personal)
+        self.call('refresh')
+        self.assertEqual((self.current/'background').resolve(), personal)
+
     def test_remove_preserves_user_tree_and_returns_to_baseline(self):
         user=self.config/'tamlinux/themes/extra'; user.mkdir(parents=True)
         shutil.copyfile(ASSETS/'themes/nord/colors.toml',user/'colors.toml')

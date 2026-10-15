@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "backgrounds": [
+    "flexoki-light/backgrounds/2-omarchy.png",
+    "lupine/backgrounds/06-omarchy.png",
+    "rose-pine/backgrounds/3-omarchy-plants.png",
+    "lumon/backgrounds/02-opinions-equally.jpg",
+    "tokyo-night/backgrounds/5-oma-cityscape.jpg",
+    "tokyo-night/backgrounds/6-oma.jpg"
+  ],
+  "reason": "Removed marked images; retain prior selections in settings recovery and use the first remaining background on refresh."
+}

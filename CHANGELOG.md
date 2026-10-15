@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.3-b - Develop
+
+- Generate application themes with Tamlinux display names.
+- Detect hibernation from effective resume configuration across boot providers.
+- Remove six marked backgrounds; refresh journals retired selections and chooses
+  a remaining image. Original images remain in retained earlier candidates.
+
 ## 0.4.3-a - Develop
 
 - Prepare the independent desktop candidate and recover persistent WirePlumber

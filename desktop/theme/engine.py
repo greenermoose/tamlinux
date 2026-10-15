@@ -124,6 +124,18 @@ def images(*directories):
 def background_paths():
     return images(CURRENT / 'theme/backgrounds', CONFIG / 'tamlinux/backgrounds' / selected())
 
+def retired_background(path, theme):
+    """Only retire bundled selections, never a same-named personal image."""
+    retired = json.loads((ASSETS / 'retired-backgrounds.json').read_text())['backgrounds']
+    if theme + '/backgrounds/' + path.name not in retired:
+        return False
+    roots = [STATE / 'theme-generations', ASSETS / 'themes']
+    # Prior immutable package outputs remain valid rollback inputs.
+    parts = path.parts
+    packaged = (len(parts) > 4 and parts[:3] == ('/', 'nix', 'store')
+                and '/share/tamlinux/assets/themes/' in str(path))
+    return packaged or any(path.is_relative_to(root) for root in roots)
+
 def sync_shell():
     # A stopped shell is valid during staging/fresh provisioning.
     for service, method in (('theme', 'reload'), ('background', 'refresh')):
@@ -196,7 +208,8 @@ def set_theme(value, refresh=False, apply=True):
                 remove(CURRENT / 'theme')
             atomic(CURRENT / 'theme', link=stage)
             atomic(CURRENT / 'theme.name', theme + '\n')
-            if not refresh:
+            old = (CURRENT / 'background').resolve()
+            if not refresh or retired_background(old, theme):
                 choices = background_paths()
                 if choices:
                     old = (CURRENT / 'background').resolve()

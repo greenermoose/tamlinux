@@ -983,16 +983,6 @@
       "sha256": "c04a61df9928f1c1b078050078648bd9d717326e5cc19fc9de6228989af01f24"
     },
     {
-      "source": "themes/tokyo-night/backgrounds/5-oma-cityscape.jpg",
-      "destination": "desktop/assets/themes/tokyo-night/backgrounds/5-oma-cityscape.jpg",
-      "sha256": "22e1d639722b33fa6f0d3ac2733450b4bae961b481f5665cb16397bc5f714e5c"
-    },
-    {
-      "source": "themes/tokyo-night/backgrounds/6-oma.jpg",
-      "destination": "desktop/assets/themes/tokyo-night/backgrounds/6-oma.jpg",
-      "sha256": "41b8b6a175bb493e16e11c0829f9366491129520922c5c05e112e0295132bc14"
-    },
-    {
       "source": "themes/solitude/backgrounds/1-on-pole.jpg",
       "destination": "desktop/assets/themes/solitude/backgrounds/1-on-pole.jpg",
       "sha256": "988aa9e2e1d1ec5af1e9fcf69f8571fe1c53c31cd1f8053cafa1def6700505ad"
@@ -1026,11 +1016,6 @@
       "source": "themes/rose-pine/backgrounds/2-dot-map.png",
       "destination": "desktop/assets/themes/rose-pine/backgrounds/2-dot-map.png",
       "sha256": "5677cd61e3472270bbdac862df5574e47e8109a0e47e4d78c0dcb386165bd7f6"
-    },
-    {
-      "source": "themes/rose-pine/backgrounds/3-omarchy-plants.png",
-      "destination": "desktop/assets/themes/rose-pine/backgrounds/3-omarchy-plants.png",
-      "sha256": "3d19aff7875609d8c28811b150ac59afa5863b5dee83b4bac8530ffe59c949cb"
     },
     {
       "source": "themes/ristretto/backgrounds/0-launch.png",
@@ -1173,19 +1158,9 @@
       "sha256": "ea91d0dc8682b90d6875755ee06730c2ac82f8cff255ec5a1e5952b65a77669b"
     },
     {
-      "source": "themes/lupine/backgrounds/06-omarchy.png",
-      "destination": "desktop/assets/themes/lupine/backgrounds/06-omarchy.png",
-      "sha256": "ea42dccef5636a9f63da6e1c664073ad111a8a3b0caffb9d994d289928ffbef2"
-    },
-    {
       "source": "themes/lumon/backgrounds/01-united-in-severance.jpg",
       "destination": "desktop/assets/themes/lumon/backgrounds/01-united-in-severance.jpg",
       "sha256": "c172bb5c438baabd6836139bb85e9b011b64c4f0fecc8bc2c3dfc5b864141c55"
-    },
-    {
-      "source": "themes/lumon/backgrounds/02-opinions-equally.jpg",
-      "destination": "desktop/assets/themes/lumon/backgrounds/02-opinions-equally.jpg",
-      "sha256": "5e1f7f82aba47dfe0a7cb1082af57da467887021e018f47b23c7a60f4d3be302"
     },
     {
       "source": "themes/last-horizon/backgrounds/1-eyes-wide.jpg",
@@ -1251,11 +1226,6 @@
       "source": "themes/flexoki-light/backgrounds/1-orb.png",
       "destination": "desktop/assets/themes/flexoki-light/backgrounds/1-orb.png",
       "sha256": "5fec32ec9b7270c4afe5f36ac2885a8f37bff1a5a8ae4edb3b01b7d262628456"
-    },
-    {
-      "source": "themes/flexoki-light/backgrounds/2-omarchy.png",
-      "destination": "desktop/assets/themes/flexoki-light/backgrounds/2-omarchy.png",
-      "sha256": "647ebe0d07288455a856fcdb9fa8abb6cf20048941725aa25cb480dea6c7bad8"
     },
     {
       "source": "themes/everforest/backgrounds/1-tree-tops.jpg",
