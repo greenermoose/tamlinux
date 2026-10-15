@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-15 | Drain zram swap before hibernating | Claude Code `2.1.300` | `claude-opus-5-5` | [Session](2026-10-15-hibernate-swap.md) |
 | 2026-10-15 | Native conversion and c preparation | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-15-desktop-test-c.md) |
 | 2026-10-14 | Owned Chromium extensions and native messaging | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-14-browser-endpoints.md) |
 | 2026-10-13–14 | Settings recovery, live source preservation and typed recording clicks | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-13-0.4.3-recovery-continuation.md) |

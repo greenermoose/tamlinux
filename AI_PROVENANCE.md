@@ -358,3 +358,10 @@ defaults. [Session record](docs/ai/2026-10-15-protocol-crash-native-defaults.md)
 Codex CLI `0.162.1` (`gpt-6.1-sol`) reviewed Claude’s protocol/native defaults,
 completed preserving native conversion and fresh MIME selection, and prepared
 the next inactive assembly. [Session](docs/ai/2026-10-15-desktop-test-c.md).
+
+## Hibernate-time zram drain — 2026-10-15
+
+Claude Code `2.1.300` (`claude-opus-5-5`) added the `tamlinux-hibernate-swap`
+sleep hook, which turns zram swap off just before hibernating so the image
+fits in RAM. It has tests; no hibernation has run with it yet.
+[Session](docs/ai/2026-10-15-hibernate-swap.md).
