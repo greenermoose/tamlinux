@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# Hibernation copies every page it saves within RAM before writing the image,
+# so the image can never be larger than about half of memory. zram swap is
+# memory too: what was swapped there earlier (tmpfs files, idle programs) and
+# what reclaim pushes there while the image is prepared both stay in RAM.
+# Because zram outranks disk swap, a large zram store can leave no room for
+# the image; the kernel then logs "Image allocation is N pages short" and
+# systemd falls back to suspend.
+#
+# Just before the hibernate leg, turn zram swap off. Its contents move to disk
+# swap, and reclaim during image preparation goes to disk as well. Afterwards
+# turn it back on at its previous priority. Daily use keeps zram; the drain
+# happens only when the machine is about to hibernate.
+#
+# The hook never leaves hibernation worse off than without it. It skips the
+# drain when disk swap could not take zram's contents with a fifth of it to
+# spare (systemd-oomd's swap kill acts at 90% used). The drain stops well
+# inside systemd's limit for sleep hooks; the kernel then keeps zram on with
+# what is left in it, and what already moved stays out.
+
+set -u
+
+swaps="${TAMLINUX_SWAPS_PATH:-/proc/swaps}"
+state="${TAMLINUX_RUN_PATH:-/run}/tamlinux-hibernate-swap"
+readonly drain_limit_s=60
+readonly tag=tamlinux-hibernate-swap
+
+log() { logger -t "$tag" -- "$*"; }
+
+# /proc/swaps columns: Filename Type Size Used Priority; sizes in KiB.
+zram_swaps() { awk 'NR > 1 && $1 ~ /^\/dev\/zram/ { print $1, $4, $5 }' "$swaps"; }
+disk_swap_kib() { awk 'NR > 1 && $1 !~ /^\/dev\/zram/ { size += $3; used += $4 } END { print size + 0, used + 0 }' "$swaps"; }
+used_kib() { awk -v dev="$1" 'NR > 1 && $1 == dev { print $4; found = 1 } END { exit !found }' "$swaps"; }
+gib() { awk -v kib="$1" 'BEGIN { printf "%.1f GiB", kib / 1048576 }'; }
+
+drain() {
+  # A state file means another copy of this hook already drained for this
+  # sleep; its post leg restores. Never drain twice within one hook budget.
+  [[ -e $state ]] && return 0
+
+  local zram dev used prio total=0
+  zram=$(zram_swaps)
+  [[ -n $zram ]] || return 0
+  while read -r dev used prio; do
+    total=$((total + used))
+  done <<< "$zram"
+
+  local size disk_used
+  read -r size disk_used < <(disk_swap_kib)
+  if ((size == 0)); then
+    log "no disk swap is active; leaving zram on"
+    return 0
+  fi
+  if ((disk_used + total > size * 4 / 5)); then
+    log "left zram on: moving its $(gib "$total") would fill disk swap past 80% ($(gib "$disk_used") of $(gib "$size") used)"
+    return 0
+  fi
+
+  : > "$state"
+  local start=$SECONDS dev_start left
+  while read -r dev used prio; do
+    left=$((drain_limit_s - (SECONDS - start)))
+    if ((left <= 0)); then
+      log "time limit reached; leaving $dev on"
+      break
+    fi
+    # Record before turning it off, so post restores it whatever happens.
+    printf '%s %s\n' "$dev" "$prio" >> "$state"
+    dev_start=$SECONDS
+    if timeout --kill-after=5 "$left" swapoff "$dev" < /dev/null; then
+      log "moved $(gib "$used") from $dev to disk swap in $((SECONDS - dev_start)) s"
+    else
+      log "stopped draining $dev after $((SECONDS - dev_start)) s with $(gib "$(used_kib "$dev" || echo 0)") still in it; hibernating anyway"
+    fi
+  done <<< "$zram"
+}
+
+restore() {
+  [[ -e $state ]] || return 0
+  local dev prio args
+  while read -r dev prio; do
+    used_kib "$dev" > /dev/null && continue
+    # zram-generator enables zram swap with discard; restore it the same way.
+    # Kernel-assigned priorities are negative and cannot be requested.
+    args=(--discard)
+    ((prio >= 0)) && args+=(--priority "$prio")
+    if swapon "${args[@]}" "$dev" < /dev/null; then
+      log "turned $dev back on at priority $prio"
+    else
+      log "could not turn $dev back on"
+    fi
+  done < "$state"
+  rm -f "$state"
+}
+
+exec 9> "$state.lock" || exit 0
+
+case "${1:-}" in
+  pre)
+    # For suspend-then-hibernate, systemd passes the same second argument for
+    # both legs and names the current leg in SYSTEMD_SLEEP_ACTION.
+    case "${SYSTEMD_SLEEP_ACTION:-${2:-}}" in
+      hibernate | hybrid-sleep)
+        flock -n 9 || exit 0
+        drain
+        ;;
+      *)
+        flock -w 30 9 || exit 0
+        restore
+        ;;
+    esac
+    ;;
+  post)
+    flock -w 30 9 || exit 0
+    restore
+    ;;
+esac
+exit 0

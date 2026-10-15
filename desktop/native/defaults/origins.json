@@ -34,6 +34,10 @@
       "mode": "0644",
       "sha256": "2dc0b942c5f5d1ee3e78772e056c934dedd5a22cd7078df90b63ea79e5480f83"
     },
+    "usr/lib/systemd/system-sleep/tamlinux-hibernate-swap": {
+      "mode": "0755",
+      "sha256": "3fc0880a006aa5bc88d4f2647dd73d37ff8c973ec40487c6bf64e448b5e727c3"
+    },
     "usr/lib/systemd/system-sleep/tamlinux-unmount-fuse": {
       "derivedFrom": "/usr/lib/systemd/system-sleep/unmount-fuse",
       "derivedFromSha256": "ab7034106e456e93dfb01c6948706c0bfcf0f19e6c9b4c2335b5fb1b3e7ec177",

@@ -41,5 +41,12 @@ enabled for every user's graphical session. A user unit of the same name
 replaces the vendor one, and `tam-bt-agent` skips itself while any
 `bt-agent.service` is active.
 
+`tamlinux-hibernate-swap` turns zram swap off just before a hibernate leg and
+back on afterwards at its previous priority. Pages in zram stay in RAM, and
+hibernation must fit its image in about half of RAM; with a large zram store
+the image cannot be allocated and the machine falls back to suspend. The hook
+skips the drain when disk swap would end up more than 80% used, stops after
+60 s, and leaves hibernation no worse off when it does either.
+
 The inotify watch limit needs nothing here: Arch's `filesystem` package
 already sets `fs.inotify.max_user_watches=524288` in `10-arch.conf`.
