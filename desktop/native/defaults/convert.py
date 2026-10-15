@@ -110,7 +110,7 @@ def plan(root):
                                      ('PeerCred', 'on', ('yes',))]:
             cups = setting(cups, key, value, accepted, ' ')
         if not re.search(r'^SystemGroup\s+cups-browsed sys root\s*$', cups, re.M):
-            cups = setting(cups, 'SystemGroup', 'sys root', ('sys', 'root', 'lpadmin'), ' ')
+            cups = setting(cups, 'SystemGroup', 'sys root', ('sys', 'root', 'lpadmin', 'sys root wheel'), ' ')
         after['cups/cups-files.conf'] = cups
     docker = json.loads(text('docker/daemon.json') or '{}')
     if not isinstance(docker, dict):

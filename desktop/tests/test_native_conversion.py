@@ -72,6 +72,15 @@ class NativeConversionTests(unittest.TestCase):
             self.assertNotIn('deny = 10', (self.root / 'etc/security/faillock.conf').read_text())
             target.unlink()
 
+    def test_arch_cups_default_is_hardened_and_original_restores(self):
+        original = 'User 209\nGroup 209\nSystemGroup sys root wheel\nPeerCred on\n'
+        target = self.write('cups/cups-files.conf', original, 0o640)
+        c.apply(self.root, self.checkpoint)
+        self.assertIn('SystemGroup sys root\n', target.read_text())
+        self.assertNotIn('wheel', target.read_text())
+        c.restore(self.root, self.checkpoint)
+        self.assertEqual(target.read_text(), original)
+
     def test_interruption_retry_and_changed_destination_refusal(self):
         with self.assertRaises(InterruptedError):
             c.apply(self.root, self.checkpoint, stop_after=2)
