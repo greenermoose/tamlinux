@@ -7,6 +7,7 @@ ShellRoot {
   id: test
   property int step: 0
   property int calls: 0
+  property int pollWaits: 0
   property var one: QtObject {
     property string name: "DP-1"
     property int x: 0
@@ -55,12 +56,14 @@ ShellRoot {
     property var projection: test.otherGroup
     function activate() { test.calls++ }
   }
-  property var protocol: Host.ProtocolState { windowsets: []; screens: [] }
+  property var protocol: Host.ProtocolState { windowsets: []; screens: []; pollInterval: 50 }
 
   function check(ok, message) {
     if (!ok) throw new Error("PROTOCOL_FIXTURE_FAILED " + message)
   }
   function runStep() {
+    // Steps 0-8 refresh explicitly; step 9 proves the poll timer alone updates.
+    if (step < 9) protocol.refresh()
     var facts = protocol.snapshot
     if (step === 0) {
       check(!facts.ready && facts.workspaces.length === 0, "initially empty")
@@ -122,7 +125,13 @@ ShellRoot {
       second.active = true
     } else if (step === 8) {
       check(facts.ready && facts.outputs[1].activeWorkspaceId === 2, "active workspace changed")
-      console.log("PROTOCOL_FIXTURE_OK reactive snapshots, capabilities, merge, comparison and bounds")
+      third.urgent = true
+    } else if (step === 9) {
+      if (!facts.workspaces[2].urgent) {
+        check(++pollWaits < 40, "poll timer publishes without explicit refresh")
+        return
+      }
+      console.log("PROTOCOL_FIXTURE_OK polled snapshots, capabilities, merge, comparison and bounds")
       Qt.quit()
     }
     step++
