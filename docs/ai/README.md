@@ -113,3 +113,5 @@ side and any rework: [`delegations.md`](delegations.md).
 - [2026-10-14 — Desktop recovery preparation](2026-10-14-desktop-recovery-kit.md)
 
 - [2026-10-14 — Desktop Test b preparation](2026-10-14-desktop-test-b.md)
+
+- [2026-10-15 — Protocol-state crash fix and native system defaults](2026-10-15-protocol-crash-native-defaults.md)

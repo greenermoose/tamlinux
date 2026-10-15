@@ -346,3 +346,9 @@ See [session record](docs/ai/2026-10-14-desktop-recovery-kit.md).
 
 Reviewed peer patches, approved background removal and exact inactive kit preparation.
 [Session record](docs/ai/2026-10-14-desktop-test-b.md).
+
+## Protocol-state crash fix and native system defaults — 2026-10-15
+
+Claude Code `2.1.300` (`claude-opus-5-5`) replaced the protocol-state binding
+that crashed the shell during display hotplug and added the native system
+defaults. [Session record](docs/ai/2026-10-15-protocol-crash-native-defaults.md).
