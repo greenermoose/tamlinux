@@ -1,6 +1,6 @@
 # Tamlinux
 
-Tamlinux is an independent workstation environment for Linux, aimed at
+Tamlinux is an ergonomic, well-appointed, super-efficient workstation environment for Linux, aimed at
 providing the best possible user experience on any hardware. It is a continuing
 project for modern and older computers, developed first on Fred's own machines.
 It is inspired by the rolling updates of Arch Linux, AntiX Linux's commitment to
