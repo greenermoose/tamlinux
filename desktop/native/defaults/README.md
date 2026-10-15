@@ -20,7 +20,18 @@ Rules this directory keeps:
   `daemon.json`, the desktop MIME and terminal lists) are not here. They need
   a preserving adapter with recovery, and so do their pairs: sudo
   `passwd_tries` with faillock, resolved multicast with nsswitch, and the
-  resolved Docker stub listener with `daemon.json`.
+  resolved Docker stub listener with `daemon.json`. The explicit
+  `tam-native-defaults plan|apply|restore|status` adapter now owns those
+  authentication, NSS, CUPS and Docker pairs. It validates all destinations,
+  checkpoints originals, refuses administrator conflicts, resumes partial
+  writes only when their identity matches, and archives later bytes, mode and
+  ownership before rollback. It runs separately from package installation;
+  services must be quiescent for application/restoration and reloaded separately.
+  Checkpoints live under `/var/lib/tamlinux/native-defaults/<label>` and labels
+  are single-use. Existing modes and uid/gid survive. Empty directories created
+  for absent files can remain after rollback. CUPS is untouched when absent.
+  Bash/keyservers belong to `desktop/user-defaults`; terminal/MIME preferences
+  belong to the session initializer and preserve existing user selections.
 
 Two effects need the host as well as these files. `systemd-oomd` is enabled
 by `80-tamlinux.preset`, which takes effect only when provisioning runs

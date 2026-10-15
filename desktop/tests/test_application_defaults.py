@@ -23,7 +23,7 @@ class Defaults(unittest.TestCase):
         return module.initialize(ROOT / 'desktop/assets', self.env)
 
     def test_empty_configuration_pairs_custom_state_theme_editor_and_kitty_socket(self):
-        self.assertEqual(len(self.initialize()), 10)
+        self.assertEqual(len(self.initialize()), 11)
         config = self.root / 'config'
         self.assertIn(str(self.root / 'state/tamlinux/current/theme/alacritty.toml'),
                       (config / 'alacritty/alacritty.toml').read_text())
@@ -32,6 +32,8 @@ class Defaults(unittest.TestCase):
         self.assertEqual(os.readlink(config / 'helix/themes/tamlinux.toml'),
                          str(self.root / 'state/tamlinux/current/theme/helix.toml'))
         self.assertEqual((self.root / 'state/tamlinux/defaults/editor').read_text(), 'helix\n')
+        self.assertIn('text/plain=Helix.desktop', (config / 'mimeapps.list').read_text())
+        self.assertIn('x-scheme-handler/http=chromium.desktop', (config / 'mimeapps.list').read_text())
         self.assertEqual(self.initialize(), [])
 
     def test_existing_user_bytes_modes_and_dangling_links_are_preserved(self):
@@ -40,7 +42,10 @@ class Defaults(unittest.TestCase):
         target.write_bytes(b'personal terminal\n'); target.chmod(0o640)
         editor = self.root / 'state/tamlinux/defaults/editor'
         editor.parent.mkdir(parents=True); editor.symlink_to('unavailable-choice')
+        mime = self.root / 'config/mimeapps.list'
+        mime.write_text('[Default Applications]\ntext/plain=personal.desktop\n')
         self.initialize()
+        self.assertIn('personal.desktop', mime.read_text())
         self.assertEqual(target.read_bytes(), b'personal terminal\n')
         self.assertEqual(target.stat().st_mode & 0o777, 0o640)
         self.assertEqual(os.readlink(editor), 'unavailable-choice')

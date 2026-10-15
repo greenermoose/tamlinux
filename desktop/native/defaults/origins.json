@@ -22,7 +22,7 @@
       "derivedFrom": "/etc/systemd/logind.conf.d/10-ignore-power-button.conf",
       "derivedFromSha256": "89049b70e47de31aa196f7246d0b1dfdbbe36dbbcc75a937383c22d8586bbffa",
       "mode": "0644",
-      "sha256": "743f68036e1a1abb892e9e64dca584d34cd342aeff838f296d65e8ae50917f28"
+      "sha256": "f73fc1fecdfe76b10ce11e1f3257347bcd4c247d93be950e8d19bfe097defcd4"
     },
     "usr/lib/systemd/oomd.conf.d/10-tamlinux.conf": {
       "derivedFrom": "/etc/systemd/oomd.conf.d/10-omarchy.conf",
@@ -38,7 +38,7 @@
       "derivedFrom": "/usr/lib/systemd/system-sleep/unmount-fuse",
       "derivedFromSha256": "ab7034106e456e93dfb01c6948706c0bfcf0f19e6c9b4c2335b5fb1b3e7ec177",
       "mode": "0755",
-      "sha256": "ab7034106e456e93dfb01c6948706c0bfcf0f19e6c9b4c2335b5fb1b3e7ec177"
+      "sha256": "cb1cbde46faac0d52b18152c31abc5cb1ed104985828a3b20e42df5461d5251c"
     },
     "usr/lib/systemd/system.conf.d/10-tamlinux-faster-shutdown.conf": {
       "derivedFrom": "/etc/systemd/system.conf.d/10-faster-shutdown.conf",

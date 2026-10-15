@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# During additive Desktop Test the retained host hook already owns this effect.
+# Retire this guard when that hook is removed at the separately approved cutover.
+[[ -x /usr/lib/systemd/system-sleep/unmount-fuse ]] && exit 0
+
 # Lazy-unmount gvfsd-fuse filesystems before suspend/hibernate to prevent the
 # kernel's process freeze from timing out. FUSE daemons (like gvfsd-fuse from
 # Nautilus) can block in uninterruptible sleep during freeze, causing suspend

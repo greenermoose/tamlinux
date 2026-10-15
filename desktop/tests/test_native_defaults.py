@@ -91,7 +91,7 @@ class NativeDefaultsTests(unittest.TestCase):
 
     def test_session_manager_and_service_values(self):
         self.assertEqual(dict(ini("usr/lib/systemd/logind.conf.d/10-tamlinux-power-key.conf")["Login"]),
-                         {"HandlePowerKey": "ignore"})
+                         {"HandlePowerKey": "ignore", "InhibitDelayMaxSec": "15"})
         for manager in ("system", "user"):
             self.assertEqual(dict(ini(f"usr/lib/systemd/{manager}.conf.d/20-tamlinux-nofile.conf")["Manager"]),
                              {"DefaultLimitNOFILE": "65536:524288"})
@@ -127,6 +127,7 @@ class NativeDefaultsTests(unittest.TestCase):
     def test_sleep_hook_is_executable_bash(self):
         hook = ROOT / "usr/lib/systemd/system-sleep/tamlinux-unmount-fuse"
         self.assertTrue(hook.stat().st_mode & 0o111)
+        self.assertIn('[[ -x /usr/lib/systemd/system-sleep/unmount-fuse ]] && exit 0', hook.read_text())
         self.assertTrue(hook.read_text().startswith("#!/bin/bash\n"))
         subprocess.run(["/usr/bin/bash", "-n", str(hook)], check=True)
 

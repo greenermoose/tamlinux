@@ -352,3 +352,9 @@ Reviewed peer patches, approved background removal and exact inactive kit prepar
 Claude Code `2.1.300` (`claude-opus-5-5`) replaced the protocol-state binding
 that crashed the shell during display hotplug and added the native system
 defaults. [Session record](docs/ai/2026-10-15-protocol-crash-native-defaults.md).
+
+## Desktop Test c native defaults
+
+Codex CLI `0.162.1` (`gpt-6.1-sol`) reviewed Claude’s protocol/native defaults,
+completed preserving native conversion and fresh MIME selection, and prepared
+the next inactive assembly. [Session](docs/ai/2026-10-15-desktop-test-c.md).

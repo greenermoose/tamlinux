@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.3-c - Develop
+
+- Include the protocol observer crash fix, native vendor and per-user bash/keyserver defaults.
+- Add preserving conversion for paired authentication/NSS/Docker and CUPS settings, fresh MIME defaults and additive sleep-hook protection.
+
 ## 0.4.3-b - Develop
 
 - Generate application themes with Tamlinux display names.

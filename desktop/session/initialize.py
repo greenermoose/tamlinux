@@ -22,6 +22,18 @@ def initialize(assets, environ):
     entries[config / 'helix/config.toml'] = 'theme = "tamlinux"\n'
     entries[config / 'helix/themes/tamlinux.toml'] = None
     entries[config / 'xdg-terminals.list'] = 'Alacritty.desktop\nfoot.desktop\nkitty.desktop\ncom.mitchellh.ghostty.desktop\n'
+    # A user selection wins. These defaults avoid a dependency on any other
+    # desktop's system MIME list; every handler belongs to the host contract.
+    entries[config / 'mimeapps.list'] = ('[Default Applications]\n'
+        'inode/directory=org.gnome.Nautilus.desktop\n'
+        'application/pdf=org.gnome.Evince.desktop\n'
+        'x-scheme-handler/http=chromium.desktop\n'
+        'x-scheme-handler/https=chromium.desktop\n'
+        'text/plain=Helix.desktop\n'
+        + ''.join(kind + '=imv.desktop\n' for kind in
+                  ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff'])
+        + ''.join(kind + '=mpv.desktop\n' for kind in
+                  ['video/mp4', 'video/x-msvideo', 'video/x-matroska', 'video/webm', 'video/mpeg', 'video/ogg', 'application/ogg']))
     entries[state / 'tamlinux/defaults/editor'] = 'helix\n'
     entries[config / 'tamlinux/hypr/monitors.lua'] = '-- BEGIN fred.monitor managed displays\n-- END fred.monitor managed displays\n'
     written = []
