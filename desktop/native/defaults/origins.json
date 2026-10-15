@@ -1,0 +1,131 @@
+{
+  "files": {
+    "usr/lib/NetworkManager/conf.d/tamlinux-wifi-powersave.conf": {
+      "derivedFrom": "/etc/NetworkManager/conf.d/omarchy-wifi-powersave.conf",
+      "derivedFromSha256": "d50b44b8c496ef5cdff199a6def1d17d836ee8fd3fd3caa9d93f483a19d9d0eb",
+      "mode": "0644",
+      "sha256": "d50b44b8c496ef5cdff199a6def1d17d836ee8fd3fd3caa9d93f483a19d9d0eb"
+    },
+    "usr/lib/environment.d/10-tamlinux-fcitx.conf": {
+      "derivedFrom": "/usr/lib/environment.d/10-omarchy-fcitx.conf",
+      "derivedFromSha256": "8b077b6ea2594dc1d4b57592a3bc62703df4959e86b93ea0fc488b6686309095",
+      "mode": "0644",
+      "sha256": "8b077b6ea2594dc1d4b57592a3bc62703df4959e86b93ea0fc488b6686309095"
+    },
+    "usr/lib/sysctl.d/70-tamlinux.conf": {
+      "derivedFrom": "/etc/sysctl.d/99-omarchy-sysctl.conf",
+      "derivedFromSha256": "f918a55f2cf6d1c278a6348c163c7f0b0b9740ddfe6f9895047bebba583b9b7d",
+      "mode": "0644",
+      "sha256": "93f6be0a05f39e496f32d7111e0b1312edc5931b3a03bcae3a0778f657539de2"
+    },
+    "usr/lib/systemd/logind.conf.d/10-tamlinux-power-key.conf": {
+      "derivedFrom": "/etc/systemd/logind.conf.d/10-ignore-power-button.conf",
+      "derivedFromSha256": "89049b70e47de31aa196f7246d0b1dfdbbe36dbbcc75a937383c22d8586bbffa",
+      "mode": "0644",
+      "sha256": "743f68036e1a1abb892e9e64dca584d34cd342aeff838f296d65e8ae50917f28"
+    },
+    "usr/lib/systemd/oomd.conf.d/10-tamlinux.conf": {
+      "derivedFrom": "/etc/systemd/oomd.conf.d/10-omarchy.conf",
+      "derivedFromSha256": "8c1ec280168b3a7bf7d5e6b6e8621b35e24f8d9f28fd8a30c71f90fef5c4833a",
+      "mode": "0644",
+      "sha256": "ce4008cb950f4cfbe43f0bfa58daaa52d0ce24f8969ae84d4d4d4bf6f6b18386"
+    },
+    "usr/lib/systemd/system-preset/80-tamlinux.preset": {
+      "mode": "0644",
+      "sha256": "2dc0b942c5f5d1ee3e78772e056c934dedd5a22cd7078df90b63ea79e5480f83"
+    },
+    "usr/lib/systemd/system-sleep/tamlinux-unmount-fuse": {
+      "derivedFrom": "/usr/lib/systemd/system-sleep/unmount-fuse",
+      "derivedFromSha256": "ab7034106e456e93dfb01c6948706c0bfcf0f19e6c9b4c2335b5fb1b3e7ec177",
+      "mode": "0755",
+      "sha256": "ab7034106e456e93dfb01c6948706c0bfcf0f19e6c9b4c2335b5fb1b3e7ec177"
+    },
+    "usr/lib/systemd/system.conf.d/10-tamlinux-faster-shutdown.conf": {
+      "derivedFrom": "/etc/systemd/system.conf.d/10-faster-shutdown.conf",
+      "derivedFromSha256": "dbd88d8f4f55a28d51b19fb6ccb2679ad14f07041192e0dac1eceb5b66b06f35",
+      "mode": "0644",
+      "sha256": "dbd88d8f4f55a28d51b19fb6ccb2679ad14f07041192e0dac1eceb5b66b06f35"
+    },
+    "usr/lib/systemd/system.conf.d/20-tamlinux-nofile.conf": {
+      "derivedFrom": "/etc/systemd/system.conf.d/20-omarchy-nofile.conf",
+      "derivedFromSha256": "8818b84990ce08b9409ef4db4ea971c9c82fad4562e61bb2f52d838127654ee3",
+      "mode": "0644",
+      "sha256": "8818b84990ce08b9409ef4db4ea971c9c82fad4562e61bb2f52d838127654ee3"
+    },
+    "usr/lib/systemd/system/docker.service.d/10-tamlinux-no-block-boot.conf": {
+      "derivedFrom": "/etc/systemd/system/docker.service.d/no-block-boot.conf",
+      "derivedFromSha256": "4b7c99e5e5d5ccc7498b487f694481415e448d7899f33994ee1b87f3a97cf176",
+      "mode": "0644",
+      "sha256": "6a89d90b08bc926193779d24a94e187569717afe215441e544de0a83b7e8da0c"
+    },
+    "usr/lib/systemd/system/plocate-updatedb.service.d/10-tamlinux.conf": {
+      "derivedFrom": "/usr/lib/systemd/system/plocate-updatedb.service.d/10-omarchy.conf",
+      "derivedFromSha256": "40737b14c5ffe4eb9f68a0054919cc6de7ca4fff16f3623262c056b62c819464",
+      "mode": "0644",
+      "sha256": "a808b9dc0e816787ea9a6c1e39952a8cc94414ebd16fbf36b19a9c9b6f70f526"
+    },
+    "usr/lib/systemd/system/plocate-updatedb.service.d/20-tamlinux-ac-only.conf": {
+      "derivedFrom": "/etc/systemd/system/plocate-updatedb.service.d/ac-only.conf",
+      "derivedFromSha256": "15a1b7ccb5857f8164ba951745c3c11ea7795f644772e1e41e30f11e05a9a716",
+      "mode": "0644",
+      "sha256": "789808777db55df16ecd62a7548e8c624a18b986d62f9b7a002a28c9de597c5a"
+    },
+    "usr/lib/systemd/system/user@.service.d/10-tamlinux-faster-shutdown.conf": {
+      "derivedFrom": "/etc/systemd/system/user@.service.d/10-faster-shutdown.conf",
+      "derivedFromSha256": "1dd0343bcd5a30b8309f5eb07527da1d64f6c9a8e93d909a6ac050d926d65796",
+      "mode": "0644",
+      "sha256": "1dd0343bcd5a30b8309f5eb07527da1d64f6c9a8e93d909a6ac050d926d65796"
+    },
+    "usr/lib/systemd/user.conf.d/20-tamlinux-nofile.conf": {
+      "derivedFrom": "/etc/systemd/user.conf.d/20-omarchy-nofile.conf",
+      "derivedFromSha256": "8818b84990ce08b9409ef4db4ea971c9c82fad4562e61bb2f52d838127654ee3",
+      "mode": "0644",
+      "sha256": "8818b84990ce08b9409ef4db4ea971c9c82fad4562e61bb2f52d838127654ee3"
+    },
+    "usr/lib/systemd/user/app.slice.d/10-tamlinux-oomd.conf": {
+      "derivedFrom": "/usr/lib/systemd/user/app.slice.d/10-oomd.conf",
+      "derivedFromSha256": "6e2e5d3fd36a8d37677001231389c5232298ee94a109ad8a0c2ccaa7a92b2613",
+      "mode": "0644",
+      "sha256": "edf3ea5cd7cc0a7999aa2648b7f32e4f3eddfcc573aa25f2b4b81593b614740d"
+    },
+    "usr/lib/systemd/user/graphical-session.target.wants/tam-bt-agent.service": {
+      "link": "../tam-bt-agent.service"
+    },
+    "usr/lib/systemd/user/graphical-session.target.wants/tam-fcitx5.service": {
+      "link": "../tam-fcitx5.service"
+    },
+    "usr/lib/systemd/user/tam-bt-agent.service": {
+      "mode": "0644",
+      "sha256": "7202300be2a5390d80aeef82aa6870130e2bc4b1a7593ae17606f170627eadb0"
+    },
+    "usr/lib/systemd/user/tam-fcitx5.service": {
+      "mode": "0644",
+      "sha256": "9c8dfb401c7a4aa71d9df57066359f16e921bf9514e6b571a6fd02d8783ea888"
+    },
+    "usr/lib/systemd/zram-generator.conf.d/90-tamlinux.conf": {
+      "derivedFrom": "/usr/lib/systemd/zram-generator.conf.d/90-omarchy.conf",
+      "derivedFromSha256": "59045f44a9a566ebdcc682aa6d6c5ad905994e29e4738bd9ed5c6d4bec0b1cd4",
+      "mode": "0644",
+      "sha256": "967c2cb9d1e7cb7724d1590edf1417ae76bfba6060ea924859ae1f57e7128dce"
+    },
+    "usr/lib/tmpfiles.d/tamlinux-zswap.conf": {
+      "derivedFrom": "/etc/tmpfiles.d/omarchy-zswap.conf",
+      "derivedFromSha256": "f68add7be20beab2ac93bea052f20a27eeca015492638423e9d858260b8fa28e",
+      "mode": "0644",
+      "sha256": "f68add7be20beab2ac93bea052f20a27eeca015492638423e9d858260b8fa28e"
+    },
+    "usr/share/fontconfig/conf.avail/50-tamlinux.conf": {
+      "derivedFrom": "/usr/share/fontconfig/conf.avail/50-omarchy.conf",
+      "derivedFromSha256": "d572d3dc9c31b9ca127f2ee32550fad9e9e5932bb2b7d718a997624e9f806516",
+      "mode": "0644",
+      "sha256": "d572d3dc9c31b9ca127f2ee32550fad9e9e5932bb2b7d718a997624e9f806516"
+    },
+    "usr/share/fontconfig/conf.default/50-tamlinux.conf": {
+      "link": "../conf.avail/50-tamlinux.conf"
+    }
+  },
+  "license": "LICENSE-defaults",
+  "origin": "https://github.com/basecamp/omarchy",
+  "originPackage": "omarchy-settings 4.0.4-1 (MIT); values unchanged, comments reworded, Tamlinux names",
+  "schema": 1
+}

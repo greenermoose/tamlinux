@@ -1,0 +1,26 @@
+# Bluetooth pairing agent for the Tamlinux session. An existing
+# bt-agent.service (a user's own unit or the previous owner's) takes
+# precedence: this unit starts after it and skips while it is active, so two
+# agents never compete for the default-agent role.
+[Unit]
+Description=Bluetooth pairing agent (auto-accept)
+Documentation=man:bt-agent(1)
+ConditionPathIsDirectory=/sys/class/bluetooth
+ConditionPathExists=/usr/bin/bt-agent
+After=dbus.socket bt-agent.service
+Requires=dbus.socket
+
+[Service]
+Type=simple
+# Skip cleanly when bluetoothd is not running instead of looping, and defer
+# to an active bt-agent.service.
+ExecCondition=/bin/sh -c '/usr/bin/systemctl is-active --quiet bluetooth.service && ! /usr/bin/systemctl --user is-active --quiet bt-agent.service'
+# NoInputNoOutput auto-accepts pair requests. bluez only accepts inbound
+# pairing while the adapter is pairable, which the bar's Bluetooth panel
+# turns on only while it is scanning.
+ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

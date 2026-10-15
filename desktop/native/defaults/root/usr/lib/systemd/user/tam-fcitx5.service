@@ -1,0 +1,21 @@
+# fcitx5 turns the CapsLock compose sequences in ~/.XCompose into text for
+# Wayland clients. A user unit of the same name overrides this one.
+[Unit]
+Description=Fcitx5 input method (XCompose sequences)
+After=graphical-session.target
+PartOf=graphical-session.target
+# A manager reached over SSH has no WAYLAND_DISPLAY; an fcitx5 started
+# there would stay active and block the real one at graphical login.
+ConditionEnvironment=WAYLAND_DISPLAY
+ConditionPathExists=/usr/bin/fcitx5
+
+[Service]
+Type=simple
+# The bar already shows the input-method tray entry.
+ExecStart=/usr/bin/fcitx5 --disable notificationitem
+# fcitx5 exits 0 when another instance owns its bus name.
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,3 @@
+# Tamlinux relies on systemd-oomd (see oomd.conf.d/10-tamlinux.conf). Presets
+# apply when the host runs `systemctl preset`; provisioning must run it.
+enable systemd-oomd.service
