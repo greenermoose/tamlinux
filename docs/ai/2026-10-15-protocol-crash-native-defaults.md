@@ -50,3 +50,23 @@
     configuration shows `HandlePowerKey=ignore`, and zram-generator against
     the tree creates `/dev/zram0` sized to RAM at priority 100.
   - Full desktop suite: 544 run, one existing skip.
+
+### Addendum: per-user bash defaults and keyserver list
+
+- **Commit**: `7ab8820`
+- **Prompts** (after Claude compared per-user and system delivery):
+  > Go with your recommendations for both
+- **Key Decisions & Implementation Notes**:
+  - `desktop/user-defaults/bash` is the bash default set with the inherited
+    environment variable, configuration-path handling and command completion
+    removed; `env` keeps only the user tool paths.
+  - A fresh Arch account already has the skeleton `~/.bashrc`, so "write only
+    when missing" would never fire. `apply` instead adds a marked env block at
+    the top (before the skeleton's non-interactive return) and an rc block at
+    the end (after its `ls` alias), once, keeping the original. A linked
+    `~/.bashrc` belongs to another manager and is left alone.
+  - `~/.gnupg/dirmngr.conf` is written only when missing and not recreated
+    after deletion. GnuPG 2.4.9 reads it when present, the system file otherwise.
+  - `--remove` takes out exactly those changes and keeps later edits.
+- **Verification**: 8 new tests run real interactive and non-interactive bash
+  against the Arch skeleton; full desktop suite 552 run, one existing skip.
