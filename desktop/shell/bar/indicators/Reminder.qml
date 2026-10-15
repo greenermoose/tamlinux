@@ -4,6 +4,7 @@
 
 import QtQuick
 import Quickshell
+import Tam.Commons
 import Quickshell.Io
 import Tam.Ui
 
@@ -24,7 +25,7 @@ BarIndicator {
   }
 
   function openReminderFlow() {
-    Quickshell.execDetached(["tam-reminder", "-i"])
+    Quickshell.execDetached(Util.hostArgv(["tam-reminder", "-i"]))
   }
 
   function update(raw) {
@@ -42,6 +43,7 @@ BarIndicator {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: jsonProc
     command: ["tam-reminder", "show", "--json"]
     stdout: StdioCollector {
@@ -57,7 +59,7 @@ BarIndicator {
   }
 
   onPressed: function() {
-    if (root.reminderCount > 0) Quickshell.execDetached(["tam-reminder", "show"])
+    if (root.reminderCount > 0) Quickshell.execDetached(Util.hostArgv(["tam-reminder", "show"]))
     else root.openReminderFlow()
   }
 }

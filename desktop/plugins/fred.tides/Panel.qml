@@ -314,7 +314,7 @@ Panel {
 
   Process {
     id: locationSaveProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     onExited: function(exitCode) {
       tidesLocationFile.reload()
       if (root.savingLocation) root.cancelEditingLocation()
@@ -340,7 +340,7 @@ Panel {
 
   Process {
     id: geocodeProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -453,12 +453,12 @@ Panel {
 
   Process {
     id: cacheSaveProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
   }
 
   Process {
     id: marineProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {

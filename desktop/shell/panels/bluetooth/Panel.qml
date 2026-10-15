@@ -211,11 +211,11 @@ Panel {
     if (!sink) return
     Pipewire.preferredDefaultAudioSink = sink
     if (sink.id !== undefined && sink.name) {
-      Quickshell.execDetached([
+      Quickshell.execDetached(Util.hostArgv([
         "tam-audio-output-set-default",
         String(sink.id),
         String(sink.name)
-      ])
+      ]))
     }
   }
 
@@ -274,7 +274,7 @@ Panel {
   function runDeviceAction(device, action, pending) {
     if (!device || !device.address) return
     setPendingAction(device.address, pending)
-    Quickshell.execDetached(deviceCommand(action, device.address))
+    Quickshell.execDetached(Util.hostArgv(deviceCommand(action, device.address)))
   }
 
   function connectDevice(device) {
@@ -288,7 +288,7 @@ Panel {
     if (!device.connected) return
     setPendingAction(device.address, "disconnecting")
     if (device.disconnect) device.disconnect()
-    Quickshell.execDetached(deviceCommand("disconnect", device.address))
+    Quickshell.execDetached(Util.hostArgv(deviceCommand("disconnect", device.address)))
   }
 
   function forgetDevice(device) {
@@ -638,7 +638,7 @@ Panel {
   // would re-read the old state and undo the first.
   function toggleBluetooth() {
     if (!adapter) return
-    Quickshell.execDetached(["tam-bluetooth-power", adapter.enabled ? "off" : "on"])
+    Quickshell.execDetached(Util.hostArgv(["tam-bluetooth-power", adapter.enabled ? "off" : "on"]))
   }
 
   IpcHandler {

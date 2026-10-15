@@ -396,7 +396,7 @@ Item {
   // Positional parameters of a login bash, never a shell string, so the
   // toast's own commands resolve on the session PATH.
   function execArgv(argv) {
-    Quickshell.execDetached(["bash", "-lc", 'exec "$@"', "bash"].concat(argv))
+    Quickshell.execDetached(Util.hostArgv(["bash", "-lc", 'exec "$@"', "bash"].concat(argv)))
   }
 
   // Focus a window of the notification's sender through the compositor
@@ -407,6 +407,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: ensureDirsProc
     command: ["mkdir", "-p", service.stateDir, service.popupStateDir, service.historyDir, service.imagesDir]
     running: false
@@ -465,6 +466,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: popupFileProc
     running: false
     onExited: {
@@ -606,6 +608,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: readHistoryProc
     running: false
     // Let the file queue go again, whatever the read did — a failed or empty
@@ -707,6 +710,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: restorePopupsProc
     running: false
     stdout: StdioCollector {

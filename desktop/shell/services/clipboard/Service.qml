@@ -255,9 +255,9 @@ Item {
     if (!row) return
     root.opened = false
     if (row.entryType === "image") {
-      Quickshell.execDetached([root.pasteFileScript, row.mime, row.path])
+      Quickshell.execDetached(Util.hostArgv([root.pasteFileScript, row.mime, row.path]))
     } else if (row.fullText) {
-      Quickshell.execDetached([root.pasteTextScript, "--shift-insert", "--history-index", String(row.historyIndex)])
+      Quickshell.execDetached(Util.hostArgv([root.pasteTextScript, "--shift-insert", "--history-index", String(row.historyIndex)]))
     }
   }
 
@@ -265,16 +265,16 @@ Item {
     if (!row) return
     root.opened = false
     if (row.entryType === "image") {
-      Quickshell.execDetached([root.pasteFileScript, "--copy-only", row.mime, row.path])
+      Quickshell.execDetached(Util.hostArgv([root.pasteFileScript, "--copy-only", row.mime, row.path]))
     } else if (row.fullText) {
-      Quickshell.execDetached([root.pasteTextScript, "--copy-only", "--history-index", String(row.historyIndex)])
+      Quickshell.execDetached(Util.hostArgv([root.pasteTextScript, "--copy-only", "--history-index", String(row.historyIndex)]))
     }
   }
 
   function openSelected(row) {
     if (!row) return
     root.opened = false
-    Quickshell.execDetached([root.openScript, "--history-index", String(row.historyIndex)])
+    Quickshell.execDetached(Util.hostArgv([root.openScript, "--history-index", String(row.historyIndex)]))
   }
 
   Component.onCompleted: initProc.running = true
@@ -310,6 +310,7 @@ Item {
   // own. The pdeathsig on the watchers makes the kernel kill them whenever
   // the shell exits, however it exits, so no further lifecycle management.
   Process {
+    environment: Util.hostEnvironment()
     id: initProc
     command: ["pkill", "-f", "wl-paste .*--watch .*/services/clipboard/capture\\.sh"]
     onExited: {
@@ -320,6 +321,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: currentProc
     command: [root.captureScript]
     stdout: StdioCollector {
@@ -329,6 +331,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: textWatchProc
     command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--type", "text", "--watch", root.captureScript, "text"]
     onExited: watchRestartTimer.restart()
@@ -338,6 +341,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: imageWatchProc
     command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--type", "image/png", "--watch", root.captureScript, "image/png"]
     onExited: watchRestartTimer.restart()

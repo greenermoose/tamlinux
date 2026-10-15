@@ -89,7 +89,7 @@ Item {
       }
 
       if (!nextMinutes) {
-        Quickshell.execDetached([root.reminderScript, "toast", "Invalid reminder", "Enter the number of minutes"])
+        Quickshell.execDetached(Util.hostArgv([root.reminderScript, "toast", "Invalid reminder", "Enter the number of minutes"]))
         return
       }
 
@@ -103,7 +103,7 @@ Item {
     if (root.step === "message") {
       var args = [root.reminderScript].concat(ReminderFlowModel.reminderArgs(root.minutes, selection))
       root.close()
-      Quickshell.execDetached(args)
+      Quickshell.execDetached(Util.hostArgv(args))
     }
   }
 

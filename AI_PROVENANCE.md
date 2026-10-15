@@ -358,3 +358,8 @@ defaults. [Session record](docs/ai/2026-10-15-protocol-crash-native-defaults.md)
 Codex CLI `0.162.1` (`gpt-6.1-sol`) reviewed Claude’s protocol/native defaults,
 completed preserving native conversion and fresh MIME selection, and prepared
 the next inactive assembly. [Session](docs/ai/2026-10-15-desktop-test-c.md).
+
+## 0.4.3-d graphics environment isolation
+
+Codex CLI 0.162.1 / gpt-6.1-sol implemented the accepted launch isolation.
+[Session record](docs/ai/2026-10-15-0.4.3d-graphics-isolation.md).

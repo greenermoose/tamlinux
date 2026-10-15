@@ -201,24 +201,28 @@ Panel {
   implicitHeight: batteryPresent ? button.implicitHeight : 0
 
   Process {
+    environment: Util.hostEnvironment()
     id: batteryProc
     command: ["tam-battery-status", "--shell"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateKeyValue(text, "battery") }
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: profilesProc
     command: ["tam-powerprofiles-list", "--active-state"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateProfiles(text) }
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: systemProc
     command: ["tam-system-stats"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateKeyValue(text, "system") }
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: actionProc
     onExited: root.refresh()
   }

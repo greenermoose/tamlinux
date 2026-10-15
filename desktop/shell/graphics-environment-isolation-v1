@@ -1,0 +1,2 @@
+All inheriting QML Process and execDetached boundaries restore the caller's
+graphics environment through Tam.Commons.Util. Closed environments remain closed.

@@ -60,7 +60,7 @@ Item {
   // Run an argv vector without a shell interpreting it, in a login shell for
   // the session PATH and environment.
   function execArgv(argv) {
-    Quickshell.execDetached(["bash", "-lc", 'exec "$@"', "bash"].concat(argv))
+    Quickshell.execDetached(Util.hostArgv(["bash", "-lc", 'exec "$@"', "bash"].concat(argv)))
   }
 
   function entryName(entry) {
@@ -217,6 +217,7 @@ Item {
   // directory the desktop-entry watcher monitors — so every scan would
   // trigger the next one, pinning a core at idle.
   Process {
+    environment: Util.hostEnvironment()
     id: hiddenEntryScan
     command: [root.serviceDir + "/hidden-entries.sh", root.desktopNames()]
     stdout: SplitParser { onRead: function(line) { hiddenEntryOutput.text += line + "\n" } }
@@ -225,6 +226,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: iconIndexScan
     command: ["bash", "-c", root.iconIndexScanCommand()]
     stdout: SplitParser { onRead: function(line) { root.indexIconLine(line) } }

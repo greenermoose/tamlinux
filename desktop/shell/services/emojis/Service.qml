@@ -166,7 +166,7 @@ Item {
   function applySelected(emoji) {
     if (!emoji) return
     root.close()
-    Quickshell.execDetached([root.insertScript, emoji])
+    Quickshell.execDetached(Util.hostArgv([root.insertScript, emoji]))
   }
 
   IpcHandler {

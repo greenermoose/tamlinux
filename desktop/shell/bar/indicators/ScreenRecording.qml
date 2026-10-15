@@ -4,6 +4,7 @@
 
 import QtQuick
 import Quickshell.Io
+import Tam.Commons
 import Tam.Ui
 
 BarIndicator {
@@ -33,6 +34,7 @@ BarIndicator {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: statusProc
     onExited: function(exitCode) {
       root.recording = exitCode === 0

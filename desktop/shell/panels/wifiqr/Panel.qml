@@ -158,6 +158,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: qrProc
     // Both collectors check expectedStop: a dismissal mid-generation kills
     // the process, but buffered output still arrives afterwards and would
@@ -200,6 +201,7 @@ Item {
   // guaranteed order, so the flag survives onExited; only togglePassword
   // lowers it, as it launches the next deliberate lookup.
   Process {
+    environment: Util.hostEnvironment()
     id: pwProc
     stdout: StdioCollector {
       waitForEnd: true

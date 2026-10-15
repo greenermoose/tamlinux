@@ -116,3 +116,5 @@ side and any rework: [`delegations.md`](delegations.md).
 - [2026-10-14 — Desktop Test b preparation](2026-10-14-desktop-test-b.md)
 
 - [2026-10-15 — Protocol-state crash fix and native system defaults](2026-10-15-protocol-crash-native-defaults.md)
+
+| 2026-10-15 | 0.4.3-d graphics environment isolation | Codex CLI 0.162.1 | gpt-6.1-sol | [Record](2026-10-15-0.4.3d-graphics-isolation.md) |

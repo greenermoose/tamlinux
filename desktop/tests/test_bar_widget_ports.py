@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from test_launch_environment import without_graphics_isolation
 import unittest
 from pathlib import Path
 
@@ -106,6 +107,9 @@ class BarWidgetPortTests(unittest.TestCase):
             expected_body = port(orig_text)
             lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
             actual_body = "".join(lines[4:])
+            actual_body = without_graphics_isolation(actual_body)
+            if "import Tam.Commons\n" not in expected_body:
+                actual_body = actual_body.replace("import Tam.Commons\n", "")
             self.assertEqual(actual_body, expected_body, f"Ported body mismatch in {new_path}")
 
     def test_unchanged_file_matches_and_changed_files_differ(self):

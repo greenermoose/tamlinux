@@ -178,6 +178,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: laptopClosedProc
     // A fixed script with no arguments: any ACPI lid that reports closed.
     command: ["bash", "-c", "for s in /proc/acpi/button/lid/*/state; do [[ -r $s && $(< $s) == *closed* ]] && { echo closed; exit 0; }; done; echo open"]

@@ -451,7 +451,7 @@ Panel {
 
   function copyToClipboard(value) {
     if (!value || !root.bar) return
-    Quickshell.execDetached(["bash", "-c", "printf %s " + Util.shellQuote(value) + " | wl-copy"])
+    Quickshell.execDetached(Util.hostArgv(["bash", "-c", "printf %s " + Util.shellQuote(value) + " | wl-copy"]))
   }
 
   readonly property string icon: Model.connectionIcon(kind, signalStrength)
@@ -784,6 +784,7 @@ Panel {
   // Creates and activates the 802.1X profile (see Model.enterpriseConnectScript).
   // The password goes over stdin, never argv.
   Process {
+    environment: Util.hostEnvironment()
     id: enterpriseConnect
     property string secret: ""
     stdinEnabled: true
@@ -817,6 +818,7 @@ Panel {
 
   // Pulls everything we want about the active route's interface in one shot.
   Process {
+    environment: Util.hostEnvironment()
     id: detailsProc
     command: ["tam-network-status", "--verbose"]
     stdout: StdioCollector {
@@ -845,6 +847,7 @@ Panel {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: dnsProc
     stdout: StdioCollector {
       waitForEnd: true
@@ -853,6 +856,7 @@ Panel {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: bandProc
     stdout: StdioCollector {
       waitForEnd: true
@@ -877,6 +881,7 @@ Panel {
   // Action runner for DNS provider changes. Wi-Fi actions use the
   // Quickshell.Networking NetworkManager backend directly.
   Process {
+    environment: Util.hostEnvironment()
     id: actionProc
     stdout: StdioCollector { id: actionStdout; waitForEnd: true }
     stderr: StdioCollector { id: actionStderr; waitForEnd: true }

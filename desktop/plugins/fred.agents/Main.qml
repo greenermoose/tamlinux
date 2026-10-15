@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Tam.Commons
 import Quickshell.Io
 import "."
 
@@ -50,6 +51,7 @@ Item {
   property int dataRevision: 0
 
   Process {
+    environment: Util.hostEnvironment()
     id: listProcess
     running: false
     command: ["find", root.usageDir, "-maxdepth", "1", "-name", "*.json", "-printf", "%f\n"]
@@ -347,6 +349,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: syncMkdirProcess
     running: false
     onRunningChanged: root.updateSyncRunning()
@@ -361,6 +364,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: syncScanProcess
     running: false
     onRunningChanged: root.updateSyncRunning()
