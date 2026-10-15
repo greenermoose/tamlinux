@@ -1,12 +1,12 @@
 # Tamlinux
 
-Tamlinux is an ergonomic, well-appointed, super-efficient workstation environment for Linux, aimed at
-providing the best possible user experience on any hardware. It is a continuing
-project for modern and older computers, developed first on Fred's own machines.
-It is inspired by the rolling updates of Arch Linux, AntiX Linux's commitment to
-ensuring Linux runs on older hardware, the declarative reproducibility and atomic
-rollbacks of Nix, and modern desktop ideas from Wayland, River, Hyprland,
-Quickshell, and Omarchy.
+Tamlinux is an ergonomic, well-appointed, super-efficient workstation environment
+for Linux, developed by Fred Horch for his personal and professional work. The goal
+is to provide the best possible user experience on any hardware. It is a continuing
+project, developed first on Fred's own machines, inspired by the rolling updates of
+Arch Linux, AntiX Linux's commitment to ensuring Linux runs on older hardware, the
+declarative reproducibility and atomic rollbacks of Nix, and modern desktop ideas
+from Wayland, River, Hyprland, Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
