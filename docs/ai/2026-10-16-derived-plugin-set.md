@@ -43,3 +43,7 @@ Each copy now derives the set:
 - `check-live --stages passive` on the running 0.4.4-b desktop reports
   "all bundled plugins loaded"; its one failure is an unrelated core dump from
   the previous day.
+
+- Follow-up `0ac03f1`: the packaged installed-helper check found no catalog
+  without live links or a checkout; tam-plugin now reads the packaged root
+  `TAMLINUX_PLUGIN_CATALOG`, with a regression test.

@@ -16,8 +16,11 @@ plugin catalog maintenance is retained in this source history.
 
 Two execution tests cover a home path with spaces, exit-status propagation and
 refusal to run a stale old endpoint. The native recipe and Home Manager session
-contract test the installed command names. The isolated desktop suite and
-native build results are recorded with the completed candidate in the delivery.
+contract test the installed command names. All 592 isolated desktop checks pass, with one skipped. The native recipe
+builds and its renamed launcher payload matches the source. The packaged
+integration caught the missing empty-home plugin catalog; the source follow-up
+`0ac03f1` and paired package wrapper resolve its declared root. Final package
+build results are recorded with the completed candidate in the delivery.
 
 A stopped-writer login transaction and preserving inverse are prepared for
 Test. Their detached rehearsals preserve later writes and recover interrupted
