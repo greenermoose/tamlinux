@@ -24,6 +24,7 @@ PLUGINS_SRC="${SOURCE_REPO}/desktop/plugins"
 
 # Known Fred plugins catalog
 declare -A CATALOG_REPOS=(
+  ["fred.tamversion"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.tamversion"
   ["fred.workspaces"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.workspaces"
   ["fred.clock"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.clock"
   ["fred.sysinfo"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.sysinfo"
@@ -35,6 +36,7 @@ declare -A CATALOG_REPOS=(
 )
 
 declare -A CATALOG_DESC=(
+  ["fred.tamversion"]="Running Tamlinux version beside the clock"
   ["fred.workspaces"]="Dynamic workspace indicator with multi-monitor desktop mode switcher"
   ["fred.clock"]="Next-event countdown badge, multi-feed iCal sync, and interactive agenda"
   ["fred.sysinfo"]="Universal hardware telemetry and system monitoring bar plugin"

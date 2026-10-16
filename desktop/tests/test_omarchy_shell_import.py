@@ -24,9 +24,13 @@ def bar(layout, **extra):
 
 
 class ConversionTests(unittest.TestCase):
-    def test_todays_shell_json_gives_the_default_layout(self):
+    def test_historical_shell_json_preserves_its_layout(self):
         layout, settings, notes = conversion.convert(json.loads(FIXTURE.read_text(encoding="utf-8")))
         default = json.loads(DEFAULT_LAYOUT.read_text(encoding="utf-8"))
+        # The old fixture predates the version label. Import keeps its chosen
+        # widgets rather than silently inserting later default additions.
+        default["layout"]["center"] = [entry for entry in default["layout"]["center"]
+                                       if entry["id"] != "fred.tamversion"]
         self.assertEqual(layout["layout"], default["layout"])
         self.assertEqual(layout["centerAnchor"], default["centerAnchor"])
         self.assertEqual((layout["position"], layout["transparent"]), ("top", False))

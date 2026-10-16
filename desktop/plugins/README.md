@@ -20,6 +20,7 @@ desktop/
                          # settings, popouts, IPC, compositor facade)
   plugins/
     fred.clock/          # one directory per plugin: manifest, QML, helpers,
+    fred.tamversion/     # running Tamlinux version beside the clock
     fred.workspaces/     # tests, docs, and provenance records
     fred.agents/
     fred.keyboard/

@@ -7,6 +7,7 @@
     ],
     "center": [
       { "id": "tamlinux.indicators" },
+      { "id": "fred.tamversion" },
       { "id": "fred.clock" },
       { "id": "tamlinux.keyboard-layout" },
       { "id": "fred.weather" },

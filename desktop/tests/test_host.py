@@ -173,6 +173,29 @@ class RegistryCommandTests(unittest.TestCase):
 class SessionStartTests(unittest.TestCase):
     """The session unit's start script: plugin map, layout path, backend path."""
 
+    def test_version_follows_resolved_package_and_overrides_stale_environment(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shell = root / "share/tamlinux/shell"
+            shell.mkdir(parents=True)
+            (shell.parent / "version").write_text("0.4.4-a\n")
+            (shell.parent.parent / "VERSION").write_text("9.9.9\n")
+            self.assertEqual(session_start.shell_version(shell), "0.4.4-a")
+            with patch.object(session_start, "shell_version", return_value="0.4.4-a"):
+                env, _ = session_start.session_environment({
+                    "HOME": str(root), "TAMLINUX_BAR": "0", "TAMLINUX_VERSION": "stale"})
+            self.assertEqual(env["TAMLINUX_VERSION"], "0.4.4-a")
+
+    def test_source_version_and_missing_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shell = root / "desktop/shell"
+            shell.mkdir(parents=True)
+            self.assertEqual(session_start.shell_version(shell), "unknown")
+            (root / "VERSION").write_text("0.4.4-a\n")
+            self.assertEqual(session_start.shell_version(shell), "0.4.4-a")
+
     def test_services_only_adds_nothing_but_the_import_and_backend_paths(self):
         env, notes = session_start.session_environment({"HOME": "/home/u", "TAMLINUX_BAR": "0"})
         self.assertEqual(notes, [])
@@ -354,7 +377,7 @@ process.stdout.write(JSON.stringify(cases.map(([raw]) => parser.parse(raw))));
 class PluginMetadataTests(unittest.TestCase):
     def test_all_qml_version_declarations_match_the_manifest(self):
         plugins = sorted((DESKTOP / "plugins").glob("fred.*"))
-        self.assertEqual(len(plugins), 8)
+        self.assertEqual(len(plugins), 9)
         for plugin in plugins:
             manifest = json.loads((plugin / "manifest.json").read_text())
             declarations = []
@@ -399,7 +422,7 @@ class AdapterTests(unittest.TestCase):
 
 
 class FreshSessionDefaults(unittest.TestCase):
-    def test_empty_home_receives_all_eight_plugins_and_mutable_settings(self):
+    def test_empty_home_receives_all_plugins_and_mutable_settings(self):
         with tempfile.TemporaryDirectory() as directory:
             env = {'HOME': directory, 'XDG_CONFIG_HOME': directory + '/config'}
             session_start.initialize_defaults(env)
@@ -408,7 +431,11 @@ class FreshSessionDefaults(unittest.TestCase):
             ids = {entry['id'] for section in layout['layout'].values() for entry in section}
             self.assertEqual({name for name in ids if name.startswith('fred.')}, {
                 'fred.workspaces', 'fred.clock', 'fred.weather', 'fred.tides',
-                'fred.agents', 'fred.keyboard', 'fred.monitor', 'fred.sysinfo'})
+                'fred.agents', 'fred.keyboard', 'fred.monitor', 'fred.sysinfo', 'fred.tamversion'})
+            center = [entry['id'] for entry in layout['layout']['center']]
+            clock = center.index('fred.clock')
+            self.assertEqual(center[clock - 2:clock], ['tamlinux.indicators', 'fred.tamversion'])
+            self.assertEqual(layout['centerAnchor'], 'fred.clock')
             self.assertEqual(json.loads((root / 'settings.json').read_text()), {'version': 1, 'entries': {}})
             self.assertEqual(list(root.glob('.tamlinux-default-*')), [])
 

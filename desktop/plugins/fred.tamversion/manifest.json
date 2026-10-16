@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fred.tamversion",
+  "name": "Tamlinux Version",
+  "version": "0.1.0",
+  "author": "Fred (@greenermoose)",
+  "description": "Show the version of the running Tamlinux shell",
+  "repository": "https://github.com/greenermoose/tamlinux.git",
+  "homepage": "https://github.com/greenermoose/tamlinux",
+  "license": "GPL-3.0-or-later",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "Tamlinux Version",
+    "description": "Installed Tamlinux version",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

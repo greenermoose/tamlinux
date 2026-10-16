@@ -88,6 +88,7 @@ def _private(path: Path) -> None:
 
 
 EXTRA_PLUGINS = (
+    "fred.tamversion",
     "fred.agents",
     "fred.sysinfo",
     "fred.weather",
@@ -242,6 +243,7 @@ def prepare(state: Path, scale: str, output: str, reset: bool = True, copies: st
         "PATH": "/usr/bin",
         "QML_IMPORT_PATH": str(SHELL_DIR / "modules"),
         "TAMLINUX_CLOCK_OFFLINE": "1",
+        "TAMLINUX_VERSION": (SHELL_DIR.parent.parent / "VERSION").read_text().strip(),
         "TAMLINUX_CLOCK_ENTRY": by_id["fred.clock"]["entry"],
         "TAMLINUX_PANEL_ENTRY": by_id["tamlinux.fixture"]["entry"],
         "TAMLINUX_COMPOSITOR_ENTRY": by_id["tamlinux.compositor"]["entry"],
@@ -729,6 +731,7 @@ def drive_outputs(env: dict, process: subprocess.Popen) -> None:
 
 
 PLUGIN_IDS = (
+    "fred.tamversion",
     "fred.agents",
     "fred.sysinfo",
     "fred.weather",
@@ -1167,8 +1170,8 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the isolated Tamlinux clock proof")
     parser.add_argument("--selftest", action="store_true")
-    parser.add_argument("--plugins", action="store_true", help="load the seven plugins beside the clock")
-    parser.add_argument("--layout", action="store_true", help="draw the default bar layout (shell widgets and all eight plugins); implies --plugins")
+    parser.add_argument("--plugins", action="store_true", help="load the plugins beside the clock")
+    parser.add_argument("--layout", action="store_true", help="draw the default bar layout (shell widgets and all bundled plugins); implies --plugins")
     parser.add_argument("--scale", default="1")
     parser.add_argument("--output", default="")
     parser.add_argument("--position", choices=("top", "bottom"), default=None, help="with --layout, the bar's edge (default top)")

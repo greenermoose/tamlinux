@@ -35,6 +35,16 @@ def config_home(environ: dict[str, str]) -> Path:
     return Path(environ.get("HOME", "")) / ".config"
 
 
+def shell_version(shell: Path = SHELL) -> str:
+    """Read this shell's package metadata (or VERSION in a source checkout)."""
+    packaged = shell.parent / "version"
+    source = shell.parent.parent / "VERSION"
+    try:
+        return (packaged if packaged.exists() else source).read_text().strip()
+    except OSError:
+        return "unknown"
+
+
 def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[str]]:
     """The shell's environment, and what to say in the journal."""
     env = {key: value for key, value in environ.items() if not key.startswith("OMARCHY_")}
@@ -43,6 +53,8 @@ def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[s
     # Plugin helpers (fred.workspaces, fred.monitor) and the Sway adapter load
     # the compositor backend from here; without it they fail closed.
     env.setdefault("TAMLINUX_COMPOSITOR_COMMANDS", str(HOST))
+    # Always describe the shell being launched, never an inherited selection.
+    env["TAMLINUX_VERSION"] = shell_version()
     if env.get("TAMLINUX_BAR") == "0":
         return env, notes
     config = config_home(env)

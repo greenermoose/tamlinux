@@ -47,7 +47,7 @@ BAR_FLAG = os.path.join(STATE, "toggles/bar-off")
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PLUGINS = ["fred.agents", "fred.clock", "fred.keyboard", "fred.monitor",
-           "fred.sysinfo", "fred.tides", "fred.weather", "fred.workspaces"]
+           "fred.sysinfo", "fred.tamversion", "fred.tides", "fred.weather", "fred.workspaces"]
 SERVICE_TARGETS = ["notifications", "osd", "clipboard", "emojis", "imagepicker",
                    "reminders", "menu", "background", "polkit", "media", "idle",
                    "nightlight", "battery", "keybindings", "theme"]
@@ -484,7 +484,7 @@ def stage_passive(run, ctx):
     plug = [l for l in lines if "tamlinux-shell: plugins:" in l]
     if plug:
         loaded = plug[-1].split("plugins:", 1)[1].replace(" ", "").split(",")
-        run.check(sorted(loaded) == PLUGINS, "all eight plugins loaded", ",".join(loaded))
+        run.check(sorted(loaded) == PLUGINS, "all bundled plugins loaded", ",".join(loaded))
     rejected = [l for l in lines if "reject" in l.lower()]
     run.check(not rejected, "no plugin rejected", "; ".join(rejected[:3]))
 
