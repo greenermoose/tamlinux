@@ -53,6 +53,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) restores complete Antigravity
+quota reporting, including the separate Argon weekly allowance, in `fred.agents`
+2.0.5. [Session](docs/ai/2026-10-16-antigravity-complete-quotas.md).
+
 2026-10-16: Claude Code `2.1.301` (`claude-opus-5-5`) adds `tam-plugin new`
 and the offscreen `desktop/widget-proof` check.
 [Session](docs/ai/2026-10-16-plugin-scaffold-and-widget-proof.md).

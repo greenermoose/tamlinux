@@ -26,8 +26,10 @@ See [plugin ownership](../README.md) and the [deployment contract](https://githu
   the time until the session or weekly window resets. Claude and Codex report
   from their providers' own endpoints, and Cursor reports live plan usage from
   its dashboard endpoint — the included-total meter and the auto-model meter
-  as separate rows (see Data); Antigravity has no remote usage read-out yet,
-  so its section stays hidden.
+  as separate rows (see Data). Antigravity reads every quota group from
+  `agy --output-format json -p /usage`, including Gemini weekly and five-hour,
+  Claude & GPT weekly and five-hour, and any separate Argon allowance supplied
+  by the account. Failed refreshes retain unexpired readings marked last known.
 - **Tokens by day** — one row per day for the last week: day, bar, tokens,
   with today bolded at the bottom. Hover today for its prompt and session
   count.

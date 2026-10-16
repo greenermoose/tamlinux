@@ -4,6 +4,10 @@ This repository practices transparent AI-assisted engineering. We document the
 AI tools, models, prompts, and architectural decisions that shaped
 `fred.agents`.
 
+2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) restores all agy quota
+groups and preserves Argon's separate weekly allowance in 2.0.5.
+[Session record](../../../docs/ai/2026-10-16-antigravity-complete-quotas.md).
+
 ---
 
 ## How to read this record

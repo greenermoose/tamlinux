@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Restore complete Antigravity quota rows in `fred.agents`, including the
+  separately metered Argon weekly allowance, through agy's `/usage` report.
 - `tam-plugin new fred.<id>` (tam-plugin 3.1.0) creates a bar-widget plugin,
   validates it and places it in the default layout.
 - `desktop/widget-proof` renders one bar widget offscreen, with no display or

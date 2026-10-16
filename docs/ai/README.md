@@ -17,6 +17,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-16 | Complete Antigravity quota groups and distinct Argon allowance | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-antigravity-complete-quotas.md) |
 | 2026-10-16 | Retire delegation; preserve historical provenance | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-retire-delegation.md) |
 | 2026-10-16 | 0.4.4-c native login preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-native-login-c.md) |
 | 2026-10-16 | Plugin scaffold and offscreen widget check | Claude Code `2.1.301` | `claude-opus-5-5` | [Session](2026-10-16-plugin-scaffold-and-widget-proof.md) |

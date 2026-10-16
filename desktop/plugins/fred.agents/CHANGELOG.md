@@ -4,6 +4,15 @@ All notable changes to `fred.agents` in `tamlinux/desktop/plugins/fred.agents` a
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## [2.0.5] - Unreleased
+
+- Read Antigravity quotas from agy's complete `/usage` report; the direct
+  quota-summary endpoint can succeed while omitting Google model groups.
+- Keep Gemini 4 Argon's separate weekly allowance distinct from Gemini's
+  weekly and five-hour allowances. Preserve names for future Gemini groups.
+- Refresh old partial caches immediately and label retained quota readings
+  as last known when refresh fails, discarding expired windows.
+
 ## [2.0.4] - Tamlinux 0.4.2-c candidate
 
 - Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.
