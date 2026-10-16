@@ -22,30 +22,34 @@ REGISTRY="${TAMLINUX_REGISTRY:-$SHELL_DIR/host/registry.py}"
 SOURCE_REPO="${TAMLINUX_SOURCE_REPO:-${PUBLISHED_ROOT}/tamlinux}"
 PLUGINS_SRC="${SOURCE_REPO}/desktop/plugins"
 
-# Known Fred plugins catalog
-declare -A CATALOG_REPOS=(
-  ["fred.tamversion"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.tamversion"
-  ["fred.workspaces"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.workspaces"
-  ["fred.clock"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.clock"
-  ["fred.sysinfo"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.sysinfo"
-  ["fred.monitor"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.monitor"
-  ["fred.weather"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.weather"
-  ["fred.tides"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.tides"
-  ["fred.keyboard"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.keyboard"
-  ["fred.agents"]="https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.agents"
-)
+# The catalog is every plugin whose manifest names the Tamlinux repository,
+# read from the installed plugin package (found through the live links) and
+# from a source checkout. A new plugin needs no entry here.
+TAMLINUX_REPOSITORY="https://github.com/greenermoose/tamlinux"
+declare -A CATALOG_REPOS=()
+declare -A CATALOG_DESC=()
 
-declare -A CATALOG_DESC=(
-  ["fred.tamversion"]="Running Tamlinux version beside the clock"
-  ["fred.workspaces"]="Dynamic workspace indicator with multi-monitor desktop mode switcher"
-  ["fred.clock"]="Next-event countdown badge, multi-feed iCal sync, and interactive agenda"
-  ["fred.sysinfo"]="Universal hardware telemetry and system monitoring bar plugin"
-  ["fred.monitor"]="Display management panel with per-display link Reset and arrangement"
-  ["fred.weather"]="10-day outlook, 48-hour curve, and solar timeline with multi-monitor isolation"
-  ["fred.tides"]="Multi-monitor tide widget with current sea level, 24-hour scrubbable curve, and high/low timeline"
-  ["fred.keyboard"]="Keyboard shortcut explorer: see which keys run which commands on a model of your keyboard"
-  ["fred.agents"]="AI agent usage bar plugin: Antigravity, Claude, Codex, and Cursor activity and live subscription limits at a glance"
-)
+load_catalog() {
+  local roots=() link root dir id repository description seen=$'\n'
+  for link in "$LIVE_DIR"/fred.*; do
+    [[ -e "$link" ]] || continue
+    roots+=("$(dirname -- "$(readlink -f -- "$link")")")
+  done
+  roots+=("$PLUGINS_SRC")
+  for root in "${roots[@]}"; do
+    [[ "$seen" != *$'\n'"$root"$'\n'* ]] || continue
+    seen+="$root"$'\n'
+    for dir in "$root"/fred.*; do
+      [[ -f "$dir/manifest.json" ]] || continue
+      IFS=$'\t' read -r id repository description < <(
+        jq -r '[.id // "", .repository // "", .description // ""] | @tsv' "$dir/manifest.json" 2>/dev/null) || continue
+      [[ "$id" == "$(basename -- "$dir")" && -z "${CATALOG_REPOS[$id]:-}" ]] || continue
+      [[ "${repository%.git}" == "$TAMLINUX_REPOSITORY" ]] || continue
+      CATALOG_REPOS[$id]="$TAMLINUX_REPOSITORY/tree/main/desktop/plugins/$id"
+      CATALOG_DESC[$id]="${description:-Tamlinux shell plugin}"
+    done
+  done
+}
 
 # Catalog entries whose public repository does not exist yet. They are listed so
 # the suite is discoverable, but they cannot be installed or updated.
@@ -549,6 +553,8 @@ cmd_dev() {
     echo "dev: mode OFF for $id"
   fi
 }
+
+load_catalog
 
 case "${1:-}" in
   list)

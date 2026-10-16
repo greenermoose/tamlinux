@@ -19,20 +19,19 @@ desktop/
   shell/                 # the shell, plugin host, and shared API (registry,
                          # settings, popouts, IPC, compositor facade)
   plugins/
-    fred.clock/          # one directory per plugin: manifest, QML, helpers,
-    fred.tamversion/     # running Tamlinux version beside the clock
-    fred.workspaces/     # tests, docs, and provenance records
-    fred.agents/
-    fred.keyboard/
-    fred.monitor/
-    fred.sysinfo/
-    fred.tides/
-    fred.weather/
+    fred.<name>/         # one directory per plugin: manifest, QML, helpers,
+                         # tests, docs, and provenance records
 ```
 
 Each plugin keeps its own `manifest.json`, entry points, settings, tests,
 and optional activation. Runtime IDs stay `fred.<name>`, so existing
 settings and shell references keep working.
+
+The directories are the list of plugins. Packaging, `tam-plugin`, the live
+checks, and the tests read the plugin set from them and their manifests, so
+adding a plugin means adding its directory and, if it belongs on the default
+bar, an entry in `desktop/shell/bar/default-layout.json`. `fred.tamversion`
+is the smallest complete example.
 
 ## Frozen Omarchy-era repositories
 

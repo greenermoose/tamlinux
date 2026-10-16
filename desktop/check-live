@@ -46,8 +46,8 @@ SETTINGS = os.path.join(HOME, ".config/tamlinux/shell/settings.json")
 BAR_FLAG = os.path.join(STATE, "toggles/bar-off")
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PLUGINS = ["fred.agents", "fred.clock", "fred.keyboard", "fred.monitor",
-           "fred.sysinfo", "fred.tamversion", "fred.tides", "fred.weather", "fred.workspaces"]
+SELECTION = os.path.join(HOME, ".local/share/tamlinux/deployment-selection.json")
+PLUGIN_LINKS = os.path.join(HOME, ".config/tamlinux/plugins")
 SERVICE_TARGETS = ["notifications", "osd", "clipboard", "emojis", "imagepicker",
                    "reminders", "menu", "background", "polkit", "media", "idle",
                    "nightlight", "battery", "keybindings", "theme"]
@@ -287,6 +287,17 @@ def read_json(path):
         return None
 
 
+def installed_plugins():
+    """The plugins the active deployment installed, from its own record."""
+    selected = (read_json(SELECTION) or {}).get("plugins")
+    if isinstance(selected, list):
+        return sorted(selected)
+    try:
+        return sorted(name for name in os.listdir(PLUGIN_LINKS) if name.startswith("fred."))
+    except OSError:
+        return []
+
+
 def evidence_after(cursor, prefix):
     for line in journal_since(cursor):
         m = re.search(r"TAMLINUX_EVIDENCE " + re.escape(prefix) + r"(.*)$", line)
@@ -484,7 +495,7 @@ def stage_passive(run, ctx):
     plug = [l for l in lines if "tamlinux-shell: plugins:" in l]
     if plug:
         loaded = plug[-1].split("plugins:", 1)[1].replace(" ", "").split(",")
-        run.check(sorted(loaded) == PLUGINS, "all bundled plugins loaded", ",".join(loaded))
+        run.check(sorted(loaded) == installed_plugins(), "all bundled plugins loaded", ",".join(loaded))
     rejected = [l for l in lines if "reject" in l.lower()]
     run.check(not rejected, "no plugin rejected", "; ".join(rejected[:3]))
 

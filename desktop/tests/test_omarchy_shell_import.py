@@ -25,13 +25,17 @@ def bar(layout, **extra):
 
 class ConversionTests(unittest.TestCase):
     def test_historical_shell_json_preserves_its_layout(self):
-        layout, settings, notes = conversion.convert(json.loads(FIXTURE.read_text(encoding="utf-8")))
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        layout, settings, notes = conversion.convert(fixture)
         default = json.loads(DEFAULT_LAYOUT.read_text(encoding="utf-8"))
-        # The old fixture predates the version label. Import keeps its chosen
-        # widgets rather than silently inserting later default additions.
-        default["layout"]["center"] = [entry for entry in default["layout"]["center"]
-                                       if entry["id"] != "fred.tamversion"]
-        self.assertEqual(layout["layout"], default["layout"])
+        # The old fixture predates later default widgets. Import keeps its
+        # chosen widgets, in default order, rather than inserting additions.
+        kept = {entry["id"] for section in layout["layout"].values() for entry in section}
+        expected = {section: [entry for entry in entries if entry["id"] in kept]
+                    for section, entries in default["layout"].items()}
+        self.assertEqual(layout["layout"], expected)
+        self.assertEqual({section: len(entries) for section, entries in layout["layout"].items()},
+                         {section: len(entries) for section, entries in fixture["bar"]["layout"].items()})
         self.assertEqual(layout["centerAnchor"], default["centerAnchor"])
         self.assertEqual((layout["position"], layout["transparent"]), ("top", False))
         self.assertEqual(notes, [])

@@ -87,16 +87,10 @@ def _private(path: Path) -> None:
     os.chmod(path, 0o700)
 
 
-EXTRA_PLUGINS = (
-    "fred.tamversion",
-    "fred.agents",
-    "fred.sysinfo",
-    "fred.weather",
-    "fred.tides",
-    "fred.keyboard",
-    "fred.monitor",
-    "fred.workspaces",
-)
+# Every bundled plugin other than the clock, read from desktop/plugins.
+EXTRA_PLUGINS = tuple(sorted(
+    plugin.name for plugin in (Path(__file__).resolve().parent / "plugins").glob("fred.*")
+    if (plugin / "manifest.json").is_file() and plugin.name != "fred.clock"))
 
 
 def copy_tree(source: Path, dest: Path) -> None:
@@ -730,16 +724,7 @@ def drive_outputs(env: dict, process: subprocess.Popen) -> None:
         raise SystemExit("dropping one physical output destroyed the other")
 
 
-PLUGIN_IDS = (
-    "fred.tamversion",
-    "fred.agents",
-    "fred.sysinfo",
-    "fred.weather",
-    "fred.tides",
-    "fred.keyboard",
-    "fred.monitor",
-    "fred.workspaces",
-)
+PLUGIN_IDS = EXTRA_PLUGINS
 
 
 def drive_plugins(env: dict, process: subprocess.Popen) -> None:

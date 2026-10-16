@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCT = ROOT.parents[1]
+PLUGINS = sorted((PRODUCT / 'desktop/plugins').glob('fred.*'))
 
 
 class OwnedCatalog(unittest.TestCase):
@@ -31,9 +33,18 @@ class OwnedCatalog(unittest.TestCase):
         cache.write_text(json.dumps({'sources': [{'plugins': {'fred.clock': {}},
                               'automatedSecurityBaseline': {'outcome': 'passed'}}]}))
         self.cache = cache
+        # An installed plugin package, reached through one live link as Home
+        # Manager provides it. The catalog is read from it, not a checkout.
+        package = self.temp / 'store/tamlinux-plugins/share/tamlinux/plugins'
+        for plugin in PLUGINS:
+            shutil.copytree(plugin, package / plugin.name, symlinks=True,
+                            ignore=shutil.ignore_patterns('__pycache__'))
+        self.live = self.temp / 'plugins'
+        self.live.mkdir()
+        (self.live / 'fred.clock').symlink_to(package / 'fred.clock')
         self.env = os.environ | {
             'HOME': str(self.temp / 'home'), 'PATH': f'{self.bin}:{os.environ["PATH"]}',
-            'FRED_LIVE_DIR': str(self.temp / 'plugins'),
+            'FRED_LIVE_DIR': str(self.live),
             'TAMLINUX_SOURCE_REPO': str(self.temp / 'no-checkout'),
             'TAMLINUX_REGISTRY': str(PRODUCT / 'desktop/shell/host/registry.py'),
             'TEST_NETWORK_LOG': str(self.network_log),
@@ -56,13 +67,29 @@ class OwnedCatalog(unittest.TestCase):
         self.assertTrue(self.cache.exists())  # History isn't deleted.
 
     def test_catalog_links_are_maintained_product_sources(self):
-        ids = ['workspaces', 'clock', 'sysinfo', 'monitor', 'weather', 'tides', 'keyboard', 'agents']
-        for name in ids:
-            with self.subTest(name=name):
-                result = self.run_cli('info', f'fred.{name}')
+        self.assertIn('fred.clock', [plugin.name for plugin in PLUGINS])
+        for plugin in PLUGINS:
+            with self.subTest(plugin=plugin.name):
+                result = self.run_cli('info', plugin.name)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn(f'https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.{name}',
+                self.assertIn(f'https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/{plugin.name}',
                               result.stdout)
+                description = json.loads((plugin / 'manifest.json').read_text())['description']
+                self.assertIn(f'Description: {description}', result.stdout)
+
+    def test_every_packaged_plugin_is_searchable(self):
+        result = self.run_cli('search')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        listed = {line.split()[0] for line in result.stdout.splitlines()[1:]}
+        self.assertEqual(listed, {plugin.name for plugin in PLUGINS})
+
+    def test_plugin_from_another_repository_is_local(self):
+        mine = self.live / 'fred.mine'
+        mine.mkdir()
+        (mine / 'manifest.json').write_text(json.dumps({
+            'id': 'fred.mine', 'repository': 'https://example.org/mine.git', 'description': 'Mine'}))
+        result = self.run_cli('search')
+        self.assertNotIn('fred.mine', result.stdout)
 
     def test_unknown_local_plugin_gets_no_invented_repository(self):
         result = self.run_cli('info', 'fred.local')

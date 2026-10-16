@@ -44,7 +44,7 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 | :-- | :-- | :-- | :-- |
 | **0.4.1 package** | 0.4.1 Test candidate | Claude Code `2.1.295` (`claude-opus-5-5`) | The accepted 0.4.1 shell with its accepted plugin payloads and the product commands, packaged for deployment through `tamlinux-packages`; plugin digests equal the acceptance record. [Session](docs/ai/2026-10-09-0.4.1-package.md). |
 | **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
-| **Claude Code** (`claude`) | `2.1.289` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
+| **Claude Code** (`claude`) | `2.1.301` (verified 2026-10-16) | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
 | **Codex CLI** (`codex`) | `0.163.0` (verified 2026-10-16) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
 | **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
 | **Cursor** (`cursor`) | `3.21.16` | composer | **Implementation in this repository**: public explainer, suite branding, and 0.0.1 versioning. |
@@ -54,6 +54,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 ---
 
 ## 2. Key Architectural Milestones & AI Role
+
+2026-10-16: Claude Code `2.1.301` (`claude-opus-5-5`) derives the plugin set
+from the plugin directories in `tam-plugin`, the live and proof checks, and
+the tests, so a new plugin needs no list edits.
+[Session](docs/ai/2026-10-16-derived-plugin-set.md).
 
 2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) adds the running Tamlinux
 version to the bar and prepares the next small candidate.
