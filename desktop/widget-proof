@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""Render one plugin's bar widget offscreen and report what it shows.
+
+    desktop/widget-proof fred.tamversion --env TAMLINUX_VERSION=0.4.4-b \
+        --expect "Tamlinux 0.4.4b"
+
+The widget is loaded alone in a disposable Quickshell config with the
+offscreen platform, a private runtime directory and no display or session
+bus, so the running bar is never touched. It needs no session access, so it
+also runs inside an agent sandbox. It prints one JSON line with the widget's
+text property and implicit size, and exits non-zero when the widget does not
+load, has no size, or shows something other than --expect.
+
+A widget that creates a PanelWindow while loading cannot load offscreen;
+check those on a real output with launch-clock-proof.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+DESKTOP = Path(__file__).resolve().parent
+MARKER = "TAMLINUX_WIDGET_PROOF "
+UNIT = "tamlinux-shell.service"
+
+
+def plugin_dir(target: str) -> Path:
+    path = Path(target)
+    if not path.is_dir():
+        path = DESKTOP / "plugins" / target
+    if not (path / "manifest.json").is_file():
+        raise SystemExit(f"widget-proof: no plugin manifest for {target}")
+    return path.resolve()
+
+
+def bar_entry(plugin: Path) -> str:
+    manifest = json.loads((plugin / "manifest.json").read_text(encoding="utf-8"))
+    entry = manifest.get("entryPoints", {}).get("barWidget")
+    if not entry or not (plugin / entry).is_file():
+        raise SystemExit(f"widget-proof: {manifest.get('id', plugin.name)} has no bar widget entry point")
+    return Path(entry).stem
+
+
+def find_quickshell(explicit: str | None) -> str | None:
+    """The shell's paired Quickshell: flag, environment, the unit, then PATH."""
+    if explicit:
+        return explicit
+    if os.environ.get("TAMLINUX_QUICKSHELL"):
+        return os.environ["TAMLINUX_QUICKSHELL"]
+    try:
+        shown = subprocess.run(["systemctl", "--user", "show", UNIT, "-p", "Environment", "--value"],
+                               capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        shown = ""
+    match = re.search(r"(?:^|\s)TAMLINUX_QUICKSHELL=(\S+)", shown)
+    if match:
+        return match.group(1)
+    return shutil.which("quickshell")
+
+
+def shell_qml(component: str, prop: str) -> str:
+    return f"""import QtQuick
+import Quickshell
+import "plugin" as Plugin
+
+ShellRoot {{
+  Plugin.{component} {{
+    id: widget
+    Component.onCompleted: Qt.callLater(function() {{
+      var value = widget[{json.dumps(prop)}]
+      console.log({json.dumps(MARKER)} + JSON.stringify({{
+        text: value === undefined ? null : String(value),
+        width: widget.implicitWidth, height: widget.implicitHeight }}))
+      Qt.quit()
+    }})
+  }}
+}}
+"""
+
+
+def environment(runtime: Path, extra: list[str]) -> dict[str, str]:
+    # No display, bus or desktop Qt/GTK settings: the GTK platform theme alone
+    # makes Quickshell exit when it cannot open a display.
+    env = {key: value for key, value in os.environ.items()
+           if key not in {"DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS", "HYPRLAND_INSTANCE_SIGNATURE"}
+           and not key.startswith(("QT_", "GDK_", "QML_"))}
+    env.update(QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software",
+               QML_IMPORT_PATH=str(DESKTOP / "shell" / "modules"), XDG_RUNTIME_DIR=str(runtime))
+    for pair in extra:
+        key, sep, value = pair.partition("=")
+        if not sep or not key:
+            raise SystemExit(f"widget-proof: --env needs KEY=VALUE, got {pair!r}")
+        env[key] = value
+    return env
+
+
+def parse(output: str) -> dict | None:
+    for line in output.splitlines():
+        if MARKER in line:
+            return json.loads(line.split(MARKER, 1)[1])
+    return None
+
+
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def problems(output: str) -> list[str]:
+    # The private runtime directory may refuse an IPC socket in a sandbox;
+    # a one-shot render does not use IPC.
+    return [ANSI.sub("", line).strip() for line in output.splitlines()
+            if "quickshell.ipc" not in line and re.search(r"\b(ERROR|TypeError|ReferenceError)\b|is not a type|module .* is not installed", line)]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Render one plugin's bar widget offscreen")
+    parser.add_argument("plugin", help="plugin id under desktop/plugins, or a plugin directory")
+    parser.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
+                        help="environment for the widget (repeatable)")
+    parser.add_argument("--expect", help="exact text the widget must show")
+    parser.add_argument("--property", default="displayText",
+                        help="widget property holding its text (default displayText)")
+    parser.add_argument("--quickshell", help="Quickshell executable (default: the shell unit's)")
+    parser.add_argument("--timeout", type=float, default=30)
+    args = parser.parse_args()
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", args.property):
+        raise SystemExit("widget-proof: --property must be a QML property name")
+
+    plugin = plugin_dir(args.plugin)
+    component = bar_entry(plugin)
+    quickshell = find_quickshell(args.quickshell)
+    if not quickshell:
+        raise SystemExit("widget-proof: no Quickshell found; pass --quickshell")
+
+    with tempfile.TemporaryDirectory(prefix="widget-proof-") as temp:
+        root = Path(temp)
+        config = root / "config"
+        runtime = root / "runtime"
+        config.mkdir()
+        runtime.mkdir(mode=0o700)
+        (config / "plugin").symlink_to(plugin)
+        (config / "shell.qml").write_text(shell_qml(component, args.property), encoding="utf-8")
+        try:
+            run = subprocess.run([quickshell, "-p", str(config)], env=environment(runtime, args.env),
+                                 capture_output=True, text=True, timeout=args.timeout)
+        except subprocess.TimeoutExpired:
+            raise SystemExit(f"widget-proof: Quickshell did not finish within {args.timeout:g}s")
+    output = run.stdout + run.stderr
+    result = parse(output)
+    failures = []
+    if result is None and "No PanelWindow backend loaded" in output:
+        failures.append("the widget creates a PanelWindow while loading, which needs a real output; "
+                        "use launch-clock-proof")
+    elif result is None:
+        failures.append("the widget did not finish loading")
+    else:
+        if not (result["width"] > 0 and result["height"] > 0):
+            failures.append(f"the widget has no size ({result['width']} x {result['height']})")
+        if args.expect is not None and result["text"] != args.expect:
+            failures.append(f"{args.property} is {result['text']!r}, expected {args.expect!r}")
+    report = {"plugin": plugin.name, "ok": not failures, **(result or {}),
+              "problems": problems(output), "failures": failures}
+    print(json.dumps(report))
+    if failures:
+        print("\n".join(output.splitlines()[-40:]), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

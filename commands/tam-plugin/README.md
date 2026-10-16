@@ -6,7 +6,11 @@
 `dev` points a running plugin at its source in a Tamlinux checkout for fast
 iteration and `dev off` restores the installed package; `diff` and `verify`
 compare the installed plugin with its source; `restore` recovers from a
-stuck override. `tam-plugin help` lists every command.
+stuck override. `new` creates a bar-widget plugin in the checkout (manifest,
+`BarWidget.qml`, README, changelog), validates it, and places it in the
+default bar layout; `desktop/widget-proof <id>` then renders it offscreen.
+The catalog is read from the plugin manifests, so a new plugin needs no
+entry here. `tam-plugin help` lists every command.
 
 `dev` is not a deployment. Plugins are tested and run as part of the
 Tamlinux package with [`tam-deploy`](../tam-deploy/README.md); the `test` and
@@ -27,6 +31,7 @@ make install   # honours PREFIX and DESTDIR
 | `FRED_PUBLISHED_ROOT` | `~/Code/tamlinux` |
 | `FRED_LIVE_DIR` | `~/.config/tamlinux/plugins` |
 | `TAMLINUX_REGISTRY` | `~/.local/share/tamlinux/shell/host/registry.py` |
+| `TAMLINUX_PLUGIN_CATALOG` | unset; the package sets it to its plugin output |
 
 ## Status
 
@@ -35,8 +40,10 @@ Moved here from a private workstation configuration on 2026-10-09. Version
 `tam-deploy`. The Omarchy-era 1.x tool stays in the frozen
 `plugin-fred-tamlinux` repository.
 
-For 0.4.3, discovery uses the catalog shipped in this product command. All eight
-maintained plugin links point to `tamlinux/desktop/plugins/`. `list`, `info` and
+Since 3.1.0 (Tamlinux 0.4.4) the catalog is every manifest naming the
+Tamlinux repository, read from the packaged plugin root
+(`TAMLINUX_PLUGIN_CATALOG`, set by the package), the installed plugin links,
+and a checkout; catalog links point to `tamlinux/desktop/plugins/`. `list`, `info` and
 `search` perform no marketplace requests, read no old registry cache and fetch
 no repository. `list --refresh` remains accepted; catalog updates arrive with
 the package. Local source inspection remains available with a Tamlinux checkout.

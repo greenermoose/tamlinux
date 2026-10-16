@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-VERSION="3.0.0"
+VERSION="3.1.0"
 
 # Directories
 LIVE_DIR="${FRED_LIVE_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/tamlinux/plugins}"
@@ -109,6 +109,8 @@ Usage:
   tam-plugin verify <id>
   tam-plugin dev <id> on|off
   tam-plugin restore <id>
+  tam-plugin new <id> --description TEXT [--name NAME] [--section left|center|right]
+                 [--before ID | --after ID] [--no-layout]
   tam-plugin upstream-diff
   tam-plugin --version
   tam-plugin --help
@@ -122,8 +124,128 @@ Subcommands:
   dev <id> on|off   [Developer] Point the running plugin at its Tamlinux source for fast iteration
                     (not a deployment; Test and Run use tam-deploy)
   restore <id>      [Developer] Restore managed plugin state from active override or stale recovery
+  new <id>          [Developer] Create a bar-widget plugin in the Tamlinux checkout and place it
+                    in the default layout (end of the right section unless told otherwise)
   upstream-diff     [Developer] Retired; use verify <id> against maintained Tamlinux source
 USAGE
+}
+
+cmd_new() {
+  local id="" name="" description="" section="right" before="" after="" layout=1
+  while (($#)); do
+    case "$1" in
+      --name) name="${2:-}"; shift 2 ;;
+      --description) description="${2:-}"; shift 2 ;;
+      --section) section="${2:-}"; shift 2 ;;
+      --before) before="${2:-}"; shift 2 ;;
+      --after) after="${2:-}"; shift 2 ;;
+      --no-layout) layout=0; shift ;;
+      -*) fail "new: unknown option $1" ;;
+      *) [[ -z "$id" ]] || fail "new: one plugin id only"; id="$1"; shift ;;
+    esac
+  done
+  [[ -n "$id" ]] || fail "new requires a plugin id (e.g. fred.example)"
+  validate_plugin_id "$id"
+  [[ -n "$description" ]] || fail "new requires --description (shown by search and info)"
+  [[ "$section" =~ ^(left|center|right)$ ]] || fail "new: --section must be left, center or right"
+  [[ -z "$before" || -z "$after" ]] || fail "new: use --before or --after, not both"
+  [[ -d "$PLUGINS_SRC" ]] || fail "new needs a Tamlinux checkout: $PLUGINS_SRC not found (set TAMLINUX_SOURCE_REPO)"
+  local dir="$PLUGINS_SRC/$id"
+  [[ ! -e "$dir" ]] || fail "$id already exists: $dir"
+  [[ -z "${CATALOG_REPOS[$id]:-}" ]] || fail "$id is already in the catalog"
+  local registry="$SOURCE_REPO/desktop/shell/host/registry.py"
+  [[ -f "$registry" ]] || registry="$REGISTRY"
+
+  python3 -I - "$dir" "$id" "$name" "$description" \
+      "$SOURCE_REPO/desktop/shell/bar/default-layout.json" "$layout" "$section" "$before" "$after" <<'PY'
+import json, sys
+from pathlib import Path
+
+dir_, pid, name, description, layout_path, layout, section, before, after = sys.argv[1:]
+name = name or " ".join(part.capitalize() for part in pid.split(".", 1)[1].replace("_", "-").split("-"))
+layout_path = Path(layout_path)
+
+if layout == "1":
+    data = json.loads(layout_path.read_text(encoding="utf-8"))
+    entries = data["layout"][section]
+    ids = [entry["id"] for entry in entries]
+    anchor = before or after
+    if anchor and anchor not in ids:
+        sys.exit(f"tam-plugin: {anchor} is not in the {section} section of the default layout")
+    index = len(entries) if not anchor else ids.index(anchor) + (1 if after else 0)
+    entries.insert(index, {"id": pid})
+
+plugin = Path(dir_)
+plugin.mkdir()
+manifest = {
+    "schemaVersion": 1, "id": pid, "name": name, "version": "0.1.0",
+    "author": "Fred (@greenermoose)", "description": description,
+    "repository": "https://github.com/greenermoose/tamlinux.git",
+    "homepage": "https://github.com/greenermoose/tamlinux",
+    "license": "GPL-3.0-or-later", "kinds": ["bar-widget"],
+    "entryPoints": {"barWidget": "BarWidget.qml"},
+    "barWidget": {"displayName": name, "description": description,
+                  "category": "System", "allowMultiple": False},
+}
+(plugin / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+(plugin / "BarWidget.qml").write_text(f'''import QtQuick
+import Quickshell
+import Tam.Ui
+
+BarWidget {{
+  id: root
+  moduleName: {json.dumps(pid)}
+  readonly property string pluginVersion: "0.1.0"
+
+  // The label the bar shows; widget checks read this property.
+  readonly property string displayText: {json.dumps(name)}
+
+  implicitWidth: label.implicitWidth
+  implicitHeight: label.implicitHeight
+
+  WidgetButton {{
+    id: label
+    anchors.fill: parent
+    bar: root.bar
+    text: root.displayText
+    pressable: false
+    horizontalMargin: 8.75
+  }}
+}}
+''', encoding="utf-8")
+(plugin / "README.md").write_text(f"# {name}\n\n{description}\n\n"
+    "Original Tamlinux code, licensed GPL-3.0-or-later under the repository license.\n", encoding="utf-8")
+(plugin / "CHANGELOG.md").write_text(f"# Changelog\n\n## 0.1.0 - Unreleased\n\n- {description}.\n", encoding="utf-8")
+
+if layout == "1":
+    # One entry per line, the file's maintained form.
+    lines = ["{"]
+    keys = list(data)
+    for number, key in enumerate(keys):
+        comma = "," if number < len(keys) - 1 else ""
+        if key != "layout":
+            lines.append(f"  {json.dumps(key)}: {json.dumps(data[key])}{comma}")
+            continue
+        lines.append('  "layout": {')
+        sections = list(data["layout"])
+        for at, name_ in enumerate(sections):
+            items = data["layout"][name_]
+            lines.append(f"    {json.dumps(name_)}: [")
+            lines += ["      { " + json.dumps(item, separators=(", ", ": "))[1:-1] + " }"
+                      + ("," if i < len(items) - 1 else "") for i, item in enumerate(items)]
+            lines.append("    ]" + ("," if at < len(sections) - 1 else ""))
+        lines.append("  }" + comma)
+    lines.append("}")
+    layout_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+  python3 -I "$registry" validate "$dir" >/dev/null || fail "generated plugin failed registry validation: $dir"
+  echo "new: created $dir"
+  ((layout)) && echo "new: placed $id in the $section section of desktop/shell/bar/default-layout.json"
+  cat <<NEXT
+Next: replace the label in BarWidget.qml, keep pluginVersion equal to the
+manifest version, render it with desktop/widget-proof $id, and run the
+desktop tests. The plugin reaches the bar through a Tamlinux candidate.
+NEXT
 }
 
 cmd_upstream_diff() {
@@ -589,6 +711,10 @@ case "${1:-}" in
   restore)
     shift
     cmd_restore "$@"
+    ;;
+  new)
+    shift
+    cmd_new "$@"
     ;;
   upstream-diff)
     shift
