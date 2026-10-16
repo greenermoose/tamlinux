@@ -23,14 +23,16 @@ SOURCE_REPO="${TAMLINUX_SOURCE_REPO:-${PUBLISHED_ROOT}/tamlinux}"
 PLUGINS_SRC="${SOURCE_REPO}/desktop/plugins"
 
 # The catalog is every plugin whose manifest names the Tamlinux repository,
-# read from the installed plugin package (found through the live links) and
-# from a source checkout. A new plugin needs no entry here.
+# read from the packaged plugin root (TAMLINUX_PLUGIN_CATALOG, set by the
+# package), the installed plugin package (found through the live links), and
+# a source checkout. A new plugin needs no entry here.
 TAMLINUX_REPOSITORY="https://github.com/greenermoose/tamlinux"
 declare -A CATALOG_REPOS=()
 declare -A CATALOG_DESC=()
 
 load_catalog() {
   local roots=() link root dir id repository description seen=$'\n'
+  [[ -z "${TAMLINUX_PLUGIN_CATALOG:-}" ]] || roots+=("$TAMLINUX_PLUGIN_CATALOG")
   for link in "$LIVE_DIR"/fred.*; do
     [[ -e "$link" ]] || continue
     roots+=("$(dirname -- "$(readlink -f -- "$link")")")

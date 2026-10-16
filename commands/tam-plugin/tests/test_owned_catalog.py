@@ -83,6 +83,23 @@ class OwnedCatalog(unittest.TestCase):
         listed = {line.split()[0] for line in result.stdout.splitlines()[1:]}
         self.assertEqual(listed, {plugin.name for plugin in PLUGINS})
 
+    def test_packaged_root_needs_no_links_or_checkout(self):
+        # The package sets this root, so discovery works before any plugin is
+        # linked and without a checkout.
+        (self.live / 'fred.clock').unlink()
+        package = self.temp / 'store/tamlinux-plugins/share/tamlinux/plugins'
+        self.env['TAMLINUX_PLUGIN_CATALOG'] = str(package)
+        for args in [('list', '--all', '--refresh'), ('info', 'fred.clock'), ('search', 'clock')]:
+            with self.subTest(args=args):
+                result = self.run_cli(*args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('fred.clock', result.stdout)
+        clock = next(line for line in self.run_cli('list', '--all').stdout.splitlines()
+                     if line.startswith('fred.clock '))
+        self.assertIn('Tamlinux', clock)
+        result = self.run_cli('info', 'fred.clock')
+        self.assertIn('https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.clock', result.stdout)
+
     def test_plugin_from_another_repository_is_local(self):
         mine = self.live / 'fred.mine'
         mine.mkdir()
