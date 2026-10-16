@@ -375,3 +375,9 @@ Codex CLI 0.162.1 / gpt-6.1-sol implemented the accepted launch isolation.
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) integrates the tested d corrections before
 starting cutover development. [Session](docs/ai/2026-10-15-0.4.4a-cutover.md).
+
+## Native SDDM greeter preparation
+
+Codex CLI `0.163.0` (`gpt-6.1-sol`) implemented and checked the visible
+session selector and native vendor packaging for 0.4.4-a.
+[Session](docs/ai/2026-10-15-sddm-native-greeter.md).
