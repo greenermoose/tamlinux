@@ -18,6 +18,7 @@ side and any rework: [`delegations.md`](delegations.md).
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
 | 2026-10-16 | 0.4.4-c native login preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-native-login-c.md) |
+| 2026-10-16 | Plugin scaffold and offscreen widget check | Claude Code `2.1.301` | `claude-opus-5-5` | [Session](2026-10-16-plugin-scaffold-and-widget-proof.md) |
 | 2026-10-16 | Plugin set derived from the plugin directories | Claude Code `2.1.301` | `claude-opus-5-5` | [Session](2026-10-16-derived-plugin-set.md) |
 | 2026-10-16 | Running Tamlinux version in the bar | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-tamversion.md) |
 | 2026-10-15 | Login candidate retains d sleep hooks | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-15-login-slice-sleep-hook.md) |
