@@ -21,18 +21,18 @@ from Wayland, River, Hyprland, Quickshell, and Omarchy.
 ## What Tamlinux is
 
 Tamlinux is a resource-efficient, high-performance, AI-ready user interface
-for laptop and desktop computers running Linux. Its goal is a responsive,
-reliable, accessible daily experience that gets the most from desktop systems,
-mini PCs, and laptops that can be kept in delightful, productive use for decades.
+for computers running Linux. Its goal is a responsive, reliable, accessible
+daily experience that gets the most from desktop systems, mini PCs, and
+laptops that can be kept in delightful, productive use for decades.
 
-*Tam* can mean **tamarack**, **total addressable market**, or **the absolute
-max**. Like the tamarack's needles, Tamlinux sheds old packages to make room
-for new while the project continues improving. We are moving from Omarchy toward an
-installation package that turns an existing Linux distribution into a lean,
-ergonomic workstation environment, and then ultimately a package ("cultivar") grafted
-onto a minimal Void base ("root-stock"), with antiX Core as the fallback if Void has a
-showstopper. The aim is a sustainable, feature-complete workstation environment that
-runs well on a wide variety of hardware.
+*Tam* can mean **tamarack**, **total addressable market**, **the absolute
+max**, or **teaching and making**. Like the tamarack's needles, Tamlinux sheds old
+packages to make room for new so the project can continually improve. We are moving
+from Omarchy toward an installation package that turns an existing Linux distribution
+into a lean, ergonomic workstation environment, and then ultimately a package
+("cultivar") grafted onto a minimal Void base ("root-stock"), with antiX Core as the
+fallback if Void has a showstopper. The aim is a sustainable, feature-complete
+workstation environment that runs well on a wide variety of hardware.
 
 Simplifying and minimizing resource use not merely accommodates older computers:
 it is a virtue. Removing bloat, resident daemons, and polling loops allows Linux
