@@ -394,3 +394,8 @@ starting cutover development. [Session](docs/ai/2026-10-15-0.4.4a-cutover.md).
 Codex CLI `0.163.0` (`gpt-6.1-sol`) implemented and checked the visible
 session selector and native vendor packaging for 0.4.4-a.
 [Session](docs/ai/2026-10-15-sddm-native-greeter.md).
+
+## Native login c — 2026-10-16
+
+Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the c native launcher names and
+execution tests. [Session record](docs/ai/2026-10-16-native-login-c.md).
