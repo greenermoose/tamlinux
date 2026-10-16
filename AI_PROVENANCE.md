@@ -417,3 +417,9 @@ Claude Code `2.1.301` (`claude-opus-5-5`) changed Fred Horch's title in
 `ACKNOWLEDGEMENTS.md` to "Tamlinux developer" at his request (`3bc614a`).
 The session is recorded in the `tam` repository:
 [session record](https://github.com/greenermoose/tam/blob/develop/docs/ai/2026-10-16-tam-corpus-workflow-decisions.md).
+
+## 0.4.4e boot handoff preparation — 2026-10-16
+
+Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the next product identity and
+boot-provider/recovery contract while retaining d’s runtime implementation.
+[Session](docs/ai/2026-10-16-boot-preparation.md).

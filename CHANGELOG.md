@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-e - Develop
+
+- Prepare independent native boot providers, preserving consumer boot policy,
+  generated images and EFI recovery through the package assembly.
+- Retain d's desktop and native login implementation; boot configuration and
+  provider installation remain separately approved host transactions.
+
 ## 0.4.4-d - Develop
 
 - Wait for the previous graphical session to finish before a new native login;
