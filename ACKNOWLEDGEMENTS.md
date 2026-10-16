@@ -315,6 +315,9 @@ The source links below are the authority for complete notices and exceptions. A 
 ### Omarchy
 
 - **Connection:** Current Tamlinux 0.x base, shell/plugin integration, and documented cloned components.
+- **Agent skills:** The Tamlinux desktop skill is newly written with reference
+  to Omarchy's desktop guidance. The crash-diagnosis skill is adapted from
+  Omarchy 4.0.4; its MIT notice is retained beside the adapted text.
 - **License:** MIT. [License/source notices](https://github.com/omacom/omarchy/blob/quattro/LICENSE).
 - **Stated copyright / limits:** Copyright (c) David Heinemeier Hansson
 - **Source:** [Upstream project](https://github.com/omacom/omarchy). [Wider contributor community](https://github.com/omacom/omarchy/graphs/contributors).

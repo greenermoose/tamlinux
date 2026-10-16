@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-a - Develop
+
+- Begin the cutover candidate with the tested d graphics fixes, the hibernate-time
+  zram drain, and packaged Tamlinux desktop and crash-diagnosis agent skills.
+- Check agent skill discovery and replace inherited skill links without
+  overwriting personal skills.
+
 ## 0.4.3-d - Develop
 
 - Refresh browser policy only for an existing local default profile, with a

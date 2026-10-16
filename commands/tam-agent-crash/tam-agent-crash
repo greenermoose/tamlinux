@@ -10,8 +10,7 @@
 # agent is default; this only gathers the facts and points at it.
 #
 # Ported from Omarchy 4.0.4 (omarchy-agent-crash) for plan 18 R4.15d. It
-# points at the skill through ~/.claude/skills/diagnose-crash, which still
-# links to Omarchy's copy until R10 moves the skill.
+# reads the selected Tamlinux skill from the user generation's data directory.
 #
 # Copyright (c) David Heinemeier Hansson
 #

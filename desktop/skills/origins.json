@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "tamlinux": {
+    "origin": "New Tamlinux guidance; desktop ownership reference: Omarchy 4.0.4",
+    "license": "GPL-3.0-or-later"
+  },
+  "diagnose-crash": {
+    "origin": "Omarchy 4.0.4 default/agents/skills/diagnose-crash/SKILL.md",
+    "sourceSha256": "63e9ea3f54e75ad1d4244be585b57a8bdb2e02aad64f6224678f6ef7f241eca9",
+    "license": "MIT",
+    "copyright": "David Heinemeier Hansson",
+    "changes": "Tamlinux/component reporting and retained license; no inherited reporting workflow"
+  }
+}
