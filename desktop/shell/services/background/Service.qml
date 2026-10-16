@@ -12,6 +12,7 @@
 // tamlinux-background layer namespace.
 
 import Quickshell
+import Tam.Commons
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
@@ -90,6 +91,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: readlinkProc
     command: ["readlink", "-f", root.currentBackgroundLink]
     stdout: StdioCollector {
@@ -100,6 +102,7 @@ Item {
   // Commands that set the background repoint the link (ln -nsf renames a new
   // link over it), so a change shows without each one calling this service.
   Process {
+    environment: Util.hostEnvironment()
     id: linkWatchProc
     command: ["setpriv", "--pdeathsig", "TERM", "inotifywait", "-mq", "-e", "create", "-e", "moved_to", "--format", "%f", root.linkDir]
     onExited: watchRestartTimer.restart()

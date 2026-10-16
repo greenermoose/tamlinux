@@ -20,6 +20,7 @@
 
 import QtQuick
 import Quickshell
+import Tam.Commons
 import Quickshell.Io
 import Quickshell.Wayland
 import "IdleModel.js" as IdleModel
@@ -273,19 +274,23 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: screensaverProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver exitCode=" + exitCode + " status=" + exitStatus) }
   }
   Process {
+    environment: Util.hostEnvironment()
     id: lockProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "lock exitCode=" + exitCode + " status=" + exitStatus) }
   }
   Process {
+    environment: Util.hostEnvironment()
     id: wakeProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "wake exitCode=" + exitCode + " status=" + exitStatus) }
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: stayAwakeStateProbe
     command: ["bash", "-c", 'mkdir -p -- "$1"; if [[ -f $2 ]]; then echo yes; else echo no; fi', "bash", root.stayAwakeStateDir, root.stayAwakeStatePath]
     stdout: SplitParser {
@@ -295,6 +300,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: stayAwakeStateWriter
     onExited: function() {
       if (root.hasPendingStayAwakePersist) {

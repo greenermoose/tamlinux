@@ -130,6 +130,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: speedTestProc
     stdout: SplitParser { onRead: function(line) { root.updateSpeedTestLine(line) } }
     // Exit and stream-finished have no guaranteed order: when a failed exit
@@ -174,6 +175,7 @@ Item {
   // Names the connection under test when the summoner didn't. First tab
   // field is the kind, second the SSID (wifi) or device (ethernet).
   Process {
+    environment: Util.hostEnvironment()
     id: statusProc
     command: ["tam-network-status"]
     stdout: StdioCollector {

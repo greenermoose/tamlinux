@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-15 | 0.4.4-a cutover development | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-15-0.4.4a-cutover.md) |
 | 2026-10-15 | Drain zram swap before hibernating | Claude Code `2.1.300` | `claude-opus-5-5` | [Session](2026-10-15-hibernate-swap.md) |
 | 2026-10-15 | Native conversion and c preparation | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-15-desktop-test-c.md) |
 | 2026-10-14 | Owned Chromium extensions and native messaging | Codex CLI `0.162.1` | `gpt-6.1-sol` | [Session](2026-10-14-browser-endpoints.md) |
@@ -117,3 +118,5 @@ side and any rework: [`delegations.md`](delegations.md).
 - [2026-10-14 — Desktop Test b preparation](2026-10-14-desktop-test-b.md)
 
 - [2026-10-15 — Protocol-state crash fix and native system defaults](2026-10-15-protocol-crash-native-defaults.md)
+
+| 2026-10-15 | 0.4.3-d graphics environment isolation | Codex CLI 0.162.1 | gpt-6.1-sol | [Record](2026-10-15-0.4.3d-graphics-isolation.md) |

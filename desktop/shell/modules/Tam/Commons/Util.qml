@@ -1,7 +1,41 @@
 pragma Singleton
 import QtQuick
+import Quickshell
 
 QtObject {
+  // Delivery injects these only into Quickshell. Null in a Process environment
+  // removes a variable; an empty string restores an explicitly empty caller value.
+  readonly property var graphicsProviderKeys: ["__EGL_VENDOR_LIBRARY_FILENAMES", "LIBGL_DRIVERS_PATH"]
+  readonly property var providerEnvironment: String(Quickshell.env("TAMLINUX_GRAPHICS_PROVIDER_ENV") || "")
+    .split(" ").filter(function (name) { return graphicsProviderKeys.indexOf(name) !== -1 })
+
+  function hostEnvironment(overrides) {
+    var result = {}
+    for (var key in (overrides || {})) result[key] = overrides[key]
+    result.TAMLINUX_GRAPHICS_PROVIDER_ENV = null
+    for (var i = 0; i < graphicsProviderKeys.length; i++) {
+      var name = graphicsProviderKeys[i]
+      result["TAMLINUX_HOST_" + name] = null
+      if (providerEnvironment.indexOf(name) !== -1)
+        result[name] = Quickshell.env("TAMLINUX_HOST_" + name)
+    }
+    return result
+  }
+
+  // Detached calls in Quickshell 0.3.1 accept argv, not an environment object.
+  // GNU env removes provider settings before restoring the original caller.
+  function hostArgv(argv) {
+    var changes = hostEnvironment()
+    var prefix = ["/usr/bin/env"]
+    var restore = []
+    for (var name in changes) {
+      prefix.push("-u", name)
+      if (changes[name] !== null && changes[name] !== undefined)
+        restore.push(name + "=" + changes[name])
+    }
+    return prefix.concat(["--"], restore, argv)
+  }
+
   function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value)
   }

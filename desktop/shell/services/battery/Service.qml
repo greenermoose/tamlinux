@@ -12,6 +12,7 @@
 
 import QtQuick
 import Quickshell
+import Tam.Commons
 import Quickshell.Io
 import Quickshell.Services.UPower
 import "BatteryModel.js" as BatteryModel
@@ -55,9 +56,13 @@ Item {
     return JSON.stringify(BatteryModel.statusOf(UPower.displayDevice, UPower.onBattery, UPowerDeviceState.Discharging, batteryThreshold, persisted.notifiedLowBattery))
   }
 
-  Process { id: warningProcess }
+  Process {
+    environment: Util.hostEnvironment()
+    id: warningProcess
+  }
 
   Process {
+    environment: Util.hostEnvironment()
     id: powerProfileProcess
     onExited: if (root.pendingPowerSource !== "") root.runPendingPowerProfile()
   }

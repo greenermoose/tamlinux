@@ -50,6 +50,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: reader
     command: ["/usr/bin/timeout", "--kill-after=1s", "3s", "tam-theme-payload"]
     stdout: StdioCollector {

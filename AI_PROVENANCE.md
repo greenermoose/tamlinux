@@ -45,7 +45,7 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 | **0.4.1 package** | 0.4.1 Test candidate | Claude Code `2.1.295` (`claude-opus-5-5`) | The accepted 0.4.1 shell with its accepted plugin payloads and the product commands, packaged for deployment through `tamlinux-packages`; plugin digests equal the acceptance record. [Session](docs/ai/2026-10-09-0.4.1-package.md). |
 | **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
 | **Claude Code** (`claude`) | `2.1.289` | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
-| **Codex CLI** (`codex`) | `0.162.1` (verified 2026-10-13) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
+| **Codex CLI** (`codex`) | `0.163.0` (verified 2026-10-15) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
 | **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
 | **Cursor** (`cursor`) | `3.21.16` | composer | **Implementation in this repository**: public explainer, suite branding, and 0.0.1 versioning. |
 | **OpenCode** (`opencode`) | `1.18.31` | Big Pickle | **Distro & System Q&A**: Efficient lookups for Arch Linux package specifics and shell configuration. |
@@ -365,3 +365,13 @@ Claude Code `2.1.300` (`claude-opus-5-5`) added the `tamlinux-hibernate-swap`
 sleep hook, which turns zram swap off just before hibernating so the image
 fits in RAM. It has tests; no hibernation has run with it yet.
 [Session](docs/ai/2026-10-15-hibernate-swap.md).
+
+## 0.4.3-d graphics environment isolation
+
+Codex CLI 0.162.1 / gpt-6.1-sol implemented the accepted launch isolation.
+[Session record](docs/ai/2026-10-15-0.4.3d-graphics-isolation.md).
+
+## 0.4.4-a cutover development
+
+Codex CLI `0.163.0` (`gpt-6.1-sol`) integrates the tested d corrections before
+starting cutover development. [Session](docs/ai/2026-10-15-0.4.4a-cutover.md).

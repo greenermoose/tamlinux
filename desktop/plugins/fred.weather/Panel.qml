@@ -407,7 +407,7 @@ Panel {
 
   Process {
     id: openMapProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
   }
 
   // --- Files & Timers ------------------------------------------------------
@@ -519,14 +519,14 @@ Panel {
   Process {
     id: ensureCacheDir
     command: ["mkdir", "-p", root.weatherCacheDir]
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
   }
 
   Process {
     id: dailyForecastProc
     property string requestQuery: ""
     property var requestCoordinates: null
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     stdout: StdioCollector {
       id: dailyForecastStdout
       waitForEnd: true
@@ -564,7 +564,7 @@ Panel {
     id: forecastProc
     property string requestQuery: ""
     command: Network.curlCommand("https://wttr.in/" + root.locationQuery + "?format=j1", 10, Network.responseLimits.forecast)
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     stdout: StdioCollector {
       id: forecastStdout
       waitForEnd: true
@@ -607,7 +607,7 @@ Panel {
   Process {
     id: locationProc
     command: [root.weatherLocationHelper]
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     stdout: StdioCollector {
       id: locationStdout
       waitForEnd: true
@@ -645,7 +645,7 @@ Panel {
   Process {
     id: locationSearchProc
     property string query: ""
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     stdout: StdioCollector {
       id: locationSearchStdout
       waitForEnd: true
@@ -665,7 +665,7 @@ Panel {
 
   Process {
     id: locationSaveProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     onExited: function(code) {
       if (code === 0) locationFile.reload()
       else {
@@ -677,7 +677,7 @@ Panel {
 
   Process {
     id: locationClearProc
-    environment: Network.closedEnv
+    environment: Util.hostEnvironment(Network.closedEnv)
     onExited: function(code) {
       if (code === 0) locationFile.reload()
       else {

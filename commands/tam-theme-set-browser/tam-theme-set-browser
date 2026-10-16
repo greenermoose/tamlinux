@@ -18,6 +18,10 @@ if [[ ! -x $adapter ]]; then
   exit 1
 fi
 pkexec "$adapter" "${color#\#}" || exit $?
-for browser in "${browsers[@]}"; do
-  "$browser" --refresh-platform-policy --no-startup-window >/dev/null 2>&1 || true
-done
+# A policy refresh with --no-startup-window still starts a background browser
+# when its default profile is closed. Refresh only an existing local singleton,
+# and bound the invocation if that browser exits during the check.
+base=$(dirname "$(readlink -f "$0")")
+refresh="$base/refresh.py"
+[[ -f $refresh ]] || refresh="$base/../share/tamlinux/browser-refresh.py"
+python3 "$refresh" "${browsers[@]}"

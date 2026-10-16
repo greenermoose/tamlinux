@@ -234,7 +234,8 @@ ShellRoot {
             (root / "shell.qml").write_text(qml)
             env = {"PATH": "/usr/bin", "HOME": directory, "XDG_CONFIG_HOME": directory,
                    "XDG_CACHE_HOME": directory, "XDG_RUNTIME_DIR": directory,
-                   "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic"}
+                   "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic",
+                   "QML_IMPORT_PATH": str(MENU.parents[1] / "modules")}
             result = subprocess.run(["/usr/bin/quickshell", "--no-color", "-p", str(root)],
                                     env=env, capture_output=True, text=True, timeout=10)
         log = result.stdout + result.stderr

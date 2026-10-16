@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import Tam.Commons
 import "MenuModel.js" as MenuModel
 
 Item {
@@ -40,6 +41,7 @@ Item {
     }
   }
   Process {
+    environment: Util.hostEnvironment()
     id: reader
     property string readPath: ""
     stdout: StdioCollector { onStreamFinished: source.collected = text }

@@ -99,6 +99,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: proc
     command: ["tam-disk-speedtest"]
     stdout: SplitParser { onRead: function(line) { root.updateLine(line) } }

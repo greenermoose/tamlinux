@@ -156,6 +156,8 @@ class NativeDefaultsTests(unittest.TestCase):
             confd = Path(directory) / "conf.d"
             confd.mkdir()
             for default in Path("/usr/share/fontconfig/conf.default").iterdir():
+                if default.name == "50-tamlinux.conf":
+                    continue  # The host may already have Tamlinux installed.
                 (confd / default.name).symlink_to(default.resolve())
             (confd / "50-tamlinux.conf").symlink_to(ROOT / "usr/share/fontconfig/conf.avail/50-tamlinux.conf")
             config = Path(directory) / "fonts.conf"

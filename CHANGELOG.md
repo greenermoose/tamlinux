@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.3-d - Develop
+
+- Refresh browser policy only for an existing local default profile, with a
+  deadline, so changing themes does not start and wait on a closed browser.
+
+- Isolate the shell's paired graphics provider at every inheriting QML child
+  launch, restoring the caller's original graphics settings for host programs.
+- Preserve explicitly empty caller values and remove internal provider markers.
+
 ## 0.4.3-c - Develop
 
 - Include the protocol observer crash fix, native vendor and per-user bash/keyserver defaults.

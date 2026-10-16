@@ -313,6 +313,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: loadImagesProc
     property int activeSerial: 0
     property int queuedSerial: 0
@@ -397,6 +398,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: applyProc
     onExited: {
       if (root.applySerial === root.requestSerial)
@@ -405,6 +407,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: releaseProc
     onExited: root.releaseNextDoneFile()
   }

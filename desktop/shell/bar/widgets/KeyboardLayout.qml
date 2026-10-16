@@ -118,6 +118,7 @@ BarWidget {
   // The exotic rulesets cover layouts like trans (IPA) that ship in the same xkb
   // package and set just as well, so load them or those labels lose their code.
   Process {
+    environment: Util.hostEnvironment()
     id: briefsProc
     command: ["xkbcli", "list", "--load-exotic"]
     stdout: StdioCollector {

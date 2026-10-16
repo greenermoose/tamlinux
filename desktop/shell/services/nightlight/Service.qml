@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import Tam.Commons
 
 // Night light state for the bar's indicator. The owned command
 // tam-toggle-nightlight is the only writer: this service reads its --status
@@ -57,6 +58,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: statusProcess
     command: ["bash", "-lc", 'exec "$@"', "bash", "tam-toggle-nightlight", "--status"]
     stdout: StdioCollector {
@@ -66,6 +68,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: toggleProcess
     command: ["bash", "-lc", 'exec "$@"', "bash", "tam-toggle-nightlight"]
     onExited: function(exitCode) {

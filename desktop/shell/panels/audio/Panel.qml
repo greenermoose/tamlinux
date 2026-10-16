@@ -468,11 +468,11 @@ Panel {
     if (!node) return
     Pipewire.preferredDefaultAudioSink = node
     if (node.id !== undefined && node.name) {
-      Quickshell.execDetached([
+      Quickshell.execDetached(Util.hostArgv([
         "tam-audio-output-set-default",
         String(node.id),
         String(node.name)
-      ])
+      ]))
     }
   }
 
@@ -480,11 +480,11 @@ Panel {
     if (!node) return
     Pipewire.preferredDefaultAudioSource = node
     if (node.id !== undefined && node.name) {
-      Quickshell.execDetached([
+      Quickshell.execDetached(Util.hostArgv([
         "tam-audio-input-set-default",
         String(node.id),
         String(node.name)
-      ])
+      ]))
     }
   }
 
@@ -588,6 +588,7 @@ Panel {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: sinkAvailabilityProc
     command: ["tam-audio-sink-availability"]
     stdout: StdioCollector {
@@ -597,6 +598,7 @@ Panel {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: volumeSinkProc
     command: ["tam-audio-output-sink"]
     stdout: StdioCollector {

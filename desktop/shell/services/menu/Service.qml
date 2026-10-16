@@ -184,7 +184,7 @@ Item {
     var command = String(action || "")
     if (!command) return
 
-    Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--slice=app-graphical.slice", "--", "bash", "-lc", command])
+    Quickshell.execDetached(Util.hostArgv(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--slice=app-graphical.slice", "--", "bash", "-lc", command]))
   }
 
   // Menu rows only surface their detail while a search is narrowing them;
@@ -937,6 +937,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: providerProc
     property string menuId: ""
     property string providerKey: ""
@@ -955,6 +956,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: resultProc
     onExited: {
       if (root.applySerial === root.requestSerial)
@@ -1045,6 +1047,7 @@ Item {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     id: guardProc
     property string collected: ""
     stdout: SplitParser {
