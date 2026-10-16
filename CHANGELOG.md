@@ -8,8 +8,10 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## 0.4.4-a - Develop
 
-- Begin the cutover candidate with the tested d graphics fixes, the hibernate-time
-  zram drain, and packaged Tamlinux desktop and crash-diagnosis agent skills.
+- Begin the login candidate with the tested d graphics fixes and packaged
+  Tamlinux desktop and crash-diagnosis agent skills.
+- Retain the d sleep-hook set; preserve the new zram-draining hook and tests
+  for a later sleep/resume candidate.
 - Check agent skill discovery and replace inherited skill links without
   overwriting personal skills.
 

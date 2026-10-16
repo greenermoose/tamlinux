@@ -55,6 +55,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-15: Codex CLI `0.163.0` (`gpt-6.1-sol`) retains the d sleep-hook set
+for the login-only candidate, preserving the developed zram hook and its tests
+for a later sleep/resume letter. [Session](docs/ai/2026-10-15-login-slice-sleep-hook.md).
+
 2026-10-14: Codex CLI `0.162.1` (`gpt-6.1-sol`) packages owned Chromium
 extensions and bounded native messaging hosts, with browser settings recovery
 and real clipboard/download verification. [Session](docs/ai/2026-10-14-browser-endpoints.md).

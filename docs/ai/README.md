@@ -17,6 +17,7 @@ side and any rework: [`delegations.md`](delegations.md).
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-15 | Login candidate retains d sleep hooks | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-15-login-slice-sleep-hook.md) |
 | 2026-10-15 | Native SDDM greeter preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-15-sddm-native-greeter.md) |
 | 2026-10-15 | 0.4.4-a cutover development | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-15-0.4.4a-cutover.md) |
 | 2026-10-15 | Drain zram swap before hibernating | Claude Code `2.1.300` | `claude-opus-5-5` | [Session](2026-10-15-hibernate-swap.md) |

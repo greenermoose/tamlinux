@@ -10,7 +10,7 @@ import textwrap
 import unittest
 from pathlib import Path
 
-HOOK = Path(__file__).resolve().parents[1] / "native/defaults/root/usr/lib/systemd/system-sleep/tamlinux-hibernate-swap"
+HOOK = Path(__file__).resolve().parents[1] / "native/deferred/tamlinux-hibernate-swap"
 HEADER = "Filename\t\t\t\tType\t\tSize\t\tUsed\t\tPriority\n"
 GIB = 1048576  # KiB
 
