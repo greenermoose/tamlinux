@@ -352,9 +352,8 @@ ShellRoot {
 
   // ------------------------------------------------------------ panel routes
   //
-  // Every screen's bar holds its own copy of each panel, and each copy
-  // registers the same per-panel IPC target, which reaches only one of them.
-  // Keys go through these routes instead, as on Omarchy (findPanelWidget):
+  // Every screen's bar holds its own copy of each panel. The shell owns
+  // the IPC routes for all copies (findPanelWidget):
   // an open copy wins, then the copy on the focused output (pickPanelSlot).
   // The overlays (Wi-Fi QR, both speed tests) and the OSD are single
   // windows in the services; the routes reach those too.
@@ -484,7 +483,18 @@ ShellRoot {
       evidence("unsupported call " + id + " " + name.slice(0, 64))
       return "unknown"
     }
-    var item = findPanelWidget(id) || overlay(id) || firstWidget(id)
+    var item = findPanelWidget(id) || overlay(id)
+    if (!item) {
+      var widgets = moduleWidgets(id)
+      for (var i = 0; i < liveWidgets.length; i++) {
+        var row = liveWidgets[i]
+        if (row.id === id && String(row.key).split("#")[0] === focusedScreenName()) {
+          item = row.widget
+          break
+        }
+      }
+      if (!item) item = widgets.length > 0 ? widgets[0] : null
+    }
     if (!item || typeof item[name] !== "function") {
       evidence("call-missing " + id + " " + name)
       return "unknown"

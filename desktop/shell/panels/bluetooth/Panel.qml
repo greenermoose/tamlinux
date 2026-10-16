@@ -15,10 +15,6 @@ import "Model.js" as Model
 Panel {
   id: root
   moduleName: "tamlinux.bluetooth"
-  ipcTarget: "tamlinux.bluetooth"
-  // manageIpc: false so this panel can own the single IpcHandler the target
-  // permits — needed for the toggleBluetooth method below.
-  manageIpc: false
 
   // Address -> "connecting" | "disconnecting" | "forgetting".
   // The actual Bluetooth sequencing lives in bin/tam-bluetooth-device;
@@ -639,17 +635,6 @@ Panel {
   function toggleBluetooth() {
     if (!adapter) return
     Quickshell.execDetached(Util.hostArgv(["tam-bluetooth-power", adapter.enabled ? "off" : "on"]))
-  }
-
-  IpcHandler {
-    target: "tamlinux.bluetooth"
-
-    function open() { root.open() }
-    function close() { root.close() }
-    function show() { root.open() }
-    function hide() { root.close() }
-    function toggle() { root.toggle() }
-    function toggleBluetooth() { root.toggleBluetooth() }
   }
 
   BarIconButton {

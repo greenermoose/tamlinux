@@ -15,7 +15,7 @@ BarWidget {
   id: root
   moduleName: "fred.clock"
 
-  readonly property string pluginVersion: "2.0.3"
+  readonly property string pluginVersion: "2.0.4"
 
   property date displayDate: clock.date
 
@@ -202,6 +202,17 @@ BarWidget {
     if (panelLoader.item && panelLoader.item.refresh) panelLoader.item.refresh()
   }
 
+  function toggle() { root.togglePanel() }
+
+  function openAddEvent() {
+    if (Quickshell.env("TAMLINUX_CLOCK_OFFLINE") === "1") {
+      if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
+      return
+    }
+    root.open()
+    if (panelLoader.item && panelLoader.item.openAddEvent) panelLoader.item.openAddEvent()
+  }
+
   function broadcastClock(method) {
     var fn = bar ? (bar.moduleWidgets || bar._moduleWidgets) : null
     var candidates = [root.moduleName, "fred.clock"]
@@ -312,89 +323,6 @@ BarWidget {
     onLoaded: {
       root.injectPanel()
       Qt.callLater(root.injectPanel)
-    }
-  }
-
-  IpcHandler {
-    target: "tamlinux.clock"
-
-    function refresh(): void { root.broadcastClock("refresh") }
-    function cycleFormat(): void { root.cycleFormat() }
-    function toggleWeekStart(): void { root.toggleWeekStart() }
-    function open(): void { root.open() }
-    function close(): void { root.close() }
-    function show(): void { root.open() }
-    function hide(): void { root.close() }
-    function toggle(): void { root.togglePanel() }
-    function selectDate(key: string): void {
-      if (panelLoader.item && panelLoader.item.selectDateString) {
-        panelLoader.item.selectDateString(key)
-        root.open()
-      }
-    }
-    function copyAgenda(): void {
-      if (panelLoader.item && panelLoader.item.copyDayMarkdown) {
-        panelLoader.item.copyDayMarkdown()
-      }
-    }
-    function openAddEvent(): void {
-      if (Quickshell.env("TAMLINUX_CLOCK_OFFLINE") === "1") {
-        if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
-        return
-      }
-      root.open()
-      if (panelLoader.item && panelLoader.item.openAddEvent) {
-        panelLoader.item.openAddEvent()
-      }
-    }
-    function closeAddEvent(): void {
-      if (panelLoader.item && panelLoader.item.closeAddEvent) {
-        panelLoader.item.closeAddEvent()
-      }
-    }
-    function filterAccount(account: string): void {
-      if (panelLoader.item) {
-        panelLoader.item.selectedAccount = account
-      }
-    }
-    function createEvent(summary: string, date: string, allDay: string, startTime: string, endTime: string, location: string): void {
-      if (Quickshell.env("TAMLINUX_CLOCK_OFFLINE") === "1") {
-        if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
-        return
-      }
-      if (manageProc.running) {
-        root.notify("Calendar Busy", "Another calendar update is in progress")
-        return
-      }
-      var isAllDay = (allDay === "true" || allDay === "1" || allDay === "yes")
-      var script = Model.helperPath("manage-event.py")
-      var args = [script, "add", "--date", date, "--summary", summary]
-      if (isAllDay) {
-        args.push("--all-day")
-      } else {
-        args.push("--start-time", startTime || "09:00")
-        args.push("--end-time", endTime || "10:00")
-      }
-      if (location && location.trim() !== "") {
-        args.push("--location", location.trim())
-      }
-      manageProc.args = args
-      manageProc.launch()
-      root.notify("Event Added", summary + " (" + date + ")")
-    }
-    function deleteEvent(uid: string): void {
-      if (Quickshell.env("TAMLINUX_CLOCK_OFFLINE") === "1") {
-        if (root.bar && root.bar.reportUnsupported) root.bar.reportUnsupported("event-edit")
-        return
-      }
-      if (manageProc.running) {
-        root.notify("Calendar Busy", "Another calendar update is in progress")
-        return
-      }
-      var script = Model.helperPath("manage-event.py")
-      manageProc.args = [script, "delete", "--uid", uid]
-      manageProc.launch()
-      root.notify("Event Deleted", "Local event removed")
     }
   }
 

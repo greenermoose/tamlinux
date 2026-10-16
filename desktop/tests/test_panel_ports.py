@@ -79,7 +79,12 @@ def port(text: str) -> str:
         if line.strip() == 'property string omarchyPath: Quickshell.env("OMARCHY_PATH")':
             continue
         out.append(port_line(line))
-    return "".join(out)
+    body = "".join(out)
+    # d deliberately retires per-panel targets; the shell owns IPC once.
+    body = re.sub(r"(?ms)^  IpcHandler \{\n.*?^  \}\n\n?", "", body)
+    body = re.sub(r"^  (?:ipcTarget:|manageIpc:).*\n", "", body, flags=re.M)
+    body = re.sub(r"^  // manageIpc: false.*\n  //.*\n", "", body, flags=re.M)
+    return body
 
 
 # Changes made after the mechanical port, while wiring each panel. Each is

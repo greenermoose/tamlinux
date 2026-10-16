@@ -13,10 +13,6 @@ import "Model.js" as Model
 Panel {
   id: root
   moduleName: "tamlinux.power"
-  ipcTarget: "tamlinux.power"
-  // manageIpc: false so this panel can own the single IpcHandler the target
-  // permits — needed for the togglePercentage method below.
-  manageIpc: false
   property var batteryInfo: ({})
   property var systemInfo: ({})
   property var profiles: []
@@ -174,17 +170,6 @@ Panel {
   function togglePercentage() {
     root.settings = Object.assign({}, root.settings, { showPercentage: !root.showPercentage })
     if (root.bar && root.bar.shell) root.bar.shell.updateEntryInline(root.moduleName, root.settings)
-  }
-
-  IpcHandler {
-    target: "tamlinux.power"
-
-    function open() { root.open() }
-    function close() { root.close() }
-    function show() { root.open() }
-    function hide() { root.close() }
-    function toggle() { root.toggle() }
-    function togglePercentage() { root.togglePercentage() }
   }
 
   onOpenedChanged: {

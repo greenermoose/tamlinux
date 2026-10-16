@@ -12,9 +12,8 @@ import "../panels/diskspeedtest" as DiskSpeedTestPanel
 // The ported panels without the Tamlinux bar (plan 18 0.2.4-0.2.6). Every
 // panel shares one stand-in bar at the top of the focused output, offset by
 // TAMLINUX_PANEL_TOP_OFFSET pixels so cards clear a bar drawn by another
-// shell. Keys open a panel through its own IPC target, for example
-// `tam-shell tamlinux.audio toggle`; an overlay without a target of its own
-// opens through `tam-shell tamlinux.panels summon <id>`. TAMLINUX_PANELS
+// shell. Keys use the focused-screen router:
+// `tam-shell tamlinux.audio toggle`. TAMLINUX_PANELS
 // names the panels to load, comma-separated; unknown names are ignored.
 // When the Tamlinux bar runs, it draws the audio, Bluetooth, network, and
 // power panels itself, one per screen, so this host loads only the overlays
@@ -193,15 +192,6 @@ Item {
     sourceComponent: Component { DiskSpeedTestPanel.Panel { shell: panelShell; manifest: ({ id: "tamlinux.disk-speedtest" }) } }
     onLoaded: host.adopt(item, "disk-speedtest")
     onStatusChanged: if (status === Loader.Error) host.note("panel-failed disk-speedtest")
-  }
-
-  // Omarchy's menu opened overlays through its shell's generic summon; this is
-  // the same route for the panels this host loads (0.2.6).
-  IpcHandler {
-    target: "tamlinux.panels"
-
-    function summon(id: string): bool { return panelShell.summon(id, "{}") }
-    function hide(id: string): bool { return panelShell.hide(id) }
   }
 
   Component.onCompleted: note("panels " + (enabled.length > 0 ? enabled.join(",") : "none"))

@@ -3,16 +3,13 @@ import Quickshell
 import Quickshell.Io
 import Tam.Commons
 
-// Popup lifecycle base used by the clock calendar. IPC stays off unless a
-// panel sets ipcTarget; the clock proof registers its own handler instead.
+// Popup lifecycle base. The shell router owns IPC for every panel copy.
 Item {
   id: root
 
   property QtObject bar: null
   property string moduleName: ""
   property var settings: ({})
-  property string ipcTarget: ""
-  property bool manageIpc: true
   property alias controller: panelController
   property bool popoutSwitchClosing: false
   property bool popoutSwitching: false
@@ -40,13 +37,4 @@ Item {
 
   PanelController { id: panelController }
 
-  IpcHandler {
-    enabled: root.manageIpc && root.ipcTarget !== ""
-    target: root.ipcTarget
-    function open(): void { root.open() }
-    function close(): void { root.close() }
-    function show(): void { root.open() }
-    function hide(): void { root.close() }
-    function toggle(): void { root.toggle() }
-  }
 }

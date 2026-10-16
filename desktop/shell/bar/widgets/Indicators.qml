@@ -169,14 +169,6 @@ BarWidget {
     ? activeVerticalBlock.implicitHeight + inactiveVerticalArea.implicitHeight
     : Math.max(activeHorizontalBlock.implicitHeight, inactiveHorizontalArea.implicitHeight)
 
-  IpcHandler {
-    target: "tamlinux.indicators"
-
-    function refresh(): void {
-      root.broadcast("refresh")
-    }
-  }
-
   Timer {
     id: indicatorHideTimer
     interval: 120

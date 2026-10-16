@@ -4,6 +4,10 @@ All notable changes to `fred.sysinfo` in `tamlinux/desktop/plugins/fred.sysinfo`
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.4 - 2026-10-16
+
+- Use the shell router for panel IPC; remove per-screen target registrations.
+
 ## [2.0.3] - Tamlinux 0.4.2-c candidate
 
 - Restore accepted Tamlinux settings, state and cache paths in the packaged plugin.

@@ -16,7 +16,7 @@
       "derivedFrom": "/etc/sysctl.d/99-omarchy-sysctl.conf",
       "derivedFromSha256": "f918a55f2cf6d1c278a6348c163c7f0b0b9740ddfe6f9895047bebba583b9b7d",
       "mode": "0644",
-      "sha256": "93f6be0a05f39e496f32d7111e0b1312edc5931b3a03bcae3a0778f657539de2"
+      "sha256": "45a06b52256f296c3430cf220e0374a927bf8d626da4568b70972842e9ec85e7"
     },
     "usr/lib/systemd/logind.conf.d/10-tamlinux-power-key.conf": {
       "derivedFrom": "/etc/systemd/logind.conf.d/10-ignore-power-button.conf",

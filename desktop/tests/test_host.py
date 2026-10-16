@@ -325,7 +325,7 @@ class FixtureTests(unittest.TestCase):
     def test_fixture_has_no_ipc_handler(self):
         text = (DESKTOP / "fixtures" / "panel" / "BarWidget.qml").read_text(encoding="utf-8")
         self.assertIn('moduleName: "tamlinux.fixture"', text)
-        self.assertIn("manageIpc: false", text)
+        self.assertNotIn("manageIpc", text)
         self.assertNotIn("IpcHandler", text)
         shell = (DESKTOP / "shell" / "shell.qml").read_text(encoding="utf-8")
         self.assertEqual(shell.count('target: "tamlinux-shell"'), 1)

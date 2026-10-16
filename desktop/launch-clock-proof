@@ -478,16 +478,16 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
         require(lambda name=name: sum(1 for line in lines() if line == f"ui-built {name}") >= 2, f"{name} was not built on both hosts:")
     if any(line.startswith("ui-load-failed") for line in lines()):
         raise SystemExit("shared UI fixture failed to load:\n" + read_log(process)[-2500:])
-    opened = ipc(env, "tamlinux.clock", "open")
+    opened = ipc(env, "tamlinux-shell", "call", ["fred.clock", "open"])
     if opened.returncode != 0:
         raise SystemExit(opened.stderr or opened.stdout or "open ipc failed")
     require(lambda: has("popup-open=true"), "calendar did not open:")
     require(lambda: has("panel-focus ondemand"), "calendar did not take panel focus:")
-    ipc(env, "tamlinux.clock", "close")
+    ipc(env, "tamlinux-shell", "call", ["fred.clock", "close"])
     require(lambda: has("popup-open=false"), "calendar did not close:")
-    ipc(env, "tamlinux.clock", "cycleFormat")
+    ipc(env, "tamlinux-shell", "call", ["fred.clock", "cycleFormat"])
     require(lambda: has("settings-wrote dddd h:mm AP"), "format cycle did not persist:")
-    ipc(env, "tamlinux.clock", "createEvent", ["Fixture", "2026-10-03", "true", "", "", ""])
+    ipc(env, "tamlinux-shell", "call", ["fred.clock", "openAddEvent"])
     require(lambda: "unsupported event-edit" in lines(), "event edit IPC was not refused:")
     ipc(env, "tamlinux-shell", "tooltipProbe")
     require(lambda: has("tooltip "), "tooltip probe produced no evidence:")
@@ -508,7 +508,7 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
     ipc(env, "tamlinux-shell", "openOn", [keys[0], "tamlinux.fixture"])
     ipc(env, "tamlinux-shell", "openOn", [keys[1], "tamlinux.fixture"])
     require(lambda: fixture_open(lines()).get(keys[0]) and fixture_open(lines()).get(keys[1]), "both fixtures did not open:")
-    ipc(env, "tamlinux.clock", "open")
+    ipc(env, "tamlinux-shell", "call", ["fred.clock", "open"])
     require(
         lambda: fixture_open(lines()).get(keys[0]) is False and fixture_open(lines()).get(keys[1]) is True,
         "popout exclusivity did not stay on one host:",
@@ -524,7 +524,7 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
     ipc(env, "tamlinux-shell", "writeFixture")
     require(lambda: "settings-wrote tamlinux.fixture marker=step2" in lines(), "fixture setting was not written:")
     ipc(env, "tamlinux-shell", "rejectSettings")
-    require(lambda: "settings-rejected omarchy.osd" in lines(), "unknown settings id was not rejected:")
+    require(lambda: "settings-rejected foreign.osd" in lines(), "unknown settings id was not rejected:")
     drive_compositor(env, process, lines, require)
     before_actions = action_pids()
     ipc(env, "tamlinux-shell", "probeActions")
@@ -800,7 +800,7 @@ def drive_layout(env: dict, process: subprocess.Popen) -> None:
         drive_routes(env, process)
         drive_bar_controls(env, process)
     if env.get("TAMLINUX_PROOF_CONVERTED") == "1":
-        ipc(env, "tamlinux.clock", "cycleFormat")
+        ipc(env, "tamlinux-shell", "call", ["fred.clock", "cycleFormat"])
         directory = Path(env["XDG_CONFIG_HOME"]) / "tamlinux/shell"
         def persisted() -> bool:
             source = directory / "live-source/settings.json"

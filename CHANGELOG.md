@@ -6,7 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
-## Unreleased
+## 0.4.4-d - Develop
+
+- Wait for the previous graphical session to finish before a new native login;
+  launch through Hyprland's watchdog while retaining uwsm's Hyprland identity.
+- Enable SysRq recovery keys (244) in the packaged native defaults.
+- Breaking panel API change: remove per-panel IPC targets and the base Panel's
+  `ipcTarget`/`manageIpc` properties. Use `tamlinux-shell call <id> <method>`
+  for no-argument methods and the shell's summon/hide/toggle routes.
+  Singleton desktop-service targets remain. Calls reach the selected panel
+  or the focused output's widget. Typed per-panel IPC methods are retired.
 
 - Restore complete Antigravity quota rows in `fred.agents`, including the
   separately metered Argon weekly allowance, through agy's `/usage` report.

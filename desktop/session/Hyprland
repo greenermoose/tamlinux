@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keep uwsm's Hyprland service/plugin identity while using the native watchdog.
+exec /usr/bin/start-hyprland --path /usr/bin/Hyprland -- "$@"

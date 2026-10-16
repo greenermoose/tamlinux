@@ -4,6 +4,10 @@ All notable changes to `fred.agents` in `tamlinux/desktop/plugins/fred.agents` a
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.6 - 2026-10-16
+
+- Use the shell router for panel IPC; remove per-screen target registrations.
+
 ## [2.0.5] - Unreleased
 
 - Read Antigravity quotas from agy's complete `/usage` report; the direct

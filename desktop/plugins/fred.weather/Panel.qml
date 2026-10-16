@@ -11,12 +11,10 @@ import "."
 Panel {
   id: root
   moduleName: "fred.weather"
-  ipcTarget: "fred.weather"
-  manageIpc: false
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "2.0.2"
+  property string pluginVersion: "2.0.3"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
@@ -54,45 +52,6 @@ Panel {
 
   function hideHover() {
     if (hostWidget && "hoverOpen" in hostWidget) hostWidget.hoverOpen = false
-  }
-
-  IpcHandler {
-    target: "fred.weather"
-
-    function open(): void {
-      WeatherStore.open("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function close(): void {
-      WeatherStore.close("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function show(): void { open() }
-    function hide(): void { close() }
-    function toggle(): void {
-      WeatherStore.toggle("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function openMonitor(monitor: string): void {
-      WeatherStore.open(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function closeMonitor(monitor: string): void {
-      WeatherStore.close(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function toggleMonitor(monitor: string): void {
-      WeatherStore.toggle(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function showHover(monitor: string): void {
-      WeatherStore.showHover(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function hideHover(monitor: string): void {
-      WeatherStore.hideHover(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function refresh(): void { WeatherStore.refreshAll(root) }
-    function edit(): void {
-      var p = WeatherStore.resolveTargetPanel("", root.focusedOutputName(), root.compositorOutputs())
-      if (p) {
-        p.open()
-        p.startEditingLocation()
-      }
-    }
   }
 
   

@@ -9,7 +9,7 @@ BarWidget {
   id: root
   moduleName: "fred.tides"
 
-  readonly property string pluginVersion: "2.0.2"
+  readonly property string pluginVersion: "2.0.3"
   // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
   readonly property string notificationHelper:
     (Quickshell.env("TAMLINUX_BIN") || (Quickshell.env("HOME") + "/.local/bin")) + "/tam-notification-send"

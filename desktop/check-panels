@@ -17,10 +17,20 @@ cp -r "$desktop/shell" "$work/shell"
 cat >"$work/shell/check-panels.qml" <<'QML'
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import "host"
 
 ShellRoot {
-  PanelHost {}
+  PanelHost { id: panels }
+  IpcHandler {
+    target: "tamlinux-shell"
+    function summon(id: string): bool {
+      var panel = panels.panel(id)
+      if (panel) { panel.open(); return true }
+      console.log("TAMLINUX_EVIDENCE panel-missing " + id)
+      return false
+    }
+  }
   Timer { interval: 3000; running: true; onTriggered: Qt.quit() }
 }
 QML
@@ -51,7 +61,7 @@ shell_pid=$!
 # While the shell runs, ask the host's IPC route for a panel it does not have:
 # it must answer false and log the miss, without opening anything.
 for _ in $(seq 25); do
-  ipc=$("${shell_env[@]}" timeout 2 qs ipc -p "$work/shell/check-panels.qml" call tamlinux.panels summon tamlinux.check-missing 2>/dev/null)
+  ipc=$("${shell_env[@]}" timeout 2 qs ipc -p "$work/shell/check-panels.qml" call tamlinux-shell summon tamlinux.check-missing 2>/dev/null)
   [[ $ipc == true || $ipc == false ]] && break
   sleep 0.1
 done

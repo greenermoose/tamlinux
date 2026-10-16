@@ -25,15 +25,8 @@ Panel {
   id: root
   moduleName: "fred.keyboard"
 
-  // The bar widget is instantiated once per screen, so the base Panel's
-  // automatic IpcHandler would register the same target several times and
-  // only one would win. Per-monitor IPC (openMonitor/closeMonitor/
-  // toggleMonitor, per the develop-new-plugin SOP) needs a single owner and
-  // is deferred to a later milestone. Agents must not open this panel
-  // programmatically in any case: it takes keyboard focus, which is per-seat
-  // rather than per-monitor, so it would seize Fred's keyboard.
-  ipcTarget: ""
-  manageIpc: false
+  // Keyboard capture takes seat-wide focus. Agents must not open this panel
+  // programmatically while Fred is typing.
 
   // The bar sizes a widget from its implicit size. The base Panel is a plain
   // Item with none, so without this the widget loads, reports enabled, and
@@ -43,7 +36,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "2.0.1"
+  readonly property string pluginVersion: "2.0.2"
   readonly property string repoUrl: "https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.keyboard"
 
   // Closed environment: only these names reach a child process.

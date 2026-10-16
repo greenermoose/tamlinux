@@ -12,10 +12,8 @@ import "."
 Panel {
   id: root
   moduleName: "fred.monitor"
-  ipcTarget: "fred.monitor"
-  manageIpc: false
 
-  readonly property string pluginVersion: "2.0.5"
+  readonly property string pluginVersion: "2.0.6"
   readonly property var monitorEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "DBUS_SESSION_BUS_ADDRESS", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "TAMLINUX_COMPOSITOR_COMMANDS", "TAMLINUX_COMPOSITOR_LIVE_ACTIONS", "TAMLINUX_BIN"]
   // Tamlinux's own commands, by absolute path: TAMLINUX_BIN, else ~/.local/bin.
   readonly property string textSizeHelper:
@@ -827,23 +825,12 @@ Panel {
     })
   }
 
-  IpcHandler {
-    target: "fred.monitor"
-
-    function brightness(percent: string): string { return root.brightnessIpc(percent) }
-    function state(): string { return root.stateIpc() }
-    function reset(name: string): string { return root.resetDisplay(name) }
-    function identify() { root.toggleIdentify() }
-    function open() { root.open() }
-    function close() { root.close() }
-    function toggle() { root.toggle() }
-    function show() { root.open() }
-    function hide() { root.close() }
-  }
-
   function refresh() {
     stateProc.launch()
   }
+
+  function state() { return root.stateIpc() }
+  function identify() { root.toggleIdentify() }
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight

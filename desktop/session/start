@@ -1,11 +1,14 @@
 #!/bin/sh
 # Entry point for the native Arch/UWSM provider; no configuration is copied.
 set -eu
+bin_dir="$(dirname "$(readlink -f "$0")")"
+session_dir="$(readlink -f "$bin_dir/../share/tamlinux/session")"
 config="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/session/hyprland.lua"
 if [ ! -f "$config" ]; then
   echo "Tamlinux session defaults are not installed: $config" >&2
   exit 1
 fi
+/usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?
 "${TAMLINUX_BIN:-$HOME/.local/bin}/tam-theme-init" || exit $?
 "${TAMLINUX_BIN:-$HOME/.local/bin}/tam-session-init" >/dev/null || exit $?
-exec /usr/bin/uwsm start -- /usr/bin/Hyprland --config "$config"
+exec /usr/bin/uwsm start -e -D Hyprland -- "$session_dir/Hyprland" --config "$config"

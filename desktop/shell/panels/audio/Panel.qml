@@ -15,7 +15,6 @@ import "Model.js" as Model
 Panel {
   id: root
   moduleName: "tamlinux.audio"
-  ipcTarget: "tamlinux.audio"
 
   readonly property var sink: Pipewire.defaultAudioSink
   readonly property var source: Pipewire.defaultAudioSource

@@ -20,10 +20,8 @@ Panel {
   id: root
   moduleName: "fred.clock"
   readonly property bool eventEditingEnabled: Quickshell.env("TAMLINUX_CLOCK_OFFLINE") !== "1"
-  ipcTarget: "fred.clock"
-  manageIpc: false
 
-  readonly property string pluginVersion: "2.0.3"
+  readonly property string pluginVersion: "2.0.4"
 
   property var anchorItem: null
 

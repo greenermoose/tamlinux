@@ -55,7 +55,12 @@ def port_line(line: str) -> str:
 def port(text: str) -> str:
     lines = text.splitlines(keepends=True)
     out: list[str] = [port_line(line) for line in lines]
-    return "".join(out)
+    body = "".join(out)
+    # d deliberately retires per-panel targets; the shell owns IPC once.
+    body = re.sub(r"(?ms)^  IpcHandler \{\n.*?^  \}\n\n?", "", body)
+    body = re.sub(r"^  (?:ipcTarget:|manageIpc:).*\n", "", body, flags=re.M)
+    body = re.sub(r"^  // manageIpc: false.*\n  //.*\n", "", body, flags=re.M)
+    return body
 
 
 def expected_header(orig_path: str, unchanged: bool) -> list[str]:

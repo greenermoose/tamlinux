@@ -2,14 +2,11 @@ import QtQuick
 import Tam.Ui
 
 // Second bar widget for the host contract. It is not a fred.* plugin and it
-// does not register an IPC target: the shell owns tamlinux-shell, and the
-// clock owns the single tamlinux.clock target.
+// uses the shell router, which owns the single tamlinux-shell IPC target.
 Panel {
   id: root
 
   moduleName: "tamlinux.fixture"
-  ipcTarget: ""
-  manageIpc: false
   property string hostKey: ""
 
   implicitWidth: 16

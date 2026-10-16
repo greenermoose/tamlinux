@@ -74,6 +74,7 @@ class NativeDefaultsTests(unittest.TestCase):
         zram = ini("usr/lib/systemd/zram-generator.conf.d/90-tamlinux.conf")["zram0"]
         self.assertEqual(dict(zram), {"zram-size": "ram", "compression-algorithm": "zstd", "swap-priority": "100"})
         self.assertEqual(assignments("usr/lib/sysctl.d/70-tamlinux.conf"), {
+            "kernel.sysrq": "244",
             "net.ipv4.tcp_mtu_probing": "1", "vm.swappiness": "150", "vm.vfs_cache_pressure": "50",
             "vm.page-cluster": "0", "vm.watermark_boost_factor": "0", "vm.watermark_scale_factor": "125",
             "vm.dirty_background_bytes": "67108864", "vm.dirty_bytes": "268435456",

@@ -11,10 +11,8 @@ import "."
 Panel {
   id: root
   moduleName: "fred.sysinfo"
-  ipcTarget: "fred.sysinfo"
-  manageIpc: false
 
-  readonly property string pluginVersion: "2.0.3"
+  readonly property string pluginVersion: "2.0.4"
 
   property var stats: ({})
   property int phraseIndex: 0
@@ -116,30 +114,6 @@ Panel {
 
   Component.onDestruction: {
     if (root.screenName) SysinfoStore.unregister(root.screenName, root)
-  }
-
-  IpcHandler {
-    target: "fred.sysinfo"
-    function toggleMonitor(monitor: string): void {
-      SysinfoStore.toggle(monitor, root.focusedOutputName())
-    }
-    function openMonitor(monitor: string): void {
-      SysinfoStore.open(monitor, root.focusedOutputName())
-    }
-    function closeMonitor(monitor: string): void {
-      SysinfoStore.close(monitor, root.focusedOutputName())
-    }
-    function open(): void {
-      SysinfoStore.open("", root.focusedOutputName())
-    }
-    function close(): void {
-      SysinfoStore.close("", root.focusedOutputName())
-    }
-    function show(): void { open() }
-    function hide(): void { close() }
-    function toggle(): void {
-      SysinfoStore.toggle("", root.focusedOutputName())
-    }
   }
 
   Process {

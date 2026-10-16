@@ -11,12 +11,10 @@ import "."
 Panel {
   id: root
   moduleName: "fred.tides"
-  ipcTarget: "fred.tides"
-  manageIpc: false
 
   property var anchorItem: null
   property bool openedFromHotkey: false
-  property string pluginVersion: "2.0.2"
+  property string pluginVersion: "2.0.3"
   readonly property color foreground: Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
   property string numberFontFamily: (root.settings && root.settings.numberFontFamily)
@@ -107,56 +105,6 @@ Panel {
         root.bar.centerHoverRevealSuppressed = value
       } catch (e) {}
     }
-  }
-
-  IpcHandler {
-    target: "fred.tides"
-
-    function open(): void {
-      TidesStore.open("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function close(): void {
-      TidesStore.close("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function show(): void { open() }
-    function hide(): void { close() }
-    function toggle(): void {
-      TidesStore.toggle("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function openMonitor(monitor: string): void {
-      TidesStore.open(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function closeMonitor(monitor: string): void {
-      TidesStore.close(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function toggleMonitor(monitor: string): void {
-      TidesStore.toggle(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function refresh(): void { TidesStore.refreshAll(root) }
-  }
-
-  IpcHandler {
-    target: "io.github.woogy7.tides"
-
-    function open(): void {
-      TidesStore.open("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function close(): void {
-      TidesStore.close("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function toggle(): void {
-      TidesStore.toggle("", root.focusedOutputName(), root.compositorOutputs())
-    }
-    function openMonitor(monitor: string): void {
-      TidesStore.open(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function closeMonitor(monitor: string): void {
-      TidesStore.close(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function toggleMonitor(monitor: string): void {
-      TidesStore.toggle(monitor, root.focusedOutputName(), root.compositorOutputs())
-    }
-    function refresh(): void { TidesStore.refreshAll(root) }
   }
 
   // --- Reports & Time Tracking ---------------------------------------------

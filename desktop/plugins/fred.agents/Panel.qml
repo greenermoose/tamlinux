@@ -9,8 +9,6 @@ import "."
 Panel {
   id: root
   moduleName: "fred.agents"
-  ipcTarget: "fred.agents"
-  manageIpc: false
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
@@ -19,7 +17,7 @@ Panel {
   readonly property color track: Style.selectedFillFor(foreground, Color.accent)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  readonly property string pluginVersion: "2.0.5"
+  readonly property string pluginVersion: "2.0.6"
 
   readonly property var providers: usage.enabledProviders
   // The selection follows the provider, not the slot it happens to sit in: a
@@ -64,6 +62,9 @@ Panel {
   function refreshNow() {
     usage.refreshAll(true)
   }
+
+  function refresh() { root.refreshNow() }
+  function next() { root.selectProvider(root.providerIndex + 1) }
 
   function launchAgent() {
     if (root.bar) root.bar.pickAgent()
@@ -390,17 +391,6 @@ Panel {
     running: root.opened
     repeat: true
     onTriggered: root.nowMs = Date.now()
-  }
-
-  IpcHandler {
-    target: root.ipcTarget
-    function open(): void { root.open() }
-    function close(): void { root.close() }
-    function show(): void { root.open() }
-    function hide(): void { root.close() }
-    function toggle(): void { root.toggle() }
-    function refresh(): string { root.refreshNow(); return "ok" }
-    function next(): string { root.selectProvider(root.providerIndex + 1); return "ok" }
   }
 
   BarIconButton {

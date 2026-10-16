@@ -10,7 +10,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.5"
+  readonly property string pluginVersion: "2.0.6"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -1166,9 +1166,4 @@ BarWidget {
     }
   }
 
-  IpcHandler {
-    target: "fred.workspaces"
-
-    function resetIdle(): void { root.broadcastWorkspaces("resetIdle") }
-  }
 }

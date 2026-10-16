@@ -53,7 +53,7 @@ class ModeWatchTests(unittest.TestCase):
         self.assertIn('modeFile.reload()', block(r'id: modeStatusProcess'))
 
     def test_a_click_does_not_start_a_status_check(self):
-        button = between('text: root.barDeviated ? "F" : root.desktopModeLetter()', 'IpcHandler {')
+        button = between('text: root.barDeviated ? "F" : root.desktopModeLetter()', '\n}\n')
         pressed = button[button.index('onPressed'):]
         self.assertIn('runDesktopCommand(["toggle"])', pressed)
         self.assertNotIn('modeRefreshTimer', pressed)

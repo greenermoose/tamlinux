@@ -411,10 +411,7 @@ def stage_passive(run, ctx):
             current.add(m.group(1))
     targets = set(functions)
     ctx["targets"] = targets
-    want = set(SERVICE_TARGETS) | {"tamlinux-shell", "tamlinux.panels", "tamlinux.indicators",
-                                   "tamlinux.audio", "tamlinux.bluetooth", "tamlinux.network",
-                                   "tamlinux.clock", "fred.monitor", "fred.sysinfo",
-                                   "fred.weather", "fred.tides", "fred.agents", "fred.workspaces"}
+    want = set(SERVICE_TARGETS) | {"tamlinux-shell"}
     missing = sorted(want - targets)
     run.check(not missing, "every expected IPC target registered", ", ".join(missing) or f"{len(targets)} targets")
     stale = sorted(t for t in targets if "omarchy" in t)
@@ -449,7 +446,7 @@ def stage_passive(run, ctx):
     run.check(ok and theme.startswith("{"), "theme palette loaded", theme[:80])
     ok, n = ipc("tamlinux-shell", "refreshIndicators")
     run.check(ok and n == str(len(monitors())), "indicators on every screen", f"{n} copies, {len(monitors())} screens")
-    ok, mon = ipc("fred.monitor", "state")
+    ok, mon = ipc("tamlinux-shell", "call", "fred.monitor", "state")
     if ok and mon.startswith("{"):
         st = json.loads(mon)
         run.check(st.get("focusedMonitor") == focused_output(), "fred.monitor focus matches Hyprland",

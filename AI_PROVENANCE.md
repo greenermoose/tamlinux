@@ -53,6 +53,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares 0.4.4-d
+with bounded session shutdown, the native watchdog, SysRq recovery keys and
+router-only panel IPC. [Session](docs/ai/2026-10-16-0.4.4d-readiness.md).
+
 2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) restores complete Antigravity
 quota reporting, including the separate Argon weekly allowance, in `fred.agents`
 2.0.5. [Session](docs/ai/2026-10-16-antigravity-complete-quotas.md).
