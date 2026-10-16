@@ -403,3 +403,10 @@ session selector and native vendor packaging for 0.4.4-a.
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the c native launcher names and
 execution tests. [Session record](docs/ai/2026-10-16-native-login-c.md).
+
+## Developer title — 2026-10-16
+
+Claude Code `2.1.301` (`claude-opus-5-5`) changed Fred Horch's title in
+`ACKNOWLEDGEMENTS.md` to "Tamlinux developer" at his request (`3bc614a`).
+The session is recorded in the `tam` repository:
+[session record](https://github.com/greenermoose/tam/blob/develop/docs/ai/2026-10-16-tam-corpus-workflow-decisions.md).
