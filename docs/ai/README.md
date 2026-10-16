@@ -8,15 +8,16 @@ Tool and model versions are verified against local transcript stores. An entry
 whose attribution has not been checked against a local transcript says so
 explicitly.
 
-## Delegated work
+## Historical delegated work
 
-Tasks one AI agent assigned to another, with the harness and model on each
-side and any rework: [`delegations.md`](delegations.md).
+Delegation was retired on 2026-10-16; Fred now directs every agent himself.
+Earlier assignments, with the harness and model on each side and any rework: [`delegations.md`](delegations.md).
 
 ## Session Records
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-16 | Retire delegation; preserve historical provenance | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-retire-delegation.md) |
 | 2026-10-16 | 0.4.4-c native login preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-native-login-c.md) |
 | 2026-10-16 | Plugin scaffold and offscreen widget check | Claude Code `2.1.301` | `claude-opus-5-5` | [Session](2026-10-16-plugin-scaffold-and-widget-proof.md) |
 | 2026-10-16 | Plugin set derived from the plugin directories | Claude Code `2.1.301` | `claude-opus-5-5` | [Session](2026-10-16-derived-plugin-set.md) |

@@ -16,7 +16,7 @@ deliberately left out. It applies to this repository and every
 | **Commit trailers** | A commit made with AI help carries `AI-Tool: <tool> <version>`, `AI-Model: <model-id>`, and a `Co-authored-by:` line for the assistant. |
 | **`AI_PROVENANCE.md`** | The AI tools Fred uses and what each is for, plus a table of the repository's milestones and which AI partner worked on each. |
 | **`docs/ai/`** | One record per working session, indexed in `docs/ai/README.md`. Some older repositories still keep these in a single `docs/ai/sessions.md`. |
-| **`docs/ai/delegations.md`** | Work one AI agent assigned to another: who assigned it, which harness and model did it, and whether it had to be corrected or redone. |
+| **`docs/ai/delegations.md`** | Historical work one AI agent assigned to another: who assigned it, which harness and model did it, and whether it had to be corrected or redone. |
 | **The commits and diffs themselves** | The ground truth. Every record cites the commits it produced, so you can check its claims against the code. |
 
 Each session record gives:
@@ -40,12 +40,15 @@ Each session record gives:
 
 ## Work one AI assigned to another
 
-Some work is delegated. An **orchestrating** agent (for example Claude Code)
-writes a task brief, and a **delegate** agent (for example Antigravity or
-OpenCode) does the task in its own branch and makes one commit. The
-orchestrator reviews it, merges it with `git cherry-pick`, and puts any
-corrections in separate commits. A delegate's commit is never amended, so it
-stays labelled with the harness and model that produced it.
+Fred retired agent-to-agent delegation on 2026-10-16 and works directly
+with every AI agent. New work uses ordinary tool/model trailers and session
+records, with Fred as the person directing it. Do not add assignment
+trailers or dispatch another agent.
+
+Earlier work used briefs, an assigning agent and a worker. Some early
+results landed through cherry-picks; later work used shared clones.
+Keep those commits and their attribution intact. The fields below explain
+historical evidence only; they are not a current workflow.
 
 - **The delegate's commit** carries the delegate's own `AI-Tool:` (the
   harness and its version) and `AI-Model:`, plus:

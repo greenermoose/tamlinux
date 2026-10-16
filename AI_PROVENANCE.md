@@ -15,12 +15,10 @@ model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
 
-Some work is delegated: one agent assigns a task and another does it. The
-delegate's commit names its own harness and model, plus `AI-Role: delegate`
-and `AI-Assigned-By:` for the orchestrator; a commit that corrects or redoes
-delegated work carries `AI-Reworks:`. [`docs/ai/delegations.md`](docs/ai/delegations.md)
-lists every delegated task, who assigned it, who did it, and whether it had to
-be redone.
+Fred works directly with every AI agent. Agent-to-agent delegation was
+retired on 2026-10-16. Earlier assignment trailers and
+[`docs/ai/delegations.md`](docs/ai/delegations.md) remain historical evidence
+of who did the work and any rework; they do not define current roles.
 
 ---
 
@@ -114,6 +112,7 @@ earlier future-stage schedules without changing accepted version identifiers.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
+| **Direct agent workflow** | Documentation only, 2026-10-16 | Codex CLI `0.163.0` (`gpt-6.1-sol`) | Fred retired agent-to-agent delegation. Current work uses ordinary provenance; old assignment records remain historical. [Session](docs/ai/2026-10-16-retire-delegation.md) |
 | **Plugin storage repair** | 0.4.2-c candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Restored accepted storage contracts, namespace boundaries and helper/widget integration checks; consolidated candidate and lifecycle docs. [Session](docs/ai/2026-10-09-0.4.2c-repair.md). |
 | **Plugin and hover repairs** | 0.4.2-b candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Corrected displayed monitor version, footer-only hovers and product links; added parser/version regressions and backfilled the original session record. [Session](docs/ai/2026-10-09-0.4.2b-repair.md). |
 | **Menu candidate after the package transition** | 0.4.2-a Develop | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Rechecked the retained implementation after the release merge: nine menu tests, 18 service checks and all 196 consumer rows pass. Updated the changelog and package-based candidate plan; physical Test remains pending. [Session](docs/ai/2026-10-09-0.4.2-assembly.md). |
