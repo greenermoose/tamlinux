@@ -25,6 +25,7 @@ set -u
 swaps="${TAMLINUX_SWAPS_PATH:-/proc/swaps}"
 state="${TAMLINUX_RUN_PATH:-/run}/tamlinux-hibernate-swap"
 readonly drain_limit_s=60
+readonly restore_limit_s=30
 readonly tag=tamlinux-hibernate-swap
 
 log() { logger -t "$tag" -- "$*"; }
@@ -78,24 +79,57 @@ drain() {
   done <<< "$zram"
 }
 
-restore() {
-  [[ -e $state ]] || return 0
-  local dev prio args failed=0
-  while read -r dev prio; do
-    used_kib "$dev" > /dev/null && continue
+restored() {
+  # Explicit priorities must match. Kernel-assigned negative priorities can
+  # change when a device is enabled again, so only require a negative value.
+  awk -v dev="$1" -v prio="$2" '
+    NR > 1 && $1 == dev && ($5 == prio || (prio < 0 && $5 < 0)) { found = 1 }
+    END { exit !found }
+  ' "$swaps"
+}
+
+restore_device() {
+  local dev=$1 prio=$2 deadline=$3 unit fragment left args
+  [[ $dev =~ ^/dev/zram[0-9]+$ ]] || return 1
+  unit="dev-${dev#/dev/}.swap"
+  left=$((deadline - SECONDS))
+  ((left > 0)) || return 1
+  fragment=$(timeout --kill-after=2 "$left" systemctl show --property=FragmentPath --value "$unit") || return 1
+  if [[ -n $fragment ]]; then
+    # swapoff makes zram-generator's BindsTo= setup unit stop and reset the
+    # device. Raw swapon races that teardown and may find no swap header.
+    # Starting the swap unit orders setup/formatting before activation and
+    # waits for the manager's job, including a pending setup stop, to settle.
+    left=$((deadline - SECONDS))
+    ((left > 0)) || return 1
+    timeout --kill-after=2 "$left" systemctl start "$unit" || return 1
+  elif ! restored "$dev" "$prio"; then
+    # An unmanaged device keeps its header; preserve the raw restore path.
     # zram-generator enables zram swap with discard; restore it the same way.
     # Kernel-assigned priorities are negative and cannot be requested.
     args=(--discard)
     ((prio >= 0)) && args+=(--priority "$prio")
-    if swapon "${args[@]}" "$dev" < /dev/null; then
+    left=$((deadline - SECONDS))
+    ((left > 0)) || return 1
+    timeout --kill-after=2 "$left" swapon "${args[@]}" "$dev" < /dev/null || return 1
+  fi
+  restored "$dev" "$prio"
+}
+
+restore() {
+  [[ -e $state ]] || return 0
+  local dev prio failed=0 deadline=$((SECONDS + restore_limit_s))
+  while read -r dev prio; do
+    if restore_device "$dev" "$prio" "$deadline"; then
       log "turned $dev back on at priority $prio"
     else
-      log "could not turn $dev back on; retained $state for retry on the next sleep hook or an explicit post invocation"
+      log "could not verify $dev back on at priority $prio; retained $state for retry on the next sleep hook or an explicit post invocation"
       failed=1
     fi
   done < "$state"
-  # Keep the complete record on failure. Entries already restored are skipped
-  # on the next invocation, so a partial restoration can be retried safely.
+  # Keep the complete record on failure. A timed-out systemctl client does
+  # not cancel its queued start job: eventual activation is still wanted,
+  # and a later invocation verifies it before clearing this retry record.
   ((failed)) || rm -f "$state"
 }
 

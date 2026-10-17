@@ -24,11 +24,35 @@ FAKES = {
         [[ ${SWAPOFF_HANGS:-0} == 1 ]] && sleep 180
         awk -v dev="$1" '$1 != dev' "$TAMLINUX_SWAPS_PATH" > "$TAMLINUX_SWAPS_PATH.new"
         mv "$TAMLINUX_SWAPS_PATH.new" "$TAMLINUX_SWAPS_PATH"
+        [[ -n ${SYSTEMD_FRAGMENT:-} ]] && touch "$TAMLINUX_RUN_PATH/header-reset"
+        exit 0
     """,
     "swapon": """
         echo "swapon $*" >> "$CALLS"
         [[ ${SWAPON_FAILS:-0} == 1 ]] && exit 1
-        printf '%s partition 29630864 0 100\\n' "${!#}" >> "$TAMLINUX_SWAPS_PATH"
+        [[ -e $TAMLINUX_RUN_PATH/header-reset ]] && exit 1
+        prio=-2
+        [[ $* == *--priority* ]] && prio=$3
+        printf '%s partition 29630864 0 %s\\n' "${!#}" "$prio" >> "$TAMLINUX_SWAPS_PATH"
+    """,
+    "systemctl": """
+        if [[ $1 == show ]]; then
+            [[ ${SYSTEMD_SHOW_FAILS:-0} == 1 ]] && exit 1
+            printf '%s' "${SYSTEMD_FRAGMENT:-}"
+            exit 0
+        fi
+        echo "systemctl $*" >> "$CALLS"
+        [[ $1 == start ]] || exit 1
+        [[ ${SYSTEMD_START_FAILS:-0} == 1 ]] && exit 1
+        [[ ${SYSTEMD_START_HANGS:-0} == 1 ]] && sleep 180
+        [[ ${SYSTEMD_START_NO_SWAP:-0} == 1 ]] && exit 0
+        # Model the manager waiting for generator teardown and formatting a
+        # fresh header before enabling the generated swap unit.
+        rm -f "$TAMLINUX_RUN_PATH/header-reset"
+        dev=${2#dev-}; dev=/dev/${dev%.swap}
+        awk -v dev="$dev" '$1 != dev' "$TAMLINUX_SWAPS_PATH" > "$TAMLINUX_SWAPS_PATH.new"
+        mv "$TAMLINUX_SWAPS_PATH.new" "$TAMLINUX_SWAPS_PATH"
+        printf '%s partition 29630864 0 %s\\n' "$dev" "${SYSTEMD_PRIORITY:-100}" >> "$TAMLINUX_SWAPS_PATH"
     """,
     "logger": """
         shift 2; [[ $1 == -- ]] && shift
@@ -196,6 +220,76 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.assertIn("/dev/zram0", self.swaps.read_text())
         self.assertFalse(self.state().exists())
         self.assertEqual(sum(call.startswith("swapoff") for call in self.calls_made()), 1)
+
+    def test_generator_reset_is_restored_through_swap_unit(self):
+        for action in ("post", "suspend-after-failed-hibernate"):
+            with self.subTest(action=action):
+                self.standard_swaps()
+                self.calls.unlink(missing_ok=True)
+                managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+                self.hook("pre", "hibernate", **managed)
+                self.assertTrue((self.run_dir / "header-reset").exists())
+                if action == "post":
+                    self.hook("post", "hibernate", **managed)
+                else:
+                    self.hook("pre", "suspend-then-hibernate", action=action, **managed)
+                self.assertEqual(self.calls_made(), ["swapoff /dev/zram0", "systemctl start dev-zram0.swap"])
+                self.assertFalse(self.state().exists())
+                self.assertIn("/dev/zram0", self.swaps.read_text())
+                self.assertFalse((self.run_dir / "header-reset").exists())
+
+    def test_generator_start_failure_keeps_state_for_retry(self):
+        self.standard_swaps()
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("pre", "hibernate", **managed)
+        self.hook("post", "hibernate", SYSTEMD_START_FAILS="1", **managed)
+        self.assertEqual(self.state().read_text(), "/dev/zram0 100\n")
+        self.assertNotIn("/dev/zram0", self.swaps.read_text())
+        self.hook("post", "hibernate", **managed)
+        self.assertFalse(self.state().exists())
+        self.assertNotIn("swapon", "\n".join(self.calls_made()))
+
+    def test_successful_manager_command_requires_active_swap_and_saved_priority(self):
+        for extra in ({"SYSTEMD_START_NO_SWAP": "1"}, {"SYSTEMD_PRIORITY": "50"}):
+            with self.subTest(extra=extra):
+                self.standard_swaps()
+                self.state().unlink(missing_ok=True)
+                managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+                self.hook("pre", "hibernate", **managed)
+                self.hook("post", "hibernate", **managed, **extra)
+                self.assertTrue(self.state().exists())
+                self.assertIn("could not verify", self.logged())
+                self.hook("post", "hibernate", **managed)
+                self.assertFalse(self.state().exists())
+
+    def test_manager_query_failure_never_races_raw_swapon(self):
+        self.standard_swaps()
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("pre", "hibernate", **managed)
+        self.hook("post", "hibernate", SYSTEMD_SHOW_FAILS="1", **managed)
+        self.assertTrue(self.state().exists())
+        self.assertEqual(self.calls_made(), ["swapoff /dev/zram0"])
+
+    def test_existing_retry_state_clears_after_manager_already_restored_swap(self):
+        self.standard_swaps(zram_used=0)
+        self.state().write_text("/dev/zram0 100\n")
+        self.hook("post", "hibernate", SYSTEMD_FRAGMENT="/run/systemd/generator/dev-zram0.swap")
+        self.assertFalse(self.state().exists())
+        self.assertEqual(self.calls_made(), ["systemctl start dev-zram0.swap"])
+        self.assertEqual(self.swaps.read_text().count("/dev/zram0"), 1)
+
+    def test_real_timeout_bounds_generator_restore_and_retains_retry_state(self):
+        self.standard_swaps()
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("pre", "hibernate", **managed)
+        started = time.monotonic()
+        self.hook("post", "hibernate", SYSTEMD_START_HANGS="1", **managed)
+        self.assertGreaterEqual(time.monotonic() - started, 29)
+        self.assertLess(time.monotonic() - started, 40)
+        self.assertTrue(self.state().exists())
+        self.assertNotIn("/dev/zram0", self.swaps.read_text())
+        self.hook("post", "hibernate", **managed)
+        self.assertFalse(self.state().exists())
 
     def test_negative_kernel_priority_is_restored_without_requesting_it(self):
         self.write_swaps(

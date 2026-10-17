@@ -53,6 +53,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-17: Codex CLI `0.163.0` (`gpt-6.1-sol`) corrects hibernate zram
+restoration to use defined systemd swap units, with bounded activation and
+verified priorities before clearing retry state. Source checks pass; packaged
+physical proof remains pending. [Session](docs/ai/2026-10-17-hibernate-zram-restoration.md).
+
 2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares 0.4.4-d
 with bounded session shutdown, the native watchdog, SysRq recovery keys and
 router-only panel IPC. [Session](docs/ai/2026-10-16-0.4.4d-readiness.md).
