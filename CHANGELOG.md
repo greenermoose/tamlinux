@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-g - Develop
+
+- Package a checkpointed, retryable SDDM PAM transaction that removes only the
+  three GNOME keyring hooks, preserving all other PAM bytes and file metadata.
+- Keep the cleanup candidate-bound; fresh automatic and password login proof
+  remains pending Test.
+
 ## 0.4.4-f - Develop
 
 - Deliver `tam-hibernate-swap` as a native system-sleep hook: disable zram
