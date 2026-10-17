@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 import stat
 import subprocess
 import tempfile
@@ -10,7 +11,7 @@ import textwrap
 import unittest
 from pathlib import Path
 
-HOOK = Path(__file__).resolve().parents[1] / "native/deferred/tamlinux-hibernate-swap"
+HOOK = Path(__file__).resolve().parents[1] / "native/defaults/root/usr/lib/systemd/system-sleep/tam-hibernate-swap"
 HEADER = "Filename\t\t\t\tType\t\tSize\t\tUsed\t\tPriority\n"
 GIB = 1048576  # KiB
 
@@ -20,11 +21,13 @@ FAKES = {
     "swapoff": """
         echo "swapoff $*" >> "$CALLS"
         [[ ${SWAPOFF_FAILS:-0} == 1 ]] && exit 1
+        [[ ${SWAPOFF_HANGS:-0} == 1 ]] && sleep 180
         awk -v dev="$1" '$1 != dev' "$TAMLINUX_SWAPS_PATH" > "$TAMLINUX_SWAPS_PATH.new"
         mv "$TAMLINUX_SWAPS_PATH.new" "$TAMLINUX_SWAPS_PATH"
     """,
     "swapon": """
         echo "swapon $*" >> "$CALLS"
+        [[ ${SWAPON_FAILS:-0} == 1 ]] && exit 1
         printf '%s partition 29630864 0 100\\n' "${!#}" >> "$TAMLINUX_SWAPS_PATH"
     """,
     "logger": """
@@ -36,7 +39,9 @@ FAKES = {
 
 class HibernateSwapHookTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.tmp = Path(temporary.name)
         self.bin = self.tmp / "bin"
         self.bin.mkdir()
         for name, body in FAKES.items():
@@ -63,7 +68,7 @@ class HibernateSwapHookTests(unittest.TestCase):
         }
         if action:
             env["SYSTEMD_SLEEP_ACTION"] = action
-        result = subprocess.run([str(HOOK), *args], env=env, capture_output=True, text=True, timeout=30)
+        result = subprocess.run([str(HOOK), *args], env=env, capture_output=True, text=True, timeout=80)
         self.assertEqual(result.returncode, 0, result.stderr)
         return result
 
@@ -92,7 +97,8 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.assertEqual(self.calls_made(), ["swapoff /dev/zram0"])
         self.assertEqual(self.state().read_text(), "/dev/zram0 100\n")
         self.assertNotIn("/dev/zram0", self.swaps.read_text())
-        self.assertIn("moved 7.0 GiB from /dev/zram0 to disk swap", self.logged())
+        self.assertIn("drained 7.0 GiB from /dev/zram0", self.logged())
+        self.assertIn("disk swap now holds 0.0 GiB", self.logged())
 
         self.hook("post", "suspend-then-hibernate", action="hibernate")
         self.assertEqual(self.calls_made()[1:], ["swapon --discard --priority 100 /dev/zram0"])
@@ -168,6 +174,29 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.hook("pre", "hibernate")
         self.assertEqual(self.calls_made(), [])
 
+    def test_failed_restore_retains_state_and_post_retries(self):
+        self.standard_swaps()
+        self.hook("pre", "hibernate")
+        self.hook("post", "hibernate", SWAPON_FAILS="1")
+        self.assertEqual(self.state().read_text(), "/dev/zram0 100\n")
+        self.assertNotIn("/dev/zram0", self.swaps.read_text())
+        self.assertIn("retained", self.logged())
+        self.hook("post", "hibernate")
+        self.assertIn("/dev/zram0", self.swaps.read_text())
+        self.assertFalse(self.state().exists())
+        self.assertEqual(self.calls_made(), ["swapoff /dev/zram0",
+                         "swapon --discard --priority 100 /dev/zram0",
+                         "swapon --discard --priority 100 /dev/zram0"])
+
+    def test_suspend_pre_retries_failed_restore_without_draining_again(self):
+        self.standard_swaps()
+        self.hook("pre", "hibernate")
+        self.hook("post", "hibernate", SWAPON_FAILS="1")
+        self.hook("pre", "suspend")
+        self.assertIn("/dev/zram0", self.swaps.read_text())
+        self.assertFalse(self.state().exists())
+        self.assertEqual(sum(call.startswith("swapoff") for call in self.calls_made()), 1)
+
     def test_negative_kernel_priority_is_restored_without_requesting_it(self):
         self.write_swaps(
             ("/swap/swapfile", "file", 28 * GIB, 0, -2),
@@ -177,10 +206,19 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.hook("post", "hibernate")
         self.assertEqual(self.calls_made(), ["swapoff /dev/zram0", "swapon --discard /dev/zram0"])
 
-    def test_drain_is_bounded_inside_systemds_hook_limit(self):
-        text = HOOK.read_text()
-        self.assertIn("readonly drain_limit_s=60\n", text)
-        self.assertIn('timeout --kill-after=5 "$left" swapoff', text)
+    def test_real_timeout_stops_drain_and_keeps_zram_on(self):
+        self.standard_swaps()
+        started = time.monotonic()
+        self.hook("pre", "hibernate", SWAPOFF_HANGS="1")
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed, 59)
+        self.assertLess(elapsed, 75)
+        self.assertIn("stopped draining /dev/zram0", self.logged())
+        self.assertIn("with 7.0 GiB still in it", self.logged())
+        self.assertIn("/dev/zram0", self.swaps.read_text())
+        self.hook("post", "hibernate")
+        self.assertEqual(self.calls_made(), ["swapoff /dev/zram0"])
+        self.assertFalse(self.state().exists())
 
 
 if __name__ == "__main__":

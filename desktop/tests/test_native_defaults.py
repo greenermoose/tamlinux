@@ -64,7 +64,7 @@ class NativeDefaultsTests(unittest.TestCase):
             self.assertTrue(relative.startswith(("usr/lib/", "usr/share/")), relative)
             self.assertNotIn("/" + relative, previous, relative)
             name = relative.rsplit("/", 1)[1]
-            self.assertTrue("tamlinux" in name or name in {"tam-fcitx5.service", "tam-bt-agent.service"}, relative)
+            self.assertTrue("tamlinux" in name or name in {"tam-fcitx5.service", "tam-bt-agent.service", "tam-hibernate-swap"}, relative)
             for word in INHERITED:
                 self.assertNotIn(word, relative.lower())
                 if not (ROOT / relative).is_symlink():

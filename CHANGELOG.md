@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-f - Develop
+
+- Deliver `tam-hibernate-swap` as a native system-sleep hook: disable zram
+  only for the hibernate leg, bound the drain to 60 seconds and restore its
+  original priority on resume or a failed-hibernate fallback.
+- Retain restoration state when reenabling zram fails, allowing a later hook
+  invocation or explicit recovery to retry. Log actual disk-swap usage after
+  the drain without assuming that every removed page moved to disk.
+
 ## 0.4.4-e - Develop
 
 - Prepare independent native boot providers, preserving consumer boot policy,

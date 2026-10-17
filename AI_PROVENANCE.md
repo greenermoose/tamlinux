@@ -423,3 +423,10 @@ The session is recorded in the `tam` repository:
 Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the next product identity and
 boot-provider/recovery contract while retaining d’s runtime implementation.
 [Session](docs/ai/2026-10-16-boot-preparation.md).
+
+### 2026-10-17 — 0.4.4f hibernate hook preparation
+
+Codex CLI `0.163.0` (`gpt-6.1-sol`; initial investigation `gpt-6-luna`)
+implemented Fred’s edited and approved H1 plan, integrated `tam-hibernate-swap`
+as a native default and made failed zram restoration retryable.
+[Session](docs/ai/2026-10-17-hibernate-h1.md).
