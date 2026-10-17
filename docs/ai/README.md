@@ -17,6 +17,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-17 | SDDM PAM keyring cleanup transaction | Codex CLI `0.163.0` | `gpt-6-luna` | [Session](2026-10-17-sddm-pam-cleanup.md) |
 | 2026-10-17 | Approved H1 plan and 0.4.4f hibernate hook | Codex CLI `0.163.0` | `gpt-6.1-sol` (initial investigation: `gpt-6-luna`) | [Session](2026-10-17-hibernate-h1.md) |
 | 2026-10-16 | 0.4.4e boot handoff preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-boot-preparation.md) |
 | 2026-10-16 | Complete Antigravity quota groups and distinct Argon allowance | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-16-antigravity-complete-quotas.md) |

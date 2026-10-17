@@ -430,3 +430,11 @@ Codex CLI `0.163.0` (`gpt-6.1-sol`; initial investigation `gpt-6-luna`)
 implemented Fred’s edited and approved H1 plan, integrated `tam-hibernate-swap`
 as a native default and made failed zram restoration retryable.
 [Session](docs/ai/2026-10-17-hibernate-h1.md).
+
+### 2026-10-17 — 0.4.4g SDDM PAM keyring cleanup
+
+Codex CLI `0.163.0` (`gpt-6-luna`) adds a packaged, checkpointed transaction
+that removes only the three GNOME keyring PAM hooks and preserves both files'
+other bytes and metadata. Nine transaction fixtures and ten native staging
+checks pass; the assembly build and fresh-login proof remain pending.
+[Session](docs/ai/2026-10-17-sddm-pam-cleanup.md).
