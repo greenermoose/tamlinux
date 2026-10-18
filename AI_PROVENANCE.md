@@ -53,6 +53,12 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-18: Codex CLI `0.163.0` (`gpt-6.1-sol`) writes the approved 0.4.4h work plan:
+hibernate restoration, bounded GPU-recovery notice integration, the completed
+tam knowledge-system update and exact package/recovery acceptance. The developer
+approved the second-review revision with traceable checks and explicit execution
+adherence; no implementation or activation. [Session](docs/ai/2026-10-18-0.4.4h-plan.md).
+
 2026-10-17: Codex CLI `0.163.0` (`gpt-6.1-sol`) corrects hibernate zram
 restoration to use defined systemd swap units, with bounded activation and
 verified priorities before clearing retry state. Source checks pass; packaged
