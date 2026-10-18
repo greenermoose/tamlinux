@@ -16,7 +16,7 @@ Omarchy, then prove Tamlinux on Sway. Arch stays the workstation base.
 
 | Plan | Current scope and next work |
 | --- | --- |
-| [0.4.4h readiness](0.4.4h-readiness.md) | Approved 2026-10-18: generator-aware hibernate restoration, bounded GPU-recovery notice integration, tam command 0.30.0 / corpus 0.31.0, exact package/recovery preparation and physical acceptance. Develop/package preparation underway; activation requires a separate instruction. |
+| [0.4.4h readiness](0.4.4h-readiness.md) | Develop preparation complete; exact Test proposal ready for review. Generator-aware hibernate restoration, bounded recovery notice integration, tam command 0.30.0 / corpus 0.31.0. Installation and physical acceptance require separate instruction. |
 | [Desktop decoupling](desktop-decoupling.md) | 0.4.3 independent packaged Arch/Hyprland desktop, including required session/native/boot ownership and recovery; independent Hyprland acceptance. |
 | [Theme system](theme-system.md) | Retained theme/fonts/assets ownership is required in 0.4.3; Tamarack/Atkinson visual redesign follows at 0.5. |
 | [Compositor protocol layer](compositor-protocol-layer.md) | Milestone B accepted at 0.4.1; historical differences/gaps remain authority blockers. Sway adapter integration remains 0.7.0. |
