@@ -449,3 +449,11 @@ that removes only the three GNOME keyring PAM hooks and preserves both files'
 other bytes and metadata. Nine transaction fixtures and ten native staging
 checks pass; the assembly build and fresh-login proof remain pending.
 [Session](docs/ai/2026-10-17-sddm-pam-cleanup.md).
+
+### 2026-10-18 — 0.4.4h Develop and package preparation
+
+Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares the h candidate's corrected
+hibernate integration, bounded recovery-notice handoff, and package inputs for
+`tam` 0.30.0 / corpus 0.31.0. Installation, physical acceptance and stage
+promotion remain pending separate instruction.
+[Session](docs/ai/2026-10-18-0.4.4h-develop.md).

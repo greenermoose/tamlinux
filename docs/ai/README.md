@@ -17,6 +17,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-18 | 0.4.4h Develop and package preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-18-0.4.4h-develop.md) |
 | 2026-10-18 | Approved 0.4.4h candidate work plan | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-18-0.4.4h-plan.md) |
 | 2026-10-17 | Generator-aware hibernate zram restoration | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-17-hibernate-zram-restoration.md) |
 | 2026-10-17 | SDDM PAM keyring cleanup transaction | Codex CLI `0.163.0` | `gpt-6-luna` | [Session](2026-10-17-sddm-pam-cleanup.md) |
