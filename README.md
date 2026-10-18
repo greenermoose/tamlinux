@@ -55,15 +55,17 @@ The workstation runs Tamlinux's packaged Quickshell shell and eight 2.x
 plugins on Arch/Hyprland. The current version and its changes are in
 [VERSION](VERSION) and the [changelog](CHANGELOG.md).
 
-1. **0.4.3: independent desktop.** Deliver the retained desktop on clean
-   Arch/Hyprland with owned software, defaults, assets, native integration and
-   migration/recovery. Exact reference Test and rollback close Gate A.
+1. **0.4.3–0.4.5: leave Omarchy (Gate A).** 0.4.3 proved the desktop on a
+   clean Arch/Hyprland host. 0.4.4 cuts this workstation over to Tamlinux's
+   own login, boot, update, recovery and sleep handling, with Omarchy's
+   packages still installed as the fallback. 0.4.5 replaces the last Omarchy
+   calls and removes those packages; its release completes Gate A.
 2. **0.5: input and appearance.** Focused input usability starts at 0.5.0;
    Tamarack visual redesign follows in later 0.5.x steps.
-3. **0.6: dependable baseline.** Resolve the remaining display fault conditions
-   or accept mitigations, pin carried patches with upstream status, establish
+3. **0.6: dependable baseline.** Fix the GPU-resume and hibernation faults or
+   accept mitigations, pin carried patches with upstream status, establish
    routine updates/rollback, and run a host-safe Arch install on a second laptop.
-   Laptop installation may start after 0.4.3 Run.
+   Laptop installation may start after the 0.4.4 Run.
 4. **0.7–1.0: Sway.** Complete compositor integration and install the package
    beside the dependable Hyprland fallback (0.7). Prove physical daily parity
    (0.8), then remove Hyprland (1.0).
