@@ -10,11 +10,11 @@ from Wayland, River, Hyprland, Quickshell, and Omarchy.
 
 | Property | Value |
 | :-- | :-- |
-| **Source version** | [0.4.2-d](VERSION), prepared for testing — see [VERSIONING.md](VERSIONING.md) |
+| **Version** | See [VERSION](VERSION), the [changelog](CHANGELOG.md) and [Releases](https://github.com/greenermoose/tamlinux/releases); [VERSIONING.md](VERSIONING.md) explains the numbers |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | 0.4.1 is the accepted daily release. 0.4.2-c is in physical Test; 0.4.2-d prepares menu ownership, plugin repairs and stricter assembly verification. The shell and eight 2.x plugins run on every screen; Hyprland IPC remains authoritative. Theme/package independence remains in progress. Not an installable image yet |
+| **Status** | Developed in public and used daily on the developer's workstation. Not an installable image yet |
 
 ---
 
@@ -51,9 +51,9 @@ repository yet.
 
 ## Current base and next steps
 
-The current workstation runs Tamlinux's packaged Quickshell shell and eight
-2.x plugins on Arch/Hyprland. Step 0.4.2-d is accepted in Run; compositor
-protocol shadow observation continues alongside the authoritative IPC backend.
+The workstation runs Tamlinux's packaged Quickshell shell and eight 2.x
+plugins on Arch/Hyprland. The current version and its changes are in
+[VERSION](VERSION) and the [changelog](CHANGELOG.md).
 
 1. **0.4.3: independent desktop.** Deliver the retained desktop on clean
    Arch/Hyprland with owned software, defaults, assets, native integration and
