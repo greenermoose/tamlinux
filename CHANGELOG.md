@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-k - Develop
+
+- Stop concurrent workspace reconciles from moving desktops: `fred.workspaces`
+  2.0.7 reconciles from one bar, skips an aligned set, serializes set changes
+  and moves workspaces by name (plan 37; seen when a text-console switch
+  removed a dark output).
+- A setting written from one bar reaches the same widget on every bar.
+- `tam-deploy test` and `run` accept uncommitted changes to the consumer's
+  declared live paths (`system/live-paths`) and record their digests.
+
 ## 0.4.4-j - Test candidate
 
 - Prepare the next package assembly with the packaged Tam manual lookup repair;
