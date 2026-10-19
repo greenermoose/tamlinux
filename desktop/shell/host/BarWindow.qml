@@ -69,6 +69,23 @@ PanelWindow {
     layoutConfig: win.layoutMode ? shell.barLayout.layout : ({ "left": [], "center": [], "right": [] })
   }
 
+  // A setting written from one bar (a clock format cycled on the Dell) must
+  // reach the same widget on every bar, as PanelHost does for panels.
+  Connections {
+    target: win.shell
+    ignoreUnknownSignals: true
+    function onSettingsDocChanged() {
+      var items = api.widgets
+      for (var i = 0; i < items.length; i++) win.settingsFor(items[i], items[i] === api.widget)
+    }
+  }
+
+  function settingsFor(item, isClock) {
+    if (!item || !("settings" in item) || !shell || !shell.entrySettings) return
+    var id = item.moduleName || (isClock ? "fred.clock" : "")
+    item.settings = shell.entrySettings(id)
+  }
+
   Loader {
     anchors.fill: parent
     active: win.layoutMode
@@ -167,8 +184,7 @@ PanelWindow {
       item.screenRef = screenRef
     }
     if (item.moduleName === "tamlinux.ui") item.hostKey = hostKey
-    var id = item.moduleName || (isClock ? "fred.clock" : "")
-    item.settings = shell.entrySettings(id)
+    settingsFor(item, isClock)
     if (item.bindHost) item.bindHost()
     api.registerWidget(item)
     if (isClock) {

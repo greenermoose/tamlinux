@@ -21,6 +21,10 @@ Panel {
     publish("loaded")
   }
 
+  // Every bar's copy reports its setting, so the proof can see one bar's
+  // write reach the others.
+  onSettingsChanged: if (settings && settings.marker) publish("marker=" + settings.marker)
+
   onOpenedChanged: {
     publish("opened=" + (opened ? "true" : "false"))
     if (!bar) return

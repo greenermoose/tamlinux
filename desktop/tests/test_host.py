@@ -357,6 +357,19 @@ process.stdout.write(JSON.stringify(cases.map(([raw]) => parser.parse(raw))));
         self.assertIn('import "TooltipParser.js" as TooltipParser', text)
         self.assertIn("parsedTooltip: TooltipParser.parse(win.tooltipText)", text)
 
+    def test_every_bar_rereads_settings_after_a_write(self):
+        # One bar's write (a clock format cycled on the Dell) reached only that
+        # bar until the shell restarted (0.4.4j K12 finding).
+        text = (DESKTOP / "shell/host/BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn("function onSettingsDocChanged()", text)
+        self.assertIn("win.settingsFor(items[i], items[i] === api.widget)", text)
+        adopt = text[text.index("function adopt(item, isClock)"):]
+        self.assertIn("settingsFor(item, isClock)", adopt[:adopt.index("api.registerWidget(item)")])
+        fixture = (DESKTOP / "fixtures/panel/BarWidget.qml").read_text(encoding="utf-8")
+        self.assertIn('publish("marker=" + settings.marker)', fixture)
+        proof = (DESKTOP / "launch-clock-proof").read_text(encoding="utf-8")
+        self.assertIn("fixture setting did not reach every bar", proof)
+
     def test_daily_bar_reserves_its_own_height(self):
         # ExclusionMode.Normal reserves only an explicit exclusiveZone (0 by
         # default); Auto reserves the bar's height.

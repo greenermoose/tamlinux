@@ -523,6 +523,11 @@ def drive_primary(env: dict, process: subprocess.Popen) -> None:
     require(lambda: "toggled tamlinux.fixture" in lines(), "fixture toggle did not run:")
     ipc(env, "tamlinux-shell", "writeFixture")
     require(lambda: "settings-wrote tamlinux.fixture marker=step2" in lines(), "fixture setting was not written:")
+    require(
+        lambda: len({line.split()[1] for line in lines()
+                     if line.startswith("fixture host=") and line.endswith(" marker=step2")}) >= 2,
+        "fixture setting did not reach every bar:",
+    )
     ipc(env, "tamlinux-shell", "rejectSettings")
     require(lambda: "settings-rejected foreign.osd" in lines(), "unknown settings id was not rejected:")
     drive_compositor(env, process, lines, require)
