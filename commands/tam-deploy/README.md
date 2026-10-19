@@ -45,6 +45,15 @@ The configuration's `tamlinux-packages` input must name the repository
 without a revision (for example `github:greenermoose/tamlinux-packages`); the
 lock file holds the exact revision.
 
+`test` and `run` refuse while the configuration has uncommitted or untracked
+changes, so every generation has an identifiable configuration commit. Two
+kinds of path are exempt: the deployment records (`system/bom.json`,
+`system/plugin-runs`) and the files listed in `system/live-paths`, one
+repository-relative path per line (`#` comments allowed). List only files the
+running session writes through a Home Manager live (out-of-store) link, such as
+the shell's `settings.json`: their content is not part of a generation. Their
+SHA-256 at deployment is recorded as `livePaths` in the deployment state.
+
 ## Exact endpoint verification
 
 The command evaluates `packages.<system>` at the committed assembly revision

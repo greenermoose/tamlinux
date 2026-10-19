@@ -1,5 +1,6 @@
 import importlib.machinery
 import importlib.util
+import hashlib
 import io
 import json
 import os
@@ -115,6 +116,15 @@ class TestStage(Fixture):
             self.app.test(**kwargs)
         return pin, record
 
+    def test_deployment_records_live_path_digests(self):
+        (self.config / "system/live-paths").write_text("config/settings.json\nconfig/absent.json\n")
+        (self.config / "config").mkdir()
+        (self.config / "config/settings.json").write_text("{}\n")
+        self.deploy_test()
+        self.assertEqual(self.app.read_state()["livePaths"], {
+            "config/settings.json": hashlib.sha256(b"{}\n").hexdigest(),
+            "config/absent.json": None})
+
     def test_defaults_to_test_head_and_records_the_pin(self):
         pin, record = self.deploy_test()
         pin.assert_called_once_with(self.packages_new)
@@ -188,6 +198,64 @@ class TestStage(Fixture):
             with self.assertRaisesRegex(deploy.DeploymentError, "do not match"):
                 self.app.test()
         record.assert_not_called()
+
+
+class LivePaths(Fixture):
+    """system/live-paths exempts only the listed files from the clean check."""
+
+    def setUp(self):
+        super().setUp()
+        git(self.config, "init", "-q", "-b", "main")
+        git(self.config, "config", "user.name", "Fixture")
+        git(self.config, "config", "user.email", "fixture@example.invalid")
+        settings = self.config / "config/tamlinux/shell/settings.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_text('{"format": "HH:mm"}\n')
+        (self.config / "home.nix").write_text("{ }\n")
+        git(self.config, "add", "-A")
+        git(self.config, "commit", "-qm", "consumer")
+
+    def list_live(self, *entries):
+        (self.config / "system/live-paths").write_text("# live links\n" + "".join(e + "\n" for e in entries))
+        git(self.config, "add", "system/live-paths")
+        git(self.config, "commit", "-qm", "live paths")
+
+    def test_without_a_list_every_change_refuses(self):
+        (self.config / "config/tamlinux/shell/settings.json").write_text('{"format": "h:mm AP"}\n')
+        with self.assertRaisesRegex(deploy.DeploymentError, "settings.json"):
+            self.app.check_clean()
+
+    def test_a_listed_live_file_may_be_dirty(self):
+        self.list_live("config/tamlinux/shell/settings.json")
+        (self.config / "config/tamlinux/shell/settings.json").write_text('{"format": "h:mm AP"}\n')
+        self.app.check_clean()
+        self.assertEqual(self.app.live_digests(), {
+            "config/tamlinux/shell/settings.json":
+                hashlib.sha256(b'{"format": "h:mm AP"}\n').hexdigest()})
+
+    def test_other_changes_still_refuse(self):
+        self.list_live("config/tamlinux/shell/settings.json")
+        (self.config / "config/tamlinux/shell/settings.json").write_text('{"format": "h:mm AP"}\n')
+        (self.config / "home.nix").write_text("{ changed = true; }\n")
+        with self.assertRaisesRegex(deploy.DeploymentError, "home.nix"):
+            self.app.check_clean()
+        git(self.config, "checkout", "--", "home.nix")
+        (self.config / "untracked.txt").write_text("x\n")
+        with self.assertRaisesRegex(deploy.DeploymentError, "untracked.txt"):
+            self.app.check_clean()
+
+    def test_the_list_itself_must_be_committed(self):
+        self.list_live("config/tamlinux/shell/settings.json")
+        (self.config / "system/live-paths").write_text("home.nix\n")
+        with self.assertRaises(deploy.DeploymentError):
+            self.app.check_clean()
+
+    def test_invalid_entries_are_rejected(self):
+        for entry in ("../outside", "/etc/passwd", "a b", "config/./x", ".git/config",
+                      "system/live-paths", "config/*"):
+            (self.config / "system/live-paths").write_text(entry + "\n")
+            with self.subTest(entry=entry), self.assertRaises(deploy.DeploymentError):
+                self.app.live_paths()
 
 
 class RunStage(Fixture):

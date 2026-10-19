@@ -22,8 +22,10 @@ back:         activate the previous generation and restore its pin.
 from __future__ import annotations
 
 import getpass
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -32,6 +34,14 @@ from pathlib import Path
 
 class DeploymentError(Exception):
     pass
+
+
+# Consumer files the running session writes through Home Manager's live
+# (out-of-store) links, such as the shell's settings.json. Their content is
+# not part of a generation, so a change there does not make a deployment
+# unidentifiable; the list lives in the consumer at system/live-paths.
+LIVE_PATHS_FILE = "system/live-paths"
+LIVE_PATH_RE = re.compile(r"^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
 
 
 def command(*args: str, capture: bool = False, quiet: bool = False) -> str:
@@ -148,14 +158,48 @@ class Deployment:
 
     # Activation ----------------------------------------------------------
 
-    def preflight(self) -> None:
+    def live_paths(self) -> list[str]:
+        """Repository-relative files listed in the consumer's system/live-paths."""
+        source = self.config / LIVE_PATHS_FILE
+        try:
+            text = source.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+        if len(text) > 16384:
+            raise DeploymentError(f"{LIVE_PATHS_FILE} is too large")
+        paths = []
+        for raw in text.splitlines():
+            entry = raw.strip()
+            if not entry or entry.startswith("#"):
+                continue
+            parts = entry.split("/")
+            if (not LIVE_PATH_RE.fullmatch(entry) or ".." in parts or "." in parts
+                    or entry == LIVE_PATHS_FILE or entry.startswith(".git/") or entry == ".git"):
+                raise DeploymentError(f"invalid entry in {LIVE_PATHS_FILE}: {entry!r}")
+            paths.append(entry)
+        return paths
+
+    def live_digests(self) -> dict:
+        """SHA-256 of each live path as deployed (None when absent)."""
+        digests = {}
+        for entry in self.live_paths():
+            target = self.config / entry
+            digests[entry] = hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else None
+        return digests
+
+    def check_clean(self) -> None:
         # Reject dirty deployment inputs so a generation has an identifiable
-        # config commit. Deployment records may accumulate after activation.
+        # config commit. Deployment records may accumulate after activation,
+        # and live paths change while the session runs (recorded by digest).
+        excluded = [":(exclude)system/bom.json", ":(exclude)system/plugin-runs"]
+        excluded += [f":(exclude,literal){entry}" for entry in self.live_paths()]
         dirty = command("git", "-C", str(self.config), "status", "--porcelain", "--untracked-files=all",
-                        "--", ".", ":(exclude)system/bom.json", ":(exclude)system/plugin-runs",
-                        capture=True)
+                        "--", ".", *excluded, capture=True)
         if dirty:
             raise DeploymentError("commit config changes before deploying:\n" + dirty)
+
+    def preflight(self) -> None:
+        self.check_clean()
         command("systemctl", "--user", "is-active", "graphical-session.target", capture=True)
         session = os.environ.get("XDG_SESSION_ID")
         if session and command("loginctl", "show-session", session, "-p", "LockedHint", "--value", capture=True) == "yes":
@@ -336,7 +380,7 @@ class Deployment:
         self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
         self.save_state({"stage": stage, "packages": revision, "components": pins,
                          "generation": generation, "previousGeneration": previous,
-                         "previousPin": previous_pin})
+                         "previousPin": previous_pin, "livePaths": self.live_digests()})
         return previous, previous_pin
 
     def rollback_pin(self, generation: str) -> str:
