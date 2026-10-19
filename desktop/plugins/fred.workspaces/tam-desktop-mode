@@ -7,6 +7,7 @@ Supports:
   - Windows mode: synchronized workspace sets anchored to fixed topology slots.
 """
 
+import fcntl
 import importlib.util
 import json
 import os
@@ -15,6 +16,7 @@ import secrets
 import stat
 import subprocess
 import sys
+import time
 
 MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 POSITION_RE = re.compile(r"^(-?\d{1,6})x(-?\d{1,6})$")
@@ -27,6 +29,11 @@ MAX_MONITORS = 16
 MAX_MONITOR_RECORDS = 64
 MAX_HYPRCTL_OUTPUT = 262144
 DEFAULT_TOPOLOGY_SIZE = 3
+# Commands that move workspaces run one at a time: every bar, keybinding and
+# panel calls this helper, and interleaved batches move the wrong workspace.
+SET_COMMANDS = ("toggle", "tamlinux", "mac", "windows", "switch", "move", "move-silent", "realign", "reconcile")
+LOCK_TIMEOUT = 3.0
+BUSY_EXIT = 75
 
 
 _BACKEND = None
@@ -119,6 +126,42 @@ def atomic_write_state(filename: str, content: str) -> None:
         raise
     finally:
         os.close(dir_fd)
+
+
+def acquire_command_lock(timeout: float = LOCK_TIMEOUT) -> int | None:
+    """Hold desktop-mode.lock for this process; None if another holder outlasts TIMEOUT."""
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "")
+    try:
+        if runtime and os.path.isabs(runtime):
+            target_dir = os.path.join(runtime, "tamlinux")
+            os.makedirs(target_dir, mode=0o700, exist_ok=True)
+            dir_fd = os.open(target_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            st = os.fstat(dir_fd)
+            if st.st_uid != os.getuid():
+                os.close(dir_fd)
+                return None
+        else:
+            dir_fd = get_state_dir_fd()
+        try:
+            fd = os.open("desktop-mode.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC,
+                         0o600, dir_fd=dir_fd)
+        finally:
+            os.close(dir_fd)
+    except (OSError, RuntimeError):
+        return None
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fd
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                os.close(fd)
+                return None
+            time.sleep(0.05)
+        except OSError:
+            os.close(fd)
+            return None
 
 
 def read_state_file(filename: str) -> str:
@@ -711,13 +754,54 @@ def dispatch_move_window(workspace: int, follow: bool) -> bool:
     return ok
 
 
+def existing_workspaces() -> dict[int, str]:
+    """Workspace id -> output for every existing normal workspace; {} if unknown."""
+    try:
+        res = run_named("workspaces")
+        if res.returncode != 0 or not res.stdout or len(res.stdout) > MAX_HYPRCTL_OUTPUT:
+            return {}
+        data = json.loads(res.stdout)
+    except (json.JSONDecodeError, OSError, subprocess.SubprocessError, ValueError):
+        return {}
+    if not isinstance(data, list):
+        return {}
+    found: dict[int, str] = {}
+    for workspace in data:
+        if not isinstance(workspace, dict):
+            continue
+        number, monitor = workspace.get("id"), workspace.get("monitor")
+        if (isinstance(number, int) and not isinstance(number, bool) and number > 0
+                and isinstance(monitor, str) and MONITOR_RE.fullmatch(monitor)):
+            found[number] = monitor
+    return found
+
+
+def placement_steps(assignments: list[tuple[str, int]], existing: dict[int, str]) -> list[tuple]:
+    # Move workspaces by name: a bare "move the focused workspace" step moves
+    # whatever another batch focused in between (2026-10-19 VT-switch
+    # incident). A missing workspace is created by focusing it on its output.
+    steps: list[tuple] = []
+    for monitor, workspace in assignments:
+        if workspace in existing and existing[workspace] != monitor:
+            steps.append(("move-workspace-to", (workspace, monitor)))
+    for monitor, workspace in assignments:
+        steps.append(("focus-output", monitor))
+        steps.append(("focus-workspace", workspace))
+    return steps
+
+
 def place_workspace(workspace: int, monitor: str) -> bool:
-    if not MONITOR_RE.fullmatch(monitor) or not dispatch_focus_workspace(workspace):
+    if not MONITOR_RE.fullmatch(monitor):
         return False
-    _accepted, moved = _named_ok("move-workspace", monitor)
-    if not moved:
+    existing = existing_workspaces()
+    if dispatch_batch(placement_steps([(monitor, workspace)], existing)):
+        return True
+    # String dispatchers, still naming the workspace.
+    if workspace in existing and existing[workspace] != monitor:
         _accepted, moved = _named_ok("move-workspace-fallback", [workspace, monitor])
-    return moved
+        if not moved:
+            return False
+    return dispatch_focus_monitor(monitor) and dispatch_focus_workspace(workspace)
 
 
 def switch_mac(workspace: int, monitors: list[str], left_monitor: str, right_monitor: str) -> bool:
@@ -730,19 +814,13 @@ def switch_mac(workspace: int, monitors: list[str], left_monitor: str, right_mon
     return place_workspace(workspace, monitor) and dispatch_focus_workspace(workspace)
 
 
-def switch_windows(
+def windows_assignments(
     desktop: int,
     monitors: list[str],
     slots: dict[str, int] | None = None,
     topology_size: int | None = None,
-) -> bool:
-    original_monitor = focused_monitor()
-    if not monitors:
-        switched = dispatch_focus_workspace(desktop)
-        if switched:
-            atomic_write_state("desktop-current", str(desktop) + "\n")
-        return switched
-
+) -> list[tuple[str, int]]:
+    """(output, workspace) for every active output on DESKTOP in Windows mode."""
     if slots is None or topology_size is None:
         canonical = load_canonical_topology()
         canonical_names = [m["output"] for m in canonical]
@@ -768,14 +846,24 @@ def switch_windows(
         slot = slots.get(mon, 0)
         ws = workspace_for_slot(desktop, slot, topology_size)
         assignments.append((mon, ws))
+    return assignments
 
-    steps: list[tuple] = []
-    for monitor, workspace in assignments:
-        steps.append(("focus-workspace", workspace))
-        steps.append(("move-workspace", monitor))
-    for monitor, workspace in assignments:
-        steps.append(("focus-output", monitor))
-        steps.append(("focus-workspace", workspace))
+
+def switch_windows(
+    desktop: int,
+    monitors: list[str],
+    slots: dict[str, int] | None = None,
+    topology_size: int | None = None,
+) -> bool:
+    original_monitor = focused_monitor()
+    if not monitors:
+        switched = dispatch_focus_workspace(desktop)
+        if switched:
+            atomic_write_state("desktop-current", str(desktop) + "\n")
+        return switched
+
+    assignments = windows_assignments(desktop, monitors, slots, topology_size)
+    steps = placement_steps(assignments, existing_workspaces())
     if original_monitor in monitors:
         steps.append(("focus-output", original_monitor))
 
@@ -977,7 +1065,14 @@ def reconcile() -> str:
                 desktop = int(curr) if curr else 1
             except ValueError:
                 desktop = 1
-            switch_windows(desktop, monitors, slots, topology_size)
+            # Hyprland usually restores a returning output's workspace itself.
+            # Dispatching over an aligned set only risks moving it.
+            active, _focused = monitor_snapshot()
+            assignments = windows_assignments(desktop, monitors, slots, topology_size)
+            if assignments and all(active.get(mon) == ws for mon, ws in assignments):
+                outcome = "reconciled: aligned"
+            else:
+                switch_windows(desktop, monitors, slots, topology_size)
     write_desktop_monitors_state(monitors, left, right, slots, topology_size, canonical_names)
     return outcome
 
@@ -995,6 +1090,10 @@ def main() -> None:
     if cmd == "preferences":
         sys.stdout.write(json.dumps({"unusedMonitorTimeout": load_unused_monitor_timeout()}) + "\n")
         return
+
+    if cmd in SET_COMMANDS and acquire_command_lock() is None:
+        sys.stderr.write("tam-desktop-mode: busy: another desktop change is still running\n")
+        sys.exit(BUSY_EXIT)
 
     monitors, left_monitor, right_monitor, slots, topology_size, _ = resolve_topology()
 

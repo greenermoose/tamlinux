@@ -17,6 +17,7 @@ READS = frozenset({
     "devices",
     "monitors",
     "monitors-all",
+    "workspaces",
     "active-workspace",
     "config-errors",
     "rollinglog",
@@ -82,6 +83,8 @@ def argv_for(operation: str, payload: object) -> list[str]:
         return commands.monitors_argv()
     if operation == "monitors-all":
         return commands.monitors_all_argv()
+    if operation == "workspaces":
+        return commands.workspaces_argv()
     if operation == "active-workspace":
         return commands.active_workspace_argv()
     if operation == "config-errors":

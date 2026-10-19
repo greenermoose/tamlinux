@@ -4,6 +4,18 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.7 - Tamlinux 0.4.4-k candidate
+
+- Reconcile no longer moves an already aligned desktop set. A text-console
+  switch removed and re-added a dark output, every bar reconciled at once, and
+  the interleaved batches moved the terminals' workspace onto the dark display.
+- Only one bar reconciles each output change: the first output present both
+  before and after it (`Model.js`).
+- `tam-desktop-mode` runs set-changing commands one at a time under a lock in
+  `$XDG_RUNTIME_DIR/tamlinux`, exiting 75 when another change outlasts 3 s.
+- Workspaces move by name (`hl.dsp.workspace.move({ workspace, monitor })`),
+  never as "the focused workspace", so a batch cannot move the wrong one.
+
 ## 2.0.6 - 2026-10-16
 
 - Use the shell router for panel IPC; remove per-screen target registrations.

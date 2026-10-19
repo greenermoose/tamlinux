@@ -211,6 +211,25 @@ class CommandTests(unittest.TestCase):
         with self.assertRaises(commands.CompositorCommandError):
             commands.dispatch_focus_workspace_argv(commands.DISPATCH_WORKSPACE_MAX + 1)
 
+    def test_named_workspace_move_does_not_depend_on_focus(self):
+        self.assertEqual(
+            commands.move_named_workspace_argv(5, "DP-1"),
+            ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.workspace.move({ workspace = "5", monitor = "DP-1" })'],
+        )
+        self.assertEqual(
+            commands.batch_argv([("move-workspace-to", (2, "DP-1")), ("move-workspace-to", [3, "HDMI-A-1"])]),
+            [
+                "/usr/bin/hyprctl",
+                "--batch",
+                'dispatch hl.dsp.workspace.move({ workspace = "2", monitor = "DP-1" }); '
+                'dispatch hl.dsp.workspace.move({ workspace = "3", monitor = "HDMI-A-1" })',
+            ],
+        )
+        for bad in ((0, "DP-1"), (commands.DISPATCH_WORKSPACE_MAX + 1, "DP-1"), (True, "DP-1"),
+                    (2, 'DP-1" })'), (2,), "2,DP-1", None):
+            with self.assertRaises(commands.CompositorCommandError, msg=repr(bad)):
+                commands.batch_argv([("move-workspace-to", bad)])
+
     def test_monitor_rule_fields_are_bounded(self):
         self.assertEqual(
             commands.monitor_rule_text(
@@ -243,6 +262,8 @@ class BackendTests(unittest.TestCase):
         env = os.environ.copy()
         env.pop("TAMLINUX_COMPOSITOR_LIVE_ACTIONS", None)
         with patch.dict(os.environ, env, clear=True), patch.object(backend.subprocess, "run", return_value=recorded) as run:
+            backend.run("workspaces", None)
+            self.assertEqual(run.call_args.args[0], ["/usr/bin/hyprctl", "-j", "workspaces"])
             result = backend.run("monitors", None)
             self.assertEqual(run.call_args.args[0], commands.monitors_argv())
             self.assertEqual(run.call_args.kwargs["env"]["PATH"], "/usr/bin")

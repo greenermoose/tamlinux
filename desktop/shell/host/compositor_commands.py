@@ -81,6 +81,10 @@ def monitors_argv() -> list[str]:
     return [HYPRCTL, "-j", "monitors"]
 
 
+def workspaces_argv() -> list[str]:
+    return [HYPRCTL, "-j", "workspaces"]
+
+
 def monitors_all_argv() -> list[str]:
     return [HYPRCTL, "monitors", "all", "-j"]
 
@@ -167,6 +171,14 @@ def move_window_fallback_argv(workspace_id: object, follow: bool) -> list[str]:
 def move_workspace_argv(name: str) -> list[str]:
     output = require_output(name)
     return [HYPRCTL, "dispatch", f'hl.dsp.workspace.move({{ monitor = "{output}" }})']
+
+
+def move_named_workspace_argv(workspace_id: object, name: str) -> list[str]:
+    # Names its workspace, so the result does not depend on what has focus
+    # when Hyprland runs it (a concurrent batch may have moved focus).
+    number = parse_workspace(workspace_id, public=False)
+    output = require_output(name)
+    return [HYPRCTL, "dispatch", f'hl.dsp.workspace.move({{ workspace = "{number}", monitor = "{output}" }})']
 
 
 def move_workspace_fallback_argv(workspace_id: object, name: str) -> list[str]:
@@ -311,6 +323,10 @@ def batch_argv(steps: object) -> list[str]:
             expression = _dispatch_expression(focus_output_argv(value))
         elif kind == "move-workspace":
             expression = _dispatch_expression(move_workspace_argv(value))
+        elif kind == "move-workspace-to":
+            if not isinstance(value, (tuple, list)) or len(value) != 2:
+                raise CompositorCommandError("batch")
+            expression = _dispatch_expression(move_named_workspace_argv(value[0], value[1]))
         else:
             raise CompositorCommandError("batch")
         parts.append("dispatch " + expression)

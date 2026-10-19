@@ -5,12 +5,13 @@ import Quickshell.Io
 import Tam.Commons
 import Tam.Ui
 import "."
+import "Model.js" as Model
 
 BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.6"
+  readonly property string pluginVersion: "2.0.7"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -570,6 +571,8 @@ BarWidget {
   }
 
   property string seenOutputs: ""
+  // Output set before the latest change; decides the one reconciling bar.
+  property string previousOutputs: ""
   property string seenFocus: ""
   property bool compositorSeen: false
 
@@ -597,6 +600,7 @@ BarWidget {
       return
     }
     if (outputKey !== root.seenOutputs) {
+      root.previousOutputs = root.seenOutputs
       root.seenOutputs = outputKey
       root.seenFocus = focus
       reconcileDebounce.restart()
@@ -638,6 +642,10 @@ BarWidget {
     interval: 350
     repeat: false
     onTriggered: {
+      // One bar per change: concurrent reconciles moved the wrong workspace.
+      var previous = root.previousOutputs === "" ? [] : root.previousOutputs.split(",")
+      var current = root.seenOutputs === "" ? [] : root.seenOutputs.split(",")
+      if (!Model.reconcileOwner(previous, current, barMonitor ? barMonitor.name : "")) return
       root.runDesktopCommand(["reconcile"])
     }
   }
