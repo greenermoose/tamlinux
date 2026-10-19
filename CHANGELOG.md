@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-i - Test candidate
+
+- Prepare the next package assembly with tam command 0.31.1 and corpus 0.32.1.
+- Retain h's desktop and native integration behavior; physical recovery,
+  hibernate restoration and preserving rollback acceptance remain pending.
+
 ## 0.4.4-g - Develop
 
 - Package a checkpointed, retryable SDDM PAM transaction that removes only the

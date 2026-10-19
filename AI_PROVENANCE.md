@@ -457,3 +457,5 @@ hibernate integration, bounded recovery-notice handoff, and package inputs for
 `tam` 0.30.0 / corpus 0.31.0. Installation, physical acceptance and stage
 promotion remain pending separate instruction.
 [Session](docs/ai/2026-10-18-0.4.4h-develop.md).
+
+- 2026-10-18: [0.4.4i Tam version selection and Test](docs/ai/2026-10-18-0.4.4i.md), Codex CLI 0.163.0, `gpt-6.1-sol`.
