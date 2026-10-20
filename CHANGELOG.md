@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
-## 0.4.4-k - Develop
+## 0.4.4-k - Test candidate
 
 - Stop concurrent workspace reconciles from moving desktops: `fred.workspaces`
   2.0.7 reconciles from one bar, skips an aligned set, serializes set changes
@@ -28,6 +28,14 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 - Prepare the next package assembly with tam command 0.31.1 and corpus 0.32.1.
 - Retain h's desktop and native integration behavior; physical recovery,
   hibernate restoration and preserving rollback acceptance remain pending.
+
+## 0.4.4-h - Test candidate
+
+- Restore zram after hibernation by starting a defined swap unit, then
+  verifying activation and priority before clearing retry state.
+- Send GPU-recovery notices without `omarchy-notification-send`; deliver
+  host-specific recovery helpers as a separately versioned native companion.
+- Select tam command 0.30.0 and corpus 0.31.0 (the five-part knowledge system).
 
 ## 0.4.4-g - Develop
 
