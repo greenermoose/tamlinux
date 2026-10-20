@@ -82,6 +82,33 @@ class Render(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("expected 'Tamlinux 9'", json.loads(result.stdout)["failures"][0])
 
+    def milestone_proof(self, installed, milestone, expected):
+        # A wrapper supplies the same settings object as the real bar host;
+        # import the real widget rather than copying its label implementation.
+        with tempfile.TemporaryDirectory(prefix="milestone-proof-") as temp:
+            plugin = Path(temp)
+            (plugin / "manifest.json").write_text(json.dumps({
+                "id": "fred.tamversion", "entryPoints": {"barWidget": "BarWidget.qml"}}))
+            source = (DESKTOP / "plugins/fred.tamversion").as_uri()
+            settings = json.dumps({"milestoneVersion": milestone})
+            (plugin / "BarWidget.qml").write_text(
+                f'import "{source}" as Version\nVersion.BarWidget {{ settings: ({settings}) }}\n')
+            result = self.run_proof(str(plugin), "--env", f"TAMLINUX_VERSION={installed}", "--expect", expected)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertGreater(json.loads(result.stdout)["width"], 0)
+
+    def test_matching_milestone_renders_without_candidate_suffix(self):
+        self.milestone_proof("0.4.4-m", "0.4.4", "Tamlinux 0.4.4")
+
+    def test_new_series_retains_candidate_suffix(self):
+        self.milestone_proof("0.4.5-a", "0.4.4", "Tamlinux 0.4.5a")
+
+    def test_invalid_milestone_does_not_replace_real_version(self):
+        self.milestone_proof("0.4.4-m", "0.4.4-m", "Tamlinux 0.4.4m")
+
+    def test_milestone_does_not_hide_missing_package_metadata(self):
+        self.milestone_proof("", "0.4.4", "Tamlinux unknown")
+
 
 if __name__ == "__main__":
     unittest.main()

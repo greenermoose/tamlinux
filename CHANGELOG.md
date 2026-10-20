@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.4-m - Candidate prepared for Test
+
+- Let `fred.tamversion` display a configured, matching milestone version while
+  preserving the full package identity and future candidate labels.
+
 ## 0.4.4-k - Test candidate
 
 - Stop concurrent workspace reconciles from moving desktops: `fred.workspaces`

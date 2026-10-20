@@ -469,3 +469,7 @@ promotion remain pending separate instruction.
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) implements Fred-approved
 single-owner input-method startup for Develop, preserving consumer precedence.
 [Session](docs/ai/2026-10-20-native-input-startup.md).
+
+2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) adds the requested,
+series-scoped milestone label and prepares the display-only m source.
+[Session](docs/ai/2026-10-20-tamversion-milestone-label.md).

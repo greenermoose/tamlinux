@@ -17,6 +17,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-20 | Scoped milestone label in the bar | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-20-tamversion-milestone-label.md) |
 | 2026-10-20 | Single-owner input-method startup | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-20-native-input-startup.md) |
 | 2026-10-18 | 0.4.4h Develop and package preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-18-0.4.4h-develop.md) |
 | 2026-10-18 | Approved 0.4.4h candidate work plan | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-18-0.4.4h-plan.md) |
