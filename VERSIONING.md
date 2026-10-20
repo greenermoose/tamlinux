@@ -86,20 +86,21 @@ for 0.6. Stage 1.1 proves installation on a different distribution.
 
 ## Candidates and lifecycle branches
 
-Each prepared candidate has a plain `X.Y.Z` version: 0.4.5, then 0.4.6 for
-the next, and so on. `VERSION`, changelog headings, Nix and native package
-recipes all write the same number, and Nix and pacman sort it correctly with no
-special spelling. Never reuse a number for a changed assembly: once an assembly
-has been prepared under a number, fixes use the next number and preserve the
-earlier candidate's exact record. A candidate has no release tag or GitHub
-Release unless Fred releases it.
+From 0.4.5, each prepared candidate has a plain `X.Y.Z` version: 0.4.5, then
+0.4.6 for the next, and so on. `VERSION`, changelog headings, Nix and native
+package recipes all write the same number, and Nix and pacman sort it correctly
+with no special spelling. Never reuse a number for a changed assembly: once an
+assembly has been prepared under a number, fixes use the next number and
+preserve the earlier candidate's exact record. A candidate has no release tag
+or GitHub Release unless Fred releases it.
 
-Through 0.4.4, candidates used letters instead: people said **0.4.4a**, and
-`VERSION` and changelog headings wrote `0.4.4-a` while Nix and native package
-recipes wrote `0.4.4pre.a`, so letters sorted before the plain version. The
-last letter issued as of 2026-10-20 is 0.4.4-m. Those identifiers keep their
-meaning in historical records and are not issued again; 0.4.5 and every later
-number sort after them.
+Before 0.4.5, candidates used letters: people said **0.4.4a**, and `VERSION`
+and changelog headings wrote `0.4.4-a` while Nix and native package recipes
+wrote `0.4.4pre.a`, so letters sorted before the plain version. The 0.4.4
+series keeps its letters (0.4.4-m is the latest as of 2026-10-20) until a 0.4.4
+candidate is accepted for Run; after that no letter is issued. Letter
+identifiers keep their meaning in historical records, and 0.4.5 and every
+later number sort after them.
 
 | Branch | Meaning | Promotion |
 | --- | --- | --- |

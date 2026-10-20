@@ -4,6 +4,8 @@
 - Transcript: Retained privately by the author.
 - Prompt:
   > For Tamlinux 0.4.4 we went through a bunch of letters, e.g. 0.4.4a through 0.4.4m. This essential turns our three-position semver into a four-position semver. For future Tamlinux versions, let's stop using letters and bump the patch level. So rather than 0.4.5a and 0.4.5b, do 0.4.5 and then 0.4.6.
+- Follow-up:
+  > Let's allow [letters] until we get a 0.4.4 that we can Run. The number-only process will apply to versions starting with 0.4.5 when we start working on removing all omarchy packages from the system.
 - Choices:
   > Tag the accepted candidate (Recommended)
 
@@ -14,7 +16,8 @@ as the stage. Steps are named by what they do rather than by number, and the
 Omarchy-removal step starts at candidate 0.4.5. A Release tags the accepted
 candidate's commits without a final bump or rebuild, so untagged numbers are
 normal. The letter spellings (`0.4.4-m`, `0.4.4pre.m`) stay as historical
-identifiers.
+identifiers; the 0.4.4 series keeps them until a 0.4.4 candidate is accepted
+for Run, and plain numbers start with 0.4.5.
 
 No code changed. `tamlinux-packages` already accepts a plain version in
 `VERSION` and sorts it after earlier letters, so only its wording and tests
