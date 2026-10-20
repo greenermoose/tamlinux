@@ -13,8 +13,8 @@ ConditionPathExists=/usr/bin/fcitx5
 Type=simple
 # The bar already shows the input-method tray entry.
 ExecStart=/usr/bin/fcitx5 --disable notificationitem
-# fcitx5 exits 0 when another instance owns its bus name.
-Restart=always
+# fcitx5 exits 0 when another instance owns its bus name. Respect that owner.
+Restart=on-failure
 RestartSec=2
 
 [Install]

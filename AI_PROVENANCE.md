@@ -465,3 +465,7 @@ promotion remain pending separate instruction.
 - 2026-10-19: [0.4.4k workspace reconcile, bar settings and live paths](docs/ai/2026-10-19-0.4.4k.md), Claude Code 2.1.303, `claude-opus-5-5`.
 
 - 2026-10-19: [Operating-system horizons plan](docs/ai/2026-10-19-operating-system-horizons.md), Claude Code 2.1.304, `claude-opus-5-5`.
+
+2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) implements Fred-approved
+single-owner input-method startup for Develop, preserving consumer precedence.
+[Session](docs/ai/2026-10-20-native-input-startup.md).

@@ -105,7 +105,7 @@
     },
     "usr/lib/systemd/user/tam-fcitx5.service": {
       "mode": "0644",
-      "sha256": "9c8dfb401c7a4aa71d9df57066359f16e921bf9514e6b571a6fd02d8783ea888"
+      "sha256": "5b03764563af0f58a089967ffc3aeac1f5edf96d56a8c0c5deb805731bf6df2b"
     },
     "usr/lib/systemd/zram-generator.conf.d/90-tamlinux.conf": {
       "derivedFrom": "/usr/lib/systemd/zram-generator.conf.d/90-omarchy.conf",

@@ -120,6 +120,8 @@ class NativeDefaultsTests(unittest.TestCase):
             link = ROOT / "usr/lib/systemd/user/graphical-session.target.wants" / unit
             self.assertEqual(os.readlink(link), "../" + unit)
         agent = ini("usr/lib/systemd/user/tam-bt-agent.service")
+        fcitx = ini("usr/lib/systemd/user/tam-fcitx5.service")
+        self.assertEqual(fcitx["Service"]["Restart"], "on-failure")
         self.assertEqual(agent["Service"]["ExecStart"], "/usr/bin/bt-agent -c NoInputNoOutput")
         # A user's or the previous owner's bt-agent.service wins; never two agents.
         self.assertIn("bt-agent.service", agent["Unit"]["After"].split())
