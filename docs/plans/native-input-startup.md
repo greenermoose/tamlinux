@@ -1,7 +1,7 @@
 # Give the input method one startup owner
 
 Status: approved by Fred on 2026-10-20; implementation and disposable-VM
-verification in progress. Workstation installation and stage promotion require
+verification complete for Develop 0.4.4-l. Workstation installation and stage promotion require
 separate authorization. A candidate letter is chosen separately.
 
 ## Problem and evidence
@@ -59,3 +59,17 @@ the actual source/configuration delta; do not repeat unrelated trials for logs.
 The normal-delay sleep proof, accepted-Run recovery review and exact-candidate
 Run instruction remain separate requirements. This repair authorizes no Test,
 Run, tag or Release.
+
+## Develop result — 2026-10-20
+
+Source `1aa4eaf51046d05c74142935c7ed39486315f8d6` and VM assembly
+`08db32396673141c3ef731242289b7f67a443315` pass the planned package/module
+checks, two native logins and existing-owner test. Both logins have one Fcitx
+owner, zero restarts, an inactive vendor autostart instance and nine loaded
+plugins. Native archive identity and summary are recorded in the assembly's
+`deliveries/tamlinux-0.4.4-l.json`. The consumer override evaluation passes.
+
+The package proof is ready for a separate Test decision. Workstation native
+rollback, physical login/input observation and affected preserving rollback
+remain to execute under that instruction. Earlier k gate failures remain
+recorded under k; l is no full-gate or Run pass.
