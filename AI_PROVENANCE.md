@@ -473,3 +473,6 @@ single-owner input-method startup for Develop, preserving consumer precedence.
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) adds the requested,
 series-scoped milestone label and prepares the display-only m source.
 [Session](docs/ai/2026-10-20-tamversion-milestone-label.md).
+
+2026-10-20: Claude Code `2.1.305` (`claude-sonnet-5-5`) replaces candidate letters with plain patch versions in the versioning policy.
+[Session](docs/ai/2026-10-20-plain-patch-versions.md).

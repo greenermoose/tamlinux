@@ -7,20 +7,24 @@ commits and dependencies into the package installed for Test and Run.
 
 ## What the numbers mean
 
-**The version is the plan.** The minor version names a *stage*, and the patch
-names a *step* within it. A step is one change Fred tests on his workstation
-and accepts into daily use; its version is its name. The first accepted step
-of stage 0.3 is 0.3.0, the next 0.3.1, and so on. Every accepted step raises
-the version, so the number shows which stage Tamlinux is in and how far
-through it.
+**The minor version is the stage; the patch counts candidates.** A candidate
+is one prepared package assembly that Fred can test on his workstation. The
+first candidate of stage 0.3 is 0.3.0, the next 0.3.1, and so on. Every
+prepared candidate raises the patch, so the number shows which stage Tamlinux
+is in and how many candidates it has taken. The units of work in a stage are
+*steps*, and they are named by what they do (for example "Omarchy removal"),
+not by number. A step takes as many candidates as it needs; a stage boundary
+(a new minor version, which restarts the patch at 0) is declared by Fred.
 
-- A step's number is fixed when work on it starts. Steps not yet started may
-  be split, merged, or renumbered when a stage is re-planned.
-- Fixes ship with the step they belong to or the next one; they do not get a
-  number of their own. Development work and documentation do not raise the
-  version.
+- A candidate's number is fixed when its assembly is prepared and is never
+  reused. A fix to a prepared candidate is a new candidate with the next
+  number; the earlier candidate's exact record stays as it was.
+- Not every number is released. Only the candidate Fred releases is tagged,
+  so release tags have gaps. Development work and documentation that do not
+  change an assembly do not raise the version.
 - **1.x** means Tamlinux no longer depends on [Omarchy](https://omarchy.com)
-  or Hyprland. The 0.x stages remove Omarchy first (0.4.5), while Hyprland keeps
+  or Hyprland. The 0.x stages remove Omarchy first (the Omarchy-removal step, whose
+  first candidate is 0.4.5), while Hyprland keeps
   running; **1.0.0** removes Hyprland. After 1.0.0 the same rule applies:
   stage 1.N, steps 1.N.k.
 
@@ -31,15 +35,16 @@ installation on clean Arch/Hyprland, including required theme/font/assets,
 session ownership, migration and recovery, and ended at its Desktop Test.
 **0.4.4** cuts this workstation over to native login, boot, update, fallback
 and sleep/resume ownership with the old Omarchy packages still installed; it
-ends at Run, without a Release, and is the fallback for **0.4.5**, which
-removes those packages and whose Release completes Gate A. Focused input usability
+ends at Run, without a Release, and is the fallback for the **Omarchy-removal
+step**, which removes those packages, starts at candidate **0.4.5**, and
+whose Release completes Gate A. Focused input usability
 opens stage 0.5 at 0.5.0, followed by Tamarack visual redesign in later 0.5.x
 steps. Stage 0.6 proves a dependable Arch/Hyprland baseline: Fault F/G have
 durable fixes or accepted mitigations/alternatives, carried patches are pinned
 with upstream status, updates/rollback are routine over a period Fred accepts,
 and a second laptop runs a host-safe Arch installation. Laptop installation may
 start after 0.4.4 Run. Sway integration/package follows at 0.7 and daily proof
-at 0.8. Stage 0.4 ends at Gate A (0.4.5). Required
+at 0.8. Stage 0.4 ends at Gate A, the Release of the Omarchy-removal step. Required
 independence work is not deferred to 0.5/0.6. Accepted earlier versions and
 prototype records retain their identifiers; this review changes no VERSION.
 
@@ -55,8 +60,8 @@ planned but never issued.
 | **0.1** | The desktop's session services run in the Tamlinux shell beside the existing bar: notifications, on-screen display, clipboard history, emoji and image pickers, reminders, the command menu, the background, screenshots and screen capture, the polkit agent, media keys, idle and Stay Awake, battery warnings, and the lock screen; and the commands the desktop calls are Tamlinux's own. | Arch | Existing bar, Tamlinux services |
 | **0.2** | Every key binding and menu entry runs Tamlinux's own commands, including the keybinding viewer, night light, and the audio, Bluetooth, network, power, and speed-test panels. Only the bar's own keys and settings wait for 0.3, and the theme, branding, and boot-splash entries for 0.5 and the boot work. Reached 2026-10-05 (0.2.0–0.2.6). | Arch | Existing bar, Tamlinux services and panels |
 | **0.3** | The Tamlinux shell, with all eight rewritten plugins and its own tray, indicators, and status widgets, is the daily bar. | Arch | Tamlinux shell on Hyprland |
-| **0.4** | Packaged desktop: 0.4.3 delivers the retained desktop on clean Arch/Hyprland with independent source/assets/session ownership, migration/recovery and no active inherited runtime dependencies; 0.4.4 cuts this workstation over to native login/boot/sleep ownership; 0.4.5 removes the old Omarchy packages. Exact reference Test/rollback and daily acceptance close the first proof gate. | Arch | Tamlinux on Hyprland |
-| **0.5.0** | Focused input usability is reviewed and tested after the 0.4.5 Omarchy removal: safe chords, terminal/TUI selection and paste, close controls and discoverability. | Arch | Tamlinux on Hyprland |
+| **0.4** | Packaged desktop: 0.4.3 delivers the retained desktop on clean Arch/Hyprland with independent source/assets/session ownership, migration/recovery and no active inherited runtime dependencies; 0.4.4 cuts this workstation over to native login/boot/sleep ownership; the Omarchy-removal step (first candidate 0.4.5) removes the old Omarchy packages. Exact reference Test/rollback and daily acceptance close the first proof gate. | Arch | Tamlinux on Hyprland |
+| **0.5.0** | Focused input usability is reviewed and tested after the Omarchy removal: safe chords, terminal/TUI selection and paste, close controls and discoverability. | Arch | Tamlinux on Hyprland |
 | **Later 0.5.x** | Tamarack visual redesign after focused input at 0.5.0: new tokens, typography, glyph artwork and accessible application appearance. Required independent software names/fonts/assets are already delivered in 0.4.3. | Arch | Tamlinux on Hyprland |
 | **0.6** | Dependable Arch/Hyprland baseline: Fault F has a durable fix or accepted mitigation; Fault G is retired or an accepted alternative; carried Hyprland/aquamarine patches are pinned with upstream status; updates/rollback are routine over a period Fred accepts; a second laptop runs a host-safe Arch installation. | Arch | Tamlinux on Hyprland |
 | **0.7** | Helpers, night light and capture pass the compositor contract on both adapters; the package installs a verified Sway session beside independent Hyprland, with physical monitor-recovery evidence. | Arch | Both sessions available |
@@ -79,17 +84,22 @@ versions in its manifest.
 Tamlinux. A second laptop on Arch may start after 0.4.4 Run and is required
 for 0.6. Stage 1.1 proves installation on a different distribution.
 
-## Candidate letters and lifecycle branches
+## Candidates and lifecycle branches
 
-Work toward a release uses letters: people say **0.4.2a**, **0.4.2b** and
-**0.4.2c**. `VERSION` and changelog headings use the SemVer forms `0.4.2-a`,
-`0.4.2-b` and `0.4.2-c`. Nix and native package recipes use `0.4.2pre.a`,
-`0.4.2pre.b` and `0.4.2pre.c`, so candidates sort after 0.4.1 and before
-0.4.2. The spelling `0.4.2a` is for conversation, not a package version.
-Candidate letters have no release tags or GitHub Releases. Never reuse a letter
-for a changed assembly: once an assembly has been prepared under that letter, fixes use
-the next letter and preserve the earlier candidate's exact record. 0.4.2d
-(`0.4.2-d` / `0.4.2pre.d`) follows c.
+Each prepared candidate has a plain `X.Y.Z` version: 0.4.5, then 0.4.6 for
+the next, and so on. `VERSION`, changelog headings, Nix and native package
+recipes all write the same number, and Nix and pacman sort it correctly with no
+special spelling. Never reuse a number for a changed assembly: once an assembly
+has been prepared under a number, fixes use the next number and preserve the
+earlier candidate's exact record. A candidate has no release tag or GitHub
+Release unless Fred releases it.
+
+Through 0.4.4, candidates used letters instead: people said **0.4.4a**, and
+`VERSION` and changelog headings wrote `0.4.4-a` while Nix and native package
+recipes wrote `0.4.4pre.a`, so letters sorted before the plain version. The
+last letter issued as of 2026-10-20 is 0.4.4-m. Those identifiers keep their
+meaning in historical records and are not issued again; 0.4.5 and every later
+number sort after them.
 
 | Branch | Meaning | Promotion |
 | --- | --- | --- |
@@ -113,12 +123,12 @@ the prior generation plus any mutable-state recovery needed. The
 [deployment contract](https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md)
 describes this boundary.
 
-Before the final promotion for a release, change both `VERSION` files to the
-plain version (for example `0.4.2`), consolidate its changelog entries under
-that version, and record the exact component delivery. That produces a new
-package which needs Test before Run. Release tags the same accepted commits
-already on `main`: `X.Y.Z` and `vX.Y.Z`, plus floating `X.Y` and `vX.Y`, in
-both the product and delivery repositories, with release notes. Automated
+A release is a candidate Fred has tested and run. On Fred's Release instruction
+the same accepted commits already on `main` are tagged `X.Y.Z` and `vX.Y.Z`,
+plus floating `X.Y` and `vX.Y`, in both the product and delivery repositories,
+with release notes covering everything since the previous release. There is no
+final version bump or rebuild: the released package is the package that ran.
+Candidate numbers that were never released are skipped in the tags. Automated
 checks and version numbers do not replace Fred's physical acceptance.
 
 ## What Tamlinux version is not
