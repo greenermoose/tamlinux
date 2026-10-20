@@ -24,6 +24,7 @@ Omarchy, then prove Tamlinux on Sway. Arch stays the workstation base.
 | [Installation framework](installation-framework.md) | Clean Arch/Hyprland package/native adapter and repeatable provisioning proof in 0.4.3; general portable installer and Sway integration remain later. |
 | [`tam` command](tamlinux-command.md) | Milestones 1–5 implemented at tam 0.9.1; corpus search, content depth, read-only self-inspection and grounded ask remain in the component plan. Inherited host-profile recognition needs 0.4.3 classification/cutover. |
 | [Base operating system](base-operating-system.md) | Second distribution 1.1, then Void/runit/Btrfs/native-source pilot 1.2 and repeatable activation/terminal profile 1.3; antiX Core fallback if needed. |
+| [Operating-system horizons](operating-system-horizons.md) | Research only: roles for the Linux and non-Linux systems Tamlinux watches for fixes and ideas, and the Tam 2.0 microkernel exploration (Redox first). Chooses no base and authorizes no migration. |
 
 Boot work and reliability continue alongside ownership work. Final removal
 requires independently maintained kernel/initramfs/boot hooks and tested
