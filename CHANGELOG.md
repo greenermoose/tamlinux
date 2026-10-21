@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.6 - Develop candidate
+
+- Deliver owned HEY and Zoom URI handlers, preserving conversion of inherited
+  application launchers, and correct the inherited editor default on login.
+- Preserve the Discord launcher icon through the owned hicolor asset.
+- Retain the stock boot/unlock screen and retire its obsolete picker menu.
+- Assemble tam command 0.36.0 and corpus 0.37.0. Native l and host-recovery h
+  remain unchanged; installed workflow and removal approval are pending.
+
 ## 0.4.5 - Develop candidate
 
 - Begin the Incipiens candidate with a cultivar name supplied by the selected
