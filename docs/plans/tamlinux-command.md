@@ -46,8 +46,8 @@ framework; `libtam` remains a separate dependency.
 
 Bare invocation never opens the guide or changes first-use state, whether
 interactive or piped. `tam welcome` explicitly displays orientation. Record
-that welcome was shown in `$XDG_STATE_HOME/tamlinux/welcome_seen` (falling back
-to `~/.local/state/tamlinux/welcome_seen`) only after successful display,
+that welcome was shown in `$XDG_STATE_HOME/tamlinux/tam/welcome_seen` (falling back
+to `~/.local/state/tamlinux/tam/welcome_seen`) only after successful display,
 whether in the interactive pager or via text output. `show`, `--help`, `--version`,
 and installation commands leave first-use state unchanged. The command must distinguish
 terminal output from piped output and never emit control text into a
