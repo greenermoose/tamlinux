@@ -1,6 +1,6 @@
 // Tamlinux default menu. Ported from Omarchy 4.0.4 (MIT).
 // Copyright (c) David Heinemeier Hansson; see LICENSE-omarchy.
-// Theme/font/branding and boot actions await required 0.4.3 product/native ownership.
+// Boot theme selection is outside 0.4; the stock Plymouth boot screen is retained.
 {
   "apps": {"icon":"󰀻","label":"Apps","aliases":["app","applications"],"provider":"apps"},
   "learn": {"icon":"󰧑","label":"Learn"},
@@ -74,7 +74,6 @@
   "trigger.tests.disk-speedtest": {"icon":"󰋊","label":"Disk Speed Test","action":"tam-shell tamlinux.panels summon tamlinux.disk-speedtest"},
   "style.theme": {"icon":"󰸌","label":"Theme","aliases":["theme","themes"],"action":"theme=$(tam-theme-switcher); [[ -n $theme ]] && tam-theme-set \"$theme\""},
   "style.background": {"icon":"","label":"Background","aliases":["background","wallpaper"],"action":"background=$(tam-theme-bg-switcher); [[ -n $background ]] && tam-theme-bg-set \"$background\""},
-  "style.unlock": {"icon":"󰟵","label":"Unlock","aliases":["unlock"],"when":"[[ -x /usr/bin/tam-plymouth-switcher && -x /usr/bin/tam-plymouth-reset && -x /usr/bin/tam-plymouth-set-by-theme ]]","action":"unlock=$(/usr/bin/tam-plymouth-switcher); if [[ $unlock == default ]]; then tam-launch-floating-terminal-with-presentation /usr/bin/tam-plymouth-reset; elif [[ -n $unlock ]]; then tam-launch-floating-terminal-with-presentation \"/usr/bin/tam-plymouth-set-by-theme $(printf %q \"$unlock\")\"; fi"},
   "style.font": {"icon":"","label":"Font","provider":"fonts"},
   "style.bar": {"icon":"󰍜","label":"Menu Bar"},
   "style.bar.position": {"icon":"","label":"Position"},

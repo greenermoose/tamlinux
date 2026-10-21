@@ -484,7 +484,7 @@ remaining requirement has a finite artifact-bound completion record.
 | omarchy-launch-about | tam-launch-about; product theme/assets/branding slice | Owned version/source and retained About behavior. |
 | omarchy-branding-about / omarchy-branding-screensaver | tam-branding-about / tam-branding-screensaver, paired assets/writers | Text/image/reset behavior and offline conversion/recovery. |
 | omarchy-theme-install / omarchy-theme-bg-install | tam-theme-install / tam-theme-bg-install, paired pickers/theme consumers | Independent sources, background/theme selection and return to baseline. |
-| omarchy-plymouth-reset / omarchy-plymouth-set-by-theme | Product/native packaged equivalents coordinated with boot integration | Unlock selection/reset, native authorization and boot/recovery proof; not a 0.5 deferral. |
+| omarchy-plymouth-reset / omarchy-plymouth-set-by-theme | Retired from the 0.4 menu; stock Plymouth `bgrt` is retained | Developer decision 2026-10-20: "Keep today's screen for 0.4." Boot theme selection/reset is outside 0.4; the existing boot/unlock screen and its independent native owner remain. |
 | omarchy-setup-direct-boot | Product/native packaged equivalent coordinated with boot integration | Retained selection, inspected generated boot state and recovery; no real identifier rename. |
 | Seven iconFont: omarchy rows plus shell/font consumers | Owned font family and licensed packaged glyph payload preserving current appearance | Resolve actual font files/modules on empty-state login. New glyph artwork remains 0.5. |
 

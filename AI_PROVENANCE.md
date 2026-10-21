@@ -53,6 +53,12 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) removes the obsolete boot-theme
+picker menu after the developer chooses to retain stock Plymouth `bgrt` for
+0.4. The compatibility plan and consumer expectations follow that choice;
+25 focused tests pass. No activation or boot change.
+[Session](docs/ai/2026-10-20-stock-unlock-screen.md).
+
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) supplies owned HEY/Zoom
 handlers, preserving desktop-entry migration and inherited editor-default
 correction. Isolated source/package checks pass; no activation.
