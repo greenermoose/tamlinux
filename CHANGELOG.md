@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## 0.4.5 - Develop candidate
+
+- Begin the Incipiens candidate with a cultivar name supplied by the selected
+  assembly and plain patch-number versioning.
+- Assemble tam command 0.35.0 and corpus 0.36.1, including `tam inspect` and
+  OS/cultivar identity reporting. Host OS identity changes remain a separate
+  native transaction.
+
 ## 0.4.4-m - Candidate prepared for Test
 
 - Let `fred.tamversion` display a configured, matching milestone version while
