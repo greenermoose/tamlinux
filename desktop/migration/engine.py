@@ -107,7 +107,7 @@ def convert(kind, data, commands):
             raise ValueError('Input device name must be one nonempty plain-data line')
         return data
     if kind=='webapp':
-        # Only the executable in the first Desktop Entry section is changed.
+        # Only known executable/icon fields in Desktop Entry are changed.
         section=''; result=[]; changed=False
         replacements={
             'omarchy-launch-webapp':'tam-launch-webapp',
@@ -117,6 +117,10 @@ def convert(kind, data, commands):
         for line in text.splitlines(keepends=True):
             if line.startswith('['): section=line.strip()
             if section=='[Desktop Entry]':
+                if line.rstrip('\r\n')=='Icon=omarchy-discord':
+                    icon=HERE.parent/'assets/icons/tamlinux-discord.png'
+                    if not icon.is_file(): raise ValueError('No selected replacement for omarchy-discord')
+                    line=line.replace('Icon=omarchy-discord','Icon=tamlinux-discord',1); changed=True
                 for old,new in replacements.items():
                     if re.match(r'^Exec='+re.escape(old)+r'(?:\s|$)',line):
                         if new not in commands: raise ValueError('No selected replacement for '+old)

@@ -1356,6 +1356,11 @@
       "source": "default/fonts/omarchy/omarchy.ttf",
       "destination": "desktop/assets/fonts/source.ttf",
       "sha256": "de860dce13dda83739a32eea787c422cb81e8a30f1b0bdc2cfc8829ee944e0ff"
+    },
+    {
+      "source": "/usr/share/icons/hicolor/256x256/apps/omarchy-discord.png (omarchy-settings 4.0.4-1)",
+      "destination": "desktop/assets/icons/tamlinux-discord.png",
+      "sha256": "c12aa58ec86d534adb011bc4c0e16c48e40a06598d1345b862fd56e588309f68"
     }
   ]
 }

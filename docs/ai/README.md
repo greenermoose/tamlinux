@@ -141,3 +141,5 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 - [2026-10-16 — 0.4.4d login and panel readiness](2026-10-16-0.4.4d-readiness.md)
 - [2026-10-20 — plain patch versions replace candidate letters](2026-10-20-plain-patch-versions.md)
+
+- [2026-10-20 — Discord icon independence](2026-10-20-discord-icon.md)

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('migration',ROOT/'desktop/migration/engine.py')
@@ -63,6 +64,30 @@ class Migration(unittest.TestCase):
         path=self.write('data','applications/Personal.desktop',original)
         self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
         self.assertEqual(path.read_bytes(),original)
+
+    def test_discord_icon_migrates_independently_and_rollback_preserves_later_edits(self):
+        original=(b'[Desktop Entry]\r\nExec=tam-launch-webapp https://discord.com/channels/@me\r\n'
+                  b'Icon=omarchy-discord\r\nComment=omarchy-discord\r\n'
+                  b'[Desktop Action Personal]\r\nIcon=omarchy-discord\r\n')
+        path=self.write('data','applications/Discord.desktop',original);path.chmod(0o640)
+        self.assertEqual(len(m.prepare(self.roots,self.journal)['rows']),1)
+        m.apply(self.journal,self.roots)
+        expected=original.replace(b'Icon=omarchy-discord',b'Icon=tamlinux-discord',1)
+        self.assertEqual(path.read_bytes(),expected)
+        self.assertEqual(path.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'))['rows'],[])
+        later=expected+b'# later edit\r\n';path.write_bytes(later)
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original)
+        archives=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
+        self.assertTrue(any(x['state'].get('bytes')==base64.b64encode(later).decode() for x in archives))
+
+    def test_discord_icon_requires_delivered_asset_and_keeps_personal_icons(self):
+        with patch.object(m,'HERE',self.base/'missing/migration'):
+            with self.assertRaisesRegex(ValueError,'No selected replacement for omarchy-discord'):
+                m.convert('webapp',b'[Desktop Entry]\nIcon=omarchy-discord\n',set())
+        for value in ('personal-icon','omarchy-discord-personal','/personal/omarchy-discord.png'):
+            self.assertIsNone(m.convert('webapp',('[Desktop Entry]\nIcon='+value+'\n').encode(),set()))
 
     def test_launcher_conversion_requires_a_selected_provider(self):
         for command in ('omarchy-webapp-handler-hey','omarchy-webapp-handler-zoom',
