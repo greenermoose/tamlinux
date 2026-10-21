@@ -17,6 +17,41 @@
       "conversion": "bar-layout"
     },
     {
+      "id": "retire-hey",
+      "root": "data",
+      "source": "applications/HEY.desktop",
+      "target": "applications/HEY.desktop",
+      "conversion": "retire-hey"
+    },
+    {
+      "id": "retire-hey-mime-config-default",
+      "root": "config",
+      "source": "mimeapps.list",
+      "target": "mimeapps.list",
+      "conversion": "retire-hey-mime"
+    },
+    {
+      "id": "retire-hey-mime-config-desktop",
+      "root": "config",
+      "source": "*-mimeapps.list",
+      "target": "*-mimeapps.list",
+      "conversion": "retire-hey-mime"
+    },
+    {
+      "id": "retire-hey-mime-data-default",
+      "root": "data",
+      "source": "applications/mimeapps.list",
+      "target": "applications/mimeapps.list",
+      "conversion": "retire-hey-mime"
+    },
+    {
+      "id": "retire-hey-mime-data-desktop",
+      "root": "data",
+      "source": "applications/*-mimeapps.list",
+      "target": "applications/*-mimeapps.list",
+      "conversion": "retire-hey-mime"
+    },
+    {
       "id": "webapps",
       "root": "data",
       "source": "applications/*.desktop",

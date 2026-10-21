@@ -17,6 +17,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-21 | Preserving HEY integration retirement | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-21-retire-hey.md) |
 | 2026-10-21 | Incipiens 0.4.6 preparation and accepted HEY retirement plan | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-21-0.4.6-preparation.md) |
 | 2026-10-20 | Retain the stock boot/unlock screen for 0.4 | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-20-stock-unlock-screen.md) |
 | 2026-10-20 | Retained application and editor dependencies | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-20-live-call-replacements.md) |

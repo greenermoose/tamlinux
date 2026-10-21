@@ -336,7 +336,7 @@ class ModelTests(unittest.TestCase):
 
     def test_fixture_row_count_and_ends(self):
         rows = self.fixture_rows()
-        self.assertEqual(len(rows), 252)
+        self.assertEqual(len(rows), 249)
         self.assertEqual(rows[0], {
             "display": "SUPER CTRL + T                      → Activity",
             "dispatcher": "exec",
@@ -374,12 +374,12 @@ class ModelTests(unittest.TestCase):
 
     def test_fixture_desktops_sort_numerically(self):
         rows = self.fixture_rows()
-        self.assertEqual(rows[190], {
+        self.assertEqual(rows[187], {
             "display": "SUPER + 2                           → Switch desktop 2",
             "dispatcher": "exec",
             "arg": "tam-desktop-mode switch 2",
         })
-        self.assertEqual(rows[206], {
+        self.assertEqual(rows[203], {
             "display": "SUPER + 0                           → Switch desktop 10",
             "dispatcher": "exec",
             "arg": "tam-desktop-mode switch 10",

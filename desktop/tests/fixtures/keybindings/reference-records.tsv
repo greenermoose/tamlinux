@@ -149,7 +149,6 @@ SUPER SHIFT ALT + 8                 → Move window silently to desktop 8	exec	t
 SUPER SHIFT ALT + 9                 → Move window silently to desktop 9	exec	tam-desktop-mode move-silent 9
 SUPER SHIFT ALT + A                 → Grok	exec	tam-launch-webapp 'https://grok.com'
 SUPER SHIFT ALT + DOWN              → Move workspace to down monitor	lua	hl.dsp.workspace.move({ monitor = "d" })
-SUPER SHIFT ALT + E                 → New email	exec	tam-launch-webapp 'https://app.hey.com/messages/new?display=standalone&new_window=true'
 SUPER SHIFT ALT + G                 → WhatsApp	exec	tam-launch-or-focus-webapp 'WhatsApp' 'https://web.whatsapp.com/'
 SUPER SHIFT ALT + KP_BEGIN          → Move window silently to desktop 5	exec	tam-desktop-mode move-silent 5
 SUPER SHIFT ALT + KP_DOWN           → Move window silently to desktop 2	exec	tam-desktop-mode move-silent 2
@@ -167,13 +166,11 @@ SUPER SHIFT ALT + RIGHT             → Move workspace to right monitor	lua	hl.d
 SUPER SHIFT ALT + UP                → Move workspace to up monitor	lua	hl.dsp.workspace.move({ monitor = "u" })
 SUPER SHIFT ALT + X                 → X Post	exec	tam-launch-webapp 'https://x.com/compose/post'
 SUPER SHIFT + BACKSPACE             → Toggle window gaps	exec	tam-hyprland-window-gaps-toggle
-SUPER SHIFT + C                     → Calendar	exec	tam-launch-webapp 'https://app.hey.com/calendar/weeks/'
 SUPER SHIFT CTRL + A                → Agent	exec	tam-agent --pick
 SUPER SHIFT CTRL + D                → Retrain MSI display link	exec	msi-mp161-resume-workaround --manual
 SUPER SHIFT CTRL + G                → Google Messages	exec	tam-launch-or-focus-webapp 'Google Messages' 'https://messages.google.com/web/conversations'
 SUPER SHIFT CTRL + R                → Clear reminders	exec	tam-reminder clear
 SUPER SHIFT + D                     → Docker	exec	tam-launch-tui 'tam-launch-docker-tui'
-SUPER SHIFT + E                     → Email	exec	tam-launch-webapp 'https://app.hey.com'
 SUPER SHIFT + G                     → Signal	exec	tam-launch-signal
 SUPER SHIFT + KP_BEGIN              → Move window to desktop 5	exec	tam-desktop-mode move 5
 SUPER SHIFT + KP_DOWN               → Move window to desktop 2	exec	tam-desktop-mode move 2

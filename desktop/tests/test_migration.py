@@ -30,13 +30,107 @@ class Migration(unittest.TestCase):
         source=self.write('config','hypr/input.lua',b'hl.config({ input = { kb_layout = "de" } })\n')
         return mode,app,source
 
+    def hey(self, command='tam-webapp-handler-hey'):
+        return ('[Desktop Entry]\nVersion=1.0\nName=HEY\nExec='+command+' %u\n'
+                'Terminal=false\nType=Application\nIcon=hey\nStartupNotify=true\n'
+                'MimeType=x-scheme-handler/mailto\n').encode()
+
+    def test_hey_retirement_preserves_both_known_templates_and_retries_after_deletion(self):
+        for command in ('omarchy-webapp-handler-hey','tam-webapp-handler-hey'):
+            with self.subTest(command=command):
+                path=self.write('data','applications/HEY.desktop',self.hey(command));path.chmod(0o640)
+                journal=self.journal.with_name(command)
+                plan=m.prepare(self.roots,journal)
+                self.assertEqual([(row['id'],row['after']) for row in plan['rows']],
+                                 [('retire-hey',{'kind':'absent'})])
+                # Simulate unlink completed but the applied journal write interrupted.
+                plan['rows'][0]['status']='writing';plan['status']='applying'
+                m.save(journal/'journal.json',plan);path.unlink()
+                self.assertEqual(m.apply(journal,self.roots)['status'],'applied')
+                self.assertEqual(m.apply(journal,self.roots)['status'],'applied')
+                self.assertEqual(m.prepare(self.roots,journal.with_name(command+'-retry'))['rows'],[])
+                m.rollback(journal,self.roots)
+                self.assertEqual(path.read_bytes(),self.hey(command))
+                self.assertEqual(path.stat().st_mode & 0o777,0o640)
+                path.unlink()
+
+    def test_hey_retirement_refuses_custom_launchers_without_mutating_any_files(self):
+        cases=[self.hey('personal-handler'),self.hey()+b'Comment=Personal\n',
+               self.hey()+b'[Desktop Action Personal]\nExec=other\n',
+               self.hey()+b'Exec=other\n',b'[Desktop Entry]\nExec=tam-webapp-handler-hey %u\n']
+        for index,original in enumerate(cases):
+            with self.subTest(original=original):
+                path=self.write('data','applications/HEY.desktop',original)
+                mime=self.write('config','mimeapps.list',b'[Default Applications]\nx-scheme-handler/mailto=HEY.desktop\n')
+                journal=self.journal.with_name('custom-'+str(index))
+                self.assertEqual(m.prepare(self.roots,journal)['status'],'blocked')
+                with self.assertRaises(ValueError):m.apply(journal,self.roots)
+                self.assertEqual(path.read_bytes(),original)
+                self.assertIn(b'HEY.desktop',mime.read_bytes())
+
+    def test_hey_retirement_refuses_links_and_owner_mismatch(self):
+        target=self.write('data','personal.desktop',self.hey())
+        path=target.parent/'applications/HEY.desktop';path.parent.mkdir()
+        path.symlink_to(target)
+        self.assertEqual(m.prepare(self.roots,self.journal)['status'],'blocked')
+        self.assertEqual(target.read_bytes(),self.hey())
+        path.unlink();path.write_bytes(self.hey())
+        with patch.object(m.os,'getuid',return_value=-1),self.assertRaisesRegex(ValueError,'Owner mismatch'):
+            m.prepare(self.roots,self.journal.with_name('owner'))
+        self.assertEqual(path.read_bytes(),self.hey())
+
+    def test_hey_mime_retirement_only_removes_exact_tokens_and_preserves_format(self):
+        original=(b'# HEY.desktop stays in a comment\r\n[Default Applications]\r\n'
+                  b'x-scheme-handler/mailto=HEY.desktop\r\n'
+                  b'text/plain=editor.desktop;HEY.desktop;other.desktop;\r\n'
+                  b'text/html=HEY.desktop.personal;other.desktop;\r\n'
+                  b'[Added Associations]\r\nx-scheme-handler/mailto=other.desktop; HEY.desktop ;last.desktop;\r\n'
+                  b'[Removed Associations]\r\nx-scheme-handler/mailto=HEY.desktop;\r\n'
+                  b'[Personal]\r\nvalue=HEY.desktop\r\n')
+        expected=original.replace(b'x-scheme-handler/mailto=HEY.desktop\r\n',b'').replace(
+            b'editor.desktop;HEY.desktop;other.desktop;',b'editor.desktop;other.desktop;').replace(
+            b'other.desktop; HEY.desktop ;last.desktop;',b'other.desktop;last.desktop;').replace(
+            b'x-scheme-handler/mailto=HEY.desktop;\r\n',b'')
+        paths=[self.write(root,relative,original) for root,relative in (
+            ('config','mimeapps.list'),('config','hyprland-mimeapps.list'),
+            ('data','applications/mimeapps.list'),('data','applications/tamlinux-mimeapps.list'))]
+        self.assertEqual(len(m.prepare(self.roots,self.journal)['rows']),4)
+        m.apply(self.journal,self.roots)
+        for path in paths:self.assertEqual(path.read_bytes(),expected)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'))['rows'],[])
+        paths[0].write_bytes(expected+b'# later MIME choice\r\n')
+        m.rollback(self.journal,self.roots)
+        for path in paths:self.assertEqual(path.read_bytes(),original)
+        archives=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
+        self.assertTrue(any(b'later MIME choice' in base64.b64decode(x['state'].get('bytes','')) for x in archives))
+
+    def test_retirement_rollback_preserves_recreated_launcher_and_is_retryable(self):
+        path=self.write('data','applications/HEY.desktop',self.hey())
+        m.prepare(self.roots,self.journal);m.apply(self.journal,self.roots)
+        later=b'[Desktop Entry]\nExec=personal-app\n'
+        path.write_bytes(later)
+        with self.assertRaisesRegex(ValueError,'Destination changed'):m.apply(self.journal,self.roots)
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),self.hey())
+        archives=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
+        self.assertTrue(any(x['state'].get('bytes')==base64.b64encode(later).decode() for x in archives))
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),self.hey())
+
+    def test_absent_retirement_post_state_is_validated_before_apply(self):
+        path=self.write('data','applications/HEY.desktop',self.hey())
+        doc=m.prepare(self.roots,self.journal)
+        doc['rows'][0]['after']=m.snapshot(path)
+        m.save(self.journal/'journal.json',doc)
+        with self.assertRaisesRegex(ValueError,'Converted state'):m.apply(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),self.hey())
+
     def test_fresh_state_plan_and_apply_do_not_invent_legacy_files(self):
         plan=m.prepare(self.roots,self.journal)
         self.assertEqual(plan['rows'],[]);self.assertEqual(m.apply(self.journal,self.roots)['status'],'applied')
 
     def test_retained_launcher_commands_migrate_with_arguments_and_originals(self):
         cases={
-            'HEY': ('omarchy-webapp-handler-hey %u','tam-webapp-handler-hey %u'),
             'Zoom': ('omarchy-webapp-handler-zoom %u','tam-webapp-handler-zoom %u'),
             'Docker': ('xdg-terminal-exec --app-id=TUI.tile -e omarchy-launch-docker-tui',
                        'xdg-terminal-exec --app-id=TUI.tile -e tam-launch-docker-tui'),
@@ -48,7 +142,7 @@ class Migration(unittest.TestCase):
             original=('[Desktop Entry]\nName='+name+'\nExec='+old+'\nIcon=personal-icon\nMimeType=x-scheme-handler/example;\n').encode()
             path=self.write('data','applications/'+name+'.desktop',original)
             path.chmod(0o640);originals[path]=original
-        self.assertEqual(len(m.prepare(self.roots,self.journal)['rows']),4)
+        self.assertEqual(len(m.prepare(self.roots,self.journal)['rows']),3)
         m.apply(self.journal,self.roots)
         for path,original in originals.items():
             old,new=cases[path.stem]
@@ -90,14 +184,14 @@ class Migration(unittest.TestCase):
             self.assertIsNone(m.convert('webapp',('[Desktop Entry]\nIcon='+value+'\n').encode(),set()))
 
     def test_launcher_conversion_requires_a_selected_provider(self):
-        for command in ('omarchy-webapp-handler-hey','omarchy-webapp-handler-zoom',
+        for command in ('omarchy-webapp-handler-zoom',
                         'xdg-terminal-exec --app-id=TUI.tile -e omarchy-launch-docker-tui'):
             with self.subTest(command=command),self.assertRaisesRegex(ValueError,'No selected replacement'):
                 m.convert('webapp',('[Desktop Entry]\nExec='+command+' %u\n').encode(),set())
 
     def test_handler_launcher_rollback_preserves_later_user_edits(self):
-        original=b'[Desktop Entry]\nExec=omarchy-webapp-handler-hey %u\n'
-        path=self.write('data','applications/HEY.desktop',original)
+        original=b'[Desktop Entry]\nExec=omarchy-webapp-handler-zoom %u\n'
+        path=self.write('data','applications/Zoom.desktop',original)
         m.prepare(self.roots,self.journal);m.apply(self.journal,self.roots)
         later=path.read_bytes()+b'Comment=Later user edit\n';path.write_bytes(later)
         m.rollback(self.journal,self.roots)

@@ -19,6 +19,15 @@ preserving the remaining inherited Discord icon and fresh-login workflow proof
 remain pending. This is development after the prepared 0.4.5 source, not an
 updated 0.4.5 assembly. [Session](../ai/2026-10-20-live-call-replacements.md).
 
+2026-10-21 explicit retirement: the inherited HEY integration is removed from
+fresh delivery and default shortcuts. The finite migration now retires only
+the known launcher and exact HEY MIME tokens, journals absence, preserves
+originals/later writes on return and refreshes the desktop database. Custom
+launchers require review. Zoom and generic webapps retain independent coverage;
+no replacement email provider is selected. Development build/probes pass;
+installed proof and consumer-copy cleanup await the next selected candidate.
+[Plan](retire-hey.md), [implementation](../ai/2026-10-21-retire-hey.md).
+
 ## Outcome
 
 Graft Tamlinux as a desktop environment onto another Linux host. Prove the

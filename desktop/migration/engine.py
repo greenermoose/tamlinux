@@ -3,7 +3,8 @@
 
 Plans are private recovery records, not arbitrary write instructions: every row
 must still belong to this finite manifest and current XDG roots on resume.
-No package, compositor, service or network command is executed.
+No package, compositor, service or network command is executed. The CLI refreshes
+the desktop database after an explicit launcher/MIME apply or rollback.
 """
 import argparse
 import base64
@@ -16,6 +17,7 @@ from pathlib import Path
 import re
 import stat
 import shutil
+import subprocess
 import tempfile
 
 HERE = Path(__file__).resolve().parent
@@ -111,7 +113,6 @@ def convert(kind, data, commands):
         section=''; result=[]; changed=False
         replacements={
             'omarchy-launch-webapp':'tam-launch-webapp',
-            'omarchy-webapp-handler-hey':'tam-webapp-handler-hey',
             'omarchy-webapp-handler-zoom':'tam-webapp-handler-zoom',
         }
         for line in text.splitlines(keepends=True):
@@ -134,6 +135,20 @@ def convert(kind, data, commands):
                     line=line.replace(prefix+old,prefix+new,1); changed=True
             result.append(line)
         return ''.join(result).encode() if changed else None
+    if kind=='retire-hey-mime':
+        section=''; result=[]
+        for line in text.splitlines(keepends=True):
+            if line.startswith('['): section=line.strip()
+            match=re.fullmatch(r'([^=\r\n]+)=(.*?)(\r?\n)?',line)
+            if section in ('[Default Applications]','[Added Associations]','[Removed Associations]') and match:
+                tokens=match[2].split(';')
+                kept=[token for token in tokens if token.strip()!='HEY.desktop']
+                if kept!=tokens:
+                    if not any(token.strip() for token in kept): continue
+                    line=match[1]+'='+';'.join(kept)+(match[3] or '')
+            result.append(line)
+        converted=''.join(result).encode()
+        return converted if converted!=data else None
     if kind=='bar-layout':
         doc=json.loads(text)
         if not isinstance(doc,dict) or not isinstance(doc.get('layout'),dict):
@@ -163,11 +178,41 @@ def convert(kind, data, commands):
     raise ValueError('Unknown conversion')
 
 
+def converted_state(kind, before, commands):
+    data=base64.b64decode(before['bytes'],validate=True)
+    if kind=='retire-hey':
+        # Accept only the inherited template or its owned-command conversion.
+        # Extra fields, actions, duplicate keys or custom Exec need review.
+        lines=data.decode('utf-8').splitlines()
+        fields={}
+        if not lines or lines[0]!='[Desktop Entry]':
+            raise ValueError('Custom HEY launcher requires explicit review')
+        for line in lines[1:]:
+            if not line: continue
+            key,sep,value=line.partition('=')
+            if not sep or key in fields:
+                raise ValueError('Custom HEY launcher requires explicit review')
+            fields[key]=value
+        expected={'Version':'1.0','Name':'HEY','Terminal':'false','Type':'Application',
+                  'Icon':'hey','StartupNotify':'true','MimeType':'x-scheme-handler/mailto'}
+        command=fields.pop('Exec',None)
+        if fields!=expected or command not in ('omarchy-webapp-handler-hey %u','tam-webapp-handler-hey %u'):
+            raise ValueError('Custom HEY launcher requires explicit review')
+        return {'kind':'absent'}
+    content=convert(kind,data,commands)
+    if content is None: return None
+    return {'kind':'file','mode':before['mode'],'bytes':base64.b64encode(content).decode()}
+
+
 def candidates(manifest, locations):
     for item in manifest['paths']:
         root=locations[item['root']]
         if item['id']=='webapps':
             for source in sorted((root/'applications').glob('*.desktop')):
+                if source.name=='HEY.desktop': continue  # Explicit retirement owns this path.
+                yield item,source,source
+        elif '*' in item['source']:
+            for source in sorted(root.glob(item['source'])):
                 yield item,source,source
         else: yield item,root/item['source'],root/item['target']
 
@@ -188,11 +233,10 @@ def prepare(locations, directory):
         if before_source['kind']=='absent': continue
         if before_source['kind']!='file':
             conflicts.append({'id':item['id'],'path':str(source),'reason':'Link requires explicit review; original preserved'}); continue
-        try: content=convert(item['conversion'],base64.b64decode(before_source['bytes']),commands)
+        try: post=converted_state(item['conversion'],before_source,commands)
         except (ValueError,KeyError,TypeError,UnicodeError) as error:
             conflicts.append({'id':item['id'],'path':str(source),'reason':str(error)});continue
-        if content is None: continue
-        post={'kind':'file','mode':before_source['mode'],'bytes':base64.b64encode(content).decode()}
+        if post is None: continue
         pre=snapshot(target)
         if source!=target and pre['kind']!='absent' and pre!=post:
             conflicts.append({'id':item['id'],'path':str(target),'reason':'Existing destination differs; neither file changed'});continue
@@ -220,10 +264,10 @@ def load(directory, locations):
     for row in doc['rows']:
         if (row['id'],row['source'],row['target']) not in permitted:
             raise ValueError('Journal contains an unlisted destination')
-        expected=convert(next(x['conversion'] for x in manifest['paths'] if x['id']==row['id']),
-                         base64.b64decode(row['sourceBefore']['bytes']),selected_commands())
-        if expected is None or base64.b64decode(row['after']['bytes'])!=expected:
-            raise ValueError('Converted bytes do not match selected rules')
+        expected=converted_state(next(x['conversion'] for x in manifest['paths'] if x['id']==row['id']),
+                                 row['sourceBefore'],selected_commands())
+        if expected is None or row['after']!=expected:
+            raise ValueError('Converted state does not match selected rules')
     return doc
 
 
@@ -320,10 +364,18 @@ def main():
             return 0
         if args.audio or args.audio_state or args.gtk or args.settings_source or args.claude_root or args.t3code_root or args.obsidian_vault:
             raise ValueError('Checkpoint options are only valid for settings checkpoint actions')
+        refresh=None
+        if args.action in ('apply','rollback'):
+            pending=load(directory,locations)
+            if any(row['id']=='webapps' or row['id'].startswith('retire-hey') for row in pending['rows']):
+                refresh=shutil.which('update-desktop-database')
+                if not refresh: raise ValueError('Launcher migration requires update-desktop-database')
         if args.action=='plan': doc=prepare(locations,directory)
         elif args.action=='apply': doc=apply(directory,locations)
         elif args.action=='rollback': doc=rollback(directory,locations)
         else: doc=load(directory,locations)
+        if refresh and (locations['data']/'applications').is_dir():
+            subprocess.run([refresh,str(locations['data']/'applications')],check=True)
         print(json.dumps({'status':doc['status'],'rows':len(doc['rows']),
                           'conflicts':doc['conflicts'],'journal':str(directory),'scope':doc['scope']}))
         return 1 if doc['conflicts'] else 0
@@ -333,5 +385,5 @@ def main():
 if __name__=='__main__':
     import sys
     try: sys.exit(main())
-    except (OSError,ValueError,KeyError,TypeError) as error:
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError) as error:
         sys.exit('tam-migrate-desktop: '+str(error))

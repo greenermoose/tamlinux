@@ -1741,36 +1741,6 @@ bindd
 bindd
 	modmask: 65
 	submap: 
-	key: C
-	keycode: 0
-	catchall: false
-	description: Calendar
-	dispatcher: __lua
-	arg: 306
-
-bindd
-	modmask: 65
-	submap: 
-	key: E
-	keycode: 0
-	catchall: false
-	description: Email
-	dispatcher: __lua
-	arg: 308
-
-bindd
-	modmask: 73
-	submap: 
-	key: E
-	keycode: 0
-	catchall: false
-	description: New email
-	dispatcher: __lua
-	arg: 310
-
-bindd
-	modmask: 65
-	submap: 
 	key: Y
 	keycode: 0
 	catchall: false

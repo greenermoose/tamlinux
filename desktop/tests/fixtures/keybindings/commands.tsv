@@ -212,9 +212,6 @@
 65	Passwords	SLASH	exec	tam-launch-1password
 65	ChatGPT	A	exec	tam-launch-webapp 'https://chatgpt.com'
 73	Grok	A	exec	tam-launch-webapp 'https://grok.com'
-65	Calendar	C	exec	tam-launch-webapp 'https://app.hey.com/calendar/weeks/'
-65	Email	E	exec	tam-launch-webapp 'https://app.hey.com'
-73	New email	E	exec	tam-launch-webapp 'https://app.hey.com/messages/new?display=standalone&new_window=true'
 65	YouTube	Y	exec	tam-launch-webapp 'https://youtube.com/'
 73	WhatsApp	G	exec	tam-launch-or-focus-webapp 'WhatsApp' 'https://web.whatsapp.com/'
 69	Google Messages	G	exec	tam-launch-or-focus-webapp 'Google Messages' 'https://messages.google.com/web/conversations'

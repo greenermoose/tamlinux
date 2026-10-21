@@ -1,7 +1,10 @@
 # Retire the inherited HEY integration
 
-**Status:** Accepted by Fred, 2026-10-21. The installed 0.4.6 application
-checks are complete. Ready for implementation in a later candidate.
+**Status:** Accepted by Fred and implemented in source, 2026-10-21.
+The development package build and 81 isolated output probes pass; 82 focused
+migration, settings-recovery, shortcut-viewer and Zoom tests pass. Delivery,
+consumer-copy cleanup and installed proof await a later candidate.
+[Implementation record](../ai/2026-10-21-retire-hey.md).
 
 The inherited desktop assumes HEY for email and calendar. The developer has
 explicitly retired that choice. Remove the HEY-specific integration without

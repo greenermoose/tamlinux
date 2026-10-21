@@ -222,7 +222,7 @@ elif [[ -f $ICON_REF ]]; then
   ICON_VALUE=$(install_user_icon "$ICON_REF" "$(safe_icon_name "$APP_NAME")")
 else
   # A bare name is an icon from the installed icon themes.
-  # Accept either "HEY" or the historical "HEY.png" argument form.
+  # Accept either "example-icon" or the historical "example-icon.png" argument form.
   ICON_VALUE=$(icon_name_from_ref "$ICON_REF")
 fi
 

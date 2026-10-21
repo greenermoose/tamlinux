@@ -17,7 +17,7 @@ class WebappHandlers(unittest.TestCase):
         cls.stage = tempfile.TemporaryDirectory(prefix='tam-webapp-handlers-')
         cls.addClassCleanup(cls.stage.cleanup)
         cls.prefix = Path(cls.stage.name)
-        for kind in ('hey', 'zoom'):
+        for kind in ('zoom',):
             subprocess.run(['make', 'install', f'PREFIX={cls.prefix}'],
                            cwd=COMMANDS / ('tam-webapp-handler-' + kind),
                            capture_output=True, check=True)
@@ -34,12 +34,6 @@ class WebappHandlers(unittest.TestCase):
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
-
-    def test_hey_plain_launch_and_mailto_preserve_prior_behavior(self):
-        self.assertEqual(self.launch('hey'), ['https://app.hey.com'])
-        self.assertEqual(self.launch('hey', 'https://other.invalid'), ['https://app.hey.com'])
-        self.assertEqual(self.launch('hey', 'mailto:person@example.org?subject=Hello%20there'),
-                         ['https://app.hey.com/messages/new?to=person@example.org?subject=Hello%20there'])
 
     def test_zoom_protocols_meeting_password_and_parameter_order(self):
         for scheme in ('zoommtg', 'zoomus'):
@@ -61,8 +55,6 @@ class WebappHandlers(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             sentinel = Path(temporary) / 'must-not-exist'
             payload = f'$(touch {sentinel}); "quoted" *'
-            self.assertEqual(self.launch('hey', 'mailto:' + payload),
-                             ['https://app.hey.com/messages/new?to=' + payload])
             self.assertEqual(self.launch('zoom', 'zoommtg://zoom.us/join?confno=123&pwd=' + payload),
                              ['https://app.zoom.us/wc/join/123?pwd=' + payload])
             self.assertFalse(sentinel.exists())
