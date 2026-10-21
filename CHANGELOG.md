@@ -8,11 +8,16 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.4.7 - Develop candidate
+
 - Retire the built-in HEY handler and email/calendar shortcuts. The explicit
   desktop migration removes only the known launcher and its MIME associations,
   preserves originals and later edits through rollback, and refreshes the desktop
   database. Zoom and generic webapps remain available; no email replacement is
-  selected. Delivery awaits a later candidate.
+  selected. Installed proof awaits Test of this candidate.
+
+- Assemble the latest pushed tam command and corpus; exact revisions and
+  verified versions are recorded in the delivery assembly.
 
 ## 0.4.6 - Develop candidate
 

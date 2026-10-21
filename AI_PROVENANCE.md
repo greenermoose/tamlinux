@@ -53,6 +53,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares Incipiens 0.4.7
+metadata carrying the accepted HEY retirement. Package and installed evidence
+remain separate. [Session](docs/ai/2026-10-21-prepare-0.4.7.md).
+
 2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) implements the accepted
 HEY retirement with preserving launcher/MIME migration, explicit desktop-cache
 refresh, absent handler/default shortcuts and independent Zoom coverage.
