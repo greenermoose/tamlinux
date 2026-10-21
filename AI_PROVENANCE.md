@@ -53,6 +53,12 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-21: Fred accepts the HEY retirement plan authored with Codex CLI
+`0.163.0` (`gpt-6.1-sol`). Remove inherited integration through preserving
+migration in a later candidate; defer email replacement research. Planning
+only; installed 0.4.6 keeps its identity.
+[Session continuation](docs/ai/2026-10-21-0.4.6-preparation.md#continuation--accepted-hey-retirement-plan).
+
 2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares Incipiens 0.4.6
 metadata around the committed application/editor/icon fixes and stock-screen
 decision. Package verification is recorded in the delivery assembly. No activation.
