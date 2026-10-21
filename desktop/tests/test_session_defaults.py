@@ -36,6 +36,18 @@ dofile(arg[1])
 
 @unittest.skipUnless(LUA, 'Lua interpreter unavailable')
 class SessionDefaults(unittest.TestCase):
+    def test_editor_default_replaces_inherited_launcher_and_preserves_personal_choices(self):
+        for old,expected in ((None,'tam-launch-editor --inline'),('', 'tam-launch-editor --inline'),
+                             ('omarchy-launch-editor --inline','tam-launch-editor --inline'),
+                             ('micro','micro'),('/personal/editor --wait','/personal/editor --wait')):
+            with self.subTest(editor=old):
+                env={'HOME':'/user-home','PATH':'/usr/bin'}
+                if old is not None:env['EDITOR']=old
+                result=subprocess.run(['/bin/bash','-c','. "$1"; printf %s "$EDITOR"',
+                                       'test',str(ROOT/'uwsm-env')],env=env,
+                                      capture_output=True,text=True,timeout=10,check=True)
+                self.assertEqual(result.stdout,expected)
+
     def test_uwsm_boundary_discards_prior_owner_variables_and_keeps_user_roots(self):
         result = subprocess.run(['/bin/bash', '-c', '. "$1"; /usr/bin/env', 'test',
                                  str(ROOT / 'uwsm-env')],

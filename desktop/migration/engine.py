@@ -109,10 +109,25 @@ def convert(kind, data, commands):
     if kind=='webapp':
         # Only the executable in the first Desktop Entry section is changed.
         section=''; result=[]; changed=False
+        replacements={
+            'omarchy-launch-webapp':'tam-launch-webapp',
+            'omarchy-webapp-handler-hey':'tam-webapp-handler-hey',
+            'omarchy-webapp-handler-zoom':'tam-webapp-handler-zoom',
+        }
         for line in text.splitlines(keepends=True):
             if line.startswith('['): section=line.strip()
-            if section=='[Desktop Entry]' and re.match(r'^Exec=omarchy-launch-webapp(?:\s|$)',line):
-                line=line.replace('Exec=omarchy-launch-webapp','Exec=tam-launch-webapp',1); changed=True
+            if section=='[Desktop Entry]':
+                for old,new in replacements.items():
+                    if re.match(r'^Exec='+re.escape(old)+r'(?:\s|$)',line):
+                        if new not in commands: raise ValueError('No selected replacement for '+old)
+                        line=line.replace('Exec='+old,'Exec='+new,1); changed=True
+                        break
+                # Preserve the terminal flags and any trailing launcher arguments.
+                prefix='Exec=xdg-terminal-exec --app-id=TUI.tile -e '
+                old='omarchy-launch-docker-tui';new='tam-launch-docker-tui'
+                if re.match('^'+re.escape(prefix+old)+r'(?:\s|$)',line):
+                    if new not in commands: raise ValueError('No selected replacement for '+old)
+                    line=line.replace(prefix+old,prefix+new,1); changed=True
             result.append(line)
         return ''.join(result).encode() if changed else None
     if kind=='bar-layout':

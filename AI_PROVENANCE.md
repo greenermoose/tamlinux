@@ -53,6 +53,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) supplies owned HEY/Zoom
+handlers, preserving desktop-entry migration and inherited editor-default
+correction. Isolated source/package checks pass; no activation.
+[Session](docs/ai/2026-10-20-live-call-replacements.md).
+
 2026-10-18: Codex CLI `0.163.0` (`gpt-6.1-sol`) writes the approved 0.4.4h work plan:
 hibernate restoration, bounded GPU-recovery notice integration, the completed
 tam knowledge-system update and exact package/recovery acceptance. The developer

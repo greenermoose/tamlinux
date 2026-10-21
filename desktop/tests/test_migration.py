@@ -33,6 +33,53 @@ class Migration(unittest.TestCase):
         plan=m.prepare(self.roots,self.journal)
         self.assertEqual(plan['rows'],[]);self.assertEqual(m.apply(self.journal,self.roots)['status'],'applied')
 
+    def test_retained_launcher_commands_migrate_with_arguments_and_originals(self):
+        cases={
+            'HEY': ('omarchy-webapp-handler-hey %u','tam-webapp-handler-hey %u'),
+            'Zoom': ('omarchy-webapp-handler-zoom %u','tam-webapp-handler-zoom %u'),
+            'Docker': ('xdg-terminal-exec --app-id=TUI.tile -e omarchy-launch-docker-tui',
+                       'xdg-terminal-exec --app-id=TUI.tile -e tam-launch-docker-tui'),
+            'Webapp': ('omarchy-launch-webapp "https://example.org/?q=omarchy-launch-webapp" --flag',
+                       'tam-launch-webapp "https://example.org/?q=omarchy-launch-webapp" --flag'),
+        }
+        originals={}
+        for name,(old,new) in cases.items():
+            original=('[Desktop Entry]\nName='+name+'\nExec='+old+'\nIcon=personal-icon\nMimeType=x-scheme-handler/example;\n').encode()
+            path=self.write('data','applications/'+name+'.desktop',original)
+            path.chmod(0o640);originals[path]=original
+        self.assertEqual(len(m.prepare(self.roots,self.journal)['rows']),4)
+        m.apply(self.journal,self.roots)
+        for path,original in originals.items():
+            old,new=cases[path.stem]
+            self.assertEqual(path.read_bytes(),original.replace(('Exec='+old).encode(),('Exec='+new).encode()))
+            self.assertEqual(path.stat().st_mode & 0o777,0o640)
+        # A new plan is a no-op; rollback of the original still restores bytes.
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'))['rows'],[])
+        m.rollback(self.journal,self.roots)
+        for path,original in originals.items():self.assertEqual(path.read_bytes(),original)
+
+    def test_launcher_conversion_keeps_unrecognized_commands_and_other_sections(self):
+        original=b'[Desktop Entry]\nExec=omarchy-webapp-handler-hey-extra %u\nComment=omarchy-webapp-handler-hey\n[Desktop Action Other]\nExec=omarchy-webapp-handler-hey %u\n'
+        path=self.write('data','applications/Personal.desktop',original)
+        self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_launcher_conversion_requires_a_selected_provider(self):
+        for command in ('omarchy-webapp-handler-hey','omarchy-webapp-handler-zoom',
+                        'xdg-terminal-exec --app-id=TUI.tile -e omarchy-launch-docker-tui'):
+            with self.subTest(command=command),self.assertRaisesRegex(ValueError,'No selected replacement'):
+                m.convert('webapp',('[Desktop Entry]\nExec='+command+' %u\n').encode(),set())
+
+    def test_handler_launcher_rollback_preserves_later_user_edits(self):
+        original=b'[Desktop Entry]\nExec=omarchy-webapp-handler-hey %u\n'
+        path=self.write('data','applications/HEY.desktop',original)
+        m.prepare(self.roots,self.journal);m.apply(self.journal,self.roots)
+        later=path.read_bytes()+b'Comment=Later user edit\n';path.write_bytes(later)
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original)
+        archives=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
+        self.assertTrue(any(x['state'].get('bytes')==base64.b64encode(later).decode() for x in archives))
+
     def test_in_place_conversion_preserves_original_bytes_and_machine_values(self):
         mode,app,source=self.seed();prior_app=app.read_bytes();prior_input=source.read_bytes()
         plan=m.prepare(self.roots,self.journal);self.assertEqual(len(plan['rows']),3)

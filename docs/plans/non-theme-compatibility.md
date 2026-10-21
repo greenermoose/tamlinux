@@ -9,6 +9,16 @@ Delivery now has a [clean Arch/Hyprland contract and output audit](https://githu
 Its first five-output inventory identifies unresolved helper references and
 inherited runtime identifiers; clean installation remains blocked.
 
+2026-10-20 retained-caller follow-up: maintained HEY and Zoom URI handlers
+now delegate to `tam-launch-webapp`. The finite desktop-entry migration also
+converts these handlers and the retained Docker terminal launcher, preserving
+arguments, field codes, originals and later writes through recovery. The UWSM
+default replaces the exact inherited editor launcher while keeping personal
+editor choices. Source and isolated package checks pass; applying migration,
+preserving the remaining inherited Discord icon and fresh-login workflow proof
+remain pending. This is development after the prepared 0.4.5 source, not an
+updated 0.4.5 assembly. [Session](../ai/2026-10-20-live-call-replacements.md).
+
 ## Outcome
 
 Graft Tamlinux as a desktop environment onto another Linux host. Prove the

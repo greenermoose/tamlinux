@@ -4,7 +4,12 @@ for tamlinux_inherited_variable in "${!OMARCHY_@}"; do
 done
 unset tamlinux_inherited_variable
 export TERMINAL="${TERMINAL:-xdg-terminal-exec}"
-export EDITOR="${EDITOR:-tam-launch-editor --inline}"
+# Discard only the inherited distribution default; explicit user choices stay.
+# UWSM loads the user's env/env.d after this product default.
+case ${EDITOR:-} in
+  ''|'omarchy-launch-editor --inline') EDITOR='tam-launch-editor --inline' ;;
+esac
+export EDITOR
 export TAMLINUX_SESSION=1
 export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_DESKTOP=Hyprland
