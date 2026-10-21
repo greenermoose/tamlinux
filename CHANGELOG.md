@@ -8,6 +8,11 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.4.8 - Develop candidate
+
+- Assemble current tam command 0.38.1 and corpus 0.42.0. Product behavior
+  and the retained native packages are unchanged from 0.4.7.
+
 ## 0.4.7 - Develop candidate
 
 - Retire the built-in HEY handler and email/calendar shortcuts. The explicit
