@@ -53,6 +53,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-22: Codex CLI `0.163.0` (`gpt-6.1-sol`) develops host-scoped fleet
+registration/reconciliation, local-host deployment selection and the read-only
+bootstrap helper. [Session](docs/ai/2026-10-22-fleet.md).
+
 2026-10-22: Fred releases **0.4.8**, the final **Incipiens** cultivar.
 Codex CLI `0.163.0` (`gpt-6.1-sol`) verifies and publishes the exact accepted
 Run, with notes since 0.4.1. [Release session](docs/ai/2026-10-22-release-0.4.8.md).
