@@ -17,6 +17,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-22 | Release 0.4.8, final Incipiens cultivar | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-22-release-0.4.8.md) |
 | 2026-10-21 | Incipiens 0.4.8 product metadata for current tam | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-21-prepare-0.4.8.md) |
 | 2026-10-21 | Incipiens 0.4.7 candidate preparation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-21-prepare-0.4.7.md) |
 | 2026-10-21 | Preserving HEY integration retirement | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-21-retire-hey.md) |

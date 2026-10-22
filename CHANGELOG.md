@@ -8,7 +8,19 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
-## 0.4.8 - Develop candidate
+## 0.4.8 - 2026-10-22
+
+Final release of the **0.4 Incipiens cultivar**, completing the independent
+Tamlinux desktop on Arch Linux and Hyprland. The six core Omarchy packages
+are removed on the accepted workstation. System identity is Arch Linux;
+Tamlinux reports Incipiens 0.4.8. The exact tested Run is released without a
+version bump or rebuild.
+
+[Release notes](https://github.com/greenermoose/tamlinux/releases/tag/0.4.8)
+cover all changes since 0.4.1: independent desktop delivery, native login,
+boot and recovery integration, preserving settings migrations, retained
+workflows and application fixes. Existing hardware investigations continue
+separately. Candidate entries below retain their preparation history.
 
 - Assemble current tam command 0.38.1 and corpus 0.42.0. Product behavior
   and the retained native packages are unchanged from 0.4.7.
