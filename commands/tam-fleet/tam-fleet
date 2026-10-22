@@ -1,0 +1,379 @@
+#!/usr/bin/env python3
+"""One-shot, host-scoped registration and reconciliation. Python 3.11+."""
+import argparse
+import contextlib
+import datetime as dt
+import fcntl
+import getpass
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tempfile
+import tomllib
+
+HOST = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
+USER = re.compile(r"[a-z_][a-z0-9_-]*\Z")
+STATES = {"planned", "installing", "active", "maintenance", "retired"}
+BEGIN = "<!-- tam-fleet index begin -->"
+END = "<!-- tam-fleet index end -->"
+
+
+class FleetError(Exception):
+    pass
+
+
+def run(*argv, cwd=None):
+    result = subprocess.run(argv, cwd=cwd, text=True, capture_output=True, timeout=120)
+    if result.returncode:
+        raise FleetError(f"{argv[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+    return result.stdout.strip()
+
+
+def write(path, text):
+    """Never follow a destination symlink, including any parent directory."""
+    if any(p.is_symlink() for p in [path, *path.parents]):
+        raise FleetError(f"refusing symlink destination: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as out:
+        temporary = Path(out.name)
+        out.write(text)
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def dump(value):
+    return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def require_name(name):
+    if not HOST.fullmatch(name):
+        raise FleetError(f"invalid permanent hostname: {name!r}")
+    return name
+
+
+class Fleet:
+    def __init__(self, config, registry):
+        self.config = Path(config).absolute()
+        self.registry = Path(registry).absolute()
+        if not (self.config / "flake.nix").is_file():
+            raise FleetError("configuration must contain flake.nix")
+        if not self.registry.is_dir():
+            raise FleetError("registry directory does not exist")
+
+    def records(self):
+        records = {}
+        for path in sorted(self.registry.glob("*.md")):
+            if path.name.startswith(("_", "README")):
+                continue
+            parts = path.read_text().split("+++", 2)
+            if len(parts) != 3 or parts[0].strip():
+                raise FleetError(f"missing TOML front matter: {path.name}")
+            record = tomllib.loads(parts[1])
+            name = require_name(record.get("hostname", ""))
+            if record.get("id") != name or path.stem != name or name in records:
+                raise FleetError(f"filename, id and hostname must agree uniquely: {path.name}")
+            if record.get("status") not in STATES:
+                raise FleetError(f"invalid lifecycle in {path.name}")
+            for field in ("role", "registered", "config_profile", "hardware_profile"):
+                if not record.get(field):
+                    raise FleetError(f"missing {field}: {path.name}")
+            records[name] = record
+        return records
+
+    def host(self, name):
+        require_name(name)
+        directory = self.config / "hosts" / name
+        if directory.is_symlink():
+            raise FleetError(f"host directory is a symlink: {name}")
+        value = json.loads((directory / "host.json").read_text())
+        user = value.get("username", "")
+        if value.get("hostname") != name or not USER.fullmatch(user):
+            raise FleetError(f"invalid host identity: {name}")
+        if value.get("system") not in ("x86_64-linux", "aarch64-linux"):
+            raise FleetError(f"unsupported architecture: {name}")
+        if not isinstance(value.get("home"), str) or not value["home"].startswith("/"):
+            raise FleetError(f"missing absolute home directory: {name}")
+        caps = value.get("capabilities")
+        if not isinstance(caps, list) or len(set(caps)) != len(caps):
+            raise FleetError(f"invalid capabilities: {name}")
+        for cap in caps:
+            require_name(cap)
+            if not (self.config / "capabilities" / f"{cap}.nix").is_file():
+                raise FleetError(f"unknown capability: {cap}")
+        return value
+
+    def table(self, records):
+        lines = [BEGIN, "| System | Lifecycle | Role | Config profile | Last reconciled |",
+                 "| --- | --- | --- | --- | --- |"]
+        for name, rec in sorted(records.items()):
+            role = str(rec["role"]).replace("|", "&#124;").replace("\n", " ")
+            lines.append(f"| [{name}]({name}.md) | {rec['status']} | {role} | "
+                         f"`{rec['config_profile']}` | {rec.get('last_reconciled', 'Not yet recorded')} |")
+        return "\n".join([*lines, END])
+
+    def index_text(self):
+        path = self.registry / "README-systems.md"
+        text = path.read_text()
+        if text.count(BEGIN) != 1 or text.count(END) != 1:
+            raise FleetError("fleet index needs exactly one generated block")
+        before, after = text.split(BEGIN, 1)[0], text.split(END, 1)[1]
+        return before + self.table(self.records()) + after
+
+    def index(self):
+        write(self.registry / "README-systems.md", self.index_text())
+
+    def check(self, live=None):
+        records = self.records()
+        directories = {p.name for p in (self.config / "hosts").iterdir() if p.is_dir()}
+        if directories - records.keys():
+            raise FleetError("host without registry entry: " + ", ".join(sorted(directories - records.keys())))
+        for name, record in records.items():
+            if name not in directories:
+                if record["status"] in ("active", "installing", "maintenance"):
+                    raise FleetError(f"missing host directory: {name}")
+                continue
+            host = self.host(name)
+            if record["config_profile"] != f"{host['username']}@{name}":
+                raise FleetError(f"profile does not match host identity: {name}")
+            hardware = self.config / record["hardware_profile"]
+            if not hardware.is_file() or not hardware.resolve().is_relative_to(self.config.resolve()):
+                raise FleetError(f"missing local hardware page: {name}")
+            if not (self.config / "hosts" / name / "home.nix").is_file():
+                raise FleetError(f"missing host module: {name}")
+            self.root_files(name)
+            for link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", (self.registry / f"{name}.md").read_text()):
+                target = link.split("#", 1)[0]
+                if target and ":" not in target and not (self.registry / target).exists():
+                    raise FleetError(f"missing linked page in {name}: {target}")
+        if (self.registry / "README-systems.md").read_text() != self.index_text():
+            raise FleetError("fleet index is stale; run tam-fleet index")
+        if live:
+            self.local(live)
+            host = self.host(live)
+            installed = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "tamlinux/host.json"
+            if not installed.is_file() or json.loads(installed.read_text()) != host:
+                raise FleetError("installed host profile does not match; deploy the selected profile first")
+            if getpass.getuser() != host["username"] or str(Path.home()) != host["home"]:
+                raise FleetError("running account does not match the host profile")
+            for source, target, mode in self.root_files(live):
+                path = Path(target)
+                if not path.is_file() or path.read_bytes() != source.read_bytes():
+                    raise FleetError(f"root-file drift: {target}")
+                if (path.stat().st_mode & 0o7777) != mode:
+                    raise FleetError(f"root-file mode drift: {target}")
+            run("tam-deploy", "status")
+
+    def local(self, name):
+        require_name(name)
+        if os.uname().nodename != name:
+            raise FleetError(f"running hostname is {os.uname().nodename}, not {name}; capture refused")
+        if name not in self.records() or self.records()[name]["status"] == "retired":
+            raise FleetError("local machine must be registered and not retired")
+        self.host(name)
+
+    def root_files(self, name):
+        require_name(name)
+        result = {}
+        host_root = self.config / "hosts" / name / "system"
+        manifests = [(self.config / "system", self.config / "system/MANIFEST"),
+                     (host_root, host_root / "MANIFEST")]
+        for capability in self.host(name)["capabilities"]:
+            fragment = host_root / "capabilities" / capability / "MANIFEST"
+            if fragment.is_file():
+                manifests.append((host_root, fragment))
+        for root, manifest in manifests:
+            if not manifest.is_file():
+                raise FleetError(f"missing root manifest: {manifest}")
+            for line in manifest.read_text().splitlines():
+                fields = line.split()
+                if not fields or fields[0].startswith("#"):
+                    continue
+                if len(fields) != 2 or not re.fullmatch(r"[0-7]{3,4}", fields[1]):
+                    raise FleetError(f"invalid manifest line: {line}")
+                target = Path(fields[0])
+                if not target.is_absolute() or ".." in target.parts or target == Path("/"):
+                    raise FleetError(f"invalid root target: {target}")
+                source = root / str(target).lstrip("/")
+                if not source.is_file() or not source.resolve().is_relative_to(root.resolve()):
+                    raise FleetError(f"missing or escaping root source: {source}")
+                if str(target) in result:
+                    raise FleetError(f"duplicate root target: {target}")
+                result[str(target)] = (source, str(target), int(fields[1], 8))
+        return [result[k] for k in sorted(result)]
+
+    def register(self, name, user, role, hardware, capabilities, system, home):
+        require_name(name)
+        if not USER.fullmatch(user):
+            raise FleetError("invalid username")
+        path = self.registry / f"{name}.md"
+        directory = self.config / "hosts" / name
+        if path.exists() or directory.exists():
+            raise FleetError("hostname already registered; preserve its existing record")
+        hardware_path = self.config / hardware
+        if not hardware_path.is_file() or not hardware_path.resolve().is_relative_to(self.config.resolve()):
+            raise FleetError("hardware page must exist inside the private configuration")
+        for cap in capabilities:
+            require_name(cap)
+            if not (self.config / "capabilities" / f"{cap}.nix").is_file():
+                raise FleetError(f"unknown capability: {cap}")
+        value = {"hostname": name, "username": user, "home": home or f"/home/{user}",
+                 "system": system, "capabilities": sorted(set(capabilities))}
+        today = dt.date.today().isoformat()
+        record = ("+++\n" + "\n".join(f"{k} = {json.dumps(v)}" for k, v in {
+            "id": name, "hostname": name, "role": role, "status": "planned",
+            "config_profile": f"{user}@{name}", "hardware_profile": hardware}.items()) +
+            f"\nregistered = {today}\n+++\n\n# {name}\n\n"
+            "## Configuration\n\nRegistered before installation. Hardware facts remain in the linked hardware page.\n"
+            "No reconciliation has succeeded yet. Each machine needs its own GitHub SSH key.\n")
+        write(directory / "host.json", dump(value))
+        write(directory / "home.nix", "# Host-only overrides; shared capabilities are selected in host.json.\n{ ... }: { }\n")
+        write(directory / "system/MANIFEST", "# Host-only root files: absolute path and octal mode.\n")
+        write(path, record)
+        self.index()
+
+    @contextlib.contextmanager
+    def locked(self):
+        # A single lock covers commands from either checkout using this config.
+        git_dir = Path(run("git", "rev-parse", "--absolute-git-dir", cwd=self.config))
+        with (git_dir / "tam-fleet.lock").open("w") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise FleetError("another fleet writer is running") from None
+            yield
+
+    def clean(self, repo, paths):
+        if run("git", "diff", "--name-only", "--diff-filter=U", cwd=repo):
+            raise FleetError("resolve Git conflicts before reconciliation")
+        if run("git", "status", "--porcelain", "--untracked-files=all", "--", *paths, cwd=repo):
+            raise FleetError("reconciliation destinations have local edits; review and commit them first")
+
+    def capture(self, name):
+        self.local(name)
+        state = self.config / "hosts" / name / "state"
+        self.clean(self.config, [str(state.relative_to(self.config))])
+        # Gather all observations before writing any of them. No privileged reads,
+        # source recipe execution, public-repository writes or symlink healing.
+        native = run("pacman", "-Qqen")
+        foreign = run("pacman", "-Qqem")
+        config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        plugins = {}
+        for path in sorted((config_home / "tamlinux/plugins").glob("*/manifest.json")):
+            manifest = json.loads(path.read_text())
+            plugins[manifest["id"]] = manifest["version"]
+        data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+        revision = data_home / "tamlinux/shell-revision"
+        bom = json.loads((state / "bom.json").read_text()) if (state / "bom.json").exists() else {"components": {}}
+        bom["hostname"] = name
+        bom["components"]["plugins"] = plugins
+        if revision.is_file():
+            bom["components"]["shell"] = {"commit": revision.read_text().strip()}
+        patches = {}
+        for path in sorted((Path.home() / "pkgs").glob("*/PKGBUILD")):
+            patches[path.parent.name] = {"recipe_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        roots = []
+        for source, target, mode in self.root_files(name):
+            live = Path(target)
+            roots.append({"path": target, "desired_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                          "observed_sha256": hashlib.sha256(live.read_bytes()).hexdigest() if live.is_file() else None,
+                          "desired_mode": oct(mode), "observed_mode": oct(live.stat().st_mode & 0o7777) if live.exists() else None})
+        for filename, content in {"pkglist-native.txt": native + "\n", "pkglist-foreign.txt": foreign + "\n",
+                                  "bom.json": dump(bom), "patches.json": dump(patches),
+                                  "root-files.json": dump(roots)}.items():
+            write(state / filename, content)
+        return state
+
+    def reconcile(self, name, commit=False):
+        self.local(name)
+        self.check()
+        dossier = self.registry / f"{name}.md"
+        self.clean(self.registry, [dossier.name, "README-systems.md"])
+        if commit:
+            for repo in [self.config, self.registry]:
+                if run("git", "diff", "--cached", "--name-only", cwd=repo):
+                    raise FleetError("review staged changes before using --commit")
+        # A failed check must never change last_reconciled or the index.
+        self.check(live=name)
+        state = self.capture(name)
+        self.check(live=name)
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        write(state / "reconciliation.json", dump({"hostname": name, "verified_at": now,
+              "profile": self.records()[name]["config_profile"], "checks": "passed",
+              "config_commit": run("git", "rev-parse", "HEAD", cwd=self.config)}))
+        text = dossier.read_text()
+        front = text.split("+++", 2)[1]
+        front = re.sub(r"(?m)^last_reconciled\s*=.*\n?", "", front)
+        front = re.sub(r'(?m)^status\s*=\s*"(?:planned|installing)"', 'status = "active"', front)
+        front += f"last_reconciled = {dt.date.today().isoformat()}\n"
+        write(dossier, "+++" + front + "+++" + text.split("+++", 2)[2])
+        self.index()
+        if commit:
+            # Git cannot atomically commit two repositories. Each has one exact
+            # path commit. Never push, force, or conceal a partial commit failure.
+            for repo, paths in [(self.config, [str(state.relative_to(self.config))]),
+                                (self.registry, [dossier.name, "README-systems.md"])]:
+                run("git", "add", "--", *paths, cwd=repo)
+                run("git", "commit", "-m", f"Reconcile {name}", "--", *paths, cwd=repo)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default=os.environ.get("TAMLINUX_CONFIG_REPO"))
+    parser.add_argument("--registry", default=os.environ.get("TAMLINUX_FLEET_REGISTRY"))
+    sub = parser.add_subparsers(dest="command", required=True)
+    register = sub.add_parser("register", help="register a hostname before setup; never apply it")
+    register.add_argument("hostname")
+    register.add_argument("--username", default=getpass.getuser())
+    register.add_argument("--role", required=True)
+    register.add_argument("--hardware-profile", required=True, help="configuration-relative hardware page")
+    register.add_argument("--capability", action="append", default=[])
+    register.add_argument("--system", choices=["x86_64-linux", "aarch64-linux"], default="x86_64-linux")
+    register.add_argument("--home")
+    for name in ["status", "index", "check", "root-files", "capture", "reconcile"]:
+        child = sub.add_parser(name)
+        if name in ["root-files", "capture", "reconcile"]:
+            child.add_argument("hostname")
+        if name == "check":
+            child.add_argument("--live", metavar="HOSTNAME")
+        if name == "reconcile":
+            child.add_argument("--commit", action="store_true")
+    args = parser.parse_args(argv)
+    if not args.config or not args.registry:
+        parser.error("provide --config and --registry, or their TAMLINUX environment variables")
+    try:
+        fleet = Fleet(args.config, args.registry)
+        if args.command == "status":
+            for name, record in fleet.records().items():
+                print(f"{name}: {record['status']}; {record['config_profile']}; reconciled {record.get('last_reconciled', 'never')}")
+        elif args.command == "check":
+            fleet.check(args.live)
+            print("fleet checks passed" + (f" on {args.live}" if args.live else " (registry and configuration only)"))
+        elif args.command == "root-files":
+            fleet.local(args.hostname)
+            for source, target, mode in fleet.root_files(args.hostname):
+                print(f"{target}\t{mode:o}\t{source}")
+        else:
+            with fleet.locked():
+                if args.command == "index":
+                    fleet.index()
+                elif args.command == "register":
+                    fleet.register(args.hostname, args.username, args.role, args.hardware_profile,
+                                   args.capability, args.system, args.home)
+                elif args.command == "capture":
+                    fleet.capture(args.hostname)
+                elif args.command == "reconcile":
+                    fleet.reconcile(args.hostname, args.commit)
+        return 0
+    except (FleetError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
+        print(f"tam-fleet: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

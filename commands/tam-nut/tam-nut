@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Read-only entry point in the laptop bootstrap environment.
+set -euo pipefail
+export PATH=/usr/bin:/bin
+
+welcome() {
+  cat <<'EOF'
+Tamlinux bootstrap
+
+Run /tam-nut inspect to check this computer's hardware.
+For Wi-Fi, use iwctl; wired networking normally connects automatically.
+Confirm Internet access before fetching the registered host configuration.
+
+Installation follows the reviewed host reconstruction procedure. This command
+does not partition disks, install packages, enable remote access or copy keys.
+EOF
+}
+
+case "${1:-welcome}" in
+  welcome|--help|-h) welcome ;;
+  inspect)
+    printf 'Architecture: %s\n' "$(uname -m)"
+    awk '/^MemTotal:/ { printf "Memory: %.0f MiB\n", $2 / 1024 }' /proc/meminfo
+    if [[ -d /sys/firmware/efi ]]; then
+      printf 'Boot mode: UEFI\n'
+    else
+      printf 'Boot mode: BIOS\n'
+    fi
+    for key in sys_vendor product_name; do
+      if [[ -r "/sys/class/dmi/id/$key" ]]; then
+        printf '%s: %s\n' "$key" "$(cat "/sys/class/dmi/id/$key")"
+      fi
+    done
+    printf '\nStorage (no serial numbers or filesystem identifiers):\n'
+    lsblk --output NAME,SIZE,TYPE,TRAN,RM,MODEL,MOUNTPOINTS
+    printf '\nGraphics and network controllers:\n'
+    if command -v lspci >/dev/null; then
+      lspci -nn | awk '/VGA|3D controller|Display controller|Network controller|Ethernet controller/'
+    fi
+    ;;
+  *) printf 'tam-nut: unknown command %s; use welcome or inspect\n' "$1" >&2; exit 2 ;;
+esac

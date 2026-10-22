@@ -581,6 +581,57 @@ class ConfigurationLookupTest(unittest.TestCase):
             self.assertEqual(deploy.Deployment().home_configuration, "alice")
 
 
+class FleetProfiles(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.config = Path(self.temporary.name)
+        self.name = os.uname().nodename
+        self.user = deploy.getpass.getuser()
+        self.directory = self.config / "hosts" / self.name
+        self.directory.mkdir(parents=True)
+        (self.directory / "host.json").write_text(json.dumps({"hostname": self.name, "username": self.user}))
+        self.environment = patch.dict(os.environ, {"TAMLINUX_CONFIG_REPO": str(self.config),
+                                                  "TAMLINUX_HOME_CONFIGURATION": ""})
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+
+    def test_registered_hostname_selects_explicit_output(self):
+        self.assertEqual(deploy.Deployment().home_configuration, f"{self.user}@{self.name}")
+
+    def test_unknown_local_hostname_never_falls_back_to_generic_profile(self):
+        (self.directory / "host.json").unlink()
+        with self.assertRaisesRegex(deploy.DeploymentError, "no registered host"):
+            deploy.Deployment()
+
+    def test_foreign_profile_override_is_rejected(self):
+        with patch.dict(os.environ, {"TAMLINUX_HOME_CONFIGURATION": "someone@elsewhere"}):
+            with self.assertRaisesRegex(deploy.DeploymentError, "another host"):
+                deploy.Deployment()
+
+    def test_bom_updates_only_local_state(self):
+        state = self.directory / "state"
+        state.mkdir()
+        (state / "bom.json").write_text('{"components":{}}')
+        foreign = self.config / "hosts/foreign/state"
+        foreign.mkdir(parents=True)
+        (foreign / "bom.json").write_text("untouched")
+        changed = deploy.Deployment().update_bom({"stage": "fixture"})
+        self.assertEqual(changed, [f"hosts/{self.name}/state/bom.json"])
+        self.assertEqual((foreign / "bom.json").read_text(), "untouched")
+        self.assertFalse((self.config / "system/bom.json").exists())
+
+    def test_symlinked_bom_is_rejected(self):
+        state = self.directory / "state"
+        state.mkdir()
+        other = self.config / "other.json"
+        other.write_text('{"components":{}}')
+        (state / "bom.json").symlink_to(other)
+        with self.assertRaisesRegex(deploy.DeploymentError, "symlink BOM"):
+            deploy.Deployment().update_bom({"stage": "fixture"})
+        self.assertEqual(other.read_text(), '{"components":{}}')
+
+
 class Usage(unittest.TestCase):
     def test_rejects_unknown_commands(self):
         self.assertEqual(deploy.main(["deploy"]), 2)

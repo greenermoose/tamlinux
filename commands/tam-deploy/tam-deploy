@@ -73,7 +73,20 @@ class Deployment:
     def __init__(self):
         self.home = Path.home()
         self.config = find_config_repo(self.home)
-        self.home_configuration = os.environ.get("TAMLINUX_HOME_CONFIGURATION") or getpass.getuser()
+        self.hostname = os.uname().nodename
+        host_path = self.config / "hosts" / self.hostname / "host.json"
+        if (self.config / "hosts").is_dir():
+            if not host_path.is_file():
+                raise DeploymentError("local hostname has no registered host profile")
+            host = json.loads(host_path.read_text())
+            if host.get("hostname") != self.hostname or host.get("username") != getpass.getuser():
+                raise DeploymentError("registered host identity does not match this account")
+            expected_profile = f"{host['username']}@{self.hostname}"
+            self.home_configuration = os.environ.get("TAMLINUX_HOME_CONFIGURATION") or expected_profile
+            if self.home_configuration != expected_profile:
+                raise DeploymentError("refusing another host's Home Manager profile")
+        else:
+            self.home_configuration = os.environ.get("TAMLINUX_HOME_CONFIGURATION") or getpass.getuser()
         self.workspace = Path(os.environ.get("TAMLINUX_WORKSPACE", self.home / "Code/tamlinux"))
         self.input = os.environ.get("TAMLINUX_PACKAGES_INPUT", "tamlinux-packages")
         self.owner = os.environ.get("TAMLINUX_GITHUB_OWNER", "greenermoose")
@@ -308,13 +321,18 @@ class Deployment:
             command("git", "-C", str(self.config), "commit", "--only", "-m", message + trailers, "--", *files)
 
     def update_bom(self, entry: dict) -> list[str]:
-        bom_path = self.config / "system/bom.json"
+        relative = (f"hosts/{self.hostname}/state/bom.json" if (self.config / "hosts").is_dir()
+                    else "system/bom.json")
+        bom_path = self.config / relative
+        if (self.config / "hosts").is_dir() and any(
+                p.is_symlink() for p in [bom_path, *bom_path.parents]):
+            raise DeploymentError("refusing a symlink BOM destination")
         if not bom_path.exists():
             return []
         bom = json.loads(bom_path.read_text())
         bom.setdefault("components", {})["tamlinux"] = entry
         bom_path.write_text(json.dumps(bom, indent=2) + "\n")
-        return ["system/bom.json"]
+        return [relative]
 
     # Commands ------------------------------------------------------------
 
