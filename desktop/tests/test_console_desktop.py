@@ -80,3 +80,9 @@ class ConsoleDesktop(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0)
         self.assertIn("Usage: tam-desktop", result.stdout)
+
+    def test_public_help_needs_no_native_providers_or_installed_session_tree(self):
+        result = subprocess.run(["/bin/sh", str(SOURCE / "desktop"), "--help"],
+                                env={"PATH": "/nonexistent"}, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Usage: tam-desktop", result.stdout)
