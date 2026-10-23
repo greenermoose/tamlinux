@@ -8,6 +8,19 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.1 - Develop candidate
+
+- Provide `tam-desktop` for explicit local-console desktop launch, with no
+  system graphical-target wait. Hold the originating console through UWSM
+  shutdown, reject unsafe launches and restore the terminal on return.
+- Remove display-manager dependencies, greeter assets and session-chooser
+  registration from the native recipe. Text boot and package removal on
+  existing hosts remain separately approved native transactions.
+- Migrate four inherited terminal theme includes to Tamlinux state while
+  preserving personal configuration, originals and later writes on rollback.
+- Prepare exact package identities for visible text-boot trials; physical
+  boot, text unlock, VT recovery and desktop acceptance remain pending.
+
 ## 0.5.0 - Develop candidate
 
 - Begin Blue Sparkler with host-safe fleet commands and explicit local-host

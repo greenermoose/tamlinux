@@ -188,13 +188,12 @@ and record acceptance after physical trials; make no unsupported speed claim.
 
 ## Next actions
 
-1. Assemble the guarded launcher and package/provisioning removals, and
-   repeat the clean-session package checks against those exact sources.
-2. Finish the host-specific text-boot transaction and native rollback
-   archives, retaining working boot images and another usable VT.
-3. On the user's candidate preparation instruction, bind Test and measurement
-   procedures to an exact assembly; apply only on the stage instruction and
-   individually approved boot/login/removal steps.
+1. Verify the prepared 0.5.1 assembly and its replacement native archive;
+   keep the earlier 0.5.0 delivery record unchanged.
+2. Capture fresh preserving user/boot checkpoints and a root snapshot before
+   any mutation, with the required individual approvals.
+3. On the exact Test instruction, follow the candidate-bound boot/login/removal
+   steps and collect physical startup, desktop, recovery and timing evidence.
 
 References: [systemd targets](https://freedesktop.org/software/systemd/man/latest/systemd.special.html),
 [UWSM startup and shell integration](https://github.com/Vladimir-csp/uwsm/blob/master/README.md),
