@@ -120,9 +120,9 @@ Source: `commands/tam-brightness-display/tam-brightness-display`,
 
 ## Next actions
 
-1. Include the source and dependency declaration when preparing the next
-   user-requested candidate; do not change the existing candidate's pins.
-2. On the user's Test instruction, verify the actual no-desktop console path,
+1. Assemble **0.5.3** for the requested installation, retaining the existing
+   native package and settings formats. Prior candidate records stay unchanged.
+2. On the user's exact Test instruction, install and verify the no-desktop console path,
    physical low-power behavior and wake recovery before claiming acceptance.
 3. Plan and prove native per-output modesetting separately if it is requested.
 

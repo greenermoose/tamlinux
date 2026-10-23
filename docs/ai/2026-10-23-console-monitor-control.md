@@ -10,6 +10,8 @@
 
   > Looks good. I accept. Close the review window. Proceed.
 
+  > Please install it.
+
 Fred clarified that the target is a real Linux text console, including without
 the desktop. He reviewed and accepted the local design before implementation.
 The first scope provides console blank/wake/idle and supported hardware
@@ -33,3 +35,13 @@ development build from an immutable local source snapshot, not a prepared
 candidate or installed assembly. No stage, source pin, version, native package,
 boot/login configuration or live monitor setting changed. Physical console
 blank/wake, power saving and device ACL behavior still require packaged Test.
+
+## Installation candidate
+
+After Fred requested installation, prepare product metadata for **0.5.3** so
+the new command can be assembled through the ordinary package path. The
+development-install exception for standalone components does not cover
+product commands. The implementation is unchanged from its verified Develop
+commit. No native payload, boot/login configuration or mutable settings schema
+changes; no display is blanked as part of preparation. Installation awaits
+the exact candidate's Test instruction under the stage policy.

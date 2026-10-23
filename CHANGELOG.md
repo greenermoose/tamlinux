@@ -8,6 +8,15 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.3 - Develop candidate
+
+- Add `tam-monitor`, a keyboard TUI and CLI for monitor information, supported
+  hardware brightness, guarded text-console blank/wake and runtime idle
+  blanking. It operates without Hyprland; independent output modesetting and
+  unverified hardware power-off remain unavailable.
+- Retain the existing native boot/login package and mutable settings formats.
+  Physical console blanking, monitor low-power behavior and wake need Test.
+
 ## 0.5.1 - Develop candidate
 
 - Provide `tam-desktop` for explicit local-console desktop launch, with no

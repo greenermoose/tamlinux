@@ -68,6 +68,9 @@ real Linux text consoles: supported hardware brightness, guarded blank/wake
 and runtime idle controls. Physical acceptance and native output modesetting
 remain separate. [Session](docs/ai/2026-10-23-console-monitor-control.md).
 
+The same session prepares product metadata for **0.5.3** after Fred requests
+installation; package assembly and exact Test authorization are separate.
+
 2026-10-23: Prepare console-startup 0.5.2 with verified settings recovery;
 79 focused tests pass. Test remains separate.
 [Session](docs/ai/2026-10-23-console-candidate-0.5.2.md).
