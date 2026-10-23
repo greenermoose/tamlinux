@@ -3,8 +3,11 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import subprocess
 import sys
+import termios
+import time
 
 
 def query(*args):
@@ -36,6 +39,98 @@ def session_environment(tty, uid, foreground, command=query):
             "XDG_VTNR": session["VTNr"], "XDG_SESSION_TYPE": "tty"}
 
 
+def desktop_busy():
+    units = json.loads(query(
+        "/usr/bin/systemctl", "--user", "list-units", "--all", "--no-pager", "--output=json",
+        "graphical-session*.target", "wayland-session*.target", "wayland-wm@*.service"))
+    if not isinstance(units, list):
+        raise ValueError("invalid graphical session status")
+    compositor = subprocess.run(["/usr/bin/pgrep", "-u", str(os.getuid()), "-x", "Hyprland"],
+                                capture_output=True, timeout=3)
+    if compositor.returncode not in (0, 1):
+        raise ValueError("cannot inspect the compositor")
+    return (any(unit["active"] not in ("inactive", "failed") for unit in units)
+            or compositor.returncode == 0)
+
+
+def guarded_session(endpoint, env, probe=desktop_busy):
+    """Hold the foreground job until graphics ends, including failed cleanup.
+
+    Keep the login shell, but do not let VT input suspend its foreground job
+    or queue commands for the shell. No authentication is bypassed or added.
+    The desktop retains its ordinary graphical locking and logout controls.
+    """
+    original = termios.tcgetattr(0)
+    guarded = original[:]
+    guarded[0] &= ~termios.IXON
+    guarded[3] &= ~(termios.ISIG | termios.ECHO | termios.ECHONL)
+    handlers = {}
+    interrupted = None
+    waiting = False
+
+    class StopRequested(Exception):
+        pass
+
+    def interrupt(signum, frame):
+        nonlocal interrupted
+        interrupted = signum
+        if waiting:
+            raise StopRequested
+
+    try:
+        for signum in (signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU,
+                       signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            handlers[signum] = signal.getsignal(signum)
+            signal.signal(signum, signal.SIG_IGN if signum in (
+                signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU) else interrupt)
+        termios.tcsetattr(0, termios.TCSAFLUSH, guarded)
+        print("Tamlinux: this console is held until the desktop exits; use another console for text work.",
+              flush=True)
+        child = subprocess.Popen([str(endpoint)], env=env, stdin=subprocess.DEVNULL)
+        try:
+            waiting = True
+            if interrupted:
+                raise StopRequested
+            child.wait()
+        except StopRequested:
+            waiting = False
+            try:
+                child.terminate()
+            except ProcessLookupError:
+                pass
+            try:
+                subprocess.run(["/usr/bin/uwsm", "stop"], stdin=subprocess.DEVNULL,
+                               timeout=10, check=True)
+            except (OSError, subprocess.SubprocessError) as error:
+                print(f"tam-desktop: shutdown request failed: {error}", file=sys.stderr)
+            child.wait()
+        finally:
+            waiting = False
+        announced = False
+        while True:
+            try:
+                if not probe():
+                    break
+            except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+                # Unknown is not permission to expose an authenticated shell.
+                pass
+            if not announced:
+                print("tam-desktop: waiting for graphics to stop before releasing this console; "
+                      "use another text console for recovery.", file=sys.stderr, flush=True)
+                announced = True
+            time.sleep(1)
+        return 128 + interrupted if interrupted else (
+            child.returncode if child.returncode >= 0 else 128 - child.returncode)
+    finally:
+        # TCSAFLUSH discards input typed while this console was held, including
+        # an incomplete canonical line, before the parent shell can read it.
+        try:
+            termios.tcsetattr(0, termios.TCSAFLUSH, original)
+        finally:
+            for signum, handler in handlers.items():
+                signal.signal(signum, handler)
+
+
 def main():
     if len(sys.argv) < 2:
         raise ValueError("installed desktop endpoint is missing")
@@ -55,12 +150,12 @@ def main():
     for key in ("DISPLAY", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "SWAYSOCK"):
         env.pop(key, None)
     env.update(identity)
-    os.execve(endpoint, [str(endpoint)], env)
+    return guarded_session(endpoint, env)
 
 
 if __name__ == "__main__":
     try:
-        main()
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        sys.exit(main())
+    except (OSError, ValueError, KeyError, TypeError, termios.error, subprocess.SubprocessError) as error:
         print(f"tam-desktop: {error}", file=sys.stderr)
         sys.exit(1)

@@ -63,6 +63,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) protects the text shell
+during explicit desktop use with a foreground console guard and terminal
+input/signal tests. Physical boot and locking remain pending.
+[Session](docs/ai/2026-10-23-console-terminal-guard.md).
+
 2026-10-22: Codex CLI `0.163.0` (`gpt-6.1-sol`) develops host-scoped fleet
 registration/reconciliation, local-host deployment selection and the read-only
 bootstrap helper. [Session](docs/ai/2026-10-22-fleet.md).

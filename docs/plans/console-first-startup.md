@@ -2,6 +2,12 @@
 
 Status: approved by Fred, 2026-10-23; implementation in Develop.
 
+The explicit launcher and console guard are implemented. Focused session
+tests include a real pseudo-terminal: suspension keys cannot expose the
+parent shell, queued input is discarded, and the console stays held through
+unknown cleanup status. This is development evidence; physical VT switching,
+locking, desktop exit/relaunch and text boot remain unproven.
+
 Review boundary: use the selected minimal root-stock and `tam-nut`; do not
 redesign upstream boot media, firmware or the host's boot-selection chain.
 The managed text-boot path begins after selecting Tamlinux. Prove the change
@@ -93,6 +99,17 @@ authenticated shell; settle the shell/VT-lock arrangement in implementation
 before calling this path ready for Test. Protecting that console must not
 add a graphical login requirement to boot.
 
+The launcher holds the foreground console job until UWSM exits and both
+graphical units and the compositor have stopped. It disables terminal signal
+keys and echo while holding the console, ignores job-control suspension,
+and disconnects the launcher's standard input from the console. Before
+returning to the original shell it flushes queued input and restores terminal
+settings. External termination requests UWSM shutdown; an unknown shutdown
+state keeps the console held and directs recovery to another VT. Normal
+desktop use blocks on UWSM without a periodic polling job. This protects
+against keyboard suspension and queued commands; it is not protection against
+an already authenticated process deliberately killing the guard.
+
 Audit user services so a text login does not start the shell, portals,
 graphical agents or desktop autostart processes. Check desktop input, keyring
 unlock, polkit, portals, idle/locking and logout in the explicit-launch path;
@@ -171,11 +188,13 @@ and record acceptance after physical trials; make no unsupported speed claim.
 
 ## Next actions
 
-1. Develop the approved `tam-desktop` interface and package removals.
-2. Verify the launcher and package/provisioning removals with
-   clean-machine tests; prepare host-specific text-boot transactions.
-3. Propose an exact assembled candidate for Test, with recovery and measurement
-   procedures ready. Apply it only on the user's stage instruction and approvals.
+1. Assemble the guarded launcher and package/provisioning removals, and
+   repeat the clean-session package checks against those exact sources.
+2. Finish the host-specific text-boot transaction and native rollback
+   archives, retaining working boot images and another usable VT.
+3. On the user's candidate preparation instruction, bind Test and measurement
+   procedures to an exact assembly; apply only on the stage instruction and
+   individually approved boot/login/removal steps.
 
 References: [systemd targets](https://freedesktop.org/software/systemd/man/latest/systemd.special.html),
 [UWSM startup and shell integration](https://github.com/Vladimir-csp/uwsm/blob/master/README.md),

@@ -19,6 +19,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-23 | Hold the text shell during explicit desktop use | Codex CLI `0.164.0` | `gpt-6.1-sol` | [Session](2026-10-23-console-terminal-guard.md) |
 | 2026-10-23 | Fleet delivery and supported first installation | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-22-fleet-first-install.md) |
 | 2026-10-22 | Host-safe fleet and bootstrap helper | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-22-fleet.md) |
 | 2026-10-22 | Release 0.4.8, final Incipiens cultivar | Codex CLI `0.163.0` | `gpt-6.1-sol` | [Session](2026-10-22-release-0.4.8.md) |

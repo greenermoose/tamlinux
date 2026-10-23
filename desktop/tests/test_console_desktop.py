@@ -2,12 +2,17 @@
 import importlib.util
 import json
 import os
+import fcntl
 from pathlib import Path
+import pty
+import signal
 import subprocess
 import sys
 import tempfile
+import termios
+import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 SOURCE = Path(__file__).resolve().parents[1] / "session"
 spec = importlib.util.spec_from_file_location("console_desktop", SOURCE / "console.py")
@@ -67,11 +72,10 @@ class ConsoleDesktop(unittest.TestCase):
                     patch.object(console.os, "tcgetpgrp", return_value=os.getpgrp()), \
                     patch.object(console, "session_environment", return_value=identity), \
                     patch.dict(os.environ, {"WAYLAND_DISPLAY": "stale", "XDG_SESSION_ID": "stale"}), \
-                    patch.object(console.os, "execve") as execute:
-                console.main()
-            path, argv, env = execute.call_args.args
+                    patch.object(console, "guarded_session", return_value=23) as execute:
+                self.assertEqual(console.main(), 23)
+            path, env = execute.call_args.args
             self.assertEqual(path, endpoint)
-            self.assertEqual(argv, [str(endpoint)])
             self.assertNotIn("WAYLAND_DISPLAY", env)
             self.assertEqual(env["XDG_SESSION_ID"], "7")
 
@@ -80,6 +84,120 @@ class ConsoleDesktop(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0)
         self.assertIn("Usage: tam-desktop", result.stdout)
+
+    def test_console_is_held_through_desktop_exit_and_unknown_cleanup(self):
+        # Real terminal line discipline and signals: an ordinary pipe cannot
+        # prove that Ctrl-Z/Ctrl-C or queued input cannot reach the login shell.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            endpoint = root / "desktop"
+            endpoint.write_text(
+                f'#!{sys.executable}\nimport pathlib,time\n'
+                f'root=pathlib.Path({temp!r})\n'
+                '(root / "ready").touch()\n'
+                'deadline=time.monotonic()+10\n'
+                'while not (root / "exit").exists() and time.monotonic()<deadline: time.sleep(.02)\n'
+                'raise SystemExit(23)\n')
+            endpoint.chmod(0o755)
+            runner = root / "runner.py"
+            runner.write_text(
+                'import importlib.util,os,pathlib\n'
+                f'spec=importlib.util.spec_from_file_location("console", {str(SOURCE / "console.py")!r})\n'
+                'console=importlib.util.module_from_spec(spec)\nspec.loader.exec_module(console)\n'
+                f'root=pathlib.Path({temp!r})\n'
+                'def probe():\n'
+                '    (root / "cleanup").touch()\n'
+                '    if not (root / "stopped").exists(): raise OSError("bus unavailable")\n'
+                '    return False\n'
+                'raise SystemExit(console.guarded_session(root / "desktop", dict(os.environ), probe))\n')
+            master, slave = pty.openpty()
+            original = termios.tcgetattr(slave)
+
+            def controlling_terminal():
+                os.setsid()
+                fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+
+            child = subprocess.Popen([sys.executable, str(runner)], stdin=slave,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     preexec_fn=controlling_terminal)
+            def wait_file(name):
+                deadline = time.monotonic() + 5
+                while not (root / name).exists():
+                    if child.poll() is not None or time.monotonic() > deadline:
+                        self.fail(f"guard did not reach {name}; exit={child.poll()}")
+                    time.sleep(.02)
+
+            try:
+                wait_file("ready")
+                mode = termios.tcgetattr(slave)
+                self.assertFalse(mode[3] & (termios.ISIG | termios.ECHO))
+                os.write(master, b'\x1a\x03echo SHOULD_NOT_REACH_SHELL\npartial')
+                os.kill(child.pid, signal.SIGTSTP)
+                time.sleep(.1)
+                self.assertIsNone(child.poll())
+                status = Path(f"/proc/{child.pid}/status").read_text()
+                self.assertNotIn("State:\tT", status)
+                (root / "exit").touch()
+                wait_file("cleanup")
+                self.assertIsNone(child.poll())
+                self.assertFalse(termios.tcgetattr(slave)[3] & termios.ISIG)
+                (root / "stopped").touch()
+                stdout, stderr = child.communicate(timeout=5)
+                self.assertEqual(child.returncode, 23, (stdout, stderr))
+                self.assertEqual(termios.tcgetattr(slave), original)
+                os.set_blocking(slave, False)
+                with self.assertRaises(BlockingIOError):
+                    os.read(slave, 4096)
+            finally:
+                (root / "exit").touch()
+                (root / "stopped").touch()
+                if child.poll() is None:
+                    child.kill()
+                child.communicate(timeout=5)
+                os.close(master)
+                os.close(slave)
+
+    def test_failed_exec_restores_console_and_signal_handlers(self):
+        master, slave = pty.openpty()
+        original = termios.tcgetattr(slave)
+        handlers = {s: signal.getsignal(s) for s in (signal.SIGTSTP, signal.SIGTERM)}
+        try:
+            with patch.object(console.termios, "tcgetattr", return_value=original), \
+                    patch.object(console.termios, "tcsetattr") as setattrs, \
+                    patch.object(console.subprocess, "Popen", side_effect=FileNotFoundError):
+                with self.assertRaises(FileNotFoundError):
+                    console.guarded_session(Path("/missing"), {})
+            self.assertEqual(setattrs.call_args.args, (0, termios.TCSAFLUSH, original))
+            self.assertEqual({s: signal.getsignal(s) for s in handlers}, handlers)
+        finally:
+            os.close(master)
+            os.close(slave)
+
+    def test_external_termination_stops_graphics_before_releasing_console(self):
+        master, slave = pty.openpty()
+        original = termios.tcgetattr(slave)
+        child = Mock(returncode=-signal.SIGTERM)
+
+        def terminate_while_waiting():
+            child.wait.side_effect = None
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        child.wait.side_effect = terminate_while_waiting
+        probe = Mock(side_effect=[True, False])
+        try:
+            with patch.object(console.termios, "tcgetattr", return_value=original), \
+                    patch.object(console.termios, "tcsetattr"), \
+                    patch.object(console.subprocess, "Popen", return_value=child), \
+                    patch.object(console.subprocess, "run") as stop, \
+                    patch.object(console.time, "sleep"):
+                self.assertEqual(console.guarded_session(Path("/desktop"), {}, probe), 143)
+            child.terminate.assert_called_once()
+            stop.assert_called_once_with(["/usr/bin/uwsm", "stop"],
+                                         stdin=subprocess.DEVNULL, timeout=10, check=True)
+            self.assertEqual(probe.call_count, 2)
+        finally:
+            os.close(master)
+            os.close(slave)
 
     def test_public_help_needs_no_native_providers_or_installed_session_tree(self):
         result = subprocess.run(["/bin/sh", str(SOURCE / "desktop"), "--help"],
