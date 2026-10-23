@@ -91,9 +91,27 @@ def save(path, document):
         'bytes':base64.b64encode((json.dumps(document,indent=2,sort_keys=True)+'\n').encode()).decode()})
 
 
-def convert(kind, data, commands):
+def convert(kind, data, commands, locations=None):
     if kind=='bytes': return data
     text=data.decode('utf-8')
+    if kind=='terminal-theme':
+        if locations is None: raise ValueError('Terminal migration needs the selected XDG roots')
+        state=str(locations['state'])
+        if any(char in state for char in '\\"\r\n'):
+            raise ValueError('Theme state path requires explicit terminal quoting review')
+        result=[];section=''
+        for line in text.splitlines(keepends=True):
+            if line.lstrip().startswith('['): section=line.strip()
+            directive=re.match(r'^\s*(include\s*(?:=|\s)|config-file\s*=|general\.import\s*=|import\s*=)',line)
+            if directive and (not re.match(r'^\s*import\s*=',line) or section=='[general]'):
+                for leaf in ('foot.ini','kitty.conf','ghostty.conf','alacritty.toml'):
+                    for old in ('~/.local/state/omarchy/current/theme/'+leaf,
+                                str(locations['state']/'omarchy/current/theme'/leaf)):
+                        line=re.sub(r'(?<![\w/.-])'+re.escape(old)+r'(?=["\s\]]|$)',
+                            lambda match: str(locations['state']/'tamlinux/current/theme'/leaf),line)
+            result.append(line)
+        converted=''.join(result).encode()
+        return converted if converted!=data else None
     if kind=='desktop-mode':
         if text.strip()=='omarchy': return b'tamlinux\n'
         if text.strip() in ('tamlinux','mac','windows'): return data
@@ -178,7 +196,7 @@ def convert(kind, data, commands):
     raise ValueError('Unknown conversion')
 
 
-def converted_state(kind, before, commands):
+def converted_state(kind, before, commands, locations=None):
     data=base64.b64decode(before['bytes'],validate=True)
     if kind=='retire-hey':
         # Accept only the inherited template or its owned-command conversion.
@@ -199,7 +217,7 @@ def converted_state(kind, before, commands):
         if fields!=expected or command not in ('omarchy-webapp-handler-hey %u','tam-webapp-handler-hey %u'):
             raise ValueError('Custom HEY launcher requires explicit review')
         return {'kind':'absent'}
-    content=convert(kind,data,commands)
+    content=convert(kind,data,commands,locations)
     if content is None: return None
     return {'kind':'file','mode':before['mode'],'bytes':base64.b64encode(content).decode()}
 
@@ -233,7 +251,7 @@ def prepare(locations, directory):
         if before_source['kind']=='absent': continue
         if before_source['kind']!='file':
             conflicts.append({'id':item['id'],'path':str(source),'reason':'Link requires explicit review; original preserved'}); continue
-        try: post=converted_state(item['conversion'],before_source,commands)
+        try: post=converted_state(item['conversion'],before_source,commands,locations)
         except (ValueError,KeyError,TypeError,UnicodeError) as error:
             conflicts.append({'id':item['id'],'path':str(source),'reason':str(error)});continue
         if post is None: continue
@@ -265,7 +283,7 @@ def load(directory, locations):
         if (row['id'],row['source'],row['target']) not in permitted:
             raise ValueError('Journal contains an unlisted destination')
         expected=converted_state(next(x['conversion'] for x in manifest['paths'] if x['id']==row['id']),
-                                 row['sourceBefore'],selected_commands())
+                                 row['sourceBefore'],selected_commands(),locations)
         if expected is None or row['after']!=expected:
             raise ValueError('Converted state does not match selected rules')
     return doc

@@ -30,6 +30,48 @@ class Migration(unittest.TestCase):
         source=self.write('config','hypr/input.lua',b'hl.config({ input = { kb_layout = "de" } })\n')
         return mode,app,source
 
+    def test_terminal_theme_migration_preserves_settings_and_recovers_later_writes(self):
+        entries={
+            'foot/foot.ini': b'[main]\r\ninclude=~/.local/state/omarchy/current/theme/foot.ini\r\nfont=Personal:size=8\r\n',
+            'kitty/kitty.conf': b'include ~/.local/state/omarchy/current/theme/kitty.conf\nfont_size 8\n',
+            'ghostty/config': b'config-file = ?"~/.local/state/omarchy/current/theme/ghostty.conf"\nfont-size = 8\n',
+            'alacritty/alacritty.toml': b'general.import = [ "~/.local/state/omarchy/current/theme/alacritty.toml", "/personal.toml" ]\n',
+        }
+        paths={name:self.write('config',name,data) for name,data in entries.items()}
+        for path in paths.values(): path.chmod(0o640)
+        plan=m.prepare(self.roots,self.journal)
+        self.assertEqual(len(plan['rows']),4)
+        self.assertEqual(plan['status'],'prepared')
+        m.apply(self.journal,self.roots)
+        for name,path in paths.items():
+            expected=entries[name].replace(b'~/.local/state/omarchy/current/theme',
+                str(self.roots['state']/'tamlinux/current/theme').encode())
+            self.assertEqual(path.read_bytes(),expected)
+            self.assertEqual(path.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'))['rows'],[])
+        paths['foot/foot.ini'].write_bytes(paths['foot/foot.ini'].read_bytes()+b'# later change\n')
+        m.rollback(self.journal,self.roots)
+        for name,path in paths.items(): self.assertEqual(path.read_bytes(),entries[name])
+        archived=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
+        self.assertTrue(any(b'later change' in base64.b64decode(x['state'].get('bytes','')) for x in archived))
+
+    def test_terminal_theme_conversion_leaves_comments_personal_paths_and_links_alone(self):
+        original=(b'# include=~/.local/state/omarchy/current/theme/foot.ini\n'
+                  b'include=/personal/theme.ini\ninclude=~/.local/state/omarchy/current/theme/foot.ini.personal\n'
+                  b'font=~/.local/state/omarchy/current/theme/foot.ini\n')
+        path=self.write('config','foot/foot.ini',original)
+        self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
+        self.assertEqual(path.read_bytes(),original)
+        path.unlink();path.symlink_to('/unavailable/personal-foot.ini')
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('link'))['status'],'blocked')
+
+    def test_terminal_theme_conversion_accepts_general_table_and_absolute_xdg_path(self):
+        old=str(self.roots['state']/'omarchy/current/theme/alacritty.toml')
+        original=('[general]\nimport = ["'+old+'"]\n').encode()
+        target=self.write('config','alacritty/alacritty.toml',original)
+        m.prepare(self.roots,self.journal);m.apply(self.journal,self.roots)
+        self.assertIn(str(self.roots['state']/'tamlinux/current/theme/alacritty.toml'),target.read_text())
+
     def hey(self, command='tam-webapp-handler-hey'):
         return ('[Desktop Entry]\nVersion=1.0\nName=HEY\nExec='+command+' %u\n'
                 'Terminal=false\nType=Application\nIcon=hey\nStartupNotify=true\n'
