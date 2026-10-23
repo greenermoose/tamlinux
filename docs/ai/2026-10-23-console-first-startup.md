@@ -30,7 +30,10 @@ the system graphical-target wait. Greeter assets and chooser registration
 were removed; the native command now enters `tam-desktop`. Historical SDDM
 PAM recovery source remains unshipped.
 
-Initial verification: 14 focused launcher, console-identity and native-entry
-tests pass. Package and physical lifecycle verification are recorded as they
-complete; this record does not assert physical text boot, desktop locking or
+Verification: 15 focused launcher, console-identity and native-entry tests
+pass. Public command help works without native providers, allowing package
+inspection without starting a desktop. The initial package check exposed
+the native-Python dependency in help; the public shell entry now handles
+help before loading the launch provider. Package and physical lifecycle
+verification are recorded as they complete; this record does not assert physical text boot, desktop locking or
 fleet acceptance. No Test/Run/Release or workstation boot mutation is implied.
