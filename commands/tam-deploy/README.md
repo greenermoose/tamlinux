@@ -11,6 +11,7 @@ revision whose lock file pins every component.
 | Command | Effect |
 | --- | --- |
 | `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; compare required endpoints with the exact selected package outputs, rejecting missing/broken links and mixed assemblies. |
+| `init [revision] [--test]` | First installation on a registered local host without an existing generation. Require all components on `main` (or `test` with `--test`), build the exact consumer generation, activate and verify its package endpoints. Works from a text session without a Home Manager CLI. Records no previous generation; never promotes branches or enables graphical login. |
 | `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell, verify the installed paths and commit the pin. A failure restores the lock and the previous generation. |
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
 | `back` | Activate the previous generation and restore its pin. |
@@ -36,7 +37,7 @@ make install   # honours PREFIX and DESTDIR
 | Variable | Default |
 | --- | --- |
 | `TAMLINUX_CONFIG_REPO` | The one checkout under `~/Code/tamlinux/` whose `flake.lock` has a `tamlinux-packages` input |
-| `TAMLINUX_HOME_CONFIGURATION` | The current user name (`home-manager switch --flake <repo>#<name>`) |
+| `TAMLINUX_HOME_CONFIGURATION` | The registered local `user@hostname`; a different host's output is refused. Legacy configurations without `hosts/` retain the current user name. |
 | `TAMLINUX_WORKSPACE` | `~/Code/tamlinux`, holding clones of `tamlinux-packages` and each component |
 | `TAMLINUX_PACKAGES_INPUT` | `tamlinux-packages`, the configuration's flake input |
 | `TAMLINUX_GITHUB_OWNER` | `greenermoose` |
@@ -65,3 +66,29 @@ fail verification. The installed `deployment-selection.json` records intentional
 plugin subsets; its IDs and product revision must agree with the assembly.
 Older assemblies without that record are checked against their full plugin set.
 Nix evaluation must succeed; no name-pattern fallback declares a match.
+
+## First installation from a console
+
+Register the machine in the consumer configuration before installing. Keep a
+verified native-base recovery snapshot and boot medium: there is no previous
+Home Manager generation. Review conflicting account files before activation.
+The command can be entered through the exact assembly's command package:
+
+```sh
+nix shell github:greenermoose/tamlinux-packages/<assembly-revision>#tamlinux-commands \
+  --command tam-deploy init <assembly-revision>
+```
+
+Only an assembly whose components are already on `main` is accepted by default.
+An explicitly authorized Test installation uses `--test`; it requires the
+assembly and components on `test` and never promotes them. `init` installs
+the package and records endpoints; physical console and graphical acceptance
+remain separate. It never starts a display manager or compositor.
+
+Build failure restores the previous lock before any account activation. An
+activation/verification failure retains `first-install.json` beside the local
+deployment record with the attempted assembly, generation and previous lock.
+It refuses an automatic retry rather than claiming recovery without a prior
+generation. Inspect partial links and restore from the native-base recovery
+point before retrying. Ordinary upgrades continue to require a known rollback
+generation and the current graphical-session preflight.

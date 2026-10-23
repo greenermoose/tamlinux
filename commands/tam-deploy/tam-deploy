@@ -5,6 +5,10 @@ Test and Run install the same package at the same locations. A deployment
 is a tamlinux-packages revision: its lock file pins every component.
 
 status:       show the pinned assembly, what is installed and the generation.
+init [rev] [--test]:
+              first installation from a recorded main (or --test) assembly.
+              Works from a text login without Home Manager installed. Does
+              not enable a display manager or start a graphical session.
 test [rev]:   pin a tamlinux-packages revision on `test` (default: its head)
               in the configuration lock, switch Home Manager, verify the
               installed paths and commit the pin.
@@ -401,6 +405,66 @@ class Deployment:
                          "previousPin": previous_pin, "livePaths": self.live_digests()})
         return previous, previous_pin
 
+    def init(self, ref: str | None = None, test: bool = False) -> None:
+        """Initialize an account without pretending it has a rollback generation.
+
+        The package command can be invoked with nix shell on a fresh account.
+        Activation uses the configuration's built generation, not a checkout
+        payload or an ambient home-manager executable. Login is a later step.
+        """
+        self.check_clean()
+        if not (self.config / "hosts" / self.hostname / "host.json").is_file():
+            raise DeploymentError("first installation requires a registered local host profile")
+        if (os.path.lexists(self.profile) or os.path.lexists(self.shell_link)
+                or self.installed() != "not installed" or self.state_file.exists()):
+            raise DeploymentError("existing installation found; use test/run with its rollback generation")
+        attempt = self.state_file.with_name("first-install.json")
+        if attempt.exists():
+            raise DeploymentError(f"review the previous first-install attempt before retrying: {attempt}")
+        revision = self.resolve(ref or self.locked())
+        pins = self.components(revision)
+        self.require_on("test" if test else "main", revision, pins)
+        before = self.lock.read_bytes()
+        started = False
+        try:
+            self.pin(revision)
+            generation = command("nix", "build", "--no-link", "--print-out-paths",
+                                 f"{self.config}#homeConfigurations.{self.home_configuration}.activationPackage",
+                                 capture=True)
+            if (not generation.startswith("/nix/store/") or "\n" in generation
+                    or not (Path(generation) / "activate").is_file()):
+                raise DeploymentError("build did not return one activation generation")
+            attempt.parent.mkdir(parents=True, exist_ok=True)
+            details = {"packages": revision, "components": pins, "generation": generation,
+                       "profile": self.home_configuration, "previousGeneration": None,
+                       "status": "activating", "previousLock": before.decode()}
+            attempt.write_text(json.dumps(details, indent=2) + "\n")
+            started = True
+            command(str(Path(generation) / "activate"))
+            if self.generation() != generation:
+                raise DeploymentError("activated Home Manager profile does not match the built generation")
+            problems = self.verify(pins, revision)
+            if problems:
+                raise DeploymentError("first-install endpoints do not match the assembly:\n  " + "\n  ".join(problems))
+        except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError):
+            if started:
+                details["status"] = "failed; inspect partial activation before recovery"
+                attempt.write_text(json.dumps(details, indent=2) + "\n")
+            else:
+                self.lock.write_bytes(before)
+            raise
+        stage = "test" if test else "run"
+        files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
+                                                "stage": stage, "generation": generation})
+        self.record(f"deploy: first install tamlinux-packages {revision[:12]}", files)
+        self.save_state({"stage": stage, "packages": revision, "components": pins,
+                         "generation": generation, "previousGeneration": None, "previousPin": None,
+                         "firstInstall": True, "livePaths": self.live_digests()})
+        details["status"] = "installed; graphical login not yet verified"
+        attempt.write_text(json.dumps(details, indent=2) + "\n")
+        print(f"Installed {self.home_configuration} from {revision}; no branches moved.")
+        print("No previous generation exists. Verify the console tools before enabling graphical login.")
+
     def rollback_pin(self, generation: str) -> str:
         """Identify the active assembly, even when the consumer lock is staged."""
         state = self.read_state()
@@ -503,7 +567,7 @@ class Deployment:
         self.status()
 
 
-USAGE = "usage: tam-deploy status | test [revision] | run [revision] [--untested] | back"
+USAGE = "usage: tam-deploy status | init [revision] [--test] | test [revision] | run [revision] [--untested] | back"
 
 
 def parse(argv: list[str]) -> tuple[str, list, dict] | None:
@@ -519,6 +583,11 @@ def parse(argv: list[str]) -> tuple[str, list, dict] | None:
         args = [a for a in rest if not a.startswith("-")]
         if set(flags) <= {"--untested"} and len(args) <= 1:
             return name, args, {"untested": "--untested" in flags}
+    if name == "init":
+        flags = [a for a in rest if a.startswith("-")]
+        args = [a for a in rest if not a.startswith("-")]
+        if set(flags) <= {"--test"} and len(args) <= 1:
+            return name, args, {"test": "--test" in flags}
     return None
 
 

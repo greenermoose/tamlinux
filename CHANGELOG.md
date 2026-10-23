@@ -8,6 +8,18 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.0 - Develop candidate
+
+- Begin Blue Sparkler with host-safe fleet commands and explicit local-host
+  deployment selection. Machine inventories and capabilities remain private
+  consumer data; reconciliation writes only the local host's observations.
+- Add `tam-deploy init` for an account without an existing generation or
+  graphical session. Build and verify one recorded package assembly, record
+  the first installation without inventing a rollback generation, and leave
+  graphical login to a separate explicit step. No branches are promoted.
+- Console-first boot, optional desktop launch and reduced native feature
+  selections remain upcoming work; this candidate does not change login policy.
+
 ## 0.4.8 - 2026-10-22
 
 Final release of the **0.4 Incipiens cultivar**, completing the independent

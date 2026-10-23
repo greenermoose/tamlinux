@@ -7,6 +7,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -96,6 +97,114 @@ class Fixture(unittest.TestCase):
 
     def origin_head(self, name, branch):
         return git(self.root / "origins" / f"{name}.git", "rev-parse", branch)
+
+
+class FirstInstall(Fixture):
+    def setUp(self):
+        super().setUp()
+        self.app.revision_file.unlink()
+        host = self.config / "hosts" / self.app.hostname / "host.json"
+        host.parent.mkdir(parents=True)
+        host.write_text("{}")
+        self.calls = []
+        self.initial = "/nix/store/fixture-first-generation"
+        stack = self.enterContext(ExitStack())
+        stack.enter_context(patch.object(self.app, "check_clean"))
+        stack.enter_context(patch.object(self.app, "resolve", side_effect=lambda ref: ref))
+        stack.enter_context(patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})))
+        self.verify = stack.enter_context(patch.object(self.app, "verify", return_value=[]))
+        self.record = stack.enter_context(patch.object(self.app, "record"))
+        stack.enter_context(patch.object(self.app, "generation", return_value=self.initial))
+        real_file = Path.is_file
+        stack.enter_context(patch.object(Path, "is_file", lambda path:
+                           str(path) == self.initial + "/activate" or real_file(path)))
+        real_command = deploy.command
+
+        def invoke(*args, **kwargs):
+            self.calls.append(args)
+            if args[:2] == ("nix", "build"):
+                return self.initial
+            if args == (self.initial + "/activate",):
+                return ""
+            if args[0] == "git":
+                return real_command(*args, **kwargs)
+            self.fail(f"first installation invoked an unexpected command: {args}")
+
+        self.invoke = stack.enter_context(patch.object(deploy, "command", side_effect=invoke))
+
+    def test_text_install_records_no_fictitious_rollback_and_never_promotes(self):
+        self.app.init()
+        state = self.app.read_state()
+        self.assertTrue(state["firstInstall"])
+        self.assertIsNone(state["previousGeneration"])
+        self.assertIsNone(state["previousPin"])
+        self.assertEqual(state["packages"], self.packages_main)
+        self.assertIn((self.initial + "/activate",), self.calls)
+        self.assertFalse(any(call[0] in ("systemctl", "home-manager", "tam-restart-shell", "tam-shell")
+                             or "push" in call for call in self.calls))
+        self.verify.assert_called_once_with({"tamlinux": self.tamlinux_main}, self.packages_main)
+
+    def test_existing_and_dangling_profile_are_refused_before_pin(self):
+        self.app.profile.parent.mkdir(parents=True)
+        self.app.profile.symlink_to("/missing-generation")
+        with self.assertRaisesRegex(deploy.DeploymentError, "existing installation"):
+            self.app.init()
+        self.assertEqual(self.calls, [])
+
+    def test_existing_shell_is_refused(self):
+        self.app.revision_file.write_text(self.tamlinux_main)
+        with self.assertRaisesRegex(deploy.DeploymentError, "existing installation"):
+            self.app.init()
+
+    def test_unregistered_account_is_refused(self):
+        (self.config / "hosts" / self.app.hostname / "host.json").unlink()
+        with self.assertRaisesRegex(deploy.DeploymentError, "registered local host"):
+            self.app.init()
+
+    def test_test_assembly_requires_explicit_test_option(self):
+        with self.assertRaisesRegex(deploy.DeploymentError, "not on main"):
+            self.app.init(self.packages_new)
+        self.assertFalse(any(call[:2] == ("nix", "build") for call in self.calls))
+        self.app.init(self.packages_new, test=True)
+        self.assertEqual(self.app.read_state()["stage"], "test")
+        self.assertEqual(self.origin_head("tamlinux-packages", "main"), self.packages_main)
+
+    def test_build_failure_restores_lock_without_initializing_state(self):
+        before = self.app.lock.read_bytes()
+        invoke = self.invoke.side_effect
+
+        def fail_build(*args, **kwargs):
+            if args[:2] == ("nix", "build"):
+                raise subprocess.CalledProcessError(1, "nix build")
+            return invoke(*args, **kwargs)
+
+        self.invoke.side_effect = fail_build
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.app.init()
+        self.assertEqual(self.app.lock.read_bytes(), before)
+        self.assertFalse(self.app.state_file.exists())
+
+    def test_dirty_config_is_refused_before_build_or_activation(self):
+        with patch.object(self.app, "check_clean", side_effect=deploy.DeploymentError("dirty config")):
+            with self.assertRaisesRegex(deploy.DeploymentError, "dirty config"):
+                self.app.init()
+        self.assertEqual(self.calls, [])
+
+    def test_verification_failure_records_partial_install_and_blocks_retry(self):
+        self.verify.return_value = ["command missing"]
+        with self.assertRaisesRegex(deploy.DeploymentError, "command missing"):
+            self.app.init()
+        self.assertFalse(self.app.state_file.exists())
+        self.record.assert_not_called()
+        attempt = self.app.state_file.with_name("first-install.json")
+        self.assertIn("failed", json.loads(attempt.read_text())["status"])
+        with self.assertRaisesRegex(deploy.DeploymentError, "previous first-install attempt"):
+            self.app.init()
+
+    def test_init_parser_requires_known_options_and_one_revision(self):
+        self.assertEqual(deploy.parse(["init", "abc", "--test"]), ("init", ["abc"], {"test": True}))
+        self.assertIsNone(deploy.parse(["init", "--untested"]))
+        self.assertIsNone(deploy.parse(["init", "one", "two"]))
 
 
 class TestStage(Fixture):

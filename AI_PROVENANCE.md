@@ -22,6 +22,12 @@ of who did the work and any rework; they do not define current roles.
 
 ---
 
+2026-10-23: Codex CLI `0.163.0` (`gpt-6.1-sol`) develops the Blue Sparkler
+0.5.0 fleet/first-install candidate. Text-session initialization verifies one
+recorded assembly and records the absence of a rollback generation. Login
+policy and physical acceptance remain separate.
+[Session](docs/ai/2026-10-22-fleet-first-install.md).
+
 ## 1. Fred's Multi-Agent AI Toolchain
 
 Rather than relying on a single AI model or interface, Fred uses a specialized

@@ -19,3 +19,11 @@ live media separately. It performs no disk or installation action.
 Physical second-host installation, per-device SSH setup, package delivery,
 reconciliation on both hosts and acceptance remain outside source evidence.
 No Test, Run or Release is authorized by these checks.
+
+First-install support is developed for 0.5.0: `tam-deploy init` builds and
+activates the exact selected consumer generation from a text session, requires
+registered local identity and an already promoted assembly, verifies endpoints
+and records the absence of a previous generation. It does not enable graphical
+login or manufacture a recovery generation. A failed partial activation retains
+its attempt record and blocks retries until reviewed. Console-first boot and
+optional native feature packages are separate work; no login policy is changed.
