@@ -1,0 +1,599 @@
+#!/usr/bin/env python3
+"""Console monitor controls. No compositor, root helper or persistent settings."""
+
+from __future__ import annotations
+
+import argparse
+import array
+import concurrent.futures
+import curses
+from dataclasses import asdict, dataclass
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import select
+import signal
+import socket
+import stat
+import subprocess
+import sys
+import termios
+import threading
+import time
+import tty
+
+TIOCGDEV = 0x80045432
+VT_GETSTATE = 0x5603
+KDGETMODE = 0x4B3B
+TIOCLINUX = 0x541C
+CALL_TIMEOUT = 6
+MAX_MONITORS = 16
+MAX_BLANK_SECONDS = 60
+IDLE_PRESETS = (0, 1, 5, 10, 15, 30, 60)
+
+
+class MonitorError(Exception):
+    pass
+
+
+def clean(value: str) -> str:
+    """Hardware descriptions and errors must not inject terminal controls."""
+    return "".join(c if c.isprintable() else "?" for c in value)[:160]
+
+
+def run_tool(argv: list[str]) -> str:
+    """Bound the whole helper process tree, including its DDC children."""
+    try:
+        proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                start_new_session=True)
+    except OSError as exc:
+        raise MonitorError(f"{argv[0]} unavailable: {exc.strerror}") from exc
+    try:
+        out, err = proc.communicate(timeout=CALL_TIMEOUT)
+    except BaseException as exc:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.communicate()
+        if isinstance(exc, subprocess.TimeoutExpired):
+            raise MonitorError(f"{argv[0]} timed out") from exc
+        raise
+    if proc.returncode:
+        reason = clean(err.decode(errors="replace").strip())
+        raise MonitorError(reason or f"{argv[0]} failed (device permission or hardware unavailable)")
+    return out.decode(errors="replace").strip()
+
+
+def read_text(path: Path) -> str:
+    try:
+        with path.open() as stream:
+            return stream.read(4096).strip()
+    except OSError:
+        return "unknown"
+
+
+def console_idle_seconds() -> int | None:
+    # The kernel exports its current blankinterval, including runtime changes.
+    try:
+        value = int(read_text(Path("/sys/module/kernel/parameters/consoleblank")))
+        return value if value >= 0 else None
+    except ValueError:
+        return None
+
+
+def edid_identity(path: Path) -> str:
+    try:
+        with path.open("rb") as stream:
+            data = stream.read(128)
+    except OSError:
+        return "EDID unavailable"
+    if len(data) != 128 or data[:8] != b"\x00\xff\xff\xff\xff\xff\xff\x00" or sum(data) % 256:
+        return "EDID unavailable"
+    code = int.from_bytes(data[8:10], "big")
+    maker = "".join(chr(64 + ((code >> shift) & 31)) for shift in (10, 5, 0))
+    model, serial = "", ""
+    for offset in range(54, 126, 18):
+        block = data[offset:offset + 18]
+        if block[:3] == b"\0\0\0":
+            value = clean(block[5:].decode("ascii", errors="replace").strip())
+            if block[3] == 0xFC:
+                model = value
+            elif block[3] == 0xFF:
+                serial = value
+    return clean(" ".join(part for part in (maker, model, serial) if part))
+
+
+@dataclass
+class Monitor:
+    id: str
+    connector: str
+    identity: str
+    connection: str
+    enabled: str
+    brightness: int | None = None
+    brightness_backend: str = ""
+    brightness_detail: str = "not probed"
+    backlight: str = ""
+    power_detail: str = "Individual power unavailable: no verified off/wake path"
+    layout_detail: str = "Mode/rotation/layout unavailable: native DRM/KMS backend required"
+
+
+class Hardware:
+    def __init__(self, drm: Path = Path("/sys/class/drm"),
+                 backlight: Path = Path("/sys/class/backlight"), runner=run_tool):
+        self.drm, self.backlight, self.run = drm, backlight, runner
+
+    def discover(self, probe=True, cancel=None) -> list[Monitor]:
+        monitors = []
+        for path in sorted(self.drm.glob("card*-*")):
+            match = re.fullmatch(r"card[0-9]+-([A-Za-z0-9._-]{1,64})", path.name)
+            if match and (path / "status").exists():
+                monitors.append(Monitor(path.name, match[1], edid_identity(path / "edid"),
+                                        read_text(path / "status"), read_text(path / "enabled")))
+        if len(monitors) > MAX_MONITORS:
+            raise MonitorError(f"More than {MAX_MONITORS} connectors; refusing an incomplete hardware map")
+        connected = [m for m in monitors if m.connection == "connected"]
+        internal = [m for m in connected if re.match(r"(?:eDP|LVDS|DSI)-", m.connector)]
+        for monitor in monitors:
+            if monitor.connection != "connected":
+                monitor.brightness_detail = "not connected"
+                continue
+            if sum(m.connector == monitor.connector for m in connected) > 1:
+                monitor.brightness_detail = "ambiguous connector across GPUs"
+                continue
+            if monitor in internal:
+                if len(internal) != 1:
+                    monitor.brightness_detail = "ambiguous internal panel/backlight mapping"
+                    continue
+                monitor.brightness_backend = "backlight"
+            else:
+                monitor.brightness_backend = "ddc"
+            if probe and not (cancel and cancel.is_set()):
+                try:
+                    self.read_brightness(monitor)
+                except MonitorError as exc:
+                    monitor.brightness_detail = clean(str(exc))
+        return monitors
+
+    def current(self, name: str) -> Monitor:
+        matches = [m for m in self.discover(probe=False) if name in (m.id, m.connector)]
+        if len(matches) != 1:
+            raise MonitorError("Select one connected monitor by its full card/connector ID")
+        monitor = matches[0]
+        if not monitor.brightness_backend:
+            raise MonitorError(monitor.brightness_detail)
+        return monitor
+
+    def read_brightness(self, monitor: Monitor) -> int:
+        if monitor.brightness_backend == "ddc":
+            value = self.run(["tam-brightness-display-ddc", monitor.connector])
+        elif monitor.brightness_backend == "backlight":
+            name = self.run(["tam-hw-display"])
+            if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", name) or not (self.backlight / name).is_dir():
+                raise MonitorError("No supported internal backlight")
+            monitor.backlight = name
+            try:
+                current = int(read_text(self.backlight / name / "brightness"))
+                maximum = int(read_text(self.backlight / name / "max_brightness"))
+                if maximum <= 0 or not 0 <= current <= maximum:
+                    raise ValueError
+            except ValueError as exc:
+                raise MonitorError("Invalid or unavailable backlight range") from exc
+            value = str(round(current * 100 / maximum))
+        else:
+            raise MonitorError(monitor.brightness_detail)
+        try:
+            percent = int(value)
+            if not 0 <= percent <= 100:
+                raise ValueError
+        except ValueError as exc:
+            raise MonitorError("Invalid brightness response") from exc
+        monitor.brightness = percent
+        monitor.brightness_detail = "available"
+        return percent
+
+    def set_brightness(self, name: str, percent: int) -> int:
+        if not 1 <= percent <= 100:
+            raise MonitorError("Brightness must be 1–100%; use blank to blank the console")
+        monitor = self.current(name)  # Remap on every operation, including after hotplug.
+        self.read_brightness(monitor)
+        if monitor.brightness_backend == "ddc":
+            self.run(["tam-brightness-display-ddc", monitor.connector, f"{percent}%"])
+            tolerance = 1
+        else:
+            self.run(["brightnessctl", "-d", monitor.backlight, "set", f"{percent}%"])
+            maximum = int(read_text(self.backlight / monitor.backlight / "max_brightness"))
+            tolerance = max(1, 100 / maximum)
+        actual = self.read_brightness(monitor)
+        if abs(actual - percent) > tolerance:
+            raise MonitorError(f"Brightness verification failed: requested {percent}%, read {actual}%")
+        return actual
+
+
+class Console:
+    def __init__(self, fd: int):
+        self.fd = fd
+        info = os.fstat(fd)
+        if not stat.S_ISCHR(info.st_mode) or os.major(info.st_rdev) != 4 or not 1 <= os.minor(info.st_rdev) <= 63:
+            raise MonitorError("A real Linux text console is required (not a desktop terminal, tmux or SSH)")
+        if info.st_uid != os.getuid():
+            raise MonitorError("The console must belong to the current user")
+        self.number = os.minor(info.st_rdev)
+
+    @classmethod
+    def open(cls):
+        try:
+            alias = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY | os.O_CLOEXEC)
+            try:
+                device = array.array("I", [0])
+                fcntl.ioctl(alias, TIOCGDEV, device)
+            finally:
+                os.close(alias)
+            if os.major(device[0]) != 4 or not 1 <= os.minor(device[0]) <= 63:
+                raise MonitorError("Console blank/wake/idle requires a real Linux text console")
+            fd = os.open(f"/dev/tty{os.minor(device[0])}",
+                         os.O_RDWR | os.O_NOCTTY | os.O_CLOEXEC | os.O_NOFOLLOW)
+            try:
+                return cls(fd)
+            except BaseException:
+                os.close(fd)
+                raise
+        except OSError as exc:
+            raise MonitorError(f"Cannot access the controlling Linux console: {exc.strerror}") from exc
+
+    def active_text(self) -> bool:
+        active = array.array("H", [0, 0, 0])
+        mode = array.array("i", [0])
+        fcntl.ioctl(self.fd, VT_GETSTATE, active)
+        fcntl.ioctl(self.fd, KDGETMODE, mode)
+        return active[0] == self.number and mode[0] == 0
+
+    def require_active(self, pgrp=None):
+        if not self.active_text() or os.tcgetpgrp(self.fd) != (pgrp or os.getpgrp()):
+            raise MonitorError("The owned text console must be active and this command in the foreground")
+
+    def blank(self):
+        fcntl.ioctl(self.fd, TIOCLINUX, bytes([14]))
+
+    def wake(self):
+        fcntl.ioctl(self.fd, TIOCLINUX, bytes([4]))
+
+    def idle(self, minutes: int):
+        if minutes not in range(61):
+            raise MonitorError("Idle interval must be 0–60 minutes")
+        self.require_active()
+        os.write(self.fd, f"\x1b[9;{minutes}]".encode("ascii"))
+        termios.tcdrain(self.fd)
+        actual = console_idle_seconds()
+        if actual is not None and actual != minutes * 60:
+            raise MonitorError("Console idle interval verification failed")
+        return actual is not None
+
+    def close(self):
+        os.close(self.fd)
+
+
+def send_packet(control, packet: bytes):
+    try:
+        control.send(packet)
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+
+
+def guard_loop(console, control, seconds, pgrp, restore):
+    """Only the guard blanks; death before startup cannot leave an unguarded blank."""
+    blanked = False
+    disconnected = False
+    status = 0
+    try:
+        console.require_active(pgrp)
+        fcntl.flock(console.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        console.require_active(pgrp)
+        blanked = True  # Even a partly failed ioctl must go through recovery.
+        console.blank()
+        send_packet(control, b"B")
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and console.active_text():
+            ready, _, _ = select.select([control], [], [], min(0.1, max(0, deadline - time.monotonic())))
+            if ready:
+                packet = control.recv(16)
+                disconnected = not packet
+                break
+    except (OSError, MonitorError) as exc:
+        status = 1
+        send_packet(control, b"E" + clean(str(exc)).encode())
+    finally:
+        if blanked:
+            try:
+                # Never poke a different VT or the graphical session after a switch.
+                if console.active_text():
+                    console.wake()
+                if disconnected and os.tcgetpgrp(console.fd) == pgrp:
+                    termios.tcsetattr(console.fd, termios.TCSANOW, restore)
+                send_packet(control, b"W")
+            except OSError as exc:
+                status = 1
+                send_packet(control, b"E" + clean(str(exc)).encode())
+        fcntl.flock(console.fd, fcntl.LOCK_UN)
+    return status
+
+
+class WakeGuard:
+    def __init__(self, console, seconds, restore):
+        if not 1 <= seconds <= MAX_BLANK_SECONDS:
+            raise MonitorError(f"Blank duration must be 1–{MAX_BLANK_SECONDS} seconds")
+        console.require_active()
+        self.control, child = socket.socketpair(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self.proc = None
+        try:
+            # Keep the controlling session for TIOCLINUX permission, but use a
+            # separate process group so Ctrl-C/job-control cannot kill the guard.
+            self.proc = subprocess.Popen(
+                [sys.executable, "-I", os.path.realpath(__file__), "__guard",
+                 str(console.fd), str(child.fileno()), str(seconds), str(os.getpgrp())],
+                pass_fds=(console.fd, child.fileno()), process_group=0,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                env={"PATH": "/usr/bin", "TERM": "linux"})
+            child.close()
+            self.control.settimeout(3)
+            # termios control characters are bytes; encode the small snapshot explicitly.
+            snapshot = list(restore)
+            snapshot[6] = [x[0] if isinstance(x, bytes) else x for x in restore[6]]
+            self.control.send(json.dumps(snapshot).encode())
+            packet = self.control.recv(512)
+            if packet != b"B":
+                raise MonitorError(packet[1:].decode(errors="replace") if packet.startswith(b"E")
+                                   else "Wake guard did not arm; console not blanked")
+            self.control.settimeout(None)
+        except BaseException:
+            child.close()
+            self.close()
+            raise
+
+    def close(self):
+        self.control.close()  # EOF asks the surviving guard to wake immediately.
+        if self.proc:
+            try:
+                status = self.proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                # Never kill the only recovery process. It has a fixed lifetime.
+                raise MonitorError("Wake guard is still recovering the console")
+            if status:
+                raise MonitorError("Wake guard reported a console or recovery failure")
+
+
+def blank_console(console, seconds, restore=None):
+    console.require_active()
+    saved = termios.tcgetattr(console.fd)
+    guard = None
+    try:
+        tty.setcbreak(console.fd)
+        guard = WakeGuard(console, seconds, restore or saved)
+        while True:
+            ready, _, _ = select.select([console.fd, guard.control], [], [], 0.1)
+            if guard.control in ready:
+                packet = guard.control.recv(512)
+                if packet.startswith(b"E"):
+                    raise MonitorError(packet[1:].decode(errors="replace"))
+                break
+            if console.fd in ready:
+                os.read(console.fd, 1)  # The wake key is consumed, never a TUI action.
+                break
+    finally:
+        try:
+            if guard:
+                guard.close()
+        finally:
+            if os.tcgetpgrp(console.fd) == os.getpgrp():
+                termios.tcsetattr(console.fd, termios.TCSANOW, saved)
+
+
+def guard_main(args):
+    if len(args) != 4:
+        return 2
+    fd, control_fd, seconds, pgrp = map(int, args)
+    if not 1 <= seconds <= MAX_BLANK_SECONDS or pgrp <= 0:
+        return 2
+    # It remains unprivileged and can only operate on an owned inherited VT.
+    console = Console(fd)
+    control = socket.socket(fileno=control_fd)
+    for sig in (signal.SIGHUP, signal.SIGINT, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU):
+        signal.signal(sig, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, interrupted)
+    control.settimeout(3)
+    try:
+        packet = control.recv(4096)
+        if not packet:
+            return 1
+        restore = json.loads(packet)
+        if not isinstance(restore, list) or len(restore) != 7 or len(restore[6]) != len(termios.tcgetattr(fd)[6]):
+            return 2
+        restore[6] = [bytes([x]) for x in restore[6]]
+        control.settimeout(None)
+        return guard_loop(console, control, seconds, pgrp, restore)
+    finally:
+        control.close()
+
+
+def draw(screen, lines, selected):
+    screen.erase()
+    height, width = screen.getmaxyx()
+    for row, line in enumerate(lines[:max(0, height - 1)]):
+        try:
+            screen.addnstr(row, 0, clean(line)[:max(0, width - 1)], max(0, width - 1),
+                           curses.A_REVERSE if row == selected else curses.A_NORMAL)
+        except curses.error:
+            pass
+    screen.refresh()
+
+
+def tui(screen, hardware, console, restore):
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
+    screen.timeout(100)
+    stop = threading.Event()
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    pending = pool.submit(hardware.discover, True, stop)
+    operation = "refresh"
+    monitors, index = [], 0
+    seconds = console_idle_seconds()
+    message = "Checking monitor capabilities…"
+    idle = seconds // 60 if seconds is not None and seconds % 60 == 0 else None
+    previous_frame = None
+    try:
+        while True:
+            if pending and pending.done():
+                try:
+                    result = pending.result()
+                    if operation == "refresh":
+                        monitors = result
+                        index = min(index, max(0, len(monitors) - 1))
+                        message = "Ready"
+                    else:
+                        message = f"Brightness verified: {result}% (r refreshes all monitors)"
+                        monitors[index].brightness = result
+                except (MonitorError, OSError) as exc:
+                    message = clean(str(exc))
+                pending = None
+            lines = ["Tamlinux monitor control — console / direct hardware", ""]
+            visible = max(1, screen.getmaxyx()[0] - 17)
+            first = max(0, index - visible + 1)
+            for monitor in monitors[first:first + visible]:
+                value = f"{monitor.brightness}%" if monitor.brightness is not None else "unknown"
+                lines.append(f"{monitor.id:20} {monitor.connection:12} brightness {value}")
+            if not monitors:
+                lines.append("Checking…" if pending else "No DRM connectors found")
+            selected = 2 + index - first if monitors else -1
+            monitor = monitors[index] if monitors else None
+            lines += ["", monitor.identity if monitor else "",
+                      f"Brightness: {monitor.brightness_detail}" if monitor else "",
+                      "Individual power: unavailable (off/wake not verified)",
+                      "Mode / rotation / layout: requires native DRM/KMS backend", "",
+                      "Console: ready" if console else "Console controls unavailable in a desktop terminal / tmux / SSH",
+                      f"Console idle: {str(idle) + ' min' if idle is not None else 'unknown'} (0 = off)",
+                      "b blank all console displays (key wakes; 15s maximum)",
+                      "i cycle console idle  |  +/- brightness  |  arrows select",
+                      "r refresh  |  q quit  |  no persistent settings changed", "", message]
+            frame = (tuple(lines), selected, screen.getmaxyx())
+            if frame != previous_frame:
+                draw(screen, lines, selected)
+                previous_frame = frame
+            key = screen.getch()
+            if key in (ord("q"), 27):
+                return
+            if key in (curses.KEY_DOWN, ord("j")) and monitors and not pending:
+                index = (index + 1) % len(monitors)
+            elif key in (curses.KEY_UP, ord("k")) and monitors and not pending:
+                index = (index - 1) % len(monitors)
+            elif key == ord("r") and not pending:
+                pending = pool.submit(hardware.discover, True, stop)
+                operation, message = "refresh", "Checking monitor capabilities…"
+            elif key in (ord("+"), ord("="), ord("-")) and monitor and not pending:
+                if monitor.brightness is None:
+                    message = "Brightness unavailable; r retries detection"
+                else:
+                    target = max(1, min(100, monitor.brightness + (-5 if key == ord("-") else 5)))
+                    pending = pool.submit(hardware.set_brightness, monitor.id, target)
+                    operation, message = "brightness", "Setting and verifying brightness…"
+            elif key in (ord("b"), ord("i")):
+                try:
+                    if not console:
+                        raise MonitorError("Use a real foreground Linux text console for blanking and idle")
+                    if key == ord("b"):
+                        blank_console(console, 15, restore)
+                        screen.clearok(True)
+                        previous_frame = None
+                        message = "Console restored (blanking is not a screen lock)"
+                    else:
+                        value = IDLE_PRESETS[(IDLE_PRESETS.index(idle) + 1) % len(IDLE_PRESETS)] if idle in IDLE_PRESETS else 5
+                        verified = console.idle(value)
+                        idle = value
+                        message = "Console idle interval verified" if verified else "Idle request sent; runtime interval readback unavailable"
+                except (MonitorError, OSError) as exc:
+                    message = clean(str(exc))
+    finally:
+        stop.set()
+        pool.shutdown(wait=True, cancel_futures=True)
+
+
+def interrupted(signum, _frame):
+    raise KeyboardInterrupt
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "__guard":
+        return guard_main(argv[1:])
+    parser = argparse.ArgumentParser(description="Monitor controls without a graphical desktop; no arguments opens a TUI")
+    sub = parser.add_subparsers(dest="command")
+    listing = sub.add_parser("list", help="read connector and brightness capabilities")
+    listing.add_argument("--json", action="store_true")
+    listing.add_argument("--no-probe", action="store_true", help="read only kernel connector metadata")
+    brightness = sub.add_parser("brightness", help="read or set supported brightness")
+    brightness.add_argument("monitor", help="connector ID from list (e.g. card1-DP-1)")
+    brightness.add_argument("percent", type=int, nargs="?", help="1–100")
+    blank = sub.add_parser("blank", help="blank the real text console until a keypress or timeout")
+    blank.add_argument("--seconds", type=int, choices=range(1, 61), default=15, metavar="1–60")
+    sub.add_parser("wake", help="unblank the owned foreground text console")
+    idle = sub.add_parser("idle", help="set runtime console idle minutes; 0 disables blanking")
+    idle.add_argument("minutes", type=int, choices=range(61), metavar="0–60")
+    args = parser.parse_args(argv)
+    console = None
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, interrupted)
+    try:
+        hardware = Hardware()
+        if args.command == "list":
+            monitors = hardware.discover(probe=not args.no_probe)
+            if args.json:
+                print(json.dumps([asdict(m) for m in monitors], indent=2))
+            else:
+                for monitor in monitors:
+                    print(f"{monitor.id}: {monitor.connection}; {monitor.identity}")
+                    value = f"{monitor.brightness}%" if monitor.brightness is not None else monitor.brightness_detail
+                    print(f"  Brightness: {value}; individual power/layout unavailable")
+            return 0
+        if args.command == "brightness":
+            if args.percent is None:
+                print(hardware.read_brightness(hardware.current(args.monitor)))
+            else:
+                print(hardware.set_brightness(args.monitor, args.percent))
+            return 0
+        try:
+            console = Console.open()
+        except MonitorError:
+            if args.command:
+                raise
+        if args.command == "blank":
+            print(f"Blanking console; press a key to wake (maximum {args.seconds}s).", flush=True)
+            blank_console(console, args.seconds)
+        elif args.command == "wake":
+            console.require_active()
+            console.wake()
+        elif args.command == "idle":
+            verified = console.idle(args.minutes)
+            status = "verified" if verified else "requested (readback unavailable)"
+            print(f"Console idle interval {status}: {args.minutes} minutes (0 = off; runtime only)")
+        else:
+            if not sys.stdin.isatty() or not sys.stdout.isatty():
+                raise MonitorError("TUI requires a terminal; use list --json for noninteractive output")
+            restore = termios.tcgetattr(sys.stdin.fileno())
+            curses.wrapper(tui, hardware, console, restore)
+        return 0
+    except (MonitorError, OSError, curses.error) as exc:
+        print(f"tam-monitor: {clean(str(exc))}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        return 130
+    finally:
+        if console:
+            console.close()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

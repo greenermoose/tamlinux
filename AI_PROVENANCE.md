@@ -63,6 +63,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) develops `tam-monitor` for
+real Linux text consoles: supported hardware brightness, guarded blank/wake
+and runtime idle controls. Physical acceptance and native output modesetting
+remain separate. [Session](docs/ai/2026-10-23-console-monitor-control.md).
+
 2026-10-23: Prepare console-startup 0.5.2 with verified settings recovery;
 79 focused tests pass. Test remains separate.
 [Session](docs/ai/2026-10-23-console-candidate-0.5.2.md).
