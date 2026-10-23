@@ -460,10 +460,10 @@ class Deployment:
         self.save_state({"stage": stage, "packages": revision, "components": pins,
                          "generation": generation, "previousGeneration": None, "previousPin": None,
                          "firstInstall": True, "livePaths": self.live_digests()})
-        details["status"] = "installed; graphical login not yet verified"
+        details["status"] = "installed; physical console and optional desktop not yet verified"
         attempt.write_text(json.dumps(details, indent=2) + "\n")
         print(f"Installed {self.home_configuration} from {revision}; no branches moved.")
-        print("No previous generation exists. Verify the console tools before enabling graphical login.")
+        print("No previous generation exists. Verify text login and console tools; start graphics only with tam-desktop.")
 
     def rollback_pin(self, generation: str) -> str:
         """Identify the active assembly, even when the consumer lock is staged."""
