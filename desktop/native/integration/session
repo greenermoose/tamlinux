@@ -1,6 +1,6 @@
 #!/bin/sh
-# Native login registration enters the installed immutable user generation.
+# Explicit native command enters the installed immutable user generation.
 set -eu
-entry="$HOME/.local/bin/tam-hyprland-session"
-[ -x "$entry" ] || { echo "Install the Tamlinux user generation before selecting this session." >&2; exit 1; }
+entry="$HOME/.local/bin/tam-desktop"
+[ -x "$entry" ] || { echo "Install the Tamlinux user generation before starting the desktop." >&2; exit 1; }
 exec "$entry"

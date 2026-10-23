@@ -1,5 +1,26 @@
 # Tamlinux shell proof
 
+## Console-first startup (0.5 Develop)
+
+Tamlinux boots through visible text progress to a text login. Its optional
+desktop starts only when the signed-in user runs `tam-desktop` on a local
+foreground console. There is no graphical login manager or session chooser.
+`tam`, terminal tools and terminal agents are available before graphics.
+
+`tam-desktop` uses the installed user generation and Hyprland/UWSM session.
+It rejects SSH, terminal-emulator, root, background and duplicate-session
+launches. It binds startup to the actual text login and skips UWSM's system
+graphical-target wait. The system remains at `multi-user.target`; desktop
+services follow the user's `graphical-session.target` only while requested.
+Keep a second VT available for recovery.
+
+This is Develop code; source checks do not establish a successful physical
+boot or VT/locking behavior. Installation requires the recorded package
+assembly and an approved host boot/login transaction. See the
+[console-first plan](../docs/plans/console-first-startup.md).
+
+## Earlier shell-proof context
+
 The Tamlinux shell: the Develop-stage bar for `fred.clock` 2.0.0 and the
 other seven `fred.*` 2.0.0 plugins. The proof still uses an isolated home and
 a read-only calendar. It runs outside the Omarchy shell and does not replace

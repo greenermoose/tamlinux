@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-23 — Visible text boot and explicit desktop startup](2026-10-23-console-first-startup.md)
+
 Individual session records documenting prompt history, tools, models, and key
 architectural decisions for Tamlinux. One file per session; there is no
 monolithic `sessions.md` here, matching `plugin-fred-tamlinux`.

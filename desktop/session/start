@@ -11,4 +11,4 @@ fi
 /usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?
 "${TAMLINUX_BIN:-$HOME/.local/bin}/tam-theme-init" || exit $?
 "${TAMLINUX_BIN:-$HOME/.local/bin}/tam-session-init" >/dev/null || exit $?
-exec /usr/bin/uwsm start -e -D Hyprland -- "$session_dir/Hyprland" --config "$config"
+exec /usr/bin/uwsm start -g -1 -e -D Hyprland -- "$session_dir/Hyprland" --config "$config"

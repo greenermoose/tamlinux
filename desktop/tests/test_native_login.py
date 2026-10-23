@@ -13,7 +13,7 @@ class NativeLogin(unittest.TestCase):
     def test_renamed_endpoint_preserves_spaced_home_and_exit_status(self):
         with tempfile.TemporaryDirectory(prefix="login home ") as directory:
             home = Path(directory)
-            endpoint = home / ".local/bin/tam-hyprland-session"
+            endpoint = home / ".local/bin/tam-desktop"
             endpoint.parent.mkdir(parents=True)
             endpoint.write_text('#!/bin/sh\nprintf "%s\\n" "$HOME"\nexit 23\n')
             endpoint.chmod(0o755)

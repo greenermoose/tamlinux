@@ -69,9 +69,9 @@ class SessionLauncherTests(unittest.TestCase):
             result = subprocess.run([str(link)], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             argv = json.loads(result.stdout)
-            self.assertEqual(argv, ["start", "-e", "-D", "Hyprland", "--", str(session / "Hyprland"),
+            self.assertEqual(argv, ["start", "-g", "-1", "-e", "-D", "Hyprland", "--", str(session / "Hyprland"),
                                     "--config", str(config)])
-            self.assertEqual(Path(argv[5]).name, "Hyprland")
+            self.assertEqual(Path(argv[7]).name, "Hyprland")
             (session / "wait-stopped.py").write_text("raise SystemExit(23)\n")
             result = subprocess.run([str(link)], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 23)

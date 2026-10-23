@@ -30,6 +30,10 @@ policy and physical acceptance remain separate.
 
 ## 1. Fred's Multi-Agent AI Toolchain
 
+Console-first startup work on 2026-10-23 uses Codex CLI `0.164.0` and
+`gpt-6.1-sol`, verified in the current runtime.
+[Session](docs/ai/2026-10-23-console-first-startup.md).
+
 Rather than relying on a single AI model or interface, Fred uses a specialized
 toolchain tailored to each tool's strengths. Most CLI versions below were
 captured on 2026-09-22 (`<tool> --version` / `cursor --version`); the Codex

@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=Tamlinux (Hyprland)
-Comment=Tamlinux session with UWSM
-Exec=/usr/bin/tam-session
-TryExec=/usr/bin/Hyprland
-Type=Application
-DesktopNames=Hyprland;Tamlinux
