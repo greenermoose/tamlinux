@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Read-only entry point in the laptop bootstrap environment.
 set -euo pipefail
-export PATH=/usr/bin:/bin
+# The bootstrap inherits its native PATH; the Nix package supplies its own
+# declared providers. Replacing PATH here discards those immutable providers.
 
 welcome() {
   cat <<'EOF'

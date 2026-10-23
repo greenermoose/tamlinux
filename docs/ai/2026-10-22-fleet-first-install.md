@@ -22,6 +22,9 @@ be on main, or test with the explicit option; no branch is moved.
 A build failure restores the lock before activation. A partial activation or
 verification failure preserves its attempt record and blocks unreviewed retries.
 Existing installations continue through the ordinary rollback-preserving path.
+The assembly build also exposed a bootstrap helper that discarded its Nix
+provider PATH. Preserve the caller/package environment and declare its
+inspection providers in delivery instead of assuming a native /usr/bin.
 Console-first boot policy and optional native features are separate upcoming
 work; this change neither enables nor disables a display manager.
 
