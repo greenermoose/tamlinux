@@ -336,7 +336,7 @@ def main():
     parser.add_argument('--audio', action='store_true', help='Include owned tuning service, connected audio volumes/mutes and defaults')
     parser.add_argument('--audio-state', action='store_true', help='Separate persistent WirePlumber state checkpoint; requires WirePlumber stopped')
     parser.add_argument('--gtk', action='store_true', help='Include the four owned GTK user values through dconf')
-    parser.add_argument('--settings-source',type=Path,help='Absolute source config root for live-linked user settings; same finite config paths')
+    parser.add_argument('--settings-source',type=Path,action='append',default=[],help='Repeat for each absolute source config root; same finite config paths, at most eight roots')
     parser.add_argument('--claude-root',type=Path,help='Claude configuration root; defaults to a configured CLAUDE_CONFIG_DIR')
     parser.add_argument('--t3code-root',type=Path,help='T3 Code root; defaults to a configured T3CODE_HOME')
     parser.add_argument('--obsidian-vault',type=Path,action='append',default=[],help='Explicit Obsidian vault root; only its Tamlinux theme is checkpointed')
@@ -352,9 +352,11 @@ def main():
             spec=importlib.util.spec_from_file_location('settings_recovery',HERE/'recovery.py')
             recovery=importlib.util.module_from_spec(spec);spec.loader.exec_module(recovery)
             checkpoint_roots={**locations,'home':Path(os.environ['HOME'])}
-            if args.settings_source:
-                if not args.settings_source.is_absolute(): raise ValueError('Settings source root must be absolute')
-                checkpoint_roots['settingsSource']=args.settings_source
+            if len(args.settings_source)>recovery.MAX_SETTINGS_SOURCES or len(set(args.settings_source))!=len(args.settings_source):
+                raise ValueError('Expected at most eight distinct settings source roots')
+            for index,path in enumerate(sorted(args.settings_source)):
+                if not path.is_absolute() or '..' in path.parts: raise ValueError('Settings source roots must be absolute without parent traversal')
+                checkpoint_roots['settingsSource'+(str(index) if index else '')]=path
             for kind,explicit,variable in [('claude',args.claude_root,'CLAUDE_CONFIG_DIR'),('t3code',args.t3code_root,'T3CODE_HOME')]:
                 value=explicit or os.environ.get(variable)
                 if value:

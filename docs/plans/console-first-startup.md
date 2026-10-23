@@ -188,12 +188,14 @@ and record acceptance after physical trials; make no unsupported speed claim.
 
 ## Next actions
 
-1. Verify the prepared 0.5.1 assembly and its replacement native archive;
-   keep the earlier 0.5.0 delivery record unchanged.
-2. Capture fresh preserving user/boot checkpoints and a root snapshot before
-   any mutation, with the required individual approvals.
-3. On the exact Test instruction, follow the candidate-bound boot/login/removal
-   steps and collect physical startup, desktop, recovery and timing evidence.
+1. Deliver the multiple-source settings checkpoint fix through the next
+   candidate when Fred requests preparation. Preserve the prepared 0.5.0 and
+   0.5.1 assemblies; development fixes do not replace their identities.
+2. With that delivered operator, capture fresh preserving user/boot checkpoints
+   and a root snapshot, with the required individual approvals.
+3. On the exact Test instruction, use the assembly-bound stage runner and
+   candidate-bound boot/login/removal steps. Collect physical startup, desktop,
+   recovery and timing evidence; development checks pass none of those trials.
 
 References: [systemd targets](https://freedesktop.org/software/systemd/man/latest/systemd.special.html),
 [UWSM startup and shell integration](https://github.com/Vladimir-csp/uwsm/blob/master/README.md),

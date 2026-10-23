@@ -376,6 +376,96 @@ class Recovery(unittest.TestCase):
         with self.assertRaises(ValueError):r.load(self.journal,self.roots)
         self.assertEqual((source/'monitors.lua').read_bytes(),b'keep')
 
+    def test_shared_and_host_sources_preserve_restore_retry_and_later_writes(self):
+        shared = self.base/'consumer/config'
+        host = self.base/'consumer/hosts/example/config'
+        settings = shared/'tamlinux/screensaver/settings.json'
+        monitors = host/'hypr/monitors.lua'
+        for path in (settings, monitors):
+            path.parent.mkdir(parents=True)
+            path.write_bytes(b'original '+path.name.encode())
+            path.chmod(0o640)
+        tamlinux = self.roots['config']/'tamlinux'
+        tamlinux.mkdir()
+        links = [tamlinux/'screensaver', self.roots['config']/'hypr']
+        links[0].symlink_to(settings.parent)
+        links[1].symlink_to(monitors.parent)
+        locations = {**self.roots, 'settingsSource': shared, 'settingsSource1': host}
+        r.preserve(locations, self.journal)
+        self.assertEqual(r.load(self.journal, locations)['status'], 'preserved')
+        for path in (settings, monitors):
+            path.write_bytes(b'later '+path.name.encode())
+        self.assertEqual(r.restore(locations, self.journal, stop_after=1)['status'], 'restoring')
+        settings.write_bytes(b'latest settings after interruption')
+        self.assertEqual(r.restore(locations, self.journal)['status'], 'restored')
+        self.assertEqual(r.restore(locations, self.journal)['status'], 'restored')
+        for path in (settings, monitors):
+            self.assertEqual(path.read_bytes(), b'original '+path.name.encode())
+            self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(os.readlink(links[0]), str(settings.parent))
+        self.assertEqual(os.readlink(links[1]), str(monitors.parent))
+        blobs = [p.read_bytes() for p in (self.journal/'blobs').iterdir()]
+        self.assertIn(b'later monitors.lua', blobs)
+        self.assertIn(b'latest settings after interruption', blobs)
+        for changed in (self.roots, {**locations, 'settingsSource1': self.base/'different'}):
+            with self.assertRaises(ValueError): r.load(self.journal, changed)
+
+    def test_multiple_source_roots_reject_redirects_overlap_and_uncovered_links(self):
+        shared = self.base/'shared'
+        host = self.base/'host'
+        shared.mkdir(); host.mkdir()
+        external = self.base/'external'
+        external.mkdir(); (external/'settings').write_bytes(b'keep outside')
+        roots = {**self.roots, 'settingsSource': shared, 'settingsSource1': host}
+        (shared/'tamlinux').symlink_to(external)
+        with self.assertRaises(ValueError): r.preserve(roots, self.journal)
+        with self.assertRaises(ValueError): r.load(self.journal, roots)
+        (shared/'tamlinux').unlink()
+        (shared/'tamlinux').mkdir()
+        (shared/'tamlinux/redirect').symlink_to(external)
+        with self.assertRaises(ValueError): r.preserve(roots, self.journal.with_name('nested-link'))
+        (shared/'tamlinux/redirect').unlink()
+        (shared/'hypr').mkdir()
+        (host/'hypr').symlink_to(shared/'hypr')
+        # Covered mutable links remain links; no recursive link traversal.
+        r.preserve(roots, self.journal.with_name('covered'))
+        for alternate in (shared, shared/'tamlinux'):
+            with self.assertRaises(ValueError):
+                r.selections({**roots, 'settingsSource1': alternate})
+        with self.assertRaises(ValueError):
+            r.selections({**roots, 'settingsSource8': self.base/'ninth'})
+        self.assertEqual((external/'settings').read_bytes(), b'keep outside')
+
+    def test_cli_multiple_sources_are_order_independent_and_bound_to_journal(self):
+        sources = [self.base/'shared', self.base/'host']
+        files = []
+        for root in sources:
+            path = root/'tamlinux/settings.json'
+            path.parent.mkdir(parents=True); path.write_bytes(b'original')
+            files.append(path)
+        env = {**os.environ, 'HOME': str(self.roots['home'])}
+        env.update({'XDG_'+k.upper()+'_HOME': str(self.roots[k]) for k in ('config','state','data')})
+        env.pop('CLAUDE_CONFIG_DIR', None); env.pop('T3CODE_HOME', None)
+        def call(action, roots, journal=self.journal):
+            args = [arg for root in roots for arg in ('--settings-source', str(root))]
+            return subprocess.run(['/usr/bin/python3', '-B', str(ROOT/'desktop/migration/engine.py'),
+                                   action, str(journal), *args], env=env, capture_output=True, text=True)
+        result = call('preserve', sources)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for path in files: path.write_bytes(b'later')
+        self.assertEqual(call('checkpoint-status', sources[::-1]).returncode, 0)
+        self.assertNotEqual(call('restore', sources[:1]).returncode, 0)
+        self.assertEqual([p.read_bytes() for p in files], [b'later', b'later'])
+        result = call('restore', sources[::-1])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([p.read_bytes() for p in files], [b'original', b'original'])
+        for invalid in ([sources[0]]*2, [Path('relative')], [self.base/'x/../shared'],
+                        [self.base/str(i) for i in range(9)]):
+            with self.subTest(invalid=invalid):
+                journal = self.journal.with_name('invalid')
+                self.assertNotEqual(call('preserve', invalid, journal).returncode, 0)
+                self.assertFalse(journal.exists())
+
     def test_selected_scope_with_excluded_journals_refuses_file_replacement(self):
         self.fixture()
         r.preserve(self.roots, self.journal)

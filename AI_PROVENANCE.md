@@ -63,6 +63,10 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) supports finite settings
+checkpoints across shared and host configuration roots, with interrupted
+restoration and later-write coverage. [Session](docs/ai/2026-10-23-console-startup-blockers.md).
+
 2026-10-23: prepare console-first candidate 0.5.1 with Codex CLI `0.164.0`
 (`gpt-6.1-sol`); exact builds and physical acceptance are separate.
 [Session](docs/ai/2026-10-23-console-candidate.md).

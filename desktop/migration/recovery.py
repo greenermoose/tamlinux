@@ -20,6 +20,16 @@ MAX_TOTAL = 1024 * 1024 * 1024
 MAX_ENTRIES = 20000
 MAX_RECORD = 16 * 1024 * 1024
 MAX_VAULTS = 32
+MAX_SETTINGS_SOURCES = 8
+
+
+def settings_sources(locations):
+    """Explicit finite config roots, retaining the original single-root key."""
+    names = [name for name in locations if name.startswith('settingsSource')]
+    allowed = ['settingsSource'] + ['settingsSource' + str(i) for i in range(1, MAX_SETTINGS_SOURCES)]
+    if set(names) - set(allowed) or set(names) != set(allowed[:len(names)]):
+        raise ValueError('Invalid settings source roots')
+    return [name for name in allowed if name in locations]
 
 
 def digest(data):
@@ -103,8 +113,8 @@ def selections(locations, audio_state=False):
     manifest = json.loads(MANIFEST.read_text())
     entries = []
     selected = list(manifest['audioStatePaths'] if audio_state else manifest['paths'])
-    if not audio_state and 'settingsSource' in locations:
-        selected += [{**item, 'root': 'settingsSource'} for item in manifest['paths'] if item['root'] == 'config']
+    for name in settings_sources(locations) if not audio_state else []:
+        selected += [{**item, 'root': name} for item in manifest['paths'] if item['root'] == 'config']
     for name, root in locations.items():
         if audio_state:
             continue
@@ -221,7 +231,7 @@ def preserve(locations, directory, dconf=None, audio=None, audio_state=None):
     # targets must be immutable or covered by this finite checkpoint.
     for name,value in doc['files'].items():
         path=Path(name)
-        config_roots=[locations['config']]+([locations['settingsSource']] if 'settingsSource' in locations else [])
+        config_roots=[locations['config']]+[locations[key] for key in settings_sources(locations)]
         config_roots += [locations['home']/'.claude', locations['home']/'.t3']
         config_roots += [root for key,root in locations.items()
                          if key in ('claude','t3code') or key.startswith('obsidianVault')]
