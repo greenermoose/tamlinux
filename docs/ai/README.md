@@ -21,6 +21,7 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 | Date | Topic | Primary Tool | Model | Session Document |
 | :-- | :-- | :-- | :-- | :-- |
+| 2026-10-23 | 0.5.4 metadata for tam command 0.43.2 and corpus 0.43.0 | Codex CLI `0.164.0` | `gpt-6.1-sol` | [Session](2026-10-23-tam-0.5.4.md) |
 | 2026-10-23 | Standalone console monitor TUI, brightness and guarded blank/wake | Codex CLI `0.164.0` | `gpt-6.1-sol` | [Session](2026-10-23-console-monitor-control.md) |
 | 2026-10-23 | Prepare console-startup 0.5.2; Test separate | Codex CLI `0.164.0` | `gpt-6.1-sol` | [Session](2026-10-23-console-candidate-0.5.2.md) |
 | 2026-10-23 | Console-first candidate 0.5.1 | Codex CLI `0.164.0` | `gpt-6.1-sol` | [Session](2026-10-23-console-candidate.md) |

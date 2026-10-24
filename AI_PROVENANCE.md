@@ -30,6 +30,9 @@ policy and physical acceptance remain separate.
 
 ## 1. Fred's Multi-Agent AI Toolchain
 
+Tamlinux 0.5.4 component metadata was prepared with Codex CLI `0.164.0`,
+model `gpt-6.1-sol`. [Session](docs/ai/2026-10-23-tam-0.5.4.md).
+
 Console-first startup work on 2026-10-23 uses Codex CLI `0.164.0` and
 `gpt-6.1-sol`, verified in the current runtime.
 [Session](docs/ai/2026-10-23-console-first-startup.md).

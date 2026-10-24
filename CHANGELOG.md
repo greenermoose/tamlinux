@@ -8,6 +8,12 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.4 - Develop candidate
+
+- Assemble tam command 0.43.2 and knowledge corpus 0.43.0, with libtam 0.4.0
+  and the matching static portal integration in tamlinux-tools.
+- Retain the console monitor controls and existing native boot/login package.
+
 ## 0.5.3 - Develop candidate
 
 - Add `tam-monitor`, a keyboard TUI and CLI for monitor information, supported
