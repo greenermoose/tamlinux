@@ -66,6 +66,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) starts native monitor
+feasibility with a C inspection CLI and optional libtam display API. Routing
+analysis and fake-device checks pass; ownership, recovery and physical
+blanking remain open. [Session](docs/ai/2026-10-25-monitor-feasibility.md).
+
 2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) records the Fred-approved
 native console monitor design and 0.5.5 delivery boundary. Planning only;
 [session](docs/ai/2026-10-25-console-monitor-plan.md).

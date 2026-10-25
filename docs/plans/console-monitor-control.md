@@ -1,8 +1,8 @@
 # Choose which monitors stay on at a Linux text console
 
-Status: design approved by Fred, 2026-10-25; implementation not started.
+Status: design approved by Fred, 2026-10-25; native inspection/routing foundation implemented; physical feasibility pending.
 Target: Tamlinux 0.5.5.
-Next: implement the C feasibility slice and prepare a recorded package for physical Test on Fred's separate instruction.
+Next: implement authorized VT/device acquisition and owned restoration before preparing a recorded package for physical Test on Fred's separate instruction.
 
 Fred's approval: "I approve this monitor plan."
 
@@ -247,8 +247,31 @@ Record actual kernel/driver and monitor capabilities for each physical trial.
 
 ## Next actions
 
-1. Both plans are approved. Resume by claiming the component paths for the C feasibility slice.
-2. Implement the C feasibility
-   slice, then prepare a recorded package for separately authorized physical Test.
+1. Add foreground text-VT/session acquisition around the borrowed-descriptor
+   API; prove framebuffer/blob references can be retained for restoration.
+2. Implement atomic TEST_ONLY, guarded bounded writes and recovery, then
+   prepare a recorded package for separately authorized physical Test.
 3. Complete the library, command and developer-environment gates in the
    [Tamlinux 0.5.5 delivery plan](../../../tamlinux-packages/docs/plans/0.5.5.md).
+
+## Development evidence: 2026-10-25
+
+The optional libtam display archive now inspects connectors, atomic properties,
+CRTCs and planes using installed DRM UAPI headers and libc only. A C feasibility
+CLI under `commands/tam-monitor/` reports this observation and can analyze
+which connectors to detach while preserving the selected output's CRTC/planes.
+Shared CRTCs and shared framebuffers are covered separately. Counts, retries,
+errors and hardware strings are bounded; no device is opened by this API.
+
+ASan/UBSan-instrumented display objects pass fake-device failure and routing
+tests. Seven native CLI tests and the existing 25 monitor tests pass. Builds
+through pkg-config and explicit prefix work; header/archive/flag changes
+trigger rebuilds. The prototype retains symbols/debug information and its
+only ELF runtime dependency is libc. Core/display install targets avoid the
+portal dependency. [Development record](../ai/2026-10-25-monitor-feasibility.md).
+
+This completes the inspection foundation only. It does not establish DRM/VT
+ownership, retained framebuffer/blob references, restoration, kernel atomic
+validation, sustained fbcon behavior or physical standby. The prototype is
+not installed as the production command, and no candidate was prepared or
+activated. Hardware feasibility and the remaining C command migration stay open.

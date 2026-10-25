@@ -1,5 +1,33 @@
 # tam-monitor
 
+The [approved native monitor plan](../../docs/plans/console-monitor-control.md)
+is being implemented. The installed Python command below remains in place
+while ownership and recovery feasibility are established.
+
+An optional C inspection prototype builds as `build/tam-monitor`:
+
+```sh
+# First install libtam's display development files into a scratch prefix.
+make native LIBTAM_PREFIX=/your/development/prefix
+make check-native LIBTAM_PREFIX=/your/development/prefix
+# Or use normal pkg-config discovery of libtam-display >= 0.1.0.
+make native
+```
+
+Its interface is `inspect --fd FD [--keep CONNECTOR] [--json]`. The descriptor
+must come from an authorized session/device owner; acquisition is not yet
+implemented. `--keep` analyzes connector/CRTC/plane routing only. The tool
+does not open DRM cards, acquire master or blank monitors. It enables atomic
+property visibility on the supplied file description. Its observation is not
+a restorable snapshot or a kernel-validated atomic request. Native tests use
+fake data and a non-DRM descriptor; they access no display device.
+
+The prototype is deliberately excluded from `make install` until acquisition,
+restore and lifetime are ready for a recorded package Test. Running it from
+source against the live session is not the physical Test procedure.
+
+## Installed command
+
 Monitor information, supported brightness and text-console blanking without
 Hyprland or Quickshell. Run `tam-monitor` for the keyboard TUI.
 
