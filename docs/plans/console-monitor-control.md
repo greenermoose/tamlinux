@@ -1,143 +1,254 @@
-# Monitor control from a Linux text console
+# Choose which monitors stay on at a Linux text console
 
-Status: first implementation accepted and implemented in Develop, 2026-10-23.
-Source and package dependency definition are ready; candidate pinning and real
-console acceptance remain separate. No installation or activation occurred.
+Status: design approved by Fred, 2026-10-25; implementation not started.
+Target: Tamlinux 0.5.5.
+Next: implement the C feasibility slice and prepare a recorded package for physical Test on Fred's separate instruction.
 
-The accepted first scope is console blank/wake/idle, monitor information and
-supported hardware brightness. Independent output modesetting remains future
-work, with the recovery proof below required before it can be exposed.
+Fred's approval: "I approve this monitor plan."
 
-## Goal
+## Outcome
 
-Provide `tam-monitor`, a keyboard-driven TUI that works from a real Linux
-virtual console, including when Hyprland and Quickshell are stopped. Explain
-which controls belong to the console, the monitor hardware or the desktop.
-Do not require the user to start a desktop to blank a screen.
+At a real Linux virtual terminal, choose any one of three connected monitors
+to keep displaying the text console and blank the other two. Continue using
+the shell and `tam` on the chosen monitor. Restore either blanked monitor
+explicitly. Hyprland, Quickshell, X11 and a graphical terminal are unnecessary.
+Ordinary keyboard input must not wake the monitors deliberately excluded.
 
-## Why the existing controls differ
+This is a required 0.5.5 outcome. Global console blanking, reduced brightness,
+a black image with the backlight still on, and a fifteen-second demonstration
+do not establish it. Verify physical blanking and standby separately; report
+power savings only after measurement.
 
-The graphical monitor panel delegates power and layout changes to Hyprland.
-The existing `tam-brightness-display off` command likewise calls `hyprctl`;
-its `--monitor` option does not make that power operation per-monitor.
-These are compositor clients, rather than standalone console controllers.
+The accepted 2026-10-23 implementation is a Python/curses TUI with connector
+information, supported brightness, whole-console blank/wake and runtime idle
+controls. It explicitly leaves individual power unavailable. Preserve that
+history in the [development record](../ai/2026-10-23-console-monitor-control.md);
+this plan replaces its deferred native-backend scope and old next actions.
 
-A text console uses the kernel framebuffer console. Its idle blanking timer
-is independent of the graphical idle policy. `consoleblank=0` disables its
-automatic blanking. The `setterm` console interface can blank and unblank the
-console, but does not select individual DRM connectors or set desktop layouts.
-Blanking and monitor power saving must be distinguished and physically checked.
+## Implementation direction
 
-Switching VTs also changes which session owns display access. Discovering a
-Hyprland socket does not give an inactive compositor control of the foreground
-console. Without Hyprland running there is no compositor socket to call.
+Write `tam-monitor` in C and put reusable Linux display operations in our
+`libtam` repository. Tamlinux commands are not limited to shell scripts.
+Prefer compiled C and small libraries using stable kernel userspace ABIs for
+hardware control and resource-sensitive text-mode tools. Shell remains useful
+for simple orchestration. Choose the implementation by required functions and
+measured performance; C alone does not prove low memory use or fast startup.
 
-DDC/CI brightness and supported monitor settings can work independently of
-Hyprland. Availability depends on hardware, driver and device permissions.
-Reading a power feature does not establish that software can wake the monitor
-after turning it off.
+Use **multiple source files**, each compiled to its own object. A single
+amalgamated source file couples unrelated features and can cause a static
+linker to bring unused code and dependencies into a command. Separate objects
+give clear ownership, focused tests and ordinary archive-member selection.
+Do not split every small function into its own file; split by responsibility.
 
-## Recommended first implementation
+Proposed layout, names to finalize after the feasibility proof:
 
-Develop under `commands/tam-monitor/` in this repository. Package it through
-the ordinary commands assembly. Use Python's curses support and existing
-native console/DDC tools; keep the UI unprivileged.
+| Library or command | Responsibility and boundary |
+| --- | --- |
+| `libtam.a`, existing core | libc-only strings, bounded execution, files, paths and configuration; preserve compatible APIs used by `tam`. |
+| `libtam-display.a`, new optional archive, `tam_display.h` | `tam_display_discovery.c` for devices/identity, `tam_display_kms.c` for DRM queries and transactions, `tam_display_restore.c` for owned snapshots and recovery. No UI or portal code. |
+| VT operations, `tam_vt.c` / `tam_vt.h` | Owned foreground VT checks, console blank/wake/idle, terminal restoration and VT events. Decide whether these belong in the display archive or a separate libc-only core object after identifying actual consumers. |
+| Optional session adapter, separate object/archive | Acquire devices and handle pause/resume through the existing seat manager if needed. Its dependencies never enter the core merely by including a header. |
+| `commands/tam-monitor/`, existing product owner | C CLI, small terminal UI and explicit lifetime/recovery policy. Build with a Makefile; preserve installed command discovery and documentation. |
+| `libtam-portal.a`, existing separate archive | Desktop file chooser only; no dependency from `tam` or `tam-monitor`. |
 
-The initial command provides:
+Static linking to our archives does not require static linking to libc. Keep
+display code out of `tam` unless it actually calls that API. Publish matching
+pkg-config metadata, minimum API versions and install/uninstall targets.
+Build core and display targets without building the portal or requiring its
+D-Bus development files. An installed developer package must include headers,
+archives and `.pc` files, not just binaries that used them during packaging.
 
-- A monitor list with connector, identity, connection state and independently
-  detected capabilities. Read kernel connector information without requiring
-  compositor environment variables. Distinguish unavailable data from off.
-- Brightness read/write through existing DDC helpers for external displays
-  and backlight controls for supported internal panels. Bound hardware calls;
-  keep the UI responsive and report failed writes.
-- Blank the active text console and restore it on a keypress. Immediate
-  forced blanking requires a surviving timed wake guard, since `setterm
-  --blank=force` can remain blank despite ordinary keyboard input. Recover
-  on normal exit/signals; the guard also covers UI death. Verify foreground
-  VT ownership before acting and after a VT switch.
-- An explicit console idle interval in minutes, including off. Explain that
-  it concerns the console, not the graphical idle policy. Start with runtime
-  changes only; do not edit boot arguments or login configuration.
-- A visible capability explanation for individual monitor power. Offer DDC
-  standby only after that model's off-and-wake path is physically verified;
-  keep an independent timed recovery route. Never use hardware power-off
-  merely because feature D6 is readable.
-- Noninteractive `list`, `brightness`, `blank`, `wake` and `idle` operations
-  backed by the same implementation. Console operations must act on an owned
-  foreground Linux VT, never an arbitrary device path supplied by the caller.
+## Prove the kernel path before building the UI
 
-This first implementation supplies useful console control, but does not
-claim full parity with the graphical panel. It must label unsupported
-controls clearly instead of returning success for a desktop-only request.
+The framebuffer console renders text; its console blanking operation has no
+DRM connector selector. Mapping VTs to framebuffer devices does not select
+individual connectors sharing one framebuffer. See the kernel's
+[framebuffer-console description](https://docs.kernel.org/fb/fbcon.html).
 
-## Full per-monitor control
+Use the DRM/KMS primary device and stable ioctl definitions from installed
+UAPI headers. Implement a narrow C wrapper, rather than copying private
+driver structures, defining ioctl numbers by hand or adding a kernel module.
+KMS mutation requires display ownership; render nodes cannot provide it.
+Only one DRM master owns a device at a time. See the kernel's
+[DRM ownership rules](https://docs.kernel.org/gpu/drm-uapi.html#primary-nodes-drm-master-and-authentication).
 
-Independent output power, mode, refresh, rotation and link retraining need
-a separate native DRM/KMS backend when no compositor is running. A curses
-frontend alone cannot supply them. Desktop workspace placement and graphical
-scaling have no direct equivalent in the kernel's text console.
+The first prototype must establish all of the following on the target GPU:
 
-Before adding native modesetting, prove a recoverable prototype on a spare
-VT: acquire display access for the active local session, preserve the console
-framebuffer and modes, handle VT pause/resume, and restore the console on
-failure or process death. Never fight an active compositor for DRM ownership.
-Do not expose modesetting until recovery is demonstrated. Any required native
-helper and permissions need their own package contract; do not run the whole
-TUI as root or broadly change device permissions.
+1. Identify the active local text VT, its owning session, DRM device and
+   console framebuffer. Enumerate connector → CRTC → plane relationships.
+   Mirrored text does not prove whether outputs share a CRTC or only a framebuffer.
+2. Acquire authorized display access without stealing another session's
+   ownership. Preserve the current console framebuffer and the chosen output's
+   text rendering. Taking `KD_GRAPHICS` and replacing fbcon with a terminal
+   emulator would change the scope; it is not the proposed implementation.
+3. Snapshot the affected connector routing, CRTC modes/active state, planes,
+   framebuffer references and required property blobs. Prove that retained
+   references can actually be restored by our client, not just queried.
+4. For atomic drivers, test the complete proposed change with
+   `DRM_MODE_ATOMIC_TEST_ONLY` before applying it. Disable only targeted
+   outputs. If a CRTC also drives a retained output, detach selected connectors
+   with valid remaining routing rather than switching that entire CRTC off.
+   Disable an otherwise unused CRTC/plane only where required by the driver.
+5. Verify the retained console still renders while typing, scrolling and
+   running `tam`, with the other outputs blank beyond the old timeout. Exercise
+   fbcon idle/unblank events, which might otherwise restore all outputs.
+6. Restore, release ownership and prove that the console, VT switching and
+   later desktop startup remain usable. Test process death as well as normal exit.
 
-If full independent output control is required in the first delivered command,
-this backend and its hardware proof are part of completion, rather than a
-claim that the console/DDC implementation already meets the goal.
+Legacy connector DPMS is not a universal per-monitor solution: on atomic
+drivers it maps to CRTC `ACTIVE`. A legacy backend may be added only where
+its targeted operation and restoration are proved. The kernel documents these
+[KMS properties and limitations](https://docs.kernel.org/gpu/drm-kms.html#standard-connector-properties).
+Writing connector sysfs `status=off` changes forced detection and calls mode
+probing; it is not itself evidence of a completed power transaction. The
+`dpms` sysfs attribute is read-only in the
+[kernel implementation](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/drm_sysfs.c).
 
-## Verification and acceptance
+Keep fbcon interaction and ownership lifetime as explicit feasibility gates.
+A successful ioctl or property readback alone does not prove usable text or
+physical low power. If the prototype cannot preserve them, return the result
+for design review; do not quietly replace the required outcome with global blanking.
 
-Automated checks cover routing with no graphical environment, actual VT
-identification, device mapping and hotplug, unsupported capabilities, bounded
-hardware failures, write verification, wake guard recovery, interrupted UI,
-VT switching, CLI errors and restoration of terminal settings. Run curses
-interaction tests through a pseudo-terminal; substitute hardware interfaces.
+## Ownership, lifetime and recovery
 
-Physical acceptance requires a recorded package and an actual Linux console
-with Hyprland and Quickshell stopped: list connected monitors, adjust each
-supported brightness control, blank and restore the console, test idle wake,
-interrupt the UI, kill it during a bounded blank, switch VTs and confirm the
-console remains usable. Verify whether blanking actually puts each monitor
-into low power. Test DDC off/wake separately before enabling it by default.
-Do not change or stop the user's session during investigation.
+Prefer an unprivileged active-session path. On systemd systems, evaluate a
+small optional logind adapter using `TakeControl(false)`, `TakeDevice` and
+pause/resume events. Never force out an existing controller. Keep the adapter
+outside the libc-only core and measure its loaded dependencies. A direct-device
+path still needs legitimate seat permissions and VT handoff handling; a
+syscall interface does not remove those requirements. See the
+[logind session/device contract](https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.login1.html).
 
-## Evidence and references
+Determine whether the selected state survives closing the DRM fd and dropping
+master. Do not promise a one-shot interface until that is proved. If ownership
+must survive, propose an explicit foreground C supervisor, for example
+`tam-monitor keep CONNECTOR --shell`, while a child shell remains interactive.
+It blocks on device, session and child events and exists only for that requested
+work session. Review its measured cost before adoption; install no permanent
+monitor daemon or boot service. The kernel's
+[fbdev restoration code](https://github.com/torvalds/linux/blob/v6.18/drivers/gpu/drm/drm_fb_helper.c)
+shows why closing a client cannot be assumed to leave its modes intact.
 
-Source: `commands/tam-brightness-display/tam-brightness-display`,
-`commands/tam-brightness-display-ddc/tam-brightness-display-ddc`,
-`desktop/plugins/fred.monitor/Panel.qml` and
-`desktop/shell/host/compositor_commands.py`.
+Arm a separate bounded recovery guard before the first experimental write.
+Give it only validated device/snapshot information and prove restoration on
+timeout, UI death and parent failure. Review the sustained supervisor's
+recovery protocol after the prototype: restore on explicit wake, exit,
+logout, VT handoff, device loss or a failed transaction. Test owner and guard
+death separately; a signal handler cannot recover from `SIGKILL`. Establish
+the actual kernel fallback if both die, rather than claiming it is guaranteed.
 
-- [setterm interface, including blank force/poke](https://man7.org/linux/man-pages/man1/setterm.1.html)
-- [DRM ownership and modesetting](https://docs.kernel.org/gpu/drm-uapi.html#primary-nodes-drm-master-and-authentication)
-- [logind device access and pause/resume](https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.login1.html)
-- [DDC requirements and limitations](https://www.ddcutil.com/faq/)
+Retain at least one connected, working text output. If it is unplugged,
+restore another available console output; if none exists, release control
+and report the loss. Re-enumerate before every mutation and after hotplug.
+Do not replay stale framebuffer or object IDs after device replacement.
+Multi-GPU transactions need per-device validation and compensation when a
+later device fails; there is no atomic commit across different DRM devices.
+
+Restore and relinquish device/session control before optional desktop launch,
+including launch from the same login session. Test this path specifically;
+logind permits only one session controller. After VT switching, prefer ending
+the selection and restoring ordinary console behavior for 0.5.5, rather than
+silently reapplying a selection to a different session.
+
+If a privileged helper proves necessary, define a narrow immutable package
+and authorization contract for active local users. No root TUI, broad device
+chmod, arbitrary device-path writes or unconditional setuid command. Its
+policy and installation need review before activation.
+
+## Proposed user interface
+
+Exact syntax is a proposal, not an available command. Preserve existing
+`list --json`, brightness, global `blank --seconds`, `wake` and `idle` behavior
+where practical; name new targeting explicitly so old scripts keep their meaning.
+
+```text
+tam-monitor list --json
+tam-monitor blank --monitor CONNECTOR --monitor CONNECTOR --seconds 15
+tam-monitor wake --monitor CONNECTOR
+tam-monitor keep CONNECTOR --shell
+tam-monitor wake --all
+```
+
+`keep` means blank the other connected outputs, leaving the selected one
+usable for normal shell work until explicit restore or the documented session
+boundary. The preview command is bounded; the sustained work mode must not
+wake excluded monitors on ordinary keys. Make the supported lifetime visible
+in help and the TUI. TUI selection, CLI and recovery use the same library API.
+
+List connector, monitor identity, driver and capability/reason. Resolve short
+connector names only when unambiguous; report duplicate identities. Card
+numbers and KMS object IDs are not stable across boots. Runtime selection is
+required; saved preferences or automatic application at boot/login are a
+separate reviewed extension, not a reason to change boot arguments now.
+
+Return structured errors for unsupported hardware, permission denial,
+inactive VT, compositor ownership, stale identity and failed restoration.
+Do not report success for an untargeted fallback. Preserve current brightness
+and idle controls during the C migration; optional DDC/brightness helpers may
+remain bounded subprocesses initially, invoked only when that feature is used.
+DDC power-off is not a default fallback without model-specific wake proof.
+
+## Resource and development requirements
+
+Support weak CPUs, little RAM and small disks. Use bounded allocations and
+retry limits for changing kernel counts, sanitize EDID text, close descriptors,
+and block in `poll`/`epoll` on real events. Redraw the TUI only on changes.
+No periodic output reapplication or polling to fight fbcon. Load no desktop
+framework, Python interpreter or DDC helper on the normal targeted-blank path.
+Choose a small termios UI or ncurses based on measured usability and cost.
+
+All Tamlinux 0.x releases are developmental. Keep symbol tables and generate
+debug information in the executables and library objects we build, so crashes
+and core dumps can be examined against the exact candidate. Defer stripping
+and stripped-size targets until after Tamlinux 1.0 is released. Disable
+automatic stripping or removal of debug information during installation and
+package fixup, and verify the final installed ELF files contain it. Compile
+with `-g` alongside the chosen optimization settings; retaining symbols does
+not require disabling optimization. See the
+[GCC debugging options](https://gcc.gnu.org/onlinedocs/gcc/Debugging-Options.html).
+
+Measure actual unstripped executable/archive sizes, incremental installed closure,
+loaded libraries, peak RSS and combined proportional memory of any live
+supervisor/guard, startup latency, idle CPU and wakeups. Compare the current
+Python command and C version on the same machine and operations, and repeat
+on a constrained machine. Separate cold and warm startup and hardware-probe
+time. Proposed review budget: combined steady proportional memory at most
+4 MiB for the selection owner and guard; this is a target to validate, not
+an existing measurement. Record symbol/debug data's disk cost separately from
+loaded memory. Set hardware-specific
+latency thresholds after baseline measurements. Explain any dependency or
+budget exception before accepting it. Count firmware/driver waits separately
+without hiding their user-visible delay.
+
+Provide a core-only/display-only development build and installed pkg-config
+discovery. Correctly rebuild clients when headers, static archives or build
+flags change. Test both explicit `LIBTAM_PREFIX` and normal pkg-config paths;
+reject missing/too-old APIs with a useful error. Packaged runtime success and
+Fred's ability to build further changes are separate acceptance conditions.
+
+## Work and acceptance
+
+| Step | Deliverable and completion evidence |
+| --- | --- |
+| Review | Fred approved this design and the linked 0.5.5 delivery plan on 2026-10-25. Implementation and physical acceptance remain pending. |
+| Feasibility | Small C prototype proves routing, sustained fbcon use, authorized ownership, restoration and lifetime on the actual three-monitor arrangement. All physical changes use the recorded package Test route. |
+| Libraries | Separate archives/headers/build targets, explicit API ownership and error semantics; sanitizer checks instrument library objects as well as test callers; malformed enumeration and failure injection tests pass. |
+| Command | C CLI/TUI and any reviewed supervisor preserve existing useful operations and expose targeted blank/wake/keep. PTY tests cover input, terminal restoration, signals and resizing. |
+| Integration | A recorded 0.5.5 assembly builds the command and exposes matching development libraries; tests verify the final installed binaries and clean developer environment. |
+| Physical proof | Each of the three monitors can be the retained display, with the other two blank while Fred types and uses `tam`. Restore each separately and all together; test hotplug, failed commits, interrupted/killed/stopped processes, VT changes, logout and desktop launch. Record physical standby and resource measurements. |
+
+Use fake ioctl/sysfs/seat interfaces for deterministic routing, clone/shared
+CRTC, stale identity, partial multi-device failure, permissions, bounds and
+recovery tests. Use VKMS where useful for real KMS transactions in an isolated
+test environment; it cannot prove a physical monitor's power state or the
+target driver's fbcon interaction. Single-output and framebuffer-only systems
+must retain a usable console and report unsupported targeting accurately.
+Record actual kernel/driver and monitor capabilities for each physical trial.
 
 ## Next actions
 
-1. Assemble **0.5.3** for the requested installation, retaining the existing
-   native package and settings formats. Prior candidate records stay unchanged.
-2. On the user's exact Test instruction, install and verify the no-desktop console path,
-   physical low-power behavior and wake recovery before claiming acceptance.
-3. Plan and prove native per-output modesetting separately if it is requested.
-
-## Development result
-
-`commands/tam-monitor/` provides the TUI and matching CLI, direct connector/EDID
-reads, verified DDC/backlight brightness, foreground text-VT validation,
-bounded helper process trees, a separate-process wake guard and runtime console
-idle controls with kernel readback. It never contacts a compositor or writes
-DDC power features. It repaints only on content/size changes so the TUI does
-not keep resetting the console idle timer.
-
-25 focused tests cover hardware failure, readback, mapping/hotplug, forbidden
-VTs/background callers, bounded helper descendants, timeout/key/interrupt
-wake, caller SIGKILL/SIGSTOP, VT switching and real curses interaction through
-a pseudo-terminal. Console and monitor writes are substituted in these tests;
-physical acceptance is still pending. See the
-[development record](../ai/2026-10-23-console-monitor-control.md).
+1. Both plans are approved. Resume by claiming the component paths for the C feasibility slice.
+2. Implement the C feasibility
+   slice, then prepare a recorded package for separately authorized physical Test.
+3. Complete the library, command and developer-environment gates in the
+   [Tamlinux 0.5.5 delivery plan](../../../tamlinux-packages/docs/plans/0.5.5.md).
