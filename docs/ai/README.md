@@ -1,5 +1,6 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-25 — Native monitor ownership and guarded transactions](2026-10-25-monitor-ownership.md)
 - [2026-10-25 — Native monitor inspection foundation](2026-10-25-monitor-feasibility.md)
 
 - [2026-10-23 — Console-startup settings recovery](2026-10-23-console-startup-blockers.md)

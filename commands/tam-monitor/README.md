@@ -10,21 +10,43 @@ An optional C inspection prototype builds as `build/tam-monitor`:
 # First install libtam's display development files into a scratch prefix.
 make native LIBTAM_PREFIX=/your/development/prefix
 make check-native LIBTAM_PREFIX=/your/development/prefix
-# Or use normal pkg-config discovery of libtam-display >= 0.1.0.
+# Or use normal pkg-config discovery of libtam-display-session >= 0.2.0.
 make native
 ```
 
-Its interface is `inspect --fd FD [--keep CONNECTOR] [--json]`. The descriptor
-must come from an authorized session/device owner; acquisition is not yet
-implemented. `--keep` analyzes connector/CRTC/plane routing only. The tool
-does not open DRM cards, acquire master or blank monitors. It enables atomic
-property visibility on the supplied file description. Its observation is not
-a restorable snapshot or a kernel-validated atomic request. Native tests use
-fake data and a non-DRM descriptor; they access no display device.
+The inspection interface is `inspect --fd FD [--keep CONNECTOR] [--json]`.
+It borrows an authorized descriptor and analyzes routing without modesetting.
+It remains distinct from a restorable owned snapshot.
 
-The prototype is deliberately excluded from `make install` until acquisition,
-restore and lifetime are ready for a recorded package Test. Running it from
-source against the live session is not the physical Test procedure.
+The bounded feasibility interface is now
+`preview --card N --keep CONNECTOR --seconds 1..60 [--json]`. This requires an
+owned foreground text VT and a matching active local login session. A separate
+recovery process owns VT handoff and acquires the seat device through existing
+permissions without displacing a DRM master. It retains framebuffer
+backing and property blobs, tests restoration and selection with atomic
+TEST_ONLY, then performs one guarded transaction. It restores before releasing
+master and VT handoff on timeout, UI exit/death, signals or a VT release request.
+Revocation and changed identities return restoration failure without stale
+replay. Kernel hotplug events end the trial. A stopped guard is resumed by the
+UI after its timeout allowance; killing the guard reports failure, and its
+actual kernel fallback is unproven.
+
+This interface is still **not installed or physically validated**. Preview
+alone does not prove the sustained console outcome. Safe output replacement
+after unplug, multi-GPU compensation, sustained `keep --shell`, individual
+wake and UI parity remain open. The real-device command must reach the live
+session only through a recorded package on Fred's separate Test instruction.
+No root helper, permanent service, KD_GRAPHICS change, keyboard-mode change or
+global blanking fallback is added. Logind TakeControl is deliberately avoided:
+its implementation mutes a text VT and resets its ownership when released.
+
+Native builds require libtam-display and libtam-display-session >= 0.2.0.
+Use libtam's `install-session` target in a scratch development prefix; the
+session adapter uses libsystemd while the display archive remains libc-only.
+`make check-native check-preview check-events` runs linked fake-device CLI,
+recovery-process and event parsing tests. Private socket tests need an
+unsandboxed test process under Codex. `make install` continues to install the
+Python command below, preserving its current behavior.
 
 ## Installed command
 

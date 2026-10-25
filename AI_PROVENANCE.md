@@ -66,6 +66,11 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ## 2. Key Architectural Milestones & AI Role
 
+2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) implements foreground
+VT/seat access, owned restoration and guarded atomic preview trials.
+Fixture tests pass; installed Python behavior is preserved and physical
+feasibility remains open. [Session](docs/ai/2026-10-25-monitor-ownership.md).
+
 2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) starts native monitor
 feasibility with a C inspection CLI and optional libtam display API. Routing
 analysis and fake-device checks pass; ownership, recovery and physical

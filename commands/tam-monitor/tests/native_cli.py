@@ -59,6 +59,50 @@ class NativeCLI(unittest.TestCase):
         self.assertEqual(p.returncode, 0)
         self.assertIn("does not blank any monitor", p.stdout)
 
+    def test_preview_options_reject_before_access(self):
+        for args in ([], ["--card", "64"], ["--card", "-1"],
+                     ["--card", "1", "--keep", "DP-1", "--seconds", "0"],
+                     ["--card", "1", "--keep", "DP-1", "--seconds", "61"],
+                     ["--card", "1", "--keep", "", "--seconds", "1"],
+                     ["--card", "1", "--card", "2"], ["--seconds", "2x"],
+                     ["--card", "1", "--keep", "DP-1", "--seconds", "1", "--fd", "42"]):
+            with self.subTest(args=args):
+                p = self.run_cli("preview", *args, "--json", fixture=False)
+                self.assertEqual(p.returncode, 1)
+                self.assertEqual(json.loads(p.stdout)["code"], 1)
+
+    def test_preview_refuses_a_pseudoterminal(self):
+        import pty
+        import select
+        import time
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.execv(str(ROOT / "build/tam-monitor"), ["tam-monitor", "preview", "--card", "0",
+                "--keep", "DP-1", "--seconds", "1", "--json"])
+        data = b""
+        result = 0
+        try:
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                if select.select([fd], [], [], 0.1)[0]:
+                    try:
+                        part = os.read(fd, 4096)
+                    except OSError:
+                        break
+                    if not part:
+                        break
+                    data += part
+            result, status = os.waitpid(pid, os.WNOHANG)
+            self.assertEqual(result, pid, data)
+            self.assertEqual(os.waitstatus_to_exitcode(status), 1)
+            self.assertIn(b'"ok":false', data)
+            self.assertIn(b'"code":9', data)  # inactive VT
+        finally:
+            os.close(fd)
+            if not result:
+                os.kill(pid, 9)
+                os.waitpid(pid, 0)
+
     def test_human_output(self):
         p = self.run_cli("inspect", "--fd", "42", "--keep", "DP-1")
         self.assertEqual(p.returncode, 0)

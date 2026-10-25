@@ -1,8 +1,8 @@
 # Choose which monitors stay on at a Linux text console
 
-Status: design approved by Fred, 2026-10-25; native inspection/routing foundation implemented; physical feasibility pending.
+Status: design approved by Fred, 2026-10-25; native acquisition, owned restoration and bounded atomic prototype pass fixture tests; physical feasibility pending.
 Target: Tamlinux 0.5.5.
-Next: implement authorized VT/device acquisition and owned restoration before preparing a recorded package for physical Test on Fred's separate instruction.
+Next: close hotplug fallback and physical-feasibility preparation gates before a recorded package and separately authorized Test.
 
 Fred's approval: "I approve this monitor plan."
 
@@ -247,12 +247,15 @@ Record actual kernel/driver and monitor capabilities for each physical trial.
 
 ## Next actions
 
-1. Add foreground text-VT/session acquisition around the borrowed-descriptor
-   API; prove framebuffer/blob references can be retained for restoration.
-2. Implement atomic TEST_ONLY, guarded bounded writes and recovery, then
-   prepare a recorded package for separately authorized physical Test.
-3. Complete the library, command and developer-environment gates in the
-   [Tamlinux 0.5.5 delivery plan](../../../tamlinux-packages/docs/plans/0.5.5.md).
+1. Complete safe recovery when the retained output is unplugged, actual console
+   framebuffer mapping and the real session/device handoff checks. Unexpected
+   identity changes currently refuse restoration; no replacement output is chosen.
+2. Review the bounded recovery prototype and measure its actual owner/guard
+   memory/dependency costs, then prepare a recorded package only on Fred's
+   instruction for separately authorized physical Test.
+3. Prove sustained fbcon behavior and lifetime on the target hardware before
+   completing `keep --shell`, individual wake, UI parity and the remaining
+   [0.5.5 delivery gates](../../../tamlinux-packages/docs/plans/0.5.5.md).
 
 ## Development evidence: 2026-10-25
 
@@ -275,3 +278,41 @@ ownership, retained framebuffer/blob references, restoration, kernel atomic
 validation, sustained fbcon behavior or physical standby. The prototype is
 not installed as the production command, and no candidate was prepared or
 activated. Hardware feasibility and the remaining C command migration stay open.
+
+## Development continuation: foreground ownership and guarded transactions
+
+The optional display API is now 0.2.0. A separate libsystemd adapter checks
+an owned foreground text VT and active local tty session. It validates udev
+seat membership, uses existing permissions for direct primary-device access,
+and refuses an occupied DRM master. The recovery worker owns VT_PROCESS
+handoff without changing KD_TEXT or keyboard mode. Logind is observed for
+session loss; TakeControl is avoided because its implementation mutes the VT,
+enters graphics mode and resets VT ownership on release. Core and display consumers retain their libc-only dependency boundary.
+Owned snapshots clone framebuffer backing and property blobs, prove
+non-destructive release and pass a complete atomic restore TEST_ONLY.
+Selection and recovery re-enumerate, test complete requests and recheck
+foreground/session/deadline authorization immediately before actual writes.
+
+The uninstalled C prototype adds a bounded `preview` trial with an independent
+recovery owner, readiness handshake, deadline, signals, UI-death detection and
+kernel hotplug events. Fake-device library sanitizer checks, nine native CLI
+checks, sixteen recovery process checks, event parser checks and all 25 existing
+monitor tests pass. The installed Python command still works. No live display
+mutation, package preparation, deployment or stage movement occurred.
+
+Seven warm `--help` launches measured median peak RSS of 21,700 KiB for the
+installed Python command and 2,108 KiB for the C prototype, with median elapsed
+times 80.328 ms and 1.035 ms respectively. This startup-only result does not
+establish live combined proportional memory, cold startup or physical behavior.
+Safe retained-output hotplug fallback, sustained mode, multi-GPU compensation,
+actual kernel fallback, resource acceptance and physical fbcon/standby proof
+remain open. [Development record](../ai/2026-10-25-monitor-ownership.md).
+
+Acquisition review found an important logind constraint in the
+[systemd controller implementation](https://github.com/systemd/systemd/blob/v262/src/login/logind-session.c#L1493)
+and [VT reset](https://github.com/systemd/systemd/blob/v262/src/basic/terminal-util.c#L1654).
+The prototype therefore uses the direct-device path allowed above, with no
+privilege escalation or permission changes. Systems lacking the required
+active-seat permissions are unsupported until a separately reviewed path
+exists. A packaged physical trial must prove that the kernel grants this
+access and that the owned VT handoff preserves the login console.

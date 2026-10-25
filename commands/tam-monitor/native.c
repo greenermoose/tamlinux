@@ -1,13 +1,13 @@
 #define _POSIX_C_SOURCE 200809L
 #include <tam_display.h>
+#include "native-preview.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Feasibility executable, deliberately not installed as the production command.
- * No open(), master acquisition, modeset, fork, terminal control or recovery yet. */
+/* Feasibility executable; deliberately excluded from production installation. */
 static void quoted(const char *s)
 {
     putchar('"');
@@ -93,17 +93,46 @@ int main(int argc, char **argv)
     bool json = false;
     for (int i = 1; i < argc; ++i) if (!strcmp(argv[i], "--json")) json = true;
     if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
-        puts("Usage: tam-monitor inspect --fd FD [--keep CONNECTOR] [--json]\n"
+        puts("Usage: tam-monitor preview --card N --keep CONNECTOR --seconds 1..60 [--json]\n"
+             "Bounded text-VT trial using existing seat permissions and an independent recovery owner.\n"
+             "No persistent keep/shell mode until physical feasibility is established.\n"
+             "Usage: tam-monitor inspect --fd FD [--keep CONNECTOR] [--json]\n"
              "Experimental C feasibility tool; not installed by default.\n"
              "Inspect a DRM primary descriptor supplied by an authorized session owner.\n"
              "--keep analyzes routing only; it does not blank any monitor.\n"
-             "Changes client capability visibility, never acquires master or modesets.\n"
+             "inspect changes client capability visibility, never acquires master or modesets.\n"
              "Observations are transient and cannot restore displays.\n"
              "Existing list/brightness/blank/wake/idle remain in the installed command.");
         return 0;
     }
+    if (argc >= 2 && !strcmp(argv[1], "preview")) {
+        unsigned card = 64, seconds = 0;
+        const char *target = NULL;
+        for (int i = 2; i < argc; ++i) {
+            if (!strcmp(argv[i], "--json")) continue;
+            const char *option = argv[i];
+            if (i + 1 == argc) return failure(json, TAM_DISPLAY_INVALID, 0, "Incomplete preview option");
+            const char *value = argv[++i];
+            if (!strcmp(option, "--keep") && !target) {
+                if (!*value || strlen(value) >= 40) return failure(json, TAM_DISPLAY_INVALID, 0, "Invalid connector name");
+                target = value;
+            } else if ((!strcmp(option, "--card") && card == 64) ||
+                       (!strcmp(option, "--seconds") && seconds == 0)) {
+                char *end;
+                errno = 0;
+                unsigned long n = strtoul(value, &end, 10);
+                if (errno || !*value || *end || *value < '0' || *value > '9' ||
+                    (!strcmp(option, "--card") ? n >= 64 : n < 1 || n > 60))
+                    return failure(json, TAM_DISPLAY_INVALID, 0, "Invalid card or bounded duration");
+                if (!strcmp(option, "--card")) card = (unsigned)n;
+                else seconds = (unsigned)n;
+            } else return failure(json, TAM_DISPLAY_INVALID, 0, "Unknown or repeated preview option");
+        }
+        if (card == 64 || !seconds || !target) return failure(json, TAM_DISPLAY_INVALID, 0, "Preview requires --card, --keep and --seconds");
+        return tam_monitor_preview(card, target, seconds, json);
+    }
     if (argc < 2 || strcmp(argv[1], "inspect"))
-        return failure(json, TAM_DISPLAY_INVALID, 0, "Expected inspect; see --help");
+        return failure(json, TAM_DISPLAY_INVALID, 0, "Expected inspect or preview; see --help");
     int fd = -1;
     const char *keep = NULL;
     for (int i = 2; i < argc; ++i) {
