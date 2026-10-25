@@ -1,8 +1,8 @@
 # Choose which monitors stay on at a Linux text console
 
-Status: design approved by Fred, 2026-10-25; native acquisition, owned restoration and bounded atomic prototype pass fixture tests; physical feasibility pending.
+Status: design approved by Fred, 2026-10-25; native acquisition, owned restoration, retained-output unplug recovery and bounded atomic prototype pass fixture tests; physical feasibility pending.
 Target: Tamlinux 0.5.5.
-Next: close hotplug fallback and physical-feasibility preparation gates before a recorded package and separately authorized Test.
+Next: close physical-feasibility preparation gates before a recorded package and separately authorized Test.
 
 Fred's approval: "I approve this monitor plan."
 
@@ -247,9 +247,10 @@ Record actual kernel/driver and monitor capabilities for each physical trial.
 
 ## Next actions
 
-1. Complete safe recovery when the retained output is unplugged, actual console
-   framebuffer mapping and the real session/device handoff checks. Unexpected
-   identity changes currently refuse restoration; no replacement output is chosen.
+1. Complete actual console framebuffer mapping and real session/device handoff
+   checks. Retained-output unplug recovery now passes fixtures for disconnected
+   and removed connectors; physical recovery and driver-specific hotplug behavior
+   remain unproved.
 2. Review the bounded recovery prototype and measure its actual owner/guard
    memory/dependency costs, then prepare a recorded package only on Fred's
    instruction for separately authorized physical Test.
@@ -316,3 +317,29 @@ privilege escalation or permission changes. Systems lacking the required
 active-seat permissions are unsupported until a separately reviewed path
 exists. A packaged physical trial must prove that the kernel grants this
 access and that the owned VT handoff preserves the login console.
+
+## Development continuation: retained-output unplug recovery
+
+The optional display API is now 0.3.0. Recovery on the retained device permits
+captured connectors to disconnect or disappear, omits vanished connector IDs
+and restores surviving captured console outputs with owned modes/framebuffers.
+Shared CRTCs stay active while pipelines without a surviving route are disabled.
+No surviving captured output means no recovery modeset: release control and
+report loss. New/changed identities, foreign routing, device loss and replaced
+CRTC/plane objects still refuse replay. A second observation binds the sole
+write to the complete TEST_ONLY request; further hotplug or lost authorization
+prevents the write, with no indefinite retries or periodic reapplication.
+
+ASan/UBSan library fixtures cover every retained choice and loss subset for
+both disconnected and removed connectors, kernel detachment, stale identities,
+validation races, failed restoration and no remaining output. Nine native CLI
+checks, eighteen recovery process checks, kernel-event parser checks and all
+25 existing Python monitor tests pass. The command requires matching 0.3.0
+development metadata; its install target and installed Python implementation
+are unchanged. [Development record](../ai/2026-10-25-monitor-unplug.md).
+
+This establishes software behavior only. Actual console framebuffer mapping,
+physical fbcon/standby/unplug recovery, session handoff, multi-GPU compensation,
+resource acceptance and sustained mode remain open. No live display mutation,
+candidate preparation, installed-command change, deployment or stage movement
+occurred.

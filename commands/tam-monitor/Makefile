@@ -4,7 +4,7 @@ PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -Wall -Wextra -Wpedantic
 override CFLAGS += -g
 LIBTAM_PREFIX ?=
-DISPLAY_MIN_VERSION = 0.2.0
+DISPLAY_MIN_VERSION = 0.3.0
 SESSION_CFLAGS = $(shell $(PKG_CONFIG) --cflags libsystemd)
 SESSION_LIBS = $(shell $(PKG_CONFIG) --libs libsystemd)
 ifneq ($(strip $(LIBTAM_PREFIX)),)

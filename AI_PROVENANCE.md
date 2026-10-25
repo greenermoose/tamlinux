@@ -585,3 +585,8 @@ Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the candidate under Fred’s direct
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) preserves the Discord
 launcher icon through the owned package and explicit preserving migration.
 [Session](docs/ai/2026-10-20-discord-icon.md).
+
+2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) implements validated recovery
+of surviving captured console outputs after retained-output disconnect/removal.
+Physical recovery and deployment remain separate gates.
+[Session](docs/ai/2026-10-25-monitor-unplug.md).

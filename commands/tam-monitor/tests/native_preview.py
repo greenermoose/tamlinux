@@ -141,6 +141,16 @@ class NativePreview(unittest.TestCase):
         self.finish(self.start(HOTPLUG=1), success=False)
         self.assertEqual([a for a, _ in self.actions()][-3:], ["restore", "free", "release"])
 
+    def test_hotplug_without_surviving_output_reports_loss_and_releases(self):
+        data = self.finish(self.start(HOTPLUG=1, NO_OUTPUT=1), success=False)
+        self.assertEqual(data["code"], 11)  # TAM_DISPLAY_RESTORE_FAILED
+        self.assertEqual([a for a, _ in self.actions()][-3:], ["restore", "free", "release"])
+
+    def test_hotplug_failed_restore_releases(self):
+        data = self.finish(self.start(HOTPLUG=1, RESTORE_FAIL=1), success=False)
+        self.assertEqual(data["code"], 11)
+        self.assertEqual([a for a, _ in self.actions()][-3:], ["restore", "free", "release"])
+
     def test_revoke_does_not_replay_stale_state(self):
         self.finish(self.start(REVOKE=1), success=False)
         self.assertEqual([a for a, _ in self.actions()][-2:], ["free", "release"])

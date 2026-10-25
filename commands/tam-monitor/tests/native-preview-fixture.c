@@ -92,6 +92,11 @@ enum tam_display_result __wrap_tam_display_state_restore(struct tam_display_stat
     (void)s;
     if (access_check(access_context, true, e)) return e->code;
     record("restore");
+    if (flag("TAM_MONITOR_FIXTURE_NO_OUTPUT")) {
+        fail(e, TAM_DISPLAY_RESTORE_FAILED);
+        strcpy(e->message, "No captured connected console output remains; releasing display control");
+        return e->code;
+    }
     if (flag("TAM_MONITOR_FIXTURE_RESTORE_FAIL")) return fail(e, TAM_DISPLAY_RESTORE_FAILED);
     return TAM_DISPLAY_OK;
 }

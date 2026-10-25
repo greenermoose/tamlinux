@@ -10,7 +10,7 @@ An optional C inspection prototype builds as `build/tam-monitor`:
 # First install libtam's display development files into a scratch prefix.
 make native LIBTAM_PREFIX=/your/development/prefix
 make check-native LIBTAM_PREFIX=/your/development/prefix
-# Or use normal pkg-config discovery of libtam-display-session >= 0.2.0.
+# Or use normal pkg-config discovery of libtam-display-session >= 0.3.0.
 make native
 ```
 
@@ -26,21 +26,25 @@ permissions without displacing a DRM master. It retains framebuffer
 backing and property blobs, tests restoration and selection with atomic
 TEST_ONLY, then performs one guarded transaction. It restores before releasing
 master and VT handoff on timeout, UI exit/death, signals or a VT release request.
-Revocation and changed identities return restoration failure without stale
-replay. Kernel hotplug events end the trial. A stopped guard is resumed by the
-UI after its timeout allowance; killing the guard reports failure, and its
+Kernel hotplug events end the trial. Recovery restores the surviving captured
+console outputs, detaches disconnected outputs and omits vanished connector
+IDs, while preserving shared CRTCs. If none survives, it releases control and
+reports restoration failure. Revocation, new/changed identities, foreign
+routing or another topology change during recovery refuse stale replay. A
+hotplug interruption still returns a nonzero result even if recovery succeeds;
+it does not silently resume the requested selection. A stopped guard is resumed
+by the UI after its timeout allowance; killing the guard reports failure, and its
 actual kernel fallback is unproven.
 
 This interface is still **not installed or physically validated**. Preview
-alone does not prove the sustained console outcome. Safe output replacement
-after unplug, multi-GPU compensation, sustained `keep --shell`, individual
-wake and UI parity remain open. The real-device command must reach the live
-session only through a recorded package on Fred's separate Test instruction.
+alone does not prove the sustained console outcome. Physical unplug recovery,
+multi-GPU compensation, sustained `keep --shell`, individual wake and UI parity
+remain open. The real-device command must reach the live session only through a recorded package on Fred's separate Test instruction.
 No root helper, permanent service, KD_GRAPHICS change, keyboard-mode change or
 global blanking fallback is added. Logind TakeControl is deliberately avoided:
 its implementation mutes a text VT and resets its ownership when released.
 
-Native builds require libtam-display and libtam-display-session >= 0.2.0.
+Native builds require libtam-display and libtam-display-session >= 0.3.0.
 Use libtam's `install-session` target in a scratch development prefix; the
 session adapter uses libsystemd while the display archive remains libc-only.
 `make check-native check-preview check-events` runs linked fake-device CLI,
