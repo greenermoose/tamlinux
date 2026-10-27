@@ -34,7 +34,7 @@ $$\text{Action} = \text{Dimension}(\text{Modifier}) \times \text{Entity}(\text{K
 ### 2. Window Closing and Lifecycle
 
 - **Retire `SUPER + W`:** `SUPER + W` is completely removed as a window-closing chord to prevent accidental termination of active work.
-- **Persistent Application Windows:** Closed deliberately via **`Shift + Esc`** or standard Tier 1 chord **`SUPER + SHIFT + Q`** (Fred decision, 2026-10-27). Double-tap `Esc` is rejected to keep compositor behavior simple and deterministic.
+- **Persistent Application Windows:** Closed deliberately via **`SUPER + Q`** (Fred decision, 2026-10-27). (Note: `Shift + Esc` was evaluated and rejected due to collision with Chromium's built-in Task Manager shortcut and chat application shortcuts; `SUPER + Q` is standard, unambiguous, and immune to application hijacking). Double-tap `Esc` is rejected to keep compositor behavior simple and deterministic.
 - **Transient and Ephemeral Windows:** Lightweight viewers (`imv`), dialogs, popups, and the `tam` knowledge browser pager close immediately on a single bare **`Esc`**.
 - **Interactive Applications Receive Bare `Esc`:** Persistent tools (text editors like `micro` and `vim`, web browsers, shells) receive bare `Esc` intact for internal command/modal cancellation (Vim normal mode, Micro search dismissal, browser modal escape).
 - **Micro Editor Launch Chord:** The decision on the specific launcher chord for Micro is deferred until a complete audit and list of all keybindings is compiled to evaluate how it fits into the overall system (Fred decision, 2026-10-27).
@@ -78,7 +78,7 @@ The active Hyprland bindings in `config-fred-tamlinux/config/hypr/tamlinux/bindi
 
 | File | Existing Binding | Existing Action | Proposed Disposition | Rationale |
 | :--- | :--- | :--- | :--- | :--- |
-| `tiling.lua` | `SUPER + W` | Close window | **Retire** $\rightarrow$ replace with `Shift + Esc` and `SUPER + SHIFT + Q` | Eliminates Hamming collision with `SUPER + SHIFT + W` (Micro). |
+| `tiling.lua` | `SUPER + W` | Close window | **Retire** $\rightarrow$ replace with `SUPER + Q` | Eliminates Hamming collision with `SUPER + SHIFT + W` (Micro). |
 | `tiling.lua` | `CTRL + ALT + DELETE` | Close all windows | Retain | Emergency clear desktop action. |
 | `tiling.lua` | `SUPER + J` | Toggle window split | Retain (Tier 2 alias `SUPER + CTRL + J`) | Layout toggle. |
 | `tiling.lua` | `SUPER + T` | Toggle float/tile | Map to `SUPER + CTRL + Space` (or retain `SUPER + T`) | Layout adjustment. |
@@ -108,7 +108,7 @@ The active Hyprland bindings in `config-fred-tamlinux/config/hypr/tamlinux/bindi
 1. **Configuration updates in `tamlinux` & `config-fred-tamlinux`:**
    - Update `foot.ini` defaults in `tamlinux/desktop/assets/defaults/foot.ini` to configure `selection-target=both` and `clipboard-paste=BTN_RIGHT`.
    - Update `tiling.lua` in `config-fred-tamlinux/config/hypr/tamlinux/bindings/`:
-     - Bind `Shift + Esc` and `SUPER + SHIFT + Q` to `hl.dsp.window.close()`.
+     - Bind `SUPER + Q` to `hl.dsp.window.close()`.
      - Remove `SUPER + W`.
    - Update `applications.lua`:
      - Remove the 9 SaaS bookmark web application bindings.
@@ -130,7 +130,7 @@ The active Hyprland bindings in `config-fred-tamlinux/config/hypr/tamlinux/bindi
 
 | Gate | Verification Method | Pass Criteria |
 | :--- | :--- | :--- |
-| **K22 Safe shortcuts** | Recorded trial & **Fred:** | `SUPER + W` does not close windows; `Shift + Esc` and `SUPER + SHIFT + Q` close active windows; no accidental window termination when launching editors or navigating; Fred confirms acceptance. |
+| **K22 Safe shortcuts** | Recorded trial & **Fred:** | `SUPER + W` does not close windows; `SUPER + Q` closes active windows; no accidental window termination when launching editors or navigating; Fred confirms acceptance. |
 | **K23 Shortcut discovery** | **Observed:** trial | Active shortcut reference matches active bindings; user can search and find launch, navigation, clipboard, and close actions. |
 | **K24 Consistent clipboard** | **Observed:** trial | LMB drag copies text immediately in streaming terminal; RMB click pastes; `Shift + LMB` and `Shift + RMB` work in mouse-tracking TUIs; copy/paste transfers seamlessly between Foot and Wayland GUI apps. |
 | **K25 Accessible close** | **Fred:** | Managed windows provide titlebar close buttons (`[X]`); mouse users can close windows without keyboard interaction; Fred confirms acceptance. |
