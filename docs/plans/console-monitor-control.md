@@ -4,6 +4,10 @@ Status: design approved by Fred, 2026-10-25; native acquisition, owned restorati
 Target: Tamlinux 0.5.5.
 Next: close physical-feasibility preparation gates before a recorded package and separately authorized Test.
 
+Implementation review: [2026-10-27 findings and correction handoff](../reviews/2026-10-27-tam-monitor.md)
+records eight findings against the C migration, with isolated reproductions and
+acceptance criteria. Verify and correct confirmed defects before physical acceptance.
+
 Fred's approval: "I approve this monitor plan."
 
 ## Outcome

@@ -595,3 +595,8 @@ Physical recovery and deployment remain separate gates.
 full C tam-monitor CLI/TUI migration (keep --shell, individual wake, targeted blank, UI parity
 without ncurses), and resource measurements vs Python baseline.
 [Session](docs/ai/2026-10-26-tam-monitor-c-migration.md).
+
+2026-10-27: Codex CLI `0.164.0` (`gpt-6-astra`) reviews the committed C monitor
+implementation and files eight findings with a reproduction harness, authoritative
+references and correction acceptance criteria. No product correction or deployment.
+[Session](docs/ai/2026-10-27-tam-monitor-review.md).
