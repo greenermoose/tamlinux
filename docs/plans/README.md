@@ -17,6 +17,7 @@ Omarchy, then prove Tamlinux on Sway. Arch stays the workstation base.
 | Plan | Current scope and next work |
 | --- | --- |
 | [Targeted text-console monitors](console-monitor-control.md) | Design approved by Fred, 2026-10-25, targeting 0.5.5: console fb mapping, full C CLI/TUI migration, individual wake, keep --shell, recovery and resource measurements implemented and software-tested. Physical hardware trial pending. |
+| [Input usability](input-usability.md) | Approved 2026-10-27 for 0.5 (K22–K25): 4-tier modifier model, Shift+Esc window close, purge SaaS bookmark chords, PuTTY-heritage terminal/TUI clipboard, and titlebar close controls. |
 | [Tamlinux 0.5.5 delivery](../../../tamlinux-packages/docs/plans/0.5.5.md) | Plan approved by Fred, 2026-10-25: matching runtime/development libraries, native monitor control and Fred's pending tam command/corpus selection; separate Test, Run and Release gates. |
 | [0.4.4h readiness](0.4.4h-readiness.md) | Develop preparation complete; exact Test proposal ready for review. Generator-aware hibernate restoration, bounded recovery notice integration, tam command 0.30.0 / corpus 0.31.0. Installation and physical acceptance require separate instruction. |
 | [Desktop decoupling](desktop-decoupling.md) | 0.4.3 independent packaged Arch/Hyprland desktop, including required session/native/boot ownership and recovery; independent Hyprland acceptance. |
