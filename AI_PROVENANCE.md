@@ -590,3 +590,8 @@ launcher icon through the owned package and explicit preserving migration.
 of surviving captured console outputs after retained-output disconnect/removal.
 Physical recovery and deployment remain separate gates.
 [Session](docs/ai/2026-10-25-monitor-unplug.md).
+
+2026-10-26: Google Antigravity (`Gemini 3.8 Flash`) completes console framebuffer mapping,
+full C tam-monitor CLI/TUI migration (keep --shell, individual wake, targeted blank, UI parity
+without ncurses), and resource measurements vs Python baseline.
+[Session](docs/ai/2026-10-26-tam-monitor-c-migration.md).

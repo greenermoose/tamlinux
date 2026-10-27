@@ -3,21 +3,23 @@ CC ?= cc
 PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -Wall -Wextra -Wpedantic
 override CFLAGS += -g
-LIBTAM_PREFIX ?=
-DISPLAY_MIN_VERSION = 0.3.0
+LIBTAM_PREFIX ?= $(shell $(PKG_CONFIG) --atleast-version=0.4.0 libtam-display-session 2>/dev/null || \
+	{ test -f "$(HOME)/.local/dev/lib/pkgconfig/libtam-display-session.pc" && printf '%s' "$(HOME)/.local/dev"; })
+DISPLAY_MIN_VERSION = 0.4.0
 SESSION_CFLAGS = $(shell $(PKG_CONFIG) --cflags libsystemd)
-SESSION_LIBS = $(shell $(PKG_CONFIG) --libs libsystemd)
+SESSION_LIBS = $(shell $(PKG_CONFIG) --libs libsystemd) -lm
 ifneq ($(strip $(LIBTAM_PREFIX)),)
 DISPLAY_CFLAGS = -I$(LIBTAM_PREFIX)/include
 DISPLAY_ARCHIVE = $(LIBTAM_PREFIX)/lib/libtam-display.a
 DISPLAY_LIBS = $(LIBTAM_PREFIX)/lib/libtam-display-session.a $(DISPLAY_ARCHIVE) $(SESSION_LIBS)
 else
 DISPLAY_CFLAGS = $(shell $(PKG_CONFIG) --cflags libtam-display 2>/dev/null)
-DISPLAY_LIBS = $(shell $(PKG_CONFIG) --libs libtam-display-session 2>/dev/null)
+DISPLAY_LIBS = $(shell $(PKG_CONFIG) --libs libtam-display-session 2>/dev/null) -lm
 DISPLAY_ARCHIVE = $(shell $(PKG_CONFIG) --variable=libdir libtam-display 2>/dev/null)/libtam-display.a
 endif
 
-.PHONY: check install native check-native display-api FORCE
+.PHONY: all check install native check-native check-preview check-events display-api clean FORCE
+all: build/tam-monitor
 native: build/tam-monitor
 
 build:
@@ -40,7 +42,7 @@ build/.native-flags: FORCE | build
 
 # API check runs first even when the development package is missing. The
 # archive and generated header dependencies also invalidate existing clients.
-NATIVE_SRCS = native.c native-preview.c native-events.c
+NATIVE_SRCS = native.c native-hw.c native-preview.c native-tui.c native-events.c
 NATIVE_OBJS = $(patsubst %.c,build/%.o,$(NATIVE_SRCS))
 SESSION_ARCHIVE = $(dir $(DISPLAY_ARCHIVE))libtam-display-session.a
 build/%.o: %.c build/.native-flags | display-api
@@ -51,25 +53,28 @@ build/tam-monitor: $(NATIVE_OBJS) $(wildcard $(DISPLAY_ARCHIVE) $(SESSION_ARCHIV
 
 -include $(NATIVE_OBJS:.o=.d)
 
+HW_WRAPS = tam_monitor_sysfs_drm_path tam_monitor_sysfs_backlight_path tam_monitor_consoleblank_path tam_monitor_run_tool tam_display_inspect_fd tam_vt_open tam_vt_check tam_vt_check_restore tam_vt_blank tam_vt_wake tam_vt_idle_path tam_vt_close
 check-native: native
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) $(NATIVE_SRCS) tests/native-fixture.c $(DISPLAY_LIBS) \
-		-Wl,--wrap=tam_display_inspect_fd -o build/tam-monitor-fixture
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) $(NATIVE_OBJS) tests/native-fixture.c $(DISPLAY_LIBS) \
+		$(foreach s,$(HW_WRAPS),-Wl,--wrap=$(s)) -o build/tam-monitor-fixture
 	PYTHONDONTWRITEBYTECODE=1 python3 -B tests/native_cli.py
 
-check:
-	PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v
-install:
-	install -Dm755 tam-monitor $(DESTDIR)$(PREFIX)/bin/tam-monitor
-	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/tam-monitor/README.md
-	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-monitor/LICENSE
-
-PREVIEW_WRAPS = tam_monitor_hotplug_open tam_monitor_hotplug_event tam_vt_open tam_vt_check tam_vt_claim tam_vt_release tam_vt_close tam_display_session_open tam_display_session_device tam_display_session_bus_fd tam_display_session_bus_events tam_display_session_dispatch tam_display_session_check tam_display_session_check_restore tam_display_session_close tam_display_capture_fd tam_display_state_set_access_check tam_display_state_keep tam_display_state_restore tam_display_state_free
-.PHONY: check-preview
+PREVIEW_WRAPS = tam_monitor_hotplug_open tam_monitor_hotplug_event tam_vt_open tam_vt_check tam_vt_check_restore tam_vt_claim tam_vt_release tam_vt_close tam_vt_blank tam_vt_wake tam_display_map_console_fb tam_display_session_open tam_display_session_device tam_display_session_bus_fd tam_display_session_bus_events tam_display_session_dispatch tam_display_session_check tam_display_session_check_restore tam_display_session_close tam_display_capture_fd tam_display_state_verify_console_fb tam_display_state_set_access_check tam_display_state_keep tam_display_state_blank tam_display_state_wake tam_display_state_is_detached tam_display_state_restore tam_display_state_free
 check-preview: native
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) $(NATIVE_SRCS) tests/native-preview-fixture.c $(DISPLAY_LIBS) $(foreach s,$(PREVIEW_WRAPS),-Wl,--wrap=$(s)) -o build/tam-monitor-preview-fixture
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) $(NATIVE_OBJS) tests/native-preview-fixture.c $(DISPLAY_LIBS) $(foreach s,$(PREVIEW_WRAPS),-Wl,--wrap=$(s)) -o build/tam-monitor-preview-fixture
 	PYTHONDONTWRITEBYTECODE=1 python3 -B tests/native_preview.py
 
-.PHONY: check-events
 check-events: | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/native_events.c native-events.c -o build/test-native-events
 	./build/test-native-events
+
+check: check-native check-preview check-events
+	PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -p 'test_monitor.py' -v
+
+install: build/tam-monitor
+	install -Dm755 build/tam-monitor $(DESTDIR)$(PREFIX)/bin/tam-monitor
+	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/tam-monitor/README.md
+	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-monitor/LICENSE
+
+clean:
+	rm -rf build

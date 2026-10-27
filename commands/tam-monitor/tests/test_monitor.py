@@ -1,29 +1,22 @@
 """No real console ioctls or monitor writes: sysfs, devices and tools are fixtures."""
 
 import fcntl
-import importlib.machinery
-import importlib.util
 import json
 import os
 from pathlib import Path
 import pty
 import select
 import signal
-import stat
 import subprocess
 import sys
 import tempfile
 import termios
 import time
 import unittest
-from unittest.mock import patch
 
-SOURCE = Path(__file__).resolve().parents[1] / "tam-monitor"
-loader = importlib.machinery.SourceFileLoader("monitor", str(SOURCE))
-spec = importlib.util.spec_from_loader(loader.name, loader)
-m = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = m
-loader.exec_module(m)
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_BIN = ROOT / "build/tam-monitor-fixture"
+PRODUCT_BIN = ROOT / "build/tam-monitor"
 
 
 class HardwareTests(unittest.TestCase):
@@ -33,75 +26,138 @@ class HardwareTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.drm = self.root / "drm"
         self.backlight = self.root / "backlight"
+        self.bin_dir = self.root / "bin"
+        self.tool_log = self.root / "tools.log"
+        self.ddc_state = self.root / "ddc_value"
+        self.ddc_mode = self.root / "ddc_mode"
         self.drm.mkdir()
         self.backlight.mkdir()
-        self.calls = []
-        self.value = 50
-        self.hw = m.Hardware(self.drm, self.backlight, self.run_tool)
+        self.bin_dir.mkdir()
+        self.ddc_state.write_text("50\n")
+        self.ddc_mode.write_text("ok\n")
+        self._install_fake_tools()
 
-    def run_tool(self, args):
-        self.calls.append(args)
-        if args[0] == "tam-brightness-display-ddc":
-            if len(args) == 3:
-                self.value = int(args[-1].removesuffix("%"))
-            return str(self.value)
-        if args[0] == "tam-hw-display":
-            return "intel_backlight"
-        if args[0] == "brightnessctl":
-            (self.backlight / "intel_backlight/brightness").write_text(args[-1].removesuffix("%"))
-            return ""
-        self.fail(args)
+    def _install_fake_tools(self):
+        ddc = self.bin_dir / "tam-brightness-display-ddc"
+        ddc.write_text(
+            "#!/bin/sh\n"
+            f'mode=$(cat "{self.ddc_mode}")\n'
+            'if [ "$mode" = "denied" ]; then\n'
+            '  echo "permission denied" >&2\n'
+            '  exit 1\n'
+            'fi\n'
+            'if [ $# -eq 2 ] && [ "$mode" != "stale" ]; then\n'
+            '  val="${2%\\%}"\n'
+            f'  printf "%s\\n" "$val" > "{self.ddc_state}"\n'
+            'fi\n'
+            f'cat "{self.ddc_state}"\n'
+        )
+        ddc.chmod(0o755)
+
+        hw = self.bin_dir / "tam-hw-display"
+        hw.write_text("#!/bin/sh\necho intel_backlight\n")
+        hw.chmod(0o755)
+
+        bctl = self.bin_dir / "brightnessctl"
+        bctl.write_text(
+            "#!/bin/sh\n"
+            'val="${4%\\%}"\n'
+            f'printf "%s\\n" "$val" > "{self.backlight}/intel_backlight/brightness"\n'
+        )
+        bctl.chmod(0o755)
+
+    def env(self, **extra):
+        e = {
+            "PATH": f"{self.bin_dir}:/usr/bin:/bin",
+            "TAM_MONITOR_FIXTURE_DRM": str(self.drm),
+            "TAM_MONITOR_FIXTURE_BACKLIGHT": str(self.backlight),
+            "TAM_MONITOR_FIXTURE_TOOL_LOG": str(self.tool_log),
+        }
+        e.update(extra)
+        return e
+
+    def calls(self):
+        if not self.tool_log.exists():
+            return []
+        return [line.split("\t") for line in self.tool_log.read_text().splitlines() if line]
+
+    def clear_calls(self):
+        if self.tool_log.exists():
+            self.tool_log.unlink()
+
+    def run_mon(self, *args, **env_extra):
+        return subprocess.run(
+            [str(FIXTURE_BIN), *args],
+            env=self.env(**env_extra),
+            text=True,
+            capture_output=True,
+            timeout=5,
+        )
+
+    def discover(self, probe=True):
+        args = ["list", "--json"]
+        if not probe:
+            args.append("--no-probe")
+        p = self.run_mon(*args)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return json.loads(p.stdout)
 
     def connector(self, name="card1-DP-1", status="connected"):
         path = self.drm / name
-        path.mkdir()
+        path.mkdir(exist_ok=True)
         (path / "status").write_text(status)
         (path / "enabled").write_text("enabled")
         return path
 
     def test_without_graphical_environment_and_no_probe(self):
         self.connector()
-        with patch.dict(os.environ, {}, clear=True):
-            item, = self.hw.discover(False)
-        self.assertEqual(item.connection, "connected")
-        self.assertEqual(item.brightness, None)
-        self.assertEqual(self.calls, [])
-        self.assertEqual(self.hw.read_brightness(item), 50)
-        self.assertFalse(any("hypr" in str(c) or "qs" in c for c in self.calls))
+        item, = self.discover(probe=False)
+        self.assertEqual(item["connection"], "connected")
+        self.assertIsNone(item["brightness"])
+        self.assertEqual(self.calls(), [])
+        p = self.run_mon("brightness", "DP-1")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(int(p.stdout.strip()), 50)
+        self.assertFalse(any("hypr" in str(c) or "qs" in c for c in self.calls()))
 
     def test_ddc_write_is_verified_and_hotplug_remapped(self):
         path = self.connector()
-        self.assertEqual(self.hw.set_brightness("DP-1", 75), 75)
-        self.assertEqual(self.calls[-2:], [["tam-brightness-display-ddc", "DP-1", "75%"],
-                                         ["tam-brightness-display-ddc", "DP-1"]])
+        p = self.run_mon("brightness", "DP-1", "75")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(int(p.stdout.strip()), 75)
+        self.assertEqual(
+            self.calls()[-2:],
+            [["tam-brightness-display-ddc", "DP-1", "75%"],
+             ["tam-brightness-display-ddc", "DP-1"]],
+        )
         (path / "status").write_text("disconnected")
-        self.calls.clear()
-        with self.assertRaises(m.MonitorError):
-            self.hw.set_brightness("card1-DP-1", 50)
-        self.assertEqual(self.calls, [])
+        self.clear_calls()
+        p2 = self.run_mon("brightness", "card1-DP-1", "50")
+        self.assertNotEqual(p2.returncode, 0)
+        self.assertEqual(self.calls(), [])
 
     def test_stale_hardware_write_is_failure(self):
         self.connector()
-        self.hw.run = lambda args: "50"
-        with self.assertRaisesRegex(m.MonitorError, "verification failed"):
-            self.hw.set_brightness("DP-1", 75)
+        self.ddc_mode.write_text("stale\n")
+        p = self.run_mon("brightness", "DP-1", "75")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("verification failed", p.stderr)
 
     def test_permission_failure_is_unknown_not_off(self):
         self.connector()
-        def denied(args):
-            raise m.MonitorError("permission denied")
-        self.hw.run = denied
-        item, = self.hw.discover()
-        self.assertIsNone(item.brightness)
-        self.assertIn("permission denied", item.brightness_detail)
+        self.ddc_mode.write_text("denied\n")
+        item, = self.discover(probe=True)
+        self.assertIsNone(item["brightness"])
+        self.assertIn("permission denied", item["brightness_detail"])
 
     def test_ambiguous_card_connector_disables_ddc(self):
         self.connector()
         self.connector("card2-DP-1")
-        self.assertTrue(all(not x.brightness_backend for x in self.hw.discover()))
-        with self.assertRaises(m.MonitorError):
-            self.hw.set_brightness("card1-DP-1", 50)
-        self.assertFalse(self.calls)
+        items = self.discover(probe=True)
+        self.assertTrue(all(not x["brightness_backend"] for x in items))
+        p = self.run_mon("brightness", "card1-DP-1", "50")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(self.calls(), [])
 
     def test_internal_backlight_and_ambiguous_internal_mapping(self):
         self.connector("card1-eDP-1")
@@ -109,27 +165,32 @@ class HardwareTests(unittest.TestCase):
         device.mkdir()
         (device / "brightness").write_text("40")
         (device / "max_brightness").write_text("100")
-        self.assertEqual(self.hw.set_brightness("eDP-1", 65), 65)
-        self.assertIn(["brightnessctl", "-d", "intel_backlight", "set", "65%"], self.calls)
+        p = self.run_mon("brightness", "eDP-1", "65")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(int(p.stdout.strip()), 65)
+        self.assertIn(["brightnessctl", "-d", "intel_backlight", "set", "65%"], self.calls())
         self.connector("card2-eDP-2")
-        self.calls.clear()
-        self.assertTrue(all(not x.brightness_backend for x in self.hw.discover()))
-        self.assertFalse(self.calls)
+        self.clear_calls()
+        items = self.discover(probe=True)
+        self.assertTrue(all(not x["brightness_backend"] for x in items))
+        self.assertEqual(self.calls(), [])
 
     def test_out_of_range_brightness_never_writes(self):
         self.connector()
         for value in (0, -1, 101):
-            with self.assertRaises(m.MonitorError):
-                self.hw.set_brightness("DP-1", value)
-        self.assertEqual(self.calls, [])
+            p = self.run_mon("brightness", "DP-1", str(value))
+            self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(self.calls(), [])
 
     def test_removed_and_malformed_connector_metadata(self):
-        self.connector(status="unknown")
+        self.connector(status="unknown\x1b[31m\nvalue")
         self.connector("card1-evil;command")
-        item, = self.hw.discover()
-        self.assertEqual(item.identity, "EDID unavailable")
-        self.assertFalse(self.calls)
-        self.assertEqual(m.clean("bad\x1b[31m\nvalue"), "bad?[31m?value")
+        item, = self.discover(probe=True)
+        self.assertEqual(item["identity"], "EDID unavailable")
+        self.assertEqual(self.calls(), [])
+        p = self.run_mon("brightness", "bad\x1b[31m\nvalue")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertNotIn("\x1b", p.stderr)
 
     def test_valid_edid_and_control_characters(self):
         path = self.connector()
@@ -140,77 +201,111 @@ class HardwareTests(unittest.TestCase):
         edid[59:72] = b"Fixture\x1b LCD\n "
         edid[127] = -sum(edid) % 256
         (path / "edid").write_bytes(edid)
-        self.assertIn("Fixture? LCD", self.hw.discover(False)[0].identity)
+        self.assertIn("Fixture? LCD", self.discover(probe=False)[0]["identity"])
         edid[127] ^= 1
         (path / "edid").write_bytes(edid)
-        self.assertEqual(self.hw.discover(False)[0].identity, "EDID unavailable")
+        self.assertEqual(self.discover(probe=False)[0]["identity"], "EDID unavailable")
 
-    def test_cancel_stops_further_hardware_queries(self):
-        import threading
+    def test_no_probe_skips_hardware_queries(self):
         self.connector()
-        event = threading.Event()
-        event.set()
-        self.hw.discover(cancel=event)
-        self.assertFalse(self.calls)
+        self.discover(probe=False)
+        self.assertEqual(self.calls(), [])
 
 
 class ConsoleTests(unittest.TestCase):
-    def console(self):
-        info = type("Info", (), dict(st_mode=stat.S_IFCHR, st_rdev=os.makedev(4, 2), st_uid=os.getuid()))
-        with patch.object(os, "fstat", return_value=info):
-            return m.Console(80)
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.vt_state = self.root / "vt_state"
+        self.vt_state.write_text("yes\n")
+        self.consoleblank = self.root / "consoleblank"
+        self.consoleblank.write_text("300\n")
 
     def test_rejects_pseudoterminal_and_foreign_owned_vt(self):
         master, slave = pty.openpty()
-        try:
-            with self.assertRaises(m.MonitorError):
-                m.Console(slave)
-        finally:
-            os.close(master)
-            os.close(slave)
-        console = self.console()
-        with patch.object(os, "fstat", return_value=type("Info", (), dict(
-                st_mode=stat.S_IFCHR, st_rdev=os.makedev(4, 2), st_uid=os.getuid() + 1))):
-            with self.assertRaises(m.MonitorError):
-                m.Console(80)
+        self.addCleanup(os.close, master)
+        self.addCleanup(os.close, slave)
+        p = subprocess.run(
+            [str(PRODUCT_BIN), "idle", "5"],
+            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=3
+        )
+        self.assertNotEqual(p.returncode, 0)
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_VT="1", TAM_MONITOR_FIXTURE_VT_FOREIGN="1")
+        p2 = subprocess.run(
+            [str(FIXTURE_BIN), "idle", "5"],
+            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, text=True, timeout=3
+        )
+        self.assertNotEqual(p2.returncode, 0)
+        self.assertIn("belong to the calling user", p2.stderr)
 
     def test_inactive_graphical_or_background_cannot_change_idle(self):
-        console = self.console()
-        for active, group in ((False, os.getpgrp()), (True, os.getpgrp() + 1)):
-            with patch.object(console, "active_text", return_value=active), \
-                    patch.object(os, "tcgetpgrp", return_value=group), patch.object(os, "write") as write:
-                with self.assertRaises(m.MonitorError):
-                    console.idle(5)
-                write.assert_not_called()
+        master, slave = pty.openpty()
+        self.addCleanup(os.close, master)
+        self.addCleanup(os.close, slave)
+        for state_text, bg in (("no\n", ""), ("yes\n", "1")):
+            self.vt_state.write_text(state_text)
+            env = dict(
+                os.environ,
+                TAM_MONITOR_FIXTURE_VT="1",
+                TAM_MONITOR_FIXTURE_VT_STATE=str(self.vt_state),
+                TAM_MONITOR_FIXTURE_VT_BG=bg,
+                TAM_MONITOR_FIXTURE_CONSOLEBLANK=str(self.consoleblank),
+            )
+            p = subprocess.run(
+                [str(FIXTURE_BIN), "idle", "5"],
+                stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, text=True, timeout=3
+            )
+            self.assertNotEqual(p.returncode, 0)
+            r, _, _ = select.select([master], [], [], 0.05)
+            self.assertEqual(r, [])
 
     def test_idle_uses_only_console_timer_sequence(self):
-        console = self.console()
-        with patch.object(console, "active_text", return_value=True), \
-                patch.object(os, "tcgetpgrp", return_value=os.getpgrp()), patch.object(os, "write") as write, \
-                patch.object(termios, "tcdrain"), patch.object(m, "console_idle_seconds", return_value=300):
-            self.assertTrue(console.idle(5))
-            write.assert_called_once_with(80, b"\x1b[9;5]")
-            with self.assertRaises(m.MonitorError):
-                console.idle(61)
+        master, slave = pty.openpty()
+        self.addCleanup(os.close, master)
+        self.addCleanup(os.close, slave)
+        env = dict(
+            os.environ,
+            TAM_MONITOR_FIXTURE_VT="1",
+            TAM_MONITOR_FIXTURE_VT_STATE=str(self.vt_state),
+            TAM_MONITOR_FIXTURE_CONSOLEBLANK=str(self.consoleblank),
+        )
+        p = subprocess.run(
+            [str(FIXTURE_BIN), "idle", "5"],
+            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env, text=True, timeout=3, start_new_session=True,
+            preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0),
+        )
+        self.assertEqual(p.returncode, 0, p.stderr)
+        r, _, _ = select.select([master], [], [], 0.5)
+        self.assertTrue(r)
+        self.assertIn(b"\x1b[9;5]", os.read(master, 64))
+        p_bad = subprocess.run(
+            [str(FIXTURE_BIN), "idle", "61"],
+            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env, text=True, timeout=3,
+        )
+        self.assertNotEqual(p_bad.returncode, 0)
 
     def test_idle_readback_rejects_a_failed_timer_change(self):
-        console = self.console()
-        with patch.object(console, "require_active"), patch.object(os, "write"), \
-                patch.object(termios, "tcdrain"), patch.object(m, "console_idle_seconds", return_value=0):
-            with self.assertRaisesRegex(m.MonitorError, "verification failed"):
-                console.idle(5)
-
-    def test_readonly_vt_state_distinguishes_graphical_mode(self):
-        console = self.console()
-        state = {"active": 2, "mode": 0}
-        def ioctl(fd, code, buffer):
-            buffer[0] = state["active"] if code == m.VT_GETSTATE else state["mode"]
-        with patch.object(fcntl, "ioctl", side_effect=ioctl):
-            self.assertTrue(console.active_text())
-            state["mode"] = 1
-            self.assertFalse(console.active_text())
-            state.update(mode=0, active=3)
-            self.assertFalse(console.active_text())
+        master, slave = pty.openpty()
+        self.addCleanup(os.close, master)
+        self.addCleanup(os.close, slave)
+        self.consoleblank.write_text("0\n")
+        env = dict(
+            os.environ,
+            TAM_MONITOR_FIXTURE_VT="1",
+            TAM_MONITOR_FIXTURE_VT_STATE=str(self.vt_state),
+            TAM_MONITOR_FIXTURE_CONSOLEBLANK=str(self.consoleblank),
+        )
+        p = subprocess.run(
+            [str(FIXTURE_BIN), "idle", "5"],
+            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env, text=True, timeout=3, start_new_session=True,
+            preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0),
+        )
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("verification failed", p.stderr)
 
 
 class ProcessTests(unittest.TestCase):
@@ -221,48 +316,38 @@ class ProcessTests(unittest.TestCase):
 
     def test_timeout_kills_helper_descendants(self):
         child_pid = self.root / "child.pid"
-        script = self.root / "hang.py"
-        script.write_text("import os,time\npid=os.fork()\n"
-                          f"if pid: open({str(child_pid)!r},'w').write(str(pid))\n"
-                          "time.sleep(30)\n")
-        with patch.object(m, "CALL_TIMEOUT", 0.2):
-            with self.assertRaisesRegex(m.MonitorError, "timed out"):
-                m.run_tool([sys.executable, str(script)])
+        drm = self.root / "drm"
+        bin_dir = self.root / "bin"
+        drm.mkdir()
+        bin_dir.mkdir()
+        conn = drm / "card1-DP-1"
+        conn.mkdir()
+        (conn / "status").write_text("connected")
+        (conn / "enabled").write_text("enabled")
+        ddc = bin_dir / "tam-brightness-display-ddc"
+        ddc.write_text(
+            f"#!{sys.executable}\n"
+            "import os, time\n"
+            "pid = os.fork()\n"
+            f"if pid: open({str(child_pid)!r}, 'w').write(str(pid))\n"
+            "time.sleep(30)\n"
+        )
+        ddc.chmod(0o755)
+        env = dict(
+            os.environ,
+            PATH=f"{bin_dir}:/usr/bin:/bin",
+            TAM_MONITOR_FIXTURE_DRM=str(drm),
+            TAM_MONITOR_FIXTURE_TOOL_TIMEOUT_MS="200",
+        )
+        p = subprocess.run(
+            [str(FIXTURE_BIN), "brightness", "DP-1"],
+            env=env, text=True, capture_output=True, timeout=5,
+        )
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("timed out", p.stderr)
         pid = int(child_pid.read_text())
-        # A killed descendant may briefly remain a zombie until its reaper runs.
         status = Path(f"/proc/{pid}/stat")
         self.assertTrue(not status.exists() or status.read_text().split()[2] == "Z")
-
-    def harness(self):
-        events = self.root / "events"
-        state = self.root / "active"
-        state.write_text("yes")
-        script = self.root / "harness.py"
-        script.write_text(f'''
-import importlib.machinery,importlib.util,sys,os,termios
-sys.dont_write_bytecode=True
-from pathlib import Path
-loader=importlib.machinery.SourceFileLoader("monitor",{str(SOURCE)!r})
-spec=importlib.util.spec_from_loader(loader.name,loader)
-m=importlib.util.module_from_spec(spec);sys.modules[spec.name]=m;loader.exec_module(m)
-m.__file__=__file__
-class FakeConsole:
-    def __init__(self,fd): self.fd=fd
-    def require_active(self,pgrp=None):
-        if not self.active_text(): raise m.MonitorError("inactive VT")
-    def active_text(self): return Path({str(state)!r}).read_text()=="yes"
-    def blank(self):
-        with open({str(events)!r},"a") as f: f.write("blank\\n")
-    def wake(self):
-        with open({str(events)!r},"a") as f: f.write("wake\\n")
-m.Console=FakeConsole
-if sys.argv[1]=="__guard": sys.exit(m.main())
-os.login_tty(int(sys.argv[1]))
-console=FakeConsole(os.dup(0))
-try: m.blank_console(console,int(sys.argv[2]))
-except KeyboardInterrupt: sys.exit(130)
-''')
-        return script, events, state
 
     def wait_text(self, path, text, proc=None):
         deadline = time.monotonic() + 4
@@ -275,11 +360,23 @@ except KeyboardInterrupt: sys.exit(130)
         self.fail(f"missing {text}")
 
     def owner(self, seconds=2):
-        script, events, state = self.harness()
+        events = self.root / "events"
+        state = self.root / "active"
+        state.write_text("yes\n")
         master, slave = pty.openpty()
         original = termios.tcgetattr(slave)
-        proc = subprocess.Popen([sys.executable, str(script), str(slave), str(seconds)],
-                                pass_fds=(slave,), start_new_session=True)
+        env = dict(
+            os.environ,
+            TAM_MONITOR_FIXTURE_VT="1",
+            TAM_MONITOR_FIXTURE_VT_STATE=str(state),
+            TAM_MONITOR_FIXTURE_VT_EVENTS=str(events),
+        )
+        proc = subprocess.Popen(
+            [str(FIXTURE_BIN), "blank", "--seconds", str(seconds)],
+            stdin=slave, stdout=slave, stderr=slave,
+            env=env, close_fds=True, start_new_session=True,
+            preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0),
+        )
         self.addCleanup(lambda: proc.kill() if proc.poll() is None else None)
         self.addCleanup(os.close, master)
         self.addCleanup(os.close, slave)
@@ -317,7 +414,7 @@ except KeyboardInterrupt: sys.exit(130)
 
     def test_switching_vt_does_not_wake_the_other_session(self):
         proc, master, slave, original, events, state = self.owner(10)
-        state.write_text("no")
+        state.write_text("no\n")
         self.assertEqual(proc.wait(timeout=4), 0)
         self.assertEqual(events.read_text(), "blank\n")
 
@@ -328,53 +425,59 @@ except KeyboardInterrupt: sys.exit(130)
         self.assertEqual(events.read_text(), "blank\nwake\n")
         self.assertEqual(termios.tcgetattr(slave), original)
 
-    def test_curses_pty_quit_and_resize_without_console(self):
-        harness = self.root / "tui.py"
-        harness.write_text(f'''
-import importlib.machinery,importlib.util,sys
-sys.dont_write_bytecode=True
-loader=importlib.machinery.SourceFileLoader("monitor",{str(SOURCE)!r})
-spec=importlib.util.spec_from_loader(loader.name,loader)
-m=importlib.util.module_from_spec(spec);sys.modules[spec.name]=m;loader.exec_module(m)
-class Hardware:
-    def discover(self,*args): return [m.Monitor("card1-DP-1","DP-1","Fixture","connected","enabled")]
-m.Hardware=Hardware
-def no_console(): raise m.MonitorError("fixture PTY")
-m.Console.open=no_console
-sys.exit(m.main([]))
-''')
+    def test_tui_pty_quit_and_resize_without_console(self):
+        drm = self.root / "drm"
+        drm.mkdir()
+        conn = drm / "card1-DP-1"
+        conn.mkdir()
+        (conn / "status").write_text("connected")
+        (conn / "enabled").write_text("enabled")
         master, slave = pty.openpty()
         self.addCleanup(os.close, master)
         self.addCleanup(os.close, slave)
         original = termios.tcgetattr(slave)
         termios.tcsetwinsize(slave, (24, 80))
-        env = dict(os.environ, TERM="xterm")
-        proc = subprocess.Popen([sys.executable, str(harness)], stdin=slave, stdout=slave, stderr=slave, env=env)
+        env = dict(
+            os.environ,
+            TERM="xterm",
+            TAM_MONITOR_FIXTURE_DRM=str(drm),
+            TAM_MONITOR_FIXTURE_VT="deny",
+        )
+        proc = subprocess.Popen(
+            [str(FIXTURE_BIN)],
+            stdin=slave, stdout=slave, stderr=slave, env=env,
+        )
         self.addCleanup(lambda: proc.kill() if proc.poll() is None else None)
         ready, _, _ = select.select([master], [], [], 3)
         self.assertTrue(ready)
         output = os.read(master, 8192)
         termios.tcsetwinsize(slave, (5, 30))
         os.kill(proc.pid, signal.SIGWINCH)
-        os.write(master, b"bq")  # Console action is rejected, UI remains usable.
+        os.write(master, b"boq")  # Console actions are rejected in PTY, UI remains usable.
         self.assertEqual(proc.wait(timeout=4), 0, output)
         self.assertEqual(termios.tcgetattr(slave), original)
 
     def test_cli_bad_arguments_and_piped_tui_fail_cleanly(self):
         for args in (["blank", "--seconds", "0"], ["idle", "61"], ["layout"], []):
-            result = subprocess.run([sys.executable, str(SOURCE), *args], stdin=subprocess.DEVNULL,
-                                    capture_output=True, timeout=3)
+            result = subprocess.run(
+                [str(PRODUCT_BIN), *args],
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=3,
+            )
             self.assertNotEqual(result.returncode, 0)
             self.assertNotIn(b"Traceback", result.stderr)
 
     def test_installed_command_metadata_without_desktop(self):
         prefix = self.root / "installed"
-        subprocess.run(["make", "install", f"PREFIX={prefix}"], cwd=SOURCE.parent, check=True,
-                       capture_output=True)
+        subprocess.run(
+            ["make", "install", f"PREFIX={prefix}"],
+            cwd=ROOT, check=True, capture_output=True,
+        )
         command = prefix / "bin/tam-monitor"
-        env = {"PATH": os.environ["PATH"], "PYTHONDONTWRITEBYTECODE": "1"}
-        result = subprocess.run([str(command), "list", "--json", "--no-probe"],
-                                env=env, capture_output=True, timeout=3, check=True)
+        env = {"PATH": os.environ["PATH"]}
+        result = subprocess.run(
+            [str(command), "list", "--json", "--no-probe"],
+            env=env, capture_output=True, timeout=3, check=True,
+        )
         self.assertIsInstance(json.loads(result.stdout), list)
         self.assertTrue((prefix / "share/doc/tam-monitor/README.md").exists())
 

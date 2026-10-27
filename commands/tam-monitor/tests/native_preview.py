@@ -26,7 +26,8 @@ class NativePreview(unittest.TestCase):
         self.tmp.cleanup()
 
     def start(self, seconds=1, **flags):
-        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log))
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name)
         env.update({"TAM_MONITOR_FIXTURE_" + k: str(v) for k, v in flags.items()})
         p = subprocess.Popen([str(ROOT / "build/tam-monitor-preview-fixture"), "preview",
             "--card", "1", "--keep", "DP-1", "--seconds", str(seconds), "--json"],
@@ -155,6 +156,67 @@ class NativePreview(unittest.TestCase):
         self.finish(self.start(REVOKE=1), success=False)
         self.assertEqual([a for a, _ in self.actions()][-2:], ["free", "release"])
         self.assertNotIn("restore", [a for a, _ in self.actions()])
+
+    def test_keep_shell_individual_wake_blank_and_restore(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        shell_script = Path(self.tmp.name) / "session.sh"
+        shell_script.write_text(
+            "#!/bin/sh\n"
+            "set -e\n"
+            f'"{exe}" wake --monitor HDMI-A-1 --json\n'
+            f'"{exe}" blank --monitor HDMI-A-1 --json\n'
+            f'"{exe}" keep HDMI-A-1 --json\n'
+            f'"{exe}" wake --all --json\n'
+        )
+        shell_script.chmod(0o755)
+        env = dict(os.environ,
+                   TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_VERBOSE="1",
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name,
+                   TAM_MONITOR_SHELL=str(shell_script))
+        os.chmod(self.tmp.name, 0o700)
+        p = subprocess.Popen([exe, "keep", "DP-1", "--shell"],
+                             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        stdout, stderr = p.communicate(timeout=5)
+        self.assertEqual(p.returncode, 0, stderr)
+        acts = [a for a, _ in self.actions()]
+        self.assertIn("verify_cfb", acts)
+        self.assertIn("keep:DP-1", acts)
+        self.assertIn("wake:HDMI-A-1", acts)
+        self.assertIn("blank:HDMI-A-1", acts)
+        self.assertIn("keep:HDMI-A-1", acts)
+        self.assertIn("vt_wake", acts)
+        self.assertEqual(acts[-3:], ["restore", "free", "release"])
+
+    def test_keep_cfb_mismatch_prevents_write(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        os.chmod(self.tmp.name, 0o700)
+        env = dict(os.environ,
+                   TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_CFB_FAIL="1",
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name)
+        p = subprocess.Popen([exe, "keep", "DP-1", "--seconds", "1", "--json"],
+                             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        self.finish(p, success=False)
+        acts = [a for a, _ in self.actions()]
+        self.assertNotIn("apply", acts)
+        self.assertEqual(acts, ["acquire", "capture", "free", "release"])
+
+    def test_targeted_blank_monitors_restores_on_deadline(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        os.chmod(self.tmp.name, 0o700)
+        env = dict(os.environ,
+                   TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_VERBOSE="1",
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name)
+        p = subprocess.Popen([exe, "blank", "--monitor", "HDMI-A-1", "--seconds", "1", "--json"],
+                             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        self.finish(p, success=True)
+        acts = [a for a, _ in self.actions()]
+        self.assertEqual(acts, ["acquire", "capture", "verify_cfb", "apply", "blank:HDMI-A-1", "restore", "free", "release"])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

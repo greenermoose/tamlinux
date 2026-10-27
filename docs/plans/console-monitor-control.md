@@ -343,3 +343,51 @@ physical fbcon/standby/unplug recovery, session handoff, multi-GPU compensation,
 resource acceptance and sustained mode remain open. No live display mutation,
 candidate preparation, installed-command change, deployment or stage movement
 occurred.
+
+## Development continuation: console framebuffer mapping, full C migration and resource measurements
+
+The optional display API is now 0.4.0. Actual console framebuffer mapping
+(`tam_display_map_console_fb`) reads `/sys/class/vtconsole`, queries
+`FBIOGET_CON2FBMAP` or unambiguous bound `/sys/class/graphics/fb*` devices,
+resolves the primary backing DRM card (`cardN`), and validates fbcon geometry
+and pitch against the captured active DRM framebuffer reference via `GETFB2`
+(`tam_display_state_verify_console_fb`). Atomic transactions support targeted
+connector detachment (`tam_display_state_blank`) and wake re-attachment
+(`tam_display_state_wake`), and `tam_vt.h` provides foreground VT `TIOCLINUX`
+blank and wake ioctls.
+
+The Python `tam-monitor` command is completely retired and replaced by the
+native C executable built from `native.c`, `native-hw.c`, `native-preview.c`,
+`native-tui.c`, and `native-events.c`. The native binary provides:
+- Complete CLI parity: `list [--json] [--no-probe]`, `brightness`, `idle`,
+  `preview`, `inspect`, `keep CONNECTOR --shell`, `keep CONNECTOR --seconds 1..60`,
+  targeted `blank [--monitor CONNECTOR ...]`, and individual `wake [--monitor CONNECTOR | --all]`.
+- Interactive terminal TUI: VT102 change-only redrawing, `SIGWINCH` resize
+  adaptation, and key parity (`j`/`k`/Arrows, `+/-`, `r`, `b`, `i`, `o`, `x`, `w`, `s`, `q`/`ESC`)
+  without an `ncurses` runtime dependency.
+- In-session control socket: `SO_PEERCRED`-verified UNIX domain socket supporting
+  live `WAKE`, `BLANK`, `KEEP`, `RESTORE`, and `STOP` requests during active sessions.
+
+Resource measurements comparing the compiled C binary (`build/tam-monitor`)
+against the deployed 0.5.4 Python baseline (`~/.local/bin/tam-monitor`):
+- Binary size: 399,984 bytes (390.6 KiB) unstripped with full debug symbols;
+  `.text` is 80,776 bytes (78.9 KiB), and `.debug_*` sections total 260,904 bytes (254.8 KiB).
+- Static archives: `libtam-display.a` 219.1 KiB, `libtam-display-session.a` 36.8 KiB.
+- Dynamic dependencies: `libsystemd.so.0`, `libm.so.6`, `libc.so.6`.
+- Startup latency (7 runs median):
+  - `tam-monitor --help`: 2.58 ms vs 83.36 ms Python (32.3x faster).
+  - `tam-monitor list --json --no-probe`: 2.87 ms vs 82.56 ms Python (28.8x faster).
+  - `tam-monitor list --json` (hardware probe): 432.53 ms vs 2,371.44 ms Python (5.5x faster).
+- Peak RSS: 10,368 KiB (10.12 MiB) vs 21,840 KiB (21.33 MiB) Python (2.1x lower memory).
+- Combined active owner + recovery guard memory during live `keep --shell` session:
+  - Combined RSS: 4,356 KiB (4.25 MiB).
+  - Combined PSS: 400 KiB (0.39 MiB), leaving 3.61 MiB headroom under the 4.00 MiB review budget (9.8% of budget used).
+
+Test verification:
+- 24 `test_monitor.py` tests covering hardware discovery, EDID sanitization, DDC/backlight, console idle, wake guard lifetime, signal handling, and TUI resize.
+- 21 `native_preview.py` tests covering recovery deadlines, owner death, guard term, hotplug, VT handoff, CFB verification, `keep --shell` interactive session, targeted blank and individual wake.
+- 9 `native_cli.py` tests and `test-native-events` parsing tests.
+- All ASan/UBSan `libtam` test suites passing.
+
+Development stage only: physical multi-monitor hardware trial and package deployment remain open for separate authorized Fred Test stage.
+[Development record](../ai/2026-10-26-tam-monitor-c-migration.md).

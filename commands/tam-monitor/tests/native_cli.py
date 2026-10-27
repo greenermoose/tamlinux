@@ -35,13 +35,15 @@ class NativeCLI(unittest.TestCase):
         self.assertFalse(json.loads(p.stdout)["ok"])
 
     def test_errors_are_machine_readable(self):
-        for args in ([], ["list"], ["inspect"], ["inspect", "--fd", "-1"],
+        for args in ([], ["list", "--bad"], ["inspect"], ["inspect", "--fd", "-1"],
                      ["inspect", "--fd", "999999999999999999999999"],
                      ["inspect", "--fd", "12x"], ["inspect", "--fd", ""],
                      ["inspect", "--fd", "42", "--fd", "43"],
                      ["inspect", "--fd", "42", "--keep"],
                      ["inspect", "--fd", "42", "--keep", ""],
-                     ["inspect", "--fd", "42", "--keep", "x" * 100]):
+                     ["inspect", "--fd", "42", "--keep", "x" * 100],
+                     ["keep"], ["keep", "DP-1"], ["keep", "DP-1", "--shell", "--seconds", "5"],
+                     ["blank", "--card", "1"], ["wake", "DP-1", "--all"]):
             with self.subTest(args=args):
                 p = self.run_cli(*args, "--json")
                 self.assertEqual(p.returncode, 1)

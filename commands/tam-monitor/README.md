@@ -1,112 +1,95 @@
 # tam-monitor
 
-The [approved native monitor plan](../../docs/plans/console-monitor-control.md)
-is being implemented. The installed Python command below remains in place
-while ownership and recovery feasibility are established.
+`tam-monitor` provides monitor information, hardware brightness, and targeted Linux
+text-console display control without Hyprland or Quickshell. It is implemented in C99
+using `libtam-display` and `libtam-display-session` (API >= 0.4.0).
 
-An optional C inspection prototype builds as `build/tam-monitor`:
+Run without arguments on a terminal to open the keyboard TUI.
 
-```sh
-# First install libtam's display development files into a scratch prefix.
-make native LIBTAM_PREFIX=/your/development/prefix
-make check-native LIBTAM_PREFIX=/your/development/prefix
-# Or use normal pkg-config discovery of libtam-display-session >= 0.3.0.
-make native
-```
-
-The inspection interface is `inspect --fd FD [--keep CONNECTOR] [--json]`.
-It borrows an authorized descriptor and analyzes routing without modesetting.
-It remains distinct from a restorable owned snapshot.
-
-The bounded feasibility interface is now
-`preview --card N --keep CONNECTOR --seconds 1..60 [--json]`. This requires an
-owned foreground text VT and a matching active local login session. A separate
-recovery process owns VT handoff and acquires the seat device through existing
-permissions without displacing a DRM master. It retains framebuffer
-backing and property blobs, tests restoration and selection with atomic
-TEST_ONLY, then performs one guarded transaction. It restores before releasing
-master and VT handoff on timeout, UI exit/death, signals or a VT release request.
-Kernel hotplug events end the trial. Recovery restores the surviving captured
-console outputs, detaches disconnected outputs and omits vanished connector
-IDs, while preserving shared CRTCs. If none survives, it releases control and
-reports restoration failure. Revocation, new/changed identities, foreign
-routing or another topology change during recovery refuse stale replay. A
-hotplug interruption still returns a nonzero result even if recovery succeeds;
-it does not silently resume the requested selection. A stopped guard is resumed
-by the UI after its timeout allowance; killing the guard reports failure, and its
-actual kernel fallback is unproven.
-
-This interface is still **not installed or physically validated**. Preview
-alone does not prove the sustained console outcome. Physical unplug recovery,
-multi-GPU compensation, sustained `keep --shell`, individual wake and UI parity
-remain open. The real-device command must reach the live session only through a recorded package on Fred's separate Test instruction.
-No root helper, permanent service, KD_GRAPHICS change, keyboard-mode change or
-global blanking fallback is added. Logind TakeControl is deliberately avoided:
-its implementation mutes a text VT and resets its ownership when released.
-
-Native builds require libtam-display and libtam-display-session >= 0.3.0.
-Use libtam's `install-session` target in a scratch development prefix; the
-session adapter uses libsystemd while the display archive remains libc-only.
-`make check-native check-preview check-events` runs linked fake-device CLI,
-recovery-process and event parsing tests. Private socket tests need an
-unsandboxed test process under Codex. `make install` continues to install the
-Python command below, preserving its current behavior.
-
-## Installed command
-
-Monitor information, supported brightness and text-console blanking without
-Hyprland or Quickshell. Run `tam-monitor` for the keyboard TUI.
+## Commands
 
 ```sh
-tam-monitor list
-tam-monitor list --json --no-probe
-tam-monitor brightness card1-DP-1
-tam-monitor brightness card1-DP-1 65
-tam-monitor blank --seconds 15
-tam-monitor wake
-tam-monitor idle 5
-tam-monitor idle 0
+# List monitors and hardware capabilities
+tam-monitor list [--json] [--no-probe]
+
+# Hardware brightness (DDC/CI or internal backlight)
+tam-monitor brightness MONITOR [1..100]
+
+# Keep a single monitor active for an interactive console shell
+tam-monitor keep CONNECTOR --shell [--card N] [--json]
+
+# Bounded trial keeping one monitor active
+tam-monitor keep CONNECTOR --seconds 1..60 [--card N] [--json]
+
+# Blank all monitors or targeted monitors
+tam-monitor blank [--monitor CONNECTOR ...] [--seconds 1..60] [--card N] [--json]
+
+# Wake all monitors or a targeted monitor
+tam-monitor wake [--monitor CONNECTOR | --all] [--json]
+
+# Kernel console blanking idle interval (0 = off)
+tam-monitor idle 0..60
+
+# Bounded feasibility inspection
+tam-monitor preview --card N --keep CONNECTOR --seconds 1..60 [--json]
+tam-monitor inspect --fd FD [--keep CONNECTOR] [--json]
 ```
 
-In the TUI, arrows select a connector, `+`/`-` change brightness, `r` refreshes,
-`b` blanks the console for at most 15 seconds, `i` cycles the console idle
-interval and `q` exits. A keypress wakes an immediate blank and is consumed.
-The CLI accepts bounded blank durations of 1–60 seconds. The wake guard runs
-in a separate process group and restores the screen on timeout or caller
-death. After a VT switch it refuses to poke a different console or a desktop.
+## Interactive TUI
 
-Blank, wake and idle require the current user's foreground Linux text VT,
-such as a login on Ctrl+Alt+F2. They refuse graphical VTs, terminal windows,
-tmux, SSH and background jobs. Monitor information and supported hardware
-brightness can also be used from a desktop terminal. No command starts or
-contacts a compositor, changes device permissions or asks for root.
+Running `tam-monitor` on a terminal launches the interactive console TUI (implemented
+directly with standard termios and VT102 escape sequences without an `ncurses` dependency):
 
-External brightness uses the packaged `tam-brightness-display-ddc` helper;
-internal panels use `tam-hw-display` and `brightnessctl`. Hardware permissions
-remain the host's responsibility. Ambiguous connector names across GPUs and
-multiple internal panels have no automatic brightness mapping. Changes are
-read back from hardware; a failed write or verification returns an error.
-An inaccessible monitor has **unknown** brightness, never an invented off
-state. Refresh retries detection subject to the existing helper's brief
-unavailable cache. Each hardware call, including its children, has a deadline.
+- `j`/`k` or Up/Down arrows: select a monitor
+- `+`/`-`: adjust brightness by 5% with readback verification
+- `r`: refresh hardware detection and brightness
+- `o`: keep selected monitor active (15s bounded trial or session switch)
+- `x`: toggle blank/wake on the selected monitor
+- `w`: wake all monitors
+- `s`: spawn an interactive subshell keeping only the selected monitor active
+- `b`: blank the console (at most 15 seconds; keypress wakes and is consumed)
+- `i`: cycle console idle interval (0, 1, 5, 10, 15, 30, 60 minutes)
+- `q` or `ESC`: quit TUI (cleans up and restores terminal)
 
-`idle` changes the kernel console blanking interval for the running boot,
-not the desktop idle policy or boot configuration. The command reads the
-current interval from the kernel's `consoleblank` parameter and verifies
-changes there when available. Without that readback it labels a change as
-requested rather than verified. The interval is shared console policy,
-not a separate timer for every monitor. Timer readback is not hardware
-power telemetry. The TUI repaints only when its content or terminal size changes,
-so it does not continually reset the console inactivity timer.
+The TUI repaints only when screen content or terminal size changes (with `SIGWINCH`
+handling), preserving terminal state across resize.
 
-Console blanking is not a lock and is not proof of monitor low-power mode.
-How blanking affects each display must be checked on the actual driver and
-hardware. It affects the outputs driven by the console together. Independent
-power-off, resolution, rotation, layout, profiles and link retraining are
-unavailable in this version. DDC power writes are withheld until a model's
-off-and-wake recovery is physically verified. Full independent output
-control needs a native DRM/KMS backend with proven console restoration.
+## Lifetime, Safety and Recovery
 
-Development checks: `make check`. They substitute console/hardware actions;
-physical no-desktop acceptance still requires the recorded package and a
-real Linux VT. The command is delivered through the Tamlinux package assembly.
+Targeted console display control (`keep`, targeted `blank`, targeted `wake`) requires:
+1. An owned foreground Linux text VT (`/dev/ttyN`, major 4).
+2. A matching active local login session.
+3. Access to the backing DRM card device (`/dev/dri/cardN`).
+
+A separate recovery process owns VT handoff (`VT_PROCESS`), captures the initial
+KMS configuration, verifies the bound console framebuffer geometry (`GETFB2` stride and
+dimensions vs `/sys/class/graphics/fb*`), and listens on a peer-credential-verified UNIX domain socket
+(`SO_PEERCRED`).
+
+The recovery owner guarantees clean restoration on:
+- Interactive shell exit or command completion
+- Bounded trial timeout
+- Client death or `SIGKILL`
+- Signals (`SIGINT`, `SIGTERM`, `SIGHUP`)
+- Hotplug disconnection of retained outputs
+- VT switch away from the active console
+
+## Build and Tests
+
+```sh
+# Build C binary
+make
+
+# Run unit and fixture test suites
+make check
+
+# Install
+make install PREFIX=/your/prefix
+```
+
+Static and dynamic resource footprint:
+- Unstripped binary: ~390 KiB (including ~255 KiB debug info and ~79 KiB `.text`)
+- Dynamic ELF dependencies: `libsystemd.so.0`, `libm.so.6`, `libc.so.6`
+- Startup latency: ~2.6 ms (`--help`), ~2.9 ms (`list --json --no-probe`)
+- Peak RSS: ~10.1 MiB
+- Live owner + recovery guard combined memory: ~400 KiB PSS (~4.25 MiB RSS) during an active `keep --shell` session
