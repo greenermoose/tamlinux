@@ -136,6 +136,30 @@ class HardwareTests(unittest.TestCase):
         self.assertNotEqual(p2.returncode, 0)
         self.assertEqual(self.calls(), [])
 
+    def test_brightness_rejects_invalid_values_before_hardware(self):
+        self.connector()
+        for value in ("0", "-1", "101", "4294967297", "-4294967295",
+                      "9223372036854775807", "9999999999999999999999999",
+                      "", "1x", " 1", "+1"):
+            with self.subTest(value=value):
+                self.clear_calls()
+                result = self.run_mon("brightness", "DP-1", value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.calls(), [])
+        for value in ("1", "100"):
+            self.assertEqual(self.run_mon("brightness", "DP-1", value).returncode, 0)
+
+    def test_helper_timeout_survives_early_pipe_close(self):
+        self.connector()
+        helper = self.bin_dir / "tam-brightness-display-ddc"
+        helper.write_text("#!/bin/sh\nexec 1>&- 2>&-\nsleep 1.2\n")
+        helper.chmod(0o755)
+        start = time.monotonic()
+        result = self.run_mon("brightness", "DP-1", TAM_MONITOR_FIXTURE_TOOL_TIMEOUT_MS="100")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("timed out", result.stderr)
+        self.assertLess(time.monotonic() - start, 0.9)
+
     def test_stale_hardware_write_is_failure(self):
         self.connector()
         self.ddc_mode.write_text("stale\n")

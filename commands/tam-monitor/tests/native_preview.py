@@ -54,6 +54,50 @@ class NativePreview(unittest.TestCase):
         self.assertEqual(data["ok"], success)
         return data
 
+    def test_console_mapping_failure_never_applies_even_with_card(self):
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name, TAM_MONITOR_FIXTURE_MAP_FAIL="1")
+        for target in ("DP-1", "card1-DP-1"):
+            for mode in ("keep", "blank"):
+                args = [mode, target] if mode == "keep" else [mode, "--monitor", target]
+                p = subprocess.run([str(ROOT / "build/tam-monitor-preview-fixture"),
+                    *args, "--card", "1", "--seconds", "1", "--json"],
+                    env=env, capture_output=True, text=True, timeout=5)
+                self.assertNotEqual(p.returncode, 0, p.stdout)
+                self.assertNotIn("apply", [a for a, _ in self.actions()])
+
+    def test_silent_client_does_not_postpone_deadline(self):
+        import socket
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name)
+        start = time.monotonic()
+        p = subprocess.Popen([exe, "keep", "DP-1", "--seconds", "1", "--json"], env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        self.await_action("apply")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET) as client:
+            client.connect(str(Path(self.tmp.name) / "vt2.sock"))
+            self.finish(p)
+        self.assertLess(time.monotonic() - start, 1.8)
+        self.assertIn("restore", [a for a, _ in self.actions()])
+
+    def test_listener_failure_prevents_apply_and_shell(self):
+        import socket
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_RUNTIME_DIR=self.tmp.name, SHELL="/bin/false")
+        path = Path(self.tmp.name) / "vt2.sock"
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self.addCleanup(listener.close)
+        listener.bind(str(path))
+        listener.listen(1)
+        p = subprocess.run([str(ROOT / "build/tam-monitor-preview-fixture"),
+            "keep", "DP-1", "--shell", "--json"], env=env,
+            capture_output=True, text=True, timeout=5)
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertTrue(path.exists())
+        self.assertNotIn("apply", [a for a, _ in self.actions()])
+
     def test_deadline_restores_before_release(self):
         p = self.start()
         worker = self.await_action("apply")
@@ -188,6 +232,67 @@ class NativePreview(unittest.TestCase):
         self.assertIn("keep:HDMI-A-1", acts)
         self.assertIn("vt_wake", acts)
         self.assertEqual(acts[-3:], ["restore", "free", "release"])
+
+    def test_supervisor_toggle_uses_current_detached_state(self):
+        import socket
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        shell = Path(self.tmp.name) / "shell.sh"
+        shell.write_text("#!/bin/sh\nsleep 2\n")
+        shell.chmod(0o755)
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_VERBOSE="1", TAM_MONITOR_RUNTIME_DIR=self.tmp.name,
+                   TAM_MONITOR_SHELL=str(shell))
+        p = subprocess.Popen([exe, "keep", "DP-1", "--shell", "--json"], env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        self.await_action("keep:DP-1")
+        path = str(Path(self.tmp.name) / "vt2.sock")
+        for _ in range(4):
+            with socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET) as client:
+                client.connect(path)
+                client.sendall(b"TOGGLE HDMI-A-1")
+                self.assertTrue(client.recv(512))
+        self.finish(p)
+        ops = [a for a, _ in self.actions()]
+        self.assertEqual([op for op in ops if op in ("wake:HDMI-A-1", "blank:HDMI-A-1")],
+                         ["wake:HDMI-A-1", "blank:HDMI-A-1",
+                          "wake:HDMI-A-1", "blank:HDMI-A-1"])
+
+    def test_uncertain_interactive_error_ends_session_and_restores(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        shell = Path(self.tmp.name) / "shell.sh"
+        shell.write_text(f'#!/bin/sh\n"{exe}" blank --monitor HDMI-A-1 --json >/dev/null\nsleep 2\n')
+        shell.chmod(0o755)
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_VERBOSE="1", TAM_MONITOR_RUNTIME_DIR=self.tmp.name,
+                   TAM_MONITOR_FIXTURE_INTERACTIVE_UNCERTAIN="1", TAM_MONITOR_SHELL=str(shell))
+        p = subprocess.Popen([exe, "keep", "DP-1", "--shell", "--json"], env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        self.finish(p, success=False)
+        acts = [a for a, _ in self.actions()]
+        self.assertLess(acts.index("blank:HDMI-A-1"), acts.index("restore"))
+
+    def test_supervisor_rejects_wrong_cards_before_mutation(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        shell = Path(self.tmp.name) / "shell.sh"
+        shell.write_text(
+            "#!/bin/sh\nset -e\n"
+            f'if "{exe}" keep HDMI-A-1 --card 63 --json >/dev/null; then exit 1; fi\n'
+            f'if "{exe}" blank --monitor HDMI-A-1 --monitor card2-DP-1 --json >/dev/null; then exit 1; fi\n'
+            f'if "{exe}" wake --monitor card2-HDMI-A-1 --json >/dev/null; then exit 1; fi\n'
+            f'"{exe}" wake --monitor HDMI-A-1 --json >/dev/null\n')
+        shell.chmod(0o755)
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_VERBOSE="1", TAM_MONITOR_RUNTIME_DIR=self.tmp.name,
+                   TAM_MONITOR_SHELL=str(shell))
+        p = subprocess.Popen([exe, "keep", "DP-1", "--shell", "--json"], env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(p)
+        self.finish(p)
+        acts = [a for a, _ in self.actions()]
+        self.assertEqual(acts.count("apply"), 1)
+        self.assertIn("wake:HDMI-A-1", acts)
 
     def test_keep_cfb_mismatch_prevents_write(self):
         exe = str(ROOT / "build/tam-monitor-preview-fixture")

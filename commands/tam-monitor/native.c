@@ -221,10 +221,8 @@ int main(int argc, char **argv)
             printf("%d\n", val);
             return 0;
         }
-        char *end = NULL;
-        errno = 0;
-        long pct = strtol(argv[3], &end, 10);
-        if (errno || !*argv[3] || *end)
+        unsigned pct = 0;
+        if (!parse_bounded_uint(argv[3], 1, 100, &pct))
             return failure(json, TAM_DISPLAY_INVALID, 0, "Brightness must be an integer 1-100");
         int actual = 0;
         if (tam_monitor_set_brightness(mon_name, (int)pct, &actual, err, sizeof(err)) < 0)

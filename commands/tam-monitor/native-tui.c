@@ -334,7 +334,7 @@ int tam_monitor_tui(void)
             } else if (key == KEY_KEEP_ONE && m) {
                 struct tam_display_error ke = {0};
                 char req[128];
-                snprintf(req, sizeof(req), "KEEP %s", m->connector);
+                snprintf(req, sizeof(req), "KEEP %s", m->id);
                 int rc = tam_monitor_supervisor_request(vt.number, req, &ke);
                 if (rc >= 0) {
                     if (ke.code) tam_monitor_clean(ke.message, message, sizeof(message));
@@ -349,18 +349,11 @@ int tam_monitor_tui(void)
             } else if (key == KEY_TOGGLE_ONE && m) {
                 struct tam_display_error te = {0};
                 char req[128];
-                snprintf(req, sizeof(req), "BLANK %s", m->connector);
+                snprintf(req, sizeof(req), "TOGGLE %s", m->id);
                 int rc = tam_monitor_supervisor_request(vt.number, req, &te);
                 if (rc >= 0) {
-                    if (te.code) {
-                        snprintf(req, sizeof(req), "WAKE %s", m->connector);
-                        if (tam_monitor_supervisor_request(vt.number, req, &te) == 0 && !te.code)
-                            snprintf(message, sizeof(message), "Woke %s", m->id);
-                        else
-                            tam_monitor_clean(te.message, message, sizeof(message));
-                    } else {
-                        snprintf(message, sizeof(message), "Blanked %s (w wakes all)", m->id);
-                    }
+                    if (te.code) tam_monitor_clean(te.message, message, sizeof(message));
+                    else snprintf(message, sizeof(message), "Toggled %s (w wakes all)", m->id);
                 } else {
                     const char *targets[1] = {m->connector};
                     if (tam_monitor_blank_monitors(m->card, targets, 1, 15, true, 0) != 0)

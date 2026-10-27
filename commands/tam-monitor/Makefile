@@ -3,9 +3,9 @@ CC ?= cc
 PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -Wall -Wextra -Wpedantic
 override CFLAGS += -g
-LIBTAM_PREFIX ?= $(shell $(PKG_CONFIG) --atleast-version=0.4.0 libtam-display-session 2>/dev/null || \
+LIBTAM_PREFIX ?= $(shell $(PKG_CONFIG) --atleast-version=0.4.1 libtam-display-session 2>/dev/null || \
 	{ test -f "$(HOME)/.local/dev/lib/pkgconfig/libtam-display-session.pc" && printf '%s' "$(HOME)/.local/dev"; })
-DISPLAY_MIN_VERSION = 0.4.0
+DISPLAY_MIN_VERSION = 0.4.1
 SESSION_CFLAGS = $(shell $(PKG_CONFIG) --cflags libsystemd)
 SESSION_LIBS = $(shell $(PKG_CONFIG) --libs libsystemd) -lm
 ifneq ($(strip $(LIBTAM_PREFIX)),)
@@ -59,7 +59,7 @@ check-native: native
 		$(foreach s,$(HW_WRAPS),-Wl,--wrap=$(s)) -o build/tam-monitor-fixture
 	PYTHONDONTWRITEBYTECODE=1 python3 -B tests/native_cli.py
 
-PREVIEW_WRAPS = tam_monitor_hotplug_open tam_monitor_hotplug_event tam_vt_open tam_vt_check tam_vt_check_restore tam_vt_claim tam_vt_release tam_vt_close tam_vt_blank tam_vt_wake tam_display_map_console_fb tam_display_session_open tam_display_session_device tam_display_session_bus_fd tam_display_session_bus_events tam_display_session_dispatch tam_display_session_check tam_display_session_check_restore tam_display_session_close tam_display_capture_fd tam_display_state_verify_console_fb tam_display_state_set_access_check tam_display_state_keep tam_display_state_blank tam_display_state_wake tam_display_state_is_detached tam_display_state_restore tam_display_state_free
+PREVIEW_WRAPS = tam_monitor_hotplug_open tam_monitor_hotplug_event tam_vt_open tam_vt_check tam_vt_check_restore tam_vt_claim tam_vt_release tam_vt_close tam_vt_blank tam_vt_wake tam_display_map_console_fb tam_display_session_open tam_display_session_device tam_display_session_bus_fd tam_display_session_bus_events tam_display_session_dispatch tam_display_session_check tam_display_session_check_restore tam_display_session_close tam_display_capture_fd tam_display_state_verify_console_fb tam_display_state_set_access_check tam_display_state_keep tam_display_state_blank tam_display_state_wake tam_display_state_is_detached tam_display_state_recovery_required tam_display_state_restore tam_display_state_free
 check-preview: native
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) $(NATIVE_OBJS) tests/native-preview-fixture.c $(DISPLAY_LIBS) $(foreach s,$(PREVIEW_WRAPS),-Wl,--wrap=$(s)) -o build/tam-monitor-preview-fixture
 	PYTHONDONTWRITEBYTECODE=1 python3 -B tests/native_preview.py

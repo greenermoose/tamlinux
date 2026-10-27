@@ -159,6 +159,7 @@ int tam_monitor_run_tool_timeout(const char *const *argv, int timeout_ms,
     char out_buf[4096] = {0}, err_buf[4096] = {0};
     long long deadline = monotonic_ms() + (timeout_ms > 0 ? timeout_ms : TAM_MONITOR_CALL_TIMEOUT_MS);
     bool timed_out = false;
+    int wait_error = 0;
     while (out_pipe[0] >= 0 || err_pipe[0] >= 0) {
         long long remaining = deadline - monotonic_ms();
         if (remaining <= 0) {
@@ -172,6 +173,7 @@ int tam_monitor_run_tool_timeout(const char *const *argv, int timeout_ms,
         int n = poll(fds, 2, (int)remaining);
         if (n < 0) {
             if (errno == EINTR) continue;
+            wait_error = errno;
             break;
         }
         if (n == 0) {
@@ -203,14 +205,28 @@ int tam_monitor_run_tool_timeout(const char *const *argv, int timeout_ms,
     if (out_pipe[0] >= 0) close(out_pipe[0]);
     if (err_pipe[0] >= 0) close(err_pipe[0]);
     int status = 0;
-    if (timed_out) {
+    while (!timed_out && !wait_error) {
+        pid_t done = waitpid(pid, &status, WNOHANG);
+        if (done == pid) break;
+        if (done < 0) {
+            if (errno == EINTR) continue;
+            wait_error = errno;
+            break;
+        }
+        long long remaining = deadline - monotonic_ms();
+        if (remaining <= 0) { timed_out = true; break; }
+        /* Both pipes may be closed while the child is still alive. */
+        int n = poll(NULL, 0, remaining < 50 ? (int)remaining : 50);
+        if (n < 0 && errno != EINTR) { wait_error = errno; break; }
+    }
+    if (timed_out || wait_error) {
         kill(-pid, SIGKILL);
         while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
-        if (err && err_cap) snprintf(err, err_cap, "%s timed out", argv[0]);
+        if (err && err_cap) {
+            if (timed_out) snprintf(err, err_cap, "%s timed out", argv[0]);
+            else snprintf(err, err_cap, "%s wait failed: %s", argv[0], strerror(wait_error));
+        }
         return -1;
-    }
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno != EINTR) break;
     }
     trim_inplace(out_buf);
     trim_inplace(err_buf);

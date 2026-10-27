@@ -382,3 +382,30 @@ recommendations are engineering judgment. Line numbers refer to these revisions.
 [package-commands]: https://github.com/greenermoose/tamlinux-packages/blob/e7ad5848afde012fd555e181122007165edbf686/nix/packages/default.nix#L492-L533
 [package-libtam]: https://github.com/greenermoose/tamlinux-packages/blob/e7ad5848afde012fd555e181122007165edbf686/nix/packages/default.nix#L3-L12
 [libtam-makefile]: https://github.com/greenermoose/libtam/blob/2218bb59acaf6781073a66257f49f0dc3759f18c/Makefile
+
+## Development correction status (2026-10-27)
+
+The review remains the baseline; these corrections are development work and
+are not evidence of physical acceptance.
+
+- R1: ordinary keep/blank now require fbcon mapping; fixture tests cover
+  explicit cards, qualified targets and mapping failure.
+- R2: supervisor and initial blank requests validate qualified targets against
+  the owned card; the TUI transmits its card-qualified identity.
+- R3: library API 0.4.1 exposes uncertain commit state and refuses subsequent
+  mutation; the supervisor ends the session and attempts authorized recovery.
+  Instrumented ioctl fixtures exercise both an applied EINTR and an atomic
+  rejection preserving the prior state. An actual rejected atomic ioctl has
+  not been shown to partially apply. Revocation must still forbid stale replay.
+- R4: accepted clients are nonblocking and polled with recovery events; a
+  silent-client deadline regression passes.
+- R5: helper completion retains the deadline after pipe EOF; a real child
+  closing both pipes then sleeping times out.
+- R6: the supervisor toggles its current detached state; the original PTY
+  reproduction now records wake then blank.
+- R7: brightness is range-checked before narrowing or hardware discovery.
+- R8: a listener is required before mutation; a pre-existing socket is
+  preserved, and overlong paths fail without starting the shell.
+
+Further adversarial and final package checks remain required before proposing
+the exact candidate; fixture behavior is not physical display proof.

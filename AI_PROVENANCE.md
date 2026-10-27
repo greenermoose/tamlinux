@@ -600,3 +600,5 @@ without ncurses), and resource measurements vs Python baseline.
 implementation and files eight findings with a reproduction harness, authoritative
 references and correction acceptance criteria. No product correction or deployment.
 [Session](docs/ai/2026-10-27-tam-monitor-review.md).
+
+2026-10-27: Codex CLI `0.164.0` (`gpt-6.1-terra`) worked on monitor review corrections. [Session](docs/ai/2026-10-27-monitor-integration.md).

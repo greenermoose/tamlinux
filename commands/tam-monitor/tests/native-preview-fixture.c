@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 /* Link-time fixture only; product has no environment substitution hooks. */
-static int event = -1, applied, hotplug;
+static int event = -1, applied, hotplug, recovery_required;
 static char detached_name[64];
 int __wrap_tam_monitor_hotplug_open(void) { hotplug = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK); return hotplug; }
 bool __wrap_tam_monitor_hotplug_event(int fd)
@@ -142,6 +142,10 @@ enum tam_display_result __wrap_tam_display_state_blank(struct tam_display_state 
     }
     applied = 1;
     snprintf(detached_name, sizeof(detached_name), "%s", connectors[0]);
+    if (flag("TAM_MONITOR_FIXTURE_INTERACTIVE_UNCERTAIN")) {
+        recovery_required = 1;
+        return fail(e, TAM_DISPLAY_IO);
+    }
     if (flag("TAM_MONITOR_FIXTURE_COMMIT_FAIL")) return fail(e, TAM_DISPLAY_IO);
     return TAM_DISPLAY_OK;
 }
@@ -159,13 +163,27 @@ enum tam_display_result __wrap_tam_display_state_wake(struct tam_display_state *
     } else {
         record("wake");
     }
-    if (!strcmp(detached_name, connector)) detached_name[0] = 0;
+    const char *bare = connector;
+    if (!strncmp(bare, "card", 4)) {
+        const char *dash = strchr(bare, '-');
+        if (dash) bare = dash + 1;
+    }
+    if (!strcmp(detached_name, bare)) detached_name[0] = 0;
     return TAM_DISPLAY_OK;
 }
 bool __wrap_tam_display_state_is_detached(const struct tam_display_state *s, const char *connector)
 {
     (void)s;
+    if (connector && !strncmp(connector, "card", 4)) {
+        const char *dash = strchr(connector, '-');
+        if (dash) connector = dash + 1;
+    }
     return connector && detached_name[0] && !strcmp(detached_name, connector);
+}
+bool __wrap_tam_display_state_recovery_required(const struct tam_display_state *s)
+{
+    (void)s;
+    return recovery_required;
 }
 enum tam_display_result __wrap_tam_display_state_restore(struct tam_display_state *s, struct tam_display_error *e)
 {

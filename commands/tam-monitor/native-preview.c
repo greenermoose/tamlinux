@@ -122,24 +122,38 @@ static int open_supervisor_listener(unsigned vt_number, char *sock_path, size_t 
 {
     if (!supervisor_socket_path(vt_number, sock_path, path_cap, true)) {
         sock_path[0] = 0;
+        errno = EACCES;
         return -1;
     }
     struct sockaddr_un addr = {.sun_family = AF_UNIX};
     if (strlen(sock_path) >= sizeof(addr.sun_path)) {
         sock_path[0] = 0;
+        errno = ENAMETOOLONG;
         return -1;
     }
     snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", sock_path);
-    unlink(sock_path);
+    /* Never remove a socket owned by another running session. */
+    struct stat existing;
+    if (lstat(sock_path, &existing) == 0) { errno = EADDRINUSE; sock_path[0] = 0; return -1; }
+    if (errno != ENOENT) { sock_path[0] = 0; return -1; }
     int fd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
     if (fd < 0) { sock_path[0] = 0; return -1; }
     mode_t old_umask = umask(0077);
     int rc = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
     umask(old_umask);
-    if (rc < 0 || listen(fd, 4) < 0) {
+    if (rc < 0) {
+        int saved = errno;
+        close(fd);
+        sock_path[0] = 0;
+        errno = saved;
+        return -1;
+    }
+    if (listen(fd, 4) < 0) {
+        int saved = errno;
         close(fd);
         unlink(sock_path);
         sock_path[0] = 0;
+        errno = saved;
         return -1;
     }
     return fd;
@@ -191,14 +205,11 @@ int tam_monitor_supervisor_request(unsigned vt_number, const char *request,
     return r.code ? 1 : 0;
 }
 
-static bool handle_client_request(int listen_fd, struct tam_display_state *state,
-    struct access *access, struct tam_display_error *session_err)
+static bool extract_card_prefix(const char *name, unsigned *card_out);
+
+static bool handle_client_request(int cfd, struct tam_display_state *state,
+    struct access *access, unsigned card, struct tam_display_error *session_err)
 {
-    int cfd = accept4(listen_fd, NULL, NULL, SOCK_CLOEXEC);
-    if (cfd < 0) return false;
-    struct timeval tv = {.tv_sec = 2, .tv_usec = 0};
-    setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    setsockopt(cfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     struct ucred cred = {0};
     socklen_t clen = sizeof(cred);
     struct tam_display_error reply = {0};
@@ -211,11 +222,40 @@ static bool handle_client_request(int listen_fd, struct tam_display_state *state
         return false;
     }
     char buf[512];
-    ssize_t n = recv(cfd, buf, sizeof(buf) - 1, 0);
-    if (n <= 0) { close(cfd); return false; }
+    ssize_t n = recv(cfd, buf, sizeof(buf) - 1, MSG_TRUNC);
+    if (n <= 0 || n >= (ssize_t)sizeof(buf)) { close(cfd); return false; }
     buf[n] = 0;
+    /* Qualified targets must refer to the DRM device this worker owns. */
+    const char *target_list = NULL;
+    if (!strncmp(buf, "WAKE ", 5)) target_list = buf + 5;
+    else if (!strncmp(buf, "KEEP ", 5)) target_list = buf + 5;
+    else if (!strncmp(buf, "BLANK ", 6)) target_list = buf + 6;
+    else if (!strncmp(buf, "TOGGLE ", 7)) target_list = buf + 7;
+    if (target_list) {
+        const char *p = target_list;
+        do {
+            unsigned target_card;
+            bool qualified = extract_card_prefix(p, &target_card);
+            if ((!qualified && !strncmp(p, "card", 4) && isdigit((unsigned char)p[4])) ||
+                (qualified && target_card != card)) {
+                reply.code = TAM_DISPLAY_INVALID;
+                strcpy(reply.message, "Connector is on a different DRM card");
+                send_report(cfd, 0, &reply);
+                close(cfd);
+                return false;
+            }
+            p = strchr(p, '\n');
+            if (p) ++p;
+        } while (p && *p);
+    }
     access->interactive_client = true;
-    if (!strncmp(buf, "WAKE ", 5)) {
+    if (!strncmp(buf, "TOGGLE ", 7)) {
+        const char *name = buf + 7;
+        if (tam_display_state_is_detached(state, name))
+            tam_display_state_wake(state, name, &reply);
+        else
+            tam_display_state_blank(state, &name, 1, &reply);
+    } else if (!strncmp(buf, "WAKE ", 5)) {
         tam_display_state_wake(state, buf + 5, &reply);
     } else if (!strncmp(buf, "BLANK ", 6)) {
         const char *names[TAM_DISPLAY_MAX_OBJECTS];
@@ -239,6 +279,12 @@ static bool handle_client_request(int listen_fd, struct tam_display_state *state
         strcpy(reply.message, "Unknown supervisor request");
     }
     access->interactive_client = false;
+    if (reply.code && (tam_display_state_recovery_required(state) ||
+        reply.code == TAM_DISPLAY_INACTIVE || reply.code == TAM_DISPLAY_PERMISSION ||
+        reply.code == TAM_DISPLAY_RESTORE_FAILED)) {
+        if (session_err) *session_err = reply;
+        stop_session = true;
+    }
     send_report(cfd, 0, &reply);
     close(cfd);
     return stop_session;
@@ -269,6 +315,8 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
     struct tam_display_session *session = NULL;
     struct tam_display_state *state = NULL;
     int timer = -1, signals = -1, hotplug = -1, listen_fd = -1;
+    int clients[8];
+    for (size_t i = 0; i < 8; ++i) clients[i] = -1;
     char sock_path[256] = {0};
     bool attempted = false;
     if (setpgid(0, 0) < 0) {
@@ -312,6 +360,14 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
         struct tam_console_fb cfb = w->cfb;
         if (tam_display_state_verify_console_fb(state, &cfb, &e)) goto done;
     }
+    if (w->enable_socket) {
+        listen_fd = open_supervisor_listener(vt.number, sock_path, sizeof(sock_path));
+        if (listen_fd < 0) {
+            e.code = TAM_DISPLAY_IO; e.system_errno = errno;
+            strcpy(e.message, "Cannot create monitor supervisor listener");
+            goto done;
+        }
+    }
     struct access access = {session, &vt, control, timer, signals, hotplug, false};
     tam_display_state_set_access_check(state, check_access, &access);
     struct pollfd ready[] = {{control, POLLIN, 0}, {timer, POLLIN, 0}, {signals, POLLIN, 0}};
@@ -353,13 +409,12 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
         if (tam_display_state_keep(state, w->keep, &e)) goto recover;
     }
     if (w->enable_socket) {
-        listen_fd = open_supervisor_listener(vt.number, sock_path, sizeof(sock_path));
         if (!send_report(control, 2, &e)) goto recover;
     }
     for (;;) {
         enum tam_display_session_event event = tam_display_session_dispatch(session);
         if (event != TAM_DISPLAY_SESSION_RUNNING) break;
-        struct pollfd fds[] = {
+        struct pollfd fds[14] = {
             {control, POLLIN, 0},
             {timer, POLLIN, 0},
             {signals, POLLIN, 0},
@@ -367,7 +422,8 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
             {hotplug, POLLIN, 0},
             {listen_fd, POLLIN, 0}
         };
-        int n = poll(fds, 6, -1);
+        for (size_t i = 0; i < 8; ++i) fds[6 + i] = (struct pollfd){clients[i], POLLIN, 0};
+        int n = poll(fds, 14, -1);
         if (n < 0) {
             if (errno == EINTR) continue;
             e.code = TAM_DISPLAY_IO; e.system_errno = errno;
@@ -379,11 +435,25 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
             strcpy(e.message, "Display hotplug ends this bounded selection");
             break;
         }
+        bool stop = false;
+        for (size_t i = 0; i < 8; ++i) {
+            if (clients[i] >= 0 && fds[6 + i].revents) {
+                int client = clients[i]; clients[i] = -1;
+                if (handle_client_request(client, state, &access, w->card, &e)) { stop = true; break; }
+            }
+        }
+        if (stop) break;
         if (listen_fd >= 0 && (fds[5].revents & POLLIN)) {
-            if (handle_client_request(listen_fd, state, &access, &e)) break;
+            int cfd = accept4(listen_fd, NULL, NULL, SOCK_CLOEXEC | SOCK_NONBLOCK);
+            if (cfd >= 0) {
+                size_t i;
+                for (i = 0; i < 8 && clients[i] >= 0; ++i) {}
+                if (i < 8) clients[i] = cfd; else close(cfd);
+            }
         }
     }
 recover:
+    for (size_t i = 0; i < 8; ++i) if (clients[i] >= 0) close(clients[i]);
     if (listen_fd >= 0) {
         close(listen_fd);
         listen_fd = -1;
@@ -542,6 +612,9 @@ static enum tam_display_result resolve_target_card(unsigned vt_number,
     memset(cfb_out, 0, sizeof(*cfb_out));
     unsigned prefix_card = 64;
     bool has_prefix = extract_card_prefix(first_connector, &prefix_card);
+    if (first_connector && !has_prefix && !strncmp(first_connector, "card", 4) &&
+        isdigit((unsigned char)first_connector[4]))
+        return set_err(e, TAM_DISPLAY_INVALID, 0, "Invalid connector card prefix");
     if (explicit_card < 64 && has_prefix && explicit_card != prefix_card) {
         return set_err(e, TAM_DISPLAY_INVALID, 0,
             "Connector card prefix does not match --card");
@@ -558,14 +631,7 @@ static enum tam_display_result resolve_target_card(unsigned vt_number,
         *card_out = cfb_out->card;
         return TAM_DISPLAY_OK;
     }
-    if (explicit_card < 64) {
-        *card_out = explicit_card;
-        return TAM_DISPLAY_OK;
-    }
-    if (has_prefix) {
-        *card_out = prefix_card;
-        return TAM_DISPLAY_OK;
-    }
+    /* A requested card cannot substitute for proof that it backs fbcon. */
     *e = map_err;
     return map_err.code ? map_err.code : TAM_DISPLAY_UNSUPPORTED;
 }
@@ -585,13 +651,26 @@ static int run_supervised_session(const struct worker_args *w_template,
 
     /* If not starting a new shell or bounded timer, check for an active supervisor on this VT. */
     if (!spawn_shell && w_template->seconds == 0) {
-        char req[256];
-        if (w_template->mode == MODE_KEEP)
-            snprintf(req, sizeof(req), "KEEP %s", w_template->keep);
-        else {
-            size_t off = (size_t)snprintf(req, sizeof(req), "BLANK ");
-            for (size_t i = 0; i < w_template->blank_count && off + 44 < sizeof(req); ++i)
-                off += (size_t)snprintf(req + off, sizeof(req) - off, "%s%s", i ? "\n" : "", w_template->blank_connectors[i]);
+        char req[512];
+        size_t off = (size_t)snprintf(req, sizeof(req), "%s", w_template->mode == MODE_KEEP ? "KEEP " : "BLANK ");
+        size_t count = w_template->mode == MODE_KEEP ? 1 : w_template->blank_count;
+        for (size_t i = 0; i < count; ++i) {
+            const char *name = w_template->mode == MODE_KEEP ? w_template->keep : w_template->blank_connectors[i];
+            unsigned prefix;
+            bool qualified = extract_card_prefix(name, &prefix);
+            if ((!qualified && !strncmp(name, "card", 4) && isdigit((unsigned char)name[4])) ||
+                (qualified && w_template->card < 64 && prefix != w_template->card)) {
+                set_err(&e, TAM_DISPLAY_INVALID, 0, "Connector card prefix does not match --card");
+                goto finish;
+            }
+            int n = qualified || w_template->card >= 64
+                ? snprintf(req + off, sizeof(req) - off, "%s%s", i ? "\n" : "", name)
+                : snprintf(req + off, sizeof(req) - off, "%scard%u-%s", i ? "\n" : "", w_template->card, name);
+            if (n < 0 || (size_t)n >= sizeof(req) - off) {
+                set_err(&e, TAM_DISPLAY_LIMIT, 0, "Too many connector names in supervisor request");
+                goto finish;
+            }
+            off += (size_t)n;
         }
         int s_rc = tam_monitor_supervisor_request(vt.number, req, &e);
         if (s_rc >= 0) {
@@ -614,6 +693,18 @@ static int run_supervised_session(const struct worker_args *w_template,
     const char *first_conn = (w.mode == MODE_KEEP) ? w.keep : w.blank_connectors[0];
     if (resolve_target_card(vt.number, w.card, first_conn, &w.card, &w.verify_cfb, &w.cfb, &e))
         goto finish;
+    if (w.mode == MODE_BLANK) {
+        for (size_t i = 0; i < w.blank_count; ++i) {
+            unsigned target_card;
+            const char *name = w.blank_connectors[i];
+            bool qualified = extract_card_prefix(name, &target_card);
+            if ((!qualified && !strncmp(name, "card", 4) && isdigit((unsigned char)name[4])) ||
+                (qualified && target_card != w.card)) {
+                set_err(&e, TAM_DISPLAY_INVALID, 0, "Blank selection spans different DRM cards");
+                goto finish;
+            }
+        }
+    }
     w.enable_socket = true;
 
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, control) < 0 ||

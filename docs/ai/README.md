@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-27 — monitor review corrections](2026-10-27-monitor-integration.md)
+
 - [2026-10-27 — tam-monitor implementation review and correction handoff](2026-10-27-tam-monitor-review.md)
 
 - [2026-10-25 — Retained-output unplug recovery](2026-10-25-monitor-unplug.md)
