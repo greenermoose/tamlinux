@@ -1,8 +1,9 @@
 # Safe, discoverable input and consistent clipboard
 
-Status: plan approved by Fred, 2026-10-27; implementation in Develop.
-Scope: Tamlinux 0.5 (Blue Sparkler) input goals and checklist K22–K25.
-Target: Tamlinux 0.5 candidate series.
+- **Status:** Plan approved by Fred, 2026-10-27; K22 close map accepted on bosgame; walkthrough of remaining chords open.
+- **Scope:** Tamlinux 0.5 (Blue Sparkler) input goals and checklist K22–K25.
+- **Target:** Tamlinux 0.5 candidate series.
+- **Living map:** [current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md) (bosgame effective chords).
 
 ## Outcome
 
@@ -34,7 +35,7 @@ $$\text{Action} = \text{Dimension}(\text{Modifier}) \times \text{Entity}(\text{K
 ### 2. Window Closing and Lifecycle
 
 - **Retire `SUPER + W`:** `SUPER + W` is completely removed as a window-closing chord to prevent accidental termination of active work.
-- **Persistent Application Windows:** Closed deliberately via **`SUPER + Q`** (Fred decision, 2026-10-27). (Note: `Shift + Esc` was evaluated and rejected due to collision with Chromium's built-in Task Manager shortcut and chat application shortcuts; `SUPER + Q` is standard, unambiguous, and immune to application hijacking). Double-tap `Esc` is rejected to keep compositor behavior simple and deterministic.
+- **Persistent Application Windows:** Closed deliberately via **`SUPER + Backspace`** (primary, “rub out”) and **`SUPER + Q`** (one-handed alias) (Fred decision, 2026-10-27). `Shift + Esc` was evaluated and rejected due to Chromium Task Manager and chat shortcuts. Appearance toggles move to `U` (`SUPER + U` transparency, `SUPER + SHIFT + U` gaps, `SUPER + CTRL + U` square aspect) so a missed Shift on gaps cannot close a window. Double-tap `Esc` is rejected to keep compositor behavior simple and deterministic.
 - **Transient and Ephemeral Windows:** Lightweight viewers (`imv`), dialogs, popups, and the `tam` knowledge browser pager close immediately on a single bare **`Esc`**.
 - **Interactive Applications Receive Bare `Esc`:** Persistent tools (text editors like `micro` and `vim`, web browsers, shells) receive bare `Esc` intact for internal command/modal cancellation (Vim normal mode, Micro search dismissal, browser modal escape).
 - **Micro Editor Launch Chord:** The decision on the specific launcher chord for Micro is deferred until a complete audit and list of all keybindings is compiled to evaluate how it fits into the overall system (Fred decision, 2026-10-27).
@@ -72,57 +73,477 @@ Tamlinux standardizes on the battle-tested convention:
 
 ---
 
-## Audit of Existing Bindings & Proposed Disposition
+## Binding walkthrough (bosgame now → after)
 
-The active Hyprland bindings in `config-fred-tamlinux/config/hypr/tamlinux/bindings/` are audited and mapped into the 4-tier system:
+Source of “now”: effective map on bosgame
+([current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md)).
+Work through each line with Fred. Mark the decision on the line when settled.
 
-| File | Existing Binding | Existing Action | Proposed Disposition | Rationale |
-| :--- | :--- | :--- | :--- | :--- |
-| `tiling.lua` | `SUPER + W` | Close window | **Retire** $\rightarrow$ replace with `SUPER + Q` | Eliminates Hamming collision with `SUPER + SHIFT + W` (Micro). |
-| `tiling.lua` | `CTRL + ALT + DELETE` | Close all windows | Retain | Emergency clear desktop action. |
-| `tiling.lua` | `SUPER + J` | Toggle window split | Retain (Tier 2 alias `SUPER + CTRL + J`) | Layout toggle. |
-| `tiling.lua` | `SUPER + T` | Toggle float/tile | Map to `SUPER + CTRL + Space` (or retain `SUPER + T`) | Layout adjustment. |
-| `tiling.lua` | `SUPER + F` | Full screen | Retain (or `SUPER + CTRL + F`) | Layout adjustment. |
-| `tiling.lua` | `SUPER + [LEFT/RIGHT/UP/DOWN]` | Focus direction | Retain (Tier 0) | Read-only navigation. |
-| `tiling.lua` | `SUPER + 1..10` | Switch workspace | Retain (Tier 0) | Read-only navigation. |
-| `tiling.lua` | `SUPER + SHIFT + 1..10` | Move window to workspace | Retain (Tier 1) | Spatial relocation. |
-| `tiling.lua` | `SUPER + SHIFT + [Arrows]` | Swap window direction | Retain (Tier 1) | Spatial relocation. |
-| `tiling.lua` | `SUPER + SHIFT + ALT + [Arrows]`| Move workspace to monitor | Map to `SUPER + ALT + [Arrows]` (Tier 3) | Multi-monitor hardware routing. |
-| `applications.lua` | `SUPER + RETURN` | Terminal (`foot`) | Retain | Primary shell tool. |
-| `applications.lua` | `SUPER + SHIFT + RETURN` | Browser | Retain | Primary GUI browser. |
-| `applications.lua` | `SUPER + SHIFT + W` | Micro editor | **Deferred** | Kept in place pending comprehensive keymap review. |
-| `applications.lua` | `SUPER + SHIFT + A` | ChatGPT webapp | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + ALT + A` | Grok webapp | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + Y` | YouTube webapp | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + ALT + G` | WhatsApp webapp | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + CTRL + G` | Google Messages | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + P` | Google Photos | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + S` | Google Maps | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + X` | X webapp | **Purge** | Delegate to launcher (`SUPER + Space`). |
-| `applications.lua` | `SUPER + SHIFT + ALT + X` | X Post | **Purge** | Delegate to launcher (`SUPER + Space`). |
+Legend for the left column:
+
+- `DONE`  — already in effect on bosgame (and usually in product source)
+- `KEEP`  — stay as-is unless Fred says otherwise
+- `OPEN`  — needs a decision before we change it
+- `FIX`   — broken or incomplete; needs a repair choice
+
+Line shape (plain text):
+
+```
+TAG  NOW chord                         action now
+     → AFTER chord                     note
+```
+
+When AFTER is the same chord, the line says `→ same`.
+
+---
+
+### A. What is actually live vs planned
+
+Ground truth: bosgame `tam-menu-keybindings --print` (2026-10-27) and Fred's
+chord check. Checkout edits that are not in the running session are not DONE.
+
+```
+DONE  SUPER + W                        (was close window)
+      → unbound                        host unbind; live print has no SUPER+W
+
+DONE  SUPER + Backspace                close window (primary “rub out”)
+      → same                           host rebound; live
+
+OPEN  SUPER + Q                        close window (one-handed alias)
+      → planned                        not in live print yet
+
+OPEN  SUPER + Shift + Backspace        toggle gaps (live)
+      → SUPER + Shift + U              planned move; not live yet
+
+OPEN  SUPER + Ctrl + Backspace         square aspect (live)
+      → SUPER + Ctrl + U               planned move; not live yet
+
+OPEN  (transparency)                   missing in live print after Backspace→close
+      → SUPER + U                      planned restore on U
+
+DONE  SUPER + Ctrl + Q                 (was omacalc on that chord)
+      → unbound on host                live print has no SUPER+Ctrl+Q
+                                       (XF86Calculator still launches Calculator)
+
+OPEN  SaaS bookmarks                   ChatGPT / Grok / YouTube / WhatsApp /
+                                       Messages / Photos / Maps / X / X Post
+      → purge                          STILL LIVE on 0.5.4 (Fred: SUPER+Shift+A
+                                       opens ChatGPT; print agrees)
+
+DONE  foot.ini mouse clipboard         LMB copy both, RMB paste, Shift bypass
+      → same                           product defaults already set
+```
+
+Fred accepted the *planned* close map for K22 on 2026-10-27
+([report](../../../improvements-fred-tamlinux/reports/2026-10-27-k22-safe-keyboard-shortcuts.md));
+re-verify against the live print when packaging lands the remaining chords.
+
+---
+
+### B. Open decisions (work these first)
+
+```
+OPEN  SUPER + Shift + A                ChatGPT (live)     → purge
+OPEN  SUPER + Shift + Alt + A          Grok (live)        → purge
+OPEN  SUPER + Shift + Y                YouTube (live)     → purge
+OPEN  SUPER + Shift + P                Google Photos (live) → purge
+OPEN  SUPER + Shift + S                Google Maps (live) → purge
+OPEN  SUPER + Shift + X                X (live)           → purge
+OPEN  SUPER + Shift + Alt + X          X Post (live)      → purge
+OPEN  SUPER + Shift + Alt + G          WhatsApp (live)    → purge
+OPEN  SUPER + Shift + Ctrl + G         Google Messages (live) → purge
+
+OPEN  SUPER + Shift + W                Micro
+      → ?                              keep W, move to E / Shift+E, or other?
+                                       SUPER + E and SUPER + Shift + E are free
+
+OPEN  SUPER + Q                        close alias (planned, not live)
+OPEN  appearance on U                  move gaps/square/transparency off Backspace
+
+OPEN  SUPER + Shift + Alt + Arrows     move workspace to monitor
+      → ? proposed SUPER + Alt + Arrows
+                                       CONFLICT: Alt+Arrows = move into group
+
+OPEN  SUPER + T                        toggle float / tile
+      → ? keep, or Tier-2 remap
+                                       earlier idea SUPER+Ctrl+Space conflicts
+                                       with background switcher
+
+OPEN  SUPER + F                        full screen
+      → ? keep, or SUPER + Ctrl + F
+                                       Ctrl+F is already tiled full screen
+
+OPEN  SUPER + J                        toggle split
+      → ? keep, or SUPER + Ctrl + J (free)
+
+OPEN  SUPER + L                        toggle workspace layout
+      → ? keep, or Tier-2 remap
+
+OPEN  SUPER + greater (>)              (missing after US-keyboard < fix)
+      → ? restore right/down resize half
+```
+
+---
+
+### C. Everyday essentials — now in effect
+
+```
+KEEP  SUPER + Return                   Terminal
+      → same
+
+KEEP  SUPER + Space                    App / Tamlinux menu
+      → same
+
+KEEP  SUPER + Escape                   System / power menu
+      → same
+
+KEEP  Ctrl + Alt + Delete              close all windows
+      → same
+
+KEEP  SUPER + C / V / X                universal copy / paste / cut
+      → same
+
+KEEP  SUPER + Ctrl + V                 clipboard history
+      → same
+
+KEEP  SUPER + K                        keybindings cheat sheet
+      → same
+
+KEEP  SUPER + Tab                      next workspace
+      → same
+
+KEEP  SUPER + Shift + Tab              previous workspace
+      → same
+
+KEEP  SUPER + Ctrl + Tab               former workspace
+      → same
+
+KEEP  SUPER + 1..10                    switch desktop 1..10 (host; +keypad)
+      → same
+
+KEEP  SUPER + Shift + 1..10            move window to desktop (host; +keypad)
+      → same
+
+KEEP  SUPER + Shift + Alt + 1..10      move window silently (host; +keypad)
+      → same
+
+KEEP  Alt + Tab / Alt + Shift + Tab    cycle windows
+      → same
+
+KEEP  Ctrl + Alt + Tab                 next / previous monitor
+      → same
+
+KEEP  SUPER + mouse:272 (LMB drag)     move window
+      → same
+
+KEEP  SUPER + mouse:273 (RMB)          Quick Launch menu (host)
+      → same                           replaced default resize-drag
+
+KEEP  SUPER + mouse wheel              scroll workspaces
+      → same
+```
+
+---
+
+### D. Window focus, layout, geometry — now in effect
+
+```
+KEEP  SUPER + Arrows                   focus window in direction
+      → same
+
+KEEP  SUPER + Shift + Arrows           swap window in direction
+      → same
+
+KEEP  SUPER + Ctrl + F                 tiled full screen
+      → same
+
+KEEP  SUPER + Alt + F                  maximize / full width
+      → same
+
+KEEP  SUPER + P                        pseudo window
+      → same
+
+KEEP  SUPER + O                        pop out (float and pin)
+      → same
+
+KEEP  SUPER + S                        toggle scratchpad
+      → same
+
+KEEP  SUPER + Alt + S                  move window to scratchpad
+      → same
+
+KEEP  SUPER + G                        toggle grouping
+      → same
+
+KEEP  SUPER + Alt + G                  move window out of group
+      → same
+
+KEEP  SUPER + Alt + Arrows             move window into group
+      → same                           blocks Tier-3 remap of monitor move
+
+KEEP  SUPER + Alt + Tab                next / previous in group
+      → same
+
+KEEP  SUPER + Ctrl + Left/Right        group focus left / right
+      → same
+
+KEEP  SUPER + Alt + 1..5               switch to group tab
+      → same
+
+KEEP  SUPER + Home                     restore saved window width
+      → same
+
+KEEP  SUPER + Alt + Home               save window width
+      → same
+
+KEEP  SUPER + Slash                    monitor scaling up
+      → same
+
+KEEP  SUPER + Alt + Slash              monitor scaling down
+      → same
+
+KEEP  SUPER + less (<)                 expand window left (host)
+      → same
+
+KEEP  SUPER + Shift + less             shrink window up (host)
+      → same
+
+KEEP  SUPER + Alt + less               expand left a little (host)
+      → same
+
+KEEP  SUPER + Shift + Alt + less       shrink up a little (host)
+      → same
+
+KEEP  SUPER + Ctrl + less              expand left a lot (host)
+      → same
+
+KEEP  SUPER + Ctrl + Shift + less      shrink up a lot (host)
+      → same
+```
+
+(See section B for `SUPER + F` / `T` / `J` / `L`, monitor-move chord, and missing `>`.)
+
+---
+
+### E. Launch applications — now in effect
+
+```
+KEEP  SUPER + Shift + Return           Browser
+      → same
+
+KEEP  SUPER + Shift + B                Browser (alias)
+      → same
+
+KEEP  SUPER + Shift + Alt + B          Browser (private)
+      → same
+
+KEEP  SUPER + Shift + F                File manager
+      → same
+
+KEEP  SUPER + Alt + Shift + F          File manager (cwd)
+      → same
+
+KEEP  SUPER + Shift + N                Editor ($EDITOR)
+      → same
+
+OPEN  SUPER + Shift + W                Micro
+      → ?                              see section B
+
+KEEP  SUPER + Shift + M                Spotify
+      → same
+
+KEEP  SUPER + Shift + Alt + M          Music TUI
+      → same
+
+KEEP  SUPER + Shift + D                Docker TUI
+      → same
+
+KEEP  SUPER + Shift + G                Signal
+      → same
+
+KEEP  SUPER + Shift + O                Obsidian
+      → same
+
+KEEP  SUPER + Shift + Slash            1Password
+      → same
+
+KEEP  SUPER + Alt + Return             Terminal with tmux
+      → same
+
+KEEP  SUPER + Ctrl + Return            Herdr
+      → same
+
+KEEP  SUPER + Alt + Space              Apps menu
+      → same
+```
+
+Free after SaaS purge (candidates for Micro or other):  
+`SUPER + Shift + A`, `P`, `S`, `X`, `Y` and multi-modifier SaaS variants.
+
+---
+
+### F. System panels, toggles, capture — now in effect
+
+```
+KEEP  SUPER + Ctrl + A                 Audio panel
+      → same
+
+KEEP  SUPER + Ctrl + B                 Bluetooth panel
+      → same
+
+KEEP  SUPER + Ctrl + D                 Display panel (fred.monitor)
+      → same
+
+KEEP  SUPER + Ctrl + W                 Network panel
+      → same
+
+KEEP  SUPER + Ctrl + P                 Power panel
+      → same
+
+KEEP  SUPER + Ctrl + T                 Activity (btop)
+      → same
+
+KEEP  SUPER + Ctrl + L                 Lock screen
+      → same
+
+KEEP  SUPER + Ctrl + I                 toggle idle lock
+      → same
+
+KEEP  SUPER + Ctrl + N                 toggle night light
+      → same
+
+KEEP  SUPER + Ctrl + H                 Hardware menu
+      → same
+
+KEEP  SUPER + Ctrl + O                 Quick toggles menu
+      → same
+
+KEEP  SUPER + Ctrl + C                 Capture menu
+      → same
+
+KEEP  SUPER + Ctrl + E                 Emoji picker
+      → same
+
+KEEP  SUPER + Ctrl + S                 Share menu
+      → same
+
+KEEP  SUPER + Ctrl + R                 set reminder
+      → same
+
+KEEP  SUPER + Ctrl + Alt + R           show reminders
+      → same
+
+KEEP  SUPER + Shift + Ctrl + R         clear reminders
+      → same
+
+KEEP  SUPER + Ctrl + X                 dictation toggle (voxtype)
+      → same
+
+KEEP  F9 hold/release                  dictation push-to-talk
+      → same
+
+KEEP  SUPER + Ctrl + Z                 zoom in
+      → same
+
+KEEP  SUPER + Ctrl + Alt + Z           reset zoom
+      → same
+
+KEEP  SUPER + Ctrl + M                 Mac/Windows desktop mode (host)
+      → same
+
+KEEP  SUPER + Ctrl + Shift + D         retrain MSI display link (host)
+      → same
+
+KEEP  SUPER + Ctrl + 1..9              toggle bar panel at position
+      → same
+
+KEEP  SUPER + Shift + Space            toggle top bar
+      → same
+
+KEEP  SUPER + Ctrl + Space             background switcher
+      → same                           blocks earlier float remap idea
+
+KEEP  SUPER + Shift + Ctrl + Space     theme menu
+      → same
+
+KEEP  SUPER + comma                    dismiss last notification
+      → same
+
+KEEP  SUPER + Shift + comma            dismiss all notifications
+      → same
+
+KEEP  SUPER + Ctrl + comma             toggle notification silencing
+      → same
+
+KEEP  SUPER + Alt + comma              invoke last notification
+      → same
+
+KEEP  SUPER + Shift + Alt + comma      notification history
+      → same
+
+KEEP  Print                            screenshot
+      → same
+
+KEEP  Alt + Print                      screen recording
+      → same
+
+KEEP  SUPER + Print                    color picker
+      → same
+
+KEEP  SUPER + Ctrl + Print             OCR from screenshot
+      → same
+
+KEEP  SUPER + Ctrl + Period            transcode
+      → same
+
+KEEP  SUPER + Shift + Ctrl + A         agent picker
+      → same
+
+KEEP  SUPER + Ctrl + Alt + T/B/W       show time / battery / weather
+      → same
+
+KEEP  SUPER + Ctrl + Alt + D           calendar (fred.clock)
+      → same
+
+KEEP  SUPER + Ctrl + Delete            toggle laptop display
+      → same
+
+KEEP  SUPER + Alt + K                  tmux keybindings help
+      → same
+
+KEEP  SUPER + Ctrl + K                 Herdr keybindings help
+      → same
+
+KEEP  XF86* media / brightness / vol   hardware keys (media.lua)
+      → same
+```
+
+---
+
+### G. Non-chord work still open (not a key move)
+
+- **K23** Shortcut viewer must match this map after each change.
+- **K24** foot.ini already configured; still need observed trial on bosgame.
+- **K25** Titlebar `[X]` and titlebar context menu — mouse close without keyboard.
+- **Esc** Transient windows close on bare Esc; editors/browsers/shells keep Esc.
 
 ---
 
 ## Work Steps
 
-1. **Configuration updates in `tamlinux` & `config-fred-tamlinux`:**
-   - Update `foot.ini` defaults in `tamlinux/desktop/assets/defaults/foot.ini` to configure `selection-target=both` and `clipboard-paste=BTN_RIGHT`.
-   - Update `tiling.lua` in `config-fred-tamlinux/config/hypr/tamlinux/bindings/`:
-     - Bind `SUPER + Q` to `hl.dsp.window.close()`.
-     - Remove `SUPER + W`.
-   - Update `applications.lua`:
-     - Remove the 9 SaaS bookmark web application bindings.
-     - Preserve terminal, browser, file manager, and launcher bindings.
-2. **Shortcut viewer alignment (K23):**
-   - Ensure `tam-menu` keybinding helper (or dedicated `tam-keys` viewer) dynamically reflects the updated bindings.
-   - Verify that all active bindings are discoverable by plain-English action name.
-3. **Automated and PTY test verification:**
-   - Add unit/integration tests verifying that `foot.ini` generates valid syntax and correct mouse binding mappings.
-   - Test that transient windows (`imv`, `tam`) close on `Esc`.
-   - Test that `micro` and `vim` launch without collision and receive `Esc` without window termination.
-   - Test clipboard interoperability across PTY/terminal and Wayland clipboard buffers (`wl-copy` / `wl-paste`).
-4. **Physical verification and Fred acceptance:**
-   - Verify daily-driver input workflow with Fred on `bosgame` to close K22, K23, K24, and K25.
+1. **Walk section B with Fred** (Micro placement, optional Tier remaps, missing `>`).
+   Record each decision on the matching `OPEN` / `FIX` line above.
+2. **Apply agreed chord changes** in product
+   (`tamlinux/desktop/session/hypr/tamlinux/bindings/`) and live host tree
+   (`config-fred-tamlinux/hosts/bosgame-omarchy/config/hypr/…`), then update
+   [current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md).
+3. **Already live on bosgame:** `SUPER + W` unbound, `SUPER + Backspace` close,
+   `SUPER + Ctrl + Q` unbound, `foot.ini` PuTTY mouse clipboard. **Not live yet:**
+   SaaS purge, appearance on `U`, `SUPER + Q` close (checkout/plan only).
+4. **Shortcut viewer alignment (K23):** cheat sheet / `tam-menu-keybindings`
+   matches the effective map; actions findable by plain-English name.
+5. **Verification:** Esc lifecycle, Micro/vim safety, clipboard trial (K24),
+   titlebar close (K25); Fred daily-driver acceptance on bosgame.
 
 ---
 
@@ -130,7 +551,7 @@ The active Hyprland bindings in `config-fred-tamlinux/config/hypr/tamlinux/bindi
 
 | Gate | Verification Method | Pass Criteria |
 | :--- | :--- | :--- |
-| **K22 Safe shortcuts** | Recorded trial & **Fred:** | `SUPER + W` does not close windows; `SUPER + Q` closes active windows; no accidental window termination when launching editors or navigating; Fred confirms acceptance. |
+| **K22 Safe shortcuts** | Recorded trial & **Fred:** | `SUPER + W` does not close windows; `SUPER + Backspace` and `SUPER + Q` close active windows; appearance toggles on `U` do not collide with close; no accidental window termination when launching editors or navigating; Fred confirms acceptance. |
 | **K23 Shortcut discovery** | **Observed:** trial | Active shortcut reference matches active bindings; user can search and find launch, navigation, clipboard, and close actions. |
 | **K24 Consistent clipboard** | **Observed:** trial | LMB drag copies text immediately in streaming terminal; RMB click pastes; `Shift + LMB` and `Shift + RMB` work in mouse-tracking TUIs; copy/paste transfers seamlessly between Foot and Wayland GUI apps. |
 | **K25 Accessible close** | **Fred:** | Managed windows provide titlebar close buttons (`[X]`); mouse users can close windows without keyboard interaction; Fred confirms acceptance. |

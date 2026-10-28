@@ -16,9 +16,11 @@ o.bind("XF86Calculator", "Calculator", "omacalc")
 o.bind("SUPER + SHIFT + SPACE", "Toggle top bar", "tam-shell tamlinux-shell toggleBar")
 o.bind("SUPER + CTRL + SPACE", "Background switcher", "tam-menu toggle background")
 o.bind("SUPER + SHIFT + CTRL + SPACE", "Theme menu", "tam-menu toggle theme")
-o.bind("SUPER + BACKSPACE", "Toggle window transparency", "tam-hyprland-window-transparency-toggle")
-o.bind("SUPER + SHIFT + BACKSPACE", "Toggle window gaps", "tam-hyprland-window-gaps-toggle")
-o.bind("SUPER + CTRL + BACKSPACE", "Toggle single-window square aspect", "tam-hyprland-window-single-square-aspect-toggle")
+-- Appearance toggles live on U so Backspace stays a close chord without a
+-- Hamming collision (missing Shift on gaps would otherwise close the window).
+o.bind("SUPER + U", "Toggle window transparency", "tam-hyprland-window-transparency-toggle")
+o.bind("SUPER + SHIFT + U", "Toggle window gaps", "tam-hyprland-window-gaps-toggle")
+o.bind("SUPER + CTRL + U", "Toggle single-window square aspect", "tam-hyprland-window-single-square-aspect-toggle")
 
 -- xkbcommon names the comma keysym "comma"; the upper-case "COMMA" does not match.
 o.bind("SUPER + comma", "Dismiss last notification", "tam-shell notifications dismissOne")
