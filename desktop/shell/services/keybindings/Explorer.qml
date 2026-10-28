@@ -14,6 +14,7 @@ PanelWindow {
   property var selected: null
   property bool capturing: false
   property string captureResult: ""
+  property var lastCaptured: null
   property string commandPath: ""
   signal closed()
   readonly property var filtered: Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group })
@@ -46,11 +47,40 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
   exclusionMode: ExclusionMode.Ignore
   onVisibleChanged: {
-    if (visible) { search.text = ""; modifier = "all"; group = "All groups"; selected = null; Qt.callLater(function() { search.forceActiveFocus() }) }
+    if (visible) { search.text = ""; modifier = "all"; group = "All groups"; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
     else { capturing = false; inhibitor.enabled = false }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; closed() }
-  function beginCapture() { captureResult = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
+  function beginCapture() { lastCaptured = null; captureResult = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
+  function finishCapture() {
+    var target = panel.lastCaptured
+    panel.capturing = false
+    inhibitor.enabled = false
+    if (target) {
+      if (panel.modifier !== "all") panel.modifier = "all"
+      if (panel.group !== "All groups") panel.group = "All groups"
+      if (search.text !== "") search.text = ""
+      Qt.callLater(function() {
+        var targetIndex = -1
+        for (var i = 0; i < panel.filtered.length; i++) {
+          if (panel.filtered[i].display === target.display && panel.filtered[i].arg === target.arg) {
+            targetIndex = i
+            break
+          }
+        }
+        if (targetIndex >= 0) {
+          list.currentIndex = targetIndex
+          panel.selected = panel.filtered[targetIndex]
+          list.positionViewAtIndex(targetIndex, ListView.Center)
+          list.forceActiveFocus()
+        } else {
+          search.forceActiveFocus()
+        }
+      })
+    } else {
+      search.forceActiveFocus()
+    }
+  }
   onSelectedChanged: {
     commandPath = ""
     if (!selected || selected.dispatcher !== "exec") return
@@ -331,21 +361,130 @@ PanelWindow {
         id: captureFocus; anchors.fill: parent; focus: panel.capturing
         Keys.onPressed: function(event) {
           event.accepted = true
-          if (event.key === Qt.Key_Escape) { panel.capturing = false; inhibitor.enabled = false; search.forceActiveFocus(); return }
+          if (event.key === Qt.Key_Escape || (panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter))) {
+            panel.finishCapture()
+            return
+          }
           if (!inhibitor.active) return
           if (event.key === Qt.Key_Shift || event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta || event.key === Qt.Key_Super_L || event.key === Qt.Key_Super_R) return
           var mask = ((event.modifiers & Qt.MetaModifier) ? 64 : 0) | ((event.modifiers & Qt.ControlModifier) ? 4 : 0) | ((event.modifiers & Qt.AltModifier) ? 8 : 0) | ((event.modifiers & Qt.ShiftModifier) ? 1 : 0)
           var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Backspace] = "BACKSPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
           var key = names[event.key] || (event.key >= 32 && event.key <= 126 ? String.fromCharCode(event.key).toUpperCase() : "")
           var found = Model.capturedBindings(panel.rows, mask, key, event.nativeScanCode)
-          panel.captureResult = found.length ? found.map(function(r) { return r.combo + "  →  " + r.does }).join("\n") : "No matching shortcut found."
+          if (found.length > 0) {
+            panel.lastCaptured = found[0]
+            panel.captureResult = found.map(function(r) { return r.combo + "  →  " + r.does }).join("\n")
+          } else {
+            panel.lastCaptured = null
+            var chordLabel = Model.comboText(mask, key)
+            panel.captureResult = (chordLabel ? chordLabel + "  →  " : "") + "No matching shortcut found"
+          }
         }
       }
       Column {
         anchors.centerIn: parent; width: parent.width - 64; spacing: 20
         Text { text: "Try a shortcut"; color: Color.menu.text; font.pixelSize: 24; font.bold: true }
-        Text { width: parent.width; wrapMode: Text.Wrap; color: Color.menu.text; text: inhibitor.active ? "Shortcuts are paused while this window is focused. Press a combination to inspect it; press Esc to exit." : "Waiting for the compositor to grant shortcut capture. Press Esc to exit." }
-        Text { width: parent.width; wrapMode: Text.Wrap; color: Color.menu.text; font.pixelSize: 18; text: panel.captureResult || "Press a key combination" }
+        Text { width: parent.width; wrapMode: Text.Wrap; color: Color.menu.text; opacity: 0.75; font.pixelSize: 14; text: inhibitor.active ? "Shortcuts are paused while this window is focused. Press any combination to test it without running the command." : "Waiting for the compositor to grant shortcut capture. Press Esc to exit." }
+
+        Rectangle {
+          width: parent.width; height: 110; radius: 8
+          color: panel.lastCaptured ? Util.alpha(Color.accent, 0.15) : Util.alpha(Color.foreground, 0.05)
+          border.color: panel.lastCaptured ? Color.accent : Util.alpha(Color.foreground, 0.15)
+          border.width: 1
+
+          Column {
+            anchors.centerIn: parent; spacing: 10
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: 12
+              visible: !!panel.lastCaptured
+              Row {
+                spacing: 4
+                anchors.verticalCenter: parent.verticalCenter
+                Repeater {
+                  model: panel.lastCaptured ? (panel.lastCaptured.chord || (panel.lastCaptured.combo ? panel.lastCaptured.combo.split(" + ") : [])) : []
+                  Row {
+                    spacing: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      visible: index > 0
+                      text: "+"
+                      color: Color.accentText
+                      opacity: 0.7
+                      font.pixelSize: 13
+                      font.bold: true
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Rectangle {
+                      height: 28
+                      width: Math.max(28, captureKeyLabel.implicitWidth + 14)
+                      radius: 4
+                      color: Util.alpha(Color.accent, 0.28)
+                      border.color: Color.accent
+                      border.width: 1
+                      anchors.verticalCenter: parent.verticalCenter
+
+                      Text {
+                        id: captureKeyLabel
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: Color.accentText
+                        font.pixelSize: 13
+                        font.bold: true
+                        font.family: Style.fontFamily
+                      }
+                    }
+                  }
+                }
+              }
+              Text {
+                text: "→"
+                color: Color.accent
+                font.pixelSize: 20
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+              }
+              Text {
+                text: panel.lastCaptured ? panel.lastCaptured.does : ""
+                color: Color.accentText
+                font.pixelSize: 18
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+              }
+            }
+
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              visible: !panel.lastCaptured
+              text: panel.captureResult || "Press any key combination on your keyboard..."
+              color: Color.menu.text
+              font.pixelSize: 16
+              opacity: panel.captureResult ? 1.0 : 0.6
+            }
+
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              visible: !!panel.lastCaptured
+              text: "Press Enter or Esc to inspect this shortcut in the list"
+              color: Color.accent
+              font.pixelSize: 12
+              font.bold: true
+            }
+          }
+        }
+
+        Row {
+          spacing: 12
+          Button {
+            text: panel.lastCaptured ? "Inspect in list  (Enter / Esc)" : "Exit  (Esc)"
+            onClicked: panel.finishCapture()
+          }
+          Button {
+            visible: !!panel.lastCaptured
+            text: "Cancel"
+            onClicked: { panel.lastCaptured = null; panel.finishCapture() }
+          }
+        }
       }
     }
   }
