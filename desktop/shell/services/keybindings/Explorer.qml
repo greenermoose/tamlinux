@@ -688,11 +688,16 @@ PanelWindow {
     }
     Rectangle {
       anchors.fill: parent; visible: panel.capturing; radius: card.radius; color: Color.menu.background
+      MouseArea { anchors.fill: parent }
       Item {
         id: captureFocus; anchors.fill: parent; focus: panel.capturing
         Keys.onPressed: function(event) {
           event.accepted = true
-          if (event.key === Qt.Key_Escape || (panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter))) {
+          if (event.key === Qt.Key_Escape) {
+            panel.finishCapture()
+            return
+          }
+          if (panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
             panel.finishCapture()
             return
           }
@@ -705,6 +710,7 @@ PanelWindow {
           if (found.length > 0) {
             panel.lastCaptured = found[0]
             panel.captureResult = found.map(function(r) { return r.combo + "  →  " + r.does }).join("\n")
+            panel.selected = found[0]
           } else {
             panel.lastCaptured = null
             var chordLabel = Model.comboText(mask, key)
@@ -713,107 +719,434 @@ PanelWindow {
         }
       }
       Column {
-        anchors.centerIn: parent; width: parent.width - 64; spacing: 20
-        Text { text: "Try a shortcut"; color: Color.menu.text; font.pixelSize: 24; font.bold: true }
-        Text { width: parent.width; wrapMode: Text.Wrap; color: Color.menu.text; opacity: 0.75; font.pixelSize: 14; text: inhibitor.active ? "Shortcuts are paused while this window is focused. Press any combination to test it without running the command." : "Waiting for the compositor to grant shortcut capture. Press Esc to exit." }
+        anchors.fill: parent
+        anchors.margins: 24
+        spacing: 14
 
-        Rectangle {
-          width: parent.width; height: 110; radius: 8
-          color: panel.lastCaptured ? Util.alpha(Color.accent, 0.15) : Util.alpha(Color.foreground, 0.05)
-          border.color: panel.lastCaptured ? Color.accent : Util.alpha(Color.foreground, 0.15)
-          border.width: 1
-
-          Column {
-            anchors.centerIn: parent; spacing: 10
-            Row {
-              anchors.horizontalCenter: parent.horizontalCenter
-              spacing: 12
-              visible: !!panel.lastCaptured
+        Item {
+          width: parent.width; height: 38
+          Row {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+            Text {
+              text: "Try a shortcut"
+              color: Color.menu.text
+              font.pixelSize: 24
+              font.bold: true
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle {
+              height: 24
+              width: captureStatusRow.implicitWidth + 16
+              radius: 12
+              color: inhibitor.active ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.text, 0.08)
+              border.color: inhibitor.active ? Util.alpha(Color.accent, 0.45) : Util.alpha(Color.menu.border, 0.8)
+              border.width: 1
+              anchors.verticalCenter: parent.verticalCenter
               Row {
-                spacing: 4
-                anchors.verticalCenter: parent.verticalCenter
-                Repeater {
-                  model: panel.lastCaptured ? (panel.lastCaptured.chord || (panel.lastCaptured.combo ? panel.lastCaptured.combo.split(" + ") : [])) : []
-                  Row {
-                    spacing: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    Text {
-                      visible: index > 0
-                      text: "+"
-                      color: Color.accentText
-                      opacity: 0.7
-                      font.pixelSize: 13
-                      font.bold: true
-                      anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Rectangle {
-                      height: 28
-                      width: Math.max(28, captureKeyLabel.implicitWidth + 14)
-                      radius: 4
-                      color: Util.alpha(Color.accent, 0.28)
-                      border.color: Color.accent
-                      border.width: 1
-                      anchors.verticalCenter: parent.verticalCenter
+                id: captureStatusRow
+                anchors.centerIn: parent
+                spacing: 6
+                Rectangle {
+                  width: 6; height: 6; radius: 3
+                  color: inhibitor.active ? Color.accent : "#c46b6b"
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+                Text {
+                  text: inhibitor.active ? "Capture Active — Safe to test" : "Waiting for compositor capture"
+                  color: inhibitor.active ? Color.accentText : Color.menu.text
+                  font.pixelSize: 11
+                  font.bold: true
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+              }
+            }
+          }
+          Button {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Back to list  Esc"
+            onClicked: panel.finishCapture()
+          }
+        }
 
+        Text {
+          width: parent.width
+          wrapMode: Text.Wrap
+          color: Color.menu.text
+          opacity: 0.75
+          font.pixelSize: 13
+          text: inhibitor.active
+            ? (panel.lastCaptured ? "Found matching shortcut! Press any other combination to test again, or Esc to return to the list." : "Press any key combination on your keyboard. Shortcuts are intercepted and will not run the command.")
+            : "Waiting for the compositor to grant shortcut capture. Press Esc to exit."
+        }
+
+        Item {
+          width: parent.width
+          height: parent.height - y - 10
+
+          Rectangle {
+            anchors.fill: parent
+            visible: !panel.lastCaptured && !panel.captureResult
+            radius: 8
+            color: Color.menu.cardBackground
+            border.color: Color.menu.cardBorder
+            border.width: 1
+
+            Column {
+              anchors.centerIn: parent
+              spacing: 16
+              width: Math.min(parent.width - 80, 560)
+
+              Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 64; height: 64; radius: 32
+                color: Util.alpha(Color.accent, 0.14)
+                border.color: Util.alpha(Color.accent, 0.35)
+                border.width: 1
+                Text {
+                  anchors.centerIn: parent
+                  text: "⌨"
+                  font.pixelSize: 28
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Press any key combination"
+                color: Color.menu.text
+                font.pixelSize: 18
+                font.bold: true
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                color: Color.menu.text
+                opacity: 0.65
+                font.pixelSize: 13
+                lineHeight: 1.3
+                text: "Press shortcuts like SUPER + RETURN, SUPER + K, ALT + TAB, or SUPER + BACKSPACE. The full details card will appear here instantly without executing the command."
+              }
+            }
+          }
+
+          Rectangle {
+            anchors.fill: parent
+            visible: !panel.lastCaptured && !!panel.captureResult
+            radius: 8
+            color: Color.menu.cardBackground
+            border.color: Color.menu.cardBorder
+            border.width: 1
+
+            Column {
+              anchors.centerIn: parent
+              spacing: 16
+              width: Math.min(parent.width - 80, 560)
+
+              Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 64; height: 64; radius: 32
+                color: Util.alpha(Color.urgent, 0.12)
+                border.color: Util.alpha(Color.urgent, 0.35)
+                border.width: 1
+                Text {
+                  anchors.centerIn: parent
+                  text: "✕"
+                  font.pixelSize: 26
+                  font.bold: true
+                  color: Color.urgent
+                }
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: panel.captureResult
+                color: Color.menu.text
+                font.pixelSize: 17
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                color: Color.menu.text
+                opacity: 0.65
+                font.pixelSize: 13
+                text: "This combination is not registered in your compositor configuration. Try another combination or press Esc to return to the list."
+              }
+
+              Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Back to list  (Esc)"
+                onClicked: panel.finishCapture()
+              }
+            }
+          }
+
+          Rectangle {
+            anchors.fill: parent
+            visible: !!panel.lastCaptured
+            radius: 8
+            color: Color.menu.cardBackground
+            border.color: Util.alpha(Color.accent, 0.45)
+            border.width: 1
+
+            Column {
+              anchors.fill: parent
+              anchors.margins: 24
+              spacing: 16
+
+              Row {
+                width: parent.width
+                spacing: 10
+
+                Rectangle {
+                  height: 24
+                  width: captureCatLabel.implicitWidth + 14
+                  radius: 12
+                  color: Util.alpha(Color.foreground, 0.08)
+                  border.color: Util.alpha(Color.foreground, 0.2)
+                  border.width: 1
+                  anchors.verticalCenter: parent.verticalCenter
+                  Text {
+                    id: captureCatLabel
+                    anchors.centerIn: parent
+                    text: panel.lastCaptured ? (panel.lastCaptured.group || "Other") : ""
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.menu.text
+                  }
+                }
+
+                Rectangle {
+                  height: 24
+                  width: captureDispLabel.implicitWidth + 14
+                  radius: 12
+                  color: Util.alpha(Color.accent, 0.15)
+                  border.color: Util.alpha(Color.accent, 0.4)
+                  border.width: 1
+                  anchors.verticalCenter: parent.verticalCenter
+                  Text {
+                    id: captureDispLabel
+                    anchors.centerIn: parent
+                    text: panel.lastCaptured ? (panel.lastCaptured.dispatcher || "command") : ""
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.menu.selectedText
+                  }
+                }
+
+                Item {
+                  width: Math.max(0, parent.width - captureCatLabel.implicitWidth - captureDispLabel.implicitWidth - captureChordsRow.implicitWidth - 70)
+                  height: 1
+                }
+
+                Row {
+                  id: captureChordsRow
+                  spacing: 4
+                  anchors.verticalCenter: parent.verticalCenter
+                  Repeater {
+                    model: panel.lastCaptured ? (panel.lastCaptured.chord || (panel.lastCaptured.combo ? panel.lastCaptured.combo.split(" + ") : [])) : []
+                    Row {
+                      spacing: 4
+                      anchors.verticalCenter: parent.verticalCenter
                       Text {
-                        id: captureKeyLabel
-                        anchors.centerIn: parent
-                        text: modelData
+                        visible: index > 0
+                        text: "+"
                         color: Color.accentText
+                        opacity: 0.7
                         font.pixelSize: 13
                         font.bold: true
-                        font.family: Style.fontFamily
+                        anchors.verticalCenter: parent.verticalCenter
+                      }
+                      Rectangle {
+                        height: 28
+                        width: Math.max(28, captureChordLabel.implicitWidth + 14)
+                        radius: 4
+                        color: Util.alpha(Color.accent, 0.28)
+                        border.color: Color.accent
+                        border.width: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text {
+                          id: captureChordLabel
+                          anchors.centerIn: parent
+                          text: modelData
+                          color: Color.accentText
+                          font.pixelSize: 13
+                          font.bold: true
+                          font.family: Style.fontFamily
+                        }
                       }
                     }
                   }
                 }
               }
+
               Text {
-                text: "→"
-                color: Color.accent
-                font.pixelSize: 20
-                font.bold: true
-                anchors.verticalCenter: parent.verticalCenter
-              }
-              Text {
+                width: parent.width
                 text: panel.lastCaptured ? panel.lastCaptured.does : ""
                 color: Color.accentText
-                font.pixelSize: 18
                 font.bold: true
-                anchors.verticalCenter: parent.verticalCenter
+                font.pixelSize: 22
+                wrapMode: Text.Wrap
+              }
+
+              Rectangle {
+                width: parent.width
+                height: captureExplCol.implicitHeight + 20
+                radius: 6
+                color: Util.alpha(Color.foreground, 0.04)
+                border.color: Util.alpha(Color.foreground, 0.08)
+                border.width: 1
+
+                Column {
+                  id: captureExplCol
+                  anchors.left: parent.left
+                  anchors.right: parent.right
+                  anchors.margins: 14
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: 4
+
+                  Text {
+                    text: "Action"
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.menu.text
+                    opacity: 0.6
+                  }
+                  Text {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    color: Color.menu.text
+                    font.pixelSize: 13
+                    lineHeight: 1.25
+                    text: panel.lastCaptured && panel.lastCaptured.explanation ? panel.lastCaptured.explanation : "No additional explanation is available for this action."
+                  }
+                }
+              }
+
+              Column {
+                width: parent.width
+                spacing: 6
+
+                Text {
+                  text: "Command & Arguments"
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.menu.text
+                  opacity: 0.6
+                }
+
+                Rectangle {
+                  width: parent.width
+                  height: captureCmdText.implicitHeight + 16
+                  radius: 6
+                  color: Color.background
+                  border.color: Util.alpha(Color.foreground, 0.15)
+                  border.width: 1
+
+                  Text {
+                    id: captureCmdText
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: panel.lastCaptured ? (panel.lastCaptured.arg || "(none)") : ""
+                    font.family: Style.fontFamily
+                    font.pixelSize: 12
+                    color: Color.accent
+                    wrapMode: Text.WrapAnywhere
+                  }
+                }
+              }
+
+              Column {
+                width: parent.width
+                spacing: 6
+
+                Text {
+                  text: "Executable Path"
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.menu.text
+                  opacity: 0.6
+                }
+
+                Rectangle {
+                  width: parent.width
+                  height: 34
+                  radius: 6
+                  color: Color.background
+                  border.color: Util.alpha(Color.foreground, 0.15)
+                  border.width: 1
+
+                  Row {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+
+                    Rectangle {
+                      width: 8; height: 8; radius: 4
+                      anchors.verticalCenter: parent.verticalCenter
+                      color: panel.commandPath ? "#68b087" : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "#c46b6b" : Color.accent)
+                    }
+
+                    Text {
+                      width: parent.width - 20
+                      text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
+                      font.family: Style.fontFamily
+                      font.pixelSize: 11
+                      color: panel.commandPath ? Color.menu.text : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Color.urgent : Color.muted)
+                      elide: Text.ElideMiddle
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                  }
+                }
+              }
+
+              Item {
+                width: parent.width
+                height: 36
+                anchors.topMargin: 4
+
+                Row {
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: 6
+                  Text {
+                    text: "Try another key combination anytime, or press Esc to return to the list."
+                    color: Color.menu.text
+                    opacity: 0.6
+                    font.pixelSize: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                }
+
+                Row {
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: 10
+                  Button {
+                    text: "Inspect in list  (Enter)"
+                    onClicked: panel.finishCapture()
+                  }
+                  Button {
+                    text: "Back to list  (Esc)"
+                    onClicked: panel.finishCapture()
+                  }
+                }
               }
             }
-
-            Text {
-              anchors.horizontalCenter: parent.horizontalCenter
-              visible: !panel.lastCaptured
-              text: panel.captureResult || "Press any key combination on your keyboard..."
-              color: Color.menu.text
-              font.pixelSize: 16
-              opacity: panel.captureResult ? 1.0 : 0.6
-            }
-
-            Text {
-              anchors.horizontalCenter: parent.horizontalCenter
-              visible: !!panel.lastCaptured
-              text: "Press Enter or Esc to inspect this shortcut in the list"
-              color: Color.accent
-              font.pixelSize: 12
-              font.bold: true
-            }
-          }
-        }
-
-        Row {
-          spacing: 12
-          Button {
-            text: panel.lastCaptured ? "Inspect in list  (Enter / Esc)" : "Exit  (Esc)"
-            onClicked: panel.finishCapture()
-          }
-          Button {
-            visible: !!panel.lastCaptured
-            text: "Cancel"
-            onClicked: { panel.lastCaptured = null; panel.finishCapture() }
           }
         }
       }
