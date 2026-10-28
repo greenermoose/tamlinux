@@ -177,3 +177,4 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 - [2026-10-20 — Discord icon independence](2026-10-20-discord-icon.md)
 
 - [2026-10-28 — Keybinding explorer capture verification](2026-10-28-explorer-capture-verification.md)
+- [2026-10-28 — imv preservation fixes](2026-10-28-imv-preservation.md)

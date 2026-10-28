@@ -606,3 +606,5 @@ references and correction acceptance criteria. No product correction or deployme
 [Session](docs/ai/2026-10-27-tam-monitor-review.md).
 
 2026-10-27: Codex CLI `0.164.0` (`gpt-6.1-terra`) worked on monitor review corrections. [Session](docs/ai/2026-10-27-monitor-integration.md).
+
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) corrected imv configuration preservation. [Session](docs/ai/2026-10-28-imv-preservation.md).
