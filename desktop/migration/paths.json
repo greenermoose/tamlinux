@@ -3,6 +3,13 @@
   "scope": "Finite user-state conversion; native/boot/GTK/device effects require their separate recovery owners.",
   "paths": [
     {
+      "id": "imv-escape",
+      "root": "config",
+      "source": "imv/config",
+      "target": "imv/config",
+      "conversion": "imv-escape"
+    },
+    {
       "id": "foot-theme",
       "root": "config",
       "source": "foot/foot.ini",

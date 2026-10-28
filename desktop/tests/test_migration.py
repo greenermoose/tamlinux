@@ -30,6 +30,30 @@ class Migration(unittest.TestCase):
         source=self.write('config','hypr/input.lua',b'hl.config({ input = { kb_layout = "de" } })\n')
         return mode,app,source
 
+    def test_imv_escape_migration_preserves_config_and_rollback(self):
+        original=b'[binds]\r\n<Ctrl+p> = exec lp test\r\n[options]\r\nscaling = full\r\n'
+        path=self.write('config','imv/config',original); path.chmod(0o640)
+        plan=m.prepare(self.roots,self.journal)
+        self.assertEqual([row['id'] for row in plan['rows']],['imv-escape'])
+        m.apply(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original.replace(b'[options]',b'<Escape> = quit\r\n[options]'))
+        self.assertEqual(path.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'))['rows'],[])
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_imv_escape_respects_existing_binding_and_refuses_ambiguous_sections(self):
+        path=self.write('config','imv/config',b'[binds]\n<Escape> = close\n')
+        self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
+        self.assertEqual(path.read_bytes(),b'[binds]\n<Escape> = close\n')
+        path.write_bytes(b'[binds]\nq = quit\n[binds]\nx = close\n')
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('ambiguous'))['status'],'blocked')
+
+    def test_imv_escape_adds_missing_section(self):
+        path=self.write('config','imv/config',b'[options]\nscaling = full')
+        m.prepare(self.roots,self.journal); m.apply(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),b'[options]\nscaling = full\n[binds]\n<Escape> = quit\n')
+
     def test_terminal_theme_migration_preserves_settings_and_recovers_later_writes(self):
         entries={
             'foot/foot.ini': b'[main]\r\ninclude=~/.local/state/omarchy/current/theme/foot.ini\r\nfont=Personal:size=8\r\n',

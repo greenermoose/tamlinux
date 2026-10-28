@@ -94,6 +94,23 @@ def save(path, document):
 def convert(kind, data, commands, locations=None):
     if kind=='bytes': return data
     text=data.decode('utf-8')
+    if kind=='imv-escape':
+        lines=text.splitlines(keepends=True)
+        sections=[i for i,line in enumerate(lines)
+                  if re.fullmatch(r'\s*\[binds\]\s*(?:[#;].*)?',line.rstrip('\r\n'))]
+        if len(sections)>1: raise ValueError('Multiple imv binds sections require review')
+        newline='\r\n' if b'\r\n' in data else '\n'
+        if sections:
+            start=sections[0]+1
+            end=next ( (i for i in range(start,len(lines)) if re.match(r'^\s*\[',lines[i])), len(lines))
+            if any(re.match(r'^\s*<Escape>\s*=',line, re.IGNORECASE) for line in lines[start:end]):
+                return None
+            if end and not lines[end-1].endswith(('\n','\r')): lines[end-1]+=newline
+            lines.insert(end,'<Escape> = quit'+newline)
+        else:
+            if lines and not lines[-1].endswith(('\n','\r')): lines[-1]+=newline
+            lines.extend(['[binds]'+newline,'<Escape> = quit'+newline])
+        return ''.join(lines).encode()
     if kind=='terminal-theme':
         if locations is None: raise ValueError('Terminal migration needs the selected XDG roots')
         state=str(locations['state'])
