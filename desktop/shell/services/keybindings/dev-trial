@@ -62,7 +62,7 @@ build() {
 }
 
 write_launcher() {
-  local out=$1 rev=$2 version="0.2.0"
+  local out=$1 rev=$2 version="0.2.1"
   [[ -f $out/desktop/shell/services/keybindings/VERSION ]] && version=$(tr -d '\r\n' < "$out/desktop/shell/services/keybindings/VERSION")
   mkdir -p "$dev/bin"
   cat >"$launcher.tmp" <<EOF
