@@ -20,6 +20,33 @@ PanelWindow {
   readonly property string buildRevision: Quickshell.env("TAMLINUX_KEYBINDINGS_REV") || ""
   readonly property string cultivarVersion: Quickshell.env("TAMLINUX_VERSION") || ""
   signal closed()
+
+  component DarkButton: Button {
+    id: btn
+    property bool isAccent: false
+    implicitHeight: 34
+    leftPadding: 14
+    rightPadding: 14
+    contentItem: Text {
+      text: btn.text
+      font.pixelSize: 12
+      font.bold: btn.checked || btn.isAccent
+      color: btn.checked ? Color.accentText : (btn.isAccent ? Color.accentText : Color.foreground)
+      horizontalAlignment: Text.AlignHCenter
+      verticalAlignment: Text.AlignVCenter
+    }
+    background: Rectangle {
+      radius: Style.cornerRadius
+      color: btn.checked ? Util.alpha(Color.accent, 0.25)
+           : (btn.isAccent ? (btn.hovered ? Util.alpha(Color.accent, 0.30) : Util.alpha(Color.accent, 0.18))
+           : (btn.down ? Util.alpha(Color.foreground, 0.14)
+           : (btn.hovered ? Util.alpha(Color.foreground, 0.09) : Util.alpha(Color.foreground, 0.04))))
+      border.color: btn.checked ? Color.accent
+                  : (btn.isAccent ? Color.accent
+                  : (btn.hovered ? Util.alpha(Color.foreground, 0.35) : Util.alpha(Color.foreground, 0.18)))
+      border.width: 1
+    }
+  }
   readonly property var filtered: Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group })
   onFilteredChanged: {
     if (filtered.length > 0) {
@@ -171,7 +198,7 @@ PanelWindow {
             }
           }
         }
-        Button {
+        DarkButton {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           text: "Close  Esc"
@@ -184,6 +211,20 @@ PanelWindow {
           id: search
           width: parent.width - 150
           height: parent.height
+          color: Color.foreground
+          placeholderTextColor: Util.alpha(Color.foreground, 0.45)
+          selectedTextColor: Color.accentText
+          selectionColor: Util.alpha(Color.accent, 0.4)
+          font.pixelSize: 13
+          leftPadding: 14
+          rightPadding: 14
+          verticalAlignment: Text.AlignVCenter
+          background: Rectangle {
+            radius: Style.cornerRadius
+            color: "#0c0f12"
+            border.color: search.activeFocus ? Color.accent : Util.alpha(Color.foreground, 0.22)
+            border.width: 1
+          }
           placeholderText: "Search shortcuts, actions, or commands (e.g. terminal, workspace, close)..."
           Keys.onEscapePressed: function(event) {
             if (search.text.length > 0) {
@@ -210,15 +251,16 @@ PanelWindow {
             }
           }
         }
-        Button {
+        DarkButton {
           width: 140
           height: parent.height
+          isAccent: true
           text: "Try a shortcut"
           onClicked: panel.beginCapture()
         }
       }
       Item {
-        width: parent.width; height: 32
+        width: parent.width; height: 34
         Row {
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
@@ -231,7 +273,7 @@ PanelWindow {
               {label:"Super + Ctrl", value:"ctrl"},
               {label:"Super + Shift", value:"shift"}
             ]
-            Button {
+            DarkButton {
               required property var modelData
               text: modelData.label
               checkable: true
@@ -240,14 +282,65 @@ PanelWindow {
             }
           }
           Rectangle {
-            width: 1; height: 18
-            color: Color.menu.border
+            width: 1; height: 20
+            color: Util.alpha(Color.foreground, 0.16)
             anchors.verticalCenter: parent.verticalCenter
           }
           ComboBox {
             id: groupSelect
             model: ["All groups", "Workspaces", "Windows", "Media and display", "Applications", "Other"]
             onCurrentTextChanged: panel.group = currentText
+            contentItem: Text {
+              leftPadding: 10
+              rightPadding: 24
+              text: groupSelect.displayText
+              font.pixelSize: 12
+              color: Color.foreground
+              verticalAlignment: Text.AlignVCenter
+              elide: Text.ElideRight
+            }
+            background: Rectangle {
+              implicitWidth: 150
+              implicitHeight: 34
+              radius: Style.cornerRadius
+              color: groupSelect.hovered ? Util.alpha(Color.foreground, 0.08) : Util.alpha(Color.foreground, 0.04)
+              border.color: groupSelect.visualFocus ? Color.accent : Util.alpha(Color.foreground, 0.22)
+              border.width: 1
+            }
+            popup: Popup {
+              y: groupSelect.height + 4
+              width: groupSelect.width
+              implicitHeight: Math.min(240, contentItem.implicitHeight + 8)
+              padding: 4
+              contentItem: ListView {
+                clip: true
+                implicitHeight: contentHeight
+                model: groupSelect.popup.visible ? groupSelect.delegateModel : null
+                currentIndex: groupSelect.highlightedIndex
+                ScrollIndicator.vertical: ScrollIndicator { }
+              }
+              background: Rectangle {
+                color: "#101418"
+                border.color: Util.alpha(Color.accent, 0.45)
+                border.width: 1
+                radius: Style.cornerRadius
+              }
+            }
+            delegate: ItemDelegate {
+              width: groupSelect.width - 8
+              height: 30
+              highlighted: groupSelect.highlightedIndex === index
+              contentItem: Text {
+                text: modelData
+                color: highlighted ? Color.accentText : Color.foreground
+                font.pixelSize: 12
+                verticalAlignment: Text.AlignVCenter
+              }
+              background: Rectangle {
+                radius: 4
+                color: highlighted ? Util.alpha(Color.accent, 0.25) : "transparent"
+              }
+            }
             Connections {
               target: panel
               function onGroupChanged() {
@@ -261,7 +354,7 @@ PanelWindow {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           spacing: 8
-          Button {
+          DarkButton {
             visible: panel.modifier !== "all" || panel.group !== "All groups" || search.text !== ""
             text: "Reset filters"
             onClicked: {
@@ -273,19 +366,19 @@ PanelWindow {
             }
           }
           Rectangle {
-            height: 22
-            width: countText.implicitWidth + 14
-            radius: 11
-            color: Color.menu.cardBackground
-            border.color: Color.menu.cardBorder
+            height: 24
+            width: countText.implicitWidth + 16
+            radius: 12
+            color: Util.alpha(Color.foreground, 0.04)
+            border.color: Util.alpha(Color.foreground, 0.16)
             border.width: 1
             anchors.verticalCenter: parent.verticalCenter
             Text {
               id: countText
               anchors.centerIn: parent
               text: panel.filtered.length + (panel.filtered.length === 1 ? " shortcut" : " shortcuts")
-              color: Color.menu.text
-              opacity: 0.75
+              color: Color.foreground
+              opacity: 0.85
               font.pixelSize: 11
               font.bold: true
             }
@@ -570,7 +663,7 @@ PanelWindow {
                 height: explCol.implicitHeight + 20
                 radius: 6
                 color: Util.alpha(Color.foreground, 0.04)
-                border.color: Util.alpha(Color.foreground, 0.08)
+                border.color: Util.alpha(Color.foreground, 0.12)
                 border.width: 1
 
                 Column {
@@ -585,15 +678,14 @@ PanelWindow {
                     text: "Action"
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.menu.text
-                    opacity: 0.6
+                    color: Color.accent
                   }
                   Text {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    color: Color.menu.text
+                    color: Color.foreground
                     font.pixelSize: 13
-                    lineHeight: 1.2
+                    lineHeight: 1.25
                     text: panel.selected && panel.selected.explanation ? panel.selected.explanation : "No additional explanation is available for this action."
                   }
                 }
@@ -608,16 +700,15 @@ PanelWindow {
                   text: "Command & Arguments"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.menu.text
-                  opacity: 0.6
+                  color: Color.accent
                 }
 
                 Rectangle {
                   width: parent.width
                   height: cmdText.implicitHeight + 16
                   radius: 6
-                  color: Color.background
-                  border.color: Util.alpha(Color.foreground, 0.15)
+                  color: "#0a0c0e"
+                  border.color: Util.alpha(Color.foreground, 0.18)
                   border.width: 1
 
                   Text {
@@ -644,16 +735,15 @@ PanelWindow {
                   text: "Executable Path"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.menu.text
-                  opacity: 0.6
+                  color: Color.accent
                 }
 
                 Rectangle {
                   width: parent.width
                   height: 34
                   radius: 6
-                  color: Color.background
-                  border.color: Util.alpha(Color.foreground, 0.15)
+                  color: "#0a0c0e"
+                  border.color: Util.alpha(Color.foreground, 0.18)
                   border.width: 1
 
                   Row {
@@ -763,7 +853,7 @@ PanelWindow {
               }
             }
           }
-          Button {
+          DarkButton {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "Back to list  Esc"
@@ -774,7 +864,7 @@ PanelWindow {
         Text {
           width: parent.width
           wrapMode: Text.Wrap
-          color: Color.menu.text
+          color: Color.foreground
           opacity: 0.75
           font.pixelSize: 13
           text: inhibitor.active
@@ -790,8 +880,8 @@ PanelWindow {
             anchors.fill: parent
             visible: !panel.lastCaptured && !panel.captureResult
             radius: 8
-            color: Color.menu.cardBackground
-            border.color: Color.menu.cardBorder
+            color: Util.alpha(Color.foreground, 0.02)
+            border.color: Util.alpha(Color.foreground, 0.14)
             border.width: 1
 
             Column {
@@ -802,8 +892,8 @@ PanelWindow {
               Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 64; height: 64; radius: 32
-                color: Util.alpha(Color.accent, 0.14)
-                border.color: Util.alpha(Color.accent, 0.35)
+                color: Util.alpha(Color.accent, 0.15)
+                border.color: Util.alpha(Color.accent, 0.4)
                 border.width: 1
                 Text {
                   anchors.centerIn: parent
@@ -816,7 +906,7 @@ PanelWindow {
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Press any key combination"
-                color: Color.menu.text
+                color: Color.foreground
                 font.pixelSize: 18
                 font.bold: true
               }
@@ -826,8 +916,8 @@ PanelWindow {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                color: Color.menu.text
-                opacity: 0.65
+                color: Color.foreground
+                opacity: 0.7
                 font.pixelSize: 13
                 lineHeight: 1.3
                 text: "Press shortcuts like SUPER + RETURN, SUPER + K, ALT + TAB, or SUPER + BACKSPACE. The full details card will appear here instantly without executing the command."
@@ -839,8 +929,8 @@ PanelWindow {
             anchors.fill: parent
             visible: !panel.lastCaptured && !!panel.captureResult
             radius: 8
-            color: Color.menu.cardBackground
-            border.color: Color.menu.cardBorder
+            color: Util.alpha(Color.foreground, 0.02)
+            border.color: Util.alpha(Color.urgent, 0.35)
             border.width: 1
 
             Column {
@@ -851,8 +941,8 @@ PanelWindow {
               Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 64; height: 64; radius: 32
-                color: Util.alpha(Color.urgent, 0.12)
-                border.color: Util.alpha(Color.urgent, 0.35)
+                color: Util.alpha(Color.urgent, 0.15)
+                border.color: Util.alpha(Color.urgent, 0.4)
                 border.width: 1
                 Text {
                   anchors.centerIn: parent
@@ -866,7 +956,7 @@ PanelWindow {
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: panel.captureResult
-                color: Color.menu.text
+                color: Color.foreground
                 font.pixelSize: 17
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -877,13 +967,13 @@ PanelWindow {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                color: Color.menu.text
-                opacity: 0.65
+                color: Color.foreground
+                opacity: 0.7
                 font.pixelSize: 13
                 text: "This combination is not registered in your compositor configuration. Try another combination or press Esc to return to the list."
               }
 
-              Button {
+              DarkButton {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Back to list  (Esc)"
                 onClicked: panel.finishCapture()
@@ -895,7 +985,7 @@ PanelWindow {
             anchors.fill: parent
             visible: !!panel.lastCaptured
             radius: 8
-            color: Color.menu.cardBackground
+            color: Util.alpha(Color.foreground, 0.02)
             border.color: Util.alpha(Color.accent, 0.45)
             border.width: 1
 
@@ -913,7 +1003,7 @@ PanelWindow {
                   width: captureCatLabel.implicitWidth + 14
                   radius: 12
                   color: Util.alpha(Color.foreground, 0.08)
-                  border.color: Util.alpha(Color.foreground, 0.2)
+                  border.color: Util.alpha(Color.foreground, 0.22)
                   border.width: 1
                   anchors.verticalCenter: parent.verticalCenter
                   Text {
@@ -922,7 +1012,7 @@ PanelWindow {
                     text: panel.lastCaptured ? (panel.lastCaptured.group || "Other") : ""
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.menu.text
+                    color: Color.foreground
                   }
                 }
 
@@ -931,7 +1021,7 @@ PanelWindow {
                   width: captureDispLabel.implicitWidth + 14
                   radius: 12
                   color: Util.alpha(Color.accent, 0.15)
-                  border.color: Util.alpha(Color.accent, 0.4)
+                  border.color: Util.alpha(Color.accent, 0.45)
                   border.width: 1
                   anchors.verticalCenter: parent.verticalCenter
                   Text {
@@ -940,7 +1030,7 @@ PanelWindow {
                     text: panel.lastCaptured ? (panel.lastCaptured.dispatcher || "command") : ""
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.menu.selectedText
+                    color: Color.accentText
                   }
                 }
 
@@ -971,7 +1061,7 @@ PanelWindow {
                         height: 28
                         width: Math.max(28, captureChordLabel.implicitWidth + 14)
                         radius: 4
-                        color: Util.alpha(Color.accent, 0.28)
+                        color: Util.alpha(Color.accent, 0.25)
                         border.color: Color.accent
                         border.width: 1
                         anchors.verticalCenter: parent.verticalCenter
@@ -1004,7 +1094,7 @@ PanelWindow {
                 height: captureExplCol.implicitHeight + 20
                 radius: 6
                 color: Util.alpha(Color.foreground, 0.04)
-                border.color: Util.alpha(Color.foreground, 0.08)
+                border.color: Util.alpha(Color.foreground, 0.12)
                 border.width: 1
 
                 Column {
@@ -1019,13 +1109,12 @@ PanelWindow {
                     text: "Action"
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.menu.text
-                    opacity: 0.6
+                    color: Color.accent
                   }
                   Text {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    color: Color.menu.text
+                    color: Color.foreground
                     font.pixelSize: 13
                     lineHeight: 1.25
                     text: panel.lastCaptured && panel.lastCaptured.explanation ? panel.lastCaptured.explanation : "No additional explanation is available for this action."
@@ -1041,16 +1130,15 @@ PanelWindow {
                   text: "Command & Arguments"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.menu.text
-                  opacity: 0.6
+                  color: Color.accent
                 }
 
                 Rectangle {
                   width: parent.width
                   height: captureCmdText.implicitHeight + 16
                   radius: 6
-                  color: Color.background
-                  border.color: Util.alpha(Color.foreground, 0.15)
+                  color: "#0a0c0e"
+                  border.color: Util.alpha(Color.foreground, 0.18)
                   border.width: 1
 
                   Text {
@@ -1076,16 +1164,15 @@ PanelWindow {
                   text: "Executable Path"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.menu.text
-                  opacity: 0.6
+                  color: Color.accent
                 }
 
                 Rectangle {
                   width: parent.width
                   height: 34
                   radius: 6
-                  color: Color.background
-                  border.color: Util.alpha(Color.foreground, 0.15)
+                  color: "#0a0c0e"
+                  border.color: Util.alpha(Color.foreground, 0.18)
                   border.width: 1
 
                   Row {
@@ -1106,7 +1193,7 @@ PanelWindow {
                       text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
                       font.family: Style.fontFamily
                       font.pixelSize: 11
-                      color: panel.commandPath ? Color.menu.text : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Color.urgent : Color.muted)
+                      color: panel.commandPath ? Color.foreground : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Color.urgent : Color.muted)
                       elide: Text.ElideMiddle
                       anchors.verticalCenter: parent.verticalCenter
                     }
@@ -1125,8 +1212,8 @@ PanelWindow {
                   spacing: 6
                   Text {
                     text: "Try another key combination anytime, or press Esc to return to the list."
-                    color: Color.menu.text
-                    opacity: 0.6
+                    color: Color.foreground
+                    opacity: 0.65
                     font.pixelSize: 12
                     anchors.verticalCenter: parent.verticalCenter
                   }
@@ -1136,11 +1223,12 @@ PanelWindow {
                   anchors.right: parent.right
                   anchors.verticalCenter: parent.verticalCenter
                   spacing: 10
-                  Button {
+                  DarkButton {
+                    isAccent: true
                     text: "Inspect in list  (Enter)"
                     onClicked: panel.finishCapture()
                   }
-                  Button {
+                  DarkButton {
                     text: "Back to list  (Esc)"
                     onClicked: panel.finishCapture()
                   }
