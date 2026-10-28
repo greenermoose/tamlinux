@@ -126,12 +126,12 @@ uninstall() {
   for old in "$builds"/* "$builds"/.build.*; do remove_build "$old"; done
   rm -f -- "$record"
   rmdir --ignore-fail-on-non-empty -- "$builds" "$dev/share/tamlinux/dev-trials" "$dev/share/tamlinux" "$state" 2>/dev/null || true
-  echo "dev-trial: removed; SUPER + K uses $(PATH=$dev/bin:$PATH command -v "$name" || echo "nothing")"
+  echo "dev-trial: removed; SUPER + K uses $(PATH=$dev/bin:$PATH; command -v "$name" || echo "nothing")"
 }
 
 status() {
   if [[ -f $record ]]; then cat "$record"; else echo "dev-trial: not installed"; fi
-  PATH=$dev/bin:$PATH type -a "$name" 2>/dev/null || true
+  type -a "$name" 2>/dev/null || true
 }
 
 case ${1:-} in
