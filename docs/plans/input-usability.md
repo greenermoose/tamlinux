@@ -18,9 +18,9 @@ Keyboard and mouse interaction in Tamlinux is safe, predictable, and ergonomical
 
 ## Decided Architecture
 
-### 1. The 4-Tier Semantic Modifier Model
+### 1. Modifier patterns
 
-Composable keyboard shortcuts follow strict orthogonal semantic axes:
+Use these patterns as guides, preserving established useful shortcuts and testing comfort. The current map contains exceptions; no wholesale remapping is implied:
 
 $$\text{Action} = \text{Dimension}(\text{Modifier}) \times \text{Entity}(\text{Key})$$
 
@@ -30,7 +30,7 @@ $$\text{Action} = \text{Dimension}(\text{Modifier}) \times \text{Entity}(\text{K
 | **Tier 1** | `SUPER + SHIFT + <Key>` | **Spatial Relocation & State** | Reversible state alteration; moves objects | Send window to workspace 1–10, swap window direction, move workspace |
 | **Tier 2** | `SUPER + CTRL + <Key>` | **Layout & Geometry** | Alters arrangement rules without moving data | Toggle floating/tiling, toggle split orientation, fullscreen |
 | **Tier 3** | `SUPER + ALT + <Key>` | **Hardware & Multi-Monitor** | External monitor and workspace routing | Move workspace to next monitor, cycle display layout |
-| **Banned** | `SUPER + SHIFT + ALT + CTRL` | *Forbidden* | *Violates human factors guidelines* | Zero four-key hyper-chords permitted |
+
 
 ### 2. Window Closing and Lifecycle
 
@@ -38,13 +38,11 @@ $$\text{Action} = \text{Dimension}(\text{Modifier}) \times \text{Entity}(\text{K
 - **Persistent Application Windows:** Closed deliberately via **`SUPER + Backspace`** (primary, “rub out”) and **`SUPER + Q`** (one-handed alias) (Fred decision, 2026-10-27). `Shift + Esc` was evaluated and rejected due to Chromium Task Manager and chat shortcuts. Appearance toggles move to `U` (`SUPER + U` transparency, `SUPER + SHIFT + U` gaps, `SUPER + CTRL + U` square aspect) so a missed Shift on gaps cannot close a window. Double-tap `Esc` is rejected to keep compositor behavior simple and deterministic.
 - **Transient and Ephemeral Windows:** Lightweight viewers (`imv`), dialogs, popups, and the `tam` knowledge browser pager close immediately on a single bare **`Esc`**.
 - **Interactive Applications Receive Bare `Esc`:** Persistent tools (text editors like `micro` and `vim`, web browsers, shells) receive bare `Esc` intact for internal command/modal cancellation (Vim normal mode, Micro search dismissal, browser modal escape).
-- **Micro Editor Launch Chord:** The decision on the specific launcher chord for Micro is deferred until a complete audit and list of all keybindings is compiled to evaluate how it fits into the overall system (Fred decision, 2026-10-27).
+- **Micro Editor Launch Chord:** `SUPER + E` launches Micro; retain `SUPER + SHIFT + W` during the trial and review the alias after daily use (Fred decision, 2026-10-28).
 
-### 3. Purging Commercial SaaS Bookmark Chords
+### 3. Commercial SaaS shortcuts
 
-Upstream Omarchy bound 18+ commercial SaaS web applications into global multi-modifier chords (`SUPER + SHIFT + A` for ChatGPT, `SUPER + SHIFT + ALT + A` for Grok, `SUPER + SHIFT + Y` for YouTube, etc.). All commercial SaaS bookmark chords are purged from compositor bindings:
-- Web applications remain readily accessible through the fuzzy application launcher (`SUPER + Space` / `tam-menu`).
-- Prime alphanumeric keys (`A`, `C`, `E`, `S`, `X`) are reclaimed for core window management and personal user bindings.
+Fred revoked the removal decision on 2026-10-28. Keep the existing web application shortcuts and their current chords in stage 1; consider individual changes only after a later review.
 
 ### 4. PuTTY-Heritage Mouse Clipboard Convention
 
@@ -127,7 +125,7 @@ DONE  SUPER + Ctrl + Q                 (was omacalc on that chord)
 
 OPEN  SaaS bookmarks                   ChatGPT / Grok / YouTube / WhatsApp /
                                        Messages / Photos / Maps / X / X Post
-      → purge                          STILL LIVE on 0.5.4 (Fred: SUPER+Shift+A
+      → keep                           STILL LIVE on 0.5.4 (Fred: SUPER+Shift+A
                                        opens ChatGPT; print agrees)
 
 DONE  foot.ini mouse clipboard         LMB copy both, RMB paste, Shift bypass
@@ -143,19 +141,18 @@ re-verify against the live print when packaging lands the remaining chords.
 ### B. Open decisions (work these first)
 
 ```
-OPEN  SUPER + Shift + A                ChatGPT (live)     → purge
-OPEN  SUPER + Shift + Alt + A          Grok (live)        → purge
-OPEN  SUPER + Shift + Y                YouTube (live)     → purge
-OPEN  SUPER + Shift + P                Google Photos (live) → purge
-OPEN  SUPER + Shift + S                Google Maps (live) → purge
-OPEN  SUPER + Shift + X                X (live)           → purge
-OPEN  SUPER + Shift + Alt + X          X Post (live)      → purge
-OPEN  SUPER + Shift + Alt + G          WhatsApp (live)    → purge
-OPEN  SUPER + Shift + Ctrl + G         Google Messages (live) → purge
+OPEN  SUPER + Shift + A                ChatGPT (live)     → keep
+OPEN  SUPER + Shift + Alt + A          Grok (live)        → keep
+OPEN  SUPER + Shift + Y                YouTube (live)     → keep
+OPEN  SUPER + Shift + P                Google Photos (live) → keep
+OPEN  SUPER + Shift + S                Google Maps (live) → keep
+OPEN  SUPER + Shift + X                X (live)           → keep
+OPEN  SUPER + Shift + Alt + X          X Post (live)      → keep
+OPEN  SUPER + Shift + Alt + G          WhatsApp (live)    → keep
+OPEN  SUPER + Shift + Ctrl + G         Google Messages (live) → keep
 
 OPEN  SUPER + Shift + W                Micro
-      → ?                              keep W, move to E / Shift+E, or other?
-                                       SUPER + E and SUPER + Shift + E are free
+      → SUPER + E                      retain Shift+W during trial
 
 OPEN  SUPER + Q                        close alias (planned, not live)
 OPEN  appearance on U                  move gaps/square/transparency off Backspace
@@ -347,7 +344,7 @@ KEEP  SUPER + Shift + N                Editor ($EDITOR)
       → same
 
 OPEN  SUPER + Shift + W                Micro
-      → ?                              see section B
+      → SUPER + E                      retain Shift+W during trial
 
 KEEP  SUPER + Shift + M                Spotify
       → same
@@ -377,8 +374,7 @@ KEEP  SUPER + Alt + Space              Apps menu
       → same
 ```
 
-Free after SaaS purge (candidates for Micro or other):  
-`SUPER + Shift + A`, `P`, `S`, `X`, `Y` and multi-modifier SaaS variants.
+SaaS shortcuts remain assigned; do not treat their chords as free.
 
 ---
 
@@ -531,15 +527,14 @@ KEEP  XF86* media / brightness / vol   hardware keys (media.lua)
 
 ## Work Steps
 
-1. **Walk section B with Fred** (Micro placement, optional Tier remaps, missing `>`).
+1. **Walk remaining section B decisions with Fred** (optional modifier remaps and missing `>`).
    Record each decision on the matching `OPEN` / `FIX` line above.
 2. **Apply agreed chord changes** in product
-   (`tamlinux/desktop/session/hypr/tamlinux/bindings/`) and live host tree
-   (`config-fred-tamlinux/hosts/bosgame-omarchy/config/hypr/…`), then update
+   (`tamlinux/desktop/session/hypr/tamlinux/bindings/`) and deliver via a recorded package assembly, then update
    [current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md).
 3. **Already live on bosgame:** `SUPER + W` unbound, `SUPER + Backspace` close,
    `SUPER + Ctrl + Q` unbound, `foot.ini` PuTTY mouse clipboard. **Not live yet:**
-   SaaS purge, appearance on `U`, `SUPER + Q` close (checkout/plan only).
+   appearance on `U`, `SUPER + Q` close and `SUPER + E` Micro (checkout/plan only). SaaS shortcuts remain live and are restored in product source.
 4. **Shortcut viewer alignment (K23):** cheat sheet / `tam-menu-keybindings`
    matches the effective map; actions findable by plain-English name.
 5. **Verification:** Esc lifecycle, Micro/vim safety, clipboard trial (K24),
