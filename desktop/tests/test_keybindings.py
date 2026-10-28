@@ -102,6 +102,27 @@ def run_model(expression: str, *texts: str):
     return json.loads(done.stdout)
 
 
+class ExplorerRecordsTest(unittest.TestCase):
+    def test_structured_records_preserve_live_chord_and_command(self):
+        rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
+        zoom = next(row for row in rows if row["does"] == "Zoom out")
+        self.assertEqual((zoom["modmask"], zoom["key"]), (65, "code:20"))
+        self.assertEqual((zoom["dispatcher"], zoom["arg"]),
+                         ("lua", "hl.dsp.zoom({ by = -1 })"))
+
+    def test_modifier_and_search_filters_combine(self):
+        rows = run_model('M.filterExplorer(M.explorerRecords(TEXTS[0], TEXTS[1]), "shift", "zoom dsp")', HYPRLAND_BINDS, COMMAND_TABLE)
+        self.assertEqual([row["does"] for row in rows], ["Zoom out"])
+        rows = run_model('M.filterExplorer(M.explorerRecords(TEXTS[0], TEXTS[1]), "super", "zoom")', HYPRLAND_BINDS, COMMAND_TABLE)
+        self.assertEqual(rows, [])
+
+    def test_capture_matches_physical_code_and_exact_modifiers(self):
+        rows = run_model('M.capturedBindings(M.explorerRecords(TEXTS[0], TEXTS[1]), 65, "-", 20)', HYPRLAND_BINDS, COMMAND_TABLE)
+        self.assertEqual([row["does"] for row in rows], ["Zoom out"])
+        rows = run_model('M.capturedBindings(M.explorerRecords(TEXTS[0], TEXTS[1]), 64, "-", 20)', HYPRLAND_BINDS, COMMAND_TABLE)
+        self.assertEqual(rows, [])
+
+
 def hyprland_bind(modmask: int, key: str = "", keycode: int = 0, description: str = "",
                   dispatcher: str = "", arg: str = "") -> str:
     """One Hyprland bind stanza, so a case states only the fields it cares about."""

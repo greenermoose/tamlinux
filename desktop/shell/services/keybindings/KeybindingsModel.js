@@ -179,7 +179,7 @@ function naturalCompare(a, b) {
 // Viewer rows: [{ display, dispatcher, arg }], alphabetical by what the
 // binding does, then by its keys. A row whose command the scan could not find keeps an empty
 // dispatcher: the viewer shows it but Enter does nothing.
-function records(bindingsText, commandsText) {
+function explorerRecords(bindingsText, commandsText) {
   var commands = parseCommands(commandsText)
   var binds = parseBinds(bindingsText)
   var seen = {}, rows = []
@@ -193,7 +193,8 @@ function records(bindingsText, commandsText) {
     if (seen[id]) return
     seen[id] = true
     rows.push({ display: display, dispatcher: b.dispatcher, arg: b.arg,
-                does: text, combo: comboText(b.modmask, b.key) })
+                does: text, combo: comboText(b.modmask, b.key),
+                modmask: b.modmask, key: b.key })
   }
 
   for (var i = 0; i < binds.length; i++) {
@@ -215,7 +216,39 @@ function records(bindingsText, commandsText) {
     return naturalCompare(a.does, b.does) || naturalCompare(a.combo, b.combo) ||
            (a.display < b.display ? -1 : a.display > b.display ? 1 : 0)
   })
-  return rows.map(function (r) { return { display: r.display, dispatcher: r.dispatcher, arg: r.arg } })
+  return rows
+}
+
+function records(bindingsText, commandsText) {
+  return explorerRecords(bindingsText, commandsText).map(function (r) {
+    return { display: r.display, dispatcher: r.dispatcher, arg: r.arg }
+  })
+}
+
+// Filters combine with search. A multi-modifier chord appears in each
+// applicable modifier filter; plain Super means Super alone.
+function filterExplorer(rows, modifier, query) {
+  var words = String(query || "").toLowerCase().trim().split(/\s+/).filter(Boolean)
+  return rows.filter(function (row) {
+    var mask = row.modmask
+    if (modifier === "super" && mask !== 64) return false
+    if (modifier === "alt" && (mask & 72) !== 72) return false
+    if (modifier === "ctrl" && (mask & 68) !== 68) return false
+    if (modifier === "shift" && (mask & 65) !== 65) return false
+    var haystack = [row.combo, row.does, row.dispatcher, row.arg].join(" ").toLowerCase()
+    return words.every(function (word) { return haystack.indexOf(word) !== -1 })
+  })
+}
+
+// The native scan code follows XKB's evdev+8 convention. Compare both the
+// key symbol and code form so configured physical-key bindings still match.
+function capturedBindings(rows, modmask, key, nativeScanCode) {
+  var symbol = String(key || "").toUpperCase()
+  var code = "code:" + String(Number(nativeScanCode) || 0)
+  return rows.filter(function (row) {
+    return row.modmask === modmask &&
+      (String(row.key).toUpperCase() === symbol || String(row.key).toLowerCase() === code)
+  })
 }
 
 // One "display<TAB>dispatcher<TAB>arg" line per row, each ending in "\n".
@@ -236,6 +269,9 @@ if (typeof module !== "undefined" && module.exports) {
     actionText: actionText,
     naturalCompare: naturalCompare,
     records: records,
+    explorerRecords: explorerRecords,
+    filterExplorer: filterExplorer,
+    capturedBindings: capturedBindings,
     formatRecords: formatRecords,
     KEYCODE_NAMES: KEYCODE_NAMES
   }
