@@ -24,3 +24,6 @@ Machine-wide selection, updates, rollback and live login remain unfinished.
 Fred then said: "Package the banner for Tamlinux 0.5.6. I want it to appear when you first boot up and when you switch to another tty from a graphical shell."
 The banner includes the host's build ID as well as its
 OS name and running kernel; machine-level delivery is handled separately.
+
+Fred then instructed: "include keybinding explorer 0.2.2 in Tamlinux 0.5.6. agy is just filing a report. We're done developing that app and ready to package it up and get Tamlinux 0.5.6 ready to test. Proceed."
+The product version is set for candidate preparation; Test is separate.
