@@ -136,6 +136,7 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('What you are trying', explorer)
         self.assertIn('What that does', explorer)
         self.assertIn('lastTriedChord', explorer)
+        self.assertIn('panel.lastCaptured ? panel.lastCaptured.does', explorer)
 
     def test_component_semver_and_version_wiring(self):
         version_file = (KEYBINDINGS / "VERSION").read_text().strip()

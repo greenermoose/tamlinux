@@ -1003,9 +1003,9 @@ PanelWindow {
                       anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                      text: panel.lastCaptured ? "Registered shortcut in Hyprland" : "Unassigned key combination"
+                      text: panel.lastCaptured ? panel.lastCaptured.does : "Unassigned key combination"
                       color: panel.lastCaptured ? "#68b087" : Color.urgent
-                      font.pixelSize: 11
+                      font.pixelSize: 13
                       font.bold: true
                       anchors.verticalCenter: parent.verticalCenter
                     }
