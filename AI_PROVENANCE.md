@@ -28,6 +28,8 @@ recorded assembly and records the absence of a rollback generation. Login
 policy and physical acceptance remain separate.
 [Session](docs/ai/2026-10-22-fleet-first-install.md).
 
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) assisted with keybinding changes and candidate preparation. [Session](docs/ai/2026-10-28-keybindings.md).
+
 ## 1. Fred's Multi-Agent AI Toolchain
 
 Tamlinux 0.5.4 component metadata was prepared with Codex CLI `0.164.0`,

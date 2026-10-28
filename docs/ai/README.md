@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-28 — keybindings and candidate preparation](2026-10-28-keybindings.md)
+
 - [2026-10-27 — monitor review corrections](2026-10-27-monitor-integration.md)
 
 - [2026-10-27 — tam-monitor implementation review and correction handoff](2026-10-27-tam-monitor-review.md)

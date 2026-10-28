@@ -8,6 +8,11 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.5 - Develop candidate
+
+- Add Super+E for Micro, retain the previous shortcut for trial, and preserve web app shortcuts.
+- Deliver the native console monitor and matching development libraries with tam command 0.44.0 and corpus 0.45.5. Physical trials remain pending.
+
 ## 0.5.4 - Develop candidate
 
 - Assemble tam command 0.43.2 and knowledge corpus 0.43.0, with libtam 0.4.0
