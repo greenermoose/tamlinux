@@ -11,6 +11,9 @@
 # launcher goes in ~/.local/dev/bin, ahead of the packaged one on Hyprland's
 # PATH, and runs the explorer as its own Quickshell instance. Any earlier
 # development launcher is kept beside the record and put back on uninstall.
+# The session PATH puts ~/.local/bin first, so SUPER + K reaches the launcher
+# through a personal binding that checks for it when Hyprland loads its
+# config; install and uninstall reload Hyprland so that binding follows.
 
 set -euo pipefail
 
@@ -98,6 +101,11 @@ os.replace(path + ".tmp", path)
 PY
 }
 
+reload_bindings() {
+  [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || return 0
+  hyprctl reload >/dev/null || die "hyprctl reload failed; run it by hand"
+}
+
 install() {
   local rev out old
   rev=$(git -C "$repo" rev-parse --verify "${1:-HEAD}^{commit}") || die "no such commit: ${1:-HEAD}"
@@ -113,6 +121,7 @@ install() {
   for old in "$builds"/*/; do
     [[ ${old%/} == "$out" ]] || remove_build "${old%/}"
   done
+  reload_bindings
   echo "dev-trial: SUPER + K now opens the explorer from tamlinux ${rev:0:12}"
 }
 
@@ -125,6 +134,7 @@ uninstall() {
   fi
   for old in "$builds"/* "$builds"/.build.*; do remove_build "$old"; done
   rm -f -- "$record"
+  reload_bindings
   rmdir --ignore-fail-on-non-empty -- "$builds" "$dev/share/tamlinux/dev-trials" "$dev/share/tamlinux" "$state" 2>/dev/null || true
   echo "dev-trial: removed; SUPER + K uses $(PATH=$dev/bin:$PATH; command -v "$name" || echo "nothing")"
 }

@@ -490,6 +490,7 @@ class WiringTests(unittest.TestCase):
         self.assertIn('if [[ $1 == "--scan" ]]; then', command)
         self.assertIn('git -C "$repo" archive "$rev"', trial)
         self.assertIn("quickshell --no-duplicate --path", trial)
+        self.assertIn("hyprctl reload", trial)
         self.assertIn('mv -- "$launcher" "$saved"', trial)
         self.assertIn('mv -- "$saved" "$launcher"', trial)
 
