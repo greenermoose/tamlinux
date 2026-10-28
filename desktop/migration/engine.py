@@ -260,10 +260,11 @@ def selected_commands():
     return {p.name for p in (HERE.parents[1]/'commands').iterdir() if p.is_dir()}
 
 
-def prepare(locations, directory):
+def prepare(locations, directory, only=None):
     manifest=json.loads((HERE/'paths.json').read_text())
     rows=[]; conflicts=[]; commands=selected_commands()
     for item,source,target in candidates(manifest,locations):
+        if only is not None and item['id'] != only: continue
         before_source=snapshot(source)
         if before_source['kind']=='absent': continue
         if before_source['kind']!='file':
@@ -350,6 +351,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['plan','apply','rollback','status','preserve','restore','checkpoint-status'])
     parser.add_argument('journal',type=Path)
+    parser.add_argument('--only', choices=['imv-escape'], help='Plan only the imv Escape binding migration')
     parser.add_argument('--audio', action='store_true', help='Include owned tuning service, connected audio volumes/mutes and defaults')
     parser.add_argument('--audio-state', action='store_true', help='Separate persistent WirePlumber state checkpoint; requires WirePlumber stopped')
     parser.add_argument('--gtk', action='store_true', help='Include the four owned GTK user values through dconf')
@@ -358,6 +360,7 @@ def main():
     parser.add_argument('--t3code-root',type=Path,help='T3 Code root; defaults to a configured T3CODE_HOME')
     parser.add_argument('--obsidian-vault',type=Path,action='append',default=[],help='Explicit Obsidian vault root; only its Tamlinux theme is checkpointed')
     args=parser.parse_args(); locations=roots(os.environ)
+    if args.only and args.action != 'plan': parser.error('--only applies to plan; apply and rollback use the journal')
     base=locations['state']/'tamlinux/migration';safe(base);base.mkdir(parents=True,mode=0o700,exist_ok=True)
     directory=args.journal.absolute()
     if directory.parent!=base or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}',directory.name):
@@ -407,7 +410,7 @@ def main():
             if any(row['id']=='webapps' or row['id'].startswith('retire-hey') for row in pending['rows']):
                 refresh=shutil.which('update-desktop-database')
                 if not refresh: raise ValueError('Launcher migration requires update-desktop-database')
-        if args.action=='plan': doc=prepare(locations,directory)
+        if args.action=='plan': doc=prepare(locations,directory,args.only)
         elif args.action=='apply': doc=apply(directory,locations)
         elif args.action=='rollback': doc=rollback(directory,locations)
         else: doc=load(directory,locations)

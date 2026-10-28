@@ -30,6 +30,16 @@ class Migration(unittest.TestCase):
         source=self.write('config','hypr/input.lua',b'hl.config({ input = { kb_layout = "de" } })\n')
         return mode,app,source
 
+    def test_targeted_imv_plan_ignores_unrelated_redirected_paths(self):
+        path=self.write('config','imv/config',b'[binds]\nq = quit\n')
+        (self.roots['config']/'hypr').symlink_to(self.base/'elsewhere')
+        plan=m.prepare(self.roots,self.journal,only='imv-escape')
+        self.assertEqual([row['id'] for row in plan['rows']],['imv-escape'])
+        m.apply(self.journal,self.roots)
+        self.assertIn(b'<Escape> = quit',path.read_bytes())
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),b'[binds]\nq = quit\n')
+
     def test_imv_escape_migration_preserves_config_and_rollback(self):
         original=b'[binds]\r\n<Ctrl+p> = exec lp test\r\n[options]\r\nscaling = full\r\n'
         path=self.write('config','imv/config',original); path.chmod(0o640)
