@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# dev-trial — the keybinding explorer's development trial (D198).
+#
+#   dev-trial install [REV]   build REV (default HEAD) and put it on SUPER + K
+#   dev-trial uninstall       put back what was there before
+#   dev-trial status          print the record and which launcher wins
+#
+# The build is a git archive of one exact commit, so uncommitted files never
+# reach it; it must pass test_keybindings.py before it is installed. The
+# launcher goes in ~/.local/dev/bin, ahead of the packaged one on Hyprland's
+# PATH, and runs the explorer as its own Quickshell instance. Any earlier
+# development launcher is kept beside the record and put back on uninstall.
+
+set -euo pipefail
+
+app=keybinding-explorer
+name=tam-menu-keybindings
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+repo=$(git -C "$here" rev-parse --show-toplevel)
+dev=$HOME/.local/dev
+builds=$dev/share/tamlinux/dev-trials/$app
+launcher=$dev/bin/$name
+state=${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/dev-trials
+record=$state/$app.json
+saved=$state/$app.previous
+packaged=${TAMLINUX_BIN:-$HOME/.local/bin}/$name
+
+die() {
+  echo "dev-trial: $*" >&2
+  exit 1
+}
+
+# Remove one read-only build directory; only ever below $builds.
+remove_build() {
+  [[ $1 == "$builds"/* && -d $1 ]] || return 0
+  chmod -R u+w -- "$1"
+  rm -rf -- "$1"
+}
+
+build() {
+  local rev=$1 out=$builds/$1 tmp
+  [[ -d $out ]] && return 0
+  mkdir -p "$builds"
+  for tmp in "$builds"/.build.*; do remove_build "$tmp"; done
+  tmp=$(mktemp -d "$builds/.build.XXXXXX")
+  git -C "$repo" archive "$rev" commands/tam-menu-keybindings desktop/shell \
+    desktop/tests/test_keybindings.py desktop/tests/fixtures/keybindings | tar -x -C "$tmp"
+  if [[ ! -f $tmp/desktop/shell/services/keybindings/dev-trial.qml ]]; then
+    remove_build "$tmp"
+    die "$rev has no standalone explorer"
+  fi
+  if ! python3 -B -m unittest discover -s "$tmp/desktop/tests" -p test_keybindings.py -q; then
+    remove_build "$tmp"
+    die "test_keybindings.py failed at $rev; nothing installed"
+  fi
+  chmod -R a-w -- "$tmp"
+  mv -- "$tmp" "$out"
+}
+
+write_launcher() {
+  local out=$1 rev=$2
+  mkdir -p "$dev/bin"
+  cat >"$launcher.tmp" <<EOF
+#!/bin/bash
+# Development trial of the keybinding explorer (D198), tamlinux $rev.
+# Remove with: $here/dev-trial uninstall
+if [[ \$# -gt 0 ]]; then
+  exec "$packaged" "\$@"
+fi
+export QML_IMPORT_PATH="$out/desktop/shell/modules"
+export TAMLINUX_KEYBINDINGS_SCAN="$out/commands/tam-menu-keybindings/tam-menu-keybindings"
+exec quickshell --no-duplicate --path "$out/desktop/shell/services/keybindings/dev-trial.qml"
+EOF
+  chmod 755 "$launcher.tmp"
+  mv -- "$launcher.tmp" "$launcher"
+}
+
+write_record() {
+  local out=$1 rev=$2 previous=null
+  [[ -e $saved || -L $saved ]] && previous=$saved
+  python3 -I - "$record" "$app" "$rev" "$out" "$launcher" "$previous" "$here/dev-trial uninstall" <<'PY'
+import json, os, sys, time
+path, app, rev, out, launcher, previous, restore = sys.argv[1:]
+doc = {
+    "app": app,
+    "revision": rev,
+    "built": out,
+    "installed": [launcher],
+    "previous": None if previous == "null" else previous,
+    "restore": restore,
+    "installed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+}
+with open(path + ".tmp", "w") as f:
+    json.dump(doc, f, indent=2)
+    f.write("\n")
+os.replace(path + ".tmp", path)
+PY
+}
+
+install() {
+  local rev out old
+  rev=$(git -C "$repo" rev-parse --verify "${1:-HEAD}^{commit}") || die "no such commit: ${1:-HEAD}"
+  out=$builds/$rev
+  build "$rev"
+  mkdir -p "$state"
+  if [[ ! -f $record ]] && [[ -e $launcher || -L $launcher ]]; then
+    [[ -e $saved || -L $saved ]] && die "$saved already exists; inspect it before installing"
+    mv -- "$launcher" "$saved"
+  fi
+  write_launcher "$out" "$rev"
+  write_record "$out" "$rev"
+  for old in "$builds"/*/; do
+    [[ ${old%/} == "$out" ]] || remove_build "${old%/}"
+  done
+  echo "dev-trial: SUPER + K now opens the explorer from tamlinux ${rev:0:12}"
+}
+
+uninstall() {
+  [[ -f $record ]] || die "no trial installed (no $record)"
+  rm -f -- "$launcher"
+  if [[ -e $saved || -L $saved ]]; then
+    mv -- "$saved" "$launcher"
+    echo "dev-trial: restored the earlier development launcher"
+  fi
+  for old in "$builds"/* "$builds"/.build.*; do remove_build "$old"; done
+  rm -f -- "$record"
+  rmdir --ignore-fail-on-non-empty -- "$builds" "$dev/share/tamlinux/dev-trials" "$dev/share/tamlinux" "$state" 2>/dev/null || true
+  echo "dev-trial: removed; SUPER + K uses $(PATH=$dev/bin:$PATH command -v "$name" || echo "nothing")"
+}
+
+status() {
+  if [[ -f $record ]]; then cat "$record"; else echo "dev-trial: not installed"; fi
+  PATH=$dev/bin:$PATH type -a "$name" 2>/dev/null || true
+}
+
+case ${1:-} in
+  install) install "${2:-}" ;;
+  uninstall) uninstall ;;
+  status) status ;;
+  *) die "usage: dev-trial install [REV] | uninstall | status" ;;
+esac

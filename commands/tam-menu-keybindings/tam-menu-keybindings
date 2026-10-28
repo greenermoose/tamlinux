@@ -3,9 +3,10 @@
 # tam-menu-keybindings — open the keybinding explorer
 # (Menu → Learn → Keybindings, SUPER + K).
 #
-#   tam-menu-keybindings [--print|-p]
+#   tam-menu-keybindings [--print|-p|--scan]
 #
 # --print writes the list to stdout instead of opening the menu.
+# --scan writes only the Lua command table, for a standalone explorer.
 #
 # Ported from Omarchy 4.0.4 (omarchy-menu-keybindings) for plan 18 0.2.2.
 # Changed: the rows come from the Tamlinux shell's keybindings service, which
@@ -199,6 +200,11 @@ end
 LUA
 }
 
+
+if [[ $1 == "--scan" ]]; then
+  scan_commands
+  exit 0
+fi
 
 commands=$(scan_commands)
 

@@ -479,6 +479,20 @@ class WiringTests(unittest.TestCase):
         self.assertIn('if (name === "configreloaded") {\n        adapter.rereadBinds()', text)
         self.assertIn("bindsProc.running = true", text)
 
+    def test_the_development_trial_stands_alone_and_runs_no_binding(self):
+        entry = (KEYBINDINGS / "dev-trial.qml").read_text(encoding="utf-8")
+        trial = (KEYBINDINGS / "dev-trial").read_text(encoding="utf-8")
+        command = (DESKTOP.parent / "commands/tam-menu-keybindings/tam-menu-keybindings").read_text()
+        self.assertIn("onClosed: Qt.quit()", entry)
+        self.assertIn('"--scan"]', entry)
+        self.assertNotIn("tam-shell", entry)
+        self.assertNotIn("IpcHandler", entry)
+        self.assertIn('if [[ $1 == "--scan" ]]; then', command)
+        self.assertIn('git -C "$repo" archive "$rev"', trial)
+        self.assertIn("quickshell --no-duplicate --path", trial)
+        self.assertIn('mv -- "$launcher" "$saved"', trial)
+        self.assertIn('mv -- "$saved" "$launcher"', trial)
+
     def test_the_model_runs_nothing(self):
         text = (KEYBINDINGS / "KeybindingsModel.js").read_text(encoding="utf-8")
         self.assertNotIn(".pragma", text)
