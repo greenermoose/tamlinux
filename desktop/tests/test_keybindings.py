@@ -150,6 +150,17 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('groupSelect', explorer)
         self.assertIn('Reset filters', explorer)
 
+    def test_explorer_qml_braces_balanced(self):
+        text = (KEYBINDINGS / "Explorer.qml").read_text()
+        stack = []
+        for i, ch in enumerate(text):
+            if ch == "{":
+                stack.append(i)
+            elif ch == "}":
+                self.assertTrue(len(stack) > 0, f"extra closing brace at char {i}")
+                stack.pop()
+        self.assertEqual(len(stack), 0, f"unclosed braces in Explorer.qml: {len(stack)}")
+
     def test_structured_records_preserve_live_chord_and_command(self):
         rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
         zoom = next(row for row in rows if row["does"] == "Zoom out")
