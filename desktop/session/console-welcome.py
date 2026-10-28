@@ -20,6 +20,7 @@ def render(cultivar=None, version=None):
         "\n" + tree.replace("\\", "\\\\") + "\n"
         + selected
         + "     Rootstock: \\S{PRETTY_NAME}\n"
+        + "     Build:     \\S{BUILD_ID}\n"
         + "     Kernel:    \\r\n"
         + "     Console:   \\l\n\n"
     )

@@ -47,6 +47,7 @@ class ConsoleWelcomeTest(unittest.TestCase):
         self.assertIn("Cultivar:  Blue Sparkler 0.5.5", result)
         self.assertIn("Kernel:    " + os.uname().release, result)
         self.assertNotIn("\\S{PRETTY_NAME}", result)
+        self.assertNotIn("\\S{BUILD_ID}", result)
 
 
 if __name__ == "__main__":

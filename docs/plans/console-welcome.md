@@ -1,8 +1,8 @@
 # Tamlinux console welcome
 
 Status: accepted for development; no login changes made. The banner generator
-and package artifact are in development. Host selection, update and rollback
-integration are not yet implemented.
+and native vendor issue fragment are in development for 0.5.6. Binding native
+package installation, update and rollback to the assembly is not yet complete.
 
 The text console should welcome people to Tamlinux, identify the cultivar and
 rootstock, and remain useful when recovering the graphical session. The

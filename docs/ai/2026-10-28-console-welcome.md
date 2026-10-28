@@ -20,3 +20,7 @@ Fred approved the plan and drew the revised tree. Codex wrote the banner
 generator and tests, including escaping the tree for agetty. The three focused
 tests pass, including a pseudo-terminal render by the host's actual agetty.
 Machine-wide selection, updates, rollback and live login remain unfinished.
+
+Fred then said: "Package the banner for Tamlinux 0.5.6. I want it to appear when you first boot up and when you switch to another tty from a graphical shell."
+The banner includes the host's build ID as well as its
+OS name and running kernel; machine-level delivery is handled separately.
