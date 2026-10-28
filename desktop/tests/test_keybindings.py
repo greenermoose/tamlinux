@@ -127,8 +127,16 @@ class ExplorerRecordsTest(unittest.TestCase):
         rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
         zoom = next(row for row in rows if row["does"] == "Zoom out")
         self.assertEqual((zoom["modmask"], zoom["key"]), (65, "code:20"))
+        self.assertEqual(zoom["chord"], ["SUPER", "SHIFT", "MINUS"])
         self.assertEqual((zoom["dispatcher"], zoom["arg"]),
                          ("lua", "hl.dsp.zoom({ by = -1 })"))
+
+    def test_chord_keys_formats_distinct_key_badges(self):
+        self.assertEqual(run_model("M.chordKeys(65, 'W')"), ["SUPER", "SHIFT", "W"])
+        self.assertEqual(run_model("M.chordKeys(64, 'RETURN')"), ["SUPER", "RETURN"])
+        self.assertEqual(run_model("M.chordKeys(0, 'ESCAPE')"), ["ESCAPE"])
+        self.assertEqual(run_model("M.chordKeys(9, 'L')"), ["SHIFT", "ALT", "L"])
+        self.assertEqual(run_model("M.chordKeys(64, 'code:20')"), ["SUPER", "MINUS"])
 
     def test_modifier_and_search_filters_combine(self):
         rows = run_model('M.filterExplorer(M.explorerRecords(TEXTS[0], TEXTS[1]), "shift", "zoom dsp")', HYPRLAND_BINDS, COMMAND_TABLE)

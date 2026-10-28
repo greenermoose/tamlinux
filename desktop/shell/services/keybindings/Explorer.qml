@@ -106,15 +106,77 @@ PanelWindow {
           Keys.onDownPressed: { currentIndex = Math.min(count - 1, currentIndex + 1); panel.selected = panel.filtered[currentIndex] }
           ScrollBar.vertical: ScrollBar { }
           delegate: Rectangle {
+            id: rowDelegate
             required property var modelData
-            width: list.width; height: 58; radius: 6
-            color: panel.selected === modelData || hover.containsMouse ? Color.menu.selectedBackground : "transparent"
-            Column {
-              anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.margins: 10; spacing: 4
-              Text { width: parent.width; text: modelData.does; color: Color.menu.text; font.bold: true; elide: Text.ElideRight }
-              Text { width: parent.width; text: modelData.combo; color: Color.menu.text; opacity: 0.7; elide: Text.ElideRight }
+            required property int index
+            width: list.width; height: 42; radius: 6
+            color: panel.selected === modelData ? Color.menu.selectedBackground : (hover.containsMouse ? Util.alpha(Color.foreground, 0.05) : "transparent")
+            border.color: panel.selected === modelData ? Util.alpha(Color.accent, 0.45) : (hover.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent")
+            border.width: 1
+
+            Text {
+              anchors.left: parent.left; anchors.leftMargin: 12
+              anchors.right: chordRow.left; anchors.rightMargin: 12
+              anchors.verticalCenter: parent.verticalCenter
+              text: modelData.does
+              color: panel.selected === modelData ? Color.menu.selectedText : Color.menu.text
+              font.bold: true
+              font.pixelSize: 13
+              elide: Text.ElideRight
             }
-            MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: panel.selected = modelData }
+
+            Row {
+              id: chordRow
+              anchors.right: parent.right; anchors.rightMargin: 12
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: 4
+
+              Repeater {
+                model: modelData.chord || (modelData.combo ? modelData.combo.split(" + ") : [])
+                Row {
+                  spacing: 4
+                  anchors.verticalCenter: parent.verticalCenter
+                  Text {
+                    visible: index > 0
+                    text: "+"
+                    color: Color.menu.text
+                    opacity: 0.4
+                    font.pixelSize: 11
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                  Rectangle {
+                    height: 22
+                    width: Math.max(22, keyLabel.implicitWidth + 12)
+                    radius: 4
+                    color: panel.selected === rowDelegate.modelData ? Util.alpha(Color.accent, 0.18) : Util.alpha(Color.foreground, 0.08)
+                    border.color: panel.selected === rowDelegate.modelData ? Util.alpha(Color.accent, 0.4) : Util.alpha(Color.foreground, 0.18)
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                      id: keyLabel
+                      anchors.centerIn: parent
+                      text: modelData
+                      color: panel.selected === rowDelegate.modelData ? Color.menu.selectedText : Color.menu.text
+                      font.pixelSize: 11
+                      font.bold: true
+                      font.family: Style.fontFamily
+                    }
+                  }
+                }
+              }
+            }
+
+            MouseArea {
+              id: hover
+              anchors.fill: parent
+              hoverEnabled: true
+              onClicked: {
+                panel.selected = modelData
+                list.currentIndex = index
+              }
+            }
           }
           Text { anchors.centerIn: parent; visible: list.count === 0; text: panel.rows.length ? "No shortcuts found" : "No bindings available from the compositor"; color: Color.menu.text; opacity: 0.7 }
         }
@@ -124,7 +186,46 @@ PanelWindow {
           Column {
             anchors.fill: parent; anchors.margins: 16; spacing: 12
             Text { width: parent.width; text: panel.selected ? panel.selected.does : "Select a shortcut"; color: Color.menu.text; font.bold: true; font.pixelSize: 19; wrapMode: Text.Wrap }
-            Text { width: parent.width; text: panel.selected ? panel.selected.combo : "Choose a row to see its action and command."; color: Color.menu.text; wrapMode: Text.Wrap }
+            Row {
+              visible: !!panel.selected
+              spacing: 4
+              Repeater {
+                model: panel.selected ? (panel.selected.chord || (panel.selected.combo ? panel.selected.combo.split(" + ") : [])) : []
+                Row {
+                  spacing: 4
+                  anchors.verticalCenter: parent.verticalCenter
+                  Text {
+                    visible: index > 0
+                    text: "+"
+                    color: Color.menu.text
+                    opacity: 0.4
+                    font.pixelSize: 11
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                  Rectangle {
+                    height: 24
+                    width: Math.max(24, detailKeyLabel.implicitWidth + 14)
+                    radius: 4
+                    color: Util.alpha(Color.accent, 0.18)
+                    border.color: Util.alpha(Color.accent, 0.4)
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                      id: detailKeyLabel
+                      anchors.centerIn: parent
+                      text: modelData
+                      color: Color.menu.selectedText
+                      font.pixelSize: 12
+                      font.bold: true
+                      font.family: Style.fontFamily
+                    }
+                  }
+                }
+              }
+            }
+            Text { width: parent.width; visible: !panel.selected; text: "Choose a row to see its action and command."; color: Color.menu.text; wrapMode: Text.Wrap }
             Text { width: parent.width; visible: !!panel.selected; color: Color.menu.text; wrapMode: Text.Wrap; text: panel.selected && panel.selected.explanation ? panel.selected.explanation : "No additional explanation is available for this action." }
             Text { width: parent.width; visible: !!panel.selected; color: Color.menu.text; opacity: 0.7; wrapMode: Text.WrapAnywhere; text: panel.selected ? "Dispatcher: " + (panel.selected.dispatcher || "unavailable") + "\n\nCommand: " + (panel.selected.arg || "unavailable") : "" }
             Text { width: parent.width; visible: !!panel.selected; color: Color.menu.text; opacity: 0.7; wrapMode: Text.WrapAnywhere; text: "Executable path: " + (panel.commandPath || "unavailable") }

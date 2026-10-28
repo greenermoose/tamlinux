@@ -138,6 +138,21 @@ function comboText(modmask, key) {
   return mods === "" ? label : mods + " + " + label
 }
 
+// Individual keys for pill/badge rendering: ["SUPER", "SHIFT", "W"]
+function chordKeys(modmask, key) {
+  var mods = modsText(modmask)
+  var label = keyLabel(key)
+  var parts = []
+  if (mods !== "") {
+    var modParts = mods.split(" ")
+    for (var i = 0; i < modParts.length; i++) {
+      if (modParts[i] !== "") parts.push(modParts[i])
+    }
+  }
+  if (label !== "") parts.push(label)
+  return parts
+}
+
 // What a bind without a description does, from its dispatcher and argument.
 function actionText(dispatcher, arg) {
   var action = (dispatcher + " " + arg).replace(/^\s+|\s+$/g, "")
@@ -209,6 +224,7 @@ function explorerRecords(bindingsText, commandsText, includeStatic) {
     seen[id] = true
     rows.push({ display: display, dispatcher: b.dispatcher, arg: b.arg,
                 does: text, combo: comboText(b.modmask, b.key),
+                chord: chordKeys(b.modmask, b.key),
                 modmask: b.modmask, key: b.key, group: actionGroup(text),
                 explanation: b.dispatcher === "exec" ? (EXPLANATIONS[b.arg] || "") : "" })
   }
@@ -282,6 +298,7 @@ if (typeof module !== "undefined" && module.exports) {
     modsText: modsText,
     keyLabel: keyLabel,
     comboText: comboText,
+    chordKeys: chordKeys,
     actionText: actionText,
     naturalCompare: naturalCompare,
     records: records,
