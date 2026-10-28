@@ -50,7 +50,7 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
   exclusionMode: ExclusionMode.Ignore
   onVisibleChanged: {
-    if (visible) { search.text = ""; modifier = "all"; group = "All groups"; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
+    if (visible) { search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
     else { capturing = false; inhibitor.enabled = false }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; closed() }
@@ -178,48 +178,119 @@ PanelWindow {
           onClicked: panel.closeExplorer()
         }
       }
-      Text { text: "Search, explore, or try a shortcut without running it."; color: Color.menu.text; opacity: 0.7; font.pixelSize: 14 }
-      TextField {
-        id: search
-        width: parent.width; height: 42
-        placeholderText: "Search shortcuts, actions, or commands"
-        Keys.onEscapePressed: function(event) {
-          if (search.text.length > 0) {
-            search.text = ""
-            event.accepted = true
-          } else {
-            panel.closeExplorer()
-          }
-        }
-        Keys.onDownPressed: {
-          if (list.count > 0) {
-            list.forceActiveFocus()
-            if (list.count > 1 && list.currentIndex === 0) {
-              list.currentIndex = 1
-            } else if (list.currentIndex < 0) {
-              list.currentIndex = 0
+      Row {
+        width: parent.width; height: 40; spacing: 10
+        TextField {
+          id: search
+          width: parent.width - 150
+          height: parent.height
+          placeholderText: "Search shortcuts, actions, or commands (e.g. terminal, workspace, close)..."
+          Keys.onEscapePressed: function(event) {
+            if (search.text.length > 0) {
+              search.text = ""
+              event.accepted = true
+            } else {
+              panel.closeExplorer()
             }
-            list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+          }
+          Keys.onDownPressed: {
+            if (list.count > 0) {
+              list.forceActiveFocus()
+              if (list.count > 1 && list.currentIndex === 0) {
+                list.currentIndex = 1
+              } else if (list.currentIndex < 0) {
+                list.currentIndex = 0
+              }
+              list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+            }
+          }
+          Keys.onReturnPressed: {
+            if (list.count > 0) {
+              list.forceActiveFocus()
+            }
           }
         }
-        Keys.onReturnPressed: {
-          if (list.count > 0) {
-            list.forceActiveFocus()
+        Button {
+          width: 140
+          height: parent.height
+          text: "Try a shortcut"
+          onClicked: panel.beginCapture()
+        }
+      }
+      Item {
+        width: parent.width; height: 32
+        Row {
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: 6
+          Repeater {
+            model: [
+              {label:"All", value:"all"},
+              {label:"Super", value:"super"},
+              {label:"Super + Alt", value:"alt"},
+              {label:"Super + Ctrl", value:"ctrl"},
+              {label:"Super + Shift", value:"shift"}
+            ]
+            Button {
+              required property var modelData
+              text: modelData.label
+              checkable: true
+              checked: panel.modifier === modelData.value
+              onClicked: { panel.modifier = modelData.value }
+            }
+          }
+          Rectangle {
+            width: 1; height: 18
+            color: Color.menu.border
+            anchors.verticalCenter: parent.verticalCenter
+          }
+          ComboBox {
+            id: groupSelect
+            model: ["All groups", "Workspaces", "Windows", "Media and display", "Applications", "Other"]
+            onCurrentTextChanged: panel.group = currentText
+            Connections {
+              target: panel
+              function onGroupChanged() {
+                var idx = groupSelect.find(panel.group)
+                if (idx >= 0 && groupSelect.currentIndex !== idx) groupSelect.currentIndex = idx
+              }
+            }
           }
         }
-      }
-      Row {
-        width: parent.width; spacing: 6
-        Repeater {
-          model: [{label:"All", value:"all"}, {label:"Super", value:"super"}, {label:"Super + Alt", value:"alt"}, {label:"Super + Ctrl", value:"ctrl"}, {label:"Super + Shift", value:"shift"}]
-          Button { required property var modelData; text: modelData.label; checkable: true; checked: panel.modifier === modelData.value; onClicked: { panel.modifier = modelData.value } }
+        Row {
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: 8
+          Button {
+            visible: panel.modifier !== "all" || panel.group !== "All groups" || search.text !== ""
+            text: "Reset filters"
+            onClicked: {
+              panel.modifier = "all"
+              panel.group = "All groups"
+              groupSelect.currentIndex = 0
+              search.text = ""
+              search.forceActiveFocus()
+            }
+          }
+          Rectangle {
+            height: 22
+            width: countText.implicitWidth + 14
+            radius: 11
+            color: Color.menu.cardBackground
+            border.color: Color.menu.cardBorder
+            border.width: 1
+            anchors.verticalCenter: parent.verticalCenter
+            Text {
+              id: countText
+              anchors.centerIn: parent
+              text: panel.filtered.length + (panel.filtered.length === 1 ? " shortcut" : " shortcuts")
+              color: Color.menu.text
+              opacity: 0.75
+              font.pixelSize: 11
+              font.bold: true
+            }
+          }
         }
-        Button { text: "Try a shortcut"; onClicked: panel.beginCapture() }
-      }
-      Row {
-        spacing: 12
-        ComboBox { model: ["All groups", "Workspaces", "Windows", "Media and display", "Applications", "Other"]; onCurrentTextChanged: panel.group = currentText }
-        Text { text: panel.filtered.length + " shortcuts"; color: Color.menu.text; opacity: 0.65; anchors.verticalCenter: parent.verticalCenter }
       }
       Row {
         width: parent.width

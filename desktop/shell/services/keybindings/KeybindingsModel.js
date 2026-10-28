@@ -9,7 +9,7 @@
 // Heinemeier Hansson; see ../LICENSE-omarchy). The parsing and the order
 // are new.
 
-var APP_VERSION = "0.1.0"
+var APP_VERSION = "0.2.0"
 var MAX_TEXT = 4 * 1024 * 1024
 var MAX_BINDS = 4096
 var MAX_FIELD = 1024

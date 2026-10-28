@@ -144,6 +144,8 @@ class ExplorerRecordsTest(unittest.TestCase):
         explorer = (KEYBINDINGS / "Explorer.qml").read_text()
         self.assertIn('appVersion: Model.APP_VERSION', explorer)
         self.assertIn('buildRevision:', explorer)
+        self.assertIn('groupSelect', explorer)
+        self.assertIn('Reset filters', explorer)
 
     def test_structured_records_preserve_live_chord_and_command(self):
         rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
