@@ -16,6 +16,9 @@ PanelWindow {
   property string captureResult: ""
   property var lastCaptured: null
   property string commandPath: ""
+  readonly property string appVersion: Model.APP_VERSION || "0.1.0"
+  readonly property string buildRevision: Quickshell.env("TAMLINUX_KEYBINDINGS_REV") || ""
+  readonly property string cultivarVersion: Quickshell.env("TAMLINUX_VERSION") || ""
   signal closed()
   readonly property var filtered: Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group })
   onFilteredChanged: {
@@ -118,10 +121,62 @@ PanelWindow {
       anchors.fill: parent
       anchors.margins: 24
       spacing: 12
-      Row {
-        width: parent.width; height: 38; spacing: 16
-        Text { text: "Keyboard shortcuts"; color: Color.menu.text; font.pixelSize: 24; font.bold: true; width: parent.width - 150 }
-        Button { text: "Close  Esc"; onClicked: panel.closeExplorer() }
+      Item {
+        width: parent.width; height: 38
+        Row {
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: 12
+          Text {
+            text: "Keyboard shortcuts"
+            color: Color.menu.text
+            font.pixelSize: 24
+            font.bold: true
+            anchors.verticalCenter: parent.verticalCenter
+          }
+          Rectangle {
+            id: versionBadge
+            anchors.verticalCenter: parent.verticalCenter
+            height: 24
+            width: versionBadgeRow.implicitWidth + 16
+            radius: 12
+            color: panel.buildRevision !== "" ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.text, 0.08)
+            border.color: panel.buildRevision !== "" ? Util.alpha(Color.accent, 0.45) : Util.alpha(Color.menu.border, 0.8)
+            border.width: 1
+            ToolTip.visible: badgeMouse.containsMouse
+            ToolTip.delay: 300
+            ToolTip.text: "Keybinding Explorer v" + panel.appVersion + (panel.buildRevision !== "" ? " • commit " + panel.buildRevision : "") + (panel.cultivarVersion !== "" ? " • Tamlinux " + panel.cultivarVersion : "")
+            MouseArea {
+              id: badgeMouse
+              anchors.fill: parent
+              hoverEnabled: true
+            }
+            Row {
+              id: versionBadgeRow
+              anchors.centerIn: parent
+              spacing: 6
+              Rectangle {
+                visible: panel.buildRevision !== ""
+                width: 6; height: 6; radius: 3
+                color: Color.accent
+                anchors.verticalCenter: parent.verticalCenter
+              }
+              Text {
+                text: "v" + panel.appVersion + (panel.buildRevision !== "" ? " • " + panel.buildRevision : "")
+                color: panel.buildRevision !== "" ? Color.accentText : Color.menu.text
+                font.pixelSize: 11
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+              }
+            }
+          }
+        }
+        Button {
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          text: "Close  Esc"
+          onClicked: panel.closeExplorer()
+        }
       }
       Text { text: "Search, explore, or try a shortcut without running it."; color: Color.menu.text; opacity: 0.7; font.pixelSize: 14 }
       TextField {

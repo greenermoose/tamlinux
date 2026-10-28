@@ -134,6 +134,17 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('enabled: false', explorer)
         self.assertIn('inhibitor.active', explorer)
 
+    def test_component_semver_and_version_wiring(self):
+        version_file = (KEYBINDINGS / "VERSION").read_text().strip()
+        self.assertTrue(re.match(r"^\d+\.\d+\.\d+$", version_file), f"invalid semver in VERSION: {version_file}")
+        model_version = run_model("M.APP_VERSION")
+        self.assertEqual(version_file, model_version)
+        command_text = (DESKTOP.parent / "commands/tam-menu-keybindings/tam-menu-keybindings").read_text()
+        self.assertIn('--version', command_text)
+        explorer = (KEYBINDINGS / "Explorer.qml").read_text()
+        self.assertIn('appVersion: Model.APP_VERSION', explorer)
+        self.assertIn('buildRevision:', explorer)
+
     def test_structured_records_preserve_live_chord_and_command(self):
         rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
         zoom = next(row for row in rows if row["does"] == "Zoom out")

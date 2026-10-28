@@ -201,6 +201,14 @@ LUA
 }
 
 
+if [[ $1 == "--version" || $1 == "-v" ]]; then
+  version_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../desktop/shell/services/keybindings" 2>/dev/null && pwd)/VERSION"
+  version="0.1.0"
+  [[ -f "$version_file" ]] && version=$(tr -d '\r\n' < "$version_file")
+  echo "tam-menu-keybindings $version"
+  exit 0
+fi
+
 if [[ $1 == "--scan" ]]; then
   scan_commands
   exit 0
