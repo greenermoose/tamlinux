@@ -1,13 +1,13 @@
 # Safe, discoverable input and consistent clipboard
 
-- **Status:** Plan approved by Fred, 2026-10-27; K22 close map accepted on bosgame; walkthrough of remaining chords open.
+- **Status:** Plan approved by Fred, 2026-10-27; K22 close map accepted on the workstation; walkthrough of remaining chords open.
 - **Scope:** Tamlinux 0.5 (Blue Sparkler) input goals and checklist K22–K25.
 - **Target:** Tamlinux 0.5 candidate series.
-- **Living map:** [current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md) (bosgame effective chords).
+- **Living map:** the workstation binding catalog (the workstation effective chords).
 
 ## Outcome
 
-Keyboard and mouse interaction in Tamlinux is safe, predictable, and ergonomically sound, directly satisfying the approved [0.5 goals](../../../improvements-fred-tamlinux/0.5-GOALS.md#make-everyday-input-safer-and-easier) and [checklist conditions K22–K25](../../../improvements-fred-tamlinux/0.5-CHECKLIST.md#make-everyday-input-safer-and-easier):
+Keyboard and mouse interaction in Tamlinux is safe, predictable, and ergonomically sound, directly satisfying the approved 0.5 input goals and checklist conditions K22–K25:
 
 1. **Safe keyboard shortcuts (K22):** Destructive chords (closing windows, killing processes) are separated from nearby everyday shortcuts. Specifically, `SUPER + W` is retired for window closure, eliminating the dangerous single-modifier Hamming collision with `SUPER + SHIFT + W` (Micro editor).
 2. **Accurate shortcut discovery (K23):** An active shortcut reference viewer reflects the installed bindings without drift, enabling the user to find launch, navigation, clipboard, and window management actions immediately.
@@ -71,15 +71,15 @@ Tamlinux standardizes on the battle-tested convention:
 
 ---
 
-## Binding walkthrough (bosgame now → after)
+## Binding walkthrough (the workstation now → after)
 
-Source of “now”: effective map on bosgame
-([current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md)).
+Source of “now”: effective map on the workstation
+(the workstation binding catalog).
 Work through each line with Fred. Mark the decision on the line when settled.
 
 Legend for the left column:
 
-- `DONE`  — already in effect on bosgame (and usually in product source)
+- `DONE`  — already in effect on the workstation (and usually in product source)
 - `KEEP`  — stay as-is unless Fred says otherwise
 - `OPEN`  — needs a decision before we change it
 - `FIX`   — broken or incomplete; needs a repair choice
@@ -97,7 +97,7 @@ When AFTER is the same chord, the line says `→ same`.
 
 ### A. What is actually live vs planned
 
-Ground truth: bosgame `tam-menu-keybindings --print` (2026-10-27) and Fred's
+Ground truth: the workstation `tam-menu-keybindings --print` (2026-10-27) and Fred's
 chord check. Checkout edits that are not in the running session are not DONE.
 
 ```
@@ -133,7 +133,7 @@ DONE  foot.ini mouse clipboard         LMB copy both, RMB paste, Shift bypass
 ```
 
 Fred accepted the *planned* close map for K22 on 2026-10-27
-([report](../../../improvements-fred-tamlinux/reports/2026-10-27-k22-safe-keyboard-shortcuts.md));
+(the close-map review);
 re-verify against the live print when packaging lands the remaining chords.
 
 ---
@@ -519,7 +519,7 @@ KEEP  XF86* media / brightness / vol   hardware keys (media.lua)
 ### G. Non-chord work still open (not a key move)
 
 - **K23** Shortcut viewer must match this map after each change.
-- **K24** foot.ini already configured; still need observed trial on bosgame.
+- **K24** foot.ini already configured; still need observed trial on the workstation.
 - **K25** Titlebar `[X]` and titlebar context menu — mouse close without keyboard.
 - **Esc** Transient windows close on bare Esc; editors/browsers/shells keep Esc.
 
@@ -531,14 +531,14 @@ KEEP  XF86* media / brightness / vol   hardware keys (media.lua)
    Record each decision on the matching `OPEN` / `FIX` line above.
 2. **Apply agreed chord changes** in product
    (`tamlinux/desktop/session/hypr/tamlinux/bindings/`) and deliver via a recorded package assembly, then update
-   [current-keybindings.md](../../../improvements-fred-tamlinux/docs/current-keybindings.md).
-3. **Already live on bosgame:** `SUPER + W` unbound, `SUPER + Backspace` close,
+   the workstation binding catalog.
+3. **Already live on the workstation:** `SUPER + W` unbound, `SUPER + Backspace` close,
    `SUPER + Ctrl + Q` unbound, `foot.ini` PuTTY mouse clipboard. **Not live yet:**
    appearance on `U`, `SUPER + Q` close and `SUPER + E` Micro (checkout/plan only). SaaS shortcuts remain live and are restored in product source.
 4. **Shortcut viewer alignment (K23):** cheat sheet / `tam-menu-keybindings`
    matches the effective map; actions findable by plain-English name.
 5. **Verification:** Esc lifecycle, Micro/vim safety, clipboard trial (K24),
-   titlebar close (K25); Fred daily-driver acceptance on bosgame.
+   titlebar close (K25); Fred daily-driver acceptance on the workstation.
 
 ---
 
