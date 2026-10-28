@@ -14,7 +14,14 @@
       "root": "config",
       "source": "foot/foot.ini",
       "target": "foot/foot.ini",
-      "conversion": "terminal-theme"
+      "conversion": "foot"
+    },
+    {
+      "id": "micro-bindings",
+      "root": "config",
+      "source": "micro/bindings.json",
+      "target": "micro/bindings.json",
+      "conversion": "micro-bindings"
     },
     {
       "id": "kitty-theme",

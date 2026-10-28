@@ -8,6 +8,24 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.7 - Develop candidate
+
+- Repair K24 PuTTY-heritage clipboard for existing users: Foot migration ensures
+  `selection-target=both` and right-click clipboard paste mouse bindings;
+  Micro defaults and migration merge LMB-release copy and RMB paste while
+  preserving personal bindings.
+- Retarget Omarchy theme leaves for btop, Neovim and share-picker (ride-along
+  from Develop). Assembly pin bump of nixpkgs/home-manager is recorded in
+  tamlinux-packages.
+
+## 0.5.6 - Develop candidate
+
+- Deliver keybinding explorer 0.2.2 (K23) with capture, search and details UI.
+- Add console welcome banner with rootstock build reporting.
+- Preserve imv configuration precedence; migrate Escape binding safely.
+- Package Foot PuTTY mouse defaults for fresh users (existing configs preserved
+  until 0.5.7 migration).
+
 ## 0.5.5 - Develop candidate
 
 - Add Super+E for Micro, retain the previous shortcut for trial, and preserve web app shortcuts.

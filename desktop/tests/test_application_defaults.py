@@ -1,5 +1,6 @@
 """Fresh application consumers, custom XDG roots and preserved user choices."""
 import importlib.util
+import json
 from pathlib import Path
 import os
 import tempfile
@@ -23,7 +24,7 @@ class Defaults(unittest.TestCase):
         return module.initialize(ROOT / 'desktop/assets', self.env)
 
     def test_empty_configuration_pairs_custom_state_theme_editor_and_kitty_socket(self):
-        self.assertEqual(len(self.initialize()), 12)
+        self.assertEqual(len(self.initialize()), 13)
         config = self.root / 'config'
         self.assertIn(str(self.root / 'state/tamlinux/current/theme/alacritty.toml'),
                       (config / 'alacritty/alacritty.toml').read_text())
@@ -35,6 +36,9 @@ class Defaults(unittest.TestCase):
         self.assertEqual((self.root / 'state/tamlinux/defaults/editor').read_text(), 'helix\n')
         self.assertIn('text/plain=Helix.desktop', (config / 'mimeapps.list').read_text())
         self.assertIn('x-scheme-handler/http=chromium.desktop', (config / 'mimeapps.list').read_text())
+        bindings = json.loads((config / 'micro/bindings.json').read_text())
+        self.assertEqual(bindings['MouseLeftRelease'], 'MouseRelease,Copy')
+        self.assertEqual(bindings['MouseRight'], 'Paste')
         self.assertEqual(self.initialize(), [])
 
     def test_existing_user_bytes_modes_and_dangling_links_are_preserved(self):

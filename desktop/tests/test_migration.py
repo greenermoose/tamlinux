@@ -79,8 +79,11 @@ class Migration(unittest.TestCase):
             m.convert('imv-escape', b'\xef\xbb\xbf[binds] x\nq=quit\n[binds] y\nx=close\n', [])
 
     def test_terminal_theme_migration_preserves_settings_and_recovers_later_writes(self):
+        mouse=(b'[mouse-bindings]\r\nselection-override-modifiers=Shift\r\n'
+               b'select-extend=none\r\nprimary-paste=none\r\nclipboard-paste=BTN_RIGHT\r\n')
         entries={
-            'foot/foot.ini': b'[main]\r\ninclude=~/.local/state/omarchy/current/theme/foot.ini\r\nfont=Personal:size=8\r\n',
+            'foot/foot.ini': (b'[main]\r\ninclude=~/.local/state/omarchy/current/theme/foot.ini\r\n'
+                              b'font=Personal:size=8\r\nselection-target=both\r\n'+mouse),
             'kitty/kitty.conf': b'include ~/.local/state/omarchy/current/theme/kitty.conf\nfont_size 8\n',
             'ghostty/config': b'config-file = ?"~/.local/state/omarchy/current/theme/ghostty.conf"\nfont-size = 8\n',
             'alacritty/alacritty.toml': b'general.import = [ "~/.local/state/omarchy/current/theme/alacritty.toml", "/personal.toml" ]\n',
@@ -104,14 +107,66 @@ class Migration(unittest.TestCase):
         self.assertTrue(any(b'later change' in base64.b64decode(x['state'].get('bytes','')) for x in archived))
 
     def test_terminal_theme_conversion_leaves_comments_personal_paths_and_links_alone(self):
+        mouse=(b'[main]\nselection-target=both\n'
+               b'[mouse-bindings]\nselection-override-modifiers=Shift\n'
+               b'select-extend=none\nprimary-paste=none\nclipboard-paste=BTN_RIGHT\n')
         original=(b'# include=~/.local/state/omarchy/current/theme/foot.ini\n'
                   b'include=/personal/theme.ini\ninclude=~/.local/state/omarchy/current/theme/foot.ini.personal\n'
-                  b'font=~/.local/state/omarchy/current/theme/foot.ini\n')
+                  b'font=~/.local/state/omarchy/current/theme/foot.ini\n'+mouse)
         path=self.write('config','foot/foot.ini',original)
         self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
         self.assertEqual(path.read_bytes(),original)
         path.unlink();path.symlink_to('/unavailable/personal-foot.ini')
         self.assertEqual(m.prepare(self.roots,self.journal.with_name('link'))['status'],'blocked')
+
+    def test_foot_mouse_clipboard_migration_adds_section_preserves_personal_and_retries(self):
+        original=b'[main]\r\ninclude=~/.local/state/tamlinux/current/theme/foot.ini\r\nfont=Personal:size=8\r\n'
+        path=self.write('config','foot/foot.ini',original); path.chmod(0o640)
+        plan=m.prepare(self.roots,self.journal,only='foot-theme')
+        self.assertEqual([row['id'] for row in plan['rows']],['foot-theme'])
+        m.apply(self.journal,self.roots)
+        text=path.read_text()
+        self.assertIn('selection-target=both', text)
+        self.assertIn('[mouse-bindings]', text)
+        self.assertIn('clipboard-paste=BTN_RIGHT', text)
+        self.assertIn('font=Personal:size=8', text)
+        self.assertEqual(path.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'),only='foot-theme')['rows'],[])
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_foot_mouse_clipboard_updates_partial_keys_and_refuses_duplicates(self):
+        partial=(b'[main]\nfont=Personal\nselection-target=primary\n'
+                 b'[mouse-bindings]\nclipboard-paste=BTN_MIDDLE\nselect-extend=BTN_RIGHT\n')
+        path=self.write('config','foot/foot.ini',partial)
+        m.prepare(self.roots,self.journal,only='foot-theme'); m.apply(self.journal,self.roots)
+        text=path.read_text()
+        self.assertIn('selection-target=both', text)
+        self.assertIn('clipboard-paste=BTN_RIGHT', text)
+        self.assertIn('selection-override-modifiers=Shift', text)
+        self.assertIn('primary-paste=none', text)
+        self.assertIn('font=Personal', text)
+        path.write_bytes(b'[main]\nselection-target=both\n[mouse-bindings]\nx=1\n[mouse-bindings]\ny=2\n')
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('ambiguous'),only='foot-theme')['status'],'blocked')
+
+    def test_micro_bindings_migration_merges_mouse_keys_and_preserves_personal(self):
+        original=b'{\n\t"Alt-w": "command:togglelocal softwrap"\n}\n'
+        path=self.write('config','micro/bindings.json',original); path.chmod(0o640)
+        plan=m.prepare(self.roots,self.journal,only='micro-bindings')
+        self.assertEqual([row['id'] for row in plan['rows']],['micro-bindings'])
+        m.apply(self.journal,self.roots)
+        doc=json.loads(path.read_text())
+        self.assertEqual(doc['Alt-w'], 'command:togglelocal softwrap')
+        self.assertEqual(doc['MouseLeftRelease'], 'MouseRelease,Copy')
+        self.assertEqual(doc['MouseRight'], 'Paste')
+        self.assertEqual(path.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'),only='micro-bindings')['rows'],[])
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_micro_bindings_refuses_non_object_json(self):
+        self.write('config','micro/bindings.json',b'["MouseRight"]\n')
+        self.assertEqual(m.prepare(self.roots,self.journal,only='micro-bindings')['status'],'blocked')
 
     def test_terminal_theme_conversion_accepts_general_table_and_absolute_xdg_path(self):
         old=str(self.roots['state']/'omarchy/current/theme/alacritty.toml')

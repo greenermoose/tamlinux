@@ -23,6 +23,17 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 LIMIT = 1024 * 1024
 
+FOOT_MOUSE_KEYS = (
+    ('selection-override-modifiers', 'Shift'),
+    ('select-extend', 'none'),
+    ('primary-paste', 'none'),
+    ('clipboard-paste', 'BTN_RIGHT'),
+)
+MICRO_MOUSE_BINDINGS = {
+    'MouseLeftRelease': 'MouseRelease,Copy',
+    'MouseRight': 'Paste',
+}
+
 
 def roots(environ):
     home = Path(environ['HOME'])
@@ -121,6 +132,98 @@ def convert_theme_leaf_link(before, locations, leaf):
     return {'kind': 'link', 'link': rewritten}
 
 
+def convert_terminal_theme(data, locations):
+    if locations is None: raise ValueError('Terminal migration needs the selected XDG roots')
+    state=str(locations['state'])
+    if any(char in state for char in '\\"\r\n'):
+        raise ValueError('Theme state path requires explicit terminal quoting review')
+    text=data.decode('utf-8')
+    result=[];section=''
+    for line in text.splitlines(keepends=True):
+        if line.lstrip().startswith('['): section=line.strip()
+        directive=re.match(r'^\s*(include\s*(?:=|\s)|config-file\s*=|general\.import\s*=|import\s*=)',line)
+        if directive and (not re.match(r'^\s*import\s*=',line) or section=='[general]'):
+            for leaf in ('foot.ini','kitty.conf','ghostty.conf','alacritty.toml'):
+                for old in ('~/.local/state/omarchy/current/theme/'+leaf,
+                            str(locations['state']/'omarchy/current/theme'/leaf)):
+                    line=re.sub(r'(?<![\w/.-])'+re.escape(old)+r'(?=["\s\]]|$)',
+                        lambda match: str(locations['state']/'tamlinux/current/theme'/leaf),line)
+        result.append(line)
+    converted=''.join(result).encode()
+    return converted if converted!=data else None
+
+
+def _ini_section_indexes(lines, name):
+    def section(line, first=False):
+        if first: line = line.removeprefix('\ufeff')
+        match = re.match(r'^\s*\[([^\]]*)\]', line)
+        return match.group(1) if match else None
+    return [i for i,line in enumerate(lines) if section(line, i == 0)==name]
+
+
+def _set_ini_keys(lines, section_name, required, data):
+    """Ensure required key=value pairs exist under section_name. Returns None if unchanged."""
+    sections=_ini_section_indexes(lines, section_name)
+    if len(sections)>1:
+        raise ValueError(f'Multiple foot {section_name} sections require review')
+    newline='\r\n' if b'\r\n' in data else '\n'
+    changed=False
+    if not sections:
+        if lines and not lines[-1].endswith(('\n','\r')): lines[-1]+=newline
+        lines.append(f'[{section_name}]'+newline)
+        for key,value in required:
+            lines.append(f'{key}={value}'+newline)
+        return True
+    start=sections[0]+1
+    end=next((i for i in range(start,len(lines)) if re.match(r'^\s*\[[^\]]*\]', lines[i])), len(lines))
+    present={}
+    for i in range(start, end):
+        match=re.match(r'^\s*([^=\s#;][^=]*?)\s*=\s*(.*?)\s*$', lines[i])
+        if match: present[match.group(1)]=i
+    for key,value in required:
+        wanted=f'{key}={value}'+newline
+        if key in present:
+            i=present[key]
+            if re.match(r'^\s*'+re.escape(key)+r'\s*=\s*'+re.escape(value)+r'\s*$', lines[i].rstrip('\r\n')):
+                continue
+            lines[i]=wanted
+            changed=True
+        else:
+            insert_at=end
+            if insert_at and not lines[insert_at-1].endswith(('\n','\r')):
+                lines[insert_at-1]+=newline
+            lines.insert(insert_at, wanted)
+            end+=1
+            changed=True
+    return changed
+
+
+def convert_foot_mouse_clipboard(data):
+    text=data.decode('utf-8')
+    lines=text.splitlines(keepends=True)
+    main_changed=_set_ini_keys(lines, 'main', (('selection-target','both'),), data)
+    mouse_changed=_set_ini_keys(lines, 'mouse-bindings', FOOT_MOUSE_KEYS, data)
+    if not main_changed and not mouse_changed:
+        return None
+    return ''.join(lines).encode()
+
+
+def convert_micro_bindings(data):
+    text=data.decode('utf-8')
+    doc=json.loads(text)
+    if not isinstance(doc, dict):
+        raise ValueError('Micro bindings must be a JSON object')
+    changed=False
+    for key,value in MICRO_MOUSE_BINDINGS.items():
+        if doc.get(key)!=value:
+            doc[key]=value
+            changed=True
+    if not changed:
+        return None
+    indent='\t' if '\t' in text else 2
+    return (json.dumps(doc, indent=indent)+'\n').encode()
+
+
 def convert(kind, data, commands, locations=None, leaf=None):
     if kind=='bytes': return data
     text=data.decode('utf-8')
@@ -146,23 +249,19 @@ def convert(kind, data, commands, locations=None, leaf=None):
             lines.extend(['[binds]'+newline,'<Escape> = quit'+newline])
         return ''.join(lines).encode()
     if kind=='terminal-theme':
-        if locations is None: raise ValueError('Terminal migration needs the selected XDG roots')
-        state=str(locations['state'])
-        if any(char in state for char in '\\"\r\n'):
-            raise ValueError('Theme state path requires explicit terminal quoting review')
-        result=[];section=''
-        for line in text.splitlines(keepends=True):
-            if line.lstrip().startswith('['): section=line.strip()
-            directive=re.match(r'^\s*(include\s*(?:=|\s)|config-file\s*=|general\.import\s*=|import\s*=)',line)
-            if directive and (not re.match(r'^\s*import\s*=',line) or section=='[general]'):
-                for leaf in ('foot.ini','kitty.conf','ghostty.conf','alacritty.toml'):
-                    for old in ('~/.local/state/omarchy/current/theme/'+leaf,
-                                str(locations['state']/'omarchy/current/theme'/leaf)):
-                        line=re.sub(r'(?<![\w/.-])'+re.escape(old)+r'(?=["\s\]]|$)',
-                            lambda match: str(locations['state']/'tamlinux/current/theme'/leaf),line)
-            result.append(line)
-        converted=''.join(result).encode()
-        return converted if converted!=data else None
+        return convert_terminal_theme(data, locations)
+    if kind=='foot':
+        # One path owns foot.ini: theme includes and PuTTY mouse clipboard keys.
+        # Separate same-file rows would overwrite each other on apply.
+        themed=convert_terminal_theme(data, locations)
+        base=themed if themed is not None else data
+        moused=convert_foot_mouse_clipboard(base)
+        if moused is not None: return moused
+        return themed
+    if kind=='foot-mouse-clipboard':
+        return convert_foot_mouse_clipboard(data)
+    if kind=='micro-bindings':
+        return convert_micro_bindings(data)
     if kind=='theme-leaf':
         if locations is None or leaf is None:
             raise ValueError('Theme leaf migration needs the selected XDG roots and leaf name')
@@ -405,7 +504,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['plan','apply','rollback','status','preserve','restore','checkpoint-status'])
     parser.add_argument('journal',type=Path)
-    parser.add_argument('--only', choices=['imv-escape','btop-theme','nvim-theme','share-picker-theme'],
+    parser.add_argument('--only', choices=['imv-escape','foot-theme','micro-bindings','btop-theme','nvim-theme','share-picker-theme'],
                         help='Plan only one finite migration path')
     parser.add_argument('--audio', action='store_true', help='Include owned tuning service, connected audio volumes/mutes and defaults')
     parser.add_argument('--audio-state', action='store_true', help='Separate persistent WirePlumber state checkpoint; requires WirePlumber stopped')

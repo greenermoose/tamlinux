@@ -50,18 +50,29 @@ Tamlinux standardizes on the battle-tested convention:
 1. **LMB Drag Selection:** Selecting text in the terminal immediately populates the system clipboard (`CLIPBOARD` and `PRIMARY`) upon button release without requiring `Ctrl+Shift+C` or menu selection.
 2. **RMB Click Paste:** Right-clicking in the terminal immediately pastes the system clipboard at the current cursor position.
 3. **Mouse Tracking in TUIs:**
-   - When a TUI application enables DECSET 1000/1002/1006 mouse tracking (`vim`, `micro`, `htop`), the universal **`Shift`** bypass modifier bridges the gap:
+   - When a TUI application enables DECSET 1000/1002/1006 mouse tracking (`vim`, `htop`, and other tracking TUIs), the universal **`Shift`** bypass modifier bridges the gap:
      - `Shift + LMB Drag`: Bypasses application mouse capture and forces terminal-level text selection and clipboard copy.
      - `Shift + RMB Click`: Bypasses application mouse capture and forces terminal-level clipboard paste.
+   - **Micro** is configured for native unmodified PuTTY-style behaviour inside the editor: LMB drag/release copies to the system clipboard, and RMB pastes. Shift bypass remains available for other mouse-tracking TUIs.
 4. **Terminal Configuration (`foot.ini`):**
    ```ini
    [main]
    selection-target=both
 
    [mouse-bindings]
+   selection-override-modifiers=Shift
+   select-extend=none
    primary-paste=none
    clipboard-paste=BTN_RIGHT
    ```
+5. **Micro bindings (`bindings.json`):**
+   ```json
+   {
+     "MouseLeftRelease": "MouseRelease,Copy",
+     "MouseRight": "Paste"
+   }
+   ```
+   Existing-user Foot and Micro configs are repaired by preserving migrations (`foot-theme` / `micro-bindings`), not only by fresh-user defaults.
 
 ### 5. Accessible Mouse Close Controls
 
@@ -550,18 +561,19 @@ KEEP  XF86* media / brightness / vol   hardware keys (media.lua)
 | :--- | :--- | :--- |
 | **K22 Safe shortcuts** | Recorded trial & **Fred:** | `SUPER + W` does not close windows; `SUPER + Backspace` and `SUPER + Q` close active windows; appearance toggles on `U` do not collide with close; no accidental window termination when launching editors or navigating; Fred confirms acceptance. |
 | **K23 Shortcut discovery** | **Observed:** trial | Active shortcut reference matches active bindings; user can search and find launch, navigation, clipboard, and close actions. |
-| **K24 Consistent clipboard** | **Observed:** trial | LMB drag copies text immediately in streaming terminal; RMB click pastes; `Shift + LMB` and `Shift + RMB` work in mouse-tracking TUIs; copy/paste transfers seamlessly between Foot and Wayland GUI apps. |
+| **K24 Consistent clipboard** | **Observed:** trial | LMB drag copies text immediately in bare Foot; RMB click pastes; Foot selection pastes into Micro via RMB; within Micro, unmodified LMB drag copies and RMB pastes; `Shift + LMB` and `Shift + RMB` work in other mouse-tracking TUIs; copy/paste transfers seamlessly between Foot and Wayland GUI apps. |
 | **K25 Accessible close** | **Fred:** | Managed windows provide titlebar close buttons (`[X]`); mouse users can close windows without keyboard interaction; Fred confirms acceptance. |
 
 ## Input trial preparation
 
-Source inspection on 2026-10-28 found the Foot defaults set `selection-target=both`, `selection-override-modifiers=Shift`, and right-click clipboard paste. This confirms the intended settings exist in source; an existing user configuration and a running Foot instance may use different settings. Terminal titlebars may depend on an ABI-sensitive hyprbars plugin; applications with their own decorations must be checked individually. The product source inspected here does not establish a titlebar context menu or universal Escape handling. The installed imv manual lists `q` as its default quit binding, so Escape requires verification or configuration. These are open verification items, not passes.
+0.5.6 failed K24 on physical trial because existing Foot configs lacked `[mouse-bindings]` (defaults only publish when absent) and Micro had no mouse copy/paste bindings. 0.5.7 adds preserving migrations for Foot mouse keys and Micro bindings. Terminal titlebars may depend on an ABI-sensitive hyprbars plugin; applications with their own decorations must be checked individually. The product source inspected here does not establish a titlebar context menu or universal Escape handling. The installed imv manual lists `q` as its default quit binding, so Escape requires verification or configuration. These are open verification items, not passes.
 
 On the exact packaged candidate, record its assembly revision and test the following with Fred:
 
 1. In a fresh Foot window, select text with left drag and paste with right click; transfer text in both directions between Foot and a graphical application.
-2. With mouse tracking enabled in Micro, Vim and htop, check Shift-left-drag selection and Shift-right-click paste; also check ordinary application mouse actions still work.
-3. Check bare Escape dismisses representative image viewers, menus, dialogs and the tam pager, while Micro, Vim, a shell and a browser receive Escape without closing their windows. Record each exception by application.
-4. Check representative terminal and graphical windows have a usable mouse close control; check the titlebar right-click menu for Close, Float and Maximize. Record missing controls and whether hyprbars is loaded.
+2. From Foot into Micro: select in Foot, right-click paste into Micro. Within Micro: unmodified LMB drag/release must copy, and RMB must paste.
+3. With mouse tracking in Vim and htop, check Shift-left-drag selection and Shift-right-click paste; also check ordinary application mouse actions still work.
+4. Check bare Escape dismisses representative image viewers, menus, dialogs and the tam pager, while Micro, Vim, a shell and a browser receive Escape without closing their windows. Record each exception by application.
+5. Check representative terminal and graphical windows have a usable mouse close control; check the titlebar right-click menu for Close, Float and Maximize. Record missing controls and whether hyprbars is loaded.
 
 Record observed results and Fred's acceptance against K24 and K25; source configuration alone does not close either gate. Investigate failures in their owning component before proposing a change.

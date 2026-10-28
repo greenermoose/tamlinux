@@ -20,6 +20,7 @@ def initialize(assets, environ):
         ('fontconfig/conf.d/99-tamlinux-monospace.conf','fonts.conf')]:
         text = (assets / 'defaults' / default).read_text().replace('~/.local/state/tamlinux/current/theme', current)
         entries[config / relative] = text
+    entries[config / 'micro/bindings.json'] = (assets / 'defaults/micro-bindings.json').read_text()
     # Personal configurations later in imv's search path must not be hidden
     # by a new XDG default. An explicit selection is left to its owner even
     # when it is currently missing. System fallback is deliberately overridden

@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-28 — K24 clipboard repair and 0.5.7 Develop prep](2026-10-28-k24-clipboard-0.5.7.md)
+
 - [2026-10-28 — Console welcome development](2026-10-28-console-welcome.md)
 
 - [2026-10-28 — system layers account and US resize chords](2026-10-28-system-layers-resize.md)

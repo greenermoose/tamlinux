@@ -36,6 +36,8 @@ policy and physical acceptance remain separate.
 
 2026-10-28: Cursor `3.27.22` (`composer`) took over Codex's draft for the K32 system-layers account and US `less`/`greater` resize chords after a token limit; Lua syntax and 34 keybinding tests passed. [Session](docs/ai/2026-10-28-system-layers-resize.md).
 
+2026-10-28: Cursor `3.27.22` (`composer`) prepares Develop candidate 0.5.7: Foot/Micro K24 PuTTY clipboard migrations and version metadata; assembly pin bump follows in tamlinux-packages. [Session](docs/ai/2026-10-28-k24-clipboard-0.5.7.md).
+
 ## 1. Fred's Multi-Agent AI Toolchain
 
 Tamlinux 0.5.4 component metadata was prepared with Codex CLI `0.164.0`,
