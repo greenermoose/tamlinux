@@ -178,3 +178,4 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 
 - [2026-10-28 — Keybinding explorer capture verification](2026-10-28-explorer-capture-verification.md)
 - [2026-10-28 — imv preservation fixes](2026-10-28-imv-preservation.md)
+- [2026-10-28 — imv input development](2026-10-28-imv-input.md)
