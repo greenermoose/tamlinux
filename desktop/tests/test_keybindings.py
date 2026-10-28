@@ -103,6 +103,26 @@ def run_model(expression: str, *texts: str):
 
 
 class ExplorerRecordsTest(unittest.TestCase):
+    def test_explorer_excludes_static_rows_and_describes_only_exact_command(self):
+        bind = hyprland_bind(64, "U", description="Square", dispatcher="exec",
+                             arg="tam-hyprland-window-single-square-aspect-toggle")
+        rows = run_model("M.explorerRecords(TEXTS[0], '')", bind)
+        self.assertEqual(len(rows), 1)
+        self.assertIn("only window", rows[0]["explanation"])
+        modified = bind.replace("aspect-toggle", "aspect-toggle-custom")
+        rows = run_model("M.explorerRecords(TEXTS[0], '')", modified)
+        self.assertEqual(rows[0]["explanation"], "")
+
+    def test_explorer_wiring_has_opt_in_capture(self):
+        service = (KEYBINDINGS / "Service.qml").read_text()
+        explorer = (KEYBINDINGS / "Explorer.qml").read_text()
+        command = (DESKTOP.parent / "commands/tam-menu-keybindings/tam-menu-keybindings").read_text()
+        self.assertIn('function open(commands: string)', service)
+        self.assertIn('exec tam-shell keybindings open "$commands"', command)
+        self.assertIn('ShortcutInhibitor {', explorer)
+        self.assertIn('enabled: false', explorer)
+        self.assertIn('inhibitor.active', explorer)
+
     def test_structured_records_preserve_live_chord_and_command(self):
         rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
         zoom = next(row for row in rows if row["does"] == "Zoom out")

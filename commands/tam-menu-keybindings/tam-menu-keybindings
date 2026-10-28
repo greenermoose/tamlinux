@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# tam-menu-keybindings — search the desktop's keybindings and run the chosen
-# one (Menu → Learn → Keybindings, SUPER + K).
+# tam-menu-keybindings — open the keybinding explorer
+# (Menu → Learn → Keybindings, SUPER + K).
 #
 #   tam-menu-keybindings [--print|-p]
 #
@@ -9,9 +9,8 @@
 #
 # Ported from Omarchy 4.0.4 (omarchy-menu-keybindings) for plan 18 0.2.2.
 # Changed: the rows come from the Tamlinux shell's keybindings service, which
-# reads the compositor facade's bindings; this script keeps the Lua command
-# scan and the dispatch, so Enter runs the binding's command. Both are
-# Hyprland-only. The menu is tam-menu-select.
+# reads the compositor facade's bindings. This script supplies a Lua command
+# scan for bindings whose commands the compositor does not report.
 #
 # Copyright (c) David Heinemeier Hansson
 #
@@ -200,86 +199,14 @@ end
 LUA
 }
 
-trim() {
-  local value="$1"
 
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
+commands=$(scan_commands)
 
-  printf '%s\n' "$value"
-}
+if [[ $1 != "--print" && $1 != "-p" ]]; then
+  exec tam-shell keybindings open "$commands"
+fi
 
-lua_string() {
-  jq -Rnr --arg value "$1" '$value | @json'
-}
-
-dispatch_lua_expression() {
-  local expression="$1"
-  local output status
-
-  output=$(hyprctl dispatch "$expression" 2>&1)
-  status=$?
-
-  if (( status == 0 )) && [[ -z $output || $output == "ok" ]]; then
-    [[ -n $output ]] && printf '%s\n' "$output"
-    return 0
-  fi
-
-  return 1
-}
-
-dispatch_exec_binding() {
-  local command="$1"
-
-  dispatch_lua_expression "hl.dsp.exec_cmd($(lua_string "$command"))" || hyprctl dispatch exec "$command"
-}
-
-dispatch_sendshortcut_binding() {
-  local arg="$1"
-  local mods key window rest
-
-  IFS=, read -r mods key window rest <<<"$arg"
-  mods=$(trim "$mods")
-  key=$(trim "$key")
-  window=$(trim "$window")
-
-  [[ -z $window ]] && window="activewindow"
-
-  if [[ -n $key ]] && dispatch_lua_expression "hl.dsp.send_key_state({ mods = $(lua_string "$mods"), key = $(lua_string "$key"), state = \"down\", window = $(lua_string "$window") })"; then
-    sleep 0.05
-    dispatch_lua_expression "hl.dsp.send_key_state({ mods = $(lua_string "$mods"), key = $(lua_string "$key"), state = \"up\", window = $(lua_string "$window") })"
-    return
-  fi
-
-  hyprctl dispatch sendshortcut "$arg"
-}
-
-dispatch_binding() {
-  local dispatcher="$1"
-  local arg="$2"
-
-  case "$dispatcher" in
-    exec)
-      [[ -n $arg ]] && dispatch_exec_binding "$arg"
-      ;;
-    sendshortcut)
-      [[ -n $arg ]] && dispatch_sendshortcut_binding "$arg"
-      ;;
-    lua)
-      [[ -n $arg ]] && hyprctl dispatch "$arg"
-      ;;
-    "") return 1 ;;
-    *)
-      if [[ -n $arg ]]; then
-        hyprctl dispatch "$dispatcher" "$arg"
-      else
-        hyprctl dispatch "$dispatcher"
-      fi
-      ;;
-  esac
-}
-
-records=$(tam-shell keybindings records "$(scan_commands)") || exit 1
+records=$(tam-shell keybindings records "$commands") || exit 1
 
 if [[ -z $records ]]; then
   echo "tam-menu-keybindings: the Tamlinux shell reported no keybindings" >&2
@@ -289,15 +216,4 @@ fi
 if [[ $1 == "--print" || $1 == "-p" ]]; then
   cut -f1 <<<"$records"
   exit 0
-fi
-
-selection=$(cut -f1 <<<"$records" |
-  tam-menu-select 'Keybindings' -- --width 800 --height 500)
-
-if [[ -n $selection ]]; then
-  record=$(awk -F '\t' -v selection="$selection" '$1 == selection { print; exit }' <<<"$records")
-  dispatcher=$(cut -f2 <<<"$record")
-  arg=$(cut -f3- <<<"$record")
-
-  dispatch_binding "$dispatcher" "$arg"
 fi

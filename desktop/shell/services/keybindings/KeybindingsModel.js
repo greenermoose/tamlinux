@@ -158,6 +158,21 @@ var STATIC_ROWS = [
   { modmask: 9, key: "D", description: "Download Video from Web App", dispatcher: "sendshortcut", arg: "SHIFT ALT,D," }
 ]
 
+// Curated metadata is keyed by the complete action, so a user override is
+// never given a description for a different command.
+var EXPLANATIONS = {
+  "tam-hyprland-window-single-square-aspect-toggle": "Toggle a square aspect ratio for the only window on the current workspace."
+}
+
+function actionGroup(text) {
+  var s = String(text).toLowerCase()
+  if (/workspace|desktop [0-9]/.test(s)) return "Workspaces"
+  if (/window|focus|tile|floating|fullscreen/.test(s)) return "Windows"
+  if (/audio|volume|mute|media|brightness/.test(s)) return "Media and display"
+  if (/terminal|browser|application|apps menu/.test(s)) return "Applications"
+  return "Other"
+}
+
 // Case-insensitive, with runs of digits compared as numbers, so
 // "Switch desktop 2" sorts before "Switch desktop 10".
 function naturalCompare(a, b) {
@@ -179,7 +194,7 @@ function naturalCompare(a, b) {
 // Viewer rows: [{ display, dispatcher, arg }], alphabetical by what the
 // binding does, then by its keys. A row whose command the scan could not find keeps an empty
 // dispatcher: the viewer shows it but Enter does nothing.
-function explorerRecords(bindingsText, commandsText) {
+function explorerRecords(bindingsText, commandsText, includeStatic) {
   var commands = parseCommands(commandsText)
   var binds = parseBinds(bindingsText)
   var seen = {}, rows = []
@@ -194,7 +209,8 @@ function explorerRecords(bindingsText, commandsText) {
     seen[id] = true
     rows.push({ display: display, dispatcher: b.dispatcher, arg: b.arg,
                 does: text, combo: comboText(b.modmask, b.key),
-                modmask: b.modmask, key: b.key })
+                modmask: b.modmask, key: b.key, group: actionGroup(text),
+                explanation: b.dispatcher === "exec" ? (EXPLANATIONS[b.arg] || "") : "" })
   }
 
   for (var i = 0; i < binds.length; i++) {
@@ -210,7 +226,7 @@ function explorerRecords(bindingsText, commandsText) {
     if (b.key === "code:201") continue  // the Copilot key repeats another binding
     add(b)
   }
-  for (var s = 0; s < STATIC_ROWS.length; s++) add(STATIC_ROWS[s])
+  if (includeStatic) for (var s = 0; s < STATIC_ROWS.length; s++) add(STATIC_ROWS[s])
 
   rows.sort(function (a, b) {
     return naturalCompare(a.does, b.does) || naturalCompare(a.combo, b.combo) ||
@@ -220,7 +236,7 @@ function explorerRecords(bindingsText, commandsText) {
 }
 
 function records(bindingsText, commandsText) {
-  return explorerRecords(bindingsText, commandsText).map(function (r) {
+  return explorerRecords(bindingsText, commandsText, true).map(function (r) {
     return { display: r.display, dispatcher: r.dispatcher, arg: r.arg }
   })
 }
@@ -235,7 +251,7 @@ function filterExplorer(rows, modifier, query) {
     if (modifier === "alt" && (mask & 72) !== 72) return false
     if (modifier === "ctrl" && (mask & 68) !== 68) return false
     if (modifier === "shift" && (mask & 65) !== 65) return false
-    var haystack = [row.combo, row.does, row.dispatcher, row.arg].join(" ").toLowerCase()
+    var haystack = [row.combo, row.does, row.dispatcher, row.arg, row.group, row.explanation].join(" ").toLowerCase()
     return words.every(function (word) { return haystack.indexOf(word) !== -1 })
   })
 }

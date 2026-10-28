@@ -1,7 +1,5 @@
-// Keybinding viewer rows for tam-menu-keybindings. The rows come from the
-// compositor facade's bindings; the caller passes the command table it
-// scanned from the Lua config, since the facade does not know what a Lua
-// bind runs. The menu shows the rows and the caller runs the chosen one.
+// The explorer combines the compositor's live bindings with the command
+// table scanned by tam-menu-keybindings. Selecting a row never dispatches it.
 
 import QtQuick
 import Quickshell
@@ -12,6 +10,19 @@ Item {
   id: root
 
   property var shell: null
+  property bool opened: false
+  property var rows: []
+
+  function open(commands) {
+    rows = Model.explorerRecords(bindingsText(), commands)
+    opened = true
+  }
+
+  Explorer {
+    visible: root.opened
+    rows: root.rows
+    onClosed: root.opened = false
+  }
 
   function bindingsText() {
     return root.shell && root.shell.compositor ? String(root.shell.compositor.bindingsText || "") : ""
@@ -19,6 +30,7 @@ Item {
 
   IpcHandler {
     target: "keybindings"
+    function open(commands: string): string { root.open(commands); return "ok" }
     function records(commands: string): string {
       return Model.formatRecords(Model.records(root.bindingsText(), commands))
     }
