@@ -176,8 +176,10 @@ OPEN  SUPER + J                        toggle split
 OPEN  SUPER + L                        toggle workspace layout
       → ? keep, or Tier-2 remap
 
-OPEN  SUPER + greater (>)              (missing after US-keyboard < fix)
-      → ? restore right/down resize half
+OPEN  SUPER + greater (>)              (product: less/greater resize pair)
+      → product source uses US </> keysyms for both halves; retain
+        SUPER+Ctrl+period for Transcode (Fred, 2026-10-28). Not live until
+        packaged; host override still has only the less half.
 ```
 
 ---
@@ -318,7 +320,7 @@ KEEP  SUPER + Ctrl + Shift + less      shrink up a lot (host)
       → same
 ```
 
-(See section B for `SUPER + F` / `T` / `J` / `L`, monitor-move chord, and missing `>`.)
+(See section B for `SUPER + F` / `T` / `J` / `L`, monitor-move chord, and product `>` restore.)
 
 ---
 

@@ -10,7 +10,6 @@ o.bind("XF86PowerOff", "Power menu", "tam-menu toggle system", { locked = true }
 o.bind("SUPER + K", "Keybindings", "tam-menu-keybindings")
 o.bind("SUPER + ALT + K", "Tmux keybindings", "tam-menu-tmux-keybindings")
 o.bind("SUPER + CTRL + K", "Herdr keybindings", "tam-menu-herdr-keybindings")
-o.bind("SUPER + CTRL + Q", "Calculator", "omacalc")
 o.bind("XF86Calculator", "Calculator", "omacalc")
 
 o.bind("SUPER + SHIFT + SPACE", "Toggle top bar", "tam-shell tamlinux-shell toggleBar")
@@ -85,7 +84,8 @@ end)
 
 o.bind("SUPER + CTRL + S", "Share", "tam-menu toggle share")
 
-o.bind("SUPER + CTRL + PERIOD", "Transcode", "tam-transcode")
+-- xkbcommon names the period keysym "period"; upper-case "PERIOD" does not match.
+o.bind("SUPER + CTRL + period", "Transcode", "tam-transcode")
 
 o.bind("SUPER + CTRL + R", "Set reminder", "tam-reminder -i")
 o.bind("SUPER + CTRL + ALT + R", "Show reminders", "tam-reminder show")

@@ -30,6 +30,8 @@ policy and physical acceptance remain separate.
 
 2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) assisted with keybinding changes and candidate preparation. [Session](docs/ai/2026-10-28-keybindings.md).
 
+2026-10-28: Cursor `3.27.22` (`composer`) took over Codex's draft for the K32 system-layers account and US `less`/`greater` resize chords after a token limit; Lua syntax and 34 keybinding tests passed. [Session](docs/ai/2026-10-28-system-layers-resize.md).
+
 ## 1. Fred's Multi-Agent AI Toolchain
 
 Tamlinux 0.5.4 component metadata was prepared with Codex CLI `0.164.0`,
