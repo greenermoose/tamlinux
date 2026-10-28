@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-28 — Console welcome development](2026-10-28-console-welcome.md)
+
 - [2026-10-28 — system layers account and US resize chords](2026-10-28-system-layers-resize.md)
 
 - [2026-10-28 — keybindings and candidate preparation](2026-10-28-keybindings.md)

@@ -22,6 +22,10 @@ of who did the work and any rework; they do not define current roles.
 
 ---
 
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) develops the console welcome
+generator with Fred's revised tamarack design. Host login integration remains
+unfinished. [Session](docs/ai/2026-10-28-console-welcome.md).
+
 2026-10-23: Codex CLI `0.163.0` (`gpt-6.1-sol`) develops the Blue Sparkler
 0.5.0 fleet/first-install candidate. Text-session initialization verifies one
 recorded assembly and records the absence of a rollback generation. Login
