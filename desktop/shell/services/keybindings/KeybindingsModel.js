@@ -176,7 +176,50 @@ var STATIC_ROWS = [
 // Curated metadata is keyed by the complete action, so a user override is
 // never given a description for a different command.
 var EXPLANATIONS = {
-  "tam-hyprland-window-single-square-aspect-toggle": "Toggle a square aspect ratio for the only window on the current workspace."
+  "tam-hyprland-window-single-square-aspect-toggle": "Toggle a square aspect ratio for the only window on the current workspace.",
+  "tam-hyprland-window-gaps-toggle": "Toggle outer and inner window gaps on the active workspace.",
+  "tam-hyprland-window-opacity-toggle": "Toggle window opacity between translucent and solid.",
+  "tam-hyprland-window-close-all": "Close all open windows on the current workspace.",
+  "tam-hyprland-window-tiled-fullscreen-toggle": "Toggle full screen within the tiled boundary without obscuring the bar.",
+  "tam-hyprland-window-pop": "Pop active window out of tiling layout into a floating and pinned window.",
+  "tam-hyprland-workspace-layout-toggle": "Toggle between master/stack and dwindle workspace tiling layouts.",
+  "tam-shell clipboard toggle": "Open the clipboard history manager to search and paste recent clips.",
+  "tam-shell media playPause": "Toggle media playback between play and pause.",
+  "tam-shell media next": "Skip forward to the next media track.",
+  "tam-shell media previous": "Return to the previous media track.",
+  "tam-audio-output-volume raise": "Increase master audio output volume.",
+  "tam-audio-output-volume lower": "Decrease master audio output volume.",
+  "tam-audio-output-volume mute-toggle": "Mute or unmute master audio output.",
+  "tam-audio-input-mute": "Mute or unmute microphone audio input.",
+  "tam-audio-output-switch": "Switch active audio output sink (headphones, speakers, HDMI).",
+  "tam-audio-source-switch": "Switch active media player audio source.",
+  "tam-brightness-display +5%": "Increase primary display backlight brightness by 5%.",
+  "tam-brightness-display 5%-": "Decrease primary display backlight brightness by 5%.",
+  "tam-brightness-display 100%": "Set display brightness to maximum.",
+  "tam-brightness-display 1%": "Set display brightness to minimum.",
+  "tam-brightness-keyboard up": "Increase keyboard backlight brightness.",
+  "tam-brightness-keyboard down": "Decrease keyboard backlight brightness.",
+  "tam-brightness-keyboard cycle": "Cycle keyboard backlight brightness through presets.",
+  "tam-toggle-input-device touchpad": "Toggle touchpad input device on or off.",
+  "foot": "Launch Foot, the fast Wayland terminal emulator.",
+  "micro": "Launch Micro, the terminal text editor.",
+  "tam-menu": "Open the Tamlinux application menu.",
+  "tam-menu-keybindings": "Open the interactive keybinding explorer.",
+  "hl.dsp.window.close()": "Safely close the focused persistent window.",
+  "hl.dsp.layout(\"togglesplit\")": "Toggle the tiling split orientation between horizontal and vertical.",
+  "hl.dsp.window.float({ action = \"toggle\" })": "Toggle the active window between floating and tiled mode.",
+  "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })": "Toggle true full screen display for the focused window.",
+  "hl.dsp.window.fullscreen({ mode = \"maximized\" })": "Maximize window to the full display area while retaining the top bar."
+}
+
+function findExplanation(dispatcher, arg) {
+  if (!arg && !dispatcher) return ""
+  if (arg && EXPLANATIONS[arg]) return EXPLANATIONS[arg]
+  var full = (dispatcher + " " + arg).trim()
+  if (EXPLANATIONS[full]) return EXPLANATIONS[full]
+  var clean = actionText(dispatcher, arg)
+  if (clean && EXPLANATIONS[clean]) return EXPLANATIONS[clean]
+  return ""
 }
 
 function actionGroup(text) {
@@ -226,7 +269,7 @@ function explorerRecords(bindingsText, commandsText, includeStatic) {
                 does: text, combo: comboText(b.modmask, b.key),
                 chord: chordKeys(b.modmask, b.key),
                 modmask: b.modmask, key: b.key, group: actionGroup(text),
-                explanation: b.dispatcher === "exec" ? (EXPLANATIONS[b.arg] || "") : "" })
+                explanation: findExplanation(b.dispatcher, b.arg) })
   }
 
   for (var i = 0; i < binds.length; i++) {

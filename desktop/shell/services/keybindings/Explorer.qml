@@ -303,54 +303,259 @@ PanelWindow {
           Text { anchors.centerIn: parent; visible: list.count === 0; text: panel.rows.length ? "No shortcuts found" : "No bindings available from the compositor"; color: Color.menu.text; opacity: 0.7 }
         }
         Rectangle {
-          width: parent.width - list.width - 18; height: parent.height; radius: 6
-          color: Color.menu.selectedBackground
+          width: parent.width - list.width - 18; height: parent.height; radius: 8
+          color: Util.alpha(Color.foreground, 0.03)
+          border.color: Util.alpha(Color.foreground, 0.12)
+          border.width: 1
+
+          // Empty state
           Column {
-            anchors.fill: parent; anchors.margins: 16; spacing: 12
-            Text { width: parent.width; text: panel.selected ? panel.selected.does : "Select a shortcut"; color: Color.menu.text; font.bold: true; font.pixelSize: 19; wrapMode: Text.Wrap }
-            Row {
-              visible: !!panel.selected
-              spacing: 4
-              Repeater {
-                model: panel.selected ? (panel.selected.chord || (panel.selected.combo ? panel.selected.combo.split(" + ") : [])) : []
+            anchors.centerIn: parent
+            spacing: 8
+            visible: !panel.selected
+            width: parent.width - 32
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "Select a shortcut"
+              font.bold: true
+              font.pixelSize: 16
+              color: Color.menu.text
+            }
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "Use arrow keys or click a row to inspect its details"
+              color: Color.menu.text
+              opacity: 0.6
+              font.pixelSize: 13
+            }
+          }
+
+          // Populated inspector details
+          Flickable {
+            anchors.fill: parent
+            anchors.margins: 16
+            visible: !!panel.selected
+            contentWidth: width
+            contentHeight: detailsCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Column {
+              id: detailsCol
+              width: parent.width
+              spacing: 14
+
+              // Title and Category Tag
+              Column {
+                width: parent.width
+                spacing: 8
                 Row {
-                  spacing: 4
-                  anchors.verticalCenter: parent.verticalCenter
-                  Text {
-                    visible: index > 0
-                    text: "+"
-                    color: Color.menu.text
-                    opacity: 0.4
-                    font.pixelSize: 11
-                    font.bold: true
+                  width: parent.width
+                  spacing: 8
+                  Rectangle {
+                    height: 22
+                    width: catLabel.implicitWidth + 14
+                    radius: 11
+                    color: Util.alpha(Color.foreground, 0.08)
+                    border.color: Util.alpha(Color.foreground, 0.2)
+                    border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      id: catLabel
+                      anchors.centerIn: parent
+                      text: panel.selected ? panel.selected.group : ""
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.menu.text
+                    }
                   }
                   Rectangle {
-                    height: 24
-                    width: Math.max(24, detailKeyLabel.implicitWidth + 14)
-                    radius: 4
-                    color: Util.alpha(Color.accent, 0.18)
+                    height: 22
+                    width: dispLabel.implicitWidth + 14
+                    radius: 11
+                    color: Util.alpha(Color.accent, 0.15)
                     border.color: Util.alpha(Color.accent, 0.4)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
-
                     Text {
-                      id: detailKeyLabel
+                      id: dispLabel
                       anchors.centerIn: parent
-                      text: modelData
+                      text: panel.selected ? (panel.selected.dispatcher || "internal") : ""
+                      font.pixelSize: 11
+                      font.bold: true
                       color: Color.menu.selectedText
+                    }
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: panel.selected ? panel.selected.does : ""
+                  color: Color.accentText
+                  font.bold: true
+                  font.pixelSize: 20
+                  wrapMode: Text.Wrap
+                }
+              }
+
+              // Key Combination Badges
+              Row {
+                spacing: 4
+                Repeater {
+                  model: panel.selected ? (panel.selected.chord || (panel.selected.combo ? panel.selected.combo.split(" + ") : [])) : []
+                  Row {
+                    spacing: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      visible: index > 0
+                      text: "+"
+                      color: Color.menu.text
+                      opacity: 0.5
                       font.pixelSize: 12
                       font.bold: true
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Rectangle {
+                      height: 26
+                      width: Math.max(26, detailKeyLabel.implicitWidth + 14)
+                      radius: 4
+                      color: Util.alpha(Color.accent, 0.22)
+                      border.color: Color.accent
+                      border.width: 1
+                      anchors.verticalCenter: parent.verticalCenter
+
+                      Text {
+                        id: detailKeyLabel
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: Color.accentText
+                        font.pixelSize: 12
+                        font.bold: true
+                        font.family: Style.fontFamily
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Explanation Card
+              Rectangle {
+                width: parent.width
+                height: explCol.implicitHeight + 20
+                radius: 6
+                color: Util.alpha(Color.foreground, 0.04)
+                border.color: Util.alpha(Color.foreground, 0.08)
+                border.width: 1
+
+                Column {
+                  id: explCol
+                  anchors.left: parent.left
+                  anchors.right: parent.right
+                  anchors.margins: 12
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: 4
+
+                  Text {
+                    text: "Action"
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.menu.text
+                    opacity: 0.6
+                  }
+                  Text {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    color: Color.menu.text
+                    font.pixelSize: 13
+                    lineHeight: 1.2
+                    text: panel.selected && panel.selected.explanation ? panel.selected.explanation : "No additional explanation is available for this action."
+                  }
+                }
+              }
+
+              // Command & Dispatcher Card
+              Column {
+                width: parent.width
+                spacing: 6
+
+                Text {
+                  text: "Command & Arguments"
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.menu.text
+                  opacity: 0.6
+                }
+
+                Rectangle {
+                  width: parent.width
+                  height: cmdText.implicitHeight + 16
+                  radius: 6
+                  color: Color.background
+                  border.color: Util.alpha(Color.foreground, 0.15)
+                  border.width: 1
+
+                  Text {
+                    id: cmdText
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: panel.selected ? (panel.selected.arg || "(none)") : ""
+                    font.family: Style.fontFamily
+                    font.pixelSize: 12
+                    color: Color.accent
+                    wrapMode: Text.WrapAnywhere
+                  }
+                }
+              }
+
+              // Executable Path Card
+              Column {
+                width: parent.width
+                spacing: 6
+
+                Text {
+                  text: "Executable Path"
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.menu.text
+                  opacity: 0.6
+                }
+
+                Rectangle {
+                  width: parent.width
+                  height: 34
+                  radius: 6
+                  color: Color.background
+                  border.color: Util.alpha(Color.foreground, 0.15)
+                  border.width: 1
+
+                  Row {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+
+                    Rectangle {
+                      width: 8; height: 8; radius: 4
+                      anchors.verticalCenter: parent.verticalCenter
+                      color: panel.commandPath ? "#68b087" : (panel.selected && panel.selected.dispatcher === "exec" ? "#c46b6b" : Color.accent)
+                    }
+
+                    Text {
+                      width: parent.width - 16
+                      text: panel.commandPath ? panel.commandPath : (panel.selected && panel.selected.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
                       font.family: Style.fontFamily
+                      font.pixelSize: 11
+                      color: panel.commandPath ? Color.menu.text : (panel.selected && panel.selected.dispatcher === "exec" ? Color.urgent : Color.muted)
+                      elide: Text.ElideMiddle
+                      anchors.verticalCenter: parent.verticalCenter
                     }
                   }
                 }
               }
             }
-            Text { width: parent.width; visible: !panel.selected; text: "Choose a row to see its action and command."; color: Color.menu.text; wrapMode: Text.Wrap }
-            Text { width: parent.width; visible: !!panel.selected; color: Color.menu.text; wrapMode: Text.Wrap; text: panel.selected && panel.selected.explanation ? panel.selected.explanation : "No additional explanation is available for this action." }
-            Text { width: parent.width; visible: !!panel.selected; color: Color.menu.text; opacity: 0.7; wrapMode: Text.WrapAnywhere; text: panel.selected ? "Dispatcher: " + (panel.selected.dispatcher || "unavailable") + "\n\nCommand: " + (panel.selected.arg || "unavailable") : "" }
-            Text { width: parent.width; visible: !!panel.selected; color: Color.menu.text; opacity: 0.7; wrapMode: Text.WrapAnywhere; text: "Executable path: " + (panel.commandPath || "unavailable") }
           }
         }
       }

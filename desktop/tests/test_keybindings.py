@@ -113,6 +113,17 @@ class ExplorerRecordsTest(unittest.TestCase):
         rows = run_model("M.explorerRecords(TEXTS[0], '')", modified)
         self.assertEqual(rows[0]["explanation"], "")
 
+    def test_curated_explanations_describe_core_desktop_actions(self):
+        close_bind = hyprland_bind(64, "BACKSPACE", description="Close", dispatcher="lua",
+                                   arg="hl.dsp.window.close()")
+        rows = run_model("M.explorerRecords(TEXTS[0], '')", close_bind)
+        self.assertIn("close", rows[0]["explanation"].lower())
+
+        term_bind = hyprland_bind(64, "RETURN", description="Terminal", dispatcher="exec",
+                                  arg="foot")
+        rows = run_model("M.explorerRecords(TEXTS[0], '')", term_bind)
+        self.assertIn("terminal", rows[0]["explanation"].lower())
+
     def test_explorer_wiring_has_opt_in_capture(self):
         service = (KEYBINDINGS / "Service.qml").read_text()
         explorer = (KEYBINDINGS / "Explorer.qml").read_text()
