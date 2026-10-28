@@ -15,6 +15,8 @@ PanelWindow {
   property bool capturing: false
   property string captureResult: ""
   property var lastCaptured: null
+  property var lastTriedChord: []
+  property string lastTriedCombo: ""
   property string commandPath: ""
   readonly property string appVersion: Model.APP_VERSION || "0.1.0"
   readonly property string buildRevision: Quickshell.env("TAMLINUX_KEYBINDINGS_REV") || ""
@@ -81,7 +83,7 @@ PanelWindow {
     else { capturing = false; inhibitor.enabled = false }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; closed() }
-  function beginCapture() { lastCaptured = null; captureResult = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
+  function beginCapture() { lastCaptured = null; captureResult = ""; lastTriedChord = []; lastTriedCombo = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
   function finishCapture() {
     var target = panel.lastCaptured
     panel.capturing = false
@@ -796,6 +798,8 @@ PanelWindow {
           var mask = ((event.modifiers & Qt.MetaModifier) ? 64 : 0) | ((event.modifiers & Qt.ControlModifier) ? 4 : 0) | ((event.modifiers & Qt.AltModifier) ? 8 : 0) | ((event.modifiers & Qt.ShiftModifier) ? 1 : 0)
           var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Backspace] = "BACKSPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
           var key = names[event.key] || (event.key >= 32 && event.key <= 126 ? String.fromCharCode(event.key).toUpperCase() : "")
+          panel.lastTriedChord = Model.chordKeys(mask, key)
+          panel.lastTriedCombo = Model.comboText(mask, key) || (key ? key : "Key")
           var found = Model.capturedBindings(panel.rows, mask, key, event.nativeScanCode)
           if (found.length > 0) {
             panel.lastCaptured = found[0]
@@ -803,8 +807,7 @@ PanelWindow {
             panel.selected = found[0]
           } else {
             panel.lastCaptured = null
-            var chordLabel = Model.comboText(mask, key)
-            panel.captureResult = (chordLabel ? chordLabel + "  →  " : "") + "No matching shortcut found"
+            panel.captureResult = panel.lastTriedCombo + "  →  No matching shortcut found"
           }
         }
       }
@@ -868,211 +871,252 @@ PanelWindow {
           opacity: 0.75
           font.pixelSize: 13
           text: inhibitor.active
-            ? (panel.lastCaptured ? "Found matching shortcut! Press any other combination to test again, or Esc to return to the list." : "Press any key combination on your keyboard. Shortcuts are intercepted and will not run the command.")
+            ? "Shortcuts are intercepted and will not run the command. Press any key combination to test it, and press another anytime."
             : "Waiting for the compositor to grant shortcut capture. Press Esc to exit."
         }
 
-        Item {
+        Row {
           width: parent.width
           height: parent.height - y - 10
+          spacing: 18
 
+          // Left Pane: What you are trying
           Rectangle {
-            anchors.fill: parent
-            visible: !panel.lastCaptured && !panel.captureResult
+            id: tryPane
+            width: Math.floor((parent.width - 18) * 0.44)
+            height: parent.height
             radius: 8
             color: Util.alpha(Color.foreground, 0.02)
             border.color: Util.alpha(Color.foreground, 0.14)
             border.width: 1
 
             Column {
-              anchors.centerIn: parent
-              spacing: 16
-              width: Math.min(parent.width - 80, 560)
-
-              Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 64; height: 64; radius: 32
-                color: Util.alpha(Color.accent, 0.15)
-                border.color: Util.alpha(Color.accent, 0.4)
-                border.width: 1
-                Text {
-                  anchors.centerIn: parent
-                  text: "⌨"
-                  font.pixelSize: 28
-                  color: Color.accent
-                }
-              }
-
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Press any key combination"
-                color: Color.foreground
-                font.pixelSize: 18
-                font.bold: true
-              }
-
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-                color: Color.foreground
-                opacity: 0.7
-                font.pixelSize: 13
-                lineHeight: 1.3
-                text: "Press shortcuts like SUPER + RETURN, SUPER + K, ALT + TAB, or SUPER + BACKSPACE. The full details card will appear here instantly without executing the command."
-              }
-            }
-          }
-
-          Rectangle {
-            anchors.fill: parent
-            visible: !panel.lastCaptured && !!panel.captureResult
-            radius: 8
-            color: Util.alpha(Color.foreground, 0.02)
-            border.color: Util.alpha(Color.urgent, 0.35)
-            border.width: 1
-
-            Column {
-              anchors.centerIn: parent
-              spacing: 16
-              width: Math.min(parent.width - 80, 560)
-
-              Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 64; height: 64; radius: 32
-                color: Util.alpha(Color.urgent, 0.15)
-                border.color: Util.alpha(Color.urgent, 0.4)
-                border.width: 1
-                Text {
-                  anchors.centerIn: parent
-                  text: "✕"
-                  font.pixelSize: 26
-                  font.bold: true
-                  color: Color.urgent
-                }
-              }
-
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: panel.captureResult
-                color: Color.foreground
-                font.pixelSize: 17
-                font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-              }
-
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-                color: Color.foreground
-                opacity: 0.7
-                font.pixelSize: 13
-                text: "This combination is not registered in your compositor configuration. Try another combination or press Esc to return to the list."
-              }
-
-              DarkButton {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Back to list  (Esc)"
-                onClicked: panel.finishCapture()
-              }
-            }
-          }
-
-          Rectangle {
-            anchors.fill: parent
-            visible: !!panel.lastCaptured
-            radius: 8
-            color: Util.alpha(Color.foreground, 0.02)
-            border.color: Util.alpha(Color.accent, 0.45)
-            border.width: 1
-
-            Column {
               anchors.fill: parent
-              anchors.margins: 24
+              anchors.margins: 20
               spacing: 16
 
+              // Header
               Row {
                 width: parent.width
-                spacing: 10
-
+                spacing: 8
+                Text {
+                  text: "What you are trying"
+                  font.pixelSize: 15
+                  font.bold: true
+                  color: Color.foreground
+                  anchors.verticalCenter: parent.verticalCenter
+                }
                 Rectangle {
-                  height: 24
-                  width: captureCatLabel.implicitWidth + 14
-                  radius: 12
-                  color: Util.alpha(Color.foreground, 0.08)
-                  border.color: Util.alpha(Color.foreground, 0.22)
+                  height: 20
+                  width: liveBadgeText.implicitWidth + 12
+                  radius: 10
+                  color: Util.alpha(Color.accent, 0.16)
+                  border.color: Util.alpha(Color.accent, 0.4)
                   border.width: 1
                   anchors.verticalCenter: parent.verticalCenter
-                  Text {
-                    id: captureCatLabel
+                  Row {
                     anchors.centerIn: parent
-                    text: panel.lastCaptured ? (panel.lastCaptured.group || "Other") : ""
-                    font.pixelSize: 11
-                    font.bold: true
-                    color: Color.foreground
-                  }
-                }
-
-                Rectangle {
-                  height: 24
-                  width: captureDispLabel.implicitWidth + 14
-                  radius: 12
-                  color: Util.alpha(Color.accent, 0.15)
-                  border.color: Util.alpha(Color.accent, 0.45)
-                  border.width: 1
-                  anchors.verticalCenter: parent.verticalCenter
-                  Text {
-                    id: captureDispLabel
-                    anchors.centerIn: parent
-                    text: panel.lastCaptured ? (panel.lastCaptured.dispatcher || "command") : ""
-                    font.pixelSize: 11
-                    font.bold: true
-                    color: Color.accentText
-                  }
-                }
-
-                Item {
-                  width: Math.max(0, parent.width - captureCatLabel.implicitWidth - captureDispLabel.implicitWidth - captureChordsRow.implicitWidth - 70)
-                  height: 1
-                }
-
-                Row {
-                  id: captureChordsRow
-                  spacing: 4
-                  anchors.verticalCenter: parent.verticalCenter
-                  Repeater {
-                    model: panel.lastCaptured ? (panel.lastCaptured.chord || (panel.lastCaptured.combo ? panel.lastCaptured.combo.split(" + ") : [])) : []
-                    Row {
-                      spacing: 4
+                    spacing: 5
+                    Rectangle {
+                      width: 6; height: 6; radius: 3
+                      color: Color.accent
                       anchors.verticalCenter: parent.verticalCenter
-                      Text {
-                        visible: index > 0
-                        text: "+"
-                        color: Color.accentText
-                        opacity: 0.7
-                        font.pixelSize: 13
-                        font.bold: true
-                        anchors.verticalCenter: parent.verticalCenter
-                      }
-                      Rectangle {
-                        height: 28
-                        width: Math.max(28, captureChordLabel.implicitWidth + 14)
-                        radius: 4
-                        color: Util.alpha(Color.accent, 0.25)
-                        border.color: Color.accent
-                        border.width: 1
+                    }
+                    Text {
+                      id: liveBadgeText
+                      text: "Listening"
+                      color: Color.accentText
+                      font.pixelSize: 10
+                      font.bold: true
+                    }
+                  }
+                }
+              }
+
+              // Active Keycap Box
+              Rectangle {
+                width: parent.width
+                height: 110
+                radius: 8
+                color: panel.lastCaptured ? Util.alpha(Color.accent, 0.10)
+                     : (panel.lastTriedCombo ? Util.alpha(Color.urgent, 0.08) : "#0c0f12")
+                border.color: panel.lastCaptured ? Color.accent
+                            : (panel.lastTriedCombo ? Util.alpha(Color.urgent, 0.45) : Util.alpha(Color.foreground, 0.20))
+                border.width: 1
+
+                Column {
+                  anchors.centerIn: parent
+                  spacing: 10
+
+                  // Keycaps
+                  Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 6
+                    visible: panel.lastTriedChord.length > 0
+
+                    Repeater {
+                      model: panel.lastTriedChord
+                      Row {
+                        spacing: 6
                         anchors.verticalCenter: parent.verticalCenter
                         Text {
-                          id: captureChordLabel
-                          anchors.centerIn: parent
-                          text: modelData
+                          visible: index > 0
+                          text: "+"
                           color: Color.accentText
-                          font.pixelSize: 13
+                          opacity: 0.7
+                          font.pixelSize: 14
+                          font.bold: true
+                          anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Rectangle {
+                          height: 34
+                          width: Math.max(34, keycapLabel.implicitWidth + 18)
+                          radius: 5
+                          color: panel.lastCaptured ? Util.alpha(Color.accent, 0.26) : Util.alpha(Color.foreground, 0.12)
+                          border.color: panel.lastCaptured ? Color.accent : Util.alpha(Color.foreground, 0.3)
+                          border.width: 1
+                          anchors.verticalCenter: parent.verticalCenter
+
+                          Text {
+                            id: keycapLabel
+                            anchors.centerIn: parent
+                            text: modelData
+                            color: Color.accentText
+                            font.pixelSize: 14
+                            font.bold: true
+                            font.family: Style.fontFamily
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  // Status line under keycaps
+                  Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 6
+                    visible: panel.lastTriedChord.length > 0
+
+                    Rectangle {
+                      width: 6; height: 6; radius: 3
+                      color: panel.lastCaptured ? "#68b087" : Color.urgent
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                      text: panel.lastCaptured ? "Registered shortcut in Hyprland" : "Unassigned key combination"
+                      color: panel.lastCaptured ? "#68b087" : Color.urgent
+                      font.pixelSize: 11
+                      font.bold: true
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                  }
+
+                  // Empty prompt when no key tried yet
+                  Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: panel.lastTriedChord.length === 0
+                    text: "Press any key combination on keyboard..."
+                    color: Color.foreground
+                    opacity: 0.6
+                    font.pixelSize: 14
+                  }
+                }
+              }
+
+              // "Try another one" callout card
+              Rectangle {
+                width: parent.width
+                height: tryAnotherCol.implicitHeight + 24
+                radius: 8
+                color: Util.alpha(Color.foreground, 0.04)
+                border.color: Util.alpha(Color.foreground, 0.12)
+                border.width: 1
+
+                Column {
+                  id: tryAnotherCol
+                  anchors.left: parent.left
+                  anchors.right: parent.right
+                  anchors.margins: 14
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: 6
+
+                  Row {
+                    spacing: 6
+                    Text {
+                      text: "⚡"
+                      font.pixelSize: 13
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                      text: "Try another one anytime"
+                      font.pixelSize: 12
+                      font.bold: true
+                      color: Color.accent
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                  }
+
+                  Text {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    color: Color.foreground
+                    opacity: 0.75
+                    font.pixelSize: 12
+                    lineHeight: 1.3
+                    text: "No need to reset or press enter. Simply press any other shortcut on your keyboard right now to test it."
+                  }
+                }
+              }
+
+              // Common shortcuts suggestions
+              Column {
+                width: parent.width
+                spacing: 8
+
+                Text {
+                  text: "Popular shortcuts you can test:"
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.foreground
+                  opacity: 0.6
+                }
+
+                Flow {
+                  width: parent.width
+                  spacing: 6
+
+                  Repeater {
+                    model: [
+                      { combo: "SUPER + RETURN", desc: "Terminal" },
+                      { combo: "SUPER + BACKSPACE", desc: "Close" },
+                      { combo: "SUPER + K", desc: "Explorer" },
+                      { combo: "SUPER + SPACE", desc: "Launcher" },
+                      { combo: "ALT + TAB", desc: "Cycle" }
+                    ]
+                    Rectangle {
+                      height: 24
+                      width: sampleRow.implicitWidth + 12
+                      radius: 4
+                      color: Util.alpha(Color.foreground, 0.05)
+                      border.color: Util.alpha(Color.foreground, 0.15)
+                      border.width: 1
+
+                      Row {
+                        id: sampleRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text {
+                          text: modelData.combo
+                          color: Color.accent
+                          font.pixelSize: 10
                           font.bold: true
                           font.family: Style.fontFamily
+                        }
+                        Text {
+                          text: "(" + modelData.desc + ")"
+                          color: Color.foreground
+                          opacity: 0.6
+                          font.pixelSize: 10
                         }
                       }
                     }
@@ -1080,162 +1124,312 @@ PanelWindow {
                 }
               }
 
-              Text {
+              Item { width: 1; height: 1 }
+
+              DarkButton {
                 width: parent.width
-                text: panel.lastCaptured ? panel.lastCaptured.does : ""
-                color: Color.accentText
-                font.bold: true
-                font.pixelSize: 22
-                wrapMode: Text.Wrap
+                text: "Back to list  (Esc)"
+                onClicked: panel.finishCapture()
               }
+            }
+          }
+
+          // Right Pane: What that does
+          Rectangle {
+            id: doesPane
+            width: parent.width - tryPane.width - 18
+            height: parent.height
+            radius: 8
+            color: Util.alpha(Color.foreground, 0.02)
+            border.color: panel.lastCaptured ? Util.alpha(Color.accent, 0.4) : Util.alpha(Color.foreground, 0.14)
+            border.width: 1
+
+            // 1. Initial State: Waiting for input
+            Column {
+              anchors.centerIn: parent
+              spacing: 14
+              width: Math.min(parent.width - 60, 480)
+              visible: panel.lastTriedChord.length === 0
 
               Rectangle {
-                width: parent.width
-                height: captureExplCol.implicitHeight + 20
-                radius: 6
-                color: Util.alpha(Color.foreground, 0.04)
-                border.color: Util.alpha(Color.foreground, 0.12)
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 56; height: 56; radius: 28
+                color: Util.alpha(Color.accent, 0.14)
+                border.color: Util.alpha(Color.accent, 0.35)
                 border.width: 1
+                Text {
+                  anchors.centerIn: parent
+                  text: "→"
+                  font.pixelSize: 24
+                  font.bold: true
+                  color: Color.accent
+                }
+              }
 
-                Column {
-                  id: captureExplCol
-                  anchors.left: parent.left
-                  anchors.right: parent.right
-                  anchors.margins: 14
-                  anchors.verticalCenter: parent.verticalCenter
-                  spacing: 4
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "What that does"
+                color: Color.foreground
+                font.pixelSize: 17
+                font.bold: true
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                color: Color.foreground
+                opacity: 0.65
+                font.pixelSize: 13
+                lineHeight: 1.3
+                text: "Press any key combination on the left. The matching command, category, explanation, and executable path will display here."
+              }
+            }
+
+            // 2. Unmatched State: No binding found
+            Column {
+              anchors.centerIn: parent
+              spacing: 14
+              width: Math.min(parent.width - 60, 480)
+              visible: panel.lastTriedChord.length > 0 && !panel.lastCaptured
+
+              Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 56; height: 56; radius: 28
+                color: Util.alpha(Color.urgent, 0.12)
+                border.color: Util.alpha(Color.urgent, 0.35)
+                border.width: 1
+                Text {
+                  anchors.centerIn: parent
+                  text: "✕"
+                  font.pixelSize: 22
+                  font.bold: true
+                  color: Color.urgent
+                }
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "No action assigned"
+                color: Color.foreground
+                font.pixelSize: 17
+                font.bold: true
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                color: Color.foreground
+                opacity: 0.70
+                font.pixelSize: 13
+                lineHeight: 1.3
+                text: "The combination '" + panel.lastTriedCombo + "' is not bound to any command in your Hyprland configuration. It is available to assign."
+              }
+            }
+
+            // 3. Matched State: Full details card!
+            Flickable {
+              anchors.fill: parent
+              anchors.margins: 20
+              visible: !!panel.lastCaptured
+              contentWidth: width
+              contentHeight: matchCol.implicitHeight
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+
+              Column {
+                id: matchCol
+                width: parent.width
+                spacing: 14
+
+                // Header: Section label & tags
+                Row {
+                  width: parent.width
+                  spacing: 8
 
                   Text {
-                    text: "Action"
+                    text: "What that does"
+                    font.pixelSize: 15
+                    font.bold: true
+                    color: Color.foreground
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+
+                  Rectangle {
+                    height: 22
+                    width: captureCatLabel.implicitWidth + 14
+                    radius: 11
+                    color: Util.alpha(Color.foreground, 0.08)
+                    border.color: Util.alpha(Color.foreground, 0.22)
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      id: captureCatLabel
+                      anchors.centerIn: parent
+                      text: panel.lastCaptured ? (panel.lastCaptured.group || "Other") : ""
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.foreground
+                    }
+                  }
+
+                  Rectangle {
+                    height: 22
+                    width: captureDispLabel.implicitWidth + 14
+                    radius: 11
+                    color: Util.alpha(Color.accent, 0.15)
+                    border.color: Util.alpha(Color.accent, 0.45)
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      id: captureDispLabel
+                      anchors.centerIn: parent
+                      text: panel.lastCaptured ? (panel.lastCaptured.dispatcher || "command") : ""
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accentText
+                    }
+                  }
+                }
+
+                // Action Name Title
+                Text {
+                  width: parent.width
+                  text: panel.lastCaptured ? panel.lastCaptured.does : ""
+                  color: Color.accentText
+                  font.bold: true
+                  font.pixelSize: 22
+                  wrapMode: Text.Wrap
+                }
+
+                // Action Explanation Card
+                Rectangle {
+                  width: parent.width
+                  height: captureExplCol.implicitHeight + 20
+                  radius: 6
+                  color: Util.alpha(Color.foreground, 0.04)
+                  border.color: Util.alpha(Color.foreground, 0.12)
+                  border.width: 1
+
+                  Column {
+                    id: captureExplCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    Text {
+                      text: "Action"
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accent
+                    }
+                    Text {
+                      width: parent.width
+                      wrapMode: Text.Wrap
+                      color: Color.foreground
+                      font.pixelSize: 13
+                      lineHeight: 1.25
+                      text: panel.lastCaptured && panel.lastCaptured.explanation ? panel.lastCaptured.explanation : "No additional explanation is available for this action."
+                    }
+                  }
+                }
+
+                // Command & Arguments Card
+                Column {
+                  width: parent.width
+                  spacing: 6
+
+                  Text {
+                    text: "Command & Arguments"
                     font.pixelSize: 11
                     font.bold: true
                     color: Color.accent
                   }
-                  Text {
+
+                  Rectangle {
                     width: parent.width
-                    wrapMode: Text.Wrap
-                    color: Color.foreground
-                    font.pixelSize: 13
-                    lineHeight: 1.25
-                    text: panel.lastCaptured && panel.lastCaptured.explanation ? panel.lastCaptured.explanation : "No additional explanation is available for this action."
-                  }
-                }
-              }
-
-              Column {
-                width: parent.width
-                spacing: 6
-
-                Text {
-                  text: "Command & Arguments"
-                  font.pixelSize: 11
-                  font.bold: true
-                  color: Color.accent
-                }
-
-                Rectangle {
-                  width: parent.width
-                  height: captureCmdText.implicitHeight + 16
-                  radius: 6
-                  color: "#0a0c0e"
-                  border.color: Util.alpha(Color.foreground, 0.18)
-                  border.width: 1
-
-                  Text {
-                    id: captureCmdText
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.margins: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: panel.lastCaptured ? (panel.lastCaptured.arg || "(none)") : ""
-                    font.family: Style.fontFamily
-                    font.pixelSize: 12
-                    color: Color.accent
-                    wrapMode: Text.WrapAnywhere
-                  }
-                }
-              }
-
-              Column {
-                width: parent.width
-                spacing: 6
-
-                Text {
-                  text: "Executable Path"
-                  font.pixelSize: 11
-                  font.bold: true
-                  color: Color.accent
-                }
-
-                Rectangle {
-                  width: parent.width
-                  height: 34
-                  radius: 6
-                  color: "#0a0c0e"
-                  border.color: Util.alpha(Color.foreground, 0.18)
-                  border.width: 1
-
-                  Row {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.margins: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
-
-                    Rectangle {
-                      width: 8; height: 8; radius: 4
-                      anchors.verticalCenter: parent.verticalCenter
-                      color: panel.commandPath ? "#68b087" : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "#c46b6b" : Color.accent)
-                    }
+                    height: captureCmdText.implicitHeight + 16
+                    radius: 6
+                    color: "#0a0c0e"
+                    border.color: Util.alpha(Color.foreground, 0.18)
+                    border.width: 1
 
                     Text {
-                      width: parent.width - 20
-                      text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
-                      font.family: Style.fontFamily
-                      font.pixelSize: 11
-                      color: panel.commandPath ? Color.foreground : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Color.urgent : Color.muted)
-                      elide: Text.ElideMiddle
+                      id: captureCmdText
+                      anchors.left: parent.left
+                      anchors.right: parent.right
+                      anchors.margins: 12
                       anchors.verticalCenter: parent.verticalCenter
+                      text: panel.lastCaptured ? (panel.lastCaptured.arg || "(none)") : ""
+                      font.family: Style.fontFamily
+                      font.pixelSize: 12
+                      color: Color.accent
+                      wrapMode: Text.WrapAnywhere
                     }
                   }
                 }
-              }
 
-              Item {
-                width: parent.width
-                height: 36
-                anchors.topMargin: 4
-
-                Row {
-                  anchors.left: parent.left
-                  anchors.verticalCenter: parent.verticalCenter
+                // Executable Path Card
+                Column {
+                  width: parent.width
                   spacing: 6
+
                   Text {
-                    text: "Try another key combination anytime, or press Esc to return to the list."
-                    color: Color.foreground
-                    opacity: 0.65
-                    font.pixelSize: 12
-                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Executable Path"
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.accent
+                  }
+
+                  Rectangle {
+                    width: parent.width
+                    height: 34
+                    radius: 6
+                    color: "#0a0c0e"
+                    border.color: Util.alpha(Color.foreground, 0.18)
+                    border.width: 1
+
+                    Row {
+                      anchors.left: parent.left
+                      anchors.right: parent.right
+                      anchors.margins: 12
+                      anchors.verticalCenter: parent.verticalCenter
+                      spacing: 8
+
+                      Rectangle {
+                        width: 8; height: 8; radius: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: panel.commandPath ? "#68b087" : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "#c46b6b" : Color.accent)
+                      }
+
+                      Text {
+                        width: parent.width - 20
+                        text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
+                        font.family: Style.fontFamily
+                        font.pixelSize: 11
+                        color: panel.commandPath ? Color.foreground : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Color.urgent : Color.muted)
+                        elide: Text.ElideMiddle
+                        anchors.verticalCenter: parent.verticalCenter
+                      }
+                    }
                   }
                 }
 
-                Row {
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  spacing: 10
-                  DarkButton {
-                    isAccent: true
-                    text: "Inspect in list  (Enter)"
-                    onClicked: panel.finishCapture()
-                  }
-                  DarkButton {
-                    text: "Back to list  (Esc)"
-                    onClicked: panel.finishCapture()
-                  }
+                // Inspect button
+                DarkButton {
+                  isAccent: true
+                  text: "Inspect in main list  (Enter)"
+                  onClicked: panel.finishCapture()
                 }
               }
             }
           }
+        }
         }
       }
     }

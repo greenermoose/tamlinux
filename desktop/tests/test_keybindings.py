@@ -133,6 +133,9 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('ShortcutInhibitor {', explorer)
         self.assertIn('enabled: false', explorer)
         self.assertIn('inhibitor.active', explorer)
+        self.assertIn('What you are trying', explorer)
+        self.assertIn('What that does', explorer)
+        self.assertIn('lastTriedChord', explorer)
 
     def test_component_semver_and_version_wiring(self):
         version_file = (KEYBINDINGS / "VERSION").read_text().strip()
