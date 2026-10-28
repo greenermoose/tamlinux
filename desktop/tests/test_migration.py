@@ -120,6 +120,39 @@ class Migration(unittest.TestCase):
         m.prepare(self.roots,self.journal);m.apply(self.journal,self.roots)
         self.assertIn(str(self.roots['state']/'tamlinux/current/theme/alacritty.toml'),target.read_text())
 
+    def test_theme_leaf_migration_rewrites_links_and_share_picker_file(self):
+        btop=self.roots['config']/'btop/themes/current.theme'
+        nvim=self.roots['config']/'nvim/lua/plugins/theme.lua'
+        btop.parent.mkdir(parents=True); nvim.parent.mkdir(parents=True)
+        btop.symlink_to(self.roots['state']/'omarchy/current/theme/btop.theme')
+        nvim.symlink_to('~/.local/state/omarchy/current/theme/neovim.lua')
+        share=self.write('config','hyprland-preview-share-picker/config.yaml',
+            b'stylesheets: ["../../.local/state/omarchy/current/theme/hyprland-preview-share-picker.css"]\n')
+        share.chmod(0o640)
+        for leaf_id in ('btop-theme','nvim-theme','share-picker-theme'):
+            journal=self.journal.with_name(leaf_id)
+            plan=m.prepare(self.roots,journal,only=leaf_id)
+            self.assertEqual(plan['status'],'prepared')
+            self.assertEqual([row['id'] for row in plan['rows']],[leaf_id])
+            m.apply(journal,self.roots)
+        self.assertEqual(btop.readlink(),self.roots['state']/'tamlinux/current/theme/btop.theme')
+        self.assertEqual(str(nvim.readlink()),
+                         str(self.roots['state']/'tamlinux/current/theme/neovim.lua'))
+        self.assertEqual(share.read_bytes(),
+            b'stylesheets: ["../../.local/state/tamlinux/current/theme/hyprland-preview-share-picker.css"]\n')
+        self.assertEqual(share.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('theme-leaf-retry'),
+                                   only='share-picker-theme')['rows'],[])
+        m.rollback(self.journal.with_name('share-picker-theme'),self.roots)
+        self.assertIn(b'omarchy/current/theme/hyprland-preview-share-picker.css',share.read_bytes())
+
+    def test_theme_leaf_conversion_leaves_unrelated_paths_alone(self):
+        path=self.write('config','hyprland-preview-share-picker/config.yaml',
+            b'stylesheets: ["/personal/theme.css"]\n# omarchy/current/theme/hyprland-preview-share-picker.css\n')
+        self.assertEqual(m.prepare(self.roots,self.journal,only='share-picker-theme')['rows'],[])
+        self.assertEqual(path.read_bytes(),
+            b'stylesheets: ["/personal/theme.css"]\n# omarchy/current/theme/hyprland-preview-share-picker.css\n')
+
     def hey(self, command='tam-webapp-handler-hey'):
         return ('[Desktop Entry]\nVersion=1.0\nName=HEY\nExec='+command+' %u\n'
                 'Terminal=false\nType=Application\nIcon=hey\nStartupNotify=true\n'

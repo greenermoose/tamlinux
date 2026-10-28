@@ -91,7 +91,37 @@ def save(path, document):
         'bytes':base64.b64encode((json.dumps(document,indent=2,sort_keys=True)+'\n').encode()).decode()})
 
 
-def convert(kind, data, commands, locations=None):
+THEME_LEAF_NAMES = ('btop.theme', 'neovim.lua', 'hyprland-preview-share-picker.css')
+
+
+def theme_leaf_rewrites(locations, leaf):
+    if leaf not in THEME_LEAF_NAMES:
+        raise ValueError('Unknown theme leaf: '+leaf)
+    new = str(locations['state']/'tamlinux/current/theme'/leaf)
+    return (
+        ('~/.local/state/omarchy/current/theme/'+leaf, new),
+        (str(locations['state']/'omarchy/current/theme'/leaf), new),
+        ('.local/state/omarchy/current/theme/'+leaf,
+         '.local/state/tamlinux/current/theme/'+leaf),
+    )
+
+
+def rewrite_theme_leaf_text(text, locations, leaf):
+    result = text
+    for old, new in theme_leaf_rewrites(locations, leaf):
+        result = result.replace(old, new)
+    return result
+
+
+def convert_theme_leaf_link(before, locations, leaf):
+    link = before['link']
+    rewritten = rewrite_theme_leaf_text(link, locations, leaf)
+    if rewritten == link:
+        return None
+    return {'kind': 'link', 'link': rewritten}
+
+
+def convert(kind, data, commands, locations=None, leaf=None):
     if kind=='bytes': return data
     text=data.decode('utf-8')
     if kind=='imv-escape':
@@ -133,6 +163,11 @@ def convert(kind, data, commands, locations=None):
             result.append(line)
         converted=''.join(result).encode()
         return converted if converted!=data else None
+    if kind=='theme-leaf':
+        if locations is None or leaf is None:
+            raise ValueError('Theme leaf migration needs the selected XDG roots and leaf name')
+        converted = rewrite_theme_leaf_text(text, locations, leaf).encode()
+        return converted if converted != data else None
     if kind=='desktop-mode':
         if text.strip()=='omarchy': return b'tamlinux\n'
         if text.strip() in ('tamlinux','mac','windows'): return data
@@ -217,7 +252,11 @@ def convert(kind, data, commands, locations=None):
     raise ValueError('Unknown conversion')
 
 
-def converted_state(kind, before, commands, locations=None):
+def converted_state(kind, before, commands, locations=None, leaf=None):
+    if before['kind'] == 'link':
+        if kind != 'theme-leaf':
+            raise ValueError('Link requires explicit review; original preserved')
+        return convert_theme_leaf_link(before, locations, leaf)
     data=base64.b64decode(before['bytes'],validate=True)
     if kind=='retire-hey':
         # Accept only the inherited template or its owned-command conversion.
@@ -238,7 +277,7 @@ def converted_state(kind, before, commands, locations=None):
         if fields!=expected or command not in ('omarchy-webapp-handler-hey %u','tam-webapp-handler-hey %u'):
             raise ValueError('Custom HEY launcher requires explicit review')
         return {'kind':'absent'}
-    content=convert(kind,data,commands,locations)
+    content=convert(kind,data,commands,locations,leaf)
     if content is None: return None
     return {'kind':'file','mode':before['mode'],'bytes':base64.b64encode(content).decode()}
 
@@ -256,6 +295,13 @@ def candidates(manifest, locations):
         else: yield item,root/item['source'],root/item['target']
 
 
+def path_item(manifest, path_id):
+    for item in manifest['paths']:
+        if item['id'] == path_id:
+            return item
+    raise ValueError('Unknown migration path: '+path_id)
+
+
 def selected_commands():
     # Installed commands or the maintained source tree; never the caller's PATH.
     prefix=HERE.parents[2]
@@ -271,9 +317,12 @@ def prepare(locations, directory, only=None):
         if only is not None and item['id'] != only: continue
         before_source=snapshot(source)
         if before_source['kind']=='absent': continue
-        if before_source['kind']!='file':
+        if before_source['kind']=='link' and item['conversion']!='theme-leaf':
             conflicts.append({'id':item['id'],'path':str(source),'reason':'Link requires explicit review; original preserved'}); continue
-        try: post=converted_state(item['conversion'],before_source,commands,locations)
+        if before_source['kind'] not in ('file', 'link'):
+            conflicts.append({'id':item['id'],'path':str(source),'reason':'Unsupported path kind; original preserved'}); continue
+        try:
+            post=converted_state(item['conversion'],before_source,commands,locations,item.get('leaf'))
         except (ValueError,KeyError,TypeError,UnicodeError) as error:
             conflicts.append({'id':item['id'],'path':str(source),'reason':str(error)});continue
         if post is None: continue
@@ -304,8 +353,9 @@ def load(directory, locations):
     for row in doc['rows']:
         if (row['id'],row['source'],row['target']) not in permitted:
             raise ValueError('Journal contains an unlisted destination')
-        expected=converted_state(next(x['conversion'] for x in manifest['paths'] if x['id']==row['id']),
-                                 row['sourceBefore'],selected_commands(),locations)
+        item=path_item(manifest, row['id'])
+        expected=converted_state(item['conversion'], row['sourceBefore'], selected_commands(),
+                                 locations, item.get('leaf'))
         if expected is None or row['after']!=expected:
             raise ValueError('Converted state does not match selected rules')
     return doc
@@ -355,7 +405,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['plan','apply','rollback','status','preserve','restore','checkpoint-status'])
     parser.add_argument('journal',type=Path)
-    parser.add_argument('--only', choices=['imv-escape'], help='Plan only the imv Escape binding migration')
+    parser.add_argument('--only', choices=['imv-escape','btop-theme','nvim-theme','share-picker-theme'],
+                        help='Plan only one finite migration path')
     parser.add_argument('--audio', action='store_true', help='Include owned tuning service, connected audio volumes/mutes and defaults')
     parser.add_argument('--audio-state', action='store_true', help='Separate persistent WirePlumber state checkpoint; requires WirePlumber stopped')
     parser.add_argument('--gtk', action='store_true', help='Include the four owned GTK user values through dconf')

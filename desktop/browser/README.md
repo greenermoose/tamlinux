@@ -3,7 +3,12 @@
 Copy URL, Download Video and WhatsApp Slim preserve their extension keys,
 IDs and shortcuts. Their original MIT license is retained in `LICENSE`.
 The native messaging protocol names are `org.tamlinux.copy_url` and
-`org.tamlinux.ytdlp`; no prior registration is required.
+`org.tamlinux.ytdlp`; hosts point at `tam-chromium-copy-url-host` and
+`tam-chromium-ytdlp-host`. Session delivery registers those manifests under
+Chromium, Chrome, Brave, and Edge config trees. Leftover `com.omarchy.*`
+host files under `~/.config/*/NativeMessagingHosts/` are inert once
+`/usr/share/omarchy` is gone and should be deleted; they are not renamed
+in place because extensions already call the Tamlinux names.
 
 Delivery installs the three extensions and two exact-origin registrations
 from the same product revision. Native messages have a five-second input

@@ -11,9 +11,10 @@ Rules this directory keeps:
 - **Vendor locations only** (`/usr/lib`, `/usr/share`). An administrator's file
   in `/etc` overrides or masks each one, and removing the package leaves
   nothing behind in `/etc`.
-- **Tamlinux names that collide with no other package.** The previous owner's
-  files stay installed until Cutover, so both sets must coexist; their values
-  are identical, so precedence between them does not matter.
+- **Tamlinux-owned names under cultivar paths (D171, D200).** Gate A is
+  complete: there is no longer a requirement to coexist with Omarchy-owned
+  files. Defaults use Tamlinux names that collide with no other installed
+  package; Omarchy packages and servers are not a runtime dependency.
 - **Drop-ins, not whole files.** Settings whose only home is a single file
   owned by another package (`faillock.conf`, `nsswitch.conf`,
   `cups-files.conf`, `/etc/skel/.bashrc`, `dirmngr.conf`, Docker

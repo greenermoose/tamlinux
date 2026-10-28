@@ -38,6 +38,30 @@
       "conversion": "terminal-theme"
     },
     {
+      "id": "btop-theme",
+      "root": "config",
+      "source": "btop/themes/current.theme",
+      "target": "btop/themes/current.theme",
+      "conversion": "theme-leaf",
+      "leaf": "btop.theme"
+    },
+    {
+      "id": "nvim-theme",
+      "root": "config",
+      "source": "nvim/lua/plugins/theme.lua",
+      "target": "nvim/lua/plugins/theme.lua",
+      "conversion": "theme-leaf",
+      "leaf": "neovim.lua"
+    },
+    {
+      "id": "share-picker-theme",
+      "root": "config",
+      "source": "hyprland-preview-share-picker/config.yaml",
+      "target": "hyprland-preview-share-picker/config.yaml",
+      "conversion": "theme-leaf",
+      "leaf": "hyprland-preview-share-picker.css"
+    },
+    {
       "id": "desktop-mode",
       "root": "state",
       "source": "tamlinux/desktop-mode",
