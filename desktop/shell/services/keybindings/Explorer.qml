@@ -30,12 +30,12 @@ PanelWindow {
       }
       if (foundIndex >= 0) {
         list.currentIndex = foundIndex
-        panel.selected = filtered[foundIndex]
       } else {
         list.currentIndex = 0
-        panel.selected = filtered[0]
       }
+      panel.selected = filtered[list.currentIndex]
     } else {
+      list.currentIndex = -1
       panel.selected = null
     }
   }
@@ -108,12 +108,13 @@ PanelWindow {
         }
         Keys.onDownPressed: {
           if (list.count > 0) {
+            list.forceActiveFocus()
             if (list.count > 1 && list.currentIndex === 0) {
               list.currentIndex = 1
-              panel.selected = panel.filtered[1]
+            } else if (list.currentIndex < 0) {
+              list.currentIndex = 0
             }
             list.positionViewAtIndex(list.currentIndex, ListView.Contain)
-            list.forceActiveFocus()
           }
         }
         Keys.onReturnPressed: {
@@ -143,6 +144,11 @@ PanelWindow {
           id: list
           width: Math.floor((parent.width - 18) * 0.57); height: parent.height
           clip: true; spacing: 4; model: panel.filtered
+          onCurrentIndexChanged: {
+            if (currentIndex >= 0 && currentIndex < panel.filtered.length) {
+              panel.selected = panel.filtered[currentIndex]
+            }
+          }
           Keys.onEscapePressed: function(event) {
             if (search.text.length > 0) {
               search.text = ""
@@ -153,18 +159,18 @@ PanelWindow {
             }
           }
           Keys.onUpPressed: {
-            if (currentIndex === 0) {
+            if (currentIndex <= 0) {
               search.forceActiveFocus()
             } else {
-              currentIndex = Math.max(0, currentIndex - 1)
-              panel.selected = panel.filtered[currentIndex]
+              currentIndex = currentIndex - 1
               positionViewAtIndex(currentIndex, ListView.Contain)
             }
           }
           Keys.onDownPressed: {
-            currentIndex = Math.min(count - 1, currentIndex + 1)
-            panel.selected = panel.filtered[currentIndex]
-            positionViewAtIndex(currentIndex, ListView.Contain)
+            if (currentIndex < count - 1) {
+              currentIndex = currentIndex + 1
+              positionViewAtIndex(currentIndex, ListView.Contain)
+            }
           }
           Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Backspace && search.text.length > 0) {
@@ -182,17 +188,30 @@ PanelWindow {
             id: rowDelegate
             required property var modelData
             required property int index
+            readonly property bool isSelected: list.currentIndex === index
             width: list.width; height: 42; radius: 6
-            color: panel.selected === modelData ? Color.menu.selectedBackground : (hover.containsMouse ? Util.alpha(Color.foreground, 0.05) : "transparent")
-            border.color: panel.selected === modelData ? Util.alpha(Color.accent, 0.45) : (hover.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent")
+            color: isSelected ? Util.alpha(Color.accent, 0.22) : (hover.containsMouse ? Util.alpha(Color.foreground, 0.06) : "transparent")
+            border.color: isSelected ? Color.accent : (hover.containsMouse ? Util.alpha(Color.foreground, 0.15) : "transparent")
             border.width: 1
 
+            // Active indicator bar on left edge
+            Rectangle {
+              anchors.left: parent.left
+              anchors.leftMargin: 3
+              anchors.verticalCenter: parent.verticalCenter
+              width: 3
+              height: 22
+              radius: 1.5
+              color: Color.accent
+              visible: rowDelegate.isSelected
+            }
+
             Text {
-              anchors.left: parent.left; anchors.leftMargin: 12
+              anchors.left: parent.left; anchors.leftMargin: rowDelegate.isSelected ? 14 : 12
               anchors.right: chordRow.left; anchors.rightMargin: 12
               anchors.verticalCenter: parent.verticalCenter
               text: modelData.does
-              color: panel.selected === modelData ? Color.menu.selectedText : Color.menu.text
+              color: rowDelegate.isSelected ? Color.accentText : Color.menu.text
               font.bold: true
               font.pixelSize: 13
               elide: Text.ElideRight
@@ -212,8 +231,8 @@ PanelWindow {
                   Text {
                     visible: index > 0
                     text: "+"
-                    color: Color.menu.text
-                    opacity: 0.4
+                    color: rowDelegate.isSelected ? Color.accentText : Color.menu.text
+                    opacity: rowDelegate.isSelected ? 0.7 : 0.4
                     font.pixelSize: 11
                     font.bold: true
                     anchors.verticalCenter: parent.verticalCenter
@@ -222,8 +241,8 @@ PanelWindow {
                     height: 22
                     width: Math.max(22, keyLabel.implicitWidth + 12)
                     radius: 4
-                    color: panel.selected === rowDelegate.modelData ? Util.alpha(Color.accent, 0.18) : Util.alpha(Color.foreground, 0.08)
-                    border.color: panel.selected === rowDelegate.modelData ? Util.alpha(Color.accent, 0.4) : Util.alpha(Color.foreground, 0.18)
+                    color: rowDelegate.isSelected ? Util.alpha(Color.accent, 0.28) : Util.alpha(Color.foreground, 0.08)
+                    border.color: rowDelegate.isSelected ? Color.accent : Util.alpha(Color.foreground, 0.18)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -231,7 +250,7 @@ PanelWindow {
                       id: keyLabel
                       anchors.centerIn: parent
                       text: modelData
-                      color: panel.selected === rowDelegate.modelData ? Color.menu.selectedText : Color.menu.text
+                      color: rowDelegate.isSelected ? Color.accentText : Color.menu.text
                       font.pixelSize: 11
                       font.bold: true
                       font.family: Style.fontFamily
@@ -246,8 +265,8 @@ PanelWindow {
               anchors.fill: parent
               hoverEnabled: true
               onClicked: {
-                panel.selected = modelData
                 list.currentIndex = index
+                list.forceActiveFocus()
               }
             }
           }
