@@ -17,6 +17,28 @@ PanelWindow {
   property string commandPath: ""
   signal closed()
   readonly property var filtered: Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group })
+  onFilteredChanged: {
+    if (filtered.length > 0) {
+      var foundIndex = -1
+      if (panel.selected) {
+        for (var i = 0; i < filtered.length; i++) {
+          if (filtered[i].display === panel.selected.display && filtered[i].arg === panel.selected.arg) {
+            foundIndex = i
+            break
+          }
+        }
+      }
+      if (foundIndex >= 0) {
+        list.currentIndex = foundIndex
+        panel.selected = filtered[foundIndex]
+      } else {
+        list.currentIndex = 0
+        panel.selected = filtered[0]
+      }
+    } else {
+      panel.selected = null
+    }
+  }
   anchors { top: true; bottom: true; left: true; right: true }
   color: "transparent"
   WlrLayershell.namespace: "tamlinux-keybindings"
@@ -76,15 +98,35 @@ PanelWindow {
         id: search
         width: parent.width; height: 42
         placeholderText: "Search shortcuts, actions, or commands"
-        onTextChanged: panel.selected = null
-        Keys.onEscapePressed: panel.closeExplorer()
-        Keys.onDownPressed: { if (list.count) { list.currentIndex = 0; panel.selected = panel.filtered[0]; list.forceActiveFocus() } }
+        Keys.onEscapePressed: function(event) {
+          if (search.text.length > 0) {
+            search.text = ""
+            event.accepted = true
+          } else {
+            panel.closeExplorer()
+          }
+        }
+        Keys.onDownPressed: {
+          if (list.count > 0) {
+            if (list.count > 1 && list.currentIndex === 0) {
+              list.currentIndex = 1
+              panel.selected = panel.filtered[1]
+            }
+            list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+            list.forceActiveFocus()
+          }
+        }
+        Keys.onReturnPressed: {
+          if (list.count > 0) {
+            list.forceActiveFocus()
+          }
+        }
       }
       Row {
         width: parent.width; spacing: 6
         Repeater {
           model: [{label:"All", value:"all"}, {label:"Super", value:"super"}, {label:"Super + Alt", value:"alt"}, {label:"Super + Ctrl", value:"ctrl"}, {label:"Super + Shift", value:"shift"}]
-          Button { required property var modelData; text: modelData.label; checkable: true; checked: panel.modifier === modelData.value; onClicked: { panel.modifier = modelData.value; panel.selected = null } }
+          Button { required property var modelData; text: modelData.label; checkable: true; checked: panel.modifier === modelData.value; onClicked: { panel.modifier = modelData.value } }
         }
         Button { text: "Try a shortcut"; onClicked: panel.beginCapture() }
       }
@@ -101,9 +143,40 @@ PanelWindow {
           id: list
           width: Math.floor((parent.width - 18) * 0.57); height: parent.height
           clip: true; spacing: 4; model: panel.filtered
-          Keys.onEscapePressed: panel.closeExplorer()
-          Keys.onUpPressed: { currentIndex = Math.max(0, currentIndex - 1); panel.selected = panel.filtered[currentIndex] }
-          Keys.onDownPressed: { currentIndex = Math.min(count - 1, currentIndex + 1); panel.selected = panel.filtered[currentIndex] }
+          Keys.onEscapePressed: function(event) {
+            if (search.text.length > 0) {
+              search.text = ""
+              search.forceActiveFocus()
+              event.accepted = true
+            } else {
+              panel.closeExplorer()
+            }
+          }
+          Keys.onUpPressed: {
+            if (currentIndex === 0) {
+              search.forceActiveFocus()
+            } else {
+              currentIndex = Math.max(0, currentIndex - 1)
+              panel.selected = panel.filtered[currentIndex]
+              positionViewAtIndex(currentIndex, ListView.Contain)
+            }
+          }
+          Keys.onDownPressed: {
+            currentIndex = Math.min(count - 1, currentIndex + 1)
+            panel.selected = panel.filtered[currentIndex]
+            positionViewAtIndex(currentIndex, ListView.Contain)
+          }
+          Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Backspace && search.text.length > 0) {
+              search.text = search.text.substring(0, search.text.length - 1)
+              search.forceActiveFocus()
+              event.accepted = true
+            } else if (event.text && event.text.length === 1 && event.key !== Qt.Key_Escape && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter && event.key !== Qt.Key_Tab && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+              search.text += event.text
+              search.forceActiveFocus()
+              event.accepted = true
+            }
+          }
           ScrollBar.vertical: ScrollBar { }
           delegate: Rectangle {
             id: rowDelegate
