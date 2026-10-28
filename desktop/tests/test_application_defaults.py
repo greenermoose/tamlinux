@@ -23,10 +23,11 @@ class Defaults(unittest.TestCase):
         return module.initialize(ROOT / 'desktop/assets', self.env)
 
     def test_empty_configuration_pairs_custom_state_theme_editor_and_kitty_socket(self):
-        self.assertEqual(len(self.initialize()), 11)
+        self.assertEqual(len(self.initialize()), 12)
         config = self.root / 'config'
         self.assertIn(str(self.root / 'state/tamlinux/current/theme/alacritty.toml'),
                       (config / 'alacritty/alacritty.toml').read_text())
+        self.assertEqual((config / 'imv/config').read_text(), '[binds]\n<Escape> = quit\n')
         self.assertIn('tamlinux-kitty-{kitty_pid}', (config / 'kitty/kitty.conf').read_text())
         self.assertEqual((config / 'helix/config.toml').read_text(), 'theme = "tamlinux"\n')
         self.assertEqual(os.readlink(config / 'helix/themes/tamlinux.toml'),
@@ -44,7 +45,10 @@ class Defaults(unittest.TestCase):
         editor.parent.mkdir(parents=True); editor.symlink_to('unavailable-choice')
         mime = self.root / 'config/mimeapps.list'
         mime.write_text('[Default Applications]\ntext/plain=personal.desktop\n')
+        imv = self.root / 'config/imv/config'
+        imv.parent.mkdir(parents=True); imv.write_text('[binds]\n<Escape> = close\n')
         self.initialize()
+        self.assertEqual(imv.read_text(), '[binds]\n<Escape> = close\n')
         self.assertIn('personal.desktop', mime.read_text())
         self.assertEqual(target.read_bytes(), b'personal terminal\n')
         self.assertEqual(target.stat().st_mode & 0o777, 0o640)

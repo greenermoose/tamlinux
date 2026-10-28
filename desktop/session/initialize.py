@@ -16,7 +16,8 @@ def initialize(assets, environ):
     entries = {}
     for relative, default in [('alacritty/alacritty.toml','alacritty.toml'),
         ('kitty/kitty.conf','kitty.conf'),('foot/foot.ini','foot.ini'),
-        ('ghostty/config','ghostty.conf'),('fontconfig/conf.d/99-tamlinux-monospace.conf','fonts.conf')]:
+        ('ghostty/config','ghostty.conf'),('imv/config','imv.conf'),
+        ('fontconfig/conf.d/99-tamlinux-monospace.conf','fonts.conf')]:
         text = (assets / 'defaults' / default).read_text().replace('~/.local/state/tamlinux/current/theme', current)
         entries[config / relative] = text
     entries[config / 'helix/config.toml'] = 'theme = "tamlinux"\n'

@@ -552,3 +552,16 @@ KEEP  XF86* media / brightness / vol   hardware keys (media.lua)
 | **K23 Shortcut discovery** | **Observed:** trial | Active shortcut reference matches active bindings; user can search and find launch, navigation, clipboard, and close actions. |
 | **K24 Consistent clipboard** | **Observed:** trial | LMB drag copies text immediately in streaming terminal; RMB click pastes; `Shift + LMB` and `Shift + RMB` work in mouse-tracking TUIs; copy/paste transfers seamlessly between Foot and Wayland GUI apps. |
 | **K25 Accessible close** | **Fred:** | Managed windows provide titlebar close buttons (`[X]`); mouse users can close windows without keyboard interaction; Fred confirms acceptance. |
+
+## Input trial preparation
+
+Source inspection on 2026-10-28 found the Foot defaults set `selection-target=both`, `selection-override-modifiers=Shift`, and right-click clipboard paste. This confirms the intended settings exist in source; an existing user configuration and a running Foot instance may use different settings. Terminal titlebars may depend on an ABI-sensitive hyprbars plugin; applications with their own decorations must be checked individually. The product source inspected here does not establish a titlebar context menu or universal Escape handling. The installed imv manual lists `q` as its default quit binding, so Escape requires verification or configuration. These are open verification items, not passes.
+
+On the exact packaged candidate, record its assembly revision and test the following with Fred:
+
+1. In a fresh Foot window, select text with left drag and paste with right click; transfer text in both directions between Foot and a graphical application.
+2. With mouse tracking enabled in Micro, Vim and htop, check Shift-left-drag selection and Shift-right-click paste; also check ordinary application mouse actions still work.
+3. Check bare Escape dismisses representative image viewers, menus, dialogs and the tam pager, while Micro, Vim, a shell and a browser receive Escape without closing their windows. Record each exception by application.
+4. Check representative terminal and graphical windows have a usable mouse close control; check the titlebar right-click menu for Close, Float and Maximize. Record missing controls and whether hyprbars is loaded.
+
+Record observed results and Fred's acceptance against K24 and K25; source configuration alone does not close either gate. Investigate failures in their owning component before proposing a change.
