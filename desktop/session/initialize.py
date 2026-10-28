@@ -16,10 +16,17 @@ def initialize(assets, environ):
     entries = {}
     for relative, default in [('alacritty/alacritty.toml','alacritty.toml'),
         ('kitty/kitty.conf','kitty.conf'),('foot/foot.ini','foot.ini'),
-        ('ghostty/config','ghostty.conf'),('imv/config','imv.conf'),
+        ('ghostty/config','ghostty.conf'),
         ('fontconfig/conf.d/99-tamlinux-monospace.conf','fonts.conf')]:
         text = (assets / 'defaults' / default).read_text().replace('~/.local/state/tamlinux/current/theme', current)
         entries[config / relative] = text
+    # Personal configurations later in imv's search path must not be hidden
+    # by a new XDG default. An explicit selection is left to its owner even
+    # when it is currently missing. System fallback is deliberately overridden
+    # for fresh users so the Tamlinux Escape default is available.
+    personal_imv = (home / '.config/imv/config', home / '.imv_config', home / '.imv/config')
+    if not environ.get('imv_config') and not any(p.exists() or p.is_symlink() for p in personal_imv):
+        entries[config / 'imv/config'] = (assets / 'defaults/imv.conf').read_text()
     entries[config / 'helix/config.toml'] = 'theme = "tamlinux"\n'
     entries[config / 'helix/themes/tamlinux.toml'] = None
     entries[config / 'xdg-terminals.list'] = 'Alacritty.desktop\nfoot.desktop\nkitty.desktop\ncom.mitchellh.ghostty.desktop\n'

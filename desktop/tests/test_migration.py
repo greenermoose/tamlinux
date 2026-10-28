@@ -64,6 +64,20 @@ class Migration(unittest.TestCase):
         m.prepare(self.roots,self.journal); m.apply(self.journal,self.roots)
         self.assertEqual(path.read_bytes(),b'[options]\nscaling = full\n[binds]\n<Escape> = quit\n')
 
+    def test_imv_ini_variants_preserve_existing_escape(self):
+        for data in (b'[binds]\n<Escape>: close\n',
+                     b'\xef\xbb\xbf[binds]\n<Escape> = close\n',
+                     b'[binds] trailing text\n<Escape>: close\n'):
+            with self.subTest(data=data):
+                self.assertIsNone(m.convert('imv-escape', data, []))
+
+    def test_imv_bom_section_and_duplicate_variants(self):
+        data=b'\xef\xbb\xbf[binds] trailing\r\nq = quit\r\n[options]\r\nscaling = full\r\n'
+        self.assertEqual(m.convert('imv-escape', data, []),
+                         data.replace(b'[options]', b'<Escape> = quit\r\n[options]'))
+        with self.assertRaisesRegex(ValueError, 'Multiple imv binds'):
+            m.convert('imv-escape', b'\xef\xbb\xbf[binds] x\nq=quit\n[binds] y\nx=close\n', [])
+
     def test_terminal_theme_migration_preserves_settings_and_recovers_later_writes(self):
         entries={
             'foot/foot.ini': b'[main]\r\ninclude=~/.local/state/omarchy/current/theme/foot.ini\r\nfont=Personal:size=8\r\n',

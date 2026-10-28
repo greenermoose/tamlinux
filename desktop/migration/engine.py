@@ -96,14 +96,18 @@ def convert(kind, data, commands, locations=None):
     text=data.decode('utf-8')
     if kind=='imv-escape':
         lines=text.splitlines(keepends=True)
-        sections=[i for i,line in enumerate(lines)
-                  if re.fullmatch(r'\s*\[binds\]\s*(?:[#;].*)?',line.rstrip('\r\n'))]
+        # inih ignores a UTF-8 BOM at the start and accepts text after ']'.
+        def section(line, first=False):
+            if first: line = line.removeprefix('\ufeff')
+            match = re.match(r'^\s*\[([^\]]*)\]', line)
+            return match.group(1) if match else None
+        sections=[i for i,line in enumerate(lines) if section(line, i == 0)=='binds']
         if len(sections)>1: raise ValueError('Multiple imv binds sections require review')
         newline='\r\n' if b'\r\n' in data else '\n'
         if sections:
             start=sections[0]+1
-            end=next ( (i for i in range(start,len(lines)) if re.match(r'^\s*\[',lines[i])), len(lines))
-            if any(re.match(r'^\s*<Escape>\s*=',line, re.IGNORECASE) for line in lines[start:end]):
+            end=next ((i for i in range(start,len(lines)) if section(lines[i]) is not None), len(lines))
+            if any(re.match(r'^\s*<Escape>\s*[:=]',line, re.IGNORECASE) for line in lines[start:end]):
                 return None
             if end and not lines[end-1].endswith(('\n','\r')): lines[end-1]+=newline
             lines.insert(end,'<Escape> = quit'+newline)

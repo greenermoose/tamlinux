@@ -61,6 +61,22 @@ class Defaults(unittest.TestCase):
             self.initialize()
         self.assertEqual(list(outside.iterdir()), [])
 
+    def test_imv_legacy_and_explicit_selection_are_not_shadowed(self):
+        for relative in ('.config/imv/config', '.imv_config', '.imv/config'):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as tmp:
+                home = Path(tmp) / 'home'
+                legacy = home / relative
+                legacy.parent.mkdir(parents=True)
+                legacy.symlink_to('missing-personal-config')
+                env = {'HOME': str(home), 'XDG_CONFIG_HOME': str(Path(tmp) / 'xdg'),
+                       'XDG_STATE_HOME': str(Path(tmp) / 'state')}
+                module.initialize(ROOT / 'desktop/assets', env)
+                self.assertTrue(legacy.is_symlink())
+                self.assertFalse((Path(tmp) / 'xdg/imv/config').exists())
+        self.env['imv_config'] = '/personal/selection'
+        self.initialize()
+        self.assertFalse((self.root / 'config/imv/config').exists())
+
     def test_relative_xdg_is_refused_before_any_publication(self):
         self.env['XDG_STATE_HOME'] = 'relative'
         with self.assertRaises(ValueError): self.initialize()
