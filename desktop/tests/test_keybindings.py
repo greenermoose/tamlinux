@@ -160,6 +160,11 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('What that does', explorer)
         self.assertIn('lastTriedChord', explorer)
         self.assertIn('panel.lastCaptured ? panel.lastCaptured.does', explorer)
+        self.assertIn('function handleEscapeStep(event)', explorer)
+        self.assertIn('function handleCloseKey(event)', explorer)
+        self.assertIn('sequence: "Backspace"', explorer)
+        self.assertIn('sequence: "Meta+Backspace"', explorer)
+        self.assertIn('Close  Backspace', explorer)
 
     def test_component_semver_and_version_wiring(self):
         version_file = (KEYBINDINGS / "VERSION").read_text().strip()

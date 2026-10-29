@@ -107,6 +107,33 @@ PanelWindow {
     else { capturing = false; inhibitor.enabled = false }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
+  // Esc peels one layer: leave capture/table, clear search, then close when
+  // already on the empty list (initial browsing state). Backspace always closes.
+  function handleEscapeStep(event) {
+    if (capturing) {
+      finishCapture()
+      if (event) event.accepted = true
+      return
+    }
+    if (showingTable) {
+      showingTable = false
+      search.forceActiveFocus()
+      if (event) event.accepted = true
+      return
+    }
+    if (search.text.length > 0) {
+      search.text = ""
+      search.forceActiveFocus()
+      if (event) event.accepted = true
+      return
+    }
+    closeExplorer()
+    if (event) event.accepted = true
+  }
+  function handleCloseKey(event) {
+    closeExplorer()
+    if (event) event.accepted = true
+  }
   function beginCapture() { lastCaptured = null; captureResult = ""; lastTriedChord = []; lastTriedCombo = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
   function finishCapture() {
     var target = panel.lastCaptured
@@ -158,6 +185,15 @@ PanelWindow {
     window: panel
     enabled: false
     onCancelled: { panel.capturing = false; panel.captureResult = "Capture was stopped by the compositor." }
+  }
+  // Window-level close chords so filters/buttons still dismiss the app.
+  Shortcut {
+    sequence: "Backspace"
+    onActivated: panel.closeExplorer()
+  }
+  Shortcut {
+    sequence: "Meta+Backspace"
+    onActivated: panel.closeExplorer()
   }
   Rectangle { anchors.fill: parent; color: Commons.Color.menu.scrim }
   MouseArea { anchors.fill: parent; onClicked: panel.closeExplorer() }
@@ -229,7 +265,7 @@ PanelWindow {
           id: closeButton
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          text: "Close  Esc"
+          text: "Close  Backspace"
           onClicked: panel.closeExplorer()
         }
       }
@@ -254,12 +290,11 @@ PanelWindow {
             border.width: 1
           }
           placeholderText: "Search shortcuts, actions, or commands (e.g. terminal, workspace, close)..."
-          Keys.onEscapePressed: function(event) {
-            if (search.text.length > 0) {
-              search.text = ""
-              event.accepted = true
-            } else {
-              panel.closeExplorer()
+          Keys.priority: Keys.BeforeItem
+          Keys.onEscapePressed: function(event) { panel.handleEscapeStep(event) }
+          Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Backspace) {
+              panel.handleCloseKey(event)
             }
           }
           Keys.onDownPressed: {
@@ -430,15 +465,7 @@ PanelWindow {
               panel.selected = panel.filtered[currentIndex]
             }
           }
-          Keys.onEscapePressed: function(event) {
-            if (search.text.length > 0) {
-              search.text = ""
-              search.forceActiveFocus()
-              event.accepted = true
-            } else {
-              panel.closeExplorer()
-            }
-          }
+          Keys.onEscapePressed: function(event) { panel.handleEscapeStep(event) }
           Keys.onUpPressed: {
             if (currentIndex <= 0) {
               search.forceActiveFocus()
@@ -454,10 +481,8 @@ PanelWindow {
             }
           }
           Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Backspace && search.text.length > 0) {
-              search.text = search.text.substring(0, search.text.length - 1)
-              search.forceActiveFocus()
-              event.accepted = true
+            if (event.key === Qt.Key_Backspace) {
+              panel.handleCloseKey(event)
             } else if (event.text && event.text.length === 1 && event.key !== Qt.Key_Escape && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter && event.key !== Qt.Key_Tab && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
               search.text += event.text
               search.forceActiveFocus()
@@ -833,7 +858,10 @@ PanelWindow {
         id: tableFocus
         anchors.fill: parent
         focus: panel.showingTable
-        Keys.onEscapePressed: { panel.showingTable = false; search.forceActiveFocus() }
+        Keys.onEscapePressed: function(event) { panel.handleEscapeStep(event) }
+        Keys.onPressed: function(event) {
+          if (event.key === Qt.Key_Backspace) panel.handleCloseKey(event)
+        }
         Keys.onDownPressed: tableList.contentY = Math.min(tableList.contentY + 80, Math.max(0, tableList.contentHeight - tableList.height))
         Keys.onUpPressed: tableList.contentY = Math.max(0, tableList.contentY - 80)
         Column {
@@ -914,7 +942,11 @@ PanelWindow {
         Keys.onPressed: function(event) {
           event.accepted = true
           if (event.key === Qt.Key_Escape) {
-            panel.finishCapture()
+            panel.handleEscapeStep(event)
+            return
+          }
+          if (event.key === Qt.Key_Backspace) {
+            panel.handleCloseKey(event)
             return
           }
           if (panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
@@ -924,7 +956,7 @@ PanelWindow {
           if (!inhibitor.active) return
           if (event.key === Qt.Key_Shift || event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta || event.key === Qt.Key_Super_L || event.key === Qt.Key_Super_R) return
           var mask = ((event.modifiers & Qt.MetaModifier) ? 64 : 0) | ((event.modifiers & Qt.ControlModifier) ? 4 : 0) | ((event.modifiers & Qt.AltModifier) ? 8 : 0) | ((event.modifiers & Qt.ShiftModifier) ? 1 : 0)
-          var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Backspace] = "BACKSPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
+          var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
           var key = names[event.key] || (event.key >= 32 && event.key <= 126 ? String.fromCharCode(event.key).toUpperCase() : "")
           panel.lastTriedChord = Model.chordKeys(mask, key)
           panel.lastTriedCombo = Model.comboText(mask, key) || (key ? key : "Key")
