@@ -25,6 +25,11 @@ for computers running Linux. Its goal is a responsive, reliable, accessible
 daily experience that gets the most from desktop systems, mini PCs, and
 laptops that can be kept in delightful, productive use for decades.
 
+On the current Arch-based installation, Arch Linux is the operating system,
+while Tamlinux is the installed workstation environment on top of it.
+Blue Sparkler is the cultivar name for Tamlinux 0.5: a name for that
+version of the environment, not a separate operating system.
+
 *Tam* can mean **tamarack**, **total addressable market**, **the absolute
 max**, or **teaching and making**. Like the tamarack's needles, Tamlinux sheds old
 packages to make room for new so the project can continually improve. We are moving

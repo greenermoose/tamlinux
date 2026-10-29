@@ -73,6 +73,9 @@ class UserDefaultsTests(unittest.TestCase):
         self.assertIn(str(self.home / ".local/bin"), quiet.stdout.split(":"))
         interactive = self.bash("-i", "-c", "printf '%s|%s|%s' \"$EDITOR\" \"$HISTSIZE\" \"$(alias ..)\"")
         self.assertEqual(interactive.returncode, 0, interactive.stderr)
+        hi = self.bash("-i", "-c", "alias hi")
+        self.assertEqual(hi.returncode, 0, hi.stderr)
+        self.assertIn("alias hi='tam hi'", hi.stdout)
         self.assertEqual(interactive.stdout.splitlines()[-1],
                          "tam-launch-editor --inline|32768|alias ..='cd ..'")
 

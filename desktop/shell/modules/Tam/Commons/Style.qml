@@ -27,7 +27,9 @@ QtObject {
     values = values || {}
     var base = values.fontBaseSize
     var spacing = values.spacingScale
+    var family = values.fontFamily
     themeFontBaseSize = (typeof base === "number" && isFinite(base) && base >= 6 && base <= 48) ? base : 12
+    fontFamily = (typeof family === "string" && /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}$/.test(family)) ? family : "monospace"
     themeSpacingScale = (typeof spacing === "number" && isFinite(spacing) && spacing >= 0.5 && spacing <= 3) ? spacing : 1
   }
 

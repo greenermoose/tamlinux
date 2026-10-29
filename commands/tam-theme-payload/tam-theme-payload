@@ -60,7 +60,7 @@ PALETTE_SOURCES = {
 # below, then the resolved foreground, which is why neither ever falls back to
 # its own default.
 PALETTE_FALLBACKS = {
-    'accentText': ('light_foreground',),
+    'accentText': ('accent_text', 'light_foreground'),
     'muted': ('muted', 'color8'),
 }
 
@@ -309,6 +309,10 @@ def build_style(table):
             continue
         if lowest <= value <= highest and math.isfinite(value):
             style[name] = value
+    font = table.get('font', {})
+    family = font.get('family') if isinstance(font, dict) else None
+    if isinstance(family, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}', family):
+        style['fontFamily'] = family
     return style
 
 

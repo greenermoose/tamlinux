@@ -70,6 +70,28 @@ class ThemeOwnership(unittest.TestCase):
         self.call('set','Tokyo Night')
         self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
 
+    def test_tamarack_variants_generate_and_switch_from_shared_tokens(self):
+        for name, background in (('tamarack-dark', '#0f1410'), ('tamarack-light', '#f5f5ec'), ('tamarack-dark', '#0f1410')):
+            self.call('set', name)
+            output = subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True)
+            payload = json.loads(output)
+            palette = payload['palette']
+            self.assertEqual(payload['style']['fontFamily'], 'Atkinson Hyperlegible')
+            self.assertEqual(palette['background'], background)
+            self.assertEqual(palette['accentText'], background)
+            self.assertIn(background[1:], (self.current/'theme/foot.ini').read_text())
+
+    def test_tamarack_picker_previews_are_generated_from_palette(self):
+        recorder = self.base / 'picker-arguments'
+        self.stub('tam-menu-images', 'printf "%s\\n" "$@" > "'+str(recorder)+'"')
+        self.call('set', 'tamarack-dark')
+        self.call('switcher')
+        args = recorder.read_text()
+        self.assertIn('theme-picker', args)
+        previews = list((self.base/'cache/tamlinux/theme-picker').glob('*/tamarack-*.png'))
+        self.assertEqual(len(previews), 2)
+        self.assertTrue(all(p.read_bytes().startswith(b'\x89PNG\r\n\x1a\n') for p in previews))
+
     def test_fresh_initialize_generates_owned_state_without_application_adapters(self):
         self.stub('tam-theme-set-foot', 'exit 17')
         self.call('initialize', env={'TAMLINUX_THEME_OFFLINE': ''})

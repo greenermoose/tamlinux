@@ -1,0 +1,20 @@
+# Tamarack's shared colour tokens. Both variants feed all generated adapters.
+[dark]
+background = "#0f1410"
+surface = "#18201a"
+foreground = "#e4e6d8"
+muted = "#9aa391"
+primary = "#86b86a"
+accent = "#e2b44a"
+danger = "#e07a5f"
+info = "#7fb3c2"
+
+[light]
+background = "#f5f5ec"
+surface = "#e9eee2"
+foreground = "#1c2a20"
+muted = "#4d6050"
+primary = "#35652e"
+accent = "#765400"
+danger = "#a13829"
+info = "#285d70"

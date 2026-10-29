@@ -20,6 +20,7 @@ class ConsoleWelcomeTest(unittest.TestCase):
         self.assertIn("Cultivar:  Blue Sparkler 0.5.5", selected)
         self.assertNotIn("Cultivar:", welcome.render())
         self.assertTrue(selected.isascii())
+        self.assertIn("type hi for help or tam-desktop", selected)
         with self.assertRaises(ValueError):
             welcome.render("Blue Sparkler", None)
 

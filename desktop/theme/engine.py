@@ -13,10 +13,12 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 import tomllib
 import uuid
+import zlib
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
 
@@ -172,6 +174,58 @@ def application_paths():
         paths += [Path(v['path']) / '.obsidian/themes/Tamlinux' for v in vaults]
     return paths
 
+def tamarack_colors(variant):
+    if variant not in ('dark', 'light'):
+        raise ValueError('invalid Tamarack variant')
+    tokens = tomllib.loads((ASSETS / 'tamarack.toml').read_text())[variant]
+    required = ('background', 'surface', 'foreground', 'muted', 'primary', 'accent', 'danger', 'info')
+    if any(not re.fullmatch(r'#[0-9a-fA-F]{6}', tokens.get(key, '')) for key in required):
+        raise ValueError('invalid Tamarack colour token')
+    def luminance(color):
+        channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+        values = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in channels]
+        return sum(a * b for a, b in zip(values, (0.2126, 0.7152, 0.0722)))
+    def contrast(a, b):
+        low, high = sorted((luminance(a), luminance(b)))
+        return (high + 0.05) / (low + 0.05)
+    for foreground in ('foreground', 'muted', 'primary', 'accent', 'danger', 'info'):
+        for background in ('background', 'surface'):
+            if contrast(tokens[foreground], tokens[background]) < 4.5:
+                raise ValueError(f'Tamarack contrast fails for {foreground} on {background}')
+    if contrast(tokens['background'], tokens['accent']) < 4.5:
+        raise ValueError('Tamarack accent fill has insufficient contrast')
+    # The existing adapter vocabulary is generated from these semantic tokens.
+    mapped = dict(mode=variant, background=tokens['background'], foreground=tokens['foreground'],
+                  dark_background=tokens['surface'], lighter_background=tokens['surface'],
+                  dark_foreground=tokens['muted'], light_foreground=tokens['foreground'],
+                  accent_text=tokens['background'],
+                  bright_foreground=tokens['foreground'], muted=tokens['muted'],
+                  accent=tokens['accent'], selection=tokens['accent'],
+                  selection_background=tokens['accent'], selection_foreground=tokens['background'],
+                  red=tokens['danger'], green=tokens['primary'], yellow=tokens['accent'],
+                  blue=tokens['info'], cyan=tokens['info'], magenta=tokens['danger'],
+                  orange=tokens['accent'], brown=tokens['muted'])
+    for name in ('red', 'green', 'yellow', 'blue', 'cyan', 'magenta'):
+        mapped['bright_' + name] = mapped[name]
+    return ''.join(f'{key} = "{value}"\n' for key, value in mapped.items())
+
+
+def tamarack_preview(variant):
+    # Small generated swatch, so the picker and theme share one colour source.
+    colors = tomllib.loads(tamarack_colors(variant))
+    swatches = [colors[key] for key in ('background', 'foreground', 'green', 'accent')]
+    rgb = [bytes.fromhex(color[1:]) for color in swatches]
+    width, height = 128, 72
+    scan = b''.join(b'\x00' + b''.join(rgb[min(x // 32, 3)] for x in range(width)) for _ in range(height))
+    def chunk(kind, data):
+        return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
+    payload = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!IIBBBBB', width, height, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(scan)) + chunk(b'IEND', b'')
+    digest = hashlib.sha256(payload).hexdigest()[:16]
+    path = CACHE / 'theme-swatches' / f'{variant}-{digest}.png'
+    if not path.exists(): atomic(path, payload)
+    return path
+
+
 def set_theme(value, refresh=False, apply=True):
     theme = name(value)
     builtin, user = ASSETS / 'themes' / theme, CONFIG / 'tamlinux/themes' / theme
@@ -182,6 +236,8 @@ def set_theme(value, refresh=False, apply=True):
     stage = Path(tempfile.mkdtemp(prefix=theme + '.', dir=generations))
     try:
         if builtin.is_dir(): stage_tree(builtin, stage)
+        if theme in ('tamarack-dark', 'tamarack-light'):
+            (stage / 'colors.toml').write_text(tamarack_colors(theme.removeprefix('tamarack-')))
         if user.is_dir():
             restricted = (user / '.git').exists()
             stage_tree(user, stage, restricted)
@@ -358,6 +414,8 @@ def main():
                 for base in (CONFIG / 'tamlinux/themes', ASSETS / 'themes'):
                     source = base / theme
                     candidates = images(source) or images(source / 'backgrounds')
+                    if not candidates and base == ASSETS / 'themes' and theme in ('tamarack-dark', 'tamarack-light'):
+                        candidates = [tamarack_preview(theme.removeprefix('tamarack-'))]
                     if candidates:
                         preview = next((p for p in candidates if p.stem == 'preview'), candidates[0])
                         stat = preview.stat()
