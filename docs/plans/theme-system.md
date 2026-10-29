@@ -7,16 +7,17 @@ migration/recovery and graphical proof remain. [Implementation and limits](0.4.3
 **0.5** adds the chosen Tamarack visual redesign after independent 0.4.3
 acceptance. Hyprland remains the compositor; Sway integration is later.
 
-**2026-10-29 development:** Dark and light Tamarack palettes now generate
-from one token file, with base-token contrast checks and generated picker
-swatches. The shell can read a theme font family; Atkinson fonts are packaged. These checks do not cover every applied foreground/background pair.
-Terminal font selection, actual adapter/surface inventory, the transparent
-and animated surface audit, settings-preserving switching and physical review
-remain open. Packaged defaults disable compositor animation and window
-translucency; decorative wallpaper and image-picker masks, charging pulses
-and the speed-test startup sweep have been removed. The active theme uses an
-atomic directory exchange, with legacy-link migration and background recovery
-covered by source and packaged checks. Physical recovery proof remains open.
+**2026-10-29 development:** Tamarack dark and light palettes generate from
+one token file, with picker swatches and contrast checks for base tokens,
+shell cards, terminal colours and btop selections. Atkinson fonts are packaged
+and fresh installs use the Mono terminal default. The checks do not cover every
+applied foreground/background pair. Existing terminal settings, the remaining
+adapter and surface audit, physical typography and recovery remain open.
+Packaged defaults disable compositor animation and window translucency;
+decorative wallpaper and image-picker masks, charging pulses and the
+speed-test startup sweep have been removed. The active theme uses an atomic
+directory exchange, with legacy-link migration and background recovery covered
+by source and packaged checks. Physical recovery proof remains open.
 
 ## Purpose and design
 
