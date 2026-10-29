@@ -72,13 +72,14 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
 
     def test_tamarack_variants_generate_and_switch_from_shared_tokens(self):
-        for name, background in (('tamarack-dark', '#0f1410'), ('tamarack-light', '#f5f5ec'), ('tamarack-dark', '#0f1410')):
+        for name, background, surface in (('tamarack-dark', '#0f1410', '#18201a'), ('tamarack-light', '#f5f5ec', '#e9eee2'), ('tamarack-dark', '#0f1410', '#18201a')):
             self.call('set', name)
             output = subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True)
             payload = json.loads(output)
             palette = payload['palette']
             self.assertEqual(payload['style']['fontFamily'], 'Atkinson Hyperlegible')
             self.assertEqual(palette['background'], background)
+            self.assertEqual(payload['surfaces']['bar.background'], surface)
             self.assertEqual(palette['accentText'], background)
             self.assertIn(background[1:], (self.current/'theme/foot.ini').read_text())
 

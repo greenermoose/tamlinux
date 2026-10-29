@@ -248,7 +248,7 @@ def tamarack_colors(variant):
     if contrast(tokens['background'], tokens['accent']) < 4.5:
         raise ValueError('Tamarack accent fill has insufficient contrast')
     # The existing adapter vocabulary is generated from these semantic tokens.
-    mapped = dict(mode=variant, background=tokens['background'], foreground=tokens['foreground'],
+    mapped = dict(mode=variant, background=tokens['background'], surface=tokens['surface'], foreground=tokens['foreground'],
                   dark_background=tokens['surface'], lighter_background=tokens['surface'],
                   dark_foreground=tokens['muted'], light_foreground=tokens['foreground'],
                   accent_text=tokens['background'],
