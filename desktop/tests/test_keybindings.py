@@ -259,6 +259,11 @@ class ModelTests(unittest.TestCase):
             (FIXTURE / "commands.tsv").read_text(encoding="utf-8"),
         )
 
+    def test_availability_key_labels_are_readable(self):
+        keys = ["BRACKETLEFT", "BRACKETRIGHT", "BACKSLASH", "SLASH", "MINUS", "EQUAL", "GRAVE", "PRINT", "MOUSE_DOWN"]
+        self.assertEqual(run_model("JSON.parse(TEXTS[0]).map(M.availabilityKeyLabel)", json.dumps(keys)),
+                         ["[", "]", "\\", "/", "-", "=", "`", "PrtSc", "MOUSE_DOWN"])
+
     def test_availability_uses_exact_masks_and_keeps_multiple_actions(self):
         binds = [
             {"modmask": 64, "key": "a", "description": "First", "dispatcher": "exec", "arg": "one"},

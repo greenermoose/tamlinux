@@ -9,7 +9,7 @@
 // Heinemeier Hansson; see ../LICENSE-omarchy). The parsing and the order
 // are new.
 
-var APP_VERSION = "0.4.1"
+var APP_VERSION = "0.4.2"
 var MAX_TEXT = 4 * 1024 * 1024
 var MAX_BINDS = 4096
 var MAX_FIELD = 1024
@@ -349,6 +349,12 @@ function sortExplorer(rows, order) {
 
 // A quick scan of the common Super chords, plus every other reported chord.
 // Keys use the same US-layout labels as the rest of the explorer.
+function availabilityKeyLabel(key) {
+  var symbols = { BRACKETLEFT: "[", BRACKETRIGHT: "]", BACKSLASH: "\\", SLASH: "/",
+                  MINUS: "-", EQUAL: "=", GRAVE: "`", PRINT: "PrtSc" }
+  return symbols[key] || key
+}
+
 function availability(rows) {
   var keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").concat(
     ["GRAVE", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
@@ -368,7 +374,7 @@ function availability(rows) {
     if (cells[id].indexOf(row.does) < 0) cells[id].push(row.does)
   })
   return { rows: keys.map(function(key) {
-    return { key: key, cells: masks.map(function(mask) { return (cells[mask + ":" + key] || []).join("; ") }) }
+    return { key: key, label: availabilityKeyLabel(key), cells: masks.map(function(mask) { return (cells[mask + ":" + key] || []).join("; ") }) }
   }), other: other }
 }
 
@@ -409,6 +415,7 @@ if (typeof module !== "undefined" && module.exports) {
     sortExplorer: sortExplorer,
     capturedBindings: capturedBindings,
     availability: availability,
+    availabilityKeyLabel: availabilityKeyLabel,
     formatRecords: formatRecords,
     KEYCODE_NAMES: KEYCODE_NAMES,
     APP_VERSION: APP_VERSION,

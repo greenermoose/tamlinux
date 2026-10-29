@@ -18,6 +18,7 @@ PanelWindow {
   property bool capturing: false
   property bool showingTable: false
   readonly property var availability: Model.availability(rows)
+  readonly property int tableKeyWidth: 140
   property string captureResult: ""
   property var lastCaptured: null
   property var lastTriedChord: []
@@ -851,7 +852,7 @@ PanelWindow {
               Rectangle {
                 required property int index
                 required property var modelData
-                width: index === 0 ? 90 : (tableFocus.width - 98) / 4
+                width: index === 0 ? panel.tableKeyWidth : (tableFocus.width - panel.tableKeyWidth - 8) / 4
                 height: 28; color: Util.alpha(Commons.Color.accent, 0.16); radius: 3
                 Text { anchors.fill: parent; anchors.margins: 6; text: modelData; color: Commons.Color.accentText; font.bold: true; font.pixelSize: 12; elide: Text.ElideRight }
               }
@@ -869,21 +870,21 @@ PanelWindow {
               width: ListView.view.width; spacing: 2
               height: Math.max(32, c0.implicitHeight + 12, c1.implicitHeight + 12, c2.implicitHeight + 12, c3.implicitHeight + 12)
               Rectangle {
-                width: 90; height: parent.height; color: Util.alpha(Commons.Color.foreground, 0.06)
-                Text { anchors.fill: parent; anchors.margins: 6; text: modelData.key; color: Commons.Color.foreground; font.bold: true; font.pixelSize: 11; wrapMode: Text.WrapAnywhere }
+                width: panel.tableKeyWidth; height: parent.height; color: Util.alpha(Commons.Color.foreground, 0.06)
+                Text { anchors.fill: parent; anchors.margins: 6; text: modelData.label; color: Commons.Color.foreground; font.bold: true; font.pixelSize: 11; elide: Text.ElideRight }
               }
               Repeater {
                 model: parent.modelData.cells
                 Rectangle {
                   required property var modelData
                   required property int index
-                  width: (tableFocus.width - 98) / 4; height: parent.height
+                  width: (tableFocus.width - panel.tableKeyWidth - 8) / 4; height: parent.height
                   color: Util.alpha(Commons.Color.foreground, modelData ? 0.06 : 0.025)
                   Text { id: cellText; anchors.fill: parent; anchors.margins: 6; text: modelData || "*"; color: modelData ? Commons.Color.foreground : Commons.Color.muted; font.pixelSize: 11; wrapMode: Text.Wrap }
                 }
               }
               // Invisible measurement texts keep multi-action cells fully visible.
-              Text { id: c0; visible: false; width: (tableFocus.width - 98) / 4 - 12; text: parent.modelData.cells[0]; font.pixelSize: 11; wrapMode: Text.Wrap }
+              Text { id: c0; visible: false; width: (tableFocus.width - panel.tableKeyWidth - 8) / 4 - 12; text: parent.modelData.cells[0]; font.pixelSize: 11; wrapMode: Text.Wrap }
               Text { id: c1; visible: false; width: c0.width; text: parent.modelData.cells[1]; font.pixelSize: 11; wrapMode: Text.Wrap }
               Text { id: c2; visible: false; width: c0.width; text: parent.modelData.cells[2]; font.pixelSize: 11; wrapMode: Text.Wrap }
               Text { id: c3; visible: false; width: c0.width; text: parent.modelData.cells[3]; font.pixelSize: 11; wrapMode: Text.Wrap }
