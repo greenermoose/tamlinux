@@ -111,6 +111,21 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual(os.readlink(self.current/'theme'), 'user-generation-currently-unavailable')
         self.assertEqual((self.current/'theme.name').read_text(), 'personal selection')
 
+    def test_atomic_exchange_retains_writes_to_open_old_files(self):
+        spec = importlib.util.spec_from_file_location('theme_engine_test', ENGINE)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.STATE = self.state/'tamlinux'
+        active = self.current/'theme'; active.mkdir(parents=True)
+        original = active/'personal.txt'; original.write_text('before')
+        stage = self.base/'new-theme'; stage.mkdir()
+        (stage/'personal.txt').write_text('new')
+        with original.open('a') as writer:
+            retained = module.publish_theme_directory(stage, active)
+            writer.write(' after')
+        self.assertEqual((active/'personal.txt').read_text(), 'new')
+        self.assertEqual((retained/'personal.txt').read_text(), 'before after')
+
     def test_initialize_migrates_owned_theme_link_and_preserves_selection(self):
         legacy = self.state/'tamlinux/theme-generations/legacy'
         legacy.mkdir(parents=True)
@@ -152,6 +167,11 @@ class ThemeOwnership(unittest.TestCase):
         self.call('set', 'tamarack-dark')
         self.assertEqual(background.read_bytes(), original)
         self.assertFalse((self.current/'theme').is_symlink())
+        journals = [json.loads(p.read_text()) for p in
+                    (self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json')]
+        retired = [Path(j['retiredTheme']) for j in journals if j.get('retiredTheme')]
+        self.assertTrue(any((p/'backgrounds'/image.name).read_bytes() == original for p in retired
+                            if (p/'backgrounds'/image.name).exists()))
 
     def test_invalid_input_cannot_mutate_selection(self):
         self.call('set','tokyo-night'); before=(self.current/'theme/colors.toml').read_bytes()

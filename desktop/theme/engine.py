@@ -55,25 +55,37 @@ def atomic(path, data=None, link=None):
         temporary.unlink(missing_ok=True)
 
 def publish_theme_directory(stage, destination):
-    """Replace the active theme atomically without a current-theme symlink."""
+    """Publish atomically and retain the old directory, including late writes."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.parent / ('.theme-publish-' + uuid.uuid4().hex)
     shutil.copytree(stage, temporary, symlinks=True)
+    exchanged = False
     try:
         if not destination.exists() and not destination.is_symlink():
             os.replace(temporary, destination)
-        else:
-            libc = ctypes.CDLL(None, use_errno=True)
-            rename = getattr(libc, 'renameat2', None)
-            if rename is None:
-                raise OSError('atomic theme exchange is unavailable')
-            rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
-            rename.restype = ctypes.c_int
-            if rename(-100, os.fsencode(temporary), -100, os.fsencode(destination), 2) != 0:
-                error = ctypes.get_errno()
-                raise OSError(error, os.strerror(error))
-    finally:
+            return None
+        libc = ctypes.CDLL(None, use_errno=True)
+        rename = getattr(libc, 'renameat2', None)
+        if rename is None:
+            raise OSError('atomic theme exchange is unavailable')
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        rename.restype = ctypes.c_int
+        if rename(-100, os.fsencode(temporary), -100, os.fsencode(destination), 2) != 0:
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error))
+        exchanged = True
+        if temporary.is_dir() and not temporary.is_symlink():
+            archive = STATE / 'theme-generations' / ('retired-' + uuid.uuid4().hex)
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(temporary, archive)
+            return archive
         remove(temporary)
+        return None
+    finally:
+        # If archiving failed after exchange, leave the old directory in place
+        # for recovery rather than deleting a user's concurrent writes.
+        if not exchanged:
+            remove(temporary)
 
 
 def preserve_active_background():
@@ -104,6 +116,7 @@ class Journal:
         base.mkdir(parents=True, exist_ok=True)
         self.directory = Path(tempfile.mkdtemp(prefix=kind + '.', dir=base))
         self.entries = []
+        self.retired_theme = None
         for index, path in enumerate(dict.fromkeys(map(Path, paths))):
             entry = {'path': str(path), 'present': path.exists() or path.is_symlink()}
             if entry['present']:
@@ -122,7 +135,8 @@ class Journal:
 
     def status(self, status):
         atomic(self.directory / 'manifest.json', json.dumps(
-            {'schema': 1, 'status': status, 'files': self.entries}, indent=2) + '\n')
+            {'schema': 1, 'status': status, 'files': self.entries,
+             **({'retiredTheme': str(self.retired_theme)} if self.retired_theme else {})}, indent=2) + '\n')
 
     def restore(self):
         for entry in reversed(self.entries):
@@ -297,11 +311,11 @@ def set_theme(value, refresh=False, apply=True):
             if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css'} and '{{' in item.read_text():
                 raise ValueError(f'unresolved template in {item.name}')
         paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
-        with transaction('theme', paths):
+        with transaction('theme', paths) as journal:
             # Keep a personal background valid when the old active directory
             # is exchanged. Old generations remain available for rollback.
             preserve_active_background()
-            publish_theme_directory(stage, CURRENT / 'theme')
+            journal.retired_theme = publish_theme_directory(stage, CURRENT / 'theme')
             atomic(CURRENT / 'theme.name', theme + '\n')
             old = (CURRENT / 'background').resolve()
             if not refresh or retired_background(old, theme):
