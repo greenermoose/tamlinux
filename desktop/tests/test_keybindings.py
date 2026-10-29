@@ -130,6 +130,8 @@ class ExplorerRecordsTest(unittest.TestCase):
         command = (DESKTOP.parent / "commands/tam-menu-keybindings/tam-menu-keybindings").read_text()
         self.assertIn('function open(commands: string)', service)
         self.assertIn('exec tam-shell keybindings open "$commands"', command)
+        self.assertIn('WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand', explorer)
+        self.assertNotIn('WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive', explorer)
         self.assertIn('ShortcutInhibitor {', explorer)
         self.assertIn('enabled: false', explorer)
         self.assertIn('inhibitor.active', explorer)

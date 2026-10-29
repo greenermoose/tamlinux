@@ -80,7 +80,8 @@ PanelWindow {
   color: "transparent"
   WlrLayershell.namespace: "tamlinux-keybindings"
   WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+  // Let other windows take focus while this reference remains visible.
+  WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
   exclusionMode: ExclusionMode.Ignore
   onVisibleChanged: {
     if (visible) { showingTable = false; search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
