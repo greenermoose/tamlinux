@@ -1,5 +1,8 @@
 # AI Collaboration & Provenance
 
+2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-sol`) implements the approved grouped Start menu, desktop appearance controls and staged binding cutover.
+[Session](docs/ai/2026-10-29-start-menu.md).
+
 2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-sol`) repairs shared QML palette
 resolution, authentication placement and deployment theme validation.
 [Session](docs/ai/2026-10-28-shell-palette-polkit.md).
