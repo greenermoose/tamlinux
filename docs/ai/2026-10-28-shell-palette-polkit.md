@@ -36,3 +36,13 @@ current close-window shortcut.
 - Desktop suite: 693 tests, passing with 81 skips, using the packaged Python
   interpreter containing JSON5. Deployment suite: 59 tests passing.
 - No candidate activation or stage promotion is part of this work.
+
+## Candidate preparation
+
+The user subsequently instructed:
+
+> Prepare 0.5.9
+
+Set the product version to 0.5.9 and retain the verified fixes as the next
+candidate. Assembly preparation pins this exact committed source; no Test,
+native installation or live migration is authorized by preparation.

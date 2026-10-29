@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.9 - Develop candidate
+
 - Qualify the shared QML palette so QtQuick's `Color` type cannot shadow it:
   retain theme colours across the bar, widgets and authentication prompt.
 - Place authentication on a lit output, preferring the focused display;
