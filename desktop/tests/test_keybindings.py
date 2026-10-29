@@ -124,6 +124,27 @@ class ExplorerRecordsTest(unittest.TestCase):
         rows = run_model("M.explorerRecords(TEXTS[0], '')", term_bind)
         self.assertIn("terminal", rows[0]["explanation"].lower())
 
+    def test_sort_can_use_key_or_action_without_changing_records(self):
+        rows = [{"does": "Zoom", "key": "A", "combo": "SUPER + A", "modmask": 64},
+                {"does": "Audio", "key": "Z", "combo": "SUPER + Z", "modmask": 64}]
+        result = run_model("[M.sortExplorer(JSON.parse(TEXTS[0]), 'key'), M.sortExplorer(JSON.parse(TEXTS[0]), 'name')]", json.dumps(rows))
+        self.assertEqual([r['does'] for r in result[0]], ['Zoom', 'Audio'])
+        self.assertEqual([r['does'] for r in result[1]], ['Audio', 'Zoom'])
+
+    def test_invalid_user_catalog_is_ignored(self):
+        self.assertEqual(run_model("[M.parseCatalog(TEXTS[0]), M.parseCatalog(TEXTS[1])]", '{broken', '{}'), [[], []])
+
+    def test_catalog_requires_matching_chord_and_full_command(self):
+        bind = hyprland_bind(64, "K", description="Keybindings", dispatcher="exec", arg="tam-menu-keybindings")
+        catalog = [{"mask": 64, "key": "K", "dispatcher": "exec", "arg": "tam-menu-keybindings", "action": "Open shortcuts", "why": "K for keys", "mnemonic": "K for keys"}]
+        expression = "M.explorerRecords(TEXTS[0], '', false, JSON.parse(TEXTS[1]))[0]"
+        matched = run_model(expression, bind, json.dumps(catalog))
+        self.assertEqual((matched["explanation"], matched["rationale"], matched["mnemonic"]), ("Open shortcuts", "K for keys", "K for keys"))
+        for changed in (bind.replace("tam-menu-keybindings", "custom-command"), bind.replace("key: K", "key: L")):
+            unmatched = run_model(expression, changed, json.dumps(catalog))
+            self.assertEqual(unmatched["rationale"], "")
+            self.assertEqual(unmatched["mnemonic"], "")
+
     def test_explorer_wiring_has_opt_in_capture(self):
         service = (KEYBINDINGS / "Service.qml").read_text()
         explorer = (KEYBINDINGS / "Explorer.qml").read_text()

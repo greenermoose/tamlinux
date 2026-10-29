@@ -8,6 +8,7 @@ import Quickshell
 import Quickshell.Io
 import Tam.Commons
 import "KeybindingsModel.js" as Model
+import "BindingCatalog.js" as Catalog
 
 ShellRoot {
   id: root
@@ -15,13 +16,14 @@ ShellRoot {
   readonly property int bindsLimit: 262144
   property string bindsText: ""
   property string commandsText: ""
-  property int pending: 2
+  property int pending: 3
+  property var customCatalog: []
   property var rows: []
 
   function loaded() {
     pending -= 1
     if (pending > 0) return
-    rows = Model.explorerRecords(bindsText, commandsText)
+    rows = Model.explorerRecords(bindsText, commandsText, false, customCatalog.concat(Catalog.entries))
     explorer.visible = true
   }
 
@@ -41,6 +43,13 @@ ShellRoot {
     stdout: StdioCollector {
       onStreamFinished: { root.commandsText = text; root.loaded() }
     }
+  }
+
+  FileView {
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/keybindings-metadata.json"
+    printErrors: false
+    onLoaded: { root.customCatalog = Model.parseCatalog(text()); root.loaded() }
+    onLoadFailed: { root.customCatalog = []; root.loaded() }
   }
 
   Explorer {

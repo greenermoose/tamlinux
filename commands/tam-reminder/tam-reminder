@@ -18,6 +18,11 @@ shell_dir=${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/sh
 
 case ${1:-} in
 -i | --interactive) exec tam-shell reminders open ;;
+--confirm-clear)
+  choice=$(tam-menu-select "Clear all reminders?" "Cancel" "Clear reminders") || exit 0
+  [[ $choice == "Clear reminders" ]] || exit 0
+  set -- clear
+  ;;
 "")
   echo "Usage: tam-reminder [-i|--interactive] | <minutes> [message] | show [-j|--json] | clear" >&2
   exit 1

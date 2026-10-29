@@ -9,7 +9,7 @@
 // Heinemeier Hansson; see ../LICENSE-omarchy). The parsing and the order
 // are new.
 
-var APP_VERSION = "0.3.1"
+var APP_VERSION = "0.4.0"
 var MAX_TEXT = 4 * 1024 * 1024
 var MAX_BINDS = 4096
 var MAX_FIELD = 1024
@@ -250,10 +250,30 @@ function naturalCompare(a, b) {
   return x.length - y.length < 0 ? -1 : x.length > y.length ? 1 : 0
 }
 
+function parseCatalog(text) {
+  var input = String(text || "")
+  if (!input || input.length > MAX_TEXT) return []
+  try { var value = JSON.parse(input); return Array.isArray(value) ? value.slice(0, MAX_BINDS) : [] }
+  catch (e) { return [] }
+}
+
+// Attach only catalog entries that match the live chord and exact action.
+function bindingMetadata(catalog, bind) {
+  if (!Array.isArray(catalog) || !bind.dispatcher || !bind.arg) return null
+  var key = String(bind.key || "").toUpperCase()
+  for (var i = 0; i < catalog.length; i++) {
+    var item = catalog[i]
+    if (item && item.mask === bind.modmask && String(item.key || "").toUpperCase() === key &&
+        item.dispatcher === bind.dispatcher && item.arg === bind.arg &&
+        typeof item.action === "string" && typeof item.why === "string" && typeof item.mnemonic === "string") return item
+  }
+  return null
+}
+
 // Viewer rows: [{ display, dispatcher, arg }], alphabetical by what the
 // binding does, then by its keys. A row whose command the scan could not find keeps an empty
 // dispatcher: the viewer shows it but Enter does nothing.
-function explorerRecords(bindingsText, commandsText, includeStatic) {
+function explorerRecords(bindingsText, commandsText, includeStatic, catalog) {
   var commands = parseCommands(commandsText)
   var binds = parseBinds(bindingsText)
   var seen = {}, rows = []
@@ -266,11 +286,14 @@ function explorerRecords(bindingsText, commandsText, includeStatic) {
     var id = [display, b.dispatcher, b.arg].join("\t")
     if (seen[id]) return
     seen[id] = true
+    var meta = bindingMetadata(catalog, b)
     rows.push({ display: display, dispatcher: b.dispatcher, arg: b.arg,
                 does: text, combo: comboText(b.modmask, b.key),
                 chord: chordKeys(b.modmask, b.key),
                 modmask: b.modmask, key: b.key, group: actionGroup(text),
-                explanation: findExplanation(b.dispatcher, b.arg), unlabeled: !!b.unlabeled })
+                explanation: meta ? meta.action : findExplanation(b.dispatcher, b.arg),
+                rationale: meta ? meta.why : "", mnemonic: meta ? meta.mnemonic : "",
+                unlabeled: !!b.unlabeled })
   }
 
   for (var i = 0; i < binds.length; i++) {
@@ -311,8 +334,16 @@ function filterExplorer(rows, modifier, query) {
     if (modifier === "alt" && (mask & 72) !== 72) return false
     if (modifier === "ctrl" && (mask & 68) !== 68) return false
     if (modifier === "shift" && (mask & 65) !== 65) return false
-    var haystack = [row.combo, row.does, row.dispatcher, row.arg, row.group, row.explanation].join(" ").toLowerCase()
+    var haystack = [row.combo, row.does, row.dispatcher, row.arg, row.group, row.explanation, row.rationale, row.mnemonic].join(" ").toLowerCase()
     return words.every(function (word) { return haystack.indexOf(word) !== -1 })
+  })
+}
+
+function sortExplorer(rows, order) {
+  return rows.slice().sort(function(a, b) {
+    if (order === "key") return naturalCompare(keyLabel(a.key), keyLabel(b.key)) ||
+      a.modmask - b.modmask || naturalCompare(a.does, b.does)
+    return naturalCompare(a.does, b.does) || naturalCompare(a.combo, b.combo)
   })
 }
 
@@ -372,7 +403,10 @@ if (typeof module !== "undefined" && module.exports) {
     naturalCompare: naturalCompare,
     records: records,
     explorerRecords: explorerRecords,
+    bindingMetadata: bindingMetadata,
+    parseCatalog: parseCatalog,
     filterExplorer: filterExplorer,
+    sortExplorer: sortExplorer,
     capturedBindings: capturedBindings,
     availability: availability,
     formatRecords: formatRecords,

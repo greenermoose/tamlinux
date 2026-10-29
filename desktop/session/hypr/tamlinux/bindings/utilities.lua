@@ -14,24 +14,24 @@ o.bind("XF86Calculator", "Calculator", "omacalc")
 
 o.bind("SUPER + SHIFT + SPACE", "Toggle top bar", "tam-shell tamlinux-shell toggleBar")
 o.bind("SUPER + CTRL + SPACE", "Background switcher", "tam-menu toggle background")
-o.bind("SUPER + SHIFT + CTRL + SPACE", "Theme menu", "tam-menu toggle theme")
+o.bind("SUPER + SHIFT + T", "Theme menu", "tam-menu toggle theme")
 -- Appearance toggles live on U so Backspace stays a close chord without a
 -- Hamming collision (missing Shift on gaps would otherwise close the window).
 o.bind("SUPER + U", "Toggle window transparency", "tam-hyprland-window-transparency-toggle")
 o.bind("SUPER + SHIFT + U", "Toggle window gaps", "tam-hyprland-window-gaps-toggle")
 o.bind("SUPER + CTRL + U", "Toggle single-window square aspect", "tam-hyprland-window-single-square-aspect-toggle")
 
--- xkbcommon names the comma keysym "comma"; the upper-case "COMMA" does not match.
-o.bind("SUPER + comma", "Dismiss last notification", "tam-shell notifications dismissOne")
-o.bind("SUPER + SHIFT + comma", "Dismiss all notifications", "tam-shell notifications dismissAll")
-o.bind("SUPER + CTRL + comma", "Toggle silencing notifications", "tam-toggle-notification-silencing")
-o.bind("SUPER + ALT + comma", "Invoke last notification", "tam-shell notifications invokeLast")
-o.bind("SUPER + SHIFT + ALT + comma", "Open notification history", "tam-shell notifications showHistory")
+-- Notification shortcuts share N; Alt+H opens history.
+o.bind("SUPER + N", "Dismiss last notification", "tam-shell notifications dismissOne")
+o.bind("SUPER + SHIFT + N", "Dismiss all notifications", "tam-shell notifications dismissAll")
+o.bind("SUPER + CTRL + N", "Toggle silencing notifications", "tam-toggle-notification-silencing")
+o.bind("SUPER + ALT + N", "Invoke last notification", "tam-shell notifications invokeLast")
+o.bind("SUPER + ALT + H", "Open notification history", "tam-shell notifications showHistory")
 
 o.bind("SUPER + CTRL + I", "Toggle locking on idle", "tam-toggle-idle")
-o.bind("SUPER + CTRL + N", "Toggle nightlight", "tam-toggle-nightlight")
+o.bind("SUPER + CTRL + J", "Toggle nightlight", "tam-toggle-nightlight")
 o.bind("SUPER + CTRL + Delete", "Toggle laptop display", "tam-hyprland-monitor-internal toggle")
-o.bind("SUPER + CTRL + ALT + Delete", "Toggle laptop display mirroring", "tam-hyprland-monitor-internal-mirror toggle")
+o.bind("SUPER + ALT + Delete", "Toggle laptop display mirroring", "tam-hyprland-monitor-internal-mirror toggle")
 o.bind("switch:on:Lid Switch", nil, "tam-system-lid-close", { locked = true })
 o.bind("switch:off:Lid Switch", nil, "tam-hyprland-monitor-clamshell", { locked = true })
 
@@ -84,22 +84,22 @@ end)
 
 o.bind("SUPER + CTRL + S", "Share", "tam-menu toggle share")
 
--- xkbcommon names the period keysym "period"; upper-case "PERIOD" does not match.
-o.bind("SUPER + CTRL + period", "Transcode", "tam-transcode")
+-- Y leaves the punctuation keys available for window resizing.
+o.bind("SUPER + CTRL + Y", "Transcode", "tam-transcode")
 
 o.bind("SUPER + CTRL + R", "Set reminder", "tam-reminder -i")
-o.bind("SUPER + CTRL + ALT + R", "Show reminders", "tam-reminder show")
-o.bind("SUPER + SHIFT + CTRL + R", "Clear reminders", "tam-reminder clear")
+o.bind("SUPER + ALT + R", "Show reminders", "tam-reminder show")
+o.bind("SUPER + SHIFT + R", "Clear reminders", "tam-reminder --confirm-clear")
 
-o.bind("SUPER + CTRL + ALT + T", "Show time", "tam-notification-time")
-o.bind("SUPER + CTRL + ALT + B", "Show battery remaining", "tam-notification-battery")
-o.bind("SUPER + CTRL + ALT + W", "Toggle weather", "tam-shell tamlinux-shell toggle fred.weather")
+o.bind("SUPER + ALT + T", "Show time", "tam-notification-time")
+o.bind("SUPER + ALT + P", "Show battery remaining", "tam-notification-battery")
+o.bind("SUPER + ALT + W", "Toggle weather", "tam-shell tamlinux-shell toggle fred.weather")
 
-o.bind("SUPER + SHIFT + CTRL + A", "Agent", "tam-agent --pick")
+o.bind("SUPER + SHIFT + C", "Agent", "tam-agent --pick")
 o.bind("SUPER + CTRL + A", "Audio", "tam-shell tamlinux-shell toggle tamlinux.audio")
 o.bind("SUPER + CTRL + B", "Bluetooth", "tam-shell tamlinux-shell toggle tamlinux.bluetooth")
 o.bind("SUPER + CTRL + D", "Display", "tam-shell tamlinux-shell toggle fred.monitor")
-o.bind("SUPER + CTRL + ALT + D", "Calendar", "tam-shell tamlinux-shell toggle fred.clock")
+o.bind("SUPER + ALT + D", "Calendar", "tam-shell tamlinux-shell toggle fred.clock")
 o.bind("SUPER + CTRL + W", "Network", "tam-shell tamlinux-shell toggle tamlinux.network")
 o.bind("SUPER + CTRL + P", "Power", "tam-shell tamlinux-shell toggle tamlinux.power")
 o.bind("SUPER + CTRL + T", "Activity", { tui = "btop" })
@@ -121,7 +121,7 @@ o.bind("SUPER + CTRL + Z", "Zoom in", function()
   hl.config({ cursor = { zoom_factor = zoom + 1 } })
 end)
 
-o.bind("SUPER + CTRL + ALT + Z", "Reset zoom", function()
+o.bind("SUPER + ALT + Z", "Reset zoom", function()
   hl.config({ cursor = { zoom_factor = 1 } })
 end)
 

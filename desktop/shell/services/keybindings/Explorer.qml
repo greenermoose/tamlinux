@@ -13,6 +13,7 @@ PanelWindow {
   property bool bindingsAvailable: false
   property string modifier: "all"
   property string group: "All groups"
+  property string sortOrder: "name"
   property var selected: null
   property bool capturing: false
   property bool showingTable: false
@@ -53,7 +54,24 @@ PanelWindow {
       border.width: 1
     }
   }
-  readonly property var filtered: Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group })
+  component FilterBox: ComboBox {
+    id: box
+    implicitWidth: 125
+    implicitHeight: 34
+    contentItem: Text { leftPadding: 10; rightPadding: 22; text: box.displayText; font.pixelSize: 12; color: Commons.Color.foreground; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
+    background: Rectangle { radius: Style.cornerRadius; color: box.hovered ? Util.alpha(Commons.Color.foreground, 0.08) : Util.alpha(Commons.Color.foreground, 0.04); border.color: box.visualFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22); border.width: 1 }
+    popup: Popup {
+      y: box.height + 4; width: box.width; implicitHeight: Math.min(240, contentItem.implicitHeight + 8); padding: 4
+      contentItem: ListView { clip: true; implicitHeight: contentHeight; model: box.popup.visible ? box.delegateModel : null; currentIndex: box.highlightedIndex; ScrollIndicator.vertical: ScrollIndicator {} }
+      background: Rectangle { color: "#101418"; border.color: Util.alpha(Commons.Color.accent, 0.45); border.width: 1; radius: Style.cornerRadius }
+    }
+    delegate: ItemDelegate {
+      width: box.width - 8; height: 30; highlighted: box.highlightedIndex === index
+      contentItem: Text { text: modelData; color: highlighted ? Commons.Color.accentText : Commons.Color.foreground; font.pixelSize: 12; verticalAlignment: Text.AlignVCenter }
+      background: Rectangle { radius: 4; color: highlighted ? Util.alpha(Commons.Color.accent, 0.25) : "transparent" }
+    }
+  }
+  readonly property var filtered: Model.sortExplorer(Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group }), sortOrder)
   onFilteredChanged: {
     if (filtered.length > 0) {
       var foundIndex = -1
@@ -84,7 +102,7 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
   exclusionMode: ExclusionMode.Ignore
   onVisibleChanged: {
-    if (visible) { showingTable = false; search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
+    if (visible) { showingTable = false; search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; modifierSelect.currentIndex = 0; selected = filtered.length ? filtered[0] : null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
     else { capturing = false; inhibitor.enabled = false }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
@@ -207,13 +225,6 @@ PanelWindow {
           }
         }
         DarkButton {
-          anchors.right: closeButton.left
-          anchors.rightMargin: 8
-          anchors.verticalCenter: parent.verticalCenter
-          text: panel.showingTable ? "Back to list" : "Availability table"
-          onClicked: { panel.showingTable = !panel.showingTable; if (panel.showingTable) tableFocus.forceActiveFocus(); else search.forceActiveFocus() }
-        }
-        DarkButton {
           id: closeButton
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
@@ -281,27 +292,20 @@ PanelWindow {
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
           spacing: 6
-          Repeater {
-            model: [
-              {label:"All", value:"all"},
-              {label:"Super", value:"super"},
-              {label:"Super + Alt", value:"alt"},
-              {label:"Super + Ctrl", value:"ctrl"},
-              {label:"Super + Shift", value:"shift"}
-            ]
-            DarkButton {
-              required property var modelData
-              text: modelData.label
-              checkable: true
-              checked: panel.modifier === modelData.value
-              onClicked: { panel.modifier = modelData.value }
+          Text { text: "Modifier keys"; color: Commons.Color.foreground; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+          FilterBox {
+            id: modifierSelect
+            model: ["All", "Super", "Super + Alt", "Super + Ctrl", "Super + Shift"]
+            onCurrentIndexChanged: panel.modifier = ["all", "super", "alt", "ctrl", "shift"][currentIndex] || "all"
+            Connections {
+              target: panel
+              function onModifierChanged() {
+                var index = ["all", "super", "alt", "ctrl", "shift"].indexOf(panel.modifier)
+                if (index >= 0 && modifierSelect.currentIndex !== index) modifierSelect.currentIndex = index
+              }
             }
           }
-          Rectangle {
-            width: 1; height: 20
-            color: Util.alpha(Commons.Color.foreground, 0.16)
-            anchors.verticalCenter: parent.verticalCenter
-          }
+          Text { text: "Groups"; color: Commons.Color.foreground; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
           ComboBox {
             id: groupSelect
             model: ["All groups", "Workspaces", "Windows", "Media and display", "Applications", "Other"]
@@ -365,13 +369,23 @@ PanelWindow {
               }
             }
           }
+          Text { text: "Sort by"; color: Commons.Color.foreground; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+          FilterBox {
+            id: sortSelect
+            model: ["Action name", "Key"]
+            onCurrentIndexChanged: panel.sortOrder = currentIndex === 1 ? "key" : "name"
+          }
+          DarkButton {
+            text: panel.showingTable ? "Back to list" : "Availability table"
+            onClicked: { panel.showingTable = !panel.showingTable; if (panel.showingTable) tableFocus.forceActiveFocus(); else search.forceActiveFocus() }
+          }
         }
         Row {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           spacing: 8
           DarkButton {
-            visible: panel.modifier !== "all" || panel.group !== "All groups" || search.text !== ""
+            visible: (panel.modifier !== "all" || panel.group !== "All groups" || search.text !== "") && panel.width > 1200
             text: "Reset filters"
             onClicked: {
               panel.modifier = "all"
@@ -382,6 +396,7 @@ PanelWindow {
             }
           }
           Rectangle {
+            visible: panel.width > 1150
             height: 24
             width: countText.implicitWidth + 16
             radius: 12
@@ -707,6 +722,14 @@ PanelWindow {
                 }
               }
 
+              Column {
+                width: parent.width; spacing: 5
+                Text { text: "Why this shortcut (suggested)"; color: Commons.Color.accent; font.pixelSize: 11; font.bold: true }
+                Text { width: parent.width; wrapMode: Text.Wrap; color: Commons.Color.foreground; font.pixelSize: 13; text: panel.selected && panel.selected.rationale ? panel.selected.rationale : "No explanation recorded for this binding." }
+                Text { text: "Remember it"; color: Commons.Color.accent; font.pixelSize: 11; font.bold: true; topPadding: 6 }
+                Text { width: parent.width; wrapMode: Text.Wrap; color: Commons.Color.foreground; font.pixelSize: 13; text: panel.selected && panel.selected.mnemonic ? panel.selected.mnemonic : "No mnemonic recorded for this binding." }
+              }
+
               // Command & Dispatcher Card
               Column {
                 width: parent.width
@@ -794,8 +817,8 @@ PanelWindow {
     }
     Rectangle {
       anchors.fill: parent
-      anchors.topMargin: 70
       anchors.margins: 16
+      anchors.topMargin: 170
       visible: panel.showingTable && !panel.capturing
       color: Commons.Color.menu.background
       MouseArea { anchors.fill: parent }
@@ -1435,6 +1458,14 @@ PanelWindow {
                       text: panel.lastCaptured && panel.lastCaptured.explanation ? panel.lastCaptured.explanation : "No additional explanation is available for this action."
                     }
                   }
+                }
+
+                Column {
+                  width: parent.width; spacing: 5
+                  Text { text: "Why this shortcut (suggested)"; color: Commons.Color.accent; font.pixelSize: 11; font.bold: true }
+                  Text { width: parent.width; wrapMode: Text.Wrap; color: Commons.Color.foreground; font.pixelSize: 13; text: panel.lastCaptured && panel.lastCaptured.rationale ? panel.lastCaptured.rationale : "No explanation recorded for this binding." }
+                  Text { text: "Remember it"; color: Commons.Color.accent; font.pixelSize: 11; font.bold: true; topPadding: 6 }
+                  Text { width: parent.width; wrapMode: Text.Wrap; color: Commons.Color.foreground; font.pixelSize: 13; text: panel.lastCaptured && panel.lastCaptured.mnemonic ? panel.lastCaptured.mnemonic : "No mnemonic recorded for this binding." }
                 }
 
                 // Command & Arguments Card

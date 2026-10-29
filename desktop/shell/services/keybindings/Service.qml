@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "KeybindingsModel.js" as Model
+import "BindingCatalog.js" as Catalog
 
 Item {
   id: root
@@ -13,12 +14,22 @@ Item {
   property bool opened: false
   property var rows: []
   property bool bindingsAvailable: false
+  property var customCatalog: []
 
   function open(commands) {
     var text = bindingsText()
     bindingsAvailable = Model.parseBinds(text).length > 0
-    rows = Model.explorerRecords(text, commands)
+    rows = Model.explorerRecords(text, commands, false, root.customCatalog.concat(Catalog.entries))
     opened = true
+  }
+
+  FileView {
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/keybindings-metadata.json"
+    printErrors: false
+    watchChanges: true
+    onLoaded: root.customCatalog = Model.parseCatalog(text())
+    onLoadFailed: root.customCatalog = []
+    onFileChanged: reload()
   }
 
   Explorer {
