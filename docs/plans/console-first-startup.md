@@ -8,6 +8,12 @@ what commands are running. The packaged welcome text and Bash alias are in
 development. Normal progress is retained; command-level visibility still
 needs an implementation and physical verification. Changes to installed boot
 or login configuration require their own recorded rollback and approval.
+The systemd manager can emit debug logs to the console using documented
+kernel parameters, but that is manager output, not proof that every command
+inside every service or initramfs script is shown. Assess the actual coverage,
+output volume and startup cost before choosing a mechanism; do not claim the
+command-level goal from ordinary unit progress alone. See the
+[systemd debugging guide](https://wiki.freedesktop.org/www/Software/systemd/Debugging/).
 
 The explicit launcher and console guard are implemented. Focused session
 tests include a real pseudo-terminal: suspension keys cannot expose the
