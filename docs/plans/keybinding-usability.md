@@ -2,6 +2,30 @@
 
 **Status:** Approved by Fred on 2026-10-29; implementation in Develop. Physical and package trials remain open. Extends the approved [input-usability plan](input-usability.md) and its K22–K23 acceptance. The current running bindings remain the baseline until an exact candidate is promoted.
 
+## Development handoff (2026-10-29)
+
+The explorer is version 0.4.2. Its source is committed through `b756e27`;
+42 explorer tests and four default-binding tests pass. This is source and
+standalone trial evidence, not packaged-shell acceptance. The metadata
+catalog matches exact chords and commands; five default callback bindings
+whose commands cannot be recovered receive an honest fallback rather than a
+fabricated explanation. Review coverage and explanatory quality against the
+requested outcome before calling the explorer finished.
+
+The user has applied a personal map on the current installation. Before
+including these defaults in a candidate, reconcile user overrides and
+packaged defaults without duplicating bindings, check global shortcut
+conflicts in applications, and record the user's physical acceptance. The
+standalone trial must be removed after the matching package is deployed and
+before packaged explorer observations, following the development trial
+handover procedure. Verify the packaged explorer and its capture inhibitor,
+focus behavior, availability table and metadata.
+
+Before any public push, complete the AI session record and private ledger and
+review the entire unpushed history, including work from other sessions. The
+0.5.10 assembly is not yet prepared. Candidate Test remains a separate
+exact-version instruction.
+
 ## Goal
 
 Every active keyboard chord on the supported keyboard requires no more than two modifier keys plus one primary key, including any Shift needed to type a symbol. Preserve the useful actions and keypad aliases. Group related actions, make keys suggest what they do, and avoid accidental destructive actions. Users can inspect a shortcut to see what it does, when it helps, why the key was chosen and a way to remember it.
