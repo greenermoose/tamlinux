@@ -7,6 +7,15 @@ migration/recovery and graphical proof remain. [Implementation and limits](0.4.3
 **0.5** adds the chosen Tamarack visual redesign after independent 0.4.3
 acceptance. Hyprland remains the compositor; Sway integration is later.
 
+**2026-10-29 development:** Dark and light Tamarack palettes now generate
+from one token file, with base-token contrast checks and generated picker
+swatches. The shell can read a theme font family; Atkinson packaging is in
+progress. These checks do not cover every applied foreground/background pair.
+Terminal font selection, actual adapter/surface inventory, the transparent
+and animated surface audit, settings-preserving switching and physical review
+remain open. The current generated-theme link is still present and must be
+resolved under the apply-and-recovery contract below.
+
 ## Purpose and design
 
 Give the shell and supported applications a consistent, accessible Tamlinux
