@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,11 +82,43 @@ class ThemeOwnership(unittest.TestCase):
             self.assertEqual(palette['background'], background)
             self.assertEqual(payload['surfaces']['bar.background'], surface)
             self.assertEqual(payload['surfaces']['tooltip.background'], background)
+            self.assertEqual(payload['surfaces']['image-picker.scrim'], background)
             self.assertEqual(payload['surfaces']['menu.selected-background'], surface)
             self.assertIn('active_border_color = \"' + ('#86b86a' if name.endswith('dark') else '#35652e') + '\"', (self.current/'theme/hyprland.lua').read_text())
             self.assertEqual(palette['accentText'], background)
             self.assertIn(background[1:], (self.current/'theme/foot.ini').read_text())
             self.assertIn('theme[selected_fg]=\"' + background + '\"', (self.current/'theme/btop.theme').read_text())
+
+    def test_tamarack_generated_surface_and_terminal_pairs_have_contrast(self):
+        def luminance(color):
+            channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+            linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in channels]
+            return sum(a * b for a, b in zip(linear, (0.2126, 0.7152, 0.0722)))
+        def check(foreground, background):
+            low, high = sorted((luminance(foreground), luminance(background)))
+            self.assertGreaterEqual((high + 0.05) / (low + 0.05), 4.5, (foreground, background))
+        for variant in ('tamarack-dark', 'tamarack-light'):
+            self.call('set', variant)
+            theme = self.current/'theme'
+            payload = json.loads(subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
+            surfaces = payload['surfaces']
+            for section in ('bar', 'popups', 'tooltip', 'notifications', 'menu', 'polkit'):
+                check(surfaces[section+'.text'], surfaces[section+'.background'])
+            check(surfaces['menu.selected-text'], surfaces['menu.selected-background'])
+            check(surfaces['polkit.text-error'], surfaces['polkit.background'])
+            alacritty = tomllib.loads((theme/'alacritty.toml').read_text())['colors']
+            check(alacritty['primary']['foreground'], alacritty['primary']['background'])
+            check(alacritty['selection']['text'], alacritty['selection']['background'])
+            for name in ('matches', 'focused_match'):
+                check(alacritty['search'][name]['foreground'], alacritty['search'][name]['background'])
+            foot = (theme/'foot.ini').read_text()
+            btop = (theme/'btop.theme').read_text()
+            colors = tomllib.loads((theme/'colors.toml').read_text())
+            self.assertIn('selection-foreground='+colors['selection_foreground'][1:], foot)
+            self.assertIn('selection-background='+colors['selection_background'][1:], foot)
+            self.assertIn('theme[selected_fg]="'+colors['selection_foreground']+'"', btop)
+            self.assertIn('theme[selected_bg]="'+colors['selection']+'"', btop)
+            check(colors['selection_foreground'], colors['selection_background'])
 
     def test_tamarack_respects_personal_shell_section(self):
         user = self.config/'tamlinux/themes/tamarack-dark'; user.mkdir(parents=True)

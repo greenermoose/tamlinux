@@ -285,7 +285,7 @@ def make_tamarack_surfaces_opaque(stage, user, colors):
     path = stage / 'shell.toml'
     if not path.is_file() or (user / 'shell.toml').exists():
         return
-    sections = {'tooltip', 'launcher', 'menu', 'lock'}
+    sections = {'tooltip', 'launcher', 'menu', 'polkit', 'lock', 'image-picker'}
     text = path.read_text()
     chunks = re.split(r'(?=^\[[^]\n]+\]\s*$)', text, flags=re.MULTILINE)
     for index, chunk in enumerate(chunks):
@@ -293,6 +293,7 @@ def make_tamarack_surfaces_opaque(stage, user, colors):
         if not match or match[1] not in sections or (user / ('shell.' + match[1] + '.toml')).exists():
             continue
         chunk = re.sub(r'(?m)^(background-alpha\s*=\s*)[0-9.]+', r'\g<1>1.0', chunk)
+        chunk = re.sub(r'(?m)^(scrim-alpha\s*=\s*)[0-9.]+', r'\g<1>1.0', chunk)
         if match[1] in ('launcher', 'menu'):
             chunk = re.sub(r'(?m)^(selected-background\s*=\s*)"[^"]*"',
                            lambda m: m.group(1) + '"' + colors['surface'] + '"', chunk)

@@ -563,7 +563,7 @@ Item {
           width: root.expandedWidth
           text: root.filterText
           color: root.foreground
-          opacity: 0.85
+          opacity: 1
           style: Text.Outline
           styleColor: Util.alpha(root.dimColor, 0.7)
           font.pixelSize: Style.font.title

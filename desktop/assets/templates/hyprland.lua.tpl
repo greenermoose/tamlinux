@@ -14,5 +14,14 @@ hl.config({
       border_active = active_border_color,
       border_inactive = inactive_border_color,
     },
+    groupbar = {
+      text_color = {{ hypr_gradient foreground }},
+      text_color_inactive = {{ hypr_gradient muted foreground }},
+      col = {
+        active = {{ hypr_gradient surface background }},
+        inactive = {{ hypr_gradient background }},
+      },
+      gradients = false,
+    },
   },
 })
