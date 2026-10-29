@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Tam.Commons
+import Tam.Commons as Commons
 
 // Layer-shell calendar card. fred.clock already calls this shape: anchorItem,
 // owner, bar, open, centerOnBar, focusTarget, fittedContentWidth/Height, and
@@ -164,9 +165,9 @@ PanelWindow {
     width: root.contentWidth
     height: root.contentHeight
     radius: Style.cornerRadius
-    color: Color.popups.background
+    color: Commons.Color.popups.background
     border.width: 1
-    border.color: Color.popups.border
+    border.color: Commons.Color.popups.border
 
     MouseArea {
       anchors.fill: parent

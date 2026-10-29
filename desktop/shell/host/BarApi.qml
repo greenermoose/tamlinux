@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Tam.Commons
+import Tam.Commons as Commons
 
 // Per-output facade plugins treat as `bar`. One instance owns one bar window:
 // its popout, its click targets, and its panel order. Lists that span outputs
@@ -18,10 +19,10 @@ QtObject {
   property bool hidden: false
   property bool vertical: false
   property int barSize: Style.bar.sizeHorizontal
-  property color foreground: Color.foreground
-  property color barForeground: Color.foreground
-  property color background: Color.background
-  property color urgent: Color.urgent
+  property color foreground: Commons.Color.foreground
+  property color barForeground: Commons.Color.foreground
+  property color background: Commons.Color.background
+  property color urgent: Commons.Color.urgent
   property string fontFamily: Style.font.family
   property bool foregroundAnimationEnabled: false
   property bool centerHoverRevealSuppressed: false

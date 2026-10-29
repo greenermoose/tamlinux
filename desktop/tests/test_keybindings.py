@@ -530,7 +530,7 @@ class WiringTests(unittest.TestCase):
         entry = (KEYBINDINGS / "dev-trial.qml").read_text(encoding="utf-8")
         trial = (KEYBINDINGS / "dev-trial").read_text(encoding="utf-8")
         command = (DESKTOP.parent / "commands/tam-menu-keybindings/tam-menu-keybindings").read_text()
-        self.assertIn("onClosed: Qt.quit()", entry)
+        self.assertIn("onDismissRequested: Qt.quit()", entry)
         self.assertIn('"--scan"]', entry)
         self.assertNotIn("tam-shell", entry)
         self.assertNotIn("IpcHandler", entry)

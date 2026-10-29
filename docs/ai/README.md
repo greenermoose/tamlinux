@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-28 — Shell palette and visible authorization](2026-10-28-shell-palette-polkit.md)
+
 - [2026-10-28 — Micro JSON5 migration and recovery](2026-10-28-micro-json5-recovery.md)
 
 - [2026-10-28 — K24 clipboard repair and 0.5.7 Develop prep](2026-10-28-k24-clipboard-0.5.7.md)

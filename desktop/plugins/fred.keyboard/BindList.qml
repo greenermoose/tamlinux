@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import "."
 
 // A list of binds as "chord   what it does" rows, laid out in two columns
@@ -21,8 +22,8 @@ Item {
   // caption, and the indicator at the right edge shows where you are.
   readonly property bool overflowing: flick.contentHeight > flick.height + 1
 
-  readonly property color muted: Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                         Color.foreground.b, 0.55)
+  readonly property color muted: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                         Commons.Color.foreground.b, 0.55)
 
   visible: rows.length > 0
   implicitHeight: visible ? flick.height : 0
@@ -96,7 +97,7 @@ Item {
                 text: modelData.chord
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: modelData.muted ? root.muted : Color.accent
+                color: modelData.muted ? root.muted : Commons.Color.accent
               }
 
               Text {
@@ -108,7 +109,7 @@ Item {
                 text: modelData.does
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Color.foreground
+                color: Commons.Color.foreground
               }
             }
           }
@@ -128,12 +129,12 @@ Item {
     width: Math.max(3, Style.space(4))
     height: flick.height
     radius: width / 2
-    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
+    color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.10)
 
     Rectangle {
       width: parent.width
       radius: width / 2
-      color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.7)
+      color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.7)
       height: Math.max(Style.space(16), parent.height * flick.visibleArea.heightRatio)
       y: (parent.height - height) * (flick.visibleArea.yPosition /
                                      Math.max(0.0001, 1 - flick.visibleArea.heightRatio))

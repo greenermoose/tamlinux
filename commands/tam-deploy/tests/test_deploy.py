@@ -741,6 +741,36 @@ class FleetProfiles(unittest.TestCase):
         self.assertEqual(other.read_text(), '{"components":{}}')
 
 
+class ShellReadiness(unittest.TestCase):
+    palette = {"foreground": "#a9b1d6", "background": "#1a1b26",
+               "accent": "#7aa2f7", "muted": "#414868"}
+
+    def test_reachable_ipc_with_undefined_palette_is_not_ready(self):
+        app = deploy.Deployment.__new__(deploy.Deployment)
+        def reply(*args, **kwargs):
+            return "pong" if args[1] == "reminders" else json.dumps(dict.fromkeys(self.palette, "undefined"))
+        with patch.object(deploy, "command", side_effect=reply), patch.object(deploy.time, "sleep"):
+            with self.assertRaisesRegex(deploy.DeploymentError, "valid theme palette"):
+                app.wait_ready()
+
+    def test_waits_for_theme_then_accepts_valid_palette(self):
+        app = deploy.Deployment.__new__(deploy.Deployment)
+        palettes = iter(['{"background":"undefined"}', 'not JSON', json.dumps(self.palette)])
+        def reply(*args, **kwargs):
+            return "pong" if args[1] == "reminders" else next(palettes)
+        with patch.object(deploy, "command", side_effect=reply), patch.object(deploy.time, "sleep") as sleep:
+            app.wait_ready()
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_missing_theme_service_cannot_pass_readiness(self):
+        app = deploy.Deployment.__new__(deploy.Deployment)
+        def reply(*args, **kwargs):
+            if args[1] == "reminders": return "pong"
+            raise subprocess.CalledProcessError(1, args)
+        with patch.object(deploy, "command", side_effect=reply), patch.object(deploy.time, "sleep"):
+            with self.assertRaises(deploy.DeploymentError): app.wait_ready()
+
+
 class Usage(unittest.TestCase):
     def test_rejects_unknown_commands(self):
         self.assertEqual(deploy.main(["deploy"]), 2)

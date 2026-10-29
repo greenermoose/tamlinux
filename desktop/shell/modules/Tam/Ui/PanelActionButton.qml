@@ -1,12 +1,13 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Rectangle {
   id: root
 
   property string iconText: ""
   property string tooltipText: ""
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color hoverColor: foreground
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.icon

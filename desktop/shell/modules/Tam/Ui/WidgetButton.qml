@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
@@ -8,7 +9,7 @@ Item {
   property string text: ""
   property string fontFamily: bar ? bar.fontFamily : Style.font.family
   property real fontSize: Style.font.body
-  property color foreground: bar ? bar.barForeground : Color.foreground
+  property color foreground: bar ? bar.barForeground : Commons.Color.foreground
   property real horizontalMargin: 8.5
   property real verticalPadding: 6
   property real fixedWidth: -1

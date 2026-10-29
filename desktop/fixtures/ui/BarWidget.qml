@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import Tam.Ui
 
 // Constructs the shared controls the other plugins bind. It is not a fred.*
@@ -42,14 +43,14 @@ BarWidget {
       + " normal-foreground=" + (sameColor(normal.color, "#d7dde2") ? "true" : "false")
       + " overlay=" + (Border.needsOverlay(focus) ? "true" : "false"))
     note("ui-wheel " + wheelPair(0, 120) + " " + wheelPair(0, 60) + " " + wheelPair(60, 60) + " " + wheelPair(100, -20))
-    var fill = Style.controlFill(false, true, Color.foreground, Color.accent)
+    var fill = Style.controlFill(false, true, Commons.Color.foreground, Commons.Color.accent)
     note("ui-tokens display=" + Style.font.display
       + " large=" + Style.font.displayLarge
       + " subtitle=" + Style.font.subtitle
       + " base=" + Style.font.baseSize
       + " control=" + Style.spacing.controlHeight
       + " slot=" + Style.bar.statusSlot
-      + " accent=" + (Color.accentText ? "set" : "missing")
+      + " accent=" + (Commons.Color.accentText ? "set" : "missing")
       + " fill=" + (fill ? "set" : "missing"))
     note("ui-built Border")
     note("ui-built BarIconButton")
@@ -110,15 +111,15 @@ BarWidget {
     PanelHero {
       title: "UI"
       meta: "proof"
-      foreground: Color.foreground
+      foreground: Commons.Color.foreground
       iconComponent: Component {
-        Text { text: "A"; color: Color.foreground }
+        Text { text: "A"; color: Commons.Color.foreground }
       }
     }
 
     PanelSectionHeader {
       text: "SECTION"
-      foreground: Color.foreground
+      foreground: Commons.Color.foreground
     }
 
     ToggleSwitch {

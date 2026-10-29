@@ -77,7 +77,7 @@ class SessionDefaults(unittest.TestCase):
 
     def test_empty_state_has_retained_bindings_and_owned_session_environment(self):
         text = self.run_defaults()
-        self.assertIn('BIND\tSUPER + W=hl.dsp.window.close', text)
+        self.assertIn('BIND\tSUPER + Q=hl.dsp.window.close', text)
         self.assertIn('BIND\tSUPER + RETURN=tam-launch-terminal', text)
         self.assertIn('BIND\tPRINT=tam-capture-screenshot', text)
         self.assertIn('ENV\tTAMLINUX_SESSION=1', text)

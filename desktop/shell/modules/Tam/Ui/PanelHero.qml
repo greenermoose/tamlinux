@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Row {
   id: root
@@ -8,7 +9,7 @@ Row {
   property string title: ""
   property string meta: ""
   property string detail: ""
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property string fontFamily: Style.font.family
   property real iconSize: Style.font.display
 

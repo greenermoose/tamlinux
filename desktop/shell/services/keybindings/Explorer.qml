@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import Tam.Commons
+import Tam.Commons as Commons
 import "KeybindingsModel.js" as Model
 
 PanelWindow {
@@ -21,7 +22,7 @@ PanelWindow {
   readonly property string appVersion: Model.APP_VERSION || "0.1.0"
   readonly property string buildRevision: Quickshell.env("TAMLINUX_KEYBINDINGS_REV") || ""
   readonly property string cultivarVersion: Quickshell.env("TAMLINUX_VERSION") || ""
-  signal closed()
+  signal dismissRequested()
 
   component DarkButton: Button {
     id: btn
@@ -33,19 +34,19 @@ PanelWindow {
       text: btn.text
       font.pixelSize: 12
       font.bold: btn.checked || btn.isAccent
-      color: btn.checked ? Color.accentText : (btn.isAccent ? Color.accentText : Color.foreground)
+      color: btn.checked ? Commons.Color.accentText : (btn.isAccent ? Commons.Color.accentText : Commons.Color.foreground)
       horizontalAlignment: Text.AlignHCenter
       verticalAlignment: Text.AlignVCenter
     }
     background: Rectangle {
       radius: Style.cornerRadius
-      color: btn.checked ? Util.alpha(Color.accent, 0.25)
-           : (btn.isAccent ? (btn.hovered ? Util.alpha(Color.accent, 0.30) : Util.alpha(Color.accent, 0.18))
-           : (btn.down ? Util.alpha(Color.foreground, 0.14)
-           : (btn.hovered ? Util.alpha(Color.foreground, 0.09) : Util.alpha(Color.foreground, 0.04))))
-      border.color: btn.checked ? Color.accent
-                  : (btn.isAccent ? Color.accent
-                  : (btn.hovered ? Util.alpha(Color.foreground, 0.35) : Util.alpha(Color.foreground, 0.18)))
+      color: btn.checked ? Util.alpha(Commons.Color.accent, 0.25)
+           : (btn.isAccent ? (btn.hovered ? Util.alpha(Commons.Color.accent, 0.30) : Util.alpha(Commons.Color.accent, 0.18))
+           : (btn.down ? Util.alpha(Commons.Color.foreground, 0.14)
+           : (btn.hovered ? Util.alpha(Commons.Color.foreground, 0.09) : Util.alpha(Commons.Color.foreground, 0.04))))
+      border.color: btn.checked ? Commons.Color.accent
+                  : (btn.isAccent ? Commons.Color.accent
+                  : (btn.hovered ? Util.alpha(Commons.Color.foreground, 0.35) : Util.alpha(Commons.Color.foreground, 0.18)))
       border.width: 1
     }
   }
@@ -82,7 +83,7 @@ PanelWindow {
     if (visible) { search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
     else { capturing = false; inhibitor.enabled = false }
   }
-  function closeExplorer() { capturing = false; inhibitor.enabled = false; closed() }
+  function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
   function beginCapture() { lastCaptured = null; captureResult = ""; lastTriedChord = []; lastTriedCombo = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
   function finishCapture() {
     var target = panel.lastCaptured
@@ -116,7 +117,7 @@ PanelWindow {
   onSelectedChanged: {
     commandPath = ""
     if (!selected || selected.dispatcher !== "exec") return
-    var match = /^([A-Za-z0-9_./+-]+)(?:\s|$)/.exec(selected.arg)
+    var match = selected.arg.match(/^([A-Za-z0-9_./+-]+)(?:\s|$)/)
     if (match && !pathLookup.running) {
       pathLookup.target = selected.arg
       pathLookup.command = ["sh", "-c", 'command -v -- "$1"', "sh", match[1]]
@@ -124,6 +125,7 @@ PanelWindow {
     }
   }
   Process {
+    environment: Util.hostEnvironment()
     id: pathLookup
     property string target: ""
     stdout: StdioCollector { onStreamFinished: if (panel.selected && panel.selected.arg === pathLookup.target && text.trim().charAt(0) === "/") panel.commandPath = text.trim() }
@@ -134,7 +136,7 @@ PanelWindow {
     enabled: false
     onCancelled: { panel.capturing = false; panel.captureResult = "Capture was stopped by the compositor." }
   }
-  Rectangle { anchors.fill: parent; color: Color.menu.scrim }
+  Rectangle { anchors.fill: parent; color: Commons.Color.menu.scrim }
   MouseArea { anchors.fill: parent; onClicked: panel.closeExplorer() }
   Rectangle {
     id: card
@@ -142,8 +144,8 @@ PanelWindow {
     width: Math.min(panel.width - 32, 1040)
     height: Math.min(panel.height - 32, 720)
     radius: Style.cornerRadius
-    color: Color.menu.background
-    border.color: Color.menu.border
+    color: Commons.Color.menu.background
+    border.color: Commons.Color.menu.border
     border.width: 1
     MouseArea { anchors.fill: parent }
     Column {
@@ -158,7 +160,7 @@ PanelWindow {
           spacing: 12
           Text {
             text: "Keyboard shortcuts"
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             font.pixelSize: 24
             font.bold: true
             anchors.verticalCenter: parent.verticalCenter
@@ -169,8 +171,8 @@ PanelWindow {
             height: 24
             width: versionBadgeRow.implicitWidth + 16
             radius: 12
-            color: panel.buildRevision !== "" ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.text, 0.08)
-            border.color: panel.buildRevision !== "" ? Util.alpha(Color.accent, 0.45) : Util.alpha(Color.menu.border, 0.8)
+            color: panel.buildRevision !== "" ? Util.alpha(Commons.Color.accent, 0.16) : Util.alpha(Commons.Color.menu.text, 0.08)
+            border.color: panel.buildRevision !== "" ? Util.alpha(Commons.Color.accent, 0.45) : Util.alpha(Commons.Color.menu.border, 0.8)
             border.width: 1
             ToolTip.visible: badgeMouse.containsMouse
             ToolTip.delay: 300
@@ -187,12 +189,12 @@ PanelWindow {
               Rectangle {
                 visible: panel.buildRevision !== ""
                 width: 6; height: 6; radius: 3
-                color: Color.accent
+                color: Commons.Color.accent
                 anchors.verticalCenter: parent.verticalCenter
               }
               Text {
                 text: "v" + panel.appVersion + (panel.buildRevision !== "" ? " • " + panel.buildRevision : "")
-                color: panel.buildRevision !== "" ? Color.accentText : Color.menu.text
+                color: panel.buildRevision !== "" ? Commons.Color.accentText : Commons.Color.menu.text
                 font.pixelSize: 11
                 font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
@@ -213,10 +215,10 @@ PanelWindow {
           id: search
           width: parent.width - 150
           height: parent.height
-          color: Color.foreground
-          placeholderTextColor: Util.alpha(Color.foreground, 0.45)
-          selectedTextColor: Color.accentText
-          selectionColor: Util.alpha(Color.accent, 0.4)
+          color: Commons.Color.foreground
+          placeholderTextColor: Util.alpha(Commons.Color.foreground, 0.45)
+          selectedTextColor: Commons.Color.accentText
+          selectionColor: Util.alpha(Commons.Color.accent, 0.4)
           font.pixelSize: 13
           leftPadding: 14
           rightPadding: 14
@@ -224,7 +226,7 @@ PanelWindow {
           background: Rectangle {
             radius: Style.cornerRadius
             color: "#0c0f12"
-            border.color: search.activeFocus ? Color.accent : Util.alpha(Color.foreground, 0.22)
+            border.color: search.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
             border.width: 1
           }
           placeholderText: "Search shortcuts, actions, or commands (e.g. terminal, workspace, close)..."
@@ -285,7 +287,7 @@ PanelWindow {
           }
           Rectangle {
             width: 1; height: 20
-            color: Util.alpha(Color.foreground, 0.16)
+            color: Util.alpha(Commons.Color.foreground, 0.16)
             anchors.verticalCenter: parent.verticalCenter
           }
           ComboBox {
@@ -297,7 +299,7 @@ PanelWindow {
               rightPadding: 24
               text: groupSelect.displayText
               font.pixelSize: 12
-              color: Color.foreground
+              color: Commons.Color.foreground
               verticalAlignment: Text.AlignVCenter
               elide: Text.ElideRight
             }
@@ -305,8 +307,8 @@ PanelWindow {
               implicitWidth: 150
               implicitHeight: 34
               radius: Style.cornerRadius
-              color: groupSelect.hovered ? Util.alpha(Color.foreground, 0.08) : Util.alpha(Color.foreground, 0.04)
-              border.color: groupSelect.visualFocus ? Color.accent : Util.alpha(Color.foreground, 0.22)
+              color: groupSelect.hovered ? Util.alpha(Commons.Color.foreground, 0.08) : Util.alpha(Commons.Color.foreground, 0.04)
+              border.color: groupSelect.visualFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
               border.width: 1
             }
             popup: Popup {
@@ -323,7 +325,7 @@ PanelWindow {
               }
               background: Rectangle {
                 color: "#101418"
-                border.color: Util.alpha(Color.accent, 0.45)
+                border.color: Util.alpha(Commons.Color.accent, 0.45)
                 border.width: 1
                 radius: Style.cornerRadius
               }
@@ -334,13 +336,13 @@ PanelWindow {
               highlighted: groupSelect.highlightedIndex === index
               contentItem: Text {
                 text: modelData
-                color: highlighted ? Color.accentText : Color.foreground
+                color: highlighted ? Commons.Color.accentText : Commons.Color.foreground
                 font.pixelSize: 12
                 verticalAlignment: Text.AlignVCenter
               }
               background: Rectangle {
                 radius: 4
-                color: highlighted ? Util.alpha(Color.accent, 0.25) : "transparent"
+                color: highlighted ? Util.alpha(Commons.Color.accent, 0.25) : "transparent"
               }
             }
             Connections {
@@ -371,15 +373,15 @@ PanelWindow {
             height: 24
             width: countText.implicitWidth + 16
             radius: 12
-            color: Util.alpha(Color.foreground, 0.04)
-            border.color: Util.alpha(Color.foreground, 0.16)
+            color: Util.alpha(Commons.Color.foreground, 0.04)
+            border.color: Util.alpha(Commons.Color.foreground, 0.16)
             border.width: 1
             anchors.verticalCenter: parent.verticalCenter
             Text {
               id: countText
               anchors.centerIn: parent
               text: panel.filtered.length + (panel.filtered.length === 1 ? " shortcut" : " shortcuts")
-              color: Color.foreground
+              color: Commons.Color.foreground
               opacity: 0.85
               font.pixelSize: 11
               font.bold: true
@@ -441,8 +443,8 @@ PanelWindow {
             required property int index
             readonly property bool isSelected: list.currentIndex === index
             width: list.width; height: 42; radius: 6
-            color: isSelected ? Util.alpha(Color.accent, 0.22) : (hover.containsMouse ? Util.alpha(Color.foreground, 0.06) : "transparent")
-            border.color: isSelected ? Color.accent : (hover.containsMouse ? Util.alpha(Color.foreground, 0.15) : "transparent")
+            color: isSelected ? Util.alpha(Commons.Color.accent, 0.22) : (hover.containsMouse ? Util.alpha(Commons.Color.foreground, 0.06) : "transparent")
+            border.color: isSelected ? Commons.Color.accent : (hover.containsMouse ? Util.alpha(Commons.Color.foreground, 0.15) : "transparent")
             border.width: 1
 
             // Active indicator bar on left edge
@@ -453,7 +455,7 @@ PanelWindow {
               width: 3
               height: 22
               radius: 1.5
-              color: Color.accent
+              color: Commons.Color.accent
               visible: rowDelegate.isSelected
             }
 
@@ -462,7 +464,7 @@ PanelWindow {
               anchors.right: chordRow.left; anchors.rightMargin: 12
               anchors.verticalCenter: parent.verticalCenter
               text: modelData.does
-              color: rowDelegate.isSelected ? Color.accentText : Color.menu.text
+              color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
               font.bold: true
               font.pixelSize: 13
               elide: Text.ElideRight
@@ -482,7 +484,7 @@ PanelWindow {
                   Text {
                     visible: index > 0
                     text: "+"
-                    color: rowDelegate.isSelected ? Color.accentText : Color.menu.text
+                    color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
                     opacity: rowDelegate.isSelected ? 0.7 : 0.4
                     font.pixelSize: 11
                     font.bold: true
@@ -492,8 +494,8 @@ PanelWindow {
                     height: 22
                     width: Math.max(22, keyLabel.implicitWidth + 12)
                     radius: 4
-                    color: rowDelegate.isSelected ? Util.alpha(Color.accent, 0.28) : Util.alpha(Color.foreground, 0.08)
-                    border.color: rowDelegate.isSelected ? Color.accent : Util.alpha(Color.foreground, 0.18)
+                    color: rowDelegate.isSelected ? Util.alpha(Commons.Color.accent, 0.28) : Util.alpha(Commons.Color.foreground, 0.08)
+                    border.color: rowDelegate.isSelected ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.18)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -501,7 +503,7 @@ PanelWindow {
                       id: keyLabel
                       anchors.centerIn: parent
                       text: modelData
-                      color: rowDelegate.isSelected ? Color.accentText : Color.menu.text
+                      color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
                       font.pixelSize: 11
                       font.bold: true
                       font.family: Style.fontFamily
@@ -521,12 +523,12 @@ PanelWindow {
               }
             }
           }
-          Text { anchors.centerIn: parent; visible: list.count === 0; text: panel.rows.length ? "No shortcuts found" : "No bindings available from the compositor"; color: Color.menu.text; opacity: 0.7 }
+          Text { anchors.centerIn: parent; visible: list.count === 0; text: panel.rows.length ? "No shortcuts found" : "No bindings available from the compositor"; color: Commons.Color.menu.text; opacity: 0.7 }
         }
         Rectangle {
           width: parent.width - list.width - 18; height: parent.height; radius: 8
-          color: Util.alpha(Color.foreground, 0.03)
-          border.color: Util.alpha(Color.foreground, 0.12)
+          color: Util.alpha(Commons.Color.foreground, 0.03)
+          border.color: Util.alpha(Commons.Color.foreground, 0.12)
           border.width: 1
 
           // Empty state
@@ -540,12 +542,12 @@ PanelWindow {
               text: "Select a shortcut"
               font.bold: true
               font.pixelSize: 16
-              color: Color.menu.text
+              color: Commons.Color.menu.text
             }
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: "Use arrow keys or click a row to inspect its details"
-              color: Color.menu.text
+              color: Commons.Color.menu.text
               opacity: 0.6
               font.pixelSize: 13
             }
@@ -577,8 +579,8 @@ PanelWindow {
                     height: 22
                     width: catLabel.implicitWidth + 14
                     radius: 11
-                    color: Util.alpha(Color.foreground, 0.08)
-                    border.color: Util.alpha(Color.foreground, 0.2)
+                    color: Util.alpha(Commons.Color.foreground, 0.08)
+                    border.color: Util.alpha(Commons.Color.foreground, 0.2)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
@@ -587,15 +589,15 @@ PanelWindow {
                       text: panel.selected ? panel.selected.group : ""
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.menu.text
+                      color: Commons.Color.menu.text
                     }
                   }
                   Rectangle {
                     height: 22
                     width: dispLabel.implicitWidth + 14
                     radius: 11
-                    color: Util.alpha(Color.accent, 0.15)
-                    border.color: Util.alpha(Color.accent, 0.4)
+                    color: Util.alpha(Commons.Color.accent, 0.15)
+                    border.color: Util.alpha(Commons.Color.accent, 0.4)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
@@ -604,7 +606,7 @@ PanelWindow {
                       text: panel.selected ? (panel.selected.dispatcher || "internal") : ""
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.menu.selectedText
+                      color: Commons.Color.menu.selectedText
                     }
                   }
                 }
@@ -612,7 +614,7 @@ PanelWindow {
                 Text {
                   width: parent.width
                   text: panel.selected ? panel.selected.does : ""
-                  color: Color.accentText
+                  color: Commons.Color.accentText
                   font.bold: true
                   font.pixelSize: 20
                   wrapMode: Text.Wrap
@@ -630,7 +632,7 @@ PanelWindow {
                     Text {
                       visible: index > 0
                       text: "+"
-                      color: Color.menu.text
+                      color: Commons.Color.menu.text
                       opacity: 0.5
                       font.pixelSize: 12
                       font.bold: true
@@ -640,8 +642,8 @@ PanelWindow {
                       height: 26
                       width: Math.max(26, detailKeyLabel.implicitWidth + 14)
                       radius: 4
-                      color: Util.alpha(Color.accent, 0.22)
-                      border.color: Color.accent
+                      color: Util.alpha(Commons.Color.accent, 0.22)
+                      border.color: Commons.Color.accent
                       border.width: 1
                       anchors.verticalCenter: parent.verticalCenter
 
@@ -649,7 +651,7 @@ PanelWindow {
                         id: detailKeyLabel
                         anchors.centerIn: parent
                         text: modelData
-                        color: Color.accentText
+                        color: Commons.Color.accentText
                         font.pixelSize: 12
                         font.bold: true
                         font.family: Style.fontFamily
@@ -664,8 +666,8 @@ PanelWindow {
                 width: parent.width
                 height: explCol.implicitHeight + 20
                 radius: 6
-                color: Util.alpha(Color.foreground, 0.04)
-                border.color: Util.alpha(Color.foreground, 0.12)
+                color: Util.alpha(Commons.Color.foreground, 0.04)
+                border.color: Util.alpha(Commons.Color.foreground, 0.12)
                 border.width: 1
 
                 Column {
@@ -680,12 +682,12 @@ PanelWindow {
                     text: "Action"
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.accent
+                    color: Commons.Color.accent
                   }
                   Text {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    color: Color.foreground
+                    color: Commons.Color.foreground
                     font.pixelSize: 13
                     lineHeight: 1.25
                     text: panel.selected && panel.selected.explanation ? panel.selected.explanation : "No additional explanation is available for this action."
@@ -702,7 +704,7 @@ PanelWindow {
                   text: "Command & Arguments"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.accent
+                  color: Commons.Color.accent
                 }
 
                 Rectangle {
@@ -710,7 +712,7 @@ PanelWindow {
                   height: cmdText.implicitHeight + 16
                   radius: 6
                   color: "#0a0c0e"
-                  border.color: Util.alpha(Color.foreground, 0.18)
+                  border.color: Util.alpha(Commons.Color.foreground, 0.18)
                   border.width: 1
 
                   Text {
@@ -722,7 +724,7 @@ PanelWindow {
                     text: panel.selected ? (panel.selected.arg || "(none)") : ""
                     font.family: Style.fontFamily
                     font.pixelSize: 12
-                    color: Color.accent
+                    color: Commons.Color.accent
                     wrapMode: Text.WrapAnywhere
                   }
                 }
@@ -737,7 +739,7 @@ PanelWindow {
                   text: "Executable Path"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.accent
+                  color: Commons.Color.accent
                 }
 
                 Rectangle {
@@ -745,7 +747,7 @@ PanelWindow {
                   height: 34
                   radius: 6
                   color: "#0a0c0e"
-                  border.color: Util.alpha(Color.foreground, 0.18)
+                  border.color: Util.alpha(Commons.Color.foreground, 0.18)
                   border.width: 1
 
                   Row {
@@ -758,7 +760,7 @@ PanelWindow {
                     Rectangle {
                       width: 8; height: 8; radius: 4
                       anchors.verticalCenter: parent.verticalCenter
-                      color: panel.commandPath ? "#68b087" : (panel.selected && panel.selected.dispatcher === "exec" ? "#c46b6b" : Color.accent)
+                      color: panel.commandPath ? "#68b087" : (panel.selected && panel.selected.dispatcher === "exec" ? "#c46b6b" : Commons.Color.accent)
                     }
 
                     Text {
@@ -766,7 +768,7 @@ PanelWindow {
                       text: panel.commandPath ? panel.commandPath : (panel.selected && panel.selected.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
                       font.family: Style.fontFamily
                       font.pixelSize: 11
-                      color: panel.commandPath ? Color.menu.text : (panel.selected && panel.selected.dispatcher === "exec" ? Color.urgent : Color.muted)
+                      color: panel.commandPath ? Commons.Color.menu.text : (panel.selected && panel.selected.dispatcher === "exec" ? Commons.Color.urgent : Commons.Color.muted)
                       elide: Text.ElideMiddle
                       anchors.verticalCenter: parent.verticalCenter
                     }
@@ -779,7 +781,7 @@ PanelWindow {
       }
     }
     Rectangle {
-      anchors.fill: parent; visible: panel.capturing; radius: card.radius; color: Color.menu.background
+      anchors.fill: parent; visible: panel.capturing; radius: card.radius; color: Commons.Color.menu.background
       MouseArea { anchors.fill: parent }
       Item {
         id: captureFocus; anchors.fill: parent; focus: panel.capturing
@@ -824,7 +826,7 @@ PanelWindow {
             spacing: 12
             Text {
               text: "Try a shortcut"
-              color: Color.menu.text
+              color: Commons.Color.menu.text
               font.pixelSize: 24
               font.bold: true
               anchors.verticalCenter: parent.verticalCenter
@@ -833,8 +835,8 @@ PanelWindow {
               height: 24
               width: captureStatusRow.implicitWidth + 16
               radius: 12
-              color: inhibitor.active ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.text, 0.08)
-              border.color: inhibitor.active ? Util.alpha(Color.accent, 0.45) : Util.alpha(Color.menu.border, 0.8)
+              color: inhibitor.active ? Util.alpha(Commons.Color.accent, 0.16) : Util.alpha(Commons.Color.menu.text, 0.08)
+              border.color: inhibitor.active ? Util.alpha(Commons.Color.accent, 0.45) : Util.alpha(Commons.Color.menu.border, 0.8)
               border.width: 1
               anchors.verticalCenter: parent.verticalCenter
               Row {
@@ -843,12 +845,12 @@ PanelWindow {
                 spacing: 6
                 Rectangle {
                   width: 6; height: 6; radius: 3
-                  color: inhibitor.active ? Color.accent : "#c46b6b"
+                  color: inhibitor.active ? Commons.Color.accent : "#c46b6b"
                   anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                   text: inhibitor.active ? "Capture Active — Safe to test" : "Waiting for compositor capture"
-                  color: inhibitor.active ? Color.accentText : Color.menu.text
+                  color: inhibitor.active ? Commons.Color.accentText : Commons.Color.menu.text
                   font.pixelSize: 11
                   font.bold: true
                   anchors.verticalCenter: parent.verticalCenter
@@ -867,7 +869,7 @@ PanelWindow {
         Text {
           width: parent.width
           wrapMode: Text.Wrap
-          color: Color.foreground
+          color: Commons.Color.foreground
           opacity: 0.75
           font.pixelSize: 13
           text: inhibitor.active
@@ -886,8 +888,8 @@ PanelWindow {
             width: Math.floor((parent.width - 18) * 0.44)
             height: parent.height
             radius: 8
-            color: Util.alpha(Color.foreground, 0.02)
-            border.color: Util.alpha(Color.foreground, 0.14)
+            color: Util.alpha(Commons.Color.foreground, 0.02)
+            border.color: Util.alpha(Commons.Color.foreground, 0.14)
             border.width: 1
 
             Column {
@@ -903,15 +905,15 @@ PanelWindow {
                   text: "What you are trying"
                   font.pixelSize: 15
                   font.bold: true
-                  color: Color.foreground
+                  color: Commons.Color.foreground
                   anchors.verticalCenter: parent.verticalCenter
                 }
                 Rectangle {
                   height: 20
                   width: liveBadgeText.implicitWidth + 12
                   radius: 10
-                  color: Util.alpha(Color.accent, 0.16)
-                  border.color: Util.alpha(Color.accent, 0.4)
+                  color: Util.alpha(Commons.Color.accent, 0.16)
+                  border.color: Util.alpha(Commons.Color.accent, 0.4)
                   border.width: 1
                   anchors.verticalCenter: parent.verticalCenter
                   Row {
@@ -919,13 +921,13 @@ PanelWindow {
                     spacing: 5
                     Rectangle {
                       width: 6; height: 6; radius: 3
-                      color: Color.accent
+                      color: Commons.Color.accent
                       anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                       id: liveBadgeText
                       text: "Listening"
-                      color: Color.accentText
+                      color: Commons.Color.accentText
                       font.pixelSize: 10
                       font.bold: true
                     }
@@ -938,10 +940,10 @@ PanelWindow {
                 width: parent.width
                 height: 110
                 radius: 8
-                color: panel.lastCaptured ? Util.alpha(Color.accent, 0.10)
-                     : (panel.lastTriedCombo ? Util.alpha(Color.urgent, 0.08) : "#0c0f12")
-                border.color: panel.lastCaptured ? Color.accent
-                            : (panel.lastTriedCombo ? Util.alpha(Color.urgent, 0.45) : Util.alpha(Color.foreground, 0.20))
+                color: panel.lastCaptured ? Util.alpha(Commons.Color.accent, 0.10)
+                     : (panel.lastTriedCombo ? Util.alpha(Commons.Color.urgent, 0.08) : "#0c0f12")
+                border.color: panel.lastCaptured ? Commons.Color.accent
+                            : (panel.lastTriedCombo ? Util.alpha(Commons.Color.urgent, 0.45) : Util.alpha(Commons.Color.foreground, 0.20))
                 border.width: 1
 
                 Column {
@@ -962,7 +964,7 @@ PanelWindow {
                         Text {
                           visible: index > 0
                           text: "+"
-                          color: Color.accentText
+                          color: Commons.Color.accentText
                           opacity: 0.7
                           font.pixelSize: 14
                           font.bold: true
@@ -972,8 +974,8 @@ PanelWindow {
                           height: 34
                           width: Math.max(34, keycapLabel.implicitWidth + 18)
                           radius: 5
-                          color: panel.lastCaptured ? Util.alpha(Color.accent, 0.26) : Util.alpha(Color.foreground, 0.12)
-                          border.color: panel.lastCaptured ? Color.accent : Util.alpha(Color.foreground, 0.3)
+                          color: panel.lastCaptured ? Util.alpha(Commons.Color.accent, 0.26) : Util.alpha(Commons.Color.foreground, 0.12)
+                          border.color: panel.lastCaptured ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.3)
                           border.width: 1
                           anchors.verticalCenter: parent.verticalCenter
 
@@ -981,7 +983,7 @@ PanelWindow {
                             id: keycapLabel
                             anchors.centerIn: parent
                             text: modelData
-                            color: Color.accentText
+                            color: Commons.Color.accentText
                             font.pixelSize: 14
                             font.bold: true
                             font.family: Style.fontFamily
@@ -999,12 +1001,12 @@ PanelWindow {
 
                     Rectangle {
                       width: 6; height: 6; radius: 3
-                      color: panel.lastCaptured ? "#68b087" : Color.urgent
+                      color: panel.lastCaptured ? "#68b087" : Commons.Color.urgent
                       anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                       text: panel.lastCaptured ? panel.lastCaptured.does : "Unassigned key combination"
-                      color: panel.lastCaptured ? "#68b087" : Color.urgent
+                      color: panel.lastCaptured ? "#68b087" : Commons.Color.urgent
                       font.pixelSize: 13
                       font.bold: true
                       anchors.verticalCenter: parent.verticalCenter
@@ -1016,7 +1018,7 @@ PanelWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: panel.lastTriedChord.length === 0
                     text: "Press any key combination on keyboard..."
-                    color: Color.foreground
+                    color: Commons.Color.foreground
                     opacity: 0.6
                     font.pixelSize: 14
                   }
@@ -1028,8 +1030,8 @@ PanelWindow {
                 width: parent.width
                 height: tryAnotherCol.implicitHeight + 24
                 radius: 8
-                color: Util.alpha(Color.foreground, 0.04)
-                border.color: Util.alpha(Color.foreground, 0.12)
+                color: Util.alpha(Commons.Color.foreground, 0.04)
+                border.color: Util.alpha(Commons.Color.foreground, 0.12)
                 border.width: 1
 
                 Column {
@@ -1051,7 +1053,7 @@ PanelWindow {
                       text: "Try another one anytime"
                       font.pixelSize: 12
                       font.bold: true
-                      color: Color.accent
+                      color: Commons.Color.accent
                       anchors.verticalCenter: parent.verticalCenter
                     }
                   }
@@ -1059,7 +1061,7 @@ PanelWindow {
                   Text {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    color: Color.foreground
+                    color: Commons.Color.foreground
                     opacity: 0.75
                     font.pixelSize: 12
                     lineHeight: 1.3
@@ -1077,7 +1079,7 @@ PanelWindow {
                   text: "Popular shortcuts you can test:"
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.foreground
+                  color: Commons.Color.foreground
                   opacity: 0.6
                 }
 
@@ -1097,8 +1099,8 @@ PanelWindow {
                       height: 24
                       width: sampleRow.implicitWidth + 12
                       radius: 4
-                      color: Util.alpha(Color.foreground, 0.05)
-                      border.color: Util.alpha(Color.foreground, 0.15)
+                      color: Util.alpha(Commons.Color.foreground, 0.05)
+                      border.color: Util.alpha(Commons.Color.foreground, 0.15)
                       border.width: 1
 
                       Row {
@@ -1107,14 +1109,14 @@ PanelWindow {
                         spacing: 6
                         Text {
                           text: modelData.combo
-                          color: Color.accent
+                          color: Commons.Color.accent
                           font.pixelSize: 10
                           font.bold: true
                           font.family: Style.fontFamily
                         }
                         Text {
                           text: "(" + modelData.desc + ")"
-                          color: Color.foreground
+                          color: Commons.Color.foreground
                           opacity: 0.6
                           font.pixelSize: 10
                         }
@@ -1140,8 +1142,8 @@ PanelWindow {
             width: parent.width - tryPane.width - 18
             height: parent.height
             radius: 8
-            color: Util.alpha(Color.foreground, 0.02)
-            border.color: panel.lastCaptured ? Util.alpha(Color.accent, 0.4) : Util.alpha(Color.foreground, 0.14)
+            color: Util.alpha(Commons.Color.foreground, 0.02)
+            border.color: panel.lastCaptured ? Util.alpha(Commons.Color.accent, 0.4) : Util.alpha(Commons.Color.foreground, 0.14)
             border.width: 1
 
             // 1. Initial State: Waiting for input
@@ -1154,22 +1156,22 @@ PanelWindow {
               Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 56; height: 56; radius: 28
-                color: Util.alpha(Color.accent, 0.14)
-                border.color: Util.alpha(Color.accent, 0.35)
+                color: Util.alpha(Commons.Color.accent, 0.14)
+                border.color: Util.alpha(Commons.Color.accent, 0.35)
                 border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "→"
                   font.pixelSize: 24
                   font.bold: true
-                  color: Color.accent
+                  color: Commons.Color.accent
                 }
               }
 
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "What that does"
-                color: Color.foreground
+                color: Commons.Color.foreground
                 font.pixelSize: 17
                 font.bold: true
               }
@@ -1179,7 +1181,7 @@ PanelWindow {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                color: Color.foreground
+                color: Commons.Color.foreground
                 opacity: 0.65
                 font.pixelSize: 13
                 lineHeight: 1.3
@@ -1197,22 +1199,22 @@ PanelWindow {
               Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 56; height: 56; radius: 28
-                color: Util.alpha(Color.urgent, 0.12)
-                border.color: Util.alpha(Color.urgent, 0.35)
+                color: Util.alpha(Commons.Color.urgent, 0.12)
+                border.color: Util.alpha(Commons.Color.urgent, 0.35)
                 border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "✕"
                   font.pixelSize: 22
                   font.bold: true
-                  color: Color.urgent
+                  color: Commons.Color.urgent
                 }
               }
 
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "No action assigned"
-                color: Color.foreground
+                color: Commons.Color.foreground
                 font.pixelSize: 17
                 font.bold: true
               }
@@ -1222,7 +1224,7 @@ PanelWindow {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                color: Color.foreground
+                color: Commons.Color.foreground
                 opacity: 0.70
                 font.pixelSize: 13
                 lineHeight: 1.3
@@ -1254,7 +1256,7 @@ PanelWindow {
                     text: "What that does"
                     font.pixelSize: 15
                     font.bold: true
-                    color: Color.foreground
+                    color: Commons.Color.foreground
                     anchors.verticalCenter: parent.verticalCenter
                   }
 
@@ -1262,8 +1264,8 @@ PanelWindow {
                     height: 22
                     width: captureCatLabel.implicitWidth + 14
                     radius: 11
-                    color: Util.alpha(Color.foreground, 0.08)
-                    border.color: Util.alpha(Color.foreground, 0.22)
+                    color: Util.alpha(Commons.Color.foreground, 0.08)
+                    border.color: Util.alpha(Commons.Color.foreground, 0.22)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
@@ -1272,7 +1274,7 @@ PanelWindow {
                       text: panel.lastCaptured ? (panel.lastCaptured.group || "Other") : ""
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.foreground
+                      color: Commons.Color.foreground
                     }
                   }
 
@@ -1280,8 +1282,8 @@ PanelWindow {
                     height: 22
                     width: captureDispLabel.implicitWidth + 14
                     radius: 11
-                    color: Util.alpha(Color.accent, 0.15)
-                    border.color: Util.alpha(Color.accent, 0.45)
+                    color: Util.alpha(Commons.Color.accent, 0.15)
+                    border.color: Util.alpha(Commons.Color.accent, 0.45)
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
@@ -1290,7 +1292,7 @@ PanelWindow {
                       text: panel.lastCaptured ? (panel.lastCaptured.dispatcher || "command") : ""
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accentText
+                      color: Commons.Color.accentText
                     }
                   }
                 }
@@ -1299,7 +1301,7 @@ PanelWindow {
                 Text {
                   width: parent.width
                   text: panel.lastCaptured ? panel.lastCaptured.does : ""
-                  color: Color.accentText
+                  color: Commons.Color.accentText
                   font.bold: true
                   font.pixelSize: 22
                   wrapMode: Text.Wrap
@@ -1310,8 +1312,8 @@ PanelWindow {
                   width: parent.width
                   height: captureExplCol.implicitHeight + 20
                   radius: 6
-                  color: Util.alpha(Color.foreground, 0.04)
-                  border.color: Util.alpha(Color.foreground, 0.12)
+                  color: Util.alpha(Commons.Color.foreground, 0.04)
+                  border.color: Util.alpha(Commons.Color.foreground, 0.12)
                   border.width: 1
 
                   Column {
@@ -1326,12 +1328,12 @@ PanelWindow {
                       text: "Action"
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: Commons.Color.accent
                     }
                     Text {
                       width: parent.width
                       wrapMode: Text.Wrap
-                      color: Color.foreground
+                      color: Commons.Color.foreground
                       font.pixelSize: 13
                       lineHeight: 1.25
                       text: panel.lastCaptured && panel.lastCaptured.explanation ? panel.lastCaptured.explanation : "No additional explanation is available for this action."
@@ -1348,7 +1350,7 @@ PanelWindow {
                     text: "Command & Arguments"
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.accent
+                    color: Commons.Color.accent
                   }
 
                   Rectangle {
@@ -1356,7 +1358,7 @@ PanelWindow {
                     height: captureCmdText.implicitHeight + 16
                     radius: 6
                     color: "#0a0c0e"
-                    border.color: Util.alpha(Color.foreground, 0.18)
+                    border.color: Util.alpha(Commons.Color.foreground, 0.18)
                     border.width: 1
 
                     Text {
@@ -1368,7 +1370,7 @@ PanelWindow {
                       text: panel.lastCaptured ? (panel.lastCaptured.arg || "(none)") : ""
                       font.family: Style.fontFamily
                       font.pixelSize: 12
-                      color: Color.accent
+                      color: Commons.Color.accent
                       wrapMode: Text.WrapAnywhere
                     }
                   }
@@ -1383,7 +1385,7 @@ PanelWindow {
                     text: "Executable Path"
                     font.pixelSize: 11
                     font.bold: true
-                    color: Color.accent
+                    color: Commons.Color.accent
                   }
 
                   Rectangle {
@@ -1391,7 +1393,7 @@ PanelWindow {
                     height: 34
                     radius: 6
                     color: "#0a0c0e"
-                    border.color: Util.alpha(Color.foreground, 0.18)
+                    border.color: Util.alpha(Commons.Color.foreground, 0.18)
                     border.width: 1
 
                     Row {
@@ -1404,7 +1406,7 @@ PanelWindow {
                       Rectangle {
                         width: 8; height: 8; radius: 4
                         anchors.verticalCenter: parent.verticalCenter
-                        color: panel.commandPath ? "#68b087" : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "#c46b6b" : Color.accent)
+                        color: panel.commandPath ? "#68b087" : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "#c46b6b" : Commons.Color.accent)
                       }
 
                       Text {
@@ -1412,7 +1414,7 @@ PanelWindow {
                         text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
                         font.family: Style.fontFamily
                         font.pixelSize: 11
-                        color: panel.commandPath ? Color.foreground : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Color.urgent : Color.muted)
+                        color: panel.commandPath ? Commons.Color.foreground : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Commons.Color.urgent : Commons.Color.muted)
                         elide: Text.ElideMiddle
                         anchors.verticalCenter: parent.verticalCenter
                       }

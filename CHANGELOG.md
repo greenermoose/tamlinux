@@ -8,6 +8,14 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Qualify the shared QML palette so QtQuick's `Color` type cannot shadow it:
+  retain theme colours across the bar, widgets and authentication prompt.
+- Place authentication on a lit output, preferring the focused display;
+  wake the target when opening and keep an active prompt visible.
+- Require valid palette colours for deployment readiness and live checks.
+  Fix the explorer's close-signal collision and isolate its helper processes
+  from the shell's graphics-provider environment.
+
 ## 0.5.8 - Develop candidate
 
 - Preserve Micro JSON5 comments, personal bindings and scoped buffer maps when

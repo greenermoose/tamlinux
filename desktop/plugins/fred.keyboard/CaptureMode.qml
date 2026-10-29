@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Wayland
 import Tam.Ui
 import Tam.Commons
+import Tam.Commons as Commons
 import "."
 
 // Capture mode: a ShortcutInhibitor wrapped in the box that turns it on and
@@ -44,8 +45,8 @@ BorderSurface {
   signal cancelled()
 
   readonly property bool hot: rowMouse.containsMouse && !root.wanted
-  readonly property color muted: Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                         Color.foreground.b, 0.65)
+  readonly property color muted: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                         Commons.Color.foreground.b, 0.65)
 
   implicitHeight: content.implicitHeight + Style.spacing.md * 2
   radius: Style.cornerRadius
@@ -56,11 +57,11 @@ BorderSurface {
   // The box itself says which state it is in: accent border and fill while
   // the mode is live, the ordinary control chrome otherwise.
   borderSpec: root.active
-    ? Border.controlSpec("focus", Color.foreground, Color.accent)
-    : Border.controlSpec(root.hot ? "hover-cursor" : "normal", Color.foreground, Color.accent)
+    ? Border.controlSpec("focus", Commons.Color.foreground, Commons.Color.accent)
+    : Border.controlSpec(root.hot ? "hover-cursor" : "normal", Commons.Color.foreground, Commons.Color.accent)
   color: root.active
-    ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.10)
-    : Style.controlFill(false, root.hot, Color.foreground, Color.accent)
+    ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.10)
+    : Style.controlFill(false, root.hot, Commons.Color.foreground, Commons.Color.accent)
 
   Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -106,7 +107,7 @@ BorderSurface {
           width: parent.width
           textFormat: Text.PlainText
           text: "Capture mode" + (root.active ? " - ON" : root.wanted ? " - requested" : "")
-          color: root.active ? Color.accent : Color.foreground
+          color: root.active ? Commons.Color.accent : Commons.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.subtitle
           font.bold: true
@@ -160,9 +161,9 @@ BorderSurface {
       width: parent.width
       implicitHeight: notice.implicitHeight + Style.spacing.sm * 2
       radius: Math.max(2, Style.space(3))
-      color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18)
+      color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.18)
       border.width: 1
-      border.color: Color.accent
+      border.color: Commons.Color.accent
 
       Text {
         id: notice
@@ -172,7 +173,7 @@ BorderSurface {
         wrapMode: Text.WordWrap
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
-        color: Color.foreground
+        color: Commons.Color.foreground
         text: "Keys and mouse clicks are recorded here, not acted on - clicking the " +
               "switch above is recorded too. Press Esc to exit capture mode. Click " +
               "anywhere outside the panel to exit the plugin."

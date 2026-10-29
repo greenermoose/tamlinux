@@ -1,6 +1,7 @@
 import QtQuick
 import Tam.Ui
 import Tam.Commons
+import Tam.Commons as Commons
 import "."
 
 // Reverse lookup: type part of a command, see the chords that run it. The
@@ -22,8 +23,8 @@ Item {
   // Where focus goes when the field is left.
   property Item focusHome: null
 
-  readonly property color muted: Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                         Color.foreground.b, 0.55)
+  readonly property color muted: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                         Commons.Color.foreground.b, 0.55)
 
   implicitHeight: column.implicitHeight
 

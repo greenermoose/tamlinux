@@ -1,6 +1,7 @@
 import QtQuick
 import Tam.Ui
 import Tam.Commons
+import Tam.Commons as Commons
 import "KeyboardModel.js" as KM
 import "."
 
@@ -92,22 +93,22 @@ Item {
               height: parent.height - view.gutter
               radius: isLed ? height / 2 : Math.max(2, Style.space(3))
 
-              color: down ? Color.accent
+              color: down ? Commons.Color.accent
                           : isLed ? (ledLit
-                                     ? Color.accent
-                                     : Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                               Color.foreground.b, 0.08))
-                          : marked ? Qt.rgba(Color.accent.r, Color.accent.g,
-                                             Color.accent.b, 0.38)
-                          : bound ? Qt.rgba(Color.accent.r, Color.accent.g,
-                                            Color.accent.b, 0.16)
-                          : Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                    Color.foreground.b, 0.06)
+                                     ? Commons.Color.accent
+                                     : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                               Commons.Color.foreground.b, 0.08))
+                          : marked ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g,
+                                             Commons.Color.accent.b, 0.38)
+                          : bound ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g,
+                                            Commons.Color.accent.b, 0.16)
+                          : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                    Commons.Color.foreground.b, 0.06)
 
               border.width: marked ? 2 : 1
               border.color: (down || ledLit || marked)
-                ? Color.accent
-                : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b,
+                ? Commons.Color.accent
+                : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b,
                           isDead ? 0.12 : 0.22)
 
               Text {
@@ -119,10 +120,10 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Math.max(8, view.unit * 0.30)
                 color: (down || ledLit)
-                  ? Color.background
-                  : isDead ? Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                     Color.foreground.b, 0.40)
-                           : Color.foreground
+                  ? Commons.Color.background
+                  : isDead ? Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                     Commons.Color.foreground.b, 0.40)
+                           : Commons.Color.foreground
               }
 
               // Hover shows the key's code and every bind on it. Hover only:
@@ -149,8 +150,8 @@ Item {
                 anchors.margins: 1
                 text: "○"
                 font.pixelSize: Math.max(6, view.unit * 0.18)
-                color: Qt.rgba(Color.foreground.r, Color.foreground.g,
-                               Color.foreground.b, 0.45)
+                color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                               Commons.Color.foreground.b, 0.45)
               }
             }
           }

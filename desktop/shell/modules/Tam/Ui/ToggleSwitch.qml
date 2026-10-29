@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
@@ -10,8 +11,8 @@ Item {
   property bool hasCursor: false
   // Accepted for ported panels; this switch draws no cursor ring to pad.
   property int cursorPad: Style.space(6)
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
 
   signal toggled()
   signal hovered(bool isHovered)

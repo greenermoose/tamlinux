@@ -1,11 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import Tam.Commons
+import Tam.Commons as Commons
 
 TextField {
   id: root
 
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property bool password: false
   // Paddings ported panels set; -1 keeps Qt's default padding.
   property real horizontalPadding: -1
@@ -25,6 +26,6 @@ TextField {
     color: "transparent"
     radius: Style.cornerRadius
     border.width: Style.spacing.hairline
-    border.color: Style.normalBorderFor(root.foreground, Color.accent)
+    border.color: Style.normalBorderFor(root.foreground, Commons.Color.accent)
   }
 }

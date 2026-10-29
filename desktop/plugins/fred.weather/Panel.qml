@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Tam.Commons
+import Tam.Commons as Commons
 import Tam.Ui
 import "Model.js" as Model
 import "Network.js" as Network
@@ -15,7 +16,7 @@ Panel {
   property var anchorItem: null
   property bool openedFromHotkey: false
   property string pluginVersion: "2.0.3"
-  readonly property color foreground: Color.popups.text
+  readonly property color foreground: Commons.Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
 
   property var hostWidget: null
@@ -704,7 +705,7 @@ Panel {
             height: Style.space(30)
             width: Math.min(parent.width - controlsRow.width - parent.spacing, locationTextRow.implicitWidth + Style.space(16))
             radius: Style.cornerRadius
-            color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+            color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
             border.width: 1
             border.color: Util.alpha(root.foreground, 0.15)
 
@@ -723,7 +724,7 @@ Panel {
 
               Text {
                 text: "\uf041" // map pin icon
-                color: Color.accent
+                color: Commons.Color.accent
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.bodySmall
                 anchors.verticalCenter: parent.verticalCenter
@@ -759,7 +760,7 @@ Panel {
               width: Style.space(30)
               height: Style.space(30)
               radius: Style.cornerRadius
-              color: mapMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+              color: mapMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
 
               Text {
                 anchors.centerIn: parent
@@ -783,7 +784,7 @@ Panel {
               width: Style.space(30)
               height: Style.space(30)
               radius: Style.cornerRadius
-              color: refMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+              color: refMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
 
               Text {
                 anchors.centerIn: parent
@@ -807,7 +808,7 @@ Panel {
               width: Style.space(30)
               height: Style.space(30)
               radius: Style.cornerRadius
-              color: closeMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.urgent) : "transparent"
+              color: closeMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.urgent) : "transparent"
 
               Text {
                 anchors.centerIn: parent
@@ -869,7 +870,7 @@ Panel {
               width: Style.space(64)
               height: Style.space(28)
               radius: Style.cornerRadius
-              color: clearLocMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+              color: clearLocMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
               border.width: 1
               border.color: Util.alpha(root.foreground, 0.2)
               Text {
@@ -893,7 +894,7 @@ Panel {
               width: Style.space(64)
               height: Style.space(28)
               radius: Style.cornerRadius
-              color: cancelLocMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.urgent) : "transparent"
+              color: cancelLocMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.urgent) : "transparent"
               border.width: 1
               border.color: Util.alpha(root.foreground, 0.2)
               Text {
@@ -928,7 +929,7 @@ Panel {
                 height: Style.space(28)
                 radius: Style.cornerRadius
                 color: (index === root.suggestionIndex || sugMouse.containsMouse)
-                  ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+                  ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
 
                 Text {
                   anchors.fill: parent
@@ -975,7 +976,7 @@ Panel {
               horizontalAlignment: Text.AlignHCenter
               verticalAlignment: Text.AlignVCenter
               text: Model.currentIcon(root.openMeteoCurrent, "\uf185")
-              color: Color.accent
+              color: Commons.Color.accent
               font.family: root.fontFamily
               font.pixelSize: Style.font.displayLarge * 1.6
             }
@@ -1041,28 +1042,28 @@ Panel {
               // Feels Like
               Row {
                 spacing: Style.space(6)
-                Text { text: "\uf2c9"; color: Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
+                Text { text: "\uf2c9"; color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
                 Text { text: "Feels: " + (root.reportFeels || "—"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
               }
 
               // Wind
               Row {
                 spacing: Style.space(6)
-                Text { text: "\uf72e"; color: Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
+                Text { text: "\uf72e"; color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
                 Text { text: "Wind: " + (root.reportWind || "—"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
               }
 
               // Humidity
               Row {
                 spacing: Style.space(6)
-                Text { text: "\uf043"; color: Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
+                Text { text: "\uf043"; color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
                 Text { text: "Humidity: " + (root.reportHumidity || "—"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
               }
 
               // Rain Chance
               Row {
                 spacing: Style.space(6)
-                Text { text: "\uf73d"; color: Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
+                Text { text: "\uf73d"; color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
                 Text {
                   text: "Rain: " + ((root.current && root.current.todayPrecipProbability !== null) ? (root.current.todayPrecipProbability + "%") : "—")
                   color: root.foreground

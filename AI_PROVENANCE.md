@@ -1,5 +1,9 @@
 # AI Collaboration & Provenance
 
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-sol`) repairs shared QML palette
+resolution, authentication placement and deployment theme validation.
+[Session](docs/ai/2026-10-28-shell-palette-polkit.md).
+
 This repository practices transparent AI-assisted engineering. We document the
 AI tools, models, prompts, and architectural decisions that shaped Tamlinux's
 public description and development plans.

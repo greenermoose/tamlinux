@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
@@ -7,9 +8,9 @@ Item {
   property string label: ""
   property string value: ""
   property var options: []
-  property color foreground: Color.popups.text
-  property color background: Color.popups.background
-  property color accent: Color.accent
+  property color foreground: Commons.Color.popups.text
+  property color background: Commons.Color.popups.background
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property bool showLabel: true
   property bool hasCursor: false
@@ -56,7 +57,7 @@ Item {
     radius: Style.cornerRadius
     color: (mouse.containsMouse || root.hasCursor || root.opened) ? Style.hoverFillFor(root.foreground, root.accent) : root.background
     border.width: Style.normalBorderWidth
-    border.color: root.opened ? root.accent : Color.popups.border
+    border.color: root.opened ? root.accent : Commons.Color.popups.border
 
     Text {
       anchors.left: parent.left

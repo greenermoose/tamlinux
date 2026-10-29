@@ -344,7 +344,13 @@ class SourceBoundaryTests(unittest.TestCase):
                 seen = True
                 continue
             self.assertNotIn("Quickshell.Hyprland", text, path.name)
-            self.assertNotIn("hyprctl", text, path.name)
+            # The standalone explorer trial reads binds without the shell's
+            # compositor facade; it never launches the installed shell.
+            if path == DESKTOP / "shell/services/keybindings/dev-trial.qml":
+                self.assertIn('["/usr/bin/hyprctl", "binds"]', text)
+                self.assertEqual(text.count("hyprctl"), 1)
+            else:
+                self.assertNotIn("hyprctl", text, path.name)
             self.assertNotIn("Hyprland.", text, path.name)
         self.assertTrue(seen)
 

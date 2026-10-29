@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 WidgetButton {
   id: root
@@ -15,7 +16,7 @@ WidgetButton {
   fontSize: Style.bar.iconFont
   fixedWidth: vertical ? -1 : slotSize
   fixedHeight: vertical ? slotSize : -1
-  foreground: active && useActiveColor ? Color.accent : (bar ? bar.barForeground : Color.foreground)
+  foreground: active && useActiveColor ? Commons.Color.accent : (bar ? bar.barForeground : Commons.Color.foreground)
 
   Item {
     anchors.centerIn: parent

@@ -4,7 +4,7 @@
 //
 // Ported from omarchy 4.0.4 shell/plugins/image-picker/ImagePicker.qml and
 // the shell's image-selector IPC handler (MIT, Copyright (c) David Heinemeier
-// Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons; Color.imagePicker
+// Hansson; see ../LICENSE-omarchy). Changes: Tam.Commons; Commons.Color.imagePicker
 // tokens; the list helper lives beside this file and caches under
 // ~/.cache/tamlinux/image-picker; no environment defaults (each request names
 // its images); the answer and done files are written by argv, not a shell
@@ -18,6 +18,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
 import Tam.Commons
+import Tam.Commons as Commons
 import "ImagePickerModel.js" as ImagePickerModel
 
 Item {
@@ -43,11 +44,11 @@ Item {
   property var doneFilesToRelease: []
   // `dimColor` tints unselected slices and text outlines on top of the scrim;
   // it intentionally tracks the foundational background, not a surface role.
-  property color dimColor: Color.background
-  property color foreground: Color.imagePicker.text
-  property color scrim: Color.imagePicker.scrim
-  property color selectedBorder: Color.imagePicker.selectedBorder
-  property color unselectedBorder: Color.imagePicker.unselectedBorder
+  property color dimColor: Commons.Color.background
+  property color foreground: Commons.Color.imagePicker.text
+  property color scrim: Commons.Color.imagePicker.scrim
+  property color selectedBorder: Commons.Color.imagePicker.selectedBorder
+  property color unselectedBorder: Commons.Color.imagePicker.unselectedBorder
   property int expandedWidth: 768
   property int expandedHeight: 475
   property int sliceWidth: 108

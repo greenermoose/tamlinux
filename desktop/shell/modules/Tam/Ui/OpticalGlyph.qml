@@ -1,12 +1,13 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
   property string text: ""
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.body
-  property color color: Color.foreground
+  property color color: Commons.Color.foreground
 
   Text {
     anchors.centerIn: parent

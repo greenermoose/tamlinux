@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Tam.Commons
+import Tam.Commons as Commons
 import Tam.Ui
 import "Model.js" as Model
 import "Network.js" as Network
@@ -15,7 +16,7 @@ Panel {
   property var anchorItem: null
   property bool openedFromHotkey: false
   property string pluginVersion: "2.0.3"
-  readonly property color foreground: Color.popups.text
+  readonly property color foreground: Commons.Color.popups.text
   readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
   property string numberFontFamily: (root.settings && root.settings.numberFontFamily)
     ? root.settings.numberFontFamily
@@ -498,7 +499,7 @@ Panel {
                 id: waveIconText
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.waveIcon
-                color: root.bar ? root.bar.foreground : Color.popups.text
+                color: root.bar ? root.bar.foreground : Commons.Color.popups.text
                 font.family: root.fontFamily
                 font.pixelSize: Style.space(28)
               }
@@ -530,7 +531,7 @@ Panel {
                 readonly property real naturalWidth: pinIcon.implicitWidth + locationMeasureText.implicitWidth + locationTextRow.spacing + Style.space(16)
                 width: Math.min(maxAvailableWidth, naturalWidth)
                 radius: Style.cornerRadius
-                color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+                color: locMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
                 border.width: 1
                 border.color: Util.alpha(root.foreground, 0.15)
 
@@ -552,7 +553,7 @@ Panel {
                   Text {
                     id: pinIcon
                     text: "\uf041" // map pin icon
-                    color: Color.accent
+                    color: Commons.Color.accent
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.bodySmall
                     anchors.verticalCenter: parent.verticalCenter
@@ -583,7 +584,7 @@ Panel {
                 width: Style.space(260)
                 enabled: !root.savingLocation
                 placeholderText: "Search beach or harbor"
-                foreground: root.bar ? root.bar.foreground : Color.popups.text
+                foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
                 font.family: root.fontFamily
 
                 onTextChanged: if (root.editingLocation && !root.savingLocation) geocodeDebounce.restart()
@@ -610,13 +611,13 @@ Panel {
                 height: Style.space(18)
                 anchors.verticalCenter: parent.verticalCenter
                 radius: Math.min(4, Style.cornerRadius)
-                color: !root.savingLocation && clearLocationArea.containsMouse ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : "transparent"
+                color: !root.savingLocation && clearLocationArea.containsMouse ? Style.hoverFillFor(root.bar ? root.bar.foreground : Commons.Color.popups.text, Commons.Color.accent) : "transparent"
 
                 Text {
                   anchors.centerIn: parent
                   text: root.savingLocation ? "\udb82\udf96" : "✕"
                   font.family: root.fontFamily
-                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.4)
+                  color: Qt.darker(root.bar ? root.bar.foreground : Commons.Color.popups.text, 1.4)
                   font.pixelSize: Style.font.bodySmall
 
                   RotationAnimator on rotation {
@@ -656,14 +657,14 @@ Panel {
                 spacing: Style.space(3)
                 Text {
                   text: "TIDE"
-                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  color: Qt.darker(root.bar ? root.bar.foreground : Commons.Color.popups.text, 1.5)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
                   font.letterSpacing: 1
                 }
                 Text {
                   text: root.currentTrend
-                  color: root.bar ? root.bar.foreground : Color.popups.text
+                  color: root.bar ? root.bar.foreground : Commons.Color.popups.text
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.title
                 }
@@ -673,7 +674,7 @@ Panel {
                 spacing: Style.space(3)
                 Text {
                   text: "NOW"
-                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  color: Qt.darker(root.bar ? root.bar.foreground : Commons.Color.popups.text, 1.5)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
                   font.letterSpacing: 1
@@ -684,7 +685,7 @@ Panel {
                   Text {
                     id: nowValueText
                     text: root.currentHeightValueFormatted
-                    color: root.bar ? root.bar.foreground : Color.popups.text
+                    color: root.bar ? root.bar.foreground : Commons.Color.popups.text
                     font.family: root.numberFontFamily
                     font.pixelSize: Style.font.title
                     anchors.verticalCenter: parent.verticalCenter
@@ -696,7 +697,7 @@ Panel {
                     implicitWidth: unitBoxText.implicitWidth + Style.space(12)
                     implicitHeight: Style.space(22)
                     radius: Math.min(4, Style.cornerRadius)
-                    color: unitBoxHover.hovered ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+                    color: unitBoxHover.hovered ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
                     border.width: 1
                     border.color: Util.alpha(root.foreground, 0.2)
 
@@ -741,7 +742,7 @@ Panel {
               width: parent.width
               height: suggestionRow.implicitHeight + Style.space(10)
               radius: Style.cornerRadius
-              color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : "transparent"
+              color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar ? root.bar.foreground : Commons.Color.popups.text, Commons.Color.accent) : "transparent"
 
               Row {
                 id: suggestionRow
@@ -752,14 +753,14 @@ Panel {
 
                 Text {
                   text: modelData.name
-                  color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar ? root.bar.foreground : Color.popups.text, Color.accent) : (root.bar ? root.bar.foreground : Color.popups.text)
+                  color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar ? root.bar.foreground : Commons.Color.popups.text, Commons.Color.accent) : (root.bar ? root.bar.foreground : Commons.Color.popups.text)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.body
                 }
                 Text {
                   visible: text !== ""
                   text: modelData.description
-                  color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+                  color: Qt.darker(root.bar ? root.bar.foreground : Commons.Color.popups.text, 1.5)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.bodySmall
                   anchors.verticalCenter: parent.verticalCenter
@@ -781,7 +782,7 @@ Panel {
           visible: !root.nextEvent
           anchors.horizontalCenter: parent.horizontalCenter
           text: root.hasCoordinates ? "Fetching tide forecast…" : "Click the location to set one"
-          color: Qt.darker(root.bar ? root.bar.foreground : Color.popups.text, 1.5)
+          color: Qt.darker(root.bar ? root.bar.foreground : Commons.Color.popups.text, 1.5)
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
           font.italic: true
@@ -805,7 +806,7 @@ Panel {
             onWidthChanged: requestPaint()
             onHeightChanged: requestPaint()
 
-            readonly property color fg: root.bar ? root.bar.foreground : Color.popups.text
+            readonly property color fg: root.bar ? root.bar.foreground : Commons.Color.popups.text
             onFgChanged: requestPaint()
 
             readonly property real windowStartMs: root.now.getTime() - 6 * 3600 * 1000
@@ -889,7 +890,7 @@ Panel {
               ctx.closePath()
 
               var grad = ctx.createLinearGradient(0, padTop, 0, h - padBottom)
-              var baseColor = Qt.color(Color.accent || fg)
+              var baseColor = Qt.color(Commons.Color.accent || fg)
               grad.addColorStop(0, Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.25))
               grad.addColorStop(1, Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.02))
               ctx.fillStyle = grad
@@ -949,7 +950,7 @@ Panel {
                   ctx.fillStyle = baseColor
                   ctx.fill()
                   ctx.lineWidth = 2.0
-                  ctx.strokeStyle = Color.popups.background
+                  ctx.strokeStyle = Commons.Color.popups.background
                   ctx.stroke()
 
                   // Cursor readout text
@@ -992,7 +993,7 @@ Panel {
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: rangeBarContainer.highLabel
-                color: Color.accent || root.foreground
+                color: Commons.Color.accent || root.foreground
                 font.family: root.numberFontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -1019,8 +1020,8 @@ Panel {
                   height: parent.height
                   radius: width / 2
                   gradient: Gradient {
-                    GradientStop { position: 0.0; color: Color.accent || root.foreground }
-                    GradientStop { position: 1.0; color: Qt.darker(Color.accent || root.foreground, 1.8) }
+                    GradientStop { position: 0.0; color: Commons.Color.accent || root.foreground }
+                    GradientStop { position: 1.0; color: Qt.darker(Commons.Color.accent || root.foreground, 1.8) }
                   }
                 }
 
@@ -1032,7 +1033,7 @@ Panel {
                   height: Style.space(9)
                   radius: width / 2
                   color: root.foreground
-                  border.color: Color.popups.background
+                  border.color: Commons.Color.popups.background
                   border.width: 1.5
                 }
               }
@@ -1073,7 +1074,7 @@ Panel {
               height: Style.space(52)
               radius: Style.cornerRadius
               color: modelData.time.getTime() > root.now.getTime()
-                ? Style.hoverFillFor(root.foreground, Color.accent)
+                ? Style.hoverFillFor(root.foreground, Commons.Color.accent)
                 : "transparent"
               border.color: Qt.darker(root.foreground, 1.8)
               border.width: 1
@@ -1089,7 +1090,7 @@ Panel {
 
                   Text {
                     text: modelData.high ? "HIGH" : "LOW"
-                    color: modelData.high ? (Color.accent || root.foreground) : Qt.darker(root.foreground, 1.3)
+                    color: modelData.high ? (Commons.Color.accent || root.foreground) : Qt.darker(root.foreground, 1.3)
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.caption
                     font.bold: true

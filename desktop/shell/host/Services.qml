@@ -23,8 +23,9 @@ import "../services/theme" as Theme
 // facade's bindings; the panel host (PanelHost.qml, the ported panels)
 // gets the shell, the OSD, and the media service; the menu gets the OSD for launch feedback,
 // the media service gets it for each media-key action, and the background
-// gets the menu for its desktop double-clicks. Polkit, idle, and battery
-// need nothing. Only one polkit agent per session registers, so polkit stays
+// gets the menu for its desktop double-clicks. Polkit gets the compositor
+// for visible prompt placement; idle and battery need nothing. Only one
+// polkit agent per session registers, so polkit stays
 // out of TAMLINUX_SERVICES while another agent holds the session.
 // The bar's indicators reach notifications, night light, and idle through
 // firstPartyServiceFor (shell.qml), which reads the items below; the shell's
@@ -141,7 +142,7 @@ Item {
   Loader {
     active: services.enabled.indexOf("polkit") !== -1
     sourceComponent: Component {
-      Polkit.Service {}
+      Polkit.Service { shell: services.shell }
     }
     onLoaded: services.note("service-loaded polkit")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed polkit")

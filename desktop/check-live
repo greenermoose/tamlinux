@@ -65,6 +65,18 @@ BAR_LAYER = re.compile(r"^tamlinux-bar-(.+)-\d+$")
 QUIET_LAYERS = re.compile(r"^tamlinux-(bar-|background$|tooltip-)")
 
 
+def valid_theme_state(raw):
+    """An IPC reply alone does not establish that QML loaded its palette."""
+    try:
+        state = json.loads(raw)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(state, dict) and all(
+        isinstance(state.get(key), str) and re.fullmatch(r"#[0-9a-fA-F]{6}", state[key])
+        for key in ("foreground", "background", "accent", "muted")
+    )
+
+
 class Run:
     def __init__(self, verbose):
         self.results = []
@@ -443,7 +455,7 @@ def stage_passive(run, ctx):
     ok, cur = ipc("background", "current")
     run.check(ok and os.path.isfile(cur), "background image exists", cur)
     ok, theme = ipc("theme", "current")
-    run.check(ok and theme.startswith("{"), "theme palette loaded", theme[:80])
+    run.check(ok and valid_theme_state(theme), "theme palette loaded", theme[:160])
     ok, n = ipc("tamlinux-shell", "refreshIndicators")
     run.check(ok and n == str(len(monitors())), "indicators on every screen", f"{n} copies, {len(monitors())} screens")
     ok, mon = ipc("tamlinux-shell", "call", "fred.monitor", "state")

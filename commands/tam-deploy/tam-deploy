@@ -243,11 +243,17 @@ class Deployment:
         for _ in range(40):
             try:
                 if command("tam-shell", "reminders", "ping", capture=True, quiet=True) == "pong":
-                    return
-            except subprocess.CalledProcessError:
+                    palette = json.loads(command("tam-shell", "theme", "current", capture=True, quiet=True))
+                    if isinstance(palette, dict) and all(
+                        isinstance(palette.get(key), str) and
+                        re.fullmatch(r"#[0-9a-fA-F]{6}", palette[key])
+                        for key in ("foreground", "background", "accent", "muted")
+                    ):
+                        return
+            except (subprocess.CalledProcessError, ValueError):
                 pass
             time.sleep(0.2)
-        raise DeploymentError("deployed shell did not become reachable through tam-shell")
+        raise DeploymentError("deployed shell did not become ready with a valid theme palette through tam-shell")
 
     def expected_outputs(self, revision: str) -> dict:
         """Evaluate the committed assembly, never the changing checkout or lock."""

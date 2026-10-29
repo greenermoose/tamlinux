@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Tam.Commons
+import Tam.Commons as Commons
 import "TooltipParser.js" as TooltipParser
 
 PanelWindow {
@@ -39,7 +40,7 @@ PanelWindow {
   readonly property bool transparent: shell.barTransparent
 
   screen: screenRef
-  color: transparent ? "transparent" : Color.bar.background
+  color: transparent ? "transparent" : Commons.Color.bar.background
   exclusionMode: !hidden && Quickshell.env("TAMLINUX_BAR_EXCLUSIVE") === "1" ? ExclusionMode.Auto : ExclusionMode.Ignore
   implicitHeight: Style.bar.sizeHorizontal
   WlrLayershell.namespace: "tamlinux-bar-" + hostKey.replace("#", "-")
@@ -170,7 +171,7 @@ PanelWindow {
     anchors.leftMargin: 8
     anchors.verticalCenter: parent.verticalCenter
     visible: !win.layoutMode && clockLoader.status === Loader.Error
-    color: Color.urgent
+    color: Commons.Color.urgent
     text: "fred.clock failed to load"
     font.pixelSize: Style.font.body
   }
@@ -253,7 +254,7 @@ PanelWindow {
     id: tipWindow
     visible: win.tooltipText !== ""
     screen: win.screenRef
-    color: Color.tooltip.background
+    color: Commons.Color.tooltip.background
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "tamlinux-tooltip-" + win.hostKey.replace("#", "-")
     WlrLayershell.layer: WlrLayer.Overlay
@@ -279,7 +280,7 @@ PanelWindow {
         visible: text !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         text: win.parsedTooltip.body
-        color: Color.tooltip.text
+        color: Commons.Color.tooltip.text
         font.family: Style.font.family
         font.pixelSize: Style.font.bodySmall
         horizontalAlignment: Text.AlignHCenter
@@ -290,7 +291,7 @@ PanelWindow {
         visible: text !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         text: win.parsedTooltip.footer
-        color: Color.tooltip.text
+        color: Commons.Color.tooltip.text
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
         opacity: 0.45
@@ -303,7 +304,7 @@ PanelWindow {
       color: "transparent"
       radius: Style.cornerRadius
       border.width: 1
-      border.color: Color.tooltip.border
+      border.color: Commons.Color.tooltip.border
     }
   }
 }

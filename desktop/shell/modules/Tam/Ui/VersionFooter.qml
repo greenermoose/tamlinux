@@ -1,11 +1,12 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
   property string text: ""
   property var bar: null
-  property color foreground: bar ? bar.foreground : Color.foreground
+  property color foreground: bar ? bar.foreground : Commons.Color.foreground
   property string fontFamily: bar ? bar.fontFamily : Style.font.family
   property bool clickable: false
   signal clicked()

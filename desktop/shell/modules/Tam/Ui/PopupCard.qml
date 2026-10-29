@@ -7,6 +7,7 @@
 import QtQuick
 import Quickshell
 import Tam.Commons
+import Tam.Commons as Commons
 
 PopupWindow {
   id: root
@@ -18,7 +19,7 @@ PopupWindow {
   property int padding: Style.spacing.popupPadding
   property int contentWidth: Style.space(280)
   property int contentHeight: Style.space(200)
-  property color borderColor: Color.popups.border
+  property color borderColor: Commons.Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", borderColor, Math.max(1, Style.space(2)))
   property bool open: false
   property bool centerOnBar: false
@@ -169,7 +170,7 @@ PopupWindow {
   BorderSurface {
     id: card
     anchors.fill: parent
-    color: Color.popups.background
+    color: Commons.Color.popups.background
     borderSpec: root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius

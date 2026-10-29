@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
@@ -12,9 +13,9 @@ Item {
   property bool integer: false
   property bool dragging: false
   property int tickCount: 0
-  property color trackColor: bar ? Style.selectedFillFor(bar.foreground, Color.accent) : "#333333"
-  property color fillColor: bar ? bar.foreground : Color.foreground
-  property color knobColor: bar ? bar.foreground : Color.foreground
+  property color trackColor: bar ? Style.selectedFillFor(bar.foreground, Commons.Color.accent) : "#333333"
+  property color fillColor: bar ? bar.foreground : Commons.Color.foreground
+  property color knobColor: bar ? bar.foreground : Commons.Color.foreground
 
   signal moved(real value)
   signal released(real value)

@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import "Model.js" as Model
 import "."
 
@@ -47,7 +48,7 @@ Column {
           required property int modelData
           width: Style.space(28)
           height: Style.space(24)
-          color: pointer.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+          color: pointer.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
           radius: Style.cornerRadius
           opacity: enabled ? 1 : 0.3
           enabled: modelData < 0 ? hours.contentX > 0 : hours.contentX < hours.contentWidth - hours.width
@@ -55,7 +56,7 @@ Column {
           Text {
             anchors.centerIn: parent
             text: parent.modelData < 0 ? "\u2039" : "\u203a"
-            color: pointer.containsMouse ? Style.hoverStateColor(root.foreground, Color.accent) : root.foreground
+            color: pointer.containsMouse ? Style.hoverStateColor(root.foreground, Commons.Color.accent) : root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
           }

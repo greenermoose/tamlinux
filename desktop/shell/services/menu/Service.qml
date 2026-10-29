@@ -15,6 +15,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import Tam.Ui
 import "../clipboard/components"
 import "MenuModel.js" as MenuModel
@@ -126,13 +127,13 @@ Item {
   onOpenedChanged: if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
   // The [menu] surface tokens in Tam.Commons, shared with the other
   // full-screen pickers.
-  property color background: Color.menu.background
-  property color foreground: Color.menu.text
-  property color border: Color.menu.border
+  property color background: Commons.Color.menu.background
+  property color foreground: Commons.Color.menu.text
+  property color border: Commons.Color.menu.border
   property var borderSpec: Border.flat(border, Math.max(1, Style.space(2)))
-  property color scrim: Color.menu.scrim
-  property color selectedBackground: Color.menu.selectedBackground
-  property color selectedText: Color.menu.selectedText
+  property color scrim: Commons.Color.menu.scrim
+  property color selectedBackground: Commons.Color.menu.selectedBackground
+  property color selectedText: Commons.Color.menu.selectedText
   property var selectedBorderSpec: Border.none()
   readonly property real rowReservedBorderLeft: Border.left(selectedBorderSpec)
   readonly property real rowReservedBorderRight: Border.right(selectedBorderSpec)

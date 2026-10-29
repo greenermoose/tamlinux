@@ -11,6 +11,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import Tam.Ui
 import "ReminderFlowModel.js" as ReminderFlowModel
 
@@ -26,11 +27,11 @@ Item {
   property string filterText: ""
   property string fontFamily: Style.font.family
 
-  property color background: Color.menu.background
-  property color foreground: Color.menu.text
-  property color border: Color.menu.border
+  property color background: Commons.Color.menu.background
+  property color foreground: Commons.Color.menu.text
+  property color border: Commons.Color.menu.border
   property var borderSpec: Border.flat(border, Math.max(1, Style.space(2)))
-  property color scrim: Color.menu.scrim
+  property color scrim: Commons.Color.menu.scrim
   readonly property int cornerRadius: Style.cornerRadius
   property int contentMargin: Style.space(18)
   property int headingSize: Style.fontPx(16 / 12)

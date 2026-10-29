@@ -3,6 +3,7 @@
 import QtQuick
 import Quickshell.Io
 import Tam.Commons
+import Tam.Commons as Commons
 
 Item {
   id: root
@@ -33,9 +34,9 @@ Item {
     if (root.processExitCode === 0) {
       try {
         var payload = JSON.parse(root.output)
-        if (Color.applyPayload(payload)) {
+        if (Commons.Color.applyPayload(payload)) {
           Style.applyThemeStyle(payload.style)
-          console.log("TAMLINUX_EVIDENCE theme-loaded " + Color.background)
+          console.log("TAMLINUX_EVIDENCE theme-loaded " + Commons.Color.background)
         } else console.warn("Tamlinux theme payload is invalid")
       } catch (error) {
         console.warn("Tamlinux theme payload could not be read")
@@ -71,8 +72,8 @@ Item {
     target: "theme"
     function reload(): void { root.reloadTheme() }
     function current(): string {
-      return JSON.stringify({foreground: String(Color.foreground), background: String(Color.background),
-        accent: String(Color.accent), muted: String(Color.muted), fontFamily: Style.font.family,
+      return JSON.stringify({foreground: String(Commons.Color.foreground), background: String(Commons.Color.background),
+        accent: String(Commons.Color.accent), muted: String(Commons.Color.muted), fontFamily: Style.font.family,
         fontBaseSize: Style.font.baseSize})
     }
   }

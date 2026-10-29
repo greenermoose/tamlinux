@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import Tam.Commons as Commons
 import Quickshell
 
 // Spacing and type scale. TAMLINUX_UI_SCALE multiplies the 12px root.
@@ -47,15 +48,15 @@ QtObject {
   }
 
   function hoverStateColor(foreground, accent) {
-    return foreground || Color.foreground
+    return foreground || Commons.Color.foreground
   }
 
   function selectedStateColor(foreground, accent) {
-    return accent || Color.accent
+    return accent || Commons.Color.accent
   }
 
   function normalStateColor(foreground, accent) {
-    return foreground || Color.foreground
+    return foreground || Commons.Color.foreground
   }
 
   function normalFillFor(foreground, accent) {
@@ -77,9 +78,9 @@ QtObject {
   readonly property int normalBorderWidth: 1
 
   function controlFill(focused, hot, foreground, accent) {
-    if (focused) return Util.alpha(accent || foreground || Color.accent, 0.22)
+    if (focused) return Util.alpha(accent || foreground || Commons.Color.accent, 0.22)
     if (hot) return hoverFillFor(foreground, accent)
-    return Util.alpha(foreground || Color.foreground, 0.08)
+    return Util.alpha(foreground || Commons.Color.foreground, 0.08)
   }
 
   readonly property QtObject spacing: QtObject {

@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Tam.Commons
+import Tam.Commons as Commons
 
 ShellRoot {
   function check(ok, message) {
@@ -19,20 +20,22 @@ ShellRoot {
     running: true
     onTriggered: {
       try {
-        check(Color.applyPayload(payload({"menu.background": "#123456",
+        check(String(Commons.Color.background) === "#14181c", "startup palette")
+        check(String(Commons.Color.polkit.text) === "#d7dde2", "visible prompt defaults")
+        check(Commons.Color.applyPayload(payload({"menu.background": "#123456",
           "polkit.text-error": "#abcdef", "image-picker.scrim": "#800f1410"})), "first palette")
-        check(String(Color.menu.background) === "#123456", "surface override")
-        check(String(Color.polkit.textError) === "#abcdef", "error override")
-        check(Color.imagePicker.scrim.a > 0.49 && Color.imagePicker.scrim.a < 0.51, "Qt ARGB alpha")
-        check(String(Color.notifications.text) === "#e4e6d8", "notification binding")
-        check(Color.applyPayload(payload({})), "second palette")
-        check(String(Color.menu.background) === "#0f1410", "old surface reset")
-        check(String(Color.polkit.textError) === "#e07a5f", "old error reset")
-        check(String(Color.imagePicker.selectedBorder) === "#86b86a", "picker binding")
+        check(String(Commons.Color.menu.background) === "#123456", "surface override")
+        check(String(Commons.Color.polkit.textError) === "#abcdef", "error override")
+        check(Commons.Color.imagePicker.scrim.a > 0.49 && Commons.Color.imagePicker.scrim.a < 0.51, "Qt ARGB alpha")
+        check(String(Commons.Color.notifications.text) === "#e4e6d8", "notification binding")
+        check(Commons.Color.applyPayload(payload({})), "second palette")
+        check(String(Commons.Color.menu.background) === "#0f1410", "old surface reset")
+        check(String(Commons.Color.polkit.textError) === "#e07a5f", "old error reset")
+        check(String(Commons.Color.imagePicker.selectedBorder) === "#86b86a", "picker binding")
         var invalid = payload({})
         invalid.palette.accent = "invalid"
-        check(!Color.applyPayload(invalid), "reject invalid palette")
-        check(String(Color.accent) === "#86b86a", "rejection preserves palette")
+        check(!Commons.Color.applyPayload(invalid), "reject invalid palette")
+        check(String(Commons.Color.accent) === "#86b86a", "rejection preserves palette")
         Style.applyThemeStyle({fontBaseSize: 24, spacingScale: 1})
         check(Style.font.body === Math.round(24 * Style.uiScale), "type scale")
         check(Style.spacing.controlHeight === Math.round(56 * Style.uiScale), "controls grow with type")

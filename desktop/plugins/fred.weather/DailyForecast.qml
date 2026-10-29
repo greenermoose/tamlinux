@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import "Model.js" as Model
 import "."
 
@@ -34,7 +35,7 @@ Column {
         width: parent.width
         height: Style.space(34)
         radius: Style.cornerRadius
-        color: rowMouse.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+        color: rowMouse.containsMouse ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
 
         MouseArea {
           id: rowMouse
@@ -90,7 +91,7 @@ Column {
             text: (modelData.precipitationProbability !== null && modelData.precipitationProbability !== undefined)
               ? ("\uf043 " + modelData.precipitationProbability + "%") : ""
             color: (modelData.precipitationProbability && modelData.precipitationProbability >= 40)
-              ? Color.accent : root.foreground
+              ? Commons.Color.accent : root.foreground
             opacity: (modelData.precipitationProbability && modelData.precipitationProbability > 0) ? 0.9 : 0.4
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

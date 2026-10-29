@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Rectangle {
   id: root
@@ -9,8 +10,8 @@ Rectangle {
   property bool outline: false
   property bool bordered: false
   property bool hovered: false
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
 
   property color fill: Style.hoverFillFor(foreground, accent)
   property color currentFill: Style.selectedFillFor(foreground, accent)

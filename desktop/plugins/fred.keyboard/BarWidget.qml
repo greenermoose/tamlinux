@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Tam.Ui
 import Tam.Commons
+import Tam.Commons as Commons
 import "Model.js" as Model
 import "Device.js" as Device
 import "LayoutResolver.js" as Resolver
@@ -345,9 +346,9 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             textFormat: Text.PlainText
             text: capture.wanted ? "Esc to exit capture mode" : "Press Esc to close"
-            color: capture.wanted ? Color.accent
-                                  : Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                            Color.foreground.b, 0.55)
+            color: capture.wanted ? Commons.Color.accent
+                                  : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                            Commons.Color.foreground.b, 0.55)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -358,7 +359,7 @@ Panel {
           wrapMode: Text.WordWrap
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.65)
+          color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.65)
           text: {
             if (root.loadError !== "") return root.loadError
             if (!root.resolution) return "Resolving layout..."
@@ -390,7 +391,7 @@ Panel {
           elide: Text.ElideRight
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: Color.foreground
+          color: Commons.Color.foreground
           text: root.lastCombo === "" ? "Press a key or combination."
                                       : "Pressed: " + root.lastCombo
         }
@@ -403,8 +404,8 @@ Panel {
           wrapMode: Text.WordWrap
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: root.lastBinds.length > 0 ? Color.accent
-                 : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.65)
+          color: root.lastBinds.length > 0 ? Commons.Color.accent
+                 : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.65)
           text: {
             if (root.binds.length === 0) return "Binds not loaded."
             if (root.lastBinds.length === 0) return "Not bound in Hyprland."
@@ -438,7 +439,7 @@ Panel {
           wrapMode: Text.WordWrap
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.55)
+          color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.55)
           text: "Keys light up on the board while this panel has focus. With capture " +
                 "mode off, bound combinations run their command and never arrive " +
                 "here; with it on, keys and mouse actions arrive here and do not " +

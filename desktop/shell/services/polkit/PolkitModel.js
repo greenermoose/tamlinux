@@ -2,8 +2,35 @@
 // authorization label.
 //
 // Ported from omarchy 4.0.4 shell/plugins/polkit/PolkitModel.js (MIT,
-// Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Unchanged
-// apart from this header.
+// Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Adds
+// compositor-neutral prompt placement on a visible output.
+
+function promptScreen(screens, outputs, focusedName) {
+  screens = screens || []
+  outputs = outputs || []
+  var focused = null
+  var firstLit = null
+  for (var i = 0; i < screens.length; i++) {
+    var screen = screens[i]
+    if (!screen) continue
+    var output = null
+    for (var j = 0; j < outputs.length; j++) {
+      if (outputs[j] && outputs[j].name === screen.name) {
+        output = outputs[j]
+        break
+      }
+    }
+    var lit = output && output.dpmsOn !== false
+    if (screen.name === focusedName) {
+      focused = screen
+      if (lit) return screen
+    }
+    if (lit && !firstLit) firstLit = screen
+  }
+  // If every output is dark, the service wakes the selected output. A shell
+  // without a compositor snapshot still has a usable screen fallback.
+  return firstLit || focused || screens[0] || null
+}
 
 function promptLooksFingerprint(text) {
   var s = String(text || "").toLowerCase()
@@ -32,6 +59,7 @@ function authorizationLabel(message) {
 
 if (typeof module !== "undefined") {
   module.exports = {
+    promptScreen: promptScreen,
     promptLooksFingerprint: promptLooksFingerprint,
     fingerprintConfiguredFromPamConfig: fingerprintConfiguredFromPamConfig,
     authorizationLabel: authorizationLabel

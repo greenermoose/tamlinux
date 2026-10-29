@@ -420,11 +420,17 @@ and through `tam-shell theme reload`. It applies validated colors and
 surface roles to `Tam.Commons` without polling or restarting the shell.
 `tam-shell theme current` reports the active palette and type settings.
 
+Import `Tam.Commons as Commons` and access palette values as
+`Commons.Color.background`, `Commons.Color.polkit.text`, and so on.
+QtQuick also exports `Color`; an unqualified reference can silently select
+that type instead of the Tamlinux singleton.
+
 Theme font size and spacing settings grow control and bar dimensions with
 the text. The shared defaults remain available to isolated proofs. The
 full Tamarack design and typeface change are a separate milestone.
 
-Run `python3 desktop/check-theme` for headless Quickshell checks at 1× and
+Run `python3 desktop/check-theme --quickshell /path/to/selected/quickshell`
+for headless Quickshell checks at 1× and
 1.25× scale. They
 use offscreen Qt, temporary home/runtime directories and a stub adapter;
 they create no desktop windows. They cover palette changes, removed surface

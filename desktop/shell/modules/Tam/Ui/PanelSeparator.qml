@@ -1,9 +1,10 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Rectangle {
   id: root
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property real strength: 0.16
   implicitWidth: 100
   implicitHeight: 1

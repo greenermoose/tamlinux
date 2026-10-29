@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Tam.Ui
 import Tam.Commons
+import Tam.Commons as Commons
 import "Model.js" as Model
 import "."
 
@@ -1266,7 +1267,7 @@ Panel {
           height: Style.space(150)
           radius: Style.cornerRadius
           color: Qt.rgba(0.04, 0.04, 0.05, 0.92)
-          border.color: Color.accent
+          border.color: Commons.Color.accent
           border.width: Style.space(2)
 
           Column {
@@ -1657,8 +1658,8 @@ Panel {
             width: parent.width
             implicitHeight: transactionRow.implicitHeight + Style.space(14)
             radius: Style.cornerRadius
-            color: root.layoutToken !== "" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14) : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.05)
-            border.color: root.layoutToken !== "" ? Color.accent : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.12)
+            color: root.layoutToken !== "" ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.14) : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.05)
+            border.color: root.layoutToken !== "" ? Commons.Color.accent : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.12)
             border.width: 1
 
             Row {
@@ -1729,8 +1730,8 @@ Panel {
           width: Math.min(parent.width - Style.space(24), Style.space(620))
           height: helpColumn.implicitHeight + Style.space(24)
           radius: Style.cornerRadius
-          color: Color.popups.background
-          border.color: Color.popups.border
+          color: Commons.Color.popups.background
+          border.color: Commons.Color.popups.border
           border.width: Math.max(1, Style.normalBorderWidth)
 
           MouseArea {
@@ -1783,7 +1784,7 @@ Panel {
                   width: Style.space(165)
                   textFormat: Text.PlainText
                   text: modelData.keys
-                  color: Color.accent
+                  color: Commons.Color.accent
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.body
                   font.bold: true
@@ -1841,10 +1842,10 @@ Panel {
     width: availableWidth
     radius: Style.cornerRadius
     color: isCardFocused
-      ? Style.selectedFillFor(root.bar.foreground, Color.accent)
+      ? Style.selectedFillFor(root.bar.foreground, Commons.Color.accent)
       : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.04)
     border.color: isCardFocused
-      ? Color.accent
+      ? Commons.Color.accent
       : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.12)
     border.width: 1
 
@@ -1955,7 +1956,7 @@ Panel {
           Rectangle {
             visible: card.display.focused
             radius: Math.max(2, Style.cornerRadius / 2)
-            color: Color.accent
+            color: Commons.Color.accent
             implicitWidth: focusedBadgeText.implicitWidth + Style.space(8)
             implicitHeight: focusedBadgeText.implicitHeight + Style.space(2)
             Layout.alignment: Qt.AlignVCenter
@@ -1965,7 +1966,7 @@ Panel {
               anchors.centerIn: parent
               textFormat: Text.PlainText
               text: "focused"
-              color: Color.accentText || "#ffffff"
+              color: Commons.Color.accentText || "#ffffff"
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.caption * 0.9
               font.bold: true
@@ -2310,7 +2311,7 @@ Panel {
 
           Text {
             text: card.display.dpmsStatus ? "On" : "Off"
-            color: card.display.dpmsStatus ? Color.accent : Qt.darker(root.bar.foreground, 1.4)
+            color: card.display.dpmsStatus ? Commons.Color.accent : Qt.darker(root.bar.foreground, 1.4)
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -2323,7 +2324,7 @@ Panel {
             busy: actionProc.running
             hasCursor: card.isCardFocused && card.currentSubRow === "actions"
             foreground: root.bar.foreground
-            accent: Color.accent
+            accent: Commons.Color.accent
             Layout.alignment: Qt.AlignVCenter
             onToggled: {
               if (card.display.dpmsStatus) root.setDpmsOffWithSafety(card.display.name)
@@ -2348,7 +2349,7 @@ Panel {
           Button {
             bordered: true
             fontSize: Style.font.caption
-            foreground: Color.accent
+            foreground: Commons.Color.accent
             text: "Restore (" + root.dpmsCountdown + "s)"
             onClicked: root.restoreDpms()
           }

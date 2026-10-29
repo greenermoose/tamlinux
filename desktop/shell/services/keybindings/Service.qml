@@ -21,7 +21,7 @@ Item {
   Explorer {
     visible: root.opened
     rows: root.rows
-    onClosed: root.opened = false
+    onDismissRequested: root.opened = false
   }
 
   function bindingsText() {

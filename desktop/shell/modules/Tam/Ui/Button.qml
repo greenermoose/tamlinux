@@ -1,13 +1,14 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 
 Rectangle {
   id: root
 
   property string text: ""
   property string iconText: ""
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property bool bordered: false
   property bool active: false
   property bool selected: false

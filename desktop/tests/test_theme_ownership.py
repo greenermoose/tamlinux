@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import runpy
 from pathlib import Path
 import shutil
 import subprocess
@@ -11,6 +12,18 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE = ROOT / 'desktop/theme/engine.py'
 ASSETS = ROOT / 'desktop/assets'
+
+
+class ThemeHealth(unittest.TestCase):
+    def test_ipc_health_rejects_the_shadowed_qml_palette(self):
+        valid = runpy.run_path(str(ROOT / 'desktop/check-live'))['valid_theme_state']
+        palette = {'foreground': '#a9b1d6', 'background': '#1a1b26',
+                   'accent': '#7aa2f7', 'muted': '#414868'}
+        self.assertTrue(valid(json.dumps(palette)))
+        self.assertFalse(valid(json.dumps(dict.fromkeys(palette, 'undefined'))))
+        for value in ('{}', '[]', 'null', 'broken JSON'):
+            self.assertFalse(valid(value))
+
 
 class ThemeOwnership(unittest.TestCase):
     def setUp(self):

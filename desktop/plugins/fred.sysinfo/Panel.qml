@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Tam.Ui
 import Tam.Commons
+import Tam.Commons as Commons
 import "SysinfoStore.js" as SysinfoStore
 import "."
 
@@ -322,7 +323,7 @@ Panel {
               implicitWidth: heroBadgeText.implicitWidth + Style.space(12)
               implicitHeight: heroBadgeText.implicitHeight + Style.space(6)
               color: "transparent"
-              borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
+              borderSpec: Border.controlSpec("normal", root.bar.foreground, Commons.Color.accent)
               radius: Style.cornerRadius
 
               Text {

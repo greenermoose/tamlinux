@@ -1,5 +1,6 @@
 import QtQuick
 import Tam.Commons
+import Tam.Commons as Commons
 import "."
 
 // Binds whose key is not on the attached keyboard: a one-line header that
@@ -29,8 +30,8 @@ Item {
                                       (expanded ? scrollHint.implicitHeight + column.spacing : 0)
 
   readonly property real dim: 0.55
-  readonly property color muted: Qt.rgba(Color.foreground.r, Color.foreground.g,
-                                         Color.foreground.b, dim)
+  readonly property color muted: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                         Commons.Color.foreground.b, dim)
 
   visible: rows.length > 0
   implicitHeight: visible ? column.implicitHeight : 0

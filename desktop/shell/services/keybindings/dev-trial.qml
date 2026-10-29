@@ -6,6 +6,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Tam.Commons
 import "KeybindingsModel.js" as Model
 
 ShellRoot {
@@ -25,6 +26,7 @@ ShellRoot {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     running: true
     command: ["/usr/bin/hyprctl", "binds"]
     stdout: StdioCollector {
@@ -33,6 +35,7 @@ ShellRoot {
   }
 
   Process {
+    environment: Util.hostEnvironment()
     running: true
     command: [Quickshell.env("TAMLINUX_KEYBINDINGS_SCAN") || "tam-menu-keybindings", "--scan"]
     stdout: StdioCollector {
@@ -44,6 +47,6 @@ ShellRoot {
     id: explorer
     visible: false
     rows: root.rows
-    onClosed: Qt.quit()
+    onDismissRequested: Qt.quit()
   }
 }

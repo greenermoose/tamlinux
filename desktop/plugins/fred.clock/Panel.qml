@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Tam.Commons
+import Tam.Commons as Commons
 import Tam.Ui
 import "."
 import "Model.js" as Model
@@ -88,7 +89,7 @@ Panel {
 
   // Guarded so the widget renders before the bar is injected (the bar-widget
   // contract instantiates it bare).
-  readonly property color contentForeground: bar ? bar.foreground : Color.foreground
+  readonly property color contentForeground: bar ? bar.foreground : Commons.Color.foreground
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
 
   readonly property int cellWidth: Style.space(52)
@@ -581,7 +582,7 @@ Panel {
                 anchors.baseline: heroDate.baseline
                 text: "󰃭"
                 color: heroMouse.containsMouse
-                  ? Style.hoverStateColor(root.contentForeground, Color.accent)
+                  ? Style.hoverStateColor(root.contentForeground, Commons.Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
                 // Decorative, and deliberately outside the Style.font.*
@@ -596,7 +597,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Qt.formatDate(root.today, "MMMM d")
                 color: heroMouse.containsMouse
-                  ? Style.hoverStateColor(root.contentForeground, Color.accent)
+                  ? Style.hoverStateColor(root.contentForeground, Commons.Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
                 font.pixelSize: 52
@@ -734,7 +735,7 @@ Panel {
                   width: Math.round(parent.width * root.yearDone)
                   height: parent.height
                   radius: parent.radius
-                  color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                  color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
 
                   Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                 }
@@ -792,7 +793,7 @@ Panel {
                   width: Math.round(parent.width * root.lifeDone)
                   height: parent.height
                   radius: parent.radius
-                  color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                  color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
 
                   Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                 }
@@ -854,14 +855,14 @@ Panel {
                   height: Style.space(16)
                   radius: Style.cornerRadius
                   color: weekStartMouse.containsMouse
-                    ? Style.hoverFillFor(root.contentForeground, Color.accent)
+                    ? Style.hoverFillFor(root.contentForeground, Commons.Color.accent)
                     : "transparent"
 
                   Text {
                     anchors.centerIn: parent
                     text: "W"
                     color: weekStartMouse.containsMouse
-                      ? Style.hoverStateColor(root.contentForeground, Color.accent)
+                      ? Style.hoverStateColor(root.contentForeground, Commons.Color.accent)
                       : Qt.darker(root.contentForeground, 1.9)
                     font.family: root.contentFontFamily
                     font.pixelSize: Style.font.caption
@@ -946,12 +947,12 @@ Panel {
                       height: root.cellHeight
                       radius: Style.cornerRadius
                       color: isSelected
-                        ? Style.selectedFillFor(root.contentForeground, Color.accent)
-                        : (cellMouse.containsMouse ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent")
+                        ? Style.selectedFillFor(root.contentForeground, Commons.Color.accent)
+                        : (cellMouse.containsMouse ? Style.hoverFillFor(root.contentForeground, Commons.Color.accent) : "transparent")
                       border.width: modelData.today ? Style.spacing.hairline : (isSelected ? Style.spacing.hairline : 0)
                       border.color: modelData.today
-                        ? Style.normalBorderFor(root.contentForeground, Color.accent)
-                        : (isSelected ? Style.selectedStateColor(root.contentForeground, Color.accent) : "transparent")
+                        ? Style.normalBorderFor(root.contentForeground, Commons.Color.accent)
+                        : (isSelected ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent) : "transparent")
 
                       Text {
                         textFormat: Text.PlainText
@@ -959,7 +960,7 @@ Panel {
                         anchors.verticalCenterOffset: dayEvents.length > 0 ? -Style.space(3) : 0
                         text: modelData.day
                         color: isSelected
-                          ? Style.selectedStateColor(root.contentForeground, Color.accent)
+                          ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                           : (modelData.inMonth
                               ? (modelData.weekend ? Qt.darker(root.contentForeground, 1.45) : root.contentForeground)
                               : Qt.darker(root.contentForeground, 2.2))
@@ -1115,15 +1116,15 @@ Panel {
                     width: todayText.implicitWidth + Style.space(10)
                     height: Style.space(16)
                     radius: Style.cornerRadius > 0 ? height / 2 : 0
-                    color: Style.selectedFillFor(root.contentForeground, Color.accent)
+                    color: Style.selectedFillFor(root.contentForeground, Commons.Color.accent)
                     border.width: Style.spacing.hairline
-                    border.color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                    border.color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
 
                     Text {
                       id: todayText
                       anchors.centerIn: parent
                       text: "TODAY"
-                      color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                      color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                       font.family: root.contentFontFamily
                       font.pixelSize: Style.font.caption
                       font.letterSpacing: 1
@@ -1178,13 +1179,13 @@ Panel {
                       height: Style.space(22)
                       radius: Style.cornerRadius > 0 ? height / 2 : 0
                       color: isActive
-                        ? Style.selectedFillFor(root.contentForeground, Color.accent)
+                        ? Style.selectedFillFor(root.contentForeground, Commons.Color.accent)
                         : (chipMouse.containsMouse
-                            ? Style.hoverFillFor(root.contentForeground, Color.accent)
+                            ? Style.hoverFillFor(root.contentForeground, Commons.Color.accent)
                             : "transparent")
                       border.width: Style.spacing.hairline
                       border.color: isActive
-                        ? Style.selectedStateColor(root.contentForeground, Color.accent)
+                        ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                         : Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.15)
 
                       Text {
@@ -1192,7 +1193,7 @@ Panel {
                         anchors.centerIn: parent
                         text: modelData
                         color: isActive
-                          ? Style.selectedStateColor(root.contentForeground, Color.accent)
+                          ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                           : Qt.darker(root.contentForeground, 1.4)
                         font.family: root.contentFontFamily
                         font.pixelSize: Style.font.caption
@@ -1220,7 +1221,7 @@ Panel {
                 radius: Style.cornerRadius
                 color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.05)
                 border.width: Style.spacing.hairline
-                border.color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                border.color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
 
                 Column {
                   id: addEventCol
@@ -1236,7 +1237,7 @@ Panel {
                       anchors.left: parent.left
                       anchors.verticalCenter: parent.verticalCenter
                       text: "NEW LOCAL EVENT"
-                      color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                      color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                       font.family: root.contentFontFamily
                       font.pixelSize: Style.font.caption
                       font.bold: true
@@ -1283,18 +1284,18 @@ Panel {
                         height: Style.space(16)
                         radius: Style.cornerRadius > 0 ? 3 : 0
                         color: allDayBoxMouse.allDay
-                          ? Style.selectedStateColor(root.contentForeground, Color.accent)
+                          ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                           : "transparent"
                         border.width: Style.spacing.hairline
                         border.color: allDayBoxMouse.allDay
-                          ? Style.selectedStateColor(root.contentForeground, Color.accent)
+                          ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                           : Qt.darker(root.contentForeground, 1.8)
 
                         Text {
                           visible: allDayBoxMouse.allDay
                           anchors.centerIn: parent
                           text: "✓"
-                          color: Color.background
+                          color: Commons.Color.background
                           font.pixelSize: Style.font.caption - 1
                           font.bold: true
                         }
@@ -1389,7 +1390,7 @@ Panel {
 
                     Button {
                       text: "Save Event"
-                      accent: Color.accent
+                      accent: Commons.Color.accent
                       bordered: true
                       onClicked: root.submitNewEvent(
                         newEventTitle.text,
@@ -1450,7 +1451,7 @@ Panel {
                   height: Math.max(cardContentCol.implicitHeight + Style.space(16), Style.space(48))
                   radius: Style.cornerRadius
                   color: cardMouse.containsMouse
-                    ? Style.hoverFillFor(root.contentForeground, Color.accent)
+                    ? Style.hoverFillFor(root.contentForeground, Commons.Color.accent)
                     : Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.04)
                   border.width: Style.spacing.hairline
                   border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.1)
@@ -1532,10 +1533,10 @@ Panel {
                     height: Style.space(26)
                     radius: Style.cornerRadius > 0 ? height / 2 : 0
                     color: joinMouse.containsMouse
-                      ? Style.selectedStateColor(root.contentForeground, Color.accent)
-                      : Style.selectedFillFor(root.contentForeground, Color.accent)
+                      ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
+                      : Style.selectedFillFor(root.contentForeground, Commons.Color.accent)
                     border.width: Style.spacing.hairline
-                    border.color: Style.selectedStateColor(root.contentForeground, Color.accent)
+                    border.color: Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
 
                     Row {
                       id: joinRow
@@ -1544,7 +1545,7 @@ Panel {
 
                       Text {
                         text: "󰅟"
-                        color: joinMouse.containsMouse ? Color.background : root.contentForeground
+                        color: joinMouse.containsMouse ? Commons.Color.background : root.contentForeground
                         font.family: root.contentFontFamily
                         font.pixelSize: Style.font.caption
                         anchors.verticalCenter: parent.verticalCenter
@@ -1552,7 +1553,7 @@ Panel {
 
                       Text {
                         text: "Join"
-                        color: joinMouse.containsMouse ? Color.background : root.contentForeground
+                        color: joinMouse.containsMouse ? Commons.Color.background : root.contentForeground
                         font.family: root.contentFontFamily
                         font.pixelSize: Style.font.caption
                         font.bold: true
@@ -1586,17 +1587,17 @@ Panel {
                     height: Style.space(26)
                     radius: Style.cornerRadius > 0 ? height / 2 : 0
                     color: deleteMouse.containsMouse
-                      ? Style.selectedFillFor(root.contentForeground, Color.accent)
+                      ? Style.selectedFillFor(root.contentForeground, Commons.Color.accent)
                       : "transparent"
                     border.width: Style.spacing.hairline
                     border.color: deleteMouse.containsMouse
-                      ? Style.selectedStateColor(root.contentForeground, Color.accent)
+                      ? Style.selectedStateColor(root.contentForeground, Commons.Color.accent)
                       : "transparent"
 
                     Text {
                       anchors.centerIn: parent
                       text: "󰆴"
-                      color: deleteMouse.containsMouse ? Color.accent : Qt.darker(root.contentForeground, 1.8)
+                      color: deleteMouse.containsMouse ? Commons.Color.accent : Qt.darker(root.contentForeground, 1.8)
                       font.family: root.contentFontFamily
                       font.pixelSize: Style.font.bodySmall
                     }

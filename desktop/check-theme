@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check real QML theme bindings and reloads with no desktop windows."""
+import argparse
 import os
 from pathlib import Path
 import shutil
@@ -40,7 +41,7 @@ else:
 '''
 
 
-def check(fixture, marker, mode="success", scale="1"):
+def check(fixture, marker, mode="success", scale="1", quickshell=None):
     with tempfile.TemporaryDirectory(prefix="tamlinux-theme-check-") as temporary:
         base = Path(temporary)
         runtime = base / "runtime"
@@ -56,14 +57,19 @@ def check(fixture, marker, mode="success", scale="1"):
         adapter = base / "tam-theme-payload"
         adapter.write_text(ADAPTER)
         adapter.chmod(0o755)
-        env = dict(os.environ, HOME=temporary, XDG_RUNTIME_DIR=str(runtime),
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(("QT_", "QML_"))
+               and key not in ("DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS",
+                               "HYPRLAND_INSTANCE_SIGNATURE")}
+        env.update(HOME=temporary, XDG_RUNTIME_DIR=str(runtime),
                    XDG_CACHE_HOME=str(base / "cache"), QT_QPA_PLATFORM="offscreen",
+                   QT_QUICK_BACKEND="software",
                    QML_DISABLE_DISK_CACHE="1", TAMLINUX_UI_SCALE=scale,
                    TAMLINUX_THEME_CHECK_MODE=mode,
                    PATH=f"{base}:/usr/bin:/bin",
                    QML_IMPORT_PATH=str(DESKTOP / "shell/modules"))
         env.pop("WAYLAND_DISPLAY", None)
-        result = subprocess.run(["/usr/bin/quickshell", "-p", str(config)],
+        result = subprocess.run([quickshell or os.environ.get("TAMLINUX_QUICKSHELL", "/usr/bin/quickshell"), "-p", str(config)],
                                 env=env, stdin=subprocess.DEVNULL,
                                 capture_output=True, text=True, timeout=20)
         output = result.stdout + result.stderr
@@ -77,7 +83,10 @@ def check(fixture, marker, mode="success", scale="1"):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--quickshell", help="Quickshell executable paired with the candidate")
+    args = parser.parse_args()
     for scale in ("1", "1.25"):
-        check("theme", "TAMLINUX_THEME_PROOF", scale=scale)
+        check("theme", "TAMLINUX_THEME_PROOF", scale=scale, quickshell=args.quickshell)
         for mode in ("success", "early-output", "failed-output", "malformed", "timeout"):
-            check("theme-service", "TAMLINUX_THEME_SERVICE_PROOF", mode, scale)
+            check("theme-service", "TAMLINUX_THEME_SERVICE_PROOF", mode, scale, quickshell=args.quickshell)

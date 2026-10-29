@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Tam.Commons
+import Tam.Commons as Commons
 
 // Popup lifecycle base. The shell router owns IPC for every panel copy.
 Item {
@@ -15,7 +16,7 @@ Item {
   property bool popoutSwitching: false
 
   readonly property bool opened: panelController.open
-  readonly property color barForeground: bar ? bar.barForeground : Color.foreground
+  readonly property color barForeground: bar ? bar.barForeground : Commons.Color.foreground
 
   function open() { panelController.show() }
   function close() { panelController.hide() }
