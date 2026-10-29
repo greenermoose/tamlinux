@@ -41,11 +41,11 @@ framework; `libtam` remains a separate dependency.
 | `tam install ...` | Delegate to the installation contract in [the installation plan](installation-framework.md). |
 | `tam` | Print a concise introduction and available starting points, then exit successfully. |
 | `tam show` | Explicitly open the local guide; print a readable text index when output is piped. |
-| `tam welcome` | Open orientation explicitly at any time; never require it before `--help` or installation. |
+| `tam hi` | Open orientation explicitly at any time; never require it before `--help` or installation. |
 | `tam explain <topic>` | Initially match curated local topics and give a clear miss message. |
 
 Bare invocation never opens the guide or changes first-use state, whether
-interactive or piped. `tam welcome` explicitly displays orientation. Record
+interactive or piped. `tam hi` explicitly displays orientation. Record
 that welcome was shown in `$XDG_STATE_HOME/tamlinux/tam/welcome_seen` (falling back
 to `~/.local/state/tamlinux/tam/welcome_seen`) only after successful display,
 whether in the interactive pager or via text output. `show`, `--help`, `--version`,
