@@ -498,14 +498,14 @@ class Migration(unittest.TestCase):
         self.assertEqual(outside.read_bytes(),b'keep')
 
     def test_retained_flags_and_device_data_migrate_without_executing_generated_lua(self):
-        flags=['bar-off','suspend-off','screensaver-off','crash-capture-off',
+        flags=['bar-off','suspend-off','crash-capture-off',
                'skip-vscode-theme-changes','skip-vscode-insiders-theme-changes',
                'skip-codium-theme-changes','skip-cursor-theme-changes']
         for flag in flags:self.write('state','omarchy/toggles/'+flag,b'')
         self.write('state','omarchy/toggles/hypr/touchpad-disabled-name',b'personal-touchpad\n')
         legacy=self.write('state','omarchy/toggles/hypr/touchscreen-disabled.lua',b'error("never execute")')
         doc=m.prepare(self.roots,self.journal)
-        self.assertEqual(len(doc['rows']),9)
+        self.assertEqual(len(doc['rows']),8)
         m.apply(self.journal,self.roots)
         for flag in flags:self.assertTrue((self.roots['state']/'tamlinux/toggles'/flag).is_file())
         self.assertEqual((self.roots['state']/'tamlinux/toggles/hypr/touchpad-disabled-name').read_bytes(),b'personal-touchpad\n')

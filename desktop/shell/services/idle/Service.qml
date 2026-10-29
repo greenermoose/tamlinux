@@ -1,22 +1,4 @@
-// Idle service for the Tamlinux host: the Stay Awake switch, and an optional
-// idle cycle that starts the screensaver and then the lock when the session
-// has been idle long enough.
-//
-// Ported from omarchy 4.0.4 shell/plugins/services/idle/Service.qml (MIT,
-// Copyright (c) David Heinemeier Hansson; see ../LICENSE-omarchy). Changes:
-// - The timeouts come from TAMLINUX_IDLE_SCREENSAVER and TAMLINUX_IDLE_LOCK
-//   (seconds). Unset or 0 turns that stage off, and with both off there is no
-//   idle cycle (the source read 0 as at once and had default timeouts).
-// - Stay Awake is the file TAMLINUX_STAY_AWAKE_FILE (an absolute path;
-//   default ~/.local/state/tamlinux/stay-awake). Anything that suspends on
-//   idle should skip suspending while it exists. It is written by argument,
-//   never as shell text.
-// - Screensaver windows are counted from Wayland toplevels (app id
-//   org.tamlinux.screensaver), so no compositor event stream is read.
-// - The stages run tam-launch-screensaver, tam-system-lock, and
-//   tam-system-wake. The original's locked-session check before the
-//   screensaver is left to the lock command, which ends the screensaver.
-// - IPC target idle adds ping.
+// Stay Awake and optional idle locking. See ../LICENSE-omarchy for attribution.
 
 import QtQuick
 import Quickshell
@@ -35,23 +17,18 @@ Item {
     return (Quickshell.env("XDG_STATE_HOME") || root.home + "/.local/state") + "/tamlinux/stay-awake"
   }
   readonly property string stayAwakeStateDir: stayAwakeStatePath.substring(0, stayAwakeStatePath.lastIndexOf("/")) || "/"
-  readonly property int screensaverTimeoutSeconds: IdleModel.secondsFromConfig(Quickshell.env("TAMLINUX_IDLE_SCREENSAVER"))
   readonly property int lockTimeoutSeconds: IdleModel.secondsFromConfig(Quickshell.env("TAMLINUX_IDLE_LOCK"))
-  readonly property var plan: IdleModel.cyclePlan(screensaverTimeoutSeconds, lockTimeoutSeconds)
-  readonly property int screensaverDelaySeconds: plan.screensaverDelay
+  readonly property var plan: IdleModel.cyclePlan(lockTimeoutSeconds)
   readonly property int lockDelaySeconds: plan.lockDelay
   readonly property bool idleEnabled: stayAwakeStateLoaded && !stayAwake
-  readonly property string screensaverClass: "org.tamlinux.screensaver"
 
   property bool stayAwake: false
   property bool stayAwakeStateLoaded: false
   property bool hasPendingStayAwakePersist: false
   property bool pendingStayAwakePersist: false
   property bool idledThisCycle: false
-  property bool screensaverStartedThisCycle: false
   property string lastEvent: "starting"
   property string lastEventAt: ""
-  property int screensaverWindowCount: 0
 
   function nowIso() {
     return new Date().toISOString()
@@ -75,19 +52,10 @@ Item {
     return true
   }
 
-  function launchScreensaver() {
-    root.screensaverStartedThisCycle = true
-    screensaverLaunchGraceTimer.restart()
-    runProcess(screensaverProcess, "screensaver", "tam-launch-screensaver")
-  }
-
   function lockSystem(reason) {
     logEvent("lock-system", reason || "requested")
-    screensaverTimer.stop()
     lockTimer.stop()
-    screensaverLaunchGraceTimer.stop()
     root.idledThisCycle = false
-    root.screensaverStartedThisCycle = false
     runProcess(lockProcess, "lock", "tam-system-lock")
   }
 
@@ -97,12 +65,8 @@ Item {
       return
     }
 
-    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " lock=" + root.lockTimeoutSeconds)
+    logEvent("idle-cycle-start", "lock=" + root.lockTimeoutSeconds)
     root.idledThisCycle = true
-    root.screensaverStartedThisCycle = false
-
-    if (root.screensaverDelaySeconds === 0) launchScreensaver()
-    else if (root.screensaverDelaySeconds > 0) screensaverTimer.restart()
 
     if (root.lockDelaySeconds === 0) lockSystem("lock-timeout-immediate")
     else if (root.lockDelaySeconds > 0) lockTimer.restart()
@@ -110,53 +74,15 @@ Item {
 
   function cancelIdleCycle(reason) {
     logEvent("idle-cycle-cancel", reason || "requested")
-    screensaverTimer.stop()
     lockTimer.stop()
-    screensaverLaunchGraceTimer.stop()
 
     if (root.idledThisCycle) runProcess(wakeProcess, "wake", "tam-system-wake")
 
     root.idledThisCycle = false
-    root.screensaverStartedThisCycle = false
-  }
-
-  function refreshScreensaverWindows() {
-    var appIds = []
-    var toplevels = ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []
-    for (var i = 0; i < toplevels.length; i++) appIds.push(toplevels[i] ? toplevels[i].appId : "")
-    var before = root.screensaverWindowCount
-    root.screensaverWindowCount = IdleModel.screensaverWindowCount(appIds, root.screensaverClass)
-    if (root.screensaverWindowCount > before) handleScreensaverWindowOpened()
-    else if (root.screensaverWindowCount < before) handleScreensaverWindowClosed()
-  }
-
-  function handleScreensaverWindowOpened() {
-    screensaverLaunchGraceTimer.stop()
-  }
-
-  function handleScreensaverWindowClosed() {
-    if (!root.idleEnabled || !root.idledThisCycle || !root.screensaverStartedThisCycle) return
-    if (root.screensaverWindowCount > 0) return
-
-    // The user dismissed the screensaver before the lock deadline. Treat that
-    // as activity and cancel the pending lock; the lock timer is only allowed
-    // to fire while the screensaver remains up.
-    root.cancelIdleCycle("screensaver-dismissed")
   }
 
   function handleActiveSignal() {
-    if (!root.idledThisCycle) return
-
-    // Starting the screensaver can make the compositor report activity. Keep
-    // the lock timer running once the screensaver exists (or during its short
-    // launch grace); its window closing cancels the cycle if it exits before
-    // the normal lock deadline.
-    if (root.screensaverStartedThisCycle && (root.screensaverWindowCount > 0 || screensaverLaunchGraceTimer.running)) {
-      logEvent("idle-monitor-active", "screensaver cycle remains armed")
-      return
-    }
-
-    cancelIdleCycle("activity")
+    if (root.idledThisCycle) cancelIdleCycle("activity")
   }
 
   function handleIdleChanged() {
@@ -176,19 +102,12 @@ Item {
       cycle: root.plan.enabled,
       idle: idleMonitor.isIdle,
       inIdleCycle: root.idledThisCycle,
-      screensaverStarted: root.screensaverStartedThisCycle,
-      screensaver: root.screensaverTimeoutSeconds,
       lock: root.lockTimeoutSeconds,
-      screensaverDelay: root.screensaverDelaySeconds,
       lockDelay: root.lockDelaySeconds,
-      screensaverWindows: root.screensaverWindowCount,
       timers: {
-        screensaver: screensaverTimer.running,
-        lock: lockTimer.running,
-        screensaverLaunchGrace: screensaverLaunchGraceTimer.running
+        lock: lockTimer.running
       },
       processes: {
-        screensaver: screensaverProcess.running,
         lock: lockProcess.running,
         wake: wakeProcess.running
       },
@@ -244,40 +163,12 @@ Item {
   }
 
   Timer {
-    id: screensaverTimer
-    interval: Math.max(0, root.screensaverDelaySeconds) * 1000
-    repeat: false
-    onTriggered: root.launchScreensaver()
-  }
-
-  Timer {
     id: lockTimer
     interval: Math.max(0, root.lockDelaySeconds) * 1000
     repeat: false
     onTriggered: if (root.idleEnabled && root.idledThisCycle) root.lockSystem("lock-timeout")
   }
 
-  Timer {
-    id: screensaverLaunchGraceTimer
-    interval: 3000
-    repeat: false
-    onTriggered: {
-      if (root.idleEnabled && root.idledThisCycle && root.screensaverStartedThisCycle && root.screensaverWindowCount === 0 && !idleMonitor.isIdle) {
-        root.cancelIdleCycle("screensaver-not-running")
-      }
-    }
-  }
-
-  Connections {
-    target: ToplevelManager.toplevels
-    function onValuesChanged() { root.refreshScreensaverWindows() }
-  }
-
-  Process {
-    environment: Util.hostEnvironment()
-    id: screensaverProcess
-    onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver exitCode=" + exitCode + " status=" + exitStatus) }
-  }
   Process {
     environment: Util.hostEnvironment()
     id: lockProcess
@@ -323,8 +214,7 @@ Item {
   }
 
   Component.onCompleted: {
-    logEvent("service-ready", root.plan.enabled ? "cycle screensaver=" + root.screensaverTimeoutSeconds + " lock=" + root.lockTimeoutSeconds : "cycle off")
-    refreshScreensaverWindows()
+    logEvent("service-ready", root.plan.enabled ? "cycle lock=" + root.lockTimeoutSeconds : "cycle off")
     refreshStayAwakeState()
   }
 

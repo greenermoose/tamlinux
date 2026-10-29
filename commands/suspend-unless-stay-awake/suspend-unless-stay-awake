@@ -3,7 +3,7 @@
 # Suspend the system, unless the Stay Awake switch is engaged.
 #
 # tam-toggle-idle and the Tamlinux shell write this state file when Stay Awake
-# is turned on, and the shell's idle service skips the screensaver and lock
+# is turned on, and the shell's idle service skips idle locking
 # while it exists. hypridle has
 # no knowledge of that flag, so honor it here to keep one toggle in charge of
 # all idle behavior.

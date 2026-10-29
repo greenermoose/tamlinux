@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -296,21 +298,27 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn('"/tamlinux/stay-awake"', text)
         self.assertIn('"TAMLINUX_STAY_AWAKE_FILE=" + root.stayAwakeStatePath', text)
         self.assertIn('"tam-toggle-idle", value ? "stay-awake" : "allow-idle"', text)
-        # The timeouts are off unless configured.
-        self.assertIn('Quickshell.env("TAMLINUX_IDLE_SCREENSAVER")', text)
         self.assertIn('Quickshell.env("TAMLINUX_IDLE_LOCK")', text)
         self.assertIn("enabled: root.idleEnabled && root.plan.enabled", text)
-        # Screensaver windows come from Wayland toplevels, not compositor events.
-        self.assertIn("ToplevelManager.toplevels", text)
-        self.assertIn('screensaverClass: "org.tamlinux.screensaver"', text)
-        for command in ('"tam-launch-screensaver"', '"tam-system-lock"', '"tam-system-wake"'):
+        self.assertIn("respectInhibitors: true", text)
+        self.assertNotIn("screensaver", text.lower())
+        for command in ('"tam-system-lock"', '"tam-system-wake"'):
             self.assertIn(command, text)
-        body = text.split("\n\n", 1)[-1]
-        self.assertNotIn("omarchy", body)
-        self.assertNotIn("Hyprland", body)
         model = (IDLE / "IdleModel.js").read_text(encoding="utf-8")
-        for name in ("secondsFromConfig", "cyclePlan", "screensaverWindowCount"):
+        for name in ("secondsFromConfig", "cyclePlan"):
             self.assertIn("function " + name, model)
+
+    @unittest.skipUnless(shutil.which("node"), "node is needed for the idle model")
+    def test_idle_lock_timeout_model(self):
+        script = r"""
+        const assert = require('assert');
+        const model = require(process.argv[1]);
+        for (const value of [0, -1, '', 'invalid'])
+          assert.deepStrictEqual(model.cyclePlan(value), {enabled: false, first: 0, lockDelay: -1});
+        assert.deepStrictEqual(model.cyclePlan(900), {enabled: true, first: 900, lockDelay: 0});
+        assert.equal(model.secondsFromConfig(99999999), model.maxTimeoutSeconds);
+        """
+        subprocess.run(["node", "-e", script, str(IDLE / "IdleModel.js")], check=True)
 
     def test_battery_target_and_commands(self):
         text = (BATTERY / "Service.qml").read_text(encoding="utf-8")

@@ -314,16 +314,16 @@ def branding(target, operation, image=None):
             if image is None:
                 image = run('tam-file-select', '--title', 'Pick PNG or SVG', '--extensions', 'png svg', capture=True).stdout.strip()
             if not image: return
-            arguments = ['--width', '54', '--height', '26'] if target == 'about' else []
+            arguments = ['--width', '54', '--height', '26']
             run('tam-transcode-ascii', image, destination, *arguments)
         else: raise ValueError('expected text, image or reset')
-    run('tam-launch-about' if target == 'about' else 'tam-launch-screensaver', *([] if target == 'about' else ['force']), check=False)
+    run('tam-launch-about', check=False)
 
 def main():
     action, *args = sys.argv[1:]
     os.umask(0o077)
     CURRENT.mkdir(parents=True, exist_ok=True)
-    mutating = action in {'initialize', 'set', 'refresh', 'bg-set', 'bg-next', 'remove', 'install', 'font-set', 'branding-about', 'branding-screensaver'}
+    mutating = action in {'initialize', 'set', 'refresh', 'bg-set', 'bg-next', 'remove', 'install', 'font-set', 'branding-about'}
     with (open(CURRENT / '.theme.lock', 'a') if mutating else contextlib.nullcontext()) as lock:
         if mutating: fcntl.flock(lock, fcntl.LOCK_EX)
         if action == 'initialize' and not args:
@@ -379,7 +379,7 @@ def main():
             Journal('theme-remove', [path]); remove(path)
         elif action == 'install' and len(args) <= 1: install_theme(args[0] if args else '')
         elif action == 'font-set' and len(args) == 1: font_set(args[0])
-        elif action in ('branding-about', 'branding-screensaver') and len(args) in (1,2): branding(action.removeprefix('branding-'), args[0], args[1] if len(args) == 2 else None)
+        elif action == 'branding-about' and len(args) in (1,2): branding(action.removeprefix('branding-'), args[0], args[1] if len(args) == 2 else None)
         else: raise ValueError('invalid arguments for tam-theme-'+action)
 
 if __name__ == '__main__':

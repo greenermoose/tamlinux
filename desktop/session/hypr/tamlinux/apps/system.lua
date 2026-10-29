@@ -31,10 +31,6 @@ o.window("dev.tensaku.Tensaku", { float = true })
 o.window("dev.tensaku.Tensaku", { center = true })
 o.window("omacalc", { float = true })
 
--- Fullscreen screensaver.
-o.window("org.tamlinux.screensaver", { fullscreen = true })
-o.window("org.tamlinux.screensaver", { float = true })
-o.window("org.tamlinux.screensaver", { animation = "slide" })
 
 -- No transparency on media windows.
 o.window(

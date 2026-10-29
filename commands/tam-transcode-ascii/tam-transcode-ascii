@@ -7,7 +7,7 @@
 # tamlinux:group=transcode
 # tamlinux:name=ascii
 # tamlinux:args=<input-image.svg|png> <output-path> [--width <columns>] [--height <rows>] [--mode <braille|block>] [--threshold <percent>] [--invert]
-# tamlinux:examples=omarchy transcode ascii ~/logo.svg /tmp/logo.txt | omarchy transcode ascii ~/logo.png "${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux"/branding/screensaver.txt --width 80
+# tamlinux:examples=omarchy transcode ascii ~/logo.svg /tmp/logo.txt | omarchy transcode ascii ~/logo.png "${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux"/branding/about.txt --width 80
 
 set -o pipefail
 # gawk emits multibyte braille codepoints only in a UTF-8 locale.

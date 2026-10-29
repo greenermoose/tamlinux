@@ -13,7 +13,7 @@ BarIndicator {
   active: idleService ? idleService.stayAwake : false
   activeText: "󰅶"
   inactiveText: "󰅶"
-  activeTooltipText: "Allow Idle Lock & Screensaver"
+  activeTooltipText: "Allow Idle Lock"
   inactiveTooltipText: "Stay Awake"
 
   function toggle() {

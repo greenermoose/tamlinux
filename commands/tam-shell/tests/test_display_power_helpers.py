@@ -11,7 +11,6 @@ NAMES = '''tam-brightness-display tam-brightness-display-ddc tam-brightness-disp
  tam-brightness-keyboard tam-brightness-keyboard-mute tam-hw-display
  tam-hyprland-monitor-focused tam-hyprland-monitor-focused-apple tam-system-lock
  tam-system-sleep-lock tam-system-wake suspend-unless-stay-awake
- tam-launch-screensaver tam-toggle-screensaver tam-screensaver
  tam-hyprland-monitor-clamshell tam-hyprland-monitor-laptop tam-hyprland-monitor-internal
  tam-hyprland-monitor-internal-mirror tam-hyprland-monitor-external-active
  tam-hw-clamshell tam-toggle tam-toggle-enabled tam-hyprland-toggle
@@ -70,11 +69,9 @@ elif name=='setsid': pass
 elif name=='busctl': print('t 5000000')
 elif name=='systemctl': pass
 elif name=='logger': sys.stdin.read()
-elif name=='socat': print('openwindow>>42,0,org.tamlinux.screensaver,fixture')
 elif name=='xdg-terminal-exec': print('foot.desktop')
-elif name=='ttfx': sys.exit(0)
 '''
-        for name in ('hyprctl','brightnessctl','ddcutil','pidof','pgrep','pidwait','pkill','setsid','hyprlock','busctl','systemctl','logger','socat','xdg-terminal-exec','ttfx'):
+        for name in ('hyprctl','brightnessctl','ddcutil','pidof','pgrep','pidwait','pkill','setsid','hyprlock','busctl','systemctl','logger','xdg-terminal-exec'):
             path=self.bin/name
             if path.exists() or path.is_symlink(): path.unlink()
             path.write_text(source); path.chmod(0o755)
@@ -160,26 +157,6 @@ elif name=='ttfx': sys.exit(0)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertFalse(self.calls('setsid')); self.assertFalse(self.calls('systemctl'))
 
-    def test_screensaver_toggle_preserves_and_reader_honors_xdg(self):
-        self.assertEqual(self.run_command('tam-toggle-screensaver').returncode,0)
-        self.assertTrue((self.temp/'state/tamlinux/toggles/screensaver-off').exists())
-        self.assertNotEqual(self.run_command('tam-launch-screensaver').returncode,0)
-        self.assertFalse(self.calls('hyprctl'))
-        self.assertTrue(list((self.temp/'state/tamlinux/settings-recovery').glob('toggles.*/manifest.json')))
-
-    def test_screensaver_launcher_uses_assets_and_same_output_sibling(self):
-        # One monitor/event avoids waiting for another fictitious window.
-        result=self.run_command('tam-launch-screensaver','force',TEST_MONITORS=json.dumps(MONITORS[:1]))
-        self.assertEqual(result.returncode,0,result.stderr)
-        dispatches=[c['args'][1] for c in self.calls('hyprctl') if c['args'][0]=='dispatch']
-        self.assertTrue(any('/share/tamlinux/screensaver/foot.ini' in d and '/bin/tam-screensaver' in d for d in dispatches))
-
-    def test_toggle_backup_failure_leaves_marker(self):
-        marker=self.temp/'state/tamlinux/toggles/screensaver-off'; marker.parent.mkdir(parents=True); marker.write_text('original')
-        self.block_recovery()
-        self.assertNotEqual(self.run_command('tam-toggle-screensaver').returncode,0)
-        self.assertEqual(marker.read_text(),'original'); self.assertFalse(self.calls('qs'))
-
     def test_monitor_backup_failure_prevents_disable_and_reload(self):
         self.block_recovery()
         self.assertNotEqual(self.run_command('tam-hyprland-monitor-internal','off').returncode,0)
@@ -204,13 +181,6 @@ elif name=='ttfx': sys.exit(0)
         body=(installed.COMMANDS/'tam-brightness-display-apple/tam-brightness-display-apple').read_text()
         self.assertNotIn('sudo ',body)
         self.assertIn('/usr/bin/pkexec /usr/lib/tamlinux/asdcontrol',body)
-
-    def test_screensaver_effect_uses_packaged_text_and_restores_cursor(self):
-        result=self.run_command('tam-screensaver',input='x',TEST_EFFECT_RUNNING='1')
-        self.assertEqual(result.returncode,0,result.stderr)
-        self.assertTrue(self.calls('ttfx'))
-        self.assertTrue(self.calls('ttfx')[0]['args'][1].endswith('/share/tamlinux/screensaver/screensaver.txt'))
-        self.assertTrue(any('invisible = false' in ' '.join(c['args']) for c in self.calls('hyprctl')))
 
     def test_clamshell_preserves_scale_and_flag_then_reopens(self):
         lid=self.temp/'lid/LID0/state'; lid.parent.mkdir(parents=True); lid.write_text('state: closed')

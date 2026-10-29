@@ -622,3 +622,5 @@ references and correction acceptance criteria. No product correction or deployme
 
 2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) corrected imv configuration preservation. [Session](docs/ai/2026-10-28-imv-preservation.md).
 Earlier imv development: [session](docs/ai/2026-10-28-imv-input.md).
+
+2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) worked on screensaver removal. [Session](docs/ai/2026-10-29-remove-screensaver.md).

@@ -40,7 +40,6 @@ class ThemeOwnership(unittest.TestCase):
             (self.bin / name).symlink_to(ROOT/'commands'/name/name)
         self.stub('tam-shell', 'exit 0')
         self.stub('tam-launch-about', 'exit 0')
-        self.stub('tam-launch-screensaver', 'exit 0')
         self.stub('tam-launch-editor', 'exit 0')
         self.stub('tam-restart-terminal', 'exit 0')
         self.stub('tam-restart-shell', 'exit 0')
@@ -210,8 +209,6 @@ class ThemeOwnership(unittest.TestCase):
         self.stub('tam-file-select','exit 0')
         self.call('branding-about','image'); self.assertEqual(dest.read_text(),'user logo')
         self.call('branding-about','reset'); self.assertEqual(dest.read_text(),'TAMLINUX\n')
-        self.call('branding-screensaver','text')
-        self.assertEqual((dest.parent/'screensaver.txt').read_text(),'TAMLINUX\n')
 
     def test_font_changes_inline_alacritty_families_and_can_change_again(self):
         self.stub('fc-list', "printf '%s\\n' 'Selected Font' 'Other Font'")
@@ -259,7 +256,7 @@ class ThemeOwnership(unittest.TestCase):
     def test_asset_default_menu_has_owned_names_and_fonts(self):
         menu=(ROOT/'desktop/menu/default.jsonc').read_text()
         self.assertIn('"iconFont":"Tamlinux Icons"',menu)
-        for name in ('theme-install','theme-bg-install','branding-about','branding-screensaver','launch-about'):
+        for name in ('theme-install','theme-bg-install','branding-about','launch-about'):
             self.assertNotIn('omarchy-'+name,menu)
         self.assertNotIn('omarchy',(ASSETS/'fastfetch.json').read_text().lower())
 

@@ -195,13 +195,6 @@
       "conversion": "bytes"
     },
     {
-      "id": "screensaver-off",
-      "root": "state",
-      "source": "omarchy/toggles/screensaver-off",
-      "target": "tamlinux/toggles/screensaver-off",
-      "conversion": "bytes"
-    },
-    {
       "id": "crash-capture-off",
       "root": "state",
       "source": "omarchy/toggles/crash-capture-off",

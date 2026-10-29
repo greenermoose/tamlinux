@@ -47,9 +47,3 @@ if [[ -d ${XDG_RUNTIME_DIR:-} ]] && pgrep -x "1password" >/dev/null && tam-cmd-p
     timeout --kill-after=1s 3s 1password --lock >/dev/null 2>&1 || true
   ) 9>"$XDG_RUNTIME_DIR/tamlinux-1password-lock.lock" &
 fi
-
-# Avoid running screensaver when locked
-pkill -x ttfx 2>/dev/null || true
-# ttfx handles SIGTERM asynchronously, so keep its terminal alive until it exits.
-timeout 1s pidwait -x ttfx 2>/dev/null || true
-pkill -f '[o]rg.tamlinux.screensaver' 2>/dev/null || true
