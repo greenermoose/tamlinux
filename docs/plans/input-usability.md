@@ -72,7 +72,13 @@ Tamlinux standardizes on the battle-tested convention:
      "MouseRight": "Paste"
    }
    ```
-   Existing-user Foot and Micro configs are repaired by preserving migrations (`foot-theme` / `micro-bindings`), not only by fresh-user defaults.
+   Existing-user Foot and Micro configs are repaired by explicitly planning,
+   reviewing and applying the packaged migrations (`foot-theme` / `micro-bindings`),
+   not only by fresh-user defaults. Micro migration accepts JSON5 while retaining
+   comments and other personal bindings; fresh defaults remain ordinary JSON.
+   Micro bindings are included in the settings checkpoint. Before Test, use a
+   checkpoint made with the selected package's recovery manifest; an older
+   checkpoint omitting Micro cannot establish coverage for that file.
 
 ### 5. Accessible Mouse Close Controls
 

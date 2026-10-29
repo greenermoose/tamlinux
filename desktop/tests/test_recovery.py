@@ -97,6 +97,28 @@ class Recovery(unittest.TestCase):
             return copy.deepcopy(state)
         return state, original, call, read
 
+    def test_micro_binding_restore_preserves_original_and_archives_later_writes(self):
+        original=b'// personal\n{"Alt-w":"Quit",}\n'
+        path=self.write('config','micro/bindings.json',original,0o640)
+        before=r.preserve(self.roots,self.journal)
+        self.assertIn(str(path),before['files'])
+        later=b'{"MouseRight":"Paste"}\n'
+        path.write_bytes(later);path.chmod(0o600)
+        r.restore(self.roots,self.journal)
+        self.assertEqual(path.read_bytes(),original)
+        self.assertEqual(path.stat().st_mode&0o777,0o640)
+        self.assertTrue(any(p.read_bytes()==later for p in (self.journal/'blobs').iterdir()))
+
+    def test_micro_binding_created_after_checkpoint_is_removed_and_archived(self):
+        r.preserve(self.roots,self.journal)
+        path=self.write('config','micro/bindings.json',b'{"MouseRight":"Paste"}\n')
+        self.write('config','micro/settings.json',b'{"softwrap":true}')
+        r.restore(self.roots,self.journal)
+        self.assertFalse(path.exists())
+        self.assertTrue(path.with_name('settings.json').exists())
+        records=[json.loads(p.read_text()) for p in (self.journal/'new-writes').glob('*.json')]
+        self.assertTrue(any(str(path) in doc['files'] for doc in records))
+
     def test_tuning_files_links_audio_and_later_values_restore_with_retry(self):
         state, original, call, read = self.audio_fixture()
         unit = self.write('config','systemd/user/'+r.AUDIO_UNIT,b'original unit',0o640)

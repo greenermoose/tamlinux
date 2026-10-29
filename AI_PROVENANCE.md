@@ -38,6 +38,9 @@ policy and physical acceptance remain separate.
 
 2026-10-28: Cursor `3.27.22` (`composer`) prepares Develop candidate 0.5.7: Foot/Micro K24 PuTTY clipboard migrations and version metadata; assembly pin bump follows in tamlinux-packages. [Session](docs/ai/2026-10-28-k24-clipboard-0.5.7.md).
 
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-sol`) prepares 0.5.8 with Micro
+JSON5 preservation and settings recovery. [Session](docs/ai/2026-10-28-micro-json5-recovery.md).
+
 ## 1. Fred's Multi-Agent AI Toolchain
 
 Tamlinux 0.5.4 component metadata was prepared with Codex CLI `0.164.0`,

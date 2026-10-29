@@ -168,6 +168,55 @@ class Migration(unittest.TestCase):
         self.write('config','micro/bindings.json',b'["MouseRight"]\n')
         self.assertEqual(m.prepare(self.roots,self.journal,only='micro-bindings')['status'],'blocked')
 
+    def test_micro_json5_preserves_comments_quotes_crlf_and_rolls_back(self):
+        original=(b'// personal bindings\r\n{\r\n'
+                  b"  'Alt-w': 'command:togglelocal softwrap', // keep this\r\n"
+                  b"  MouseRight: 'OldAction', /* preserve annotation */\r\n"
+                  b'}\r\n')
+        path=self.write('config','micro/bindings.json',original)
+        plan=m.prepare(self.roots,self.journal,only='micro-bindings')
+        self.assertEqual(plan['conflicts'],[])
+        m.apply(self.journal,self.roots)
+        updated=path.read_bytes()
+        self.assertIn(b"'Alt-w': 'command:togglelocal softwrap', // keep this\r\n",updated)
+        self.assertIn(b'/* preserve annotation */',updated)
+        self.assertIn(b'MouseRight: "Paste"',updated)
+        self.assertNotIn(b'\n',updated.replace(b'\r\n',b''))
+        self.assertEqual(m.convert_micro_bindings(updated),None)
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_micro_json5_scoped_buffer_and_top_level_cannot_compete(self):
+        import json5
+        original=b'''{ "MouseRight": "Old", buffer: {
+            // Scoped shortcuts and strings resembling syntax stay intact.
+            "Alt-w": "command:echo '}, // not a comment'",
+            MouseRight: 'Other',
+        }, command: { "Ctrl-y": "Paste" } }'''
+        converted=m.convert_micro_bindings(original)
+        doc=json5.loads(converted)
+        self.assertEqual(doc['MouseRight'],'Paste')
+        self.assertEqual(doc['buffer']['MouseRight'],'Paste')
+        self.assertEqual(doc['buffer']['MouseLeftRelease'],'MouseRelease,Copy')
+        self.assertEqual(doc['command'],{'Ctrl-y':'Paste'})
+        self.assertIn(b'// Scoped shortcuts',converted)
+        self.assertIn(b"command:echo '}, // not a comment'",converted)
+        self.assertIsNone(m.convert_micro_bindings(converted))
+
+    def test_micro_json5_empty_objects_comments_and_no_trailing_comma(self):
+        import json5
+        for original in (b'{}',b'{ /* keep */ }',b'{"Alt-w":"Quit" // keep\n}',
+                         b"{unquoted: 'keep',}",b'{"Alt-w":"Quit"}'):
+            with self.subTest(original=original):
+                updated=m.convert_micro_bindings(original)
+                self.assertEqual(json5.loads(updated)['MouseRight'],'Paste')
+                self.assertIsNone(m.convert_micro_bindings(updated))
+
+    def test_micro_json5_duplicate_keys_and_malformed_input_are_preserved(self):
+        for original in (b'{MouseRight:"One",MouseRight:"Two"}',b'{"Alt-w":'):
+            with self.subTest(original=original):
+                with self.assertRaises(ValueError):m.convert_micro_bindings(original)
+
     def test_terminal_theme_conversion_accepts_general_table_and_absolute_xdg_path(self):
         old=str(self.roots['state']/'omarchy/current/theme/alacritty.toml')
         original=('[general]\nimport = ["'+old+'"]\n').encode()

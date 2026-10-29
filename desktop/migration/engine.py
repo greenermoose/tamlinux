@@ -209,19 +209,61 @@ def convert_foot_mouse_clipboard(data):
 
 
 def convert_micro_bindings(data):
+    # Micro reads JSON5. Validate with the same format before making surgical
+    # edits; serializing the whole object would discard personal comments.
+    import json5
     text=data.decode('utf-8')
-    doc=json.loads(text)
+    doc=json5.loads(text, allow_duplicate_keys=False)
     if not isinstance(doc, dict):
         raise ValueError('Micro bindings must be a JSON object')
-    changed=False
-    for key,value in MICRO_MOUSE_BINDINGS.items():
-        if doc.get(key)!=value:
-            doc[key]=value
-            changed=True
-    if not changed:
-        return None
-    indent='\t' if '\t' in text else 2
-    return (json.dumps(doc, indent=indent)+'\n').encode()
+    def merge_object(source, required):
+        # The JSON5 parser owns syntax validation. These tokens locate member
+        # values only, retaining whitespace, comments, quotes and nested maps.
+        token=re.compile(r'''\s+|\ufeff|//[^\r\n\u2028\u2029]*|/\*[\s\S]*?\*/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|[{}\[\]:,]|[^\s{}\[\]:,'"]+''')
+        tokens=[m for m in token.finditer(source)
+                if not (m[0].isspace() or m[0]=='\ufeff' or m[0].startswith(('//','/*')))]
+        members={};i=1;last=tokens[0]
+        while tokens[i][0]!='}':
+            key=next(iter(json5.loads('{'+tokens[i][0]+':null}')))
+            i+=2;start=i;depth=0
+            while True:
+                value=tokens[i][0]
+                if depth==0 and value in (',','}'): break
+                if value in ('{','['): depth+=1
+                elif value in ('}',']'): depth-=1
+                i+=1
+            members[key]=(tokens[start].start(),tokens[i-1].end())
+            last=tokens[i-1]
+            if tokens[i][0]==',': last=tokens[i];i+=1
+        edits=[]
+        for key,value in required.items():
+            if key in members:
+                start,end=members[key]
+                if json5.loads(source[start:end])!=value:
+                    edits.append((start,end,json.dumps(value)))
+        missing={k:v for k,v in required.items() if k not in members}
+        if missing:
+            newline='\r\n' if '\r\n' in source else '\n'
+            indent='\t' if '\t' in source else '  '
+            addition=newline+(','+newline).join(indent+json.dumps(k)+': '+json.dumps(v) for k,v in missing.items())+newline
+            if members and last[0]!=',':
+                if last.end()==tokens[i].start(): addition=','+addition
+                else: edits.append((last.end(),last.end(),','))
+            edits.append((tokens[i].start(),tokens[i].start(),addition))
+        # Scoped buffer maps can coexist with top-level bindings. Keep both
+        # forms consistent so Micro's map iteration cannot choose an old bind.
+        if 'buffer' in members:
+            start,end=members['buffer']
+            nested=json5.loads(source[start:end])
+            if not isinstance(nested,dict): raise ValueError('Micro buffer bindings must be an object')
+            updated=merge_object(source[start:end],MICRO_MOUSE_BINDINGS)
+            if updated!=source[start:end]: edits.append((start,end,updated))
+        for start,end,value in sorted(edits,reverse=True):
+            source=source[:start]+value+source[end:]
+        return source
+    converted=merge_object(text,MICRO_MOUSE_BINDINGS)
+    json5.loads(converted, allow_duplicate_keys=False)
+    return converted.encode() if converted!=text else None
 
 
 def convert(kind, data, commands, locations=None, leaf=None):

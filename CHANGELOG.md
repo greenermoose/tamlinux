@@ -8,6 +8,14 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.8 - Develop candidate
+
+- Preserve Micro JSON5 comments, personal bindings and scoped buffer maps when
+  migrating mouse copy/paste bindings; refuse ambiguous duplicate keys.
+- Include Micro bindings in settings recovery, including restoring absence
+  when initialization created the file after the checkpoint.
+- Retain 0.5.7 clipboard changes and the assembly's selected dependency pins.
+
 ## 0.5.7 - Develop candidate
 
 - Repair K24 PuTTY-heritage clipboard for existing users: Foot migration ensures
