@@ -188,9 +188,9 @@ class ThemePayload(unittest.TestCase):
         self.assertEqual(result.stderr, '')
         self.assertEqual(result.stdout.count('\n'), 1, result.stdout)
         self.assertTrue(result.stdout.endswith('\n'), result.stdout)
-        # Compact means compact: nothing in the object is padded with a space.
-        self.assertNotIn(' ', result.stdout)
-        return json.loads(result.stdout)
+        value = json.loads(result.stdout)
+        self.assertEqual(result.stdout, json.dumps(value, separators=(',', ':')) + '\n')
+        return value
 
     def assertPayload(self, expected, *argv):
         """One whole object, compared key by key."""
@@ -578,6 +578,14 @@ border = "no-such-color"
         self.write_override('[font]\nbase-size = 48\n')
         self.assertEqual(self.payload()['style'], {'fontBaseSize': 48})
         self.write_override('[font]\nbase-size = 99\n')
+        self.assertEqual(self.payload()['style'], {})
+
+    def test_font_family_is_validated_and_override_wins(self):
+        self.write_theme(shell='[font]\nfamily = "Atkinson Hyperlegible"\n')
+        self.assertEqual(self.payload()['style'], {'fontFamily': 'Atkinson Hyperlegible'})
+        self.write_override('[font]\nfamily = "Personal Font"\n')
+        self.assertEqual(self.payload()['style'], {'fontFamily': 'Personal Font'})
+        self.write_override('[font]\nfamily = "bad;command"\n')
         self.assertEqual(self.payload()['style'], {})
 
     # 12. Every broken input costs its own file and nothing else.

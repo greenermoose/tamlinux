@@ -56,7 +56,7 @@ PALETTE_SOURCES = {
     'urgent': ('red', 'color1'),
 }
 
-# accentText and muted have no legacy name of their own. Each takes the keys
+# accentText and muted each take the keys
 # below, then the resolved foreground, which is why neither ever falls back to
 # its own default.
 PALETTE_FALLBACKS = {
