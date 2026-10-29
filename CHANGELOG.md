@@ -8,6 +8,21 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.10 - Develop candidate
+
+- Add Start with visible Quick Launch and Settings groups. Open it on unused
+  bar space with right-click, or anywhere with SUPER + right-click. Preserve
+  widget context actions; resize windows with SUPER + ALT + right-drag.
+- Expose desktop-wide palette and text-size controls, preserve curated Quick
+  Launch entries, and recover original settings after a failed text-size write.
+- Include the Tamarack dark/light themes, Atkinson typography, economical
+  shell surfaces, retained-write theme recovery and text-login orientation
+  developed since 0.5.9. Retire the traditional visual screensaver while
+  retaining idle power saving, locking and Stay Awake.
+- Shorten default input chords and improve keybinding explorer availability,
+  ordering, explanations and window focus behavior. Physical acceptance remains
+  part of packaged Test.
+
 ## 0.5.9 - Develop candidate
 
 - Qualify the shared QML palette so QtQuick's `Color` type cannot shadow it:

@@ -54,6 +54,19 @@ staged; no live configuration or deployment was changed during development.
 - A fixture rendering was visually inspected. Consumer activation has four
   passing checks and Nix syntax validation.
 
-No candidate assembly was prepared, deployed, Run or Released. Physical
+At the end of the implementation phase, no candidate assembly was prepared,
+deployed, Run or Released. Physical
 appearance, login persistence and recovery acceptance remain for packaged Test.
 Existing Foot windows need restarting to pick up a new terminal text size.
+
+## Package preparation follow-up
+
+The maintainer reported:
+
+> It doesn't work. I tried right mouse click on the top bar. Nothing.
+
+Inspection confirmed that the running package was 0.5.9 and contained no bar
+Start handler. The source implementation had not been delivered. Preparation
+now sets the product version to 0.5.10 for a recorded candidate; activation
+still requires an explicit Test instruction. Other component selections are
+retained. Preparation is not physical acceptance.
