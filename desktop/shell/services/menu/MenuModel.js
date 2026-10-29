@@ -347,6 +347,8 @@ function childCount(items, itemOrder, id) {
 function isVisible(items, itemOrder, whenResults, entry, depth) {
   if (!entry) return false
   if (entry.when && whenResults && whenResults[entry.id] === false) return false
+  // Start composes the existing Quick Launch and style routes at display time.
+  if (entry.id === "start") return true
   if (entry.kind !== "menu" && entry.kind !== "link") return true
   if (entry.provider) return true
 

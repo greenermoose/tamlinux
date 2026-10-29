@@ -57,6 +57,20 @@ PanelWindow {
   margins.bottom: hidden && atBottom ? -implicitHeight : 0
   onHiddenChanged: if (hidden) tooltipText = ""
 
+  // A passive ancestor handler observes gaps without stealing widget events.
+  // Widget bounds reserve their area even if that widget ignores right-click.
+  TapHandler {
+    parent: win.contentItem
+    acceptedButtons: Qt.RightButton
+    acceptedModifiers: Qt.NoModifier
+    onTapped: function(point) {
+      if (!win.hidden && !api.occupiedAt(point.position.x, point.position.y)) {
+        win.tooltipText = ""
+        api.openStart(point.position.x)
+      }
+    }
+  }
+
   BarApi {
     id: api
     host: win

@@ -19,6 +19,14 @@ QtObject {
   property string typedKeyboardName: ""
   property int revision: 0
   property var backend: null
+  signal pointerPositionReady(int token, var point)
+
+  // One observation for a user-invoked popup, never a background cursor poll.
+  function requestPointerPosition(token) {
+    if (!backend || !backend.requestPointerPosition) return false
+    backend.requestPointerPosition(token)
+    return true
+  }
   // A component the bar's popups instantiate to close on an outside click,
   // or null when the compositor has no focus grab (Sway).
   readonly property var focusGrab: backend && backend.focusGrab ? backend.focusGrab : null

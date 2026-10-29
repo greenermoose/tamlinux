@@ -76,6 +76,49 @@ QtObject {
     return env
   }
 
+  property int nextPointerToken: -1
+  function requestPointerPosition(token) {
+    if (pointerRead.running) { nextPointerToken = token; return }
+    pointerRead.token = token
+    pointerRead.collected = ""
+    pointerRead.overflow = false
+    pointerRead.running = true
+  }
+
+  function pointerResult(code, raw) {
+    if (code !== 0) return null
+    try {
+      var point = JSON.parse(raw)
+      if (typeof point.x === "number" && isFinite(point.x) &&
+          typeof point.y === "number" && isFinite(point.y)) return {x: point.x, y: point.y}
+    } catch (e) {}
+    return null
+  }
+
+  readonly property Process pointerRead: Process {
+    command: ["/usr/bin/timeout", "2", "/usr/bin/hyprctl", "-j", "cursorpos"]
+    environment: adapter.closedEnv
+    clearEnvironment: true
+    property int token: 0
+    property string collected: ""
+    property bool overflow: false
+    stdout: SplitParser {
+      onRead: function(data) {
+        if (pointerRead.collected.length + data.length > 4096) pointerRead.overflow = true
+        else pointerRead.collected += data + "\n"
+      }
+    }
+    onExited: function(code) {
+      if (adapter.host) adapter.host.pointerPositionReady(token,
+        overflow ? null : adapter.pointerResult(code, collected))
+      if (adapter.nextPointerToken >= 0) {
+        var next = adapter.nextPointerToken
+        adapter.nextPointerToken = -1
+        adapter.requestPointerPosition(next)
+      }
+    }
+  }
+
   function note(message) {
     console.log("TAMLINUX_EVIDENCE " + message)
   }

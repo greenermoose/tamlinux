@@ -14,11 +14,13 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Controls
 import Tam.Commons
 import Tam.Commons as Commons
 import Tam.Ui
 import "../clipboard/components"
 import "MenuModel.js" as MenuModel
+import "StartModel.js" as StartModel
 
 Item {
   id: root
@@ -26,8 +28,76 @@ Item {
   readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/tamlinux/menu"
   // The host's OSD service (launch feedback), or null when it is not running.
   property var osd: null
+  property var shell: null
+  readonly property var compositor: shell ? shell.compositor : null
 
   property string pendingInitialMenu: "root"
+  readonly property bool startView: !dmenuActive && activeMenu === "start"
+  property bool startSession: false
+  property bool startPending: false
+  property var startScreen: null
+  property var startAnchor: null
+  property int startGeneration: 0
+  // Exposed for isolated layout/input checks, with no live action execution.
+  readonly property alias visibleModel: displayModel
+  readonly property alias menuWindow: panel
+
+  function startAt(anchor) {
+    if (root.dmenuActive && root.requestActive) root.finishRequest(null)
+    panel.cardTop = -1
+    panel.maxRowsHeight = -1
+    startGeneration++
+    startPending = false
+    startScreen = null
+    startAnchor = null
+    if (anchor && typeof anchor.output === "string" &&
+        typeof anchor.x === "number" && isFinite(anchor.x) &&
+        typeof anchor.y === "number" && isFinite(anchor.y)) {
+      var screens = Quickshell.screens
+      for (var i = 0; i < screens.length; i++) {
+        if (screens[i].name !== anchor.output) continue
+        startScreen = screens[i]
+        startAnchor = {x: anchor.x, y: anchor.y, edge: anchor.edge || ""}
+        break
+      }
+    }
+    startSession = true
+    root.openExistingMenu("start")
+  }
+
+  function startAtPointer() {
+    startPending = true
+    startGeneration++
+    if (!compositor || !compositor.requestPointerPosition(startGeneration))
+      root.finishPointer(1, "{}", startGeneration)
+  }
+
+  Connections {
+    target: root.compositor
+    function onPointerPositionReady(token, point) {
+      root.finishPointer(point ? 0 : 1, JSON.stringify(point || {}), token)
+    }
+  }
+
+  function finishPointer(code, raw, generation) {
+    if (!startPending || generation !== startGeneration) return
+    var anchor = null
+    try {
+      var point = JSON.parse(raw)
+      var screen = code === 0 ? StartModel.screenAt(Quickshell.screens, point.x, point.y) : null
+      if (screen) anchor = {output: screen.name, x: point.x - screen.x, y: point.y - screen.y}
+    } catch (e) {}
+    root.startAt(anchor)
+  }
+
+  Connections {
+    target: Quickshell
+    function onScreensChanged() {
+      // Dismiss a menu attached to an output that has disappeared.
+      if (root.startSession && root.opened &&
+          (!root.startScreen || Quickshell.screens.indexOf(root.startScreen) < 0)) root.cancel()
+    }
+  }
 
   // Opens the tree at payload.menu (an id or alias), or a select/input
   // request when payload.mode says so.
@@ -40,7 +110,8 @@ Item {
     if (payload.mode === "select" || payload.mode === "input") {
       root.openDmenu(payload)
     } else {
-      root.openRoute(payload.initialMenu || payload.menu || "root")
+      if ((payload.initialMenu || payload.menu) === "start" && payload.anchor) root.startAt(payload.anchor)
+      else root.openRoute(payload.initialMenu || payload.menu || "root")
     }
   }
 
@@ -63,7 +134,7 @@ Item {
   }
 
   function toggle(route) {
-    if (root.opened) root.cancel()
+    if (root.opened || root.startPending) root.cancel()
     else root.openRoute(route || "root")
   }
 
@@ -138,25 +209,36 @@ Item {
   readonly property real rowReservedBorderLeft: Border.left(selectedBorderSpec)
   readonly property real rowReservedBorderRight: Border.right(selectedBorderSpec)
   readonly property int cornerRadius: Style.cornerRadius
-  property int contentMargin: Style.space(18)
-  property int headingSize: Style.fontPx(16 / 12)
-  property int iconSize: Style.fontPx(1.5)
+  property int contentMargin: Style.space(root.startSession ? 10 : 18)
+  property int headingSize: root.startSession ? Style.font.body : Style.fontPx(16 / 12)
+  property int iconSize: root.startSession ? Style.font.icon : Style.fontPx(1.5)
   property int headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
   property int contentSpacing: Style.spacing.md
-  property int baseRowHeight: Math.max(Style.space(50), Style.font.body + Style.spacing.rowPaddingX * 2)
+  property int baseRowHeight: root.startSession ? Math.max(Style.space(28), Style.font.body + Style.spacing.sm * 2) : Math.max(Style.space(50), Style.font.body + Style.spacing.rowPaddingX * 2)
   property int detailRowHeight: Math.max(Style.space(58), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX * 2)
   // How much of the first hidden row stays visible at the fold — enough to
   // read as a cut-off row rather than a bottom border.
   property int rowPeek: Math.round(baseRowHeight * 0.55)
-  property int rowSpacing: Style.spacing.xs
+  property int rowSpacing: root.startSession ? 0 : Style.spacing.xs
+  readonly property int sectionHeight: Style.font.body + Style.spacing.sm * 2
+  readonly property int powerDividerHeight: Style.space(8)
+  readonly property int emptyRowHeight: Math.ceil(emptyIconMetrics.height + emptyLabelMetrics.height + Style.space(8))
+  FontMetrics { id: emptyIconMetrics; font.family: root.fontFamily; font.pixelSize: Style.font.displayLarge }
+  FontMetrics { id: emptyLabelMetrics; font.family: root.fontFamily; font.pixelSize: Style.font.title }
   property int dividerHeight: Style.space(17)
   property bool searchDivider: false
   property int layoutSerial: 0
-  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : ((root.activeMenu === "trigger.capture.screenrecord" || root.activeMenu === "style.font") ? Style.space(520) : Style.space(300)), panel.width - Style.gapsOut * 2)
+  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : (root.startSession ? Style.space(320) : ((root.activeMenu === "trigger.capture.screenrecord" || root.activeMenu === "style.font") ? Style.space(520) : Style.space(300))), panel.width - Style.gapsOut * 2)
   property int visibleRowsHeight: root.dmenuActive ? dmenuRowListHeight(layoutSerial, displayModel.count, filterText) : rowListHeight(layoutSerial, displayModel.count, filterText, searchDivider)
+  readonly property real startTopInset: root.startAnchor && root.startAnchor.edge === "top"
+    ? Math.max(Style.gapsOut, root.startAnchor.y) : Style.gapsOut
+  readonly property real startBottomEdge: root.startAnchor && root.startAnchor.edge === "bottom"
+    ? Math.min(panel.height - Style.gapsOut, root.startAnchor.y) : panel.height - Style.gapsOut
+  readonly property real maximumCardHeight: root.startSession
+    ? Math.max(0, startBottomEdge - startTopInset) : panel.height - Style.gapsOut * 2
   property int cardHeight: root.dmenuActive
     ? Math.min(contentMargin * 2 + headerHeight + (mode === "input" ? 0 : contentSpacing + visibleRowsHeight), panel.height - Style.gapsOut * 2)
-    : Math.min(contentMargin * 2 + headerHeight + contentSpacing + visibleRowsHeight, panel.height - Style.gapsOut * 2)
+    : Math.min(contentMargin * 2 + headerHeight + contentSpacing + visibleRowsHeight, root.maximumCardHeight)
 
   function finishRequest(selection) {
     if (!root.requestActive || !root.doneFile) {
@@ -199,13 +281,14 @@ Item {
   // Uses panel.cardTop rather than effectiveCardTop: the centered top is
   // derived from the card height, which this value feeds.
   function availableRowsHeight() {
-    var top = panel.cardTop >= 0 ? panel.cardTop : Style.gapsOut
-    var available = panel.height - top - Style.gapsOut - root.contentMargin * 2 - root.headerHeight - root.contentSpacing
+    var top = panel.cardTop >= 0 ? panel.cardTop : (root.startSession ? root.startTopInset : Style.gapsOut)
+    var bottom = root.startSession ? root.startBottomEdge : panel.height - Style.gapsOut
+    var available = bottom - top - root.contentMargin * 2 - root.headerHeight - root.contentSpacing
     // The starting menu sets the ceiling along with the offset: drilling into
     // a longer submenu scrolls behind the fold instead of growing the card.
     if (panel.maxRowsHeight >= 0) available = Math.min(available, panel.maxRowsHeight)
     // A card that swallows the whole screen reads as a page, not a menu.
-    return Math.min(available, Math.round(panel.height * 0.7))
+    return root.startSession ? Math.max(0, available) : Math.min(available, Math.round(panel.height * 0.7))
   }
 
   // When every row fits, the list gets its full height. When they don't,
@@ -226,7 +309,7 @@ Item {
   }
 
   function rowListHeight(_serial, _count, _filter, _divider) {
-    if (displayModel.count === 0) return root.baseRowHeight
+    if (displayModel.count === 0) return root.startSession ? root.emptyRowHeight : root.baseRowHeight
 
     var totals = []
     var total = 0
@@ -235,8 +318,10 @@ Item {
     for (var i = 0; i < displayModel.count; i++) {
       var row = displayModel.get(i)
       if (i > 0) total += root.rowSpacing
-      if (row.section === "drilldown" && previousSection !== "drilldown") total += root.dividerHeight
+      if (root.startView && row.section !== previousSection) total += root.sectionHeight
+      else if (row.section === "drilldown" && previousSection !== "drilldown") total += root.dividerHeight
       total += root.rowHeightForDetail(row.detail)
+      if (row.separatorBefore) total += root.powerDividerHeight
       previousSection = row.section
       totals.push(total)
     }
@@ -294,7 +379,10 @@ Item {
     if (!defaultMenuFile.ready || !userMenuFile.ready || !defaultMenuFile.valid) return
     var mergedMenu
     try {
-      mergedMenu = MenuModel.mergeMenuSources(defaultMenuFile.items, userMenuFile.items)
+      // A user-owned Quick Launch tree replaces the starter list as a whole.
+      // Do not insert packaged app rows into an existing curated list.
+      var defaults = StartModel.defaultsFor(defaultMenuFile.items, userMenuFile.items)
+      mergedMenu = MenuModel.mergeMenuSources(defaults, userMenuFile.items)
     } catch (e) {
       root.menuError = String(e)
       console.warn("Tamlinux menu: retaining last valid model; " + root.menuError)
@@ -323,6 +411,15 @@ Item {
   // re-runs every time its submenu is entered, so a font installed since the
   // shell started shows up without restarting it.
   readonly property var providers: ({
+    "text-sizes": {
+      script: "current=$(tam-display-text-size 2>/dev/null | sed -n 's/^text size: \\([0-9]*\\).*/\\1/p'); for size in {9..20}; do printf '%s px\\t%s\\t%s\\n' \"$size\" \"$size\" \"$current\"; done; printf 'Reset to default (12 px)\\treset\\t%s\\n' \"$current\"",
+      icon: "",
+      volatile: true,
+      actionFor: function(value) {
+        if (value !== "reset" && !/^(9|1[0-9]|20)$/.test(value)) return ""
+        return "tam-display-text-size " + root.shellQuote(value) + " || tam-notification-send 'Text size could not be changed; see the settings recovery journal.'"
+      }
+    },
     "fonts": {
       script: "current=$(tam-font-current 2>/dev/null); tam-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
       icon: "",
@@ -491,6 +588,7 @@ Item {
   }
 
   function loadProvidersForSearch() {
+    if (root.startView) return
     var active = root.item(root.activeMenu) ? root.activeMenu : "root"
 
     for (var i = 0; i < root.itemOrder.length; i++) {
@@ -602,7 +700,8 @@ Item {
         action: "",
         provider: "",
         score: i,
-        section: ""
+        section: "",
+        separatorBefore: false
       })
     }
 
@@ -633,7 +732,9 @@ Item {
     var query = root.filterText.trim()
     root.searchDivider = false
 
-    if (query) {
+    if (root.startView) {
+      rows = StartModel.rows(MenuModel, root.items, root.itemOrder, root.whenResults, root.checkedResults, query)
+    } else if (query) {
       var currentRows = []
       var drilldownRows = []
 
@@ -686,7 +787,10 @@ Item {
       }
     }
 
-    for (var k = 0; k < rows.length; k++) displayModel.append(rows[k])
+    for (var k = 0; k < rows.length; k++) {
+      if (rows[k].separatorBefore === undefined) rows[k].separatorBefore = false
+      displayModel.append(rows[k])
+    }
     layoutSerial += 1
 
     if (displayModel.count === 0) selectedIndex = 0
@@ -739,7 +843,7 @@ Item {
     root.selectedIndex = 0
     root.cursorActive = root.mode !== "input"
     root.disarmPointer()
-    if (!root.dmenuActive && root.filterText.trim()) root.loadProvidersForSearch()
+    if (!root.dmenuActive && !root.startView && root.filterText.trim()) root.loadProvidersForSearch()
     root.rebuildDisplay()
   }
 
@@ -759,7 +863,7 @@ Item {
   }
 
   function goBack() {
-    if (root.activeMenu === "root") return false
+    if (root.activeMenu === "root" || root.startView) return false
 
     if (root.navStack.length > 0) {
       var previous = root.navStack[root.navStack.length - 1]
@@ -847,6 +951,8 @@ Item {
   }
 
   function cancel() {
+    startPending = false
+    startGeneration++
     if (root.dmenuActive) root.finishRequest(null)
     opened = false
     filterText = ""
@@ -877,6 +983,7 @@ Item {
   }
 
   function openDmenu(payload) {
+    root.startSession = false
     requestSerial += 1
     mode = payload.mode === "input" ? "input" : "select"
     dmenuPrompt = String(payload.prompt || (mode === "input" ? "Input" : "Select"))
@@ -911,6 +1018,10 @@ Item {
 
   function openRoute(initialMenu) {
     var id = root.resolveRoute(initialMenu)
+    if (id === "start") { root.startAtPointer(); return "ok" }
+    root.startPending = false
+    root.startGeneration++
+    root.startSession = false
     var entry = root.items[id]
     // If the resolved id is an action (i.e. the user invoked an alias for
     // a leaf, e.g. `summon screenrecord-stop`), run it directly
@@ -1091,6 +1202,7 @@ Item {
   }
   PanelWindow {
     id: panel
+    screen: root.startSession ? root.startScreen : null
     visible: root.opened && root.rowsLoaded
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
@@ -1108,7 +1220,9 @@ Item {
     property int cardTop: -1
     property int maxRowsHeight: -1
     readonly property int centeredTop: Math.max(Style.gapsOut, Math.round((height - root.cardHeight) / 2))
-    readonly property int effectiveCardTop: cardTop >= 0 ? cardTop : centeredTop
+    readonly property var startPlacement: StartModel.placement(width, height, root.cardWidth,
+      root.cardHeight, root.startAnchor, Style.gapsOut)
+    readonly property int effectiveCardTop: cardTop >= 0 ? cardTop : (root.startSession ? startPlacement.y : centeredTop)
     function freezeCardTop() {
       if (visible && cardTop < 0) {
         cardTop = effectiveCardTop
@@ -1124,6 +1238,7 @@ Item {
 
     MouseArea {
       anchors.fill: parent
+      acceptedButtons: Qt.AllButtons
       onClicked: root.cancel()
     }
 
@@ -1132,7 +1247,7 @@ Item {
       width: root.cardWidth
       height: Math.min(root.cardHeight, panel.height - Style.gapsOut - panel.effectiveCardTop)
       radius: root.cornerRadius
-      anchors.horizontalCenter: parent.horizontalCenter
+      x: root.startSession ? panel.startPlacement.x : (panel.width - width) / 2
       y: panel.effectiveCardTop
       color: root.background
       borderSpec: root.borderSpec
@@ -1251,6 +1366,9 @@ Item {
             clip: true
             spacing: root.rowSpacing
             boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {
+              policy: root.startSession && resultList.contentHeight > resultList.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+            }
 
             section.property: "section"
             section.criteria: ViewSection.FullString
@@ -1258,10 +1376,28 @@ Item {
               required property string section
 
               width: ListView.view.width
-              height: section === "drilldown" ? root.dividerHeight : 0
-              visible: section === "drilldown"
+              height: root.startView ? root.sectionHeight : (section === "drilldown" ? root.dividerHeight : 0)
+              visible: root.startView || section === "drilldown"
+              Accessible.role: Accessible.StaticText
+              Accessible.name: root.startView ? section : ""
+
+              Text {
+                visible: root.startView
+                anchors.left: parent.left
+                anchors.leftMargin: Style.spacing.sm
+                anchors.verticalCenter: parent.verticalCenter
+                text: parent.section === "Settings" ? "Settings — Shell, apps & terminals" : parent.section
+                textFormat: Text.PlainText
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                font.weight: Font.DemiBold
+                width: parent.width - Style.spacing.sm * 2
+                elide: Text.ElideRight
+              }
 
               Rectangle {
+                visible: !root.startView
                 anchors.left: parent.left
                 anchors.leftMargin: Style.space(4)
                 anchors.right: parent.right
@@ -1287,16 +1423,32 @@ Item {
               required property string path
               required property string action
               required property int childCount
+              required property bool separatorBefore
+              readonly property int dividerInset: separatorBefore ? root.powerDividerHeight : 0
+              Accessible.role: Accessible.MenuItem
+              Accessible.name: label
+              Accessible.focused: hasCursor
+              Accessible.onPressAction: root.activateIndex(row.index, true)
 
               readonly property bool hasCursor: root.cursorActive && row.index === root.selectedIndex
               readonly property bool isApp: row.kind === "app"
               readonly property bool hasIcon: row.icon.length > 0 || row.isApp
 
               width: ListView.view.width
-              height: root.rowHeightForDetail(row.detail)
+              height: root.rowHeightForDetail(row.detail) + row.dividerInset
               radius: root.cornerRadius
               color: row.hasCursor ? root.selectedBackground : "transparent"
               borderSpec: row.hasCursor ? root.selectedBorderSpec : Border.none()
+
+              Rectangle {
+                visible: row.separatorBefore
+                anchors.top: parent.top
+                anchors.topMargin: Math.round(row.dividerInset / 2)
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: Style.spacing.hairline
+                color: root.foreground
+              }
 
               Rectangle {
                 visible: false
@@ -1344,6 +1496,7 @@ Item {
 
               Column {
                 id: contentColumn
+                anchors.verticalCenterOffset: row.dividerInset / 2
                 anchors.left: row.hasIcon ? iconText.right : parent.left
                 anchors.leftMargin: row.hasIcon ? Style.space(6) : root.rowReservedBorderLeft + Style.space(18)
                 anchors.right: trail.left
@@ -1476,7 +1629,7 @@ Item {
               font.family: root.fontFamily
               font.pixelSize: Style.font.displayLarge
               horizontalAlignment: Text.AlignHCenter
-              width: Style.space(320)
+              width: root.startSession ? Math.max(0, card.width - root.contentMargin * 2) : Style.space(320)
             }
 
             Text {
@@ -1487,7 +1640,8 @@ Item {
               font.family: root.fontFamily
               font.pixelSize: Style.font.title
               horizontalAlignment: Text.AlignHCenter
-              width: Style.space(320)
+              width: root.startSession ? Math.max(0, card.width - root.contentMargin * 2) : Style.space(320)
+              elide: Text.ElideRight
             }
           }
         }

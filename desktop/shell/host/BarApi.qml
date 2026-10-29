@@ -198,6 +198,26 @@ QtObject {
     return startAction(argv, 15000, true)
   }
 
+  function occupiedAt(x, y) {
+    if (!host) return false
+    for (var i = 0; i < widgets.length; i++) {
+      var item = widgets[i]
+      if (!item || !item.visible || item.width <= 0 || item.height <= 0) continue
+      var point = item.mapFromItem(host.contentItem, x, y)
+      if (point.x >= 0 && point.y >= 0 && point.x < item.width && point.y < item.height) return true
+    }
+    return false
+  }
+
+  function openStart(x) {
+    if (!screen || !isFinite(x)) return false
+    recordAction("open-start " + screen.name)
+    var payload = {menu: "start", anchor: {output: screen.name, x: x,
+      y: position === "bottom" ? screen.height - barSize : barSize,
+      edge: position === "bottom" ? "bottom" : "top"}}
+    return startAction([tamlinuxBin + "/tam-shell", "menu", "open", JSON.stringify(payload)], 15000, true)
+  }
+
   function openTerminal(program) {
     if (String(program || "") === "") {
       recordAction("open-terminal")

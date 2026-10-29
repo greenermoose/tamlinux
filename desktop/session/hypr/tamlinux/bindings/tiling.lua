@@ -69,7 +69,8 @@ o.bind("SUPER + mouse_down", "Scroll active workspace forward", hl.dsp.focus({ w
 o.bind("SUPER + mouse_up", "Scroll active workspace backward", hl.dsp.focus({ workspace = "e-1" }))
 
 o.bind("SUPER + mouse:272", "Move window", hl.dsp.window.drag(), { mouse = true })
-o.bind("SUPER + mouse:273", "Resize window", hl.dsp.window.resize(), { mouse = true })
+o.bind("SUPER + mouse:273", "Start menu", "tam-menu toggle start")
+o.bind("SUPER + ALT + mouse:273", "Resize window", hl.dsp.window.resize(), { mouse = true })
 
 o.bind("SUPER + G", "Toggle window grouping", hl.dsp.group.toggle())
 o.bind("SUPER + ALT + G", "Move active window out of group", hl.dsp.window.move({ out_of_group = true }))

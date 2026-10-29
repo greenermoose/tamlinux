@@ -1,5 +1,29 @@
 # Tamlinux shell proof
 
+## Start menu (0.5.10 Develop)
+
+Right-click unused bar space, or press SUPER and right-click anywhere, to
+open Start near the pointer. It exposes Quick Launch and Settings in one
+searchable list. Occupied bar widgets retain their own right-click behavior.
+SUPER + ALT + right-drag resizes windows.
+
+Settings offers Color Palette, Text Size, Background and Bar Position.
+Palette and text-size changes use the existing desktop-wide writers;
+supported app adapters and terminals follow them. Foot needs a new window
+for a changed text size. Text Size offers 9–20 px and a reset, preserves
+unrelated preferences, and restores saved settings on a failed write.
+
+A user Quick Launch tree replaces the starter list, preserving its ordering
+and actions. Direct `tam-menu toggle quicklaunch` remains available;
+`tam-menu toggle start` opens the combined view. Pointer queries go through
+the compositor facade, with a bounded on-demand read in the Hyprland adapter.
+Large lists scroll without hiding either section behind another category.
+
+Isolated model and native Wayland checks are in
+`desktop/tests/test_start_menu.py`; the fixture records actions instead of
+launching apps or session commands. See the [approved plan](../docs/plans/start-menu.md)
+for development evidence and the remaining packaged/physical acceptance.
+
 ## Console-first startup (0.5 Develop)
 
 Tamlinux boots through visible text progress to a text login. Its optional

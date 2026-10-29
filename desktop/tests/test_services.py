@@ -353,7 +353,7 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn('import "../services/osd" as Osd', text)
         self.assertIn('import "../services/reminders" as Reminders', text)
         self.assertIn('import "../services/menu" as Menu', text)
-        self.assertIn("Menu.Service { osd: osdLoader.item }", text)
+        self.assertIn("Menu.Service { osd: osdLoader.item; shell: services.shell }", text)
         self.assertIn('import "../services/background" as Background', text)
         self.assertIn("Background.Service { menu: menuLoader.item }", text)
         self.assertIn('import "../services/polkit" as Polkit', text)

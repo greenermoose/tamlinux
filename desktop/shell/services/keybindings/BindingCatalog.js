@@ -1003,11 +1003,20 @@ var entries = [
   {
     "mask": 64,
     "key": "mouse:273",
+    "dispatcher": "exec",
+    "arg": "tam-menu toggle start",
+    "action": "Open Start with Quick Launch and desktop appearance settings.",
+    "why": "The same menu is available over apps and on unused bar space.",
+    "mnemonic": "Super plus right-click opens Start anywhere."
+  },
+  {
+    "mask": 72,
+    "key": "mouse:273",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.resize()",
     "action": "Drag the focused window edge to resize it.",
-    "why": "Adjacent punctuation keys form a direction pair; Alt makes a small step and Ctrl a large step.",
-    "mnemonic": "Comma and period adjust width; the left key moves the edge left or up."
+    "why": "Alt distinguishes resizing from the Start menu on Super plus right-click.",
+    "mnemonic": "Add Alt to Super plus right-drag to resize."
   },
   {
     "mask": 64,

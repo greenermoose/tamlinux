@@ -42,7 +42,7 @@
 # theme switches) and the shell watches the file, so shell text re-flows live.
 # Accepts an integer from 9 to 20 (px).
 
-set -e
+set -eE
 
 MIN=9
 MAX=20
@@ -55,6 +55,53 @@ SHELL_DEFAULT_PX=12
 
 shell_config="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/shell.toml"
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+text_snapshot=""
+
+restore_failed_change() {
+  local status="$?" previous_factor previous_user
+  trap - ERR
+  set +e
+  [[ -n $text_snapshot ]] || exit "$status"
+  python3 - "$text_snapshot" <<'PY'
+import json, os, shutil, sys, tempfile
+from pathlib import Path
+snapshot = Path(sys.argv[1])
+manifest = json.loads((snapshot / 'manifest.json').read_text())
+for item in manifest['files']:
+    path = Path(item['path'])
+    if not item['present']:
+        path.unlink(missing_ok=True)
+        continue
+    # Kitty may have followed a writable user link. Restore its target bytes
+    # as well as the link itself; other writers replace the link atomically.
+    target = path.parent / item['symlink'] if 'symlink' in item else path
+    target = target.resolve() if 'symlink' in item else target
+    fd, name = tempfile.mkstemp(prefix='.text-size-restore-', dir=target.parent)
+    os.close(fd)
+    try:
+        shutil.copy2(snapshot / item['saved'], name)
+        os.replace(name, target)
+    finally:
+        Path(name).unlink(missing_ok=True)
+    if 'symlink' in item:
+        path.unlink(missing_ok=True)
+        path.symlink_to(item['symlink'])
+PY
+  previous_factor=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["observations"]["gtk-factor"])' "$text_snapshot/manifest.json")
+  previous_user=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["observations"]["gtk-user-value"])' "$text_snapshot/manifest.json")
+  if [[ -n $previous_user ]]; then
+    gsettings set "$GKEY_SCHEMA" "$GKEY_NAME" "$previous_factor"
+  else
+    gsettings reset "$GKEY_SCHEMA" "$GKEY_NAME"
+  fi
+  pkill -USR1 kitty 2>/dev/null || true
+  pkill -SIGUSR2 ghostty 2>/dev/null || true
+  # A failure before the shell write needs no IPC; later failures restore
+  # the shell's scale from the restored file on its existing watch/reload.
+  echo "tam-display-text-size: change failed; originals restored where possible. Recovery: $text_snapshot" >&2
+  exit "$status"
+}
+trap restore_failed_change ERR
 
 usage() {
   echo "Usage: tam-display-text-size [size|reset]"
@@ -76,10 +123,10 @@ preserve_settings() {
   done
   factor=$(gsettings get "$GKEY_SCHEMA" "$GKEY_NAME") || return 1
   user_value=$(dconf read /org/gnome/desktop/interface/text-scaling-factor) || return 1
-  tam-settings-preserve text-size --file "$shell_config" \
+  text_snapshot=$(tam-settings-preserve text-size --file "$shell_config" \
     --file "$config_home/alacritty/alacritty.toml" --file "$config_home/kitty/kitty.conf" \
     --file "$config_home/ghostty/config" --file "$config_home/foot/foot.ini" \
-    --value gtk-factor "$factor" --value gtk-user-value "$user_value" >/dev/null
+    --value gtk-factor "$factor" --value gtk-user-value "$user_value")
 }
 
 # ---- shell base-size: the rem root every shell type size derives from ----

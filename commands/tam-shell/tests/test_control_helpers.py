@@ -236,6 +236,29 @@ elif name == 'cp':
                 self.assertEqual((self.config / name).read_text(), content)
         self.assertFalse(self.calls('qs'))
 
+    def test_text_size_late_failure_restores_files_links_and_gtk(self):
+        files = self.terminals()
+        state = self.temp / 'state/tamlinux/shell.toml'
+        state.parent.mkdir(parents=True)
+        state.write_text('[font]\nbase-size = 12\n[other]\nkeep = true\n')
+        original_state = state.read_bytes()
+        kitty = self.config / 'kitty/kitty.conf'
+        target = self.temp / 'kitty-original.conf'
+        kitty.rename(target)
+        kitty.symlink_to(target)
+        sed = self.bin / 'sed'
+        if sed.is_symlink(): sed.unlink()
+        sed.write_text('#!/bin/bash\nfor arg in "$@"; do [[ $arg == */foot/foot.ini ]] && exit 1; done\nexec ' + shutil.which('sed') + ' "$@"\n')
+        sed.chmod(0o755)
+        result = self.run_command('tam-display-text-size', '16')
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertIn('originals restored', result.stderr)
+        self.assertEqual(state.read_bytes(), original_state)
+        for name, content in files.items(): self.assertEqual((self.config / name).read_text(), content)
+        self.assertTrue(kitty.is_symlink())
+        self.assertEqual(target.read_text(), files['kitty/kitty.conf'])
+        self.assertEqual((self.temp / 'gtk-factor').read_text(), '1.0')
+
     def band_env(self):
         return {'TEST_NM_RESPONSES': json.dumps({
             '-e no -g DEVICE,TYPE,STATE device status': 'wlan0:wifi:connected',

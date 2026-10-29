@@ -52,7 +52,8 @@ Verbs:
   ping             Health check.
   status           Report source paths, row count, and the last reload error.
 
-Route is an item id (e.g. setup.power) or alias (e.g. power). Defaults to
+Route is an item id (e.g. start or setup.power) or alias (e.g. power). Start
+opens Quick Launch and Settings near the pointer on its output. Defaults to
 "root", which opens the top-level menu. A route that names an action runs it.
 USAGE
     exit 0

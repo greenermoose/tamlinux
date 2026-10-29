@@ -124,7 +124,7 @@ Item {
     id: menuLoader
     active: services.enabled.indexOf("menu") !== -1
     sourceComponent: Component {
-      Menu.Service { osd: osdLoader.item }
+      Menu.Service { osd: osdLoader.item; shell: services.shell }
     }
     onLoaded: services.note("service-loaded menu")
     onStatusChanged: if (status === Loader.Error) services.note("service-failed menu")
