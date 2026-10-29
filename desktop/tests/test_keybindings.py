@@ -168,6 +168,8 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('Close  Esc', explorer)
         self.assertIn('activeFocusOnTab: true', explorer)
         self.assertIn('KeyNavigation.tab', explorer)
+        self.assertIn('KeyNavigation.right', explorer)
+        self.assertIn('KeyNavigation.left', explorer)
         self.assertIn('focusListFromSearch', explorer)
         self.assertIn('pageList(', explorer)
         self.assertIn('id: detailsFlick', explorer)

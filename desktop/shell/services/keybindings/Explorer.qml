@@ -289,6 +289,8 @@ PanelWindow {
           text: "Close  Esc"
           KeyNavigation.tab: list
           KeyNavigation.backtab: resetFilters.visible ? resetFilters : availabilityButton
+          KeyNavigation.right: list
+          KeyNavigation.left: resetFilters.visible ? resetFilters : availabilityButton
           onClicked: panel.closeExplorer()
         }
       }
@@ -328,6 +330,8 @@ PanelWindow {
           text: "Try a shortcut"
           KeyNavigation.tab: modifierSelect
           KeyNavigation.backtab: search
+          KeyNavigation.right: modifierSelect
+          KeyNavigation.left: search
           onClicked: panel.beginCapture()
         }
       }
@@ -343,6 +347,8 @@ PanelWindow {
             model: ["All", "Super", "Super + Alt", "Super + Ctrl", "Super + Shift"]
             KeyNavigation.tab: groupSelect
             KeyNavigation.backtab: tryButton
+            KeyNavigation.right: groupSelect
+            KeyNavigation.left: tryButton
             onCurrentIndexChanged: panel.modifier = ["all", "super", "alt", "ctrl", "shift"][currentIndex] || "all"
             Connections {
               target: panel
@@ -359,6 +365,8 @@ PanelWindow {
             activeFocusOnTab: true
             KeyNavigation.tab: sortSelect
             KeyNavigation.backtab: modifierSelect
+            KeyNavigation.right: sortSelect
+            KeyNavigation.left: modifierSelect
             onCurrentTextChanged: panel.group = currentText
             contentItem: Text {
               leftPadding: 10
@@ -425,6 +433,8 @@ PanelWindow {
             model: ["Action name", "Key"]
             KeyNavigation.tab: availabilityButton
             KeyNavigation.backtab: groupSelect
+            KeyNavigation.right: availabilityButton
+            KeyNavigation.left: groupSelect
             onCurrentIndexChanged: panel.sortOrder = currentIndex === 1 ? "key" : "name"
           }
           DarkButton {
@@ -432,6 +442,8 @@ PanelWindow {
             text: panel.showingTable ? "Back to list" : "Availability table"
             KeyNavigation.tab: resetFilters.visible ? resetFilters : closeButton
             KeyNavigation.backtab: sortSelect
+            KeyNavigation.right: resetFilters.visible ? resetFilters : closeButton
+            KeyNavigation.left: sortSelect
             onClicked: { panel.showingTable = !panel.showingTable; if (panel.showingTable) tableFocus.forceActiveFocus(); else search.forceActiveFocus() }
           }
         }
@@ -445,6 +457,8 @@ PanelWindow {
             text: "Reset filters"
             KeyNavigation.tab: closeButton
             KeyNavigation.backtab: availabilityButton
+            KeyNavigation.right: closeButton
+            KeyNavigation.left: availabilityButton
             onClicked: {
               panel.modifier = "all"
               panel.group = "All groups"
@@ -485,6 +499,8 @@ PanelWindow {
           activeFocusOnTab: true
           KeyNavigation.tab: panel.selected ? detailsFlick : search
           KeyNavigation.backtab: closeButton
+          KeyNavigation.right: panel.selected ? detailsFlick : search
+          KeyNavigation.left: closeButton
           onCurrentIndexChanged: {
             if (currentIndex >= 0 && currentIndex < panel.filtered.length) {
               panel.selected = panel.filtered[currentIndex]
@@ -679,8 +695,9 @@ PanelWindow {
             focus: false
             KeyNavigation.tab: search
             KeyNavigation.backtab: list
+            KeyNavigation.right: search
+            KeyNavigation.left: list
             onVisibleChanged: if (!visible && activeFocus) list.forceActiveFocus()
-            Keys.onLeftPressed: list.forceActiveFocus()
             Keys.onUpPressed: panel.scrollDetails(-40)
             Keys.onDownPressed: panel.scrollDetails(40)
             Keys.onPressed: function(event) {
