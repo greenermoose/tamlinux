@@ -165,7 +165,8 @@ def transaction(kind, paths):
 
 def selected():
     path = CURRENT / 'theme.name'
-    return name(path.read_text().strip()) if path.exists() else 'tokyo-night'
+    default = 'tamarack-dark' if (ASSETS / 'themes/tamarack-dark').is_dir() else 'tokyo-night'
+    return name(path.read_text().strip()) if path.exists() else default
 
 def themes():
     return sorted({p.name for base in (ASSETS / 'themes', CONFIG / 'tamlinux/themes')
@@ -264,6 +265,13 @@ def tamarack_colors(variant):
     return ''.join(f'{key} = "{value}"\n' for key, value in mapped.items())
 
 
+def solid_png(color):
+    pixel = bytes.fromhex(color[1:])
+    def chunk(kind, data):
+        return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!IIBBBBB', 1, 1, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(b'\x00' + pixel)) + chunk(b'IEND', b'')
+
+
 def tamarack_preview(variant):
     # Small generated swatch, so the picker and theme share one colour source.
     colors = tomllib.loads(tamarack_colors(variant))
@@ -314,7 +322,8 @@ def set_theme(value, refresh=False, apply=True):
     try:
         if builtin.is_dir(): stage_tree(builtin, stage)
         if theme in ('tamarack-dark', 'tamarack-light'):
-            (stage / 'colors.toml').write_text(tamarack_colors(theme.removeprefix('tamarack-')))
+            variant = theme.removeprefix('tamarack-')
+            (stage / 'colors.toml').write_text(tamarack_colors(variant))
         if user.is_dir():
             restricted = (user / '.git').exists()
             stage_tree(user, stage, restricted)
@@ -329,12 +338,23 @@ def set_theme(value, refresh=False, apply=True):
         for key in ('background', 'foreground'):
             if not re.fullmatch(r'#[0-9a-fA-F]{6}', colors.get(key, colors.get('color0' if key == 'background' else 'color7', ''))):
                 raise ValueError('theme requires a valid foreground and background')
+        if theme in ('tamarack-dark', 'tamarack-light') and not (user / 'backgrounds/tamarack.png').exists():
+            atomic(stage / 'backgrounds/tamarack.png', solid_png(colors.get('background', colors.get('color0'))))
         run('tam-theme-set-templates', env=dict(os.environ, TAMLINUX_THEME_STAGE=str(stage)))
         if theme in ('tamarack-dark', 'tamarack-light') and re.fullmatch(r'#[0-9a-fA-F]{6}', str(colors.get('surface', ''))):
             make_tamarack_surfaces_opaque(stage, user, colors)
+            foot = stage / 'foot.ini'
+            if foot.is_file() and not (user / 'foot.ini').exists():
+                data = foot.read_text()
+                if data.startswith('[colors-dark]\n') and '[colors-light]' not in data:
+                    foot.write_text(data + '\n' + data.replace('[colors-dark]', '[colors-light]', 1))
         for item in stage.glob('*'):
             if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css'} and '{{' in item.read_text():
                 raise ValueError(f'unresolved template in {item.name}')
+        try:
+            previous_theme = selected()
+        except (ValueError, UnicodeError):
+            previous_theme = ''
         paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
         with transaction('theme', paths) as journal:
             # Keep a personal background valid when the old active directory
@@ -346,7 +366,8 @@ def set_theme(value, refresh=False, apply=True):
             journal.retired_theme = publish_theme_directory(stage, CURRENT / 'theme', planned_archive)
             atomic(CURRENT / 'theme.name', theme + '\n')
             old = (CURRENT / 'background').resolve()
-            if not refresh or retired_background(old, theme):
+            background = CURRENT / 'background'
+            if (not background.exists() and not background.is_symlink()) or (old.is_file() and previous_theme and retired_background(old, previous_theme)):
                 choices = images(stage / 'backgrounds', CONFIG / 'tamlinux/backgrounds' / theme)
                 if choices:
                     old = (CURRENT / 'background').resolve()
@@ -469,7 +490,8 @@ def main():
             # even dangling links, require explicit recovery/user action.
             if not any(path.exists() or path.is_symlink() for path in (CURRENT / 'theme', CURRENT / 'theme.name')):
                 background = CURRENT / 'background'
-                set_theme('tokyo-night', refresh=background.exists() or background.is_symlink(), apply=False)
+                default = 'tamarack-dark' if (ASSETS / 'themes/tamarack-dark').is_dir() else 'tokyo-night'
+                set_theme(default, refresh=background.exists() or background.is_symlink(), apply=False)
             else:
                 active = CURRENT / 'theme'
                 if active.is_symlink() and active.is_dir():

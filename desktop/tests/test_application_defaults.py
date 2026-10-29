@@ -30,6 +30,9 @@ class Defaults(unittest.TestCase):
                       (config / 'alacritty/alacritty.toml').read_text())
         self.assertEqual((config / 'imv/config').read_text(), '[binds]\n<Escape> = quit\n')
         self.assertIn('tamlinux-kitty-{kitty_pid}', (config / 'kitty/kitty.conf').read_text())
+        for relative in ('alacritty/alacritty.toml', 'kitty/kitty.conf', 'foot/foot.ini',
+                         'ghostty/config', 'fontconfig/conf.d/99-tamlinux-monospace.conf'):
+            self.assertIn('AtkynsonMono Nerd Font', (config / relative).read_text())
         self.assertEqual((config / 'helix/config.toml').read_text(), 'theme = "tamlinux"\n')
         self.assertEqual(os.readlink(config / 'helix/themes/tamlinux.toml'),
                          str(self.root / 'state/tamlinux/current/theme/helix.toml'))

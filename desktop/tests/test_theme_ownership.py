@@ -1,5 +1,6 @@
 """Exercise owned writers with real templates and isolated XDG state."""
 import importlib.util
+import configparser
 import json
 import os
 import runpy
@@ -9,6 +10,8 @@ import subprocess
 import tempfile
 import tomllib
 import unittest
+import struct
+import zlib
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE = ROOT / 'desktop/theme/engine.py'
@@ -87,6 +90,10 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('active_border_color = \"' + ('#86b86a' if name.endswith('dark') else '#35652e') + '\"', (self.current/'theme/hyprland.lua').read_text())
             self.assertEqual(palette['accentText'], background)
             self.assertIn(background[1:], (self.current/'theme/foot.ini').read_text())
+            foot = configparser.ConfigParser()
+            foot.read(self.current/'theme/foot.ini')
+            self.assertEqual(foot['colors-dark']['background'], background[1:])
+            self.assertEqual(foot['colors-light']['background'], background[1:])
             self.assertIn('theme[selected_fg]=\"' + background + '\"', (self.current/'theme/btop.theme').read_text())
 
     def test_tamarack_generated_surface_and_terminal_pairs_have_contrast(self):
@@ -142,7 +149,7 @@ class ThemeOwnership(unittest.TestCase):
     def test_fresh_initialize_generates_owned_state_without_application_adapters(self):
         self.stub('tam-theme-set-foot', 'exit 17')
         self.call('initialize', env={'TAMLINUX_THEME_OFFLINE': ''})
-        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+        self.assertEqual((self.current/'theme.name').read_text(), 'tamarack-dark\n')
         self.assertTrue((self.current/'background').is_symlink())
         self.assertFalse(self.config.exists())
         before = (self.current/'theme/colors.toml').read_bytes()
@@ -288,6 +295,42 @@ class ThemeOwnership(unittest.TestCase):
         self.assertTrue(any(any(f.get('symlink') == str(old) for f in j['files'])
                             for j in journals))
 
+    def test_switch_preserves_dangling_personal_background_link(self):
+        self.current.mkdir(parents=True)
+        background = self.current/'background'
+        background.symlink_to('/unavailable/personal.png')
+        self.call('set', 'tamarack-dark')
+        self.assertEqual(os.readlink(background), '/unavailable/personal.png')
+
+    def test_switch_preserves_independent_personal_background(self):
+        self.call('set', 'tokyo-night')
+        personal = self.base/'personal.png'; personal.write_bytes(b'personal image')
+        self.call('bg-set', personal)
+        self.call('set', 'tamarack-dark')
+        self.assertEqual((self.current/'background').resolve(), personal)
+        self.assertEqual(personal.read_bytes(), b'personal image')
+
+    def test_tamarack_background_follows_personal_palette_override(self):
+        self.call('set', 'tamarack-dark')
+        colors = (self.current/'theme/colors.toml').read_text().replace('#0f1410', '#142418')
+        user = self.config/'tamlinux/themes/tamarack-dark'; user.mkdir(parents=True)
+        (user/'colors.toml').write_text(colors)
+        self.call('set', 'tamarack-dark')
+        data = (self.current/'theme/backgrounds/tamarack.png').read_bytes()
+        size = struct.unpack('!I', data[33:37])[0]
+        self.assertEqual(zlib.decompress(data[41:41+size]), b'\x00\x14\x24\x18')
+        self.assertEqual((user/'colors.toml').read_text(), colors)
+
+    def test_tamarack_generates_small_solid_default_background(self):
+        self.call('set', 'tamarack-dark')
+        background = self.current/'background'
+        self.assertTrue(background.is_file())
+        self.assertTrue(background.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'))
+        self.assertLess(background.stat().st_size, 256)
+        data = background.read_bytes()
+        size = struct.unpack('!I', data[33:37])[0]
+        self.assertEqual(zlib.decompress(data[41:41+size]), b'\x00\x0f\x14\x10')
+
     def test_refresh_preserves_same_named_personal_background(self):
         self.call('set', 'tokyo-night')
         personal = self.base/'6-oma.jpg'; personal.write_bytes(b'personal image')
@@ -370,7 +413,7 @@ class ThemeOwnership(unittest.TestCase):
         previews=Path(result.stdout)
         self.assertTrue(previews.is_dir())
         self.assertTrue(all(p.exists() for p in previews.iterdir()))
-        self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
+        self.assertEqual(self.call('current').stdout,'Tamarack Dark\n')
 
     def test_font_package_install_refuses_inherited_or_failed_resolution(self):
         command=ROOT/'commands/tam-pkg-add/tam-pkg-add'

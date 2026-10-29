@@ -9,5 +9,5 @@
 
   > I have edited plan 19. Read my changes, then make it so. Close the review window and proceed.
 
-- **Work**: Began Tamarack token generation, variant previews and shell typography, added text-login orientation and the Bash `hi` alias, and replaced the active theme link with a journaled atomic directory exchange. It also removes compositor animations, makes default windows opaque, removes wallpaper and image-picker masks and decorative charging/speed-test animations, and corrects btop selection contrast. This is development, not a completed appearance or release.
+- **Work**: Began Tamarack token generation, variant previews and shell typography, added text-login orientation and the Bash `hi` alias, and replaced the active theme link with a journaled atomic directory exchange. It also removes compositor animations, makes default windows opaque, removes wallpaper and image-picker masks and decorative charging/speed-test animations, and corrects btop selection contrast. Fresh installations select Tamarack dark and the Atkinson Mono terminal default; existing user preferences and wallpaper are retained. This is development, not a completed appearance or release.
 - **Verification**: Focused theme and background migration, payload, user-default and console tests; graphical and physical acceptance remain pending.
