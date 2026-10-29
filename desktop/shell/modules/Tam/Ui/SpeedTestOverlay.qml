@@ -11,12 +11,8 @@ import Tam.Commons
 import Tam.Commons as Commons
 import Tam.Ui
 
-// Centered speed test overlay shared by the network and disk speed tests. No
-// card: like the Tucson's floating cluster, the two dials sit directly on a
-// darkened scrim -- open 270° arcs, faint tick rings, hubless gradient
-// needles, and a digital readout in the middle. Esc, the scrim, or the corner
-// dismiss close it; the needles sweep to full scale and back on open, then
-// track the live readings. Callers name the dials, the unit, and the scale.
+// Centered speed-test overlay with readable, themed measurements.
+// Esc, the background, or the corner dismiss control closes it.
 PanelWindow {
   id: root
 
@@ -66,18 +62,16 @@ PanelWindow {
   onRightValueChanged: expandScale(rightValue)
 
   Behavior on fullScale {
-    NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
   }
 
-  // The scrim below is a fixed near-black regardless of theme, so text and
-  // ticks on it need a fixed light palette, not the themed bar.foreground.
-  readonly property color onScrim: "white"
-  readonly property color onScrimDim: Qt.rgba(1, 1, 1, 0.55)
-  readonly property color onScrimUrgent: "#ff6b6b"
+  readonly property color onScrim: Commons.Color.foreground
+  readonly property color onScrimDim: Commons.Color.muted
+  readonly property color onScrimUrgent: Commons.Color.urgent
 
   visible: open
   // The window is instantiated hidden, so re-acquire focus after mapping and
-  // fire the ignition sweep once the surface is actually on screen.
+  // initialize the readings once the surface is actually on screen.
   onOpenChanged: {
     if (open) Qt.callLater(function() {
       if (!root.open) return
@@ -93,12 +87,10 @@ PanelWindow {
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-  // Deep scrim: with no card behind them, the floating dials need the
-  // backdrop to carry the contrast on any wallpaper, like the near-black
-  // panel behind a real cluster.
+  // Opaque theme background keeps readings legible on any wallpaper.
   Rectangle {
     anchors.fill: parent
-    color: Qt.rgba(0, 0, 0, 0.78)
+    color: Commons.Color.background
 
     MouseArea {
       anchors.fill: parent
@@ -183,7 +175,7 @@ PanelWindow {
           onClicked: root.runAgainRequested()
 
           Behavior on opacity {
-            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
           }
         }
 
@@ -203,11 +195,7 @@ PanelWindow {
     }
   }
 
-  // One floating cluster dial: an open 270° scale with the gap at the
-  // bottom, a faint tick ring, a glowing accent value arc, a hubless needle
-  // that fades toward the pivot, and a digital readout in the middle. All
-  // writes to the needle funnel through `shown` so the ignition sweep and
-  // live readings share one animation.
+  // Each dial shows a live reading with a value arc, ticks and a needle.
   component SpeedDial: Item {
     id: dial
 
@@ -222,49 +210,36 @@ PanelWindow {
     readonly property int tickCount: 46
     readonly property real arcWidth: Style.space(4)
     readonly property real arcRadius: diameter / 2 - arcWidth
-    readonly property color trackColor: Qt.rgba(1, 1, 1, 0.14)
-    readonly property color minorTickColor: Qt.rgba(1, 1, 1, 0.12)
-    readonly property color majorTickColor: Qt.rgba(1, 1, 1, 0.3)
-    // The dial that isn't measuring yet sits dimmed until it gets a figure.
-    readonly property bool engaged: live || value > 0
+    readonly property color trackColor: Commons.Color.muted
+    readonly property color minorTickColor: Commons.Color.muted
+    readonly property color majorTickColor: Commons.Color.foreground
 
     property real shown: 0
-    // The digital readout stays on the real figure while the ignition sweep
-    // drives the needle -- a cluster sweeps its gauges, not its numerals.
-    readonly property real reading: ignition.running ? value : shown
+    // The digital readout follows the current reading.
+    readonly property real reading: shown
     readonly property real fullScale: root.fullScale
     readonly property real fraction: fullScale > 0 ? Math.max(0, Math.min(1, shown / fullScale)) : 0
     readonly property bool arcVisible: fraction > 0.004
 
     width: diameter
     height: diameter
-    opacity: engaged ? 1 : 0.5
+    opacity: 1
 
     Behavior on opacity {
-      NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+      NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
     }
 
     // Live readings land once a second; glide between them rather than snap.
     Behavior on shown {
-      enabled: !ignition.running
-      NumberAnimation { duration: 600; easing.type: Easing.OutCubic }
+      NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
     }
 
     onValueChanged: {
-      if (!ignition.running) shown = value
+      shown = value
     }
 
     function ignite() {
-      ignition.restart()
-    }
-
-    // Car-cluster power-on: needle sweeps to full scale and falls back before
-    // the live figures take over.
-    SequentialAnimation {
-      id: ignition
-      NumberAnimation { target: dial; property: "shown"; to: dial.fullScale; duration: 550; easing.type: Easing.InOutCubic }
-      NumberAnimation { target: dial; property: "shown"; to: 0; duration: 650; easing.type: Easing.OutCubic }
-      onFinished: dial.shown = dial.value
+      shown = value
     }
 
     Shape {
@@ -285,25 +260,6 @@ PanelWindow {
           radiusY: dial.arcRadius
           startAngle: dial.dialStart
           sweepAngle: dial.dialSweep
-        }
-      }
-
-      // Soft under-glow beneath the value arc, standing in for the backlit
-      // ring of a real cluster. Both arcs go transparent at rest, or their
-      // round caps would leave a stray dot at the foot of the scale.
-      ShapePath {
-        strokeWidth: dial.arcWidth * 3
-        strokeColor: dial.arcVisible ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.18) : "transparent"
-        fillColor: "transparent"
-        capStyle: ShapePath.RoundCap
-
-        PathAngleArc {
-          centerX: dial.width / 2
-          centerY: dial.height / 2
-          radiusX: dial.arcRadius
-          radiusY: dial.arcRadius
-          startAngle: dial.dialStart
-          sweepAngle: dial.dialSweep * dial.fraction
         }
       }
 
@@ -347,8 +303,7 @@ PanelWindow {
       }
     }
 
-    // Hubless needle: a slender sliver that fades out toward the pivot, so
-    // it reads as floating like the rest of the cluster.
+    // The needle tracks the current reading.
     Item {
       anchors.fill: parent
       rotation: dial.dialStart + dial.fraction * dial.dialSweep - 270
@@ -360,11 +315,7 @@ PanelWindow {
         height: dial.diameter * 0.32
         radius: width / 2
 
-        gradient: Gradient {
-          GradientStop { position: 0.0; color: Commons.Color.accent }
-          GradientStop { position: 0.55; color: Commons.Color.accent }
-          GradientStop { position: 1.0; color: "transparent" }
-        }
+        color: Commons.Color.accent
       }
     }
 

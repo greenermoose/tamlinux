@@ -15,7 +15,7 @@ QtObject {
     return n
   }
 
-  property int cornerRadius: 8
+  property int cornerRadius: 4
   property int gapsOut: 8
   property real themeFontBaseSize: 12
   property real themeSpacingScale: 1

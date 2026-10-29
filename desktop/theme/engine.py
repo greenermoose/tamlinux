@@ -254,6 +254,7 @@ def tamarack_colors(variant):
                   accent_text=tokens['background'],
                   bright_foreground=tokens['foreground'], muted=tokens['muted'],
                   accent=tokens['accent'], selection=tokens['accent'],
+                  hyprland_active_border=tokens['primary'], hyprland_inactive_border=tokens['muted'],
                   selection_background=tokens['accent'], selection_foreground=tokens['background'],
                   red=tokens['danger'], green=tokens['primary'], yellow=tokens['accent'],
                   blue=tokens['info'], cyan=tokens['info'], magenta=tokens['danger'],
@@ -277,6 +278,27 @@ def tamarack_preview(variant):
     path = CACHE / 'theme-swatches' / f'{variant}-{digest}.png'
     if not path.exists(): atomic(path, payload)
     return path
+
+
+def make_tamarack_surfaces_opaque(stage, user, colors):
+    """Keep built-in Tamarack cards solid without replacing user theme sections."""
+    path = stage / 'shell.toml'
+    if not path.is_file() or (user / 'shell.toml').exists():
+        return
+    sections = {'tooltip', 'launcher', 'menu', 'lock'}
+    text = path.read_text()
+    chunks = re.split(r'(?=^\[[^]\n]+\]\s*$)', text, flags=re.MULTILINE)
+    for index, chunk in enumerate(chunks):
+        match = re.match(r'^\[([^]\n]+)\]', chunk)
+        if not match or match[1] not in sections or (user / ('shell.' + match[1] + '.toml')).exists():
+            continue
+        chunk = re.sub(r'(?m)^(background-alpha\s*=\s*)[0-9.]+', r'\g<1>1.0', chunk)
+        if match[1] in ('launcher', 'menu'):
+            chunk = re.sub(r'(?m)^(selected-background\s*=\s*)"[^"]*"',
+                           lambda m: m.group(1) + '"' + colors['surface'] + '"', chunk)
+            chunk = re.sub(r'(?m)^(selected-background-alpha\s*=\s*)[0-9.]+', r'\g<1>1.0', chunk)
+        chunks[index] = chunk
+    path.write_text(''.join(chunks))
 
 
 def set_theme(value, refresh=False, apply=True):
@@ -307,6 +329,8 @@ def set_theme(value, refresh=False, apply=True):
             if not re.fullmatch(r'#[0-9a-fA-F]{6}', colors.get(key, colors.get('color0' if key == 'background' else 'color7', ''))):
                 raise ValueError('theme requires a valid foreground and background')
         run('tam-theme-set-templates', env=dict(os.environ, TAMLINUX_THEME_STAGE=str(stage)))
+        if theme in ('tamarack-dark', 'tamarack-light') and re.fullmatch(r'#[0-9a-fA-F]{6}', str(colors.get('surface', ''))):
+            make_tamarack_surfaces_opaque(stage, user, colors)
         for item in stage.glob('*'):
             if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css'} and '{{' in item.read_text():
                 raise ValueError(f'unresolved template in {item.name}')

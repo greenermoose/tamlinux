@@ -190,7 +190,7 @@ Item {
 
             Behavior on width {
               enabled: root.opened
-              NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+              NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
             }
           }
         }

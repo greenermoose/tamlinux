@@ -14,7 +14,7 @@ theme[hi_fg]="{{ accent }}"
 theme[selected_bg]="{{ selection }}"
 
 # Foreground color of selected item in processes box
-theme[selected_fg]="{{ accent }}"
+theme[selected_fg]="{{ selection_foreground }}"
 
 # Color of inactive/disabled text
 theme[inactive_fg]="{{ muted }}"

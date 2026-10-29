@@ -80,8 +80,20 @@ class ThemeOwnership(unittest.TestCase):
             self.assertEqual(payload['style']['fontFamily'], 'Atkinson Hyperlegible')
             self.assertEqual(palette['background'], background)
             self.assertEqual(payload['surfaces']['bar.background'], surface)
+            self.assertEqual(payload['surfaces']['tooltip.background'], background)
+            self.assertEqual(payload['surfaces']['menu.selected-background'], surface)
+            self.assertIn('active_border_color = \"' + ('#86b86a' if name.endswith('dark') else '#35652e') + '\"', (self.current/'theme/hyprland.lua').read_text())
             self.assertEqual(palette['accentText'], background)
             self.assertIn(background[1:], (self.current/'theme/foot.ini').read_text())
+            self.assertIn('theme[selected_fg]=\"' + background + '\"', (self.current/'theme/btop.theme').read_text())
+
+    def test_tamarack_respects_personal_shell_section(self):
+        user = self.config/'tamlinux/themes/tamarack-dark'; user.mkdir(parents=True)
+        (user/'shell.menu.toml').write_text('[menu]\nbackground = "#123456"\nbackground-alpha = 0.7\n')
+        self.call('set', 'tamarack-dark')
+        result = (self.current/'theme/shell.toml').read_text()
+        self.assertIn('background = "#123456"', result)
+        self.assertIn('background-alpha = 0.7', result)
 
     def test_tamarack_picker_previews_are_generated_from_palette(self):
         recorder = self.base / 'picker-arguments'

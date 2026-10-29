@@ -15,8 +15,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
-import QtQuick.Effects
-import QtQuick.Shapes
 import Tam.Commons
 import Tam.Commons as Commons
 import "ImagePickerModel.js" as ImagePickerModel
@@ -42,7 +40,7 @@ Item {
   property string doneFile: ""
   property string filterText: ""
   property var doneFilesToRelease: []
-  // `dimColor` tints unselected slices and text outlines on top of the scrim;
+  // `dimColor` supplies text outlines on top of the scrim;
   // it intentionally tracks the foundational background, not a surface role.
   property color dimColor: Commons.Color.background
   property color foreground: Commons.Color.imagePicker.text
@@ -54,7 +52,6 @@ Item {
   property int sliceWidth: 108
   property int sliceHeight: 432
   property int sliceSpacing: -30
-  property int skewOffset: 28
   property int bottomChromeHeight: showLabels ? (filterable ? 104 : 74) : (filterable ? 60 : 30)
 
   onOpenedChanged: if (!opened) layoutSettled = false
@@ -514,78 +511,20 @@ Item {
               y: selected ? 0 : (root.expandedHeight - root.sliceHeight) / 2
               z: selected ? 100 : 50 - Math.min(Math.abs(relativeIndex), 40)
 
-              readonly property real skAbs: Math.abs(root.skewOffset)
-              readonly property real topLeft: root.skewOffset >= 0 ? skAbs : 0
-              readonly property real topRight: root.skewOffset >= 0 ? width : width - skAbs
-              readonly property real bottomRight: root.skewOffset >= 0 ? width - skAbs : width
-              readonly property real bottomLeft: root.skewOffset >= 0 ? 0 : skAbs
-
-              Item {
-                id: maskShape
+              Image {
                 anchors.fill: parent
-                visible: false
-                layer.enabled: true
-
-                Shape {
-                  anchors.fill: parent
-                  antialiasing: true
-                  preferredRendererType: Shape.CurveRenderer
-                  ShapePath {
-                    fillColor: "white"
-                    strokeColor: "transparent"
-                    startX: item.topLeft; startY: 0
-                    PathLine { x: item.topRight; y: 0 }
-                    PathLine { x: item.bottomRight; y: item.height }
-                    PathLine { x: item.bottomLeft; y: item.height }
-                    PathLine { x: item.topLeft; y: 0 }
-                  }
-                }
+                source: item.sourceActivated && item.thumbnailPath ? root.fileUrl(item.thumbnailPath) : ""
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: false
+                cache: true
+                smooth: true
               }
 
-              Item {
+              Rectangle {
                 anchors.fill: parent
-                layer.enabled: true
-                layer.smooth: true
-                layer.effect: MultiEffect {
-                  maskEnabled: true
-                  maskSource: maskShape
-                  maskThresholdMin: 0.3
-                  maskSpreadAtMin: 0.3
-                }
-
-                Image {
-                  id: image
-                  anchors.fill: parent
-                  // Load only the initial/visited nearby images, but keep the
-                  // source once activated so Qt does not tear textures down as
-                  // selection moves through the carousel.
-                  source: item.sourceActivated && item.thumbnailPath ? root.fileUrl(item.thumbnailPath) : ""
-                  fillMode: Image.PreserveAspectCrop
-                  asynchronous: false
-                  cache: true
-                  smooth: true
-                }
-
-                Rectangle {
-                  anchors.fill: parent
-                  color: Util.alpha(root.dimColor, item.selected ? 0 : 0.42)
-                }
-              }
-
-              Shape {
-                anchors.fill: parent
-                antialiasing: true
-                preferredRendererType: Shape.CurveRenderer
-                ShapePath {
-                  fillColor: "transparent"
-                  strokeColor: item.selected ? root.selectedBorder : root.unselectedBorder
-                  strokeWidth: item.selected ? 3 : 1
-                  startX: item.topLeft; startY: 0
-                  PathLine { x: item.topRight; y: 0 }
-                  PathLine { x: item.bottomRight; y: item.height }
-                  PathLine { x: item.bottomLeft; y: item.height }
-                  PathLine { x: item.topLeft; y: 0 }
-                }
+                color: "transparent"
+                border.color: item.selected ? root.selectedBorder : root.unselectedBorder
+                border.width: item.selected ? 3 : 1
               }
 
               MouseArea {

@@ -9,13 +9,14 @@ acceptance. Hyprland remains the compositor; Sway integration is later.
 
 **2026-10-29 development:** Dark and light Tamarack palettes now generate
 from one token file, with base-token contrast checks and generated picker
-swatches. The shell can read a theme font family; Atkinson packaging is in
-progress. These checks do not cover every applied foreground/background pair.
+swatches. The shell can read a theme font family; Atkinson fonts are packaged. These checks do not cover every applied foreground/background pair.
 Terminal font selection, actual adapter/surface inventory, the transparent
 and animated surface audit, settings-preserving switching and physical review
-remain open. The active generated theme now uses an atomic directory exchange, with
-legacy-link migration and background recovery covered by source tests;
-packaged and physical recovery proof remain open.
+remain open. Packaged defaults disable compositor animation and window
+translucency; decorative wallpaper and image-picker masks, charging pulses
+and the speed-test startup sweep have been removed. The active theme uses an
+atomic directory exchange, with legacy-link migration and background recovery
+covered by source and packaged checks. Physical recovery proof remains open.
 
 ## Purpose and design
 

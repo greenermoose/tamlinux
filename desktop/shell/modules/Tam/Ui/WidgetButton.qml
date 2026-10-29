@@ -68,7 +68,7 @@ Item {
   opacity: concealed ? 0 : (dimmed ? 0.45 : 1)
 
   Behavior on opacity {
-    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
   }
 
   implicitWidth: fixedWidth > 0 ? fixedWidth : (vertical ? barSize : Math.max(12, label.implicitWidth + Style.spaceReal(horizontalMargin) * 2))
