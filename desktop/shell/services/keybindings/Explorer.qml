@@ -35,6 +35,7 @@ PanelWindow {
     implicitHeight: 34
     leftPadding: 14
     rightPadding: 14
+    activeFocusOnTab: true
     contentItem: Text {
       text: btn.text
       font.pixelSize: 12
@@ -46,10 +47,10 @@ PanelWindow {
     background: Rectangle {
       radius: Style.cornerRadius
       color: btn.checked ? Util.alpha(Commons.Color.accent, 0.25)
-           : (btn.isAccent ? (btn.hovered ? Util.alpha(Commons.Color.accent, 0.30) : Util.alpha(Commons.Color.accent, 0.18))
+           : (btn.isAccent ? (btn.hovered || btn.visualFocus ? Util.alpha(Commons.Color.accent, 0.30) : Util.alpha(Commons.Color.accent, 0.18))
            : (btn.down ? Util.alpha(Commons.Color.foreground, 0.14)
-           : (btn.hovered ? Util.alpha(Commons.Color.foreground, 0.09) : Util.alpha(Commons.Color.foreground, 0.04))))
-      border.color: btn.checked ? Commons.Color.accent
+           : (btn.hovered || btn.visualFocus ? Util.alpha(Commons.Color.foreground, 0.09) : Util.alpha(Commons.Color.foreground, 0.04))))
+      border.color: btn.visualFocus || btn.checked ? Commons.Color.accent
                   : (btn.isAccent ? Commons.Color.accent
                   : (btn.hovered ? Util.alpha(Commons.Color.foreground, 0.35) : Util.alpha(Commons.Color.foreground, 0.18)))
       border.width: 1
@@ -59,6 +60,7 @@ PanelWindow {
     id: box
     implicitWidth: 125
     implicitHeight: 34
+    activeFocusOnTab: true
     contentItem: Text { leftPadding: 10; rightPadding: 22; text: box.displayText; font.pixelSize: 12; color: Commons.Color.foreground; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
     background: Rectangle { radius: Style.cornerRadius; color: box.hovered ? Util.alpha(Commons.Color.foreground, 0.08) : Util.alpha(Commons.Color.foreground, 0.04); border.color: box.visualFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22); border.width: 1 }
     popup: Popup {
@@ -108,7 +110,11 @@ PanelWindow {
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
   // Esc peels one layer: leave capture/table, clear search, then close when
-  // already on the empty list (initial browsing state). Backspace always closes.
+  // already on the empty list (initial browsing state). Plain Backspace never
+  // closes; Meta+Backspace still closes like other focused windows.
+  readonly property bool filterPopupOpen: (modifierSelect.popup && modifierSelect.popup.visible)
+    || (groupSelect.popup && groupSelect.popup.visible)
+    || (sortSelect.popup && sortSelect.popup.visible)
   function handleEscapeStep(event) {
     if (capturing) {
       finishCapture()
@@ -130,9 +136,23 @@ PanelWindow {
     closeExplorer()
     if (event) event.accepted = true
   }
-  function handleCloseKey(event) {
-    closeExplorer()
-    if (event) event.accepted = true
+  function focusListFromSearch() {
+    if (list.count <= 0) return
+    list.forceActiveFocus()
+    if (list.currentIndex < 0) list.currentIndex = 0
+    list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+  }
+  function pageList(direction) {
+    if (list.count <= 0) return
+    var page = Math.max(1, Math.floor(list.height / 46))
+    var next = Math.max(0, Math.min(list.count - 1, list.currentIndex + direction * page))
+    list.currentIndex = next
+    list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+  }
+  function scrollDetails(delta) {
+    if (!detailsFlick.visible) return
+    var maxY = Math.max(0, detailsFlick.contentHeight - detailsFlick.height)
+    detailsFlick.contentY = Math.max(0, Math.min(maxY, detailsFlick.contentY + delta))
   }
   function beginCapture() { lastCaptured = null; captureResult = ""; lastTriedChord = []; lastTriedCombo = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
   function finishCapture() {
@@ -186,10 +206,11 @@ PanelWindow {
     enabled: false
     onCancelled: { panel.capturing = false; panel.captureResult = "Capture was stopped by the compositor." }
   }
-  // Window-level close chords so filters/buttons still dismiss the app.
+  // Esc peels/closes from any browse control; Meta+Backspace matches window close.
   Shortcut {
-    sequence: "Backspace"
-    onActivated: panel.closeExplorer()
+    sequence: "Escape"
+    enabled: !panel.capturing && !panel.filterPopupOpen
+    onActivated: panel.handleEscapeStep(null)
   }
   Shortcut {
     sequence: "Meta+Backspace"
@@ -265,7 +286,9 @@ PanelWindow {
           id: closeButton
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          text: "Close  Backspace"
+          text: "Close  Esc"
+          KeyNavigation.tab: list
+          KeyNavigation.backtab: resetFilters.visible ? resetFilters : availabilityButton
           onClicked: panel.closeExplorer()
         }
       }
@@ -283,6 +306,9 @@ PanelWindow {
           leftPadding: 14
           rightPadding: 14
           verticalAlignment: Text.AlignVCenter
+          activeFocusOnTab: true
+          KeyNavigation.tab: tryButton
+          KeyNavigation.backtab: panel.selected ? detailsFlick : list
           background: Rectangle {
             radius: Style.cornerRadius
             color: "#0c0f12"
@@ -291,34 +317,17 @@ PanelWindow {
           }
           placeholderText: "Search shortcuts, actions, or commands (e.g. terminal, workspace, close)..."
           Keys.priority: Keys.BeforeItem
-          Keys.onEscapePressed: function(event) { panel.handleEscapeStep(event) }
-          Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Backspace) {
-              panel.handleCloseKey(event)
-            }
-          }
-          Keys.onDownPressed: {
-            if (list.count > 0) {
-              list.forceActiveFocus()
-              if (list.count > 1 && list.currentIndex === 0) {
-                list.currentIndex = 1
-              } else if (list.currentIndex < 0) {
-                list.currentIndex = 0
-              }
-              list.positionViewAtIndex(list.currentIndex, ListView.Contain)
-            }
-          }
-          Keys.onReturnPressed: {
-            if (list.count > 0) {
-              list.forceActiveFocus()
-            }
-          }
+          Keys.onDownPressed: panel.focusListFromSearch()
+          Keys.onReturnPressed: panel.focusListFromSearch()
         }
         DarkButton {
+          id: tryButton
           width: 140
           height: parent.height
           isAccent: true
           text: "Try a shortcut"
+          KeyNavigation.tab: modifierSelect
+          KeyNavigation.backtab: search
           onClicked: panel.beginCapture()
         }
       }
@@ -332,6 +341,8 @@ PanelWindow {
           FilterBox {
             id: modifierSelect
             model: ["All", "Super", "Super + Alt", "Super + Ctrl", "Super + Shift"]
+            KeyNavigation.tab: groupSelect
+            KeyNavigation.backtab: tryButton
             onCurrentIndexChanged: panel.modifier = ["all", "super", "alt", "ctrl", "shift"][currentIndex] || "all"
             Connections {
               target: panel
@@ -345,6 +356,9 @@ PanelWindow {
           ComboBox {
             id: groupSelect
             model: ["All groups", "Workspaces", "Windows", "Media and display", "Applications", "Other"]
+            activeFocusOnTab: true
+            KeyNavigation.tab: sortSelect
+            KeyNavigation.backtab: modifierSelect
             onCurrentTextChanged: panel.group = currentText
             contentItem: Text {
               leftPadding: 10
@@ -409,10 +423,15 @@ PanelWindow {
           FilterBox {
             id: sortSelect
             model: ["Action name", "Key"]
+            KeyNavigation.tab: availabilityButton
+            KeyNavigation.backtab: groupSelect
             onCurrentIndexChanged: panel.sortOrder = currentIndex === 1 ? "key" : "name"
           }
           DarkButton {
+            id: availabilityButton
             text: panel.showingTable ? "Back to list" : "Availability table"
+            KeyNavigation.tab: resetFilters.visible ? resetFilters : closeButton
+            KeyNavigation.backtab: sortSelect
             onClicked: { panel.showingTable = !panel.showingTable; if (panel.showingTable) tableFocus.forceActiveFocus(); else search.forceActiveFocus() }
           }
         }
@@ -421,8 +440,11 @@ PanelWindow {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 8
           DarkButton {
+            id: resetFilters
             visible: (panel.modifier !== "all" || panel.group !== "All groups" || search.text !== "") && panel.width > 1200
             text: "Reset filters"
+            KeyNavigation.tab: closeButton
+            KeyNavigation.backtab: availabilityButton
             onClicked: {
               panel.modifier = "all"
               panel.group = "All groups"
@@ -460,12 +482,14 @@ PanelWindow {
           id: list
           width: Math.floor((parent.width - 18) * 0.57); height: parent.height
           clip: true; spacing: 4; model: panel.filtered
+          activeFocusOnTab: true
+          KeyNavigation.tab: panel.selected ? detailsFlick : search
+          KeyNavigation.backtab: closeButton
           onCurrentIndexChanged: {
             if (currentIndex >= 0 && currentIndex < panel.filtered.length) {
               panel.selected = panel.filtered[currentIndex]
             }
           }
-          Keys.onEscapePressed: function(event) { panel.handleEscapeStep(event) }
           Keys.onUpPressed: {
             if (currentIndex <= 0) {
               search.forceActiveFocus()
@@ -480,10 +504,39 @@ PanelWindow {
               positionViewAtIndex(currentIndex, ListView.Contain)
             }
           }
+          Keys.onReturnPressed: {
+            if (panel.selected) detailsFlick.forceActiveFocus()
+          }
+          Keys.onEnterPressed: {
+            if (panel.selected) detailsFlick.forceActiveFocus()
+          }
           Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Backspace) {
-              panel.handleCloseKey(event)
-            } else if (event.text && event.text.length === 1 && event.key !== Qt.Key_Escape && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter && event.key !== Qt.Key_Tab && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+            if (event.key === Qt.Key_Home) {
+              if (count > 0) {
+                currentIndex = 0
+                positionViewAtIndex(0, ListView.Contain)
+              }
+              event.accepted = true
+            } else if (event.key === Qt.Key_End) {
+              if (count > 0) {
+                currentIndex = count - 1
+                positionViewAtIndex(currentIndex, ListView.Contain)
+              }
+              event.accepted = true
+            } else if (event.key === Qt.Key_PageUp) {
+              panel.pageList(-1)
+              event.accepted = true
+            } else if (event.key === Qt.Key_PageDown) {
+              panel.pageList(1)
+              event.accepted = true
+            } else if (event.text && event.text.length === 1
+                       && event.key !== Qt.Key_Escape
+                       && event.key !== Qt.Key_Return
+                       && event.key !== Qt.Key_Enter
+                       && event.key !== Qt.Key_Tab
+                       && event.key !== Qt.Key_Backspace
+                       && event.key !== Qt.Key_Delete
+                       && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
               search.text += event.text
               search.forceActiveFocus()
               event.accepted = true
@@ -587,7 +640,7 @@ PanelWindow {
         Rectangle {
           width: parent.width - list.width - 18; height: parent.height; radius: 8
           color: Util.alpha(Commons.Color.foreground, 0.03)
-          border.color: Util.alpha(Commons.Color.foreground, 0.12)
+          border.color: detailsFlick.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.12)
           border.width: 1
 
           // Empty state
@@ -614,6 +667,7 @@ PanelWindow {
 
           // Populated inspector details
           Flickable {
+            id: detailsFlick
             anchors.fill: parent
             anchors.margins: 16
             visible: !!panel.selected
@@ -621,6 +675,29 @@ PanelWindow {
             contentHeight: detailsCol.implicitHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
+            activeFocusOnTab: !!panel.selected
+            focus: false
+            KeyNavigation.tab: search
+            KeyNavigation.backtab: list
+            onVisibleChanged: if (!visible && activeFocus) list.forceActiveFocus()
+            Keys.onLeftPressed: list.forceActiveFocus()
+            Keys.onUpPressed: panel.scrollDetails(-40)
+            Keys.onDownPressed: panel.scrollDetails(40)
+            Keys.onPressed: function(event) {
+              if (event.key === Qt.Key_PageUp) {
+                panel.scrollDetails(-(detailsFlick.height - 40))
+                event.accepted = true
+              } else if (event.key === Qt.Key_PageDown) {
+                panel.scrollDetails(detailsFlick.height - 40)
+                event.accepted = true
+              } else if (event.key === Qt.Key_Home) {
+                detailsFlick.contentY = 0
+                event.accepted = true
+              } else if (event.key === Qt.Key_End) {
+                detailsFlick.contentY = Math.max(0, detailsFlick.contentHeight - detailsFlick.height)
+                event.accepted = true
+              }
+            }
 
             Column {
               id: detailsCol
@@ -858,12 +935,24 @@ PanelWindow {
         id: tableFocus
         anchors.fill: parent
         focus: panel.showingTable
-        Keys.onEscapePressed: function(event) { panel.handleEscapeStep(event) }
-        Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_Backspace) panel.handleCloseKey(event)
-        }
         Keys.onDownPressed: tableList.contentY = Math.min(tableList.contentY + 80, Math.max(0, tableList.contentHeight - tableList.height))
         Keys.onUpPressed: tableList.contentY = Math.max(0, tableList.contentY - 80)
+        Keys.onPressed: function(event) {
+          var maxY = Math.max(0, tableList.contentHeight - tableList.height)
+          if (event.key === Qt.Key_PageDown) {
+            tableList.contentY = Math.min(tableList.contentY + Math.max(80, tableList.height - 40), maxY)
+            event.accepted = true
+          } else if (event.key === Qt.Key_PageUp) {
+            tableList.contentY = Math.max(0, tableList.contentY - Math.max(80, tableList.height - 40))
+            event.accepted = true
+          } else if (event.key === Qt.Key_Home) {
+            tableList.contentY = 0
+            event.accepted = true
+          } else if (event.key === Qt.Key_End) {
+            tableList.contentY = maxY
+            event.accepted = true
+          }
+        }
         Column {
           anchors.fill: parent
           spacing: 8
@@ -945,10 +1034,6 @@ PanelWindow {
             panel.handleEscapeStep(event)
             return
           }
-          if (event.key === Qt.Key_Backspace) {
-            panel.handleCloseKey(event)
-            return
-          }
           if (panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
             panel.finishCapture()
             return
@@ -956,7 +1041,7 @@ PanelWindow {
           if (!inhibitor.active) return
           if (event.key === Qt.Key_Shift || event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta || event.key === Qt.Key_Super_L || event.key === Qt.Key_Super_R) return
           var mask = ((event.modifiers & Qt.MetaModifier) ? 64 : 0) | ((event.modifiers & Qt.ControlModifier) ? 4 : 0) | ((event.modifiers & Qt.AltModifier) ? 8 : 0) | ((event.modifiers & Qt.ShiftModifier) ? 1 : 0)
-          var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
+          var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Backspace] = "BACKSPACE"; names[Qt.Key_Delete] = "DELETE"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
           var key = names[event.key] || (event.key >= 32 && event.key <= 126 ? String.fromCharCode(event.key).toUpperCase() : "")
           panel.lastTriedChord = Model.chordKeys(mask, key)
           panel.lastTriedCombo = Model.comboText(mask, key) || (key ? key : "Key")
