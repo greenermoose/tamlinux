@@ -2,6 +2,13 @@
 
 Status: approved by Fred, 2026-10-23; implementation in Develop.
 
+2026-10-29: The developer requested concise pre-login guidance to `hi` (an
+alias for `tam hi`) and `tam-desktop`, and visible boot logging that explains
+what commands are running. The packaged welcome text and Bash alias are in
+development. Normal progress is retained; command-level visibility still
+needs an implementation and physical verification. Changes to installed boot
+or login configuration require their own recorded rollback and approval.
+
 The explicit launcher and console guard are implemented. Focused session
 tests include a real pseudo-terminal: suspension keys cannot expose the
 parent shell, queued input is discarded, and the console stays held through
