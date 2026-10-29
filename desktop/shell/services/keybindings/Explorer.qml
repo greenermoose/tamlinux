@@ -487,8 +487,10 @@ PanelWindow {
             }
 
             Text {
-              anchors.left: parent.left; anchors.leftMargin: rowDelegate.isSelected ? 14 : 12
-              anchors.right: chordRow.left; anchors.rightMargin: 12
+              anchors.left: panel.sortOrder === "key" ? chordRow.right : parent.left
+              anchors.leftMargin: panel.sortOrder === "key" ? 12 : (rowDelegate.isSelected ? 14 : 12)
+              anchors.right: panel.sortOrder === "key" ? parent.right : chordRow.left
+              anchors.rightMargin: 12
               anchors.verticalCenter: parent.verticalCenter
               text: modelData.does
               color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
@@ -499,7 +501,11 @@ PanelWindow {
 
             Row {
               id: chordRow
-              anchors.right: parent.right; anchors.rightMargin: 12
+              width: panel.sortOrder === "key" ? parent.width * 0.46 : implicitWidth
+              anchors.left: panel.sortOrder === "key" ? parent.left : undefined
+              anchors.leftMargin: rowDelegate.isSelected ? 14 : 12
+              anchors.right: panel.sortOrder === "key" ? undefined : parent.right
+              anchors.rightMargin: 12
               anchors.verticalCenter: parent.verticalCenter
               spacing: 4
 
