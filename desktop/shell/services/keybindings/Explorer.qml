@@ -88,10 +88,15 @@ PanelWindow {
       }
       if (foundIndex >= 0) {
         list.currentIndex = foundIndex
-      } else {
+        panel.selected = filtered[foundIndex]
+      } else if (list.activeFocus) {
         list.currentIndex = 0
+        panel.selected = filtered[0]
+      } else {
+        // No highlight until the list itself receives keyboard focus.
+        list.currentIndex = -1
+        panel.selected = null
       }
-      panel.selected = filtered[list.currentIndex]
     } else {
       list.currentIndex = -1
       panel.selected = null
@@ -105,8 +110,24 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
   exclusionMode: ExclusionMode.Ignore
   onVisibleChanged: {
-    if (visible) { showingTable = false; search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; modifierSelect.currentIndex = 0; selected = filtered.length ? filtered[0] : null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
-    else { capturing = false; inhibitor.enabled = false }
+    if (visible) {
+      showingTable = false
+      search.text = ""
+      modifier = "all"
+      group = "All groups"
+      groupSelect.currentIndex = 0
+      modifierSelect.currentIndex = 0
+      selected = null
+      lastCaptured = null
+      Qt.callLater(function() {
+        list.currentIndex = -1
+        search.forceActiveFocus()
+        search.cursorPosition = search.text.length
+      })
+    } else {
+      capturing = false
+      inhibitor.enabled = false
+    }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
   // Esc peels one layer: leave capture/table, clear search, then close when
@@ -136,11 +157,20 @@ PanelWindow {
     closeExplorer()
     if (event) event.accepted = true
   }
+  function ensureListHighlight() {
+    if (list.count <= 0) return
+    if (list.currentIndex < 0) list.currentIndex = 0
+    list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+  }
   function focusListFromSearch() {
     if (list.count <= 0) return
     list.forceActiveFocus()
-    if (list.currentIndex < 0) list.currentIndex = 0
-    list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+    ensureListHighlight()
+  }
+  function focusAfterList() {
+    if (panel.selected) detailsFlick.forceActiveFocus()
+    else if (resetFilters.visible) resetFilters.forceActiveFocus()
+    else closeButton.forceActiveFocus()
   }
   function pageList(direction) {
     if (list.count <= 0) return
@@ -287,10 +317,10 @@ PanelWindow {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           text: "Close  Esc"
-          KeyNavigation.tab: list
-          KeyNavigation.backtab: resetFilters.visible ? resetFilters : availabilityButton
-          KeyNavigation.right: list
-          KeyNavigation.left: resetFilters.visible ? resetFilters : availabilityButton
+          KeyNavigation.tab: search
+          KeyNavigation.backtab: resetFilters.visible ? resetFilters : detailsFlick
+          KeyNavigation.right: search
+          KeyNavigation.left: resetFilters.visible ? resetFilters : (panel.selected ? detailsFlick : list)
           onClicked: panel.closeExplorer()
         }
       }
@@ -310,7 +340,7 @@ PanelWindow {
           verticalAlignment: Text.AlignVCenter
           activeFocusOnTab: true
           KeyNavigation.tab: tryButton
-          KeyNavigation.backtab: panel.selected ? detailsFlick : list
+          KeyNavigation.backtab: closeButton
           background: Rectangle {
             radius: Style.cornerRadius
             color: "#0c0f12"
@@ -321,6 +351,19 @@ PanelWindow {
           Keys.priority: Keys.BeforeItem
           Keys.onDownPressed: panel.focusListFromSearch()
           Keys.onReturnPressed: panel.focusListFromSearch()
+          // At the ends of the field, Left/Right join the control cycle.
+          Keys.onRightPressed: function(event) {
+            if (cursorPosition >= text.length) {
+              tryButton.forceActiveFocus()
+              event.accepted = true
+            }
+          }
+          Keys.onLeftPressed: function(event) {
+            if (cursorPosition <= 0) {
+              closeButton.forceActiveFocus()
+              event.accepted = true
+            }
+          }
         }
         DarkButton {
           id: tryButton
@@ -440,9 +483,9 @@ PanelWindow {
           DarkButton {
             id: availabilityButton
             text: panel.showingTable ? "Back to list" : "Availability table"
-            KeyNavigation.tab: resetFilters.visible ? resetFilters : closeButton
+            KeyNavigation.tab: list
             KeyNavigation.backtab: sortSelect
-            KeyNavigation.right: resetFilters.visible ? resetFilters : closeButton
+            KeyNavigation.right: list
             KeyNavigation.left: sortSelect
             onClicked: { panel.showingTable = !panel.showingTable; if (panel.showingTable) tableFocus.forceActiveFocus(); else search.forceActiveFocus() }
           }
@@ -456,9 +499,9 @@ PanelWindow {
             visible: (panel.modifier !== "all" || panel.group !== "All groups" || search.text !== "") && panel.width > 1200
             text: "Reset filters"
             KeyNavigation.tab: closeButton
-            KeyNavigation.backtab: availabilityButton
+            KeyNavigation.backtab: panel.selected ? detailsFlick : list
             KeyNavigation.right: closeButton
-            KeyNavigation.left: availabilityButton
+            KeyNavigation.left: panel.selected ? detailsFlick : list
             onClicked: {
               panel.modifier = "all"
               panel.group = "All groups"
@@ -497,35 +540,40 @@ PanelWindow {
           width: Math.floor((parent.width - 18) * 0.57); height: parent.height
           clip: true; spacing: 4; model: panel.filtered
           activeFocusOnTab: true
-          KeyNavigation.tab: panel.selected ? detailsFlick : search
-          KeyNavigation.backtab: closeButton
-          KeyNavigation.right: panel.selected ? detailsFlick : search
-          KeyNavigation.left: closeButton
+          KeyNavigation.tab: panel.selected ? detailsFlick : (resetFilters.visible ? resetFilters : closeButton)
+          KeyNavigation.backtab: availabilityButton
+          KeyNavigation.right: panel.selected ? detailsFlick : (resetFilters.visible ? resetFilters : closeButton)
+          KeyNavigation.left: availabilityButton
+          onActiveFocusChanged: {
+            if (activeFocus) panel.ensureListHighlight()
+          }
           onCurrentIndexChanged: {
             if (currentIndex >= 0 && currentIndex < panel.filtered.length) {
               panel.selected = panel.filtered[currentIndex]
+            } else if (currentIndex < 0) {
+              panel.selected = null
             }
           }
           Keys.onUpPressed: {
-            if (currentIndex <= 0) {
-              search.forceActiveFocus()
+            if (currentIndex < 0) {
+              panel.ensureListHighlight()
+            } else if (currentIndex === 0) {
+              availabilityButton.forceActiveFocus()
             } else {
               currentIndex = currentIndex - 1
               positionViewAtIndex(currentIndex, ListView.Contain)
             }
           }
           Keys.onDownPressed: {
-            if (currentIndex < count - 1) {
+            if (currentIndex < 0) {
+              panel.ensureListHighlight()
+            } else if (currentIndex < count - 1) {
               currentIndex = currentIndex + 1
               positionViewAtIndex(currentIndex, ListView.Contain)
             }
           }
-          Keys.onReturnPressed: {
-            if (panel.selected) detailsFlick.forceActiveFocus()
-          }
-          Keys.onEnterPressed: {
-            if (panel.selected) detailsFlick.forceActiveFocus()
-          }
+          Keys.onReturnPressed: panel.focusAfterList()
+          Keys.onEnterPressed: panel.focusAfterList()
           Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Home) {
               if (count > 0) {
@@ -693,9 +741,9 @@ PanelWindow {
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: !!panel.selected
             focus: false
-            KeyNavigation.tab: search
+            KeyNavigation.tab: resetFilters.visible ? resetFilters : closeButton
             KeyNavigation.backtab: list
-            KeyNavigation.right: search
+            KeyNavigation.right: resetFilters.visible ? resetFilters : closeButton
             KeyNavigation.left: list
             onVisibleChanged: if (!visible && activeFocus) list.forceActiveFocus()
             Keys.onUpPressed: panel.scrollDetails(-40)
@@ -954,6 +1002,14 @@ PanelWindow {
         focus: panel.showingTable
         Keys.onDownPressed: tableList.contentY = Math.min(tableList.contentY + 80, Math.max(0, tableList.contentHeight - tableList.height))
         Keys.onUpPressed: tableList.contentY = Math.max(0, tableList.contentY - 80)
+        Keys.onRightPressed: {
+          panel.showingTable = false
+          panel.focusListFromSearch()
+        }
+        Keys.onLeftPressed: {
+          panel.showingTable = false
+          availabilityButton.forceActiveFocus()
+        }
         Keys.onPressed: function(event) {
           var maxY = Math.max(0, tableList.contentHeight - tableList.height)
           if (event.key === Qt.Key_PageDown) {

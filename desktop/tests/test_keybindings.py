@@ -171,8 +171,10 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn('KeyNavigation.right', explorer)
         self.assertIn('KeyNavigation.left', explorer)
         self.assertIn('focusListFromSearch', explorer)
+        self.assertIn('ensureListHighlight', explorer)
         self.assertIn('pageList(', explorer)
         self.assertIn('id: detailsFlick', explorer)
+        self.assertIn('KeyNavigation.right: list', explorer)
 
     def test_component_semver_and_version_wiring(self):
         version_file = (KEYBINDINGS / "VERSION").read_text().strip()
