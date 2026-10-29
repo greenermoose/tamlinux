@@ -9,7 +9,7 @@
 // Heinemeier Hansson; see ../LICENSE-omarchy). The parsing and the order
 // are new.
 
-var APP_VERSION = "0.2.2"
+var APP_VERSION = "0.3.0"
 var MAX_TEXT = 4 * 1024 * 1024
 var MAX_BINDS = 4096
 var MAX_FIELD = 1024
@@ -270,7 +270,7 @@ function explorerRecords(bindingsText, commandsText, includeStatic) {
                 does: text, combo: comboText(b.modmask, b.key),
                 chord: chordKeys(b.modmask, b.key),
                 modmask: b.modmask, key: b.key, group: actionGroup(text),
-                explanation: findExplanation(b.dispatcher, b.arg) })
+                explanation: findExplanation(b.dispatcher, b.arg), unlabeled: !!b.unlabeled })
   }
 
   for (var i = 0; i < binds.length; i++) {
@@ -278,7 +278,7 @@ function explorerRecords(bindingsText, commandsText, includeStatic) {
     if (b.key === "" && b.description !== "")
       b.key = commands.keyFor[b.modmask + "," + b.description] || ""
     if (b.dispatcher === "__lua") {
-      if (b.description === "") continue
+      if (b.description === "") { b.description = "Unlabeled compositor binding"; b.unlabeled = true; b.dispatcher = ""; b.arg = ""; add(b); continue }
       var found = commands.byKey[b.modmask + "," + b.description + "," + b.key]
       b.dispatcher = found ? found.dispatcher : ""
       b.arg = found ? found.arg : ""
@@ -296,7 +296,7 @@ function explorerRecords(bindingsText, commandsText, includeStatic) {
 }
 
 function records(bindingsText, commandsText) {
-  return explorerRecords(bindingsText, commandsText, true).map(function (r) {
+  return explorerRecords(bindingsText, commandsText, true).filter(function (r) { return !r.unlabeled }).map(function (r) {
     return { display: r.display, dispatcher: r.dispatcher, arg: r.arg }
   })
 }
@@ -314,6 +314,31 @@ function filterExplorer(rows, modifier, query) {
     var haystack = [row.combo, row.does, row.dispatcher, row.arg, row.group, row.explanation].join(" ").toLowerCase()
     return words.every(function (word) { return haystack.indexOf(word) !== -1 })
   })
+}
+
+// A quick scan of the common Super chords, plus every other reported chord.
+// Keys use the same US-layout labels as the rest of the explorer.
+function availability(rows) {
+  var keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").concat(
+    ["GRAVE", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+     "MINUS", "EQUAL", "BRACKETLEFT", "BRACKETRIGHT", "BACKSLASH",
+     "COMMA", "PERIOD", "SLASH", "SPACE", "RETURN", "BACKSPACE",
+     "HOME", "END", "DELETE", "PAGE_UP", "PAGE_DOWN", "UP", "LEFT", "DOWN", "RIGHT"])
+  var aliases = { PRIOR: "PAGE_UP", NEXT: "PAGE_DOWN", PAGEUP: "PAGE_UP", PAGEDOWN: "PAGE_DOWN",
+                  GRAVE: "GRAVE", LESS: "COMMA", GREATER: "PERIOD" }
+  var masks = [64, 72, 68, 65], cells = {}, other = []
+  rows.forEach(function(row) {
+    var key = String(keyLabel(row.key)).toUpperCase()
+    key = aliases[key] || key
+    if (masks.indexOf(row.modmask) < 0 || !key) { other.push(row); return }
+    if (keys.indexOf(key) < 0) keys.push(key)
+    var id = row.modmask + ":" + key
+    if (!cells[id]) cells[id] = []
+    if (cells[id].indexOf(row.does) < 0) cells[id].push(row.does)
+  })
+  return { rows: keys.map(function(key) {
+    return { key: key, cells: masks.map(function(mask) { return (cells[mask + ":" + key] || []).join("; ") }) }
+  }), other: other }
 }
 
 // The native scan code follows XKB's evdev+8 convention. Compare both the
@@ -349,6 +374,7 @@ if (typeof module !== "undefined" && module.exports) {
     explorerRecords: explorerRecords,
     filterExplorer: filterExplorer,
     capturedBindings: capturedBindings,
+    availability: availability,
     formatRecords: formatRecords,
     KEYCODE_NAMES: KEYCODE_NAMES,
     APP_VERSION: APP_VERSION,

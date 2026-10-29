@@ -10,10 +10,13 @@ import "KeybindingsModel.js" as Model
 PanelWindow {
   id: panel
   property var rows: []
+  property bool bindingsAvailable: false
   property string modifier: "all"
   property string group: "All groups"
   property var selected: null
   property bool capturing: false
+  property bool showingTable: false
+  readonly property var availability: Model.availability(rows)
   property string captureResult: ""
   property var lastCaptured: null
   property var lastTriedChord: []
@@ -80,7 +83,7 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
   exclusionMode: ExclusionMode.Ignore
   onVisibleChanged: {
-    if (visible) { search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
+    if (visible) { showingTable = false; search.text = ""; modifier = "all"; group = "All groups"; groupSelect.currentIndex = 0; selected = null; lastCaptured = null; Qt.callLater(function() { search.forceActiveFocus() }) }
     else { capturing = false; inhibitor.enabled = false }
   }
   function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
@@ -203,6 +206,14 @@ PanelWindow {
           }
         }
         DarkButton {
+          anchors.right: closeButton.left
+          anchors.rightMargin: 8
+          anchors.verticalCenter: parent.verticalCenter
+          text: panel.showingTable ? "Back to list" : "Availability table"
+          onClicked: { panel.showingTable = !panel.showingTable; if (panel.showingTable) tableFocus.forceActiveFocus(); else search.forceActiveFocus() }
+        }
+        DarkButton {
+          id: closeButton
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           text: "Close  Esc"
@@ -773,6 +784,90 @@ PanelWindow {
                       anchors.verticalCenter: parent.verticalCenter
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    Rectangle {
+      anchors.fill: parent
+      anchors.topMargin: 70
+      anchors.margins: 16
+      visible: panel.showingTable && !panel.capturing
+      color: Commons.Color.menu.background
+      MouseArea { anchors.fill: parent }
+      Item {
+        id: tableFocus
+        anchors.fill: parent
+        focus: panel.showingTable
+        Keys.onEscapePressed: { panel.showingTable = false; search.forceActiveFocus() }
+        Keys.onDownPressed: tableList.contentY = Math.min(tableList.contentY + 80, Math.max(0, tableList.contentHeight - tableList.height))
+        Keys.onUpPressed: tableList.contentY = Math.max(0, tableList.contentY - 80)
+        Column {
+          anchors.fill: parent
+          spacing: 8
+          Text {
+            width: parent.width
+            text: panel.bindingsAvailable ? "Live bindings · * means no reported binding · Super is held in every column" : "No bindings available from the compositor"
+            color: Commons.Color.foreground
+            font.pixelSize: 12
+          }
+          Row {
+            width: parent.width; height: 28; spacing: 2
+            Repeater {
+              model: ["Key", "Super", "+ Alt", "+ Ctrl", "+ Shift"]
+              Rectangle {
+                required property int index
+                required property var modelData
+                width: index === 0 ? 90 : (tableFocus.width - 98) / 4
+                height: 28; color: Util.alpha(Commons.Color.accent, 0.16); radius: 3
+                Text { anchors.fill: parent; anchors.margins: 6; text: modelData; color: Commons.Color.accentText; font.bold: true; font.pixelSize: 12; elide: Text.ElideRight }
+              }
+            }
+          }
+          ListView {
+            id: tableList
+            width: parent.width; height: parent.height - y
+            clip: true
+            model: panel.bindingsAvailable ? panel.availability.rows : []
+            ScrollBar.vertical: ScrollBar { }
+            delegate: Row {
+              required property var modelData
+              required property int index
+              width: ListView.view.width; spacing: 2
+              height: Math.max(32, c0.implicitHeight + 12, c1.implicitHeight + 12, c2.implicitHeight + 12, c3.implicitHeight + 12)
+              Rectangle {
+                width: 90; height: parent.height; color: Util.alpha(Commons.Color.foreground, 0.06)
+                Text { anchors.fill: parent; anchors.margins: 6; text: modelData.key; color: Commons.Color.foreground; font.bold: true; font.pixelSize: 11; wrapMode: Text.WrapAnywhere }
+              }
+              Repeater {
+                model: parent.modelData.cells
+                Rectangle {
+                  required property var modelData
+                  required property int index
+                  width: (tableFocus.width - 98) / 4; height: parent.height
+                  color: Util.alpha(Commons.Color.foreground, modelData ? 0.06 : 0.025)
+                  Text { id: cellText; anchors.fill: parent; anchors.margins: 6; text: modelData || "*"; color: modelData ? Commons.Color.foreground : Commons.Color.muted; font.pixelSize: 11; wrapMode: Text.Wrap }
+                }
+              }
+              // Invisible measurement texts keep multi-action cells fully visible.
+              Text { id: c0; visible: false; width: (tableFocus.width - 98) / 4 - 12; text: parent.modelData.cells[0]; font.pixelSize: 11; wrapMode: Text.Wrap }
+              Text { id: c1; visible: false; width: c0.width; text: parent.modelData.cells[1]; font.pixelSize: 11; wrapMode: Text.Wrap }
+              Text { id: c2; visible: false; width: c0.width; text: parent.modelData.cells[2]; font.pixelSize: 11; wrapMode: Text.Wrap }
+              Text { id: c3; visible: false; width: c0.width; text: parent.modelData.cells[3]; font.pixelSize: 11; wrapMode: Text.Wrap }
+            }
+            footer: Column {
+              width: tableList.width; spacing: 4
+              Text { visible: panel.bindingsAvailable; width: parent.width; text: "Other modifier combinations and unmodified keys"; color: Commons.Color.accentText; font.bold: true; font.pixelSize: 13; topPadding: 16; bottomPadding: 8 }
+              Repeater {
+                model: panel.bindingsAvailable ? panel.availability.other : []
+                Row {
+                  required property var modelData
+                  width: parent.width; height: Math.max(otherCombo.implicitHeight, otherAction.implicitHeight) + 12; spacing: 2
+                  Text { id: otherCombo; width: parent.width * 0.35; text: modelData.combo; color: Commons.Color.foreground; font.bold: true; font.pixelSize: 11; wrapMode: Text.Wrap }
+                  Text { id: otherAction; width: parent.width * 0.64; text: modelData.does; color: Commons.Color.foreground; font.pixelSize: 11; wrapMode: Text.Wrap }
                 }
               }
             }

@@ -47,6 +47,7 @@ ShellRoot {
     id: explorer
     visible: false
     rows: root.rows
+    bindingsAvailable: Model.parseBinds(root.bindsText).length > 0
     onDismissRequested: Qt.quit()
   }
 }

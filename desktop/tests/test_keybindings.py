@@ -236,6 +236,21 @@ class ModelTests(unittest.TestCase):
             (FIXTURE / "commands.tsv").read_text(encoding="utf-8"),
         )
 
+    def test_availability_uses_exact_masks_and_keeps_multiple_actions(self):
+        binds = [
+            {"modmask": 64, "key": "a", "description": "First", "dispatcher": "exec", "arg": "one"},
+            {"modmask": 64, "key": "A", "description": "Second", "dispatcher": "exec", "arg": "two"},
+            {"modmask": 68, "key": "code:20", "description": "Resize", "dispatcher": "exec", "arg": "three"},
+            {"modmask": 73, "key": "A", "description": "Extra", "dispatcher": "exec", "arg": "four"},
+            {"modmask": 72, "key": "B", "description": "", "dispatcher": "__lua", "arg": "1"},
+        ]
+        result = run_model("M.availability(M.explorerRecords(TEXTS[0], '', false))", json.dumps(binds))
+        by_key = {row["key"]: row["cells"] for row in result["rows"]}
+        self.assertEqual(by_key["A"], ["First; Second", "", "", ""])
+        self.assertEqual(by_key["B"][1], "Unlabeled compositor binding")
+        self.assertEqual(by_key["MINUS"][2], "Resize")
+        self.assertEqual([row["does"] for row in result["other"]], ["Extra"])
+
     def test_reads_hyprland_binds_including_an_empty_key(self):
         self.assertEqual(
             run_model("M.parseBinds(TEXTS[0])", HYPRLAND_BINDS),

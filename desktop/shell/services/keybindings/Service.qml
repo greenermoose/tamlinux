@@ -12,15 +12,19 @@ Item {
   property var shell: null
   property bool opened: false
   property var rows: []
+  property bool bindingsAvailable: false
 
   function open(commands) {
-    rows = Model.explorerRecords(bindingsText(), commands)
+    var text = bindingsText()
+    bindingsAvailable = Model.parseBinds(text).length > 0
+    rows = Model.explorerRecords(text, commands)
     opened = true
   }
 
   Explorer {
     visible: root.opened
     rows: root.rows
+    bindingsAvailable: root.bindingsAvailable
     onDismissRequested: root.opened = false
   }
 
