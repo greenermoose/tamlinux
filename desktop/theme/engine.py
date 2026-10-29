@@ -5,6 +5,7 @@ Generated themes are published only after validation. Private journals preserve
 original bytes and link identities before writers run, and restore on failure.
 """
 import contextlib
+import ctypes
 import fcntl
 import hashlib
 import json
@@ -52,6 +53,44 @@ def atomic(path, data=None, link=None):
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+def publish_theme_directory(stage, destination):
+    """Replace the active theme atomically without a current-theme symlink."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.parent / ('.theme-publish-' + uuid.uuid4().hex)
+    shutil.copytree(stage, temporary, symlinks=True)
+    try:
+        if not destination.exists() and not destination.is_symlink():
+            os.replace(temporary, destination)
+        else:
+            libc = ctypes.CDLL(None, use_errno=True)
+            rename = getattr(libc, 'renameat2', None)
+            if rename is None:
+                raise OSError('atomic theme exchange is unavailable')
+            rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+            rename.restype = ctypes.c_int
+            if rename(-100, os.fsencode(temporary), -100, os.fsencode(destination), 2) != 0:
+                error = ctypes.get_errno()
+                raise OSError(error, os.strerror(error))
+    finally:
+        remove(temporary)
+
+
+def preserve_active_background():
+    """Detach a background inside the active directory before it is replaced."""
+    background = CURRENT / 'background'
+    active = CURRENT / 'theme'
+    if not background.is_symlink() or active.is_symlink() or not active.is_dir():
+        return
+    target = background.resolve()
+    if not target.is_file() or not target.is_relative_to(active.resolve()):
+        return
+    saved_dir = STATE / 'theme-generations' / ('background-' + uuid.uuid4().hex)
+    saved_dir.mkdir(parents=True)
+    saved = saved_dir / target.name
+    shutil.copy2(target, saved)
+    atomic(background, link=saved)
+
 
 def remove(path):
     if path.is_dir() and not path.is_symlink():
@@ -234,6 +273,7 @@ def set_theme(value, refresh=False, apply=True):
     generations = STATE / 'theme-generations'
     generations.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=theme + '.', dir=generations))
+    published = False
     try:
         if builtin.is_dir(): stage_tree(builtin, stage)
         if theme in ('tamarack-dark', 'tamarack-light'):
@@ -258,15 +298,14 @@ def set_theme(value, refresh=False, apply=True):
                 raise ValueError(f'unresolved template in {item.name}')
         paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
         with transaction('theme', paths):
-            # Old actual directories are saved before converting to the stable
-            # generated-theme link; no inherited folder is read or deleted.
-            if (CURRENT / 'theme').is_dir() and not (CURRENT / 'theme').is_symlink():
-                remove(CURRENT / 'theme')
-            atomic(CURRENT / 'theme', link=stage)
+            # Keep a personal background valid when the old active directory
+            # is exchanged. Old generations remain available for rollback.
+            preserve_active_background()
+            publish_theme_directory(stage, CURRENT / 'theme')
             atomic(CURRENT / 'theme.name', theme + '\n')
             old = (CURRENT / 'background').resolve()
             if not refresh or retired_background(old, theme):
-                choices = background_paths()
+                choices = images(stage / 'backgrounds', CONFIG / 'tamlinux/backgrounds' / theme)
                 if choices:
                     old = (CURRENT / 'background').resolve()
                     index = next((i for i,p in enumerate(choices) if p.resolve() == old), -1)
@@ -276,11 +315,12 @@ def set_theme(value, refresh=False, apply=True):
                 for app in ('terminal', 'hyprctl', 'btop', 'opencode', 'helix'):
                     run('tam-restart-' + app, check=False)
                 run('tam-hook', 'theme-set', theme)
+        published = True
         if apply: sync_shell()
     except BaseException:
-        # Preserve a published generation for forensic/recovery use. Unpublished
-        # staging is disposable and cannot be the target of a saved selection.
-        if (CURRENT / 'theme').resolve() != stage:
+        # A completed publication can have background links into this
+        # generation; a failed transaction restored the previous selection.
+        if not published:
             remove(stage)
         if apply: sync_shell()
         raise
@@ -388,6 +428,13 @@ def main():
             if not any(path.exists() or path.is_symlink() for path in (CURRENT / 'theme', CURRENT / 'theme.name')):
                 background = CURRENT / 'background'
                 set_theme('tokyo-night', refresh=background.exists() or background.is_symlink(), apply=False)
+            else:
+                active = CURRENT / 'theme'
+                if active.is_symlink() and active.is_dir():
+                    source = active.resolve()
+                    if source.is_relative_to((STATE / 'theme-generations').resolve()):
+                        with transaction('theme-directory-migration', [active]):
+                            publish_theme_directory(source, active)
         elif action == 'journal' and not args: print(Journal('theme-application', application_paths()).directory)
         elif action == 'set' and len(args) == 1: set_theme(args[0])
         elif action == 'refresh' and not args: set_theme(selected(), refresh=True)

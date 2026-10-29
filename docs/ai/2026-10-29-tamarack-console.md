@@ -9,5 +9,5 @@
 
   > I have edited plan 19. Read my changes, then make it so. Close the review window and proceed.
 
-- **Work**: Began Tamarack token generation, variant previews and shell typography, and added text-login orientation and the Bash `hi` alias. This is development, not a completed appearance or release.
-- **Verification**: Focused theme, payload, user-default and console tests; graphical and physical acceptance remain pending.
+- **Work**: Began Tamarack token generation, variant previews and shell typography, added text-login orientation and the Bash `hi` alias, and replaced the active theme link with a journaled atomic directory exchange. This is development, not a completed appearance or release.
+- **Verification**: Focused theme and background migration, payload, user-default and console tests; graphical and physical acceptance remain pending.

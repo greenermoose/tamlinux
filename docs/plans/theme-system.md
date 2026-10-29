@@ -13,8 +13,9 @@ swatches. The shell can read a theme font family; Atkinson packaging is in
 progress. These checks do not cover every applied foreground/background pair.
 Terminal font selection, actual adapter/surface inventory, the transparent
 and animated surface audit, settings-preserving switching and physical review
-remain open. The current generated-theme link is still present and must be
-resolved under the apply-and-recovery contract below.
+remain open. The active generated theme now uses an atomic directory exchange, with
+legacy-link migration and background recovery covered by source tests;
+packaged and physical recovery proof remain open.
 
 ## Purpose and design
 

@@ -64,7 +64,8 @@ class ThemeOwnership(unittest.TestCase):
             with self.subTest(theme=theme.name):
                 self.call('set',theme.name)
                 self.assertEqual((self.current/'theme.name').read_text().strip(),theme.name)
-                self.assertTrue((self.current/'theme').is_symlink())
+                self.assertTrue((self.current/'theme').is_dir())
+                self.assertFalse((self.current/'theme').is_symlink())
                 self.assertIn('"palette"', subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')],env=self.env,text=True))
                 self.assertNotIn('{{',(self.current/'theme/shell.toml').read_text())
         self.call('set','Tokyo Night')
@@ -98,9 +99,9 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
         self.assertTrue((self.current/'background').is_symlink())
         self.assertFalse(self.config.exists())
-        before = os.readlink(self.current/'theme')
+        before = (self.current/'theme/colors.toml').read_bytes()
         self.call('initialize')
-        self.assertEqual(os.readlink(self.current/'theme'), before)
+        self.assertEqual((self.current/'theme/colors.toml').read_bytes(), before)
 
     def test_initialize_preserves_existing_selected_name_and_dangling_theme_link(self):
         self.current.mkdir(parents=True)
@@ -110,28 +111,70 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual(os.readlink(self.current/'theme'), 'user-generation-currently-unavailable')
         self.assertEqual((self.current/'theme.name').read_text(), 'personal selection')
 
+    def test_initialize_migrates_owned_theme_link_and_preserves_selection(self):
+        legacy = self.state/'tamlinux/theme-generations/legacy'
+        legacy.mkdir(parents=True)
+        (legacy/'colors.toml').write_text('background = "#112233"\n')
+        self.current.mkdir(parents=True)
+        (self.current/'theme').symlink_to(legacy)
+        (self.current/'theme.name').write_text('personal\n')
+        self.call('initialize')
+        self.assertFalse((self.current/'theme').is_symlink())
+        self.assertEqual((self.current/'theme/colors.toml').read_bytes(), (legacy/'colors.toml').read_bytes())
+        self.assertEqual((self.current/'theme.name').read_text(), 'personal\n')
+        journals = list((self.state/'tamlinux/settings-recovery').glob('theme-directory-migration.*/manifest.json'))
+        self.assertTrue(any(json.loads(p.read_text())['files'][0].get('symlink') == str(legacy) for p in journals))
+
+    def test_switch_migrates_legacy_link_without_losing_background(self):
+        legacy = self.state/'tamlinux/theme-generations/legacy'
+        (legacy/'backgrounds').mkdir(parents=True)
+        image = legacy/'backgrounds/personal.png'; image.write_bytes(b'personal artwork')
+        self.current.mkdir(parents=True)
+        (self.current/'theme').symlink_to(legacy)
+        (self.current/'theme.name').write_text('personal\n')
+        (self.current/'background').symlink_to(image)
+        self.call('set', 'tamarack-dark')
+        self.assertTrue((self.current/'theme').is_dir())
+        self.assertFalse((self.current/'theme').is_symlink())
+        self.assertEqual((self.current/'background').read_bytes(), b'personal artwork')
+        self.assertEqual(image.read_bytes(), b'personal artwork')
+
+    def test_active_directory_background_survives_switch_and_failure(self):
+        self.call('set', 'tokyo-night')
+        image = next((self.current/'theme/backgrounds').iterdir())
+        original = image.read_bytes()
+        background = self.current/'background'
+        background.unlink(); background.symlink_to(image)
+        self.stub('tam-theme-set-foot', 'exit 7')
+        self.call('set', 'tamarack-dark', success=False, env={'TAMLINUX_THEME_OFFLINE': ''})
+        self.assertEqual(background.read_bytes(), original)
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+        self.call('set', 'tamarack-dark')
+        self.assertEqual(background.read_bytes(), original)
+        self.assertFalse((self.current/'theme').is_symlink())
+
     def test_invalid_input_cannot_mutate_selection(self):
-        self.call('set','tokyo-night'); before=os.readlink(self.current/'theme')
+        self.call('set','tokyo-night'); before=(self.current/'theme/colors.toml').read_bytes()
         for value in ('../escape','--foo','missing','a\nname'):
             self.call('set',value,success=False)
-            self.assertEqual(os.readlink(self.current/'theme'),before)
+            self.assertEqual((self.current/'theme/colors.toml').read_bytes(),before)
 
     def test_invalid_or_failed_generation_preserves_working_theme(self):
-        self.call('set','tokyo-night'); before=os.readlink(self.current/'theme')
+        self.call('set','tokyo-night'); before=(self.current/'theme/colors.toml').read_bytes()
         user=self.config/'tamlinux/themes/broken'; user.mkdir(parents=True)
         (user/'colors.toml').write_text('background = "not a color"\n')
         self.call('set','broken',success=False)
         self.stub('tam-theme-set-templates','exit 7')
         self.call('set','nord',success=False)
-        self.assertEqual(os.readlink(self.current/'theme'),before)
+        self.assertEqual((self.current/'theme/colors.toml').read_bytes(),before)
 
     def test_apply_failure_restores_links_names_and_application_bytes(self):
-        self.call('set','tokyo-night'); before=os.readlink(self.current/'theme')
+        self.call('set','tokyo-night'); before=(self.current/'theme/colors.toml').read_bytes()
         settings=self.config/'Code/User/settings.json'; settings.parent.mkdir(parents=True); settings.write_text('original settings')
         self.stub('tam-theme-set-foot', 'printf changed > "$XDG_CONFIG_HOME/Code/User/settings.json"; exit 7')
         self.call('set','nord',success=False,env={'TAMLINUX_THEME_OFFLINE':''})
         self.assertEqual(settings.read_text(),'original settings')
-        self.assertEqual(os.readlink(self.current/'theme'),before)
+        self.assertEqual((self.current/'theme/colors.toml').read_bytes(),before)
         self.assertEqual((self.current/'theme.name').read_text(),'tokyo-night\n')
         journals=list((self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json'))
         self.assertTrue(any(json.loads(p.read_text())['status']=='restored-after-failure' for p in journals))
@@ -172,7 +215,8 @@ class ThemeOwnership(unittest.TestCase):
         self.call('refresh')
         self.assertNotEqual((self.current/'background').resolve(), old)
         self.assertTrue((self.current/'background').is_file())
-        self.assertEqual(old.read_bytes(), b'retained original image')
+        saved = list((self.state/'tamlinux/theme-generations').glob('background-*/6-oma.jpg'))
+        self.assertTrue(any(p.read_bytes() == b'retained original image' for p in saved))
         journals = [json.loads(p.read_text()) for p in
                     (self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json')]
         self.assertTrue(any(any(f.get('symlink') == str(old) for f in j['files'])
