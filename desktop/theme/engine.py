@@ -54,7 +54,7 @@ def atomic(path, data=None, link=None):
     finally:
         temporary.unlink(missing_ok=True)
 
-def publish_theme_directory(stage, destination):
+def publish_theme_directory(stage, destination, archive=None):
     """Publish atomically and retain the old directory, including late writes."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.parent / ('.theme-publish-' + uuid.uuid4().hex)
@@ -75,7 +75,7 @@ def publish_theme_directory(stage, destination):
             raise OSError(error, os.strerror(error))
         exchanged = True
         if temporary.is_dir() and not temporary.is_symlink():
-            archive = STATE / 'theme-generations' / ('retired-' + uuid.uuid4().hex)
+            archive = archive or (STATE / 'theme-generations' / ('retired-' + uuid.uuid4().hex))
             archive.parent.mkdir(parents=True, exist_ok=True)
             os.replace(temporary, archive)
             return archive
@@ -315,7 +315,10 @@ def set_theme(value, refresh=False, apply=True):
             # Keep a personal background valid when the old active directory
             # is exchanged. Old generations remain available for rollback.
             preserve_active_background()
-            journal.retired_theme = publish_theme_directory(stage, CURRENT / 'theme')
+            planned_archive = generations / ('retired-' + uuid.uuid4().hex)
+            journal.retired_theme = planned_archive
+            journal.status('prepared')
+            journal.retired_theme = publish_theme_directory(stage, CURRENT / 'theme', planned_archive)
             atomic(CURRENT / 'theme.name', theme + '\n')
             old = (CURRENT / 'background').resolve()
             if not refresh or retired_background(old, theme):
