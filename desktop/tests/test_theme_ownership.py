@@ -130,7 +130,7 @@ class ThemeOwnership(unittest.TestCase):
             micro = (theme/'micro.micro').read_text()
             pairs = re.findall(r'^color-link \S+ "(?:bold )?(#[0-9a-fA-F]{6}),(#[0-9a-fA-F]{6})"$', micro, re.MULTILINE)
             self.assertEqual(len(pairs), 22, micro)
-            self.assertIn((colors['selection_foreground'], colors['selection_background']), pairs)
+            self.assertRegex(micro, r'(?m)^color-link selection "' + colors['selection_foreground'] + r',#[0-9a-fA-F]{6}"$')
             for foreground, background in pairs:
                 check(foreground, background)
             vscode = json.loads((theme/'vscode-theme.json').read_text())['colors']
