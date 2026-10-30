@@ -415,6 +415,8 @@ class Deployment:
                 self.lock.write_bytes(before)
                 if self.generation() != previous:
                     command(str(Path(previous) / "activate"))
+                    if self.generation() != previous:
+                        raise DeploymentError("previous generation was not restored")
                     self.restart_if_graphical()
             except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as recovery:
                 raise DeploymentError(
@@ -589,8 +591,10 @@ class Deployment:
         self.graphical_active()
         try:
             command(str(target / "activate"))
-            self.restart_if_graphical()
             restored = self.generation()
+            if restored != previous:
+                raise DeploymentError("previous generation was not activated")
+            self.restart_if_graphical()
             self.pin(previous_pin)
             files = ["flake.lock"] + self.update_bom({"packages": previous_pin, "stage": "restored",
                                                       "generation": restored})

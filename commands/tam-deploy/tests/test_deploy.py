@@ -316,7 +316,7 @@ class TestStage(Fixture):
 
     def test_failed_activation_restores_lock_and_generation(self):
         before = (self.config / "flake.lock").read_bytes()
-        generations = iter(["/nix/store/old-generation", "/nix/store/new-generation"])
+        generations = iter(["/nix/store/old-generation", "/nix/store/new-generation", "/nix/store/old-generation"])
         with patch.object(self.app, "preflight"), patch.object(self.app, "status"), \
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
              patch.object(self.app, "activate", side_effect=deploy.DeploymentError("restart failed")), \
@@ -347,6 +347,18 @@ class TestStage(Fixture):
              patch.object(deploy, "command", side_effect=OSError("restore failed")):
             with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: restore failed.*before retrying"):
                 self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+
+    def test_failed_install_reports_recovery_generation_mismatch(self):
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "generation", side_effect=["/nix/store/old-generation", "/nix/store/new-generation", "/nix/store/new-generation"]), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_main), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "activate", side_effect=deploy.DeploymentError("switch failed")), \
+             patch.object(deploy, "command") as command, patch.object(self.app, "restart_if_graphical") as restart:
+            with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: previous generation was not restored"):
+                self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+        command.assert_called_once_with("/nix/store/old-generation/activate")
+        restart.assert_not_called()
 
     def test_failed_recording_reports_active_candidate_without_claiming_recovery(self):
         with patch.object(self.app, "preflight"), \
@@ -529,6 +541,23 @@ class Arguments(unittest.TestCase):
 
 
 class BackAndPin(Fixture):
+    def test_back_refuses_to_record_wrong_generation(self):
+        self.app.save_state({"stage": "test", "packages": self.packages_new,
+                             "generation": "/nix/store/new-generation",
+                             "previousGeneration": "/nix/store/old-generation", "previousPin": self.packages_main})
+        before_state = self.app.state_file.read_bytes()
+        with patch.object(deploy.Path, "is_file", return_value=True), \
+             patch.object(self.app, "generation", return_value="/nix/store/new-generation"), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_new), \
+             patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(deploy, "command"), patch.object(self.app, "pin") as pin, \
+             patch.object(self.app, "restart_if_graphical") as restart:
+            with self.assertRaisesRegex(deploy.DeploymentError, "rollback may be incomplete.*previous generation was not activated"):
+                self.app.back()
+        pin.assert_not_called()
+        restart.assert_not_called()
+        self.assertEqual(self.app.state_file.read_bytes(), before_state)
+
     def test_back_reports_partial_outcome_after_activation_failure(self):
         for failing_step in ("restart_if_graphical", "pin"):
             with self.subTest(failing_step=failing_step):
