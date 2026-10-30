@@ -21,6 +21,12 @@ def initialize(assets, environ):
         text = (assets / 'defaults' / default).read_text().replace('~/.local/state/tamlinux/current/theme', current)
         entries[config / relative] = text
     entries[config / 'micro/bindings.json'] = (assets / 'defaults/micro-bindings.json').read_text()
+    micro_scheme = config / 'micro/colorschemes/tamlinux.micro'
+    # An existing scheme or settings file belongs to the user. Only select the
+    # generated scheme automatically when both destinations are absent.
+    if not micro_scheme.exists() and not micro_scheme.is_symlink():
+        entries[micro_scheme] = None
+        entries[config / 'micro/settings.json'] = '{"colorscheme": "tamlinux"}\n'
     # Personal configurations later in imv's search path must not be hidden
     # by a new XDG default. An explicit selection is left to its owner even
     # when it is currently missing. System fallback is deliberately overridden
@@ -60,7 +66,8 @@ def initialize(assets, environ):
             if data is None:
                 os.close(fd); fd = -1
                 temporary.unlink()
-                temporary.symlink_to(state / 'tamlinux/current/theme/helix.toml')
+                leaf = 'micro.micro' if target == micro_scheme else 'helix.toml'
+                temporary.symlink_to(state / 'tamlinux/current/theme' / leaf)
             else:
                 os.write(fd, data.encode()); os.fsync(fd); os.close(fd); fd = -1
             try:

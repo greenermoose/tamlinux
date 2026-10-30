@@ -3,6 +3,7 @@ import importlib.util
 import configparser
 import json
 import os
+import re
 import runpy
 from pathlib import Path
 import shutil
@@ -126,6 +127,12 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('theme[selected_fg]="'+colors['selection_foreground']+'"', btop)
             self.assertIn('theme[selected_bg]="'+colors['selection']+'"', btop)
             check(colors['selection_foreground'], colors['selection_background'])
+            micro = (theme/'micro.micro').read_text()
+            pairs = re.findall(r'^color-link \S+ "(?:bold )?(#[0-9a-fA-F]{6}),(#[0-9a-fA-F]{6})"$', micro, re.MULTILINE)
+            self.assertEqual(len(pairs), 22, micro)
+            self.assertIn((colors['selection_foreground'], colors['selection_background']), pairs)
+            for foreground, background in pairs:
+                check(foreground, background)
             vscode = json.loads((theme/'vscode-theme.json').read_text())['colors']
             self.assertEqual(vscode['editor.selectionBackground'], colors['selection_background'])
             check(vscode['editor.selectionForeground'], vscode['editor.selectionBackground'])
