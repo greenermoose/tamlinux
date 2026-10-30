@@ -30,3 +30,5 @@ Added a repeatable pseudo-terminal test that launches Micro and checks the emitt
 Added a separate selection test that sends Shift-right to Micro in a pseudo-terminal and checks the selected character's emitted foreground and background in both Tamarack variants and both true-colour and 256-colour modes. Both Micro output tests pass. Other terminal palettes and physical rendering remain open.
 
 An opt-in isolated Sway/GTK 4/libadwaita feasibility test creates a temporary user stylesheet from both Tamarack variants, then checks a label's foreground and a fullscreen window's screenshot background. It passed with GTK 4.24.1 and libadwaita 1.10.0. This is not a shipped adapter and does not verify other controls, application-specific styling, user CSS recovery or physical appearance.
+
+The theme generator now produces an inert GTK 4 prototype stylesheet from the shared foreground/background tokens; a personal theme's file takes precedence. The opt-in GTK test now consumes the generated stylesheet and passes in both variants. All 34 theme ownership tests passed. No user GTK configuration is changed, and broader GTK/Qt coverage and recovery remain open.
