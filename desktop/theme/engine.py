@@ -139,6 +139,26 @@ class Journal:
              **({'retiredTheme': str(self.retired_theme)} if self.retired_theme else {})}, indent=2) + '\n')
 
     def restore(self):
+        # Capture every observed post-failure path before restoring any of the
+        # originals. Adapters and users may have written since the snapshot.
+        later = self.directory / 'after-failure'
+        later.mkdir(mode=0o700)
+        for index, entry in enumerate(self.entries):
+            path = Path(entry['path'])
+            observed = {'present': path.exists() or path.is_symlink()}
+            if observed['present']:
+                saved = later / str(index)
+                if path.is_symlink():
+                    observed['symlink'] = os.readlink(path)
+                    saved.symlink_to(observed['symlink'])
+                elif path.is_dir():
+                    shutil.copytree(path, saved, symlinks=True)
+                    observed['directory'] = True
+                else:
+                    shutil.copy2(path, saved)
+                observed['saved'] = str(saved.relative_to(self.directory))
+            entry['afterFailure'] = observed
+        self.status('restoring-after-failure')
         for entry in reversed(self.entries):
             path = Path(entry['path'])
             remove(path)
