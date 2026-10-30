@@ -111,6 +111,9 @@ class ThemeOwnership(unittest.TestCase):
             payload = json.loads(subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
             surfaces = payload['surfaces']
             gtk4 = (theme/'gtk4.css').read_text()
+            gtk3 = (theme/'gtk3.css').read_text()
+            self.assertIn('color: ' + payload['palette']['foreground'] + ';', gtk3)
+            self.assertIn('background-color: ' + payload['palette']['background'] + ';', gtk3)
             self.assertIn('--window-fg-color: ' + payload['palette']['foreground'] + ';', gtk4)
             self.assertIn('--window-bg-color: ' + payload['palette']['background'] + ';', gtk4)
             self.assertIn('--accent-bg-color: ' + payload['palette']['accent'] + ';', gtk4)
@@ -174,8 +177,10 @@ class ThemeOwnership(unittest.TestCase):
         user = self.config/'tamlinux/themes/tamarack-dark'; user.mkdir(parents=True)
         personal = ':root { --window-fg-color: #123456; }\n'
         (user/'gtk4.css').write_text(personal)
+        (user/'gtk3.css').write_text(personal)
         self.call('set', 'tamarack-dark')
         self.assertEqual((self.current/'theme/gtk4.css').read_text(), personal)
+        self.assertEqual((self.current/'theme/gtk3.css').read_text(), personal)
 
     def test_tamarack_picker_previews_are_generated_from_palette(self):
         recorder = self.base / 'picker-arguments'

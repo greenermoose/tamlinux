@@ -40,3 +40,5 @@ An isolated focused GtkEntry selection did not initially use the accent fill. Th
 The prototype now supplies error colours from the danger token. The isolated GTK proof verifies that an error label uses the token in both variants; filled error controls and other error states remain open.
 
 The isolated GTK proof now verifies a destructive-action button's foreground and rendered fill in both variants. Setting colour variables alone did not yield the intended foreground, so the prototype includes an explicit button rule. Suggested and destructive fills are checked within their own widget bounds. Hover, pressed, disabled and other application states remain open.
+
+The theme generator now supplies an inert GTK 3 window stylesheet as well. An opt-in isolated GTK 3.24.52 proof verifies the basic label foreground and window background in both variants, and all 34 theme ownership tests passed. This does not establish real application controls, selection, focus or personal CSS recovery.
