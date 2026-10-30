@@ -101,3 +101,6 @@ activation, the generation, consumer lock and deployment record may disagree.
 The same is true if rollback fails after activation is attempted. Inspect
 `tam-deploy status`, the active generation and the consumer lock before
 retrying; the error does not claim that the prior state was restored.
+Automatic recovery and rollback verify the previous assembly's installed
+endpoints; this requires its recorded assembly to be available for Nix
+evaluation, even if the consumer lock was already staged for a newer one.

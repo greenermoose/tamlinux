@@ -418,6 +418,10 @@ class Deployment:
                     if self.generation() != previous:
                         raise DeploymentError("previous generation was not restored")
                     self.restart_if_graphical()
+                previous_pins = self.components(previous_pin)
+                problems = self.verify(previous_pins, previous_pin)
+                if problems:
+                    raise DeploymentError("recovered endpoints do not match the previous assembly:\n  " + "\n  ".join(problems))
             except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as recovery:
                 raise DeploymentError(
                     f"deployment failed: {exc}; recovery also failed: {recovery}; "
