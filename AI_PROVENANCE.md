@@ -638,3 +638,5 @@ Earlier imv development: [session](docs/ai/2026-10-28-imv-input.md).
 2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) worked on screensaver removal. [Session](docs/ai/2026-10-29-remove-screensaver.md).
 
 2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) began Tamarack and console orientation. [Session](docs/ai/2026-10-29-tamarack-console.md).
+
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) corrected editor surface contrast. [Session](docs/ai/2026-10-30-editor-surface-contrast.md).

@@ -132,6 +132,18 @@ class ThemeOwnership(unittest.TestCase):
             self.assertEqual(vscode['terminal.selectionBackground'], colors['selection_background'])
             check(vscode['terminal.selectionForeground'], vscode['terminal.selectionBackground'])
             check(vscode['button.secondaryForeground'], vscode['button.secondaryBackground'])
+            for fg, backgrounds in (
+                ('statusBar.foreground', ('statusBarItem.activeBackground', 'statusBarItem.compactHoverBackground')),
+                ('statusBarItem.prominentForeground', ('statusBarItem.prominentBackground', 'statusBarItem.prominentHoverBackground')),
+                ('statusBarItem.remoteForeground', ('statusBarItem.remoteBackground', 'statusBarItem.remoteHoverBackground')),
+                ('statusBarItem.errorForeground', ('statusBarItem.errorBackground', 'statusBarItem.errorHoverBackground')),
+                ('statusBarItem.warningForeground', ('statusBarItem.warningBackground', 'statusBarItem.warningHoverBackground')),
+                ('commandCenter.activeForeground', ('commandCenter.activeBackground',)),
+                ('extensionButton.foreground', ('extensionButton.background', 'extensionButton.hoverBackground')),
+                ('extensionButton.prominentForeground', ('extensionButton.prominentBackground', 'extensionButton.prominentHoverBackground')),
+            ):
+                for bg in backgrounds:
+                    check(vscode[fg], vscode[bg])
 
     def test_tamarack_respects_personal_shell_section(self):
         user = self.config/'tamlinux/themes/tamarack-dark'; user.mkdir(parents=True)
