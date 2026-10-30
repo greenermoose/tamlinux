@@ -12,7 +12,7 @@ revision whose lock file pins every component.
 | --- | --- |
 | `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; compare required endpoints with the exact selected package outputs, rejecting missing/broken links and mixed assemblies. |
 | `init [revision] [--test]` | First installation on a registered local host without an existing generation. Require all components on `main` (or `test` with `--test`), build the exact consumer generation, activate and verify its package endpoints. Works from a text session without a Home Manager CLI. Records no previous generation; never promotes branches or enables graphical login. |
-| `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell, verify the installed paths and commit the pin. A failure restores the lock and the previous generation. |
+| `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell if active, verify the installed paths and commit the pin. Activation or verification failure attempts to restore the lock and previous generation. |
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
 | `back` | Activate the previous generation and restore its pin. |
 
@@ -96,7 +96,8 @@ rollback do not start the desktop or require shell IPC. If a graphical session
 is active, the shell is restarted and checked. An unavailable user service
 manager or ambiguous session state stops the operation.
 
-If rollback fails after activation is attempted, the generation, consumer
-lock and deployment record may disagree. Inspect `tam-deploy status`, the
-active generation and the consumer lock before retrying; the error does not
-claim that the prior state was restored.
+If recovery fails after an installation error, or recording fails after an
+activation, the generation, consumer lock and deployment record may disagree.
+The same is true if rollback fails after activation is attempted. Inspect
+`tam-deploy status`, the active generation and the consumer lock before
+retrying; the error does not claim that the prior state was restored.

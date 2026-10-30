@@ -338,6 +338,29 @@ class TestStage(Fixture):
                 self.app.test()
         record.assert_not_called()
 
+    def test_failed_install_reports_original_and_recovery_errors(self):
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "generation", side_effect=["/nix/store/old-generation", "/nix/store/new-generation"]), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_main), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "activate", side_effect=deploy.DeploymentError("switch failed")), \
+             patch.object(deploy, "command", side_effect=OSError("restore failed")):
+            with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: restore failed.*before retrying"):
+                self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+
+    def test_failed_recording_reports_active_candidate_without_claiming_recovery(self):
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "generation", side_effect=["/nix/store/old-generation", "/nix/store/new-generation"]), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_main), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "activate"), patch.object(self.app, "verify", return_value=[]), \
+             patch.object(self.app, "record", side_effect=OSError("record failed")), \
+             patch.object(self.app, "save_state") as save:
+            with self.assertRaisesRegex(deploy.DeploymentError, "activation succeeded but deployment recording failed: record failed.*before retrying"):
+                self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+        save.assert_not_called()
+        self.assertEqual(self.app.locked(), self.packages_new)
+
 
 class LivePaths(Fixture):
     """system/live-paths exempts only the listed files from the clean check."""
