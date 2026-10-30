@@ -1,4 +1,4 @@
-"""Opt-in proof of GTK4 user CSS using a private software-rendered compositor.
+"""Opt-in proof of generated GTK4 CSS in a private software-rendered compositor.
 
 Run with TAMLINUX_GTK_PROOF=1. This is a feasibility test, not an installed
 theme adapter or a proof of application-specific controls and preferences.
@@ -13,6 +13,8 @@ import tempfile
 import time
 import tomllib
 import unittest
+
+import test_theme_ownership as theme_tests
 
 DESKTOP = Path(__file__).resolve().parents[1]
 
@@ -29,6 +31,9 @@ class GtkPaletteProbe(unittest.TestCase):
             self.skipTest('libadwaita development files are unavailable')
         import shlex
         tokens = tomllib.loads((DESKTOP / 'assets/tamarack.toml').read_text())
+        theme = theme_tests.ThemeOwnership('test_all_bundled_themes_generate_without_inherited_tools')
+        theme.setUp()
+        self.addCleanup(theme.doCleanups)
         with tempfile.TemporaryDirectory(prefix='tamlinux-gtk-proof-') as temporary:
             root = Path(temporary)
             runtime = root / 'run'; runtime.mkdir(mode=0o700)
@@ -61,9 +66,8 @@ class GtkPaletteProbe(unittest.TestCase):
                     for variant in ('dark', 'light'):
                         with self.subTest(variant=variant):
                             colors = tokens[variant]
-                            (config / 'gtk-4.0/gtk.css').write_text(
-                                ':root { --window-fg-color: ' + colors['foreground'] +
-                                '; --window-bg-color: ' + colors['background'] + '; }\n')
+                            theme.call('set', 'tamarack-' + variant)
+                            (config / 'gtk-4.0/gtk.css').write_bytes((theme.current / 'theme/gtk4.css').read_bytes())
                             app = subprocess.Popen([str(binary)], env=env, stdout=subprocess.PIPE,
                                                    stderr=subprocess.DEVNULL, text=True)
                             try:
