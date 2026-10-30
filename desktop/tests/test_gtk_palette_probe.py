@@ -75,9 +75,10 @@ class GtkPaletteProbe(unittest.TestCase):
                                 actual = list(map(float, app.stdout.readline().split()))
                                 expected = [int(colors['foreground'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
                                 button_expected = [int(colors['background'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
-                                self.assertEqual(len(actual), 8)
-                                for measured, target in zip(actual, expected + button_expected):
+                                self.assertEqual(len(actual), 15)
+                                for measured, target in zip(actual[:8], expected + button_expected):
                                     self.assertAlmostEqual(measured, target, places=3)
+                                self.assertEqual(actual[12:], [1.0, 1.0, 1.0], 'entry selection or focus not active')
                                 image = subprocess.check_output(['grim', '-o', 'HEADLESS-1', '-t', 'ppm', '-'], env=env, timeout=10)
                                 header = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', image)
                                 self.assertIsNotNone(header, 'invalid PPM screenshot')
@@ -88,6 +89,19 @@ class GtkPaletteProbe(unittest.TestCase):
                                 accent = bytes.fromhex(colors['accent'][1:])
                                 accent_count = sum(pixels[i:i+3] == accent for i in range(0, len(pixels), 3))
                                 self.assertGreater(accent_count, 100, 'suggested action fill did not use accent token')
+                                width, height = map(int, header.groups())
+                                self.assertEqual(len(pixels), width * height * 3)
+                                x, y, w, h = map(int, actual[8:12])
+                                self.assertTrue(0 <= x < x+w <= width and 0 <= y < y+h <= height)
+                                entry_pixels = b''.join(pixels[(row*width+x)*3:(row*width+x+w)*3] for row in range(y, y+h))
+                                selected = sum(entry_pixels[i:i+3] == accent for i in range(0, len(entry_pixels), 3))
+                                self.assertGreater(selected, 100, 'selected entry text did not use accent fill')
+                                coords = [(i % w, i // w) for i in range(w*h) if entry_pixels[3*i:3*i+3] == accent]
+                                left, right = min(p[0] for p in coords), max(p[0] for p in coords)
+                                top, bottom = min(p[1] for p in coords), max(p[1] for p in coords)
+                                selected_text = sum(entry_pixels[(row*w+col)*3:(row*w+col)*3+3] == expected_bg
+                                                    for row in range(top, bottom+1) for col in range(left, right+1))
+                                self.assertGreater(selected_text, 0, 'selected entry text did not use selection foreground')
                             finally:
                                 app.terminate()
                                 app.wait(timeout=5)

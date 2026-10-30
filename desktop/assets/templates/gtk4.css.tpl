@@ -5,3 +5,8 @@
   --accent-bg-color: {{ accent }};
   --accent-fg-color: {{ selection_foreground }};
 }
+
+text selection {
+  background-color: {{ accent }};
+  color: {{ selection_foreground }};
+}
