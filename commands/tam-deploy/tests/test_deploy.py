@@ -99,6 +99,36 @@ class Fixture(unittest.TestCase):
         return git(self.root / "origins" / f"{name}.git", "rev-parse", branch)
 
 
+class ConsoleDeployment(Fixture):
+    def test_console_activation_and_recovery_do_not_start_graphics(self):
+        inactive = subprocess.CompletedProcess([], 3, stdout='inactive\n', stderr='')
+        with patch.object(deploy.subprocess, 'run', return_value=inactive), \
+             patch.object(deploy, 'command') as command, \
+             patch.object(self.app, 'wait_ready') as ready:
+            self.app.activate()
+            command.assert_called_once_with('home-manager', 'switch', '--flake',
+                                            f'{self.config}#alex')
+            ready.assert_not_called()
+            command.reset_mock()
+            self.app.restart_if_graphical()
+            command.assert_not_called()
+
+    def test_unknown_graphical_state_fails_closed(self):
+        failed = subprocess.CompletedProcess([], 1, stdout='', stderr='bus unavailable')
+        with patch.object(deploy.subprocess, 'run', return_value=failed):
+            with self.assertRaises(deploy.DeploymentError):
+                self.app.graphical_active()
+
+    def test_active_graphical_session_still_restarts_and_checks_shell(self):
+        active = subprocess.CompletedProcess([], 0, stdout='active\n', stderr='')
+        with patch.object(deploy.subprocess, 'run', return_value=active), \
+             patch.object(deploy, 'command') as command, \
+             patch.object(self.app, 'wait_ready') as ready:
+            self.app.restart_if_graphical()
+            command.assert_called_once_with('tam-restart-shell')
+            ready.assert_called_once_with()
+
+
 class FirstInstall(Fixture):
     def setUp(self):
         super().setUp()
@@ -487,12 +517,15 @@ class BackAndPin(Fixture):
         with patch.object(deploy.Path, "is_file", return_value=True), \
              patch.object(deploy, "command", side_effect=lambda *args, **kwargs:
                           real_command(*args, **kwargs) if args[0] == "git" else "") as command, \
-             patch.object(self.app, "wait_ready"), \
+             patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(self.app, "wait_ready") as ready, \
              patch.object(self.app, "status"), patch.object(self.app, "record"), \
              patch.object(self.app, "generation", side_effect=["/nix/store/new-generation", "/nix/store/old-generation"]), \
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})) as pin:
             self.app.back()
         command.assert_any_call("/nix/store/old-generation/activate")
+        self.assertNotIn(("tam-restart-shell",), [call.args for call in command.call_args_list])
+        ready.assert_not_called()
         pin.assert_called_once_with(self.packages_main)
         state = self.app.read_state()
         self.assertEqual(state["previousPin"], self.packages_new)

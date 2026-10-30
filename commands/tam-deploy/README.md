@@ -91,4 +91,7 @@ deployment record with the attempted assembly, generation and previous lock.
 It refuses an automatic retry rather than claiming recovery without a prior
 generation. Inspect partial links and restore from the native-base recovery
 point before retrying. Ordinary upgrades continue to require a known rollback
-generation and the current graphical-session preflight.
+generation. From a text login with no active graphical session, activation and
+rollback do not start the desktop or require shell IPC. If a graphical session
+is active, the shell is restarted and checked. An unavailable user service
+manager or ambiguous session state stops the operation.

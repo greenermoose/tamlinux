@@ -217,10 +217,25 @@ class Deployment:
 
     def preflight(self) -> None:
         self.check_clean()
-        command("systemctl", "--user", "is-active", "graphical-session.target", capture=True)
+        self.graphical_active()
         session = os.environ.get("XDG_SESSION_ID")
         if session and command("loginctl", "show-session", session, "-p", "LockedHint", "--value", capture=True) == "yes":
             raise DeploymentError("unlock the session before deploying")
+
+    def graphical_active(self) -> bool:
+        result = subprocess.run(["systemctl", "--user", "is-active", "graphical-session.target"],
+                                text=True, capture_output=True)
+        state = result.stdout.strip()
+        if result.returncode == 0 and state == "active":
+            return True
+        if result.returncode == 3 and state == "inactive":
+            return False
+        raise DeploymentError("cannot determine graphical session state; check the user systemd service")
+
+    def restart_if_graphical(self) -> None:
+        if self.graphical_active():
+            command("tam-restart-shell")
+            self.wait_ready()
 
     def pin(self, revision: str) -> None:
         """Lock the configuration's input to an exact assembly revision,
@@ -236,8 +251,7 @@ class Deployment:
 
     def activate(self) -> None:
         command("home-manager", "switch", "--flake", f"{self.config}#{self.home_configuration}")
-        command("tam-restart-shell")
-        self.wait_ready()
+        self.restart_if_graphical()
 
     def wait_ready(self) -> None:
         for _ in range(40):
@@ -400,7 +414,7 @@ class Deployment:
             self.lock.write_bytes(before)
             if self.generation() != previous:
                 command(str(Path(previous) / "activate"))
-                command("tam-restart-shell")
+                self.restart_if_graphical()
             raise
         generation = self.generation()
         files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
@@ -559,8 +573,7 @@ class Deployment:
         current = self.generation()
         current_pin = self.rollback_pin(current)
         command(str(target / "activate"))
-        command("tam-restart-shell")
-        self.wait_ready()
+        self.restart_if_graphical()
         restored = self.generation()
         self.pin(previous_pin)
         files = ["flake.lock"] + self.update_bom({"packages": previous_pin, "stage": "restored",
