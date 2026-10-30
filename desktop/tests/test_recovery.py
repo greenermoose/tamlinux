@@ -137,6 +137,35 @@ class Recovery(unittest.TestCase):
         self.assertIn(b'{"softwrap":false,"colorscheme":"tamlinux"}\n',blobs)
         self.assertIn(b'later theme\n',blobs)
 
+    def test_gtk_css_restore_preserves_personal_files_links_and_later_edits(self):
+        css3 = self.write('config', 'gtk-3.0/gtk.css', b'/* personal gtk3 */\n', 0o640)
+        css4 = self.roots['config']/'gtk-4.0/gtk.css'
+        css4.parent.mkdir(parents=True)
+        css4.symlink_to('/unavailable/personal-gtk4.css')
+        before = r.preserve(self.roots, self.journal)
+        self.assertIn(str(css3), before['files'])
+        self.assertIn(str(css4), before['files'])
+        css3.write_bytes(b'/* later gtk3 */\n')
+        css4.unlink()
+        css4.write_bytes(b'/* later gtk4 */\n')
+        r.restore(self.roots, self.journal)
+        self.assertEqual(css3.read_bytes(), b'/* personal gtk3 */\n')
+        self.assertEqual(css3.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(os.readlink(css4), '/unavailable/personal-gtk4.css')
+        blobs = [p.read_bytes() for p in (self.journal/'blobs').iterdir()]
+        self.assertIn(b'/* later gtk3 */\n', blobs)
+        self.assertIn(b'/* later gtk4 */\n', blobs)
+
+    def test_gtk_css_created_after_checkpoint_is_archived_and_removed(self):
+        r.preserve(self.roots, self.journal)
+        css3 = self.write('config', 'gtk-3.0/gtk.css', b'/* new gtk3 */\n')
+        css4 = self.write('config', 'gtk-4.0/gtk.css', b'/* new gtk4 */\n')
+        r.restore(self.roots, self.journal)
+        self.assertFalse(css3.exists())
+        self.assertFalse(css4.exists())
+        records = [json.loads(p.read_text()) for p in (self.journal/'new-writes').glob('*.json')]
+        self.assertTrue(any(str(css3) in doc['files'] and str(css4) in doc['files'] for doc in records))
+
     def test_tuning_files_links_audio_and_later_values_restore_with_retry(self):
         state, original, call, read = self.audio_fixture()
         unit = self.write('config','systemd/user/'+r.AUDIO_UNIT,b'original unit',0o640)

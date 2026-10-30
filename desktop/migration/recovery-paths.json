@@ -13,6 +13,8 @@
     {"root": "config", "path": "micro/bindings.json", "exclude": []},
     {"root": "config", "path": "micro/settings.json", "exclude": []},
     {"root": "config", "path": "micro/colorschemes/tamlinux.micro", "exclude": []},
+    {"root": "config", "path": "gtk-3.0/gtk.css", "exclude": []},
+    {"root": "config", "path": "gtk-4.0/gtk.css", "exclude": []},
     {"root": "config", "path": "kitty", "exclude": []},
     {"root": "config", "path": "ghostty", "exclude": []},
     {"root": "config", "path": "helix", "exclude": []},
