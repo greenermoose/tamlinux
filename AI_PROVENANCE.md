@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-10-29: Codex CLI `0.166.0` (`gpt-6.1-terra`) advances the product version for the 0.5.11 candidate. [Session](docs/ai/2026-10-29-prepare-0511.md).
+
 2026-10-29: Antigravity CLI `1.4.10` (`gemini-3.8-flash-high`) implements the non-interactive hover tooltip for the topbar version widget (`fred.tamversion` 0.1.2) for Tamlinux 0.5.10.
 [Session](docs/ai/2026-10-29-tamversion-hover-tooltip.md).
 

@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-29 — Prepare 0.5.11](2026-10-29-prepare-0511.md)
+
 - [2026-10-29 — Tamlinux topbar version hover tooltip](2026-10-29-tamversion-hover-tooltip.md)
 
 - [2026-10-29 — Start menu development](2026-10-29-start-menu.md)
