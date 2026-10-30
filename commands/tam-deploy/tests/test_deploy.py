@@ -321,11 +321,14 @@ class TestStage(Fixture):
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
              patch.object(self.app, "activate", side_effect=deploy.DeploymentError("restart failed")), \
              patch.object(self.app, "generation", side_effect=lambda: next(generations)), \
+             patch.object(self.app, "restart_if_graphical"), \
+             patch.object(self.app, "verify", return_value=[]) as verify, \
              patch.object(deploy, "command", side_effect=self.passthrough):
             with self.assertRaises(deploy.DeploymentError):
                 self.app.test()
         self.assertEqual((self.config / "flake.lock").read_bytes(), before)
         self.assertIn(("/nix/store/old-generation/activate",), self.activations)
+        verify.assert_called_once_with({"tamlinux": self.tamlinux_main}, self.packages_main)
         self.assertEqual(self.app.read_state(), {})
 
     def test_mismatched_install_fails_the_test(self):
@@ -359,6 +362,22 @@ class TestStage(Fixture):
                 self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
         command.assert_called_once_with("/nix/store/old-generation/activate")
         restart.assert_not_called()
+
+    def test_failed_install_reports_recovery_endpoint_mismatch_with_staged_lock(self):
+        self.write_lock(self.packages_new, {})
+        before = self.app.lock.read_bytes()
+        old_pins = {"tamlinux": self.tamlinux_main}
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "generation", return_value="/nix/store/old-generation"), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_main), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "activate", side_effect=deploy.DeploymentError("switch failed")), \
+             patch.object(self.app, "components", return_value=old_pins), \
+             patch.object(self.app, "verify", return_value=["wrong shell endpoint"]) as verify:
+            with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: recovered endpoints"):
+                self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+        verify.assert_called_once_with(old_pins, self.packages_main)
+        self.assertEqual(self.app.lock.read_bytes(), before)
 
     def test_failed_recording_reports_active_candidate_without_claiming_recovery(self):
         with patch.object(self.app, "preflight"), \
