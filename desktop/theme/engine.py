@@ -349,7 +349,7 @@ def set_theme(value, refresh=False, apply=True):
                 if data.startswith('[colors-dark]\n') and '[colors-light]' not in data:
                     foot.write_text(data + '\n' + data.replace('[colors-dark]', '[colors-light]', 1))
         for item in stage.glob('*'):
-            if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css'} and '{{' in item.read_text():
+            if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css', '.micro'} and '{{' in item.read_text():
                 raise ValueError(f'unresolved template in {item.name}')
         try:
             previous_theme = selected()

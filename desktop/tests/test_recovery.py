@@ -112,12 +112,30 @@ class Recovery(unittest.TestCase):
     def test_micro_binding_created_after_checkpoint_is_removed_and_archived(self):
         r.preserve(self.roots,self.journal)
         path=self.write('config','micro/bindings.json',b'{"MouseRight":"Paste"}\n')
-        self.write('config','micro/settings.json',b'{"softwrap":true}')
+        settings=self.write('config','micro/settings.json',b'{"softwrap":true}')
+        scheme=self.roots['config']/'micro/colorschemes/tamlinux.micro'
+        scheme.parent.mkdir(parents=True); scheme.symlink_to(self.roots['state']/'tamlinux/current/theme/micro.micro')
         r.restore(self.roots,self.journal)
         self.assertFalse(path.exists())
-        self.assertTrue(path.with_name('settings.json').exists())
+        self.assertFalse(settings.exists())
+        self.assertFalse(scheme.is_symlink())
         records=[json.loads(p.read_text()) for p in (self.journal/'new-writes').glob('*.json')]
         self.assertTrue(any(str(path) in doc['files'] for doc in records))
+        self.assertTrue(any(str(settings) in doc['files'] and str(scheme) in doc['files'] for doc in records))
+
+    def test_micro_theme_restore_preserves_personal_settings_and_later_edits(self):
+        settings=self.write('config','micro/settings.json',b'{"softwrap":true}\n',0o640)
+        scheme=self.write('config','micro/colorschemes/tamlinux.micro',b'personal theme\n')
+        r.preserve(self.roots,self.journal)
+        settings.write_bytes(b'{"softwrap":false,"colorscheme":"tamlinux"}\n')
+        scheme.write_bytes(b'later theme\n')
+        r.restore(self.roots,self.journal)
+        self.assertEqual(settings.read_bytes(),b'{"softwrap":true}\n')
+        self.assertEqual(settings.stat().st_mode & 0o777,0o640)
+        self.assertEqual(scheme.read_bytes(),b'personal theme\n')
+        blobs=[p.read_bytes() for p in (self.journal/'blobs').iterdir()]
+        self.assertIn(b'{"softwrap":false,"colorscheme":"tamlinux"}\n',blobs)
+        self.assertIn(b'later theme\n',blobs)
 
     def test_tuning_files_links_audio_and_later_values_restore_with_retry(self):
         state, original, call, read = self.audio_fixture()

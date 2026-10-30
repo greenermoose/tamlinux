@@ -24,7 +24,7 @@ class Defaults(unittest.TestCase):
         return module.initialize(ROOT / 'desktop/assets', self.env)
 
     def test_empty_configuration_pairs_custom_state_theme_editor_and_kitty_socket(self):
-        self.assertEqual(len(self.initialize()), 13)
+        self.assertEqual(len(self.initialize()), 15)
         config = self.root / 'config'
         self.assertIn(str(self.root / 'state/tamlinux/current/theme/alacritty.toml'),
                       (config / 'alacritty/alacritty.toml').read_text())
@@ -42,6 +42,9 @@ class Defaults(unittest.TestCase):
         bindings = json.loads((config / 'micro/bindings.json').read_text())
         self.assertEqual(bindings['MouseLeftRelease'], 'MouseRelease,Copy')
         self.assertEqual(bindings['MouseRight'], 'Paste')
+        self.assertEqual(json.loads((config / 'micro/settings.json').read_text())['colorscheme'], 'tamlinux')
+        self.assertEqual(os.readlink(config / 'micro/colorschemes/tamlinux.micro'),
+                         str(self.root / 'state/tamlinux/current/theme/micro.micro'))
         self.assertEqual(self.initialize(), [])
 
     def test_existing_user_bytes_modes_and_dangling_links_are_preserved(self):
@@ -54,12 +57,22 @@ class Defaults(unittest.TestCase):
         mime.write_text('[Default Applications]\ntext/plain=personal.desktop\n')
         imv = self.root / 'config/imv/config'
         imv.parent.mkdir(parents=True); imv.write_text('[binds]\n<Escape> = close\n')
+        micro = self.root / 'config/micro/settings.json'
+        micro.parent.mkdir(parents=True); micro.write_text('{"colorscheme":"personal","softwrap":true}\n')
         self.initialize()
         self.assertEqual(imv.read_text(), '[binds]\n<Escape> = close\n')
         self.assertIn('personal.desktop', mime.read_text())
         self.assertEqual(target.read_bytes(), b'personal terminal\n')
         self.assertEqual(target.stat().st_mode & 0o777, 0o640)
         self.assertEqual(os.readlink(editor), 'unavailable-choice')
+        self.assertEqual(json.loads(micro.read_text()), {'colorscheme': 'personal', 'softwrap': True})
+
+    def test_personal_micro_scheme_is_not_selected_or_replaced(self):
+        scheme = self.root / 'config/micro/colorschemes/tamlinux.micro'
+        scheme.parent.mkdir(parents=True); scheme.write_text('personal scheme\n')
+        self.initialize()
+        self.assertEqual(scheme.read_text(), 'personal scheme\n')
+        self.assertFalse((self.root / 'config/micro/settings.json').exists())
 
     def test_redirected_destination_parent_is_refused_without_outside_write(self):
         config = self.root / 'config'; outside = self.root / 'other'
