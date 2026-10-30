@@ -20,3 +20,5 @@
 Added a token-derived Micro scheme and fresh-account selection while preserving existing settings and same-named personal schemes. Expanded desktop checkpoints to cover the scheme and Micro settings; existing-account migration remains open.
 
 Six application-default tests, 33 theme ownership tests and 33 recovery tests passed. An isolated Micro 2.0.15 true-colour launch loaded the generated light scheme without a reported scheme-load error. Rendered dark/light and reduced-colour checks remain open.
+
+An explicit existing-account migration now adds the Micro scheme only when no selection exists and the generated scheme link is ready. It preserves JSON5 content and uses the migration journal for rollback. All 47 migration tests passed with the packaged JSON5 Python environment; no migration was applied to the workstation.

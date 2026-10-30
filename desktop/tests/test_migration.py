@@ -168,6 +168,52 @@ class Migration(unittest.TestCase):
         self.write('config','micro/bindings.json',b'["MouseRight"]\n')
         self.assertEqual(m.prepare(self.roots,self.journal,only='micro-bindings')['status'],'blocked')
 
+    def test_micro_theme_migration_preserves_json5_and_rolls_back_later_edits(self):
+        import json5
+        original=b"// keep\r\n{\r\n  softwrap: true, // user choice\r\n  wordwrap: true\r\n}\r\n"
+        settings=self.write('config','micro/settings.json',original); settings.chmod(0o640)
+        target=self.write('state','tamlinux/current/theme/micro.micro',b'generated')
+        link=self.roots['config']/'micro/colorschemes/tamlinux.micro'
+        link.parent.mkdir(parents=True);link.symlink_to(target)
+        plan=m.prepare(self.roots,self.journal,only='micro-theme')
+        self.assertEqual([row['id'] for row in plan['rows']],['micro-theme'])
+        m.apply(self.journal,self.roots)
+        updated=settings.read_bytes()
+        self.assertIn(b'// user choice\r\n',updated)
+        self.assertEqual(json5.loads(updated.decode()), {'softwrap':True,'wordwrap':True,'colorscheme':'tamlinux'})
+        self.assertEqual(settings.stat().st_mode & 0o777,0o640)
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('retry'),only='micro-theme')['rows'],[])
+        settings.write_bytes(updated+b'// later edit\r\n')
+        m.rollback(self.journal,self.roots)
+        self.assertEqual(settings.read_bytes(),original)
+        archives=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
+        self.assertTrue(any(b'later edit' in base64.b64decode(x['state'].get('bytes','')) for x in archives))
+
+    def test_micro_theme_respects_explicit_selection_and_checks_scheme_at_apply(self):
+        settings=self.write('config','micro/settings.json',b'{colorscheme: "personal"}')
+        self.assertEqual(m.prepare(self.roots,self.journal,only='micro-theme')['rows'],[])
+        settings.write_bytes(b'{softwrap: true}')
+        self.assertEqual(m.prepare(self.roots,self.journal.with_name('missing'),only='micro-theme')['status'],'blocked')
+        target=self.write('state','tamlinux/current/theme/micro.micro',b'generated')
+        link=self.roots['config']/'micro/colorschemes/tamlinux.micro'
+        link.parent.mkdir(parents=True);link.symlink_to(target)
+        journal=self.journal.with_name('ready')
+        m.prepare(self.roots,journal,only='micro-theme')
+        link.unlink();link.write_text('personal')
+        with self.assertRaisesRegex(ValueError,'scheme changed'):
+            m.apply(journal,self.roots)
+        self.assertEqual(settings.read_bytes(),b'{softwrap: true}')
+
+    def test_micro_theme_json5_edge_cases_and_implicit_plan(self):
+        import json5
+        for value in (b'{}',b'{/* comment */}',b'{foo: "}, //",}',b'{foo: true // hi\n}',b'{foo:true}'):
+            with self.subTest(value=value):
+                converted=m.convert_micro_theme(value)
+                self.assertEqual(json5.loads(converted.decode())['colorscheme'],'tamlinux')
+        with self.assertRaises(ValueError): m.convert_micro_theme(b'{foo: 1, foo: 2}')
+        self.write('config','micro/settings.json',b'{softwrap:true}')
+        self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
+
     def test_micro_json5_preserves_comments_quotes_crlf_and_rolls_back(self):
         original=(b'// personal bindings\r\n{\r\n'
                   b"  'Alt-w': 'command:togglelocal softwrap', // keep this\r\n"
