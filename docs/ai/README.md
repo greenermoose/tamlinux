@@ -203,3 +203,4 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 - [2026-10-29 — Tamarack and text-login orientation](2026-10-29-tamarack-console.md)
 - [2026-10-30 — Editor theme contrast](2026-10-30-editor-contrast.md)
 - [2026-10-30 — Editor surface contrast](2026-10-30-editor-surface-contrast.md)
+- [2026-10-30 — Explorer appearance and deployment test isolation](2026-10-30-explorer-appearance.md)
