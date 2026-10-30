@@ -410,19 +410,31 @@ class Deployment:
             problems = self.verify(pins, revision)
             if problems:
                 raise DeploymentError("installed endpoints do not match the assembly:\n  " + "\n  ".join(problems))
-        except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError):
-            self.lock.write_bytes(before)
-            if self.generation() != previous:
-                command(str(Path(previous) / "activate"))
-                self.restart_if_graphical()
+        except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
+            try:
+                self.lock.write_bytes(before)
+                if self.generation() != previous:
+                    command(str(Path(previous) / "activate"))
+                    self.restart_if_graphical()
+            except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as recovery:
+                raise DeploymentError(
+                    f"deployment failed: {exc}; recovery also failed: {recovery}; "
+                    "inspect tam-deploy status, the active generation and the consumer lock before retrying"
+                ) from recovery
             raise
-        generation = self.generation()
-        files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
-                                                  "stage": stage, "generation": generation})
-        self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
-        self.save_state({"stage": stage, "packages": revision, "components": pins,
-                         "generation": generation, "previousGeneration": previous,
-                         "previousPin": previous_pin, "livePaths": self.live_digests()})
+        try:
+            generation = self.generation()
+            files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
+                                                      "stage": stage, "generation": generation})
+            self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
+            self.save_state({"stage": stage, "packages": revision, "components": pins,
+                             "generation": generation, "previousGeneration": previous,
+                             "previousPin": previous_pin, "livePaths": self.live_digests()})
+        except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
+            raise DeploymentError(
+                f"activation succeeded but deployment recording failed: {exc}; "
+                "inspect tam-deploy status, the active generation and the consumer lock before retrying"
+            ) from exc
         return previous, previous_pin
 
     def init(self, ref: str | None = None, test: bool = False) -> None:
