@@ -572,6 +572,9 @@ class Deployment:
             raise DeploymentError("previous generation was removed or is invalid")
         current = self.generation()
         current_pin = self.rollback_pin(current)
+        # Refuse before changing generations if session state is unavailable.
+        # Recheck after activation because it can change during the switch.
+        self.graphical_active()
         command(str(target / "activate"))
         self.restart_if_graphical()
         restored = self.generation()

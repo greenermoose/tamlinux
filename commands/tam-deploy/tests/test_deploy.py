@@ -506,6 +506,24 @@ class Arguments(unittest.TestCase):
 
 
 class BackAndPin(Fixture):
+    def test_back_refuses_unknown_session_before_changing_generation(self):
+        self.app.save_state({"stage": "test", "packages": self.packages_new,
+                             "generation": "/nix/store/new-generation",
+                             "previousGeneration": "/nix/store/old-generation", "previousPin": self.packages_main})
+        before_lock = self.app.lock.read_bytes()
+        before_state = self.app.state_file.read_bytes()
+        with patch.object(deploy.Path, "is_file", return_value=True), \
+             patch.object(self.app, "generation", return_value="/nix/store/new-generation"), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_new), \
+             patch.object(self.app, "graphical_active", side_effect=deploy.DeploymentError("unknown session")), \
+             patch.object(deploy, "command") as command, patch.object(self.app, "pin") as pin:
+            with self.assertRaisesRegex(deploy.DeploymentError, "unknown session"):
+                self.app.back()
+        command.assert_not_called()
+        pin.assert_not_called()
+        self.assertEqual(self.app.lock.read_bytes(), before_lock)
+        self.assertEqual(self.app.state_file.read_bytes(), before_state)
+
     def test_back_reactivates_and_restores_the_previous_pin(self):
         generation = self.root / "nix-store-sim"
         real_command = deploy.command
