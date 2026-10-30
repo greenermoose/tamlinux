@@ -126,6 +126,12 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('theme[selected_fg]="'+colors['selection_foreground']+'"', btop)
             self.assertIn('theme[selected_bg]="'+colors['selection']+'"', btop)
             check(colors['selection_foreground'], colors['selection_background'])
+            vscode = json.loads((theme/'vscode-theme.json').read_text())['colors']
+            self.assertEqual(vscode['editor.selectionBackground'], colors['selection_background'])
+            check(vscode['editor.selectionForeground'], vscode['editor.selectionBackground'])
+            self.assertEqual(vscode['terminal.selectionBackground'], colors['selection_background'])
+            check(vscode['terminal.selectionForeground'], vscode['terminal.selectionBackground'])
+            check(vscode['button.secondaryForeground'], vscode['button.secondaryBackground'])
 
     def test_tamarack_respects_personal_shell_section(self):
         user = self.config/'tamlinux/themes/tamarack-dark'; user.mkdir(parents=True)

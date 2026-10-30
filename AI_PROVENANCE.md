@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) fixes editor theme contrast. [Session](docs/ai/2026-10-30-editor-contrast.md).
+
 2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) addressed 0.5.11 Test findings. [Session](docs/ai/2026-10-30-0511-test-fixes.md).
 
 2026-10-29: Codex CLI `0.166.0` (`gpt-6.1-terra`) advances the product version for the 0.5.11 candidate. [Session](docs/ai/2026-10-29-prepare-0511.md).
