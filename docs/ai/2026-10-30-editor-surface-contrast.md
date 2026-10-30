@@ -13,6 +13,8 @@
 
 > Starting with Tamlinux 0.5.12, all upgrade work needs to be able to be done from a VT. A graphical shell must not be required to do a Tamlinux upgrade from now on.
 
+> The goal is to be able to reboot a machine, get to a terminal, and do the upgrade from there without having to start the Tamlinux desktop graphical shell.
+
 The generated editor theme used text colours on unsuitable status bar,
 command center and extension button fills. These states now use validated
 surface or accent pairings, including opaque hover fills where the text uses
@@ -36,3 +38,9 @@ The initial release-selection module validates the GitHub release, resolves
 annotated tags and compares the delivery record against the assembly lock.
 Five focused tests pass; the current published 0.4.8 release also resolved
 successfully. The command and installation/recovery path are not yet complete.
+
+The existing deployer now permits a text session with no active graphical
+session and skips graphical shell restart and IPC readiness in that case. An
+active graphical session retains those checks; an indeterminate state fails
+closed. Automated deployment tests cover both paths and text-session rollback.
+An actual reboot and VT upgrade remain to be exercised on a candidate.

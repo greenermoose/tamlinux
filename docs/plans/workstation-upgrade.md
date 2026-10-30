@@ -75,3 +75,7 @@ The command is named `tam-workstation-upgrade`, accepted by Fred on
 Fred, 2026-10-30: “Starting with Tamlinux 0.5.12, all upgrade work needs to be
 able to be done from a VT. A graphical shell must not be required to do a
 Tamlinux upgrade from now on.”
+
+Fred clarified: “The goal is to be able to reboot a machine, get to a terminal,
+and do the upgrade from there without having to start the Tamlinux desktop
+graphical shell.”
