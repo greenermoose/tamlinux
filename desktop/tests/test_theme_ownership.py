@@ -117,6 +117,8 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('--accent-fg-color: ' + payload['palette']['accentText'] + ';', gtk4)
             check(payload['palette']['accentText'], payload['palette']['accent'])
             self.assertIn('--error-color: ' + payload['palette']['urgent'] + ';', gtk4)
+            self.assertIn('--destructive-bg-color: ' + payload['palette']['urgent'] + ';', gtk4)
+            self.assertIn('--destructive-fg-color: ' + payload['palette']['background'] + ';', gtk4)
             check(payload['palette']['urgent'], payload['palette']['background'])
             for section in ('bar', 'popups', 'tooltip', 'notifications', 'menu', 'polkit'):
                 check(surfaces[section+'.text'], surfaces[section+'.background'])

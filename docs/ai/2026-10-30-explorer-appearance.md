@@ -38,3 +38,5 @@ The GTK 4 prototype now also derives the accent fill and its text from shared to
 An isolated focused GtkEntry selection did not initially use the accent fill. The prototype now specifies text-selection foreground and background explicitly. The GTK proof checks the selected bounds and rendered colours in both variants. Other selection surfaces, focus indicators, error states and application behavior remain open.
 
 The prototype now supplies error colours from the danger token. The isolated GTK proof verifies that an error label uses the token in both variants; filled error controls and other error states remain open.
+
+The isolated GTK proof now verifies a destructive-action button's foreground and rendered fill in both variants. Setting colour variables alone did not yield the intended foreground, so the prototype includes an explicit button rule. Suggested and destructive fills are checked within their own widget bounds. Hover, pressed, disabled and other application states remain open.

@@ -2,25 +2,33 @@
 #include <adwaita.h>
 #include <stdio.h>
 
-static GtkWidget *button, *entry, *window, *error_label;
+static GtkWidget *button, *entry, *window, *error_label, *destructive;
 
 static gboolean report(gpointer data) {
-    GdkRGBA color, button_color, error_color;
+    GdkRGBA color, button_color, error_color, destructive_color;
     gtk_style_context_get_color(gtk_widget_get_style_context(GTK_WIDGET(data)), &color);
     gtk_style_context_get_color(gtk_widget_get_style_context(gtk_button_get_child(GTK_BUTTON(button))), &button_color);
     gtk_style_context_get_color(gtk_widget_get_style_context(error_label), &error_color);
+    gtk_style_context_get_color(gtk_widget_get_style_context(gtk_button_get_child(GTK_BUTTON(destructive))), &destructive_color);
     graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, 0, 0);
+    graphene_rect_t button_bounds = GRAPHENE_RECT_INIT(0, 0, 0, 0);
+    graphene_rect_t destructive_bounds = GRAPHENE_RECT_INIT(0, 0, 0, 0);
     int start, end;
     gboolean selection = gtk_editable_get_selection_bounds(GTK_EDITABLE(entry), &start, &end);
-    gboolean positioned = gtk_widget_compute_bounds(entry, window, &bounds);
+    gboolean positioned = gtk_widget_compute_bounds(entry, window, &bounds) &&
+        gtk_widget_compute_bounds(button, window, &button_bounds) &&
+        gtk_widget_compute_bounds(destructive, window, &destructive_bounds);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(window));
-    printf("%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.2f %.2f %.2f %.2f %d %d %d %.6f %.6f %.6f %.6f\n",
+    printf("%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.2f %.2f %.2f %.2f %d %d %d %.6f %.6f %.6f %.6f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.6f %.6f %.6f %.6f\n",
            color.red, color.green, color.blue, color.alpha,
            button_color.red, button_color.green, button_color.blue, button_color.alpha,
            bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height,
            selection && start == 0 && end == 12,
            focus && (focus == entry || gtk_widget_is_ancestor(focus, entry)), positioned,
-           error_color.red, error_color.green, error_color.blue, error_color.alpha);
+           error_color.red, error_color.green, error_color.blue, error_color.alpha,
+           button_bounds.origin.x, button_bounds.origin.y, button_bounds.size.width, button_bounds.size.height,
+           destructive_bounds.origin.x, destructive_bounds.origin.y, destructive_bounds.size.width, destructive_bounds.size.height,
+           destructive_color.red, destructive_color.green, destructive_color.blue, destructive_color.alpha);
     fflush(stdout);
     return G_SOURCE_REMOVE;
 }
@@ -32,6 +40,8 @@ static void activate(GtkApplication *app, gpointer data) {
     error_label = gtk_label_new("Error");
     gtk_widget_add_css_class(error_label, "error");
     button = gtk_button_new_with_label("Continue");
+    destructive = gtk_button_new_with_label("Remove");
+    gtk_widget_add_css_class(destructive, "destructive-action");
     entry = gtk_entry_new();
     gtk_editable_set_text(GTK_EDITABLE(entry), "MMMMMMMMMMMM");
     gtk_widget_add_css_class(button, "suggested-action");
@@ -39,6 +49,7 @@ static void activate(GtkApplication *app, gpointer data) {
     gtk_widget_set_valign(box, GTK_ALIGN_CENTER);
     gtk_box_append(GTK_BOX(box), label);
     gtk_box_append(GTK_BOX(box), button);
+    gtk_box_append(GTK_BOX(box), destructive);
     gtk_box_append(GTK_BOX(box), entry);
     gtk_box_append(GTK_BOX(box), error_label);
     adw_application_window_set_content(ADW_APPLICATION_WINDOW(window), box);
