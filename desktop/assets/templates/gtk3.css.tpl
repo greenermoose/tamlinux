@@ -4,6 +4,12 @@ window {
   color: {{ foreground }};
 }
 
+entry {
+  background-image: none;
+  background-color: {{ dark_background }};
+  color: {{ foreground }};
+}
+
 entry selection {
   background-color: {{ accent }};
   color: {{ selection_foreground }};

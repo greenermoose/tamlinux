@@ -1,18 +1,22 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 
-static GtkWidget *window, *entry;
+static GtkWidget *window, *entry, *normal;
 
 static gboolean report(gpointer data) {
-    GdkRGBA color;
-    int x, y, start, end;
+    GdkRGBA color, normal_color;
+    int x, y, nx, ny, start, end;
     gtk_style_context_get_color(gtk_widget_get_style_context(GTK_WIDGET(data)), GTK_STATE_FLAG_NORMAL, &color);
+    gtk_style_context_get_color(gtk_widget_get_style_context(normal), GTK_STATE_FLAG_NORMAL, &normal_color);
     gboolean positioned = gtk_widget_translate_coordinates(entry, window, 0, 0, &x, &y);
+    gboolean normal_positioned = gtk_widget_translate_coordinates(normal, window, 0, 0, &nx, &ny);
     gboolean selected = gtk_editable_get_selection_bounds(GTK_EDITABLE(entry), &start, &end);
-    printf("%.6f %.6f %.6f %.6f %d %d %d %d %d %d %d\n", color.red, color.green, color.blue, color.alpha,
+    printf("%.6f %.6f %.6f %.6f %d %d %d %d %d %d %d %.6f %.6f %.6f %.6f %d %d %d %d %d\n", color.red, color.green, color.blue, color.alpha,
            positioned ? x : -1, positioned ? y : -1, gtk_widget_get_allocated_width(entry),
            gtk_widget_get_allocated_height(entry), positioned, gtk_window_get_focus(GTK_WINDOW(window)) == entry,
-           selected && start == 0 && end == 12);
+           selected && start == 0 && end == 12, normal_color.red, normal_color.green, normal_color.blue, normal_color.alpha,
+           normal_positioned ? nx : -1, normal_positioned ? ny : -1,
+           gtk_widget_get_allocated_width(normal), gtk_widget_get_allocated_height(normal), normal_positioned);
     fflush(stdout);
     return G_SOURCE_REMOVE;
 }
@@ -23,11 +27,14 @@ int main(int argc, char **argv) {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     GtkWidget *label = gtk_label_new("Tamarack");
     entry = gtk_entry_new();
+    normal = gtk_entry_new();
     gtk_entry_set_text(GTK_ENTRY(entry), "MMMMMMMMMMMM");
+    gtk_entry_set_text(GTK_ENTRY(normal), "MMMM");
     gtk_widget_set_halign(box, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(box, GTK_ALIGN_CENTER);
     gtk_box_pack_start(GTK_BOX(box), label, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(box), entry, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box), normal, FALSE, FALSE, 0);
     gtk_container_add(GTK_CONTAINER(window), box);
     gtk_window_fullscreen(GTK_WINDOW(window));
     gtk_widget_show_all(window);

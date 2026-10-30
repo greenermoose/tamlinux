@@ -59,6 +59,12 @@ class Gtk3PaletteProbe(unittest.TestCase):
                     for variant in ('dark', 'light'):
                         with self.subTest(variant=variant):
                             colors = tokens[variant]
+                            def luminance(value):
+                                channels = [int(value[i:i+2], 16) / 255 for i in (1, 3, 5)]
+                                return sum((c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4) * weight
+                                           for c, weight in zip(channels, (.2126, .7152, .0722)))
+                            low, high = sorted((luminance(colors['foreground']), luminance(colors['surface'])))
+                            self.assertGreaterEqual((high + .05) / (low + .05), 4.5)
                             theme.call('set', 'tamarack-' + variant)
                             (config / 'gtk-3.0/gtk.css').write_bytes((theme.current / 'theme/gtk3.css').read_bytes())
                             app = subprocess.Popen([str(binary)], env=env, stdout=subprocess.PIPE,
@@ -67,10 +73,13 @@ class Gtk3PaletteProbe(unittest.TestCase):
                                 self.assertTrue(select.select([app.stdout], [], [], 10)[0], 'GTK app did not report a label')
                                 actual = list(map(float, app.stdout.readline().split()))
                                 expected = [int(colors['foreground'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
-                                self.assertEqual(len(actual), 11)
+                                self.assertEqual(len(actual), 20)
                                 for measured, target in zip(actual[:4], expected):
                                     self.assertAlmostEqual(measured, target, places=3)
                                 self.assertEqual(actual[8:11], [1.0, 1.0, 1.0], 'entry bounds, focus or selection unavailable')
+                                for measured, target in zip(actual[11:15], expected):
+                                    self.assertAlmostEqual(measured, target, places=3, msg='normal entry text did not use foreground')
+                                self.assertEqual(actual[19], 1.0, 'normal entry bounds unavailable')
                                 image = subprocess.check_output(['grim', '-o', 'HEADLESS-1', '-t', 'ppm', '-'], env=env, timeout=10)
                                 header = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', image)
                                 self.assertIsNotNone(header, 'invalid PPM screenshot')
@@ -91,6 +100,15 @@ class Gtk3PaletteProbe(unittest.TestCase):
                                 selected_text = sum(entry_pixels[(row*w+col)*3:(row*w+col)*3+3] == expected_bg
                                                     for row in range(top, bottom+1) for col in range(left, right+1))
                                 self.assertGreater(selected_text, 0, 'selected entry text did not use selection foreground')
+                                x, y, w, h = map(int, actual[15:19])
+                                self.assertTrue(0 <= x < x+w <= width and 0 <= y < y+h <= height)
+                                normal_pixels = b''.join(pixels[(row*width+x)*3:(row*width+x+w)*3] for row in range(y, y+h))
+                                surface = bytes.fromhex(colors['surface'][1:])
+                                foreground = bytes.fromhex(colors['foreground'][1:])
+                                self.assertGreater(sum(normal_pixels[i:i+3] == surface for i in range(0, len(normal_pixels), 3)), 100,
+                                                   'normal entry did not use token surface')
+                                self.assertGreater(sum(normal_pixels[i:i+3] == foreground for i in range(0, len(normal_pixels), 3)), 0,
+                                                   'normal entry text did not render in foreground colour')
                             finally:
                                 app.terminate()
                                 app.wait(timeout=5)
