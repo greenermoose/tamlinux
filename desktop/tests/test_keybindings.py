@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -103,6 +104,66 @@ def run_model(expression: str, *texts: str):
 
 
 class ExplorerRecordsTest(unittest.TestCase):
+    def test_explorer_fields_use_readable_tamarack_pairs(self):
+        explorer = (KEYBINDINGS / 'Explorer.qml').read_text()
+        self.assertNotRegex(explorer, r'#[0-9a-fA-F]{6}')
+        self.assertIn('placeholderTextColor: Commons.Color.muted', explorer)
+        self.assertIn('selectionColor: Commons.Color.accent', explorer)
+        self.assertIn('selectedTextColor: Commons.Color.accentText', explorer)
+        tokens = tomllib.loads((DESKTOP / 'assets' / 'tamarack.toml').read_text())
+
+        def luminance(color):
+            values = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+            return sum((v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4) * w
+                       for v, w in zip(values, (.2126, .7152, .0722)))
+
+        for name, palette in tokens.items():
+            for foreground, background in (('foreground', 'background'), ('muted', 'background'),
+                                           ('background', 'accent')):
+                low, high = sorted((luminance(palette[foreground]), luminance(palette[background])))
+                with self.subTest(variant=name, foreground=foreground, background=background):
+                    self.assertGreaterEqual((high + .05) / (low + .05), 4.5)
+
+    def test_explorer_tinted_text_surfaces_have_contrast(self):
+        explorer = (KEYBINDINGS / 'Explorer.qml').read_text()
+        tokens = tomllib.loads((DESKTOP / 'assets' / 'tamarack.toml').read_text())
+
+        def alpha(pattern):
+            match = re.search(pattern, explorer)
+            self.assertIsNotNone(match, pattern)
+            return float(match.group(1))
+
+        # Read the actual QML alpha values so a change to the tint is checked.
+        button = alpha(r'btn\.hovered \|\| btn\.visualFocus \? Util\.alpha\(Commons\.Color\.accent, ([.\d]+)\)')
+        row = alpha(r'isSelected \? Util\.alpha\(Commons\.Color\.accent, ([.\d]+)\)')
+        keycap = alpha(r'rowDelegate\.isSelected \? Util\.alpha\(Commons\.Color\.accent, ([.\d]+)\)')
+        capture = alpha(r'panel\.lastCaptured \? Util\.alpha\(Commons\.Color\.accent, ([.\d]+)\)')
+        capture_key = alpha(r'panel\.lastCaptured \? Util\.alpha\(Commons\.Color\.accent, ([.\d]+)\) : Util\.alpha\(Commons\.Color\.foreground, 0\.12\)')
+
+        def rgb(value):
+            return [int(value[i:i+2], 16) / 255 for i in (1, 3, 5)]
+
+        def blend(foreground, background, opacity):
+            return [opacity * f + (1 - opacity) * b for f, b in zip(foreground, background)]
+
+        def luminance(color):
+            return sum((v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4) * w
+                       for v, w in zip(color, (.2126, .7152, .0722)))
+
+        for name, palette in tokens.items():
+            foreground, accent = rgb(palette['foreground']), rgb(palette['accent'])
+            for base_name in ('background', 'surface'):
+                base = rgb(palette[base_name])
+                selected = blend(accent, base, row)
+                captured = blend(accent, base, capture)
+                states = {'button': blend(accent, base, button), 'selected row': selected,
+                          'selected keycap': blend(accent, selected, keycap),
+                          'capture keycap': blend(accent, captured, capture_key)}
+                for state, background in states.items():
+                    low, high = sorted((luminance(foreground), luminance(background)))
+                    with self.subTest(variant=name, base=base_name, state=state):
+                        self.assertGreaterEqual((high + .05) / (low + .05), 4.5)
+
     def test_explorer_excludes_static_rows_and_describes_only_exact_command(self):
         bind = hyprland_bind(64, "U", description="Square", dispatcher="exec",
                              arg="tam-hyprland-window-single-square-aspect-toggle")

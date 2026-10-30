@@ -546,6 +546,7 @@ class BackAndPin(Fixture):
                              "previousGeneration": "/nix/store/b-generation", "previousPin": self.packages_main})
         with patch.object(deploy.Path, "is_file", return_value=True), \
              patch.object(deploy, "command"), patch.object(self.app, "wait_ready"), \
+             patch.object(self.app, "graphical_active", return_value=False), \
              patch.object(self.app, "status"), patch.object(self.app, "record"), \
              patch.object(self.app, "generation", side_effect=["/nix/store/c-generation", "/nix/store/b-generation"]), \
              patch.object(self.app, "components", side_effect=lambda rev: {"tamlinux": self.tamlinux_new if rev == self.packages_new else self.tamlinux_main}), \

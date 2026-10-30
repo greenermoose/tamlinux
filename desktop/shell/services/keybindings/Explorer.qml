@@ -42,7 +42,7 @@ PanelWindow {
       text: btn.text
       font.pixelSize: 12
       font.bold: btn.checked || btn.isAccent
-      color: btn.checked ? Commons.Color.accentText : (btn.isAccent ? Commons.Color.accentText : Commons.Color.foreground)
+      color: Commons.Color.foreground
       horizontalAlignment: Text.AlignHCenter
       verticalAlignment: Text.AlignVCenter
     }
@@ -68,12 +68,12 @@ PanelWindow {
     popup: Popup {
       y: box.height + 4; width: box.width; implicitHeight: Math.min(240, contentItem.implicitHeight + 8); padding: 4
       contentItem: ListView { clip: true; implicitHeight: contentHeight; model: box.popup.visible ? box.delegateModel : null; currentIndex: box.highlightedIndex; ScrollIndicator.vertical: ScrollIndicator {} }
-      background: Rectangle { color: "#101418"; border.color: Util.alpha(Commons.Color.accent, 0.45); border.width: 1; radius: Style.cornerRadius }
+      background: Rectangle { color: Commons.Color.background; border.color: Util.alpha(Commons.Color.accent, 0.45); border.width: 1; radius: Style.cornerRadius }
     }
     delegate: ItemDelegate {
       width: box.width - 8; height: 30; highlighted: box.highlightedIndex === index
       contentItem: Text { text: modelData; color: highlighted ? Commons.Color.accentText : Commons.Color.foreground; font.pixelSize: 12; verticalAlignment: Text.AlignVCenter }
-      background: Rectangle { radius: 4; color: highlighted ? Util.alpha(Commons.Color.accent, 0.25) : "transparent" }
+      background: Rectangle { radius: 4; color: highlighted ? Commons.Color.accent : "transparent" }
     }
   }
   readonly property var filtered: Model.sortExplorer(Model.filterExplorer(rows, modifier, search.text).filter(function(row) { return panel.group === "All groups" || row.group === panel.group }), sortOrder)
@@ -321,7 +321,7 @@ PanelWindow {
               }
               Text {
                 text: "v" + panel.appVersion + (panel.buildRevision !== "" ? " • " + panel.buildRevision : "")
-                color: panel.buildRevision !== "" ? Commons.Color.accentText : Commons.Color.menu.text
+                color: Commons.Color.menu.text
                 font.pixelSize: 11
                 font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
@@ -348,9 +348,9 @@ PanelWindow {
           width: parent.width - 150
           height: parent.height
           color: Commons.Color.foreground
-          placeholderTextColor: Util.alpha(Commons.Color.foreground, 0.45)
+          placeholderTextColor: Commons.Color.muted
           selectedTextColor: Commons.Color.accentText
-          selectionColor: Util.alpha(Commons.Color.accent, 0.4)
+          selectionColor: Commons.Color.accent
           font.pixelSize: 13
           leftPadding: 14
           rightPadding: 14
@@ -360,7 +360,7 @@ PanelWindow {
           KeyNavigation.backtab: closeButton
           background: Rectangle {
             radius: Style.cornerRadius
-            color: "#0c0f12"
+            color: Commons.Color.background
             border.color: search.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
             border.width: 1
           }
@@ -458,7 +458,7 @@ PanelWindow {
                 ScrollIndicator.vertical: ScrollIndicator { }
               }
               background: Rectangle {
-                color: "#101418"
+                color: Commons.Color.background
                 border.color: Util.alpha(Commons.Color.accent, 0.45)
                 border.width: 1
                 radius: Style.cornerRadius
@@ -476,7 +476,7 @@ PanelWindow {
               }
               background: Rectangle {
                 radius: 4
-                color: highlighted ? Util.alpha(Commons.Color.accent, 0.25) : "transparent"
+                color: highlighted ? Commons.Color.accent : "transparent"
               }
             }
             Connections {
@@ -653,7 +653,7 @@ PanelWindow {
               anchors.rightMargin: 12
               anchors.verticalCenter: parent.verticalCenter
               text: modelData.does
-              color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
+              color: rowDelegate.isSelected ? Commons.Color.foreground : Commons.Color.menu.text
               font.bold: true
               font.pixelSize: 13
               elide: Text.ElideRight
@@ -677,8 +677,7 @@ PanelWindow {
                   Text {
                     visible: index > 0
                     text: "+"
-                    color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
-                    opacity: rowDelegate.isSelected ? 0.7 : 0.4
+                    color: rowDelegate.isSelected ? Commons.Color.foreground : Commons.Color.menu.text
                     font.pixelSize: 11
                     font.bold: true
                     anchors.verticalCenter: parent.verticalCenter
@@ -696,7 +695,7 @@ PanelWindow {
                       id: keyLabel
                       anchors.centerIn: parent
                       text: modelData
-                      color: rowDelegate.isSelected ? Commons.Color.accentText : Commons.Color.menu.text
+                      color: rowDelegate.isSelected ? Commons.Color.foreground : Commons.Color.menu.text
                       font.pixelSize: 11
                       font.bold: true
                       font.family: Style.fontFamily
@@ -832,7 +831,7 @@ PanelWindow {
                 Text {
                   width: parent.width
                   text: panel.selected ? panel.selected.does : ""
-                  color: Commons.Color.accentText
+                  color: Commons.Color.foreground
                   font.bold: true
                   font.pixelSize: 20
                   wrapMode: Text.Wrap
@@ -851,7 +850,6 @@ PanelWindow {
                       visible: index > 0
                       text: "+"
                       color: Commons.Color.menu.text
-                      opacity: 0.5
                       font.pixelSize: 12
                       font.bold: true
                       anchors.verticalCenter: parent.verticalCenter
@@ -869,7 +867,7 @@ PanelWindow {
                         id: detailKeyLabel
                         anchors.centerIn: parent
                         text: modelData
-                        color: Commons.Color.accentText
+                        color: Commons.Color.foreground
                         font.pixelSize: 12
                         font.bold: true
                         font.family: Style.fontFamily
@@ -937,7 +935,7 @@ PanelWindow {
                   width: parent.width
                   height: cmdText.implicitHeight + 16
                   radius: 6
-                  color: "#0a0c0e"
+                  color: Commons.Color.background
                   border.color: Util.alpha(Commons.Color.foreground, 0.18)
                   border.width: 1
 
@@ -972,7 +970,7 @@ PanelWindow {
                   width: parent.width
                   height: 34
                   radius: 6
-                  color: "#0a0c0e"
+                  color: Commons.Color.background
                   border.color: Util.alpha(Commons.Color.foreground, 0.18)
                   border.width: 1
 
@@ -986,7 +984,7 @@ PanelWindow {
                     Rectangle {
                       width: 8; height: 8; radius: 4
                       anchors.verticalCenter: parent.verticalCenter
-                      color: panel.commandPath ? "#68b087" : (panel.selected && panel.selected.dispatcher === "exec" ? "#c46b6b" : Commons.Color.accent)
+                      color: panel.commandPath ? Commons.Color.accent : (panel.selected && panel.selected.dispatcher === "exec" ? Commons.Color.urgent : Commons.Color.accent)
                     }
 
                     Text {
@@ -1061,7 +1059,7 @@ PanelWindow {
                 required property var modelData
                 width: index === 0 ? panel.tableKeyWidth : (tableFocus.width - panel.tableKeyWidth - 8) / 4
                 height: 28; color: Util.alpha(Commons.Color.accent, 0.16); radius: 3
-                Text { anchors.fill: parent; anchors.margins: 6; text: modelData; color: Commons.Color.accentText; font.bold: true; font.pixelSize: 12; elide: Text.ElideRight }
+                Text { anchors.fill: parent; anchors.margins: 6; text: modelData; color: Commons.Color.foreground; font.bold: true; font.pixelSize: 12; elide: Text.ElideRight }
               }
             }
           }
@@ -1098,7 +1096,7 @@ PanelWindow {
             }
             footer: Column {
               width: tableList.width; spacing: 4
-              Text { visible: panel.bindingsAvailable; width: parent.width; text: "Other modifier combinations and unmodified keys"; color: Commons.Color.accentText; font.bold: true; font.pixelSize: 13; topPadding: 16; bottomPadding: 8 }
+              Text { visible: panel.bindingsAvailable; width: parent.width; text: "Other modifier combinations and unmodified keys"; color: Commons.Color.foreground; font.bold: true; font.pixelSize: 13; topPadding: 16; bottomPadding: 8 }
               Repeater {
                 model: panel.bindingsAvailable ? panel.availability.other : []
                 Row {
@@ -1178,12 +1176,12 @@ PanelWindow {
                 spacing: 6
                 Rectangle {
                   width: 6; height: 6; radius: 3
-                  color: inhibitor.active ? Commons.Color.accent : "#c46b6b"
+                  color: inhibitor.active ? Commons.Color.accent : Commons.Color.urgent
                   anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                   text: inhibitor.active ? "Capture Active — Safe to test" : (panel.lastCaptured ? "Capture paused — focus to resume" : "Waiting for compositor capture")
-                  color: inhibitor.active ? Commons.Color.accentText : Commons.Color.menu.text
+                  color: inhibitor.active ? Commons.Color.foreground : Commons.Color.menu.text
                   font.pixelSize: 11
                   font.bold: true
                   anchors.verticalCenter: parent.verticalCenter
@@ -1260,7 +1258,7 @@ PanelWindow {
                     Text {
                       id: liveBadgeText
                       text: "Listening"
-                      color: Commons.Color.accentText
+                      color: Commons.Color.foreground
                       font.pixelSize: 10
                       font.bold: true
                     }
@@ -1274,7 +1272,7 @@ PanelWindow {
                 height: 110
                 radius: 8
                 color: panel.lastCaptured ? Util.alpha(Commons.Color.accent, 0.10)
-                     : (panel.lastTriedCombo ? Util.alpha(Commons.Color.urgent, 0.08) : "#0c0f12")
+                     : (panel.lastTriedCombo ? Util.alpha(Commons.Color.urgent, 0.08) : Commons.Color.background)
                 border.color: panel.lastCaptured ? Commons.Color.accent
                             : (panel.lastTriedCombo ? Util.alpha(Commons.Color.urgent, 0.45) : Util.alpha(Commons.Color.foreground, 0.20))
                 border.width: 1
@@ -1297,8 +1295,7 @@ PanelWindow {
                         Text {
                           visible: index > 0
                           text: "+"
-                          color: Commons.Color.accentText
-                          opacity: 0.7
+                          color: Commons.Color.foreground
                           font.pixelSize: 14
                           font.bold: true
                           anchors.verticalCenter: parent.verticalCenter
@@ -1316,7 +1313,7 @@ PanelWindow {
                             id: keycapLabel
                             anchors.centerIn: parent
                             text: modelData
-                            color: Commons.Color.accentText
+                            color: Commons.Color.foreground
                             font.pixelSize: 14
                             font.bold: true
                             font.family: Style.fontFamily
@@ -1334,12 +1331,12 @@ PanelWindow {
 
                     Rectangle {
                       width: 6; height: 6; radius: 3
-                      color: panel.lastCaptured ? "#68b087" : Commons.Color.urgent
+                      color: panel.lastCaptured ? Commons.Color.accent : Commons.Color.urgent
                       anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                       text: panel.lastCaptured ? panel.lastCaptured.does : "Unassigned key combination"
-                      color: panel.lastCaptured ? "#68b087" : Commons.Color.urgent
+                      color: panel.lastCaptured ? Commons.Color.accent : Commons.Color.urgent
                       font.pixelSize: 13
                       font.bold: true
                       anchors.verticalCenter: parent.verticalCenter
@@ -1625,7 +1622,7 @@ PanelWindow {
                       text: panel.lastCaptured ? (panel.lastCaptured.dispatcher || "command") : ""
                       font.pixelSize: 11
                       font.bold: true
-                      color: Commons.Color.accentText
+                      color: Commons.Color.foreground
                     }
                   }
                 }
@@ -1634,7 +1631,7 @@ PanelWindow {
                 Text {
                   width: parent.width
                   text: panel.lastCaptured ? panel.lastCaptured.does : ""
-                  color: Commons.Color.accentText
+                  color: Commons.Color.foreground
                   font.bold: true
                   font.pixelSize: 22
                   wrapMode: Text.Wrap
@@ -1698,7 +1695,7 @@ PanelWindow {
                     width: parent.width
                     height: captureCmdText.implicitHeight + 16
                     radius: 6
-                    color: "#0a0c0e"
+                    color: Commons.Color.background
                     border.color: Util.alpha(Commons.Color.foreground, 0.18)
                     border.width: 1
 
@@ -1733,7 +1730,7 @@ PanelWindow {
                     width: parent.width
                     height: 34
                     radius: 6
-                    color: "#0a0c0e"
+                    color: Commons.Color.background
                     border.color: Util.alpha(Commons.Color.foreground, 0.18)
                     border.width: 1
 
@@ -1747,7 +1744,7 @@ PanelWindow {
                       Rectangle {
                         width: 8; height: 8; radius: 4
                         anchors.verticalCenter: parent.verticalCenter
-                        color: panel.commandPath ? "#68b087" : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "#c46b6b" : Commons.Color.accent)
+                        color: panel.commandPath ? Commons.Color.accent : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Commons.Color.urgent : Commons.Color.accent)
                       }
 
                       Text {
