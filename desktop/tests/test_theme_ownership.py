@@ -13,6 +13,7 @@ import tomllib
 import unittest
 import struct
 import zlib
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE = ROOT / 'desktop/theme/engine.py'
@@ -297,7 +298,43 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual((self.current/'theme/colors.toml').read_bytes(),before)
         self.assertEqual((self.current/'theme.name').read_text(),'tokyo-night\n')
         journals=list((self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json'))
-        self.assertTrue(any(json.loads(p.read_text())['status']=='restored-after-failure' for p in journals))
+        failed = [p for p in journals if json.loads(p.read_text())['status']=='restored-after-failure']
+        self.assertEqual(len(failed), 1)
+        doc = json.loads(failed[0].read_text())
+        entry = next(row for row in doc['files'] if row['path'] == str(settings))
+        self.assertEqual((failed[0].parent/entry['afterFailure']['saved']).read_text(), 'changed')
+
+    def test_apply_failure_archives_new_symlink_before_removing_it(self):
+        self.call('set', 'tokyo-night')
+        settings = self.config/'Code/User/settings.json'
+        self.stub('tam-theme-set-foot',
+                  'mkdir -p "$XDG_CONFIG_HOME/Code/User"; '
+                  'ln -s /unavailable/later-settings "$XDG_CONFIG_HOME/Code/User/settings.json"; exit 7')
+        self.call('set', 'nord', success=False, env={'TAMLINUX_THEME_OFFLINE': ''})
+        self.assertFalse(settings.exists())
+        self.assertFalse(settings.is_symlink())
+        journal = next(p for p in (self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json')
+                       if json.loads(p.read_text())['status'] == 'restored-after-failure')
+        doc = json.loads(journal.read_text())
+        entry = next(row for row in doc['files'] if row['path'] == str(settings))
+        saved = journal.parent/entry['afterFailure']['saved']
+        self.assertTrue(saved.is_symlink())
+        self.assertEqual(os.readlink(saved), '/unavailable/later-settings')
+
+    def test_failed_archive_does_not_remove_later_writes(self):
+        spec = importlib.util.spec_from_file_location('theme_engine_recovery', ENGINE)
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        settings = self.config/'Code/User/settings.json'
+        settings.parent.mkdir(parents=True)
+        settings.write_text('original')
+        with patch.object(engine, 'STATE', self.state/'tamlinux'):
+            journal = engine.Journal('archive-proof', [settings])
+            settings.write_text('later change')
+            with patch.object(engine.shutil, 'copy2', side_effect=OSError('archive failed')):
+                with self.assertRaisesRegex(OSError, 'archive failed'):
+                    journal.restore()
+        self.assertEqual(settings.read_text(), 'later change')
 
     def test_local_palette_overlays_and_shell_section_templates(self):
         user=self.config/'tamlinux/themes/tokyo-night'; user.mkdir(parents=True)
