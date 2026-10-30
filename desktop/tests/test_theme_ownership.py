@@ -113,6 +113,9 @@ class ThemeOwnership(unittest.TestCase):
             gtk4 = (theme/'gtk4.css').read_text()
             self.assertIn('--window-fg-color: ' + payload['palette']['foreground'] + ';', gtk4)
             self.assertIn('--window-bg-color: ' + payload['palette']['background'] + ';', gtk4)
+            self.assertIn('--accent-bg-color: ' + payload['palette']['accent'] + ';', gtk4)
+            self.assertIn('--accent-fg-color: ' + payload['palette']['accentText'] + ';', gtk4)
+            check(payload['palette']['accentText'], payload['palette']['accent'])
             for section in ('bar', 'popups', 'tooltip', 'notifications', 'menu', 'polkit'):
                 check(surfaces[section+'.text'], surfaces[section+'.background'])
             check(surfaces['menu.selected-text'], surfaces['menu.selected-background'])

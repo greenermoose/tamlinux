@@ -74,8 +74,9 @@ class GtkPaletteProbe(unittest.TestCase):
                                 self.assertTrue(select.select([app.stdout], [], [], 10)[0], 'GTK app did not report a label')
                                 actual = list(map(float, app.stdout.readline().split()))
                                 expected = [int(colors['foreground'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
-                                self.assertEqual(len(actual), 4)
-                                for measured, target in zip(actual, expected):
+                                button_expected = [int(colors['background'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
+                                self.assertEqual(len(actual), 8)
+                                for measured, target in zip(actual, expected + button_expected):
                                     self.assertAlmostEqual(measured, target, places=3)
                                 image = subprocess.check_output(['grim', '-o', 'HEADLESS-1', '-t', 'ppm', '-'], env=env, timeout=10)
                                 header = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', image)
@@ -84,6 +85,9 @@ class GtkPaletteProbe(unittest.TestCase):
                                 expected_bg = bytes.fromhex(colors['background'][1:])
                                 count = sum(pixels[i:i+3] == expected_bg for i in range(0, len(pixels), 3))
                                 self.assertGreater(count, 320 * 240 // 2, 'window background did not use token')
+                                accent = bytes.fromhex(colors['accent'][1:])
+                                accent_count = sum(pixels[i:i+3] == accent for i in range(0, len(pixels), 3))
+                                self.assertGreater(accent_count, 100, 'suggested action fill did not use accent token')
                             finally:
                                 app.terminate()
                                 app.wait(timeout=5)
