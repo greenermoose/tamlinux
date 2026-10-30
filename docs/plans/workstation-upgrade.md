@@ -1,6 +1,7 @@
 # Easy workstation upgrades
 
-**Status:** Approved by Fred on 2026-10-30; implementation pending.
+**Status:** Approved by Fred on 2026-10-30; release selection is in development.
+Installation, recovery, packaging and physical trials remain pending.
 **Target:** Give an existing 0.5.12 workstation a straightforward way to
 install a later Tamlinux release without reinstalling the machine.
 
@@ -34,9 +35,10 @@ need to understand source branches or develop on the machine to update it.
   identified before activation; explain a missing prerequisite and recovery.
 - Build and install the exact recorded user-package assembly with Home Manager,
   retaining the previous generation and recording its assembly and settings
-  recovery. Verify installed endpoints against the selected assembly. Support
-  a text console as well as a graphical session; do not assume a shell is
-  running. On failure, preserve evidence and restore or clearly identify the
+  recovery. Verify installed endpoints against the selected assembly. Starting
+  with 0.5.12, every upgrade operation, including discovery, confirmation,
+  activation, verification and recovery, must work from a text VT with no
+  graphical session or graphical shell. On failure, preserve evidence and restore or clearly identify the
   previous usable state. Preserve later writes during settings restoration.
 - If a release needs native, boot or login changes, show that requirement and
   stop before claiming a complete upgrade; perform such work only through its
@@ -69,3 +71,7 @@ procedure.
 
 The command is named `tam-workstation-upgrade`, accepted by Fred on
 2026-10-30. The deployment machinery may be reused underneath it.
+
+Fred, 2026-10-30: “Starting with Tamlinux 0.5.12, all upgrade work needs to be
+able to be done from a VT. A graphical shell must not be required to do a
+Tamlinux upgrade from now on.”
