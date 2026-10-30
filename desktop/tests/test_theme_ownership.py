@@ -116,6 +116,8 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('--accent-bg-color: ' + payload['palette']['accent'] + ';', gtk4)
             self.assertIn('--accent-fg-color: ' + payload['palette']['accentText'] + ';', gtk4)
             check(payload['palette']['accentText'], payload['palette']['accent'])
+            self.assertIn('--error-color: ' + payload['palette']['urgent'] + ';', gtk4)
+            check(payload['palette']['urgent'], payload['palette']['background'])
             for section in ('bar', 'popups', 'tooltip', 'notifications', 'menu', 'polkit'):
                 check(surfaces[section+'.text'], surfaces[section+'.background'])
             check(surfaces['menu.selected-text'], surfaces['menu.selected-background'])

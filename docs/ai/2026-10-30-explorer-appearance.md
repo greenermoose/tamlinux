@@ -36,3 +36,5 @@ The theme generator now produces an inert GTK 4 prototype stylesheet from the sh
 The GTK 4 prototype now also derives the accent fill and its text from shared tokens. The isolated GTK proof checks a real suggested-action button's text colour and rendered fill in both variants; selection, focus, errors and other controls remain open. The all-theme generation test initially exposed an unavailable alias in older themes; using the existing selection foreground alias restored all 34 tests.
 
 An isolated focused GtkEntry selection did not initially use the accent fill. The prototype now specifies text-selection foreground and background explicitly. The GTK proof checks the selected bounds and rendered colours in both variants. Other selection surfaces, focus indicators, error states and application behavior remain open.
+
+The prototype now supplies error colours from the danger token. The isolated GTK proof verifies that an error label uses the token in both variants; filled error controls and other error states remain open.

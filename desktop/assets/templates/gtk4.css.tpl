@@ -4,6 +4,9 @@
   --window-bg-color: {{ background }};
   --accent-bg-color: {{ accent }};
   --accent-fg-color: {{ selection_foreground }};
+  --error-bg-color: {{ red }};
+  --error-fg-color: {{ background }};
+  --error-color: {{ red }};
 }
 
 text selection {

@@ -75,10 +75,13 @@ class GtkPaletteProbe(unittest.TestCase):
                                 actual = list(map(float, app.stdout.readline().split()))
                                 expected = [int(colors['foreground'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
                                 button_expected = [int(colors['background'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
-                                self.assertEqual(len(actual), 15)
+                                self.assertEqual(len(actual), 19)
                                 for measured, target in zip(actual[:8], expected + button_expected):
                                     self.assertAlmostEqual(measured, target, places=3)
-                                self.assertEqual(actual[12:], [1.0, 1.0, 1.0], 'entry selection or focus not active')
+                                self.assertEqual(actual[12:15], [1.0, 1.0, 1.0], 'entry selection or focus not active')
+                                error_expected = [int(colors['danger'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
+                                for measured, target in zip(actual[15:], error_expected):
+                                    self.assertAlmostEqual(measured, target, places=3)
                                 image = subprocess.check_output(['grim', '-o', 'HEADLESS-1', '-t', 'ppm', '-'], env=env, timeout=10)
                                 header = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', image)
                                 self.assertIsNotNone(header, 'invalid PPM screenshot')
