@@ -11,6 +11,8 @@
 
 > I accept the name tam-workstation-upgrade. Note that decision. Close the review window. Proceed.
 
+> Starting with Tamlinux 0.5.12, all upgrade work needs to be able to be done from a VT. A graphical shell must not be required to do a Tamlinux upgrade from now on.
+
 The generated editor theme used text colours on unsuitable status bar,
 command center and extension button fills. These states now use validated
 surface or accent pairings, including opaque hover fills where the text uses
@@ -29,3 +31,8 @@ Verification: all five keybinding-default tests passed.
 Fred edited and approved the workstation upgrade plan, selecting the command
 name and a release-only default with explicit version selection. Native changes
 stop for a separate procedure. The review window was closed on request.
+
+The initial release-selection module validates the GitHub release, resolves
+annotated tags and compares the delivery record against the assembly lock.
+Five focused tests pass; the current published 0.4.8 release also resolved
+successfully. The command and installation/recovery path are not yet complete.
