@@ -75,12 +75,14 @@ class GtkPaletteProbe(unittest.TestCase):
                                 actual = list(map(float, app.stdout.readline().split()))
                                 expected = [int(colors['foreground'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
                                 button_expected = [int(colors['background'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
-                                self.assertEqual(len(actual), 19)
+                                self.assertEqual(len(actual), 31)
                                 for measured, target in zip(actual[:8], expected + button_expected):
                                     self.assertAlmostEqual(measured, target, places=3)
                                 self.assertEqual(actual[12:15], [1.0, 1.0, 1.0], 'entry selection or focus not active')
                                 error_expected = [int(colors['danger'][i:i+2], 16) / 255 for i in (1, 3, 5)] + [1.0]
-                                for measured, target in zip(actual[15:], error_expected):
+                                for measured, target in zip(actual[15:19], error_expected):
+                                    self.assertAlmostEqual(measured, target, places=3)
+                                for measured, target in zip(actual[27:31], button_expected):
                                     self.assertAlmostEqual(measured, target, places=3)
                                 image = subprocess.check_output(['grim', '-o', 'HEADLESS-1', '-t', 'ppm', '-'], env=env, timeout=10)
                                 header = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', image)
@@ -90,10 +92,19 @@ class GtkPaletteProbe(unittest.TestCase):
                                 count = sum(pixels[i:i+3] == expected_bg for i in range(0, len(pixels), 3))
                                 self.assertGreater(count, 320 * 240 // 2, 'window background did not use token')
                                 accent = bytes.fromhex(colors['accent'][1:])
-                                accent_count = sum(pixels[i:i+3] == accent for i in range(0, len(pixels), 3))
-                                self.assertGreater(accent_count, 100, 'suggested action fill did not use accent token')
                                 width, height = map(int, header.groups())
                                 self.assertEqual(len(pixels), width * height * 3)
+                                def pixels_in(bounds):
+                                    x, y, w, h = map(int, bounds)
+                                    self.assertTrue(0 <= x < x+w <= width and 0 <= y < y+h <= height)
+                                    return b''.join(pixels[(row*width+x)*3:(row*width+x+w)*3] for row in range(y, y+h))
+                                button_pixels = pixels_in(actual[19:23])
+                                accent_count = sum(button_pixels[i:i+3] == accent for i in range(0, len(button_pixels), 3))
+                                self.assertGreater(accent_count, 100, 'suggested action fill did not use accent token')
+                                danger = bytes.fromhex(colors['danger'][1:])
+                                destructive_pixels = pixels_in(actual[23:27])
+                                danger_count = sum(destructive_pixels[i:i+3] == danger for i in range(0, len(destructive_pixels), 3))
+                                self.assertGreater(danger_count, 100, 'destructive action fill did not use danger token')
                                 x, y, w, h = map(int, actual[8:12])
                                 self.assertTrue(0 <= x < x+w <= width and 0 <= y < y+h <= height)
                                 entry_pixels = b''.join(pixels[(row*width+x)*3:(row*width+x+w)*3] for row in range(y, y+h))

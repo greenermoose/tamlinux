@@ -7,9 +7,17 @@
   --error-bg-color: {{ red }};
   --error-fg-color: {{ background }};
   --error-color: {{ red }};
+  --destructive-bg-color: {{ red }};
+  --destructive-fg-color: {{ background }};
+  --destructive-color: {{ red }};
 }
 
 text selection {
   background-color: {{ accent }};
   color: {{ selection_foreground }};
+}
+
+button.destructive-action {
+  background-color: {{ red }};
+  color: {{ background }};
 }
