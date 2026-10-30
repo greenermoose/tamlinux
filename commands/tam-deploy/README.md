@@ -95,3 +95,8 @@ generation. From a text login with no active graphical session, activation and
 rollback do not start the desktop or require shell IPC. If a graphical session
 is active, the shell is restarted and checked. An unavailable user service
 manager or ambiguous session state stops the operation.
+
+If rollback fails after activation is attempted, the generation, consumer
+lock and deployment record may disagree. Inspect `tam-deploy status`, the
+active generation and the consumer lock before retrying; the error does not
+claim that the prior state was restored.
