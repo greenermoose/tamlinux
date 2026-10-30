@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "fred.tamversion",
   "name": "Tamlinux Version",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "Fred (@greenermoose)",
   "description": "Show the version of the running Tamlinux shell",
   "repository": "https://github.com/greenermoose/tamlinux.git",

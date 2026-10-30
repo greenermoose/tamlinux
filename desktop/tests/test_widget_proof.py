@@ -109,6 +109,83 @@ class Render(unittest.TestCase):
     def test_milestone_does_not_hide_missing_package_metadata(self):
         self.milestone_proof("", "0.4.4", "Tamlinux unknown")
 
+    def test_tooltip_text_with_metadata(self):
+        expected = (
+            "Tamlinux cultivar Blue Sparkler 0.5.10\n"
+            "Home Manager Generation 12 (active rollback point)\n"
+            "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
+            "fred.tamversion v0.1.2"
+        )
+        result = self.run_proof(
+            "fred.tamversion",
+            "--property", "tooltipText",
+            "--env", "TAMLINUX_VERSION=0.5.10",
+            "--env", "TAMLINUX_CULTIVAR=Blue Sparkler",
+            "--env", "TAMLINUX_GENERATION=12",
+            "--env", "TAMLINUX_KERNEL_RELEASE=7.2.11-arch1-1.1",
+            "--env", "TAMLINUX_OS_NAME=Arch Linux",
+            "--env", "TAMLINUX_COMPOSITOR=Hyprland",
+            "--expect", expected,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["text"], expected)
+
+    def test_tooltip_text_with_missing_metadata(self):
+        expected = (
+            "Tamlinux 0.5.10\n"
+            "Home Manager generation unavailable\n"
+            "Arch Linux · Hyprland\n\n"
+            "fred.tamversion v0.1.2"
+        )
+        result = self.run_proof(
+            "fred.tamversion",
+            "--property", "tooltipText",
+            "--env", "TAMLINUX_VERSION=0.5.10",
+            "--env", "TAMLINUX_CULTIVAR=",
+            "--env", "TAMLINUX_GENERATION=",
+            "--env", "TAMLINUX_KERNEL_RELEASE=",
+            "--env", "TAMLINUX_OS_NAME=Arch Linux",
+            "--env", "TAMLINUX_COMPOSITOR=Hyprland",
+            "--expect", expected,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["text"], expected)
+
+    def test_milestone_tooltip(self):
+        with tempfile.TemporaryDirectory(prefix="milestone-proof-") as temp:
+            plugin = Path(temp)
+            (plugin / "manifest.json").write_text(json.dumps({
+                "id": "fred.tamversion", "entryPoints": {"barWidget": "BarWidget.qml"}}))
+            source = (DESKTOP / "plugins/fred.tamversion").as_uri()
+            settings = json.dumps({"milestoneVersion": "0.5.10"})
+            (plugin / "BarWidget.qml").write_text(
+                f'import "{source}" as Version\nVersion.BarWidget {{ settings: ({settings}) }}\n')
+            expected = (
+                "Tamlinux cultivar Blue Sparkler 0.5.10\n"
+                "Home Manager Generation 12 (active rollback point)\n"
+                "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
+                "fred.tamversion v0.1.2"
+            )
+            result = self.run_proof(
+                str(plugin),
+                "--property", "tooltipText",
+                "--env", "TAMLINUX_VERSION=0.5.10-a",
+                "--env", "TAMLINUX_CULTIVAR=Blue Sparkler",
+                "--env", "TAMLINUX_GENERATION=12",
+                "--env", "TAMLINUX_KERNEL_RELEASE=7.2.11-arch1-1.1",
+                "--env", "TAMLINUX_OS_NAME=Arch Linux",
+                "--env", "TAMLINUX_COMPOSITOR=Hyprland",
+                "--expect", expected,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report["ok"])
+            self.assertEqual(report["text"], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

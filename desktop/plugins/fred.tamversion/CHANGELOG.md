@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 - Unreleased
+
+- Add a non-interactive hover tooltip showing the cultivar name, active Home
+  Manager generation rollback point, host platform, kernel release, and
+  compositor.
+
 ## 0.1.1 - Unreleased
 
 - Allow a matching completed milestone to label the bar while preserving the

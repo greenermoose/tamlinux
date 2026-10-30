@@ -1,5 +1,8 @@
 # AI Collaboration & Provenance
 
+2026-10-29: Antigravity CLI `1.4.10` (`gemini-3.8-flash-high`) implements the non-interactive hover tooltip for the topbar version widget (`fred.tamversion` 0.1.2) for Tamlinux 0.5.10.
+[Session](docs/ai/2026-10-29-tamversion-hover-tooltip.md).
+
 2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-sol`) implements the approved grouped Start menu, desktop appearance controls and staged binding cutover.
 [Session](docs/ai/2026-10-29-start-menu.md).
 

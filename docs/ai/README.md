@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-29 — Tamlinux topbar version hover tooltip](2026-10-29-tamversion-hover-tooltip.md)
+
 - [2026-10-29 — Start menu development](2026-10-29-start-menu.md)
 
 - [2026-10-28 — Shell palette and visible authorization](2026-10-28-shell-palette-polkit.md)

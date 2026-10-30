@@ -10,6 +10,10 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## 0.5.10 - Develop candidate
 
+- Add a non-interactive hover tooltip to the topbar version widget
+  (`fred.tamversion` 0.1.2) displaying the cultivar name, active Home Manager
+  generation rollback point, host platform, kernel release, and compositor.
+
 - Add Start with visible Quick Launch and Settings groups. Open it on unused
   bar space with right-click, or anywhere with SUPER + right-click. Preserve
   widget context actions; resize windows with SUPER + ALT + right-drag.
