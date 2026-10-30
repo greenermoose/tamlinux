@@ -24,3 +24,5 @@ Six application-default tests, 33 theme ownership tests and 33 recovery tests pa
 An explicit existing-account migration now adds the Micro scheme only when no selection exists and the generated scheme link is ready. It preserves JSON5 content and uses the migration journal for rollback. All 47 migration tests passed with the packaged JSON5 Python environment; no migration was applied to the workstation.
 
 The Micro template now derives its green and gold roles and selection fill by mixing the shared tokens toward foreground. The 33 theme ownership tests passed. An isolated Micro 2.0.15 256-colour probe exercised each of 22 explicit colour pairs in both variants using the standard xterm palette; minimum contrast was 6.71:1 dark and 5.21:1 light. Actual selection composition, terminal palettes and physical rendering remain unverified.
+
+Added a repeatable pseudo-terminal test that launches Micro and checks the emitted 256-colour indices for each generated pair against the standard xterm palette. It passed with Micro 2.0.15 and skips if Micro is absent; it does not validate selection composition or physical display output.
