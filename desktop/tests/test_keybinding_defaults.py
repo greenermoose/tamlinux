@@ -65,6 +65,13 @@ class DefaultsTest(unittest.TestCase):
             chords.setdefault(chord, []).append(description)
         self.assertEqual({k: v for k, v in chords.items() if len(v) > 1 and k not in allowed}, {})
 
+    def test_start_and_resize_mouse_bindings_are_portable_defaults(self):
+        right_click = [row for row in self.rows if row[2] == 'mouse:273']
+        self.assertEqual(right_click, [
+            ['64', 'Start menu', 'mouse:273', 'exec', 'tam-menu toggle start'],
+            ['72', 'Resize window', 'mouse:273', 'lua', 'hl.dsp.window.resize()'],
+        ])
+
     def test_catalog_covers_every_resolved_default_binding(self):
         entries = {(str(e['mask']), e['key'], e['dispatcher'], e['arg']) for e in self.catalog}
         missing = [(r[1], r[2]) for r in self.rows if len(r) >= 5 and r[3] and r[4] and (r[0], r[2], r[3], r[4]) not in entries]

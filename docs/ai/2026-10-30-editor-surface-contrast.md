@@ -7,6 +7,8 @@
 
 > Continue the 0.5.12 work from [redacted: private repository]. Fix outstanding 0.5 issues, integrate the tam version I am developing in Cursor, and prepare the exact assembly for Test. The documented faults and other issues explicitly planned for 0.6 remain 0.6 work. Respect the active Cursor work and do not advance a stage without my separate instruction.
 
+> Worked. Thanks! Make sure this is part of 0.5.12. When I install Tamlinux 0.5.12 on slowhp and toughbook, everything should just work.
+
 The generated editor theme used text colours on unsuitable status bar,
 command center and extension button fills. These states now use validated
 surface or accent pairings, including opaque hover fills where the text uses
@@ -15,3 +17,9 @@ This is a partial surface audit; it does not establish complete contrast or
 physical appearance acceptance.
 
 Verification: all 33 theme ownership tests passed.
+
+Fred confirmed the live Super + right-click binding worked and requested that
+it work on fresh installations as well. A defaults test scans the actual Lua
+bindings and verifies Start and the separate resize chord without a personal
+override. Physical trials on other machines remain necessary.
+Verification: all five keybinding-default tests passed.
