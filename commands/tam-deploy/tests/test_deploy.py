@@ -506,6 +506,26 @@ class Arguments(unittest.TestCase):
 
 
 class BackAndPin(Fixture):
+    def test_back_reports_partial_outcome_after_activation_failure(self):
+        for failing_step in ("restart_if_graphical", "pin"):
+            with self.subTest(failing_step=failing_step):
+                self.app.save_state({"stage": "test", "packages": self.packages_new,
+                                     "generation": "/nix/store/new-generation",
+                                     "previousGeneration": "/nix/store/old-generation", "previousPin": self.packages_main})
+                before_state = self.app.state_file.read_bytes()
+                with patch.object(deploy.Path, "is_file", return_value=True), \
+                     patch.object(self.app, "generation", side_effect=["/nix/store/new-generation", "/nix/store/old-generation"]), \
+                     patch.object(self.app, "rollback_pin", return_value=self.packages_new), \
+                     patch.object(self.app, "graphical_active", return_value=False), \
+                     patch.object(deploy, "command") as command, \
+                     patch.object(self.app, "restart_if_graphical") as restart, \
+                     patch.object(self.app, "pin") as pin:
+                    {"restart_if_graphical": restart, "pin": pin}[failing_step].side_effect = deploy.DeploymentError("injected failure")
+                    with self.assertRaisesRegex(deploy.DeploymentError, "rollback may be incomplete.*injected failure.*before retrying"):
+                        self.app.back()
+                command.assert_called_once_with("/nix/store/old-generation/activate")
+                self.assertEqual(self.app.state_file.read_bytes(), before_state)
+
     def test_back_refuses_unknown_session_before_changing_generation(self):
         self.app.save_state({"stage": "test", "packages": self.packages_new,
                              "generation": "/nix/store/new-generation",
