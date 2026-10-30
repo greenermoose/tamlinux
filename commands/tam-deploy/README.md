@@ -14,7 +14,7 @@ revision whose lock file pins every component.
 | `init [revision] [--test]` | First installation on a registered local host without an existing generation. Require all components on `main` (or `test` with `--test`), build the exact consumer generation, activate and verify its package endpoints. Works from a text session without a Home Manager CLI. Records no previous generation; never promotes branches or enables graphical login. |
 | `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell if active, verify the installed paths and commit the pin. Activation or verification failure attempts to restore the lock and previous generation. |
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
-| `back` | Activate the previous generation and restore its pin. |
+| `back` | Activate the previous generation, verify its endpoints against the recorded assembly, and restore its pin. |
 
 The rollback pin identifies the assembly actually running, using the deployment
 record for the active generation. A prepared but inactive consumer lock is not

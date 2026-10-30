@@ -541,6 +541,29 @@ class Arguments(unittest.TestCase):
 
 
 class BackAndPin(Fixture):
+    def test_back_refuses_to_record_mismatched_restored_endpoints(self):
+        self.app.save_state({"stage": "test", "packages": self.packages_new,
+                             "generation": "/nix/store/new-generation",
+                             "previousGeneration": "/nix/store/old-generation", "previousPin": self.packages_main})
+        before_state = self.app.state_file.read_bytes()
+        before_lock = self.app.lock.read_bytes()
+        old_pins = {"tamlinux": self.tamlinux_main}
+        with patch.object(deploy.Path, "is_file", return_value=True), \
+             patch.object(self.app, "generation", side_effect=["/nix/store/new-generation", "/nix/store/old-generation"]), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_new), \
+             patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(deploy, "command"), patch.object(self.app, "restart_if_graphical"), \
+             patch.object(self.app, "components", return_value=old_pins), \
+             patch.object(self.app, "verify", return_value=["wrong shell endpoint"]) as verify, \
+             patch.object(self.app, "pin") as pin, patch.object(self.app, "record") as record:
+            with self.assertRaisesRegex(deploy.DeploymentError, "rollback may be incomplete.*restored endpoints"):
+                self.app.back()
+        verify.assert_called_once_with(old_pins, self.packages_main)
+        pin.assert_not_called()
+        record.assert_not_called()
+        self.assertEqual(self.app.lock.read_bytes(), before_lock)
+        self.assertEqual(self.app.state_file.read_bytes(), before_state)
+
     def test_back_refuses_to_record_wrong_generation(self):
         self.app.save_state({"stage": "test", "packages": self.packages_new,
                              "generation": "/nix/store/new-generation",
@@ -571,6 +594,8 @@ class BackAndPin(Fixture):
                      patch.object(self.app, "graphical_active", return_value=False), \
                      patch.object(deploy, "command") as command, \
                      patch.object(self.app, "restart_if_graphical") as restart, \
+                     patch.object(self.app, "components", return_value={"tamlinux": self.tamlinux_main}), \
+                     patch.object(self.app, "verify", return_value=[]), \
                      patch.object(self.app, "pin") as pin:
                     {"restart_if_graphical": restart, "pin": pin}[failing_step].side_effect = deploy.DeploymentError("injected failure")
                     with self.assertRaisesRegex(deploy.DeploymentError, "rollback may be incomplete.*injected failure.*before retrying"):
@@ -610,6 +635,7 @@ class BackAndPin(Fixture):
              patch.object(self.app, "graphical_active", return_value=False), \
              patch.object(self.app, "wait_ready") as ready, \
              patch.object(self.app, "status"), patch.object(self.app, "record"), \
+             patch.object(self.app, "verify", return_value=[]) as verify, \
              patch.object(self.app, "generation", side_effect=["/nix/store/new-generation", "/nix/store/old-generation"]), \
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})) as pin:
             self.app.back()
@@ -617,6 +643,7 @@ class BackAndPin(Fixture):
         self.assertNotIn(("tam-restart-shell",), [call.args for call in command.call_args_list])
         ready.assert_not_called()
         pin.assert_called_once_with(self.packages_main)
+        verify.assert_called_once_with({"tamlinux": self.tamlinux_main}, self.packages_main)
         state = self.app.read_state()
         self.assertEqual(state["previousPin"], self.packages_new)
         self.assertEqual(state["previousGeneration"], "/nix/store/new-generation")
@@ -638,6 +665,7 @@ class BackAndPin(Fixture):
              patch.object(deploy, "command"), patch.object(self.app, "wait_ready"), \
              patch.object(self.app, "graphical_active", return_value=False), \
              patch.object(self.app, "status"), patch.object(self.app, "record"), \
+             patch.object(self.app, "verify", return_value=[]), \
              patch.object(self.app, "generation", side_effect=["/nix/store/c-generation", "/nix/store/b-generation"]), \
              patch.object(self.app, "components", side_effect=lambda rev: {"tamlinux": self.tamlinux_new if rev == self.packages_new else self.tamlinux_main}), \
              patch.object(self.app, "pin"):
