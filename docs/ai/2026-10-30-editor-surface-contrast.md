@@ -7,7 +7,7 @@
 
 > Continue the 0.5.12 work from [redacted: private repository]. Fix outstanding 0.5 issues, integrate the tam version I am developing in Cursor, and prepare the exact assembly for Test. The documented faults and other issues explicitly planned for 0.6 remain 0.6 work. Respect the active Cursor work and do not advance a stage without my separate instruction.
 
-> Worked. Thanks! Make sure this is part of 0.5.12. When I install Tamlinux 0.5.12 on slowhp and toughbook, everything should just work.
+> Worked. Thanks! Make sure this is part of 0.5.12. When I install Tamlinux 0.5.12 on [redacted: personal detail] and [redacted: personal detail], everything should just work.
 
 > I accept the name tam-workstation-upgrade. Note that decision. Close the review window. Proceed.
 
