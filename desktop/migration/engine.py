@@ -266,6 +266,47 @@ def convert_micro_bindings(data):
     return converted.encode() if converted!=text else None
 
 
+def convert_micro_theme(data):
+    """Add the default only when no explicit selection exists; retain JSON5 text."""
+    import json5
+    text = data.decode('utf-8')
+    doc = json5.loads(text, allow_duplicate_keys=False)
+    if not isinstance(doc, dict):
+        raise ValueError('Micro settings must be a JSON object')
+    if 'colorscheme' in doc:
+        return None
+    token = re.compile(r'''\s+|\ufeff|//[^\r\n\u2028\u2029]*|/\*[\s\S]*?\*/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|[{}\[\]:,]|[^\s{}\[\]:,'"]+''')
+    tokens = [m for m in token.finditer(text) if not (m[0].isspace() or m[0] == '\ufeff' or m[0].startswith(('//', '/*')))]
+    close = tokens[-1]
+    if close[0] != '}':
+        raise ValueError('Micro settings must end in an object')
+    previous = tokens[-2]
+    newline = '\r\n' if '\r\n' in text else '\n'
+    addition = newline + '  "colorscheme": "tamlinux"' + newline
+    edits = []
+    if previous[0] not in ('{', ','):
+        if previous.end() == close.start():
+            addition = ',' + addition
+        else:
+            edits.append((previous.end(), previous.end(), ','))
+    edits.append((close.start(), close.start(), addition))
+    for start, end, value in sorted(edits, reverse=True):
+        text = text[:start] + value + text[end:]
+    checked = json5.loads(text, allow_duplicate_keys=False)
+    if checked != dict(doc, colorscheme='tamlinux'):
+        raise ValueError('Micro settings conversion changed other values')
+    return text.encode('utf-8')
+
+
+def micro_theme_ready(locations):
+    scheme = locations['config']/'micro/colorschemes/tamlinux.micro'
+    target = locations['state']/'tamlinux/current/theme/micro.micro'
+    try:
+        return snapshot(scheme) == {'kind': 'link', 'link': str(target)} and snapshot(target)['kind'] == 'file'
+    except (OSError, ValueError):
+        return False
+
+
 def convert(kind, data, commands, locations=None, leaf=None):
     if kind=='bytes': return data
     text=data.decode('utf-8')
@@ -304,6 +345,8 @@ def convert(kind, data, commands, locations=None, leaf=None):
         return convert_foot_mouse_clipboard(data)
     if kind=='micro-bindings':
         return convert_micro_bindings(data)
+    if kind=='micro-theme':
+        return convert_micro_theme(data)
     if kind=='theme-leaf':
         if locations is None or leaf is None:
             raise ValueError('Theme leaf migration needs the selected XDG roots and leaf name')
@@ -456,6 +499,8 @@ def prepare(locations, directory, only=None):
     rows=[]; conflicts=[]; commands=selected_commands()
     for item,source,target in candidates(manifest,locations):
         if only is not None and item['id'] != only: continue
+        # This opt-in conversion needs an initialized, generated scheme.
+        if item['id'] == 'micro-theme' and only != 'micro-theme': continue
         before_source=snapshot(source)
         if before_source['kind']=='absent': continue
         if before_source['kind']=='link' and item['conversion']!='theme-leaf':
@@ -467,6 +512,8 @@ def prepare(locations, directory, only=None):
         except (ValueError,KeyError,TypeError,UnicodeError) as error:
             conflicts.append({'id':item['id'],'path':str(source),'reason':str(error)});continue
         if post is None: continue
+        if item['id'] == 'micro-theme' and not micro_theme_ready(locations):
+            conflicts.append({'id':item['id'],'path':str(source),'reason':'Generated Micro scheme is not initialized; personal scheme and settings preserved'});continue
         pre=snapshot(target)
         if source!=target and pre['kind']!='absent' and pre!=post:
             conflicts.append({'id':item['id'],'path':str(target),'reason':'Existing destination differs; neither file changed'});continue
@@ -509,6 +556,8 @@ def apply(directory, locations, stop_after=None):
     # Check the complete batch first. A modified destination/source never gets
     # overwritten by an old plan, including an interrupted previous attempt.
     for row in doc['rows']:
+        if row['id'] == 'micro-theme' and not micro_theme_ready(locations):
+            raise ValueError('Generated Micro scheme changed or is unavailable')
         actual=snapshot(Path(row['target']))
         if actual not in (row['before'],row['after']): raise ValueError('Destination changed since planning')
         if row['source']!=row['target'] and snapshot(Path(row['source']))!=row['sourceBefore']:
@@ -546,7 +595,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['plan','apply','rollback','status','preserve','restore','checkpoint-status'])
     parser.add_argument('journal',type=Path)
-    parser.add_argument('--only', choices=['imv-escape','foot-theme','micro-bindings','btop-theme','nvim-theme','share-picker-theme'],
+    parser.add_argument('--only', choices=['imv-escape','foot-theme','micro-bindings','micro-theme','btop-theme','nvim-theme','share-picker-theme'],
                         help='Plan only one finite migration path')
     parser.add_argument('--audio', action='store_true', help='Include owned tuning service, connected audio volumes/mutes and defaults')
     parser.add_argument('--audio-state', action='store_true', help='Separate persistent WirePlumber state checkpoint; requires WirePlumber stopped')

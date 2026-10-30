@@ -24,6 +24,13 @@
       "conversion": "micro-bindings"
     },
     {
+      "id": "micro-theme",
+      "root": "config",
+      "source": "micro/settings.json",
+      "target": "micro/settings.json",
+      "conversion": "micro-theme"
+    },
+    {
       "id": "kitty-theme",
       "root": "config",
       "source": "kitty/kitty.conf",
