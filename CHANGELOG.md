@@ -8,6 +8,9 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Correct version hover metadata and explorer path lookup; clarify paused shortcut capture.
+- Soften Tamarack Light with warm paper tones and improved text contrast.
+
 ## 0.5.10 - Develop candidate
 
 - Add a non-interactive hover tooltip to the topbar version widget

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 - Unreleased
+
+- Read metadata when environment overrides are empty and show the compositor version when available.
+
 ## 0.1.2 - Unreleased
 
 - Add a non-interactive hover tooltip showing the cultivar name, active Home

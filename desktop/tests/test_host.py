@@ -187,6 +187,18 @@ class SessionStartTests(unittest.TestCase):
                     "HOME": str(root), "TAMLINUX_BAR": "0", "TAMLINUX_VERSION": "stale"})
             self.assertEqual(env["TAMLINUX_VERSION"], "0.4.4-a")
 
+    def test_compositor_version_is_bounded_and_fails_closed(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        self.assertEqual(session_start.compositor_version({}), "")
+        with patch.object(session_start.subprocess, "run", return_value=SimpleNamespace(stdout='{"version":"0.56.2"}')) as run:
+            self.assertEqual(session_start.compositor_version({"HYPRLAND_INSTANCE_SIGNATURE": "test"}), "0.56.2")
+            self.assertEqual(run.call_args.kwargs["timeout"], 2)
+        with patch.object(session_start.subprocess, "run", return_value=SimpleNamespace(stdout='{"version":"bad value"}')):
+            self.assertEqual(session_start.compositor_version({"HYPRLAND_INSTANCE_SIGNATURE": "test"}), "")
+        with patch.object(session_start.subprocess, "run", side_effect=subprocess.TimeoutExpired("hyprctl", 2)):
+            self.assertEqual(session_start.compositor_version({"HYPRLAND_INSTANCE_SIGNATURE": "test"}), "")
+
     def test_source_version_and_missing_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

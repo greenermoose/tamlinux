@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -45,6 +47,22 @@ def shell_version(shell: Path = SHELL) -> str:
         return "unknown"
 
 
+def compositor_version(environ: dict[str, str]) -> str:
+    """Read the active Hyprland version once for the shared shell process."""
+    if not environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return ""
+    allowed = ("HOME", "XDG_RUNTIME_DIR", "HYPRLAND_INSTANCE_SIGNATURE")
+    try:
+        result = subprocess.run(
+            ["/usr/bin/hyprctl", "version", "-j"],
+            env={key: environ[key] for key in allowed if key in environ},
+            capture_output=True, text=True, timeout=2, check=True,
+        )
+        version = json.loads(result.stdout[:8192]).get("version", "")
+        return version if isinstance(version, str) and re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,3}", version) else ""
+    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+        return ""
+
 def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[str]]:
     """The shell's environment, and what to say in the journal."""
     env = {key: value for key, value in environ.items() if not key.startswith("OMARCHY_")}
@@ -55,6 +73,7 @@ def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[s
     env.setdefault("TAMLINUX_COMPOSITOR_COMMANDS", str(HOST))
     # Always describe the shell being launched, never an inherited selection.
     env["TAMLINUX_VERSION"] = shell_version()
+    env["TAMLINUX_HYPRLAND_VERSION"] = compositor_version(env)
     if env.get("TAMLINUX_BAR") == "0":
         return env, notes
     config = config_home(env)

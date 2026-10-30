@@ -76,7 +76,7 @@ class ThemeOwnership(unittest.TestCase):
         self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
 
     def test_tamarack_variants_generate_and_switch_from_shared_tokens(self):
-        for name, background, surface in (('tamarack-dark', '#0f1410', '#18201a'), ('tamarack-light', '#f5f5ec', '#e9eee2'), ('tamarack-dark', '#0f1410', '#18201a')):
+        for name, background, surface in (('tamarack-dark', '#0f1410', '#18201a'), ('tamarack-light', '#dfd8c7', '#d2c9b6'), ('tamarack-dark', '#0f1410', '#18201a')):
             self.call('set', name)
             output = subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True)
             payload = json.loads(output)
@@ -87,7 +87,7 @@ class ThemeOwnership(unittest.TestCase):
             self.assertEqual(payload['surfaces']['tooltip.background'], background)
             self.assertEqual(payload['surfaces']['image-picker.scrim'], background)
             self.assertEqual(payload['surfaces']['menu.selected-background'], surface)
-            self.assertIn('active_border_color = \"' + ('#86b86a' if name.endswith('dark') else '#35652e') + '\"', (self.current/'theme/hyprland.lua').read_text())
+            self.assertIn('active_border_color = \"' + ('#86b86a' if name.endswith('dark') else '#295326') + '\"', (self.current/'theme/hyprland.lua').read_text())
             self.assertEqual(palette['accentText'], background)
             self.assertIn(background[1:], (self.current/'theme/foot.ini').read_text())
             foot = configparser.ConfigParser()

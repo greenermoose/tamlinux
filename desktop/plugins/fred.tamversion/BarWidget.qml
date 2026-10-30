@@ -6,7 +6,7 @@ import Tam.Ui
 BarWidget {
   id: root
   moduleName: "fred.tamversion"
-  readonly property string pluginVersion: "0.1.2"
+  readonly property string pluginVersion: "0.1.3"
 
   readonly property string installedVersion: Quickshell.env("TAMLINUX_VERSION") || "unknown"
   // A completed milestone can have a shorter label without changing package
@@ -21,22 +21,24 @@ BarWidget {
 
   readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "") + "/.config")
 
-  readonly property bool hasCultivarEnv: Quickshell.env("TAMLINUX_CULTIVAR") !== undefined
+  readonly property bool hasCultivarEnv: !!Quickshell.env("TAMLINUX_CULTIVAR")
   property string cultivarName: hasCultivarEnv ? Quickshell.env("TAMLINUX_CULTIVAR") : ""
 
-  readonly property bool hasGenerationEnv: Quickshell.env("TAMLINUX_GENERATION") !== undefined
+  readonly property bool hasGenerationEnv: !!Quickshell.env("TAMLINUX_GENERATION")
   property string generationNumber: hasGenerationEnv ? Quickshell.env("TAMLINUX_GENERATION") : ""
 
-  readonly property bool hasKernelEnv: Quickshell.env("TAMLINUX_KERNEL_RELEASE") !== undefined
+  readonly property bool hasKernelEnv: !!Quickshell.env("TAMLINUX_KERNEL_RELEASE")
   property string kernelRelease: hasKernelEnv ? Quickshell.env("TAMLINUX_KERNEL_RELEASE") : ""
 
-  readonly property bool hasOsNameEnv: Quickshell.env("TAMLINUX_OS_NAME") !== undefined
+  readonly property bool hasOsNameEnv: !!Quickshell.env("TAMLINUX_OS_NAME")
   property string osName: hasOsNameEnv ? Quickshell.env("TAMLINUX_OS_NAME") : "Arch Linux"
 
   readonly property string compositorName: Quickshell.env("TAMLINUX_COMPOSITOR")
     || Quickshell.env("XDG_CURRENT_DESKTOP")
     || Quickshell.env("DESKTOP_SESSION")
     || "Hyprland"
+
+  readonly property string compositorVersion: Quickshell.env("TAMLINUX_HYPRLAND_VERSION") || ""
 
   FileView {
     id: cultivarFile
@@ -88,14 +90,14 @@ BarWidget {
       ? ("Tamlinux cultivar " + root.cultivarName + " " + root.displayVersion)
       : root.displayText
     var genLine = root.generationNumber !== ""
-      ? ("Home Manager Generation " + root.generationNumber + " (active rollback point)")
+      ? ("Home Manager Generation " + root.generationNumber)
       : "Home Manager generation unavailable"
     var kernelPart = root.kernelRelease !== ""
       ? ("Linux " + (root.kernelRelease.indexOf("-") !== -1 ? root.kernelRelease.split("-")[0] : root.kernelRelease))
       : ""
     var hostParts = [root.osName]
     if (kernelPart !== "") hostParts.push(kernelPart)
-    if (root.compositorName !== "") hostParts.push(root.compositorName)
+    if (root.compositorName !== "") hostParts.push(root.compositorName + (root.compositorVersion !== "" ? " " + root.compositorVersion : ""))
     var hostLine = hostParts.join(" · ")
     return [title, genLine, hostLine, "", "fred.tamversion v" + root.pluginVersion].join("\n")
   }

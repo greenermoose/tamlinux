@@ -20,7 +20,7 @@ layouts can insert `{ "id": "fred.tamversion" }` immediately before the clock.
 
 Hovering over the version label shows a concise, non-interactive system
 identity tooltip: the full cultivar name and version, the active Home Manager
-generation rollback point, host platform details (distribution, kernel, and
-compositor), and the plugin version footer.
+generation, host platform details (distribution, kernel, and
+compositor version when available), and the plugin version footer.
 
 Original Tamlinux code, licensed GPL-3.0-or-later under the repository license.

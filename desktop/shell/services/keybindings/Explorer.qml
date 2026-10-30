@@ -24,6 +24,8 @@ PanelWindow {
   property var lastTriedChord: []
   property string lastTriedCombo: ""
   property string commandPath: ""
+  property int selectionSerial: 0
+  property bool pathPending: false
   readonly property string appVersion: Model.APP_VERSION || "0.1.0"
   readonly property string buildRevision: Quickshell.env("TAMLINUX_KEYBINDINGS_REV") || ""
   readonly property string cultivarVersion: Quickshell.env("TAMLINUX_VERSION") || ""
@@ -214,21 +216,36 @@ PanelWindow {
       search.forceActiveFocus()
     }
   }
-  onSelectedChanged: {
-    commandPath = ""
-    if (!selected || selected.dispatcher !== "exec") return
+  function lookupSelectedPath() {
+    if (pathLookup.running || !selected || selected.dispatcher !== "exec") return
     var match = selected.arg.match(/^([A-Za-z0-9_./+-]+)(?:\s|$)/)
-    if (match && !pathLookup.running) {
+    if (match) {
       pathLookup.target = selected.arg
+      pathLookup.serial = selectionSerial
       pathLookup.command = ["sh", "-c", 'command -v -- "$1"', "sh", match[1]]
       pathLookup.running = true
+    } else {
+      pathPending = false
     }
+  }
+  onSelectedChanged: {
+    selectionSerial++
+    commandPath = ""
+    pathPending = !!selected && selected.dispatcher === "exec"
+    lookupSelectedPath()
   }
   Process {
     environment: Util.hostEnvironment()
     id: pathLookup
     property string target: ""
+    property int serial: 0
     stdout: StdioCollector { onStreamFinished: if (panel.selected && panel.selected.arg === pathLookup.target && text.trim().charAt(0) === "/") panel.commandPath = text.trim() }
+    onExited: {
+      if (panel.selected && panel.selectionSerial !== serial)
+        Qt.callLater(panel.lookupSelectedPath)
+      else
+        panel.pathPending = false
+    }
   }
   ShortcutInhibitor {
     id: inhibitor
@@ -974,7 +991,7 @@ PanelWindow {
 
                     Text {
                       width: parent.width - 16
-                      text: panel.commandPath ? panel.commandPath : (panel.selected && panel.selected.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
+                      text: panel.commandPath ? panel.commandPath : (panel.selected && panel.selected.dispatcher === "exec" ? (panel.pathPending ? "Checking executable…" : "Executable not found on PATH") : "Built-in compositor dispatcher")
                       font.family: Style.fontFamily
                       font.pixelSize: 11
                       color: panel.commandPath ? Commons.Color.menu.text : (panel.selected && panel.selected.dispatcher === "exec" ? Commons.Color.urgent : Commons.Color.muted)
@@ -1165,7 +1182,7 @@ PanelWindow {
                   anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
-                  text: inhibitor.active ? "Capture Active — Safe to test" : "Waiting for compositor capture"
+                  text: inhibitor.active ? "Capture Active — Safe to test" : (panel.lastCaptured ? "Capture paused — focus to resume" : "Waiting for compositor capture")
                   color: inhibitor.active ? Commons.Color.accentText : Commons.Color.menu.text
                   font.pixelSize: 11
                   font.bold: true
@@ -1190,7 +1207,7 @@ PanelWindow {
           font.pixelSize: 13
           text: inhibitor.active
             ? "Shortcuts are intercepted and will not run the command. Press any key combination to test it, and press another anytime."
-            : "Waiting for the compositor to grant shortcut capture. Press Esc to exit."
+            : (panel.lastCaptured ? "Capture is paused. Focus this window to resume, or press Esc to exit." : "Waiting for the compositor to grant shortcut capture. Press Esc to exit.")
         }
 
         Row {
@@ -1735,7 +1752,7 @@ PanelWindow {
 
                       Text {
                         width: parent.width - 20
-                        text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? "Executable not found on PATH" : "Built-in compositor dispatcher")
+                        text: panel.commandPath ? panel.commandPath : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? (panel.pathPending ? "Checking executable…" : "Executable not found on PATH") : "Built-in compositor dispatcher")
                         font.family: Style.fontFamily
                         font.pixelSize: 11
                         color: panel.commandPath ? Commons.Color.foreground : (panel.lastCaptured && panel.lastCaptured.dispatcher === "exec" ? Commons.Color.urgent : Commons.Color.muted)
