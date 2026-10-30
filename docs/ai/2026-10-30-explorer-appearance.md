@@ -28,3 +28,5 @@ The Micro template now derives its green and gold roles and selection fill by mi
 Added a repeatable pseudo-terminal test that launches Micro and checks the emitted 256-colour indices for each generated pair against the standard xterm palette. It passed with Micro 2.0.15 and skips if Micro is absent; it does not validate selection composition or physical display output.
 
 Added a separate selection test that sends Shift-right to Micro in a pseudo-terminal and checks the selected character's emitted foreground and background in both Tamarack variants and both true-colour and 256-colour modes. Both Micro output tests pass. Other terminal palettes and physical rendering remain open.
+
+An opt-in isolated Sway/GTK 4/libadwaita feasibility test creates a temporary user stylesheet from both Tamarack variants, then checks a label's foreground and a fullscreen window's screenshot background. It passed with GTK 4.24.1 and libadwaita 1.10.0. This is not a shipped adapter and does not verify other controls, application-specific styling, user CSS recovery or physical appearance.
