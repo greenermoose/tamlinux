@@ -106,14 +106,36 @@ class BrowserPolicy(unittest.TestCase):
         self.assertTrue(other.is_symlink())
         self.assertFalse(self.path.exists())
 
-    def test_non_strict_policy_is_not_silently_assumed_safe(self):
+    def test_chromium_json_extensions_preserve_unrelated_policy(self):
         other = self.directory/'comments.json'
-        contents = '{// browser accepts comments\n"ShowHomeButton": true,\n}'
+        contents = ('{// line comment\n"ShowHomeButton": true, /* block */\n'
+                    '"values": ["https://example.test/*literal*/", "BrowserThemeColor",],\n}')
         other.write_text(contents)
-        with self.assertRaisesRegex(ValueError, 'cannot inspect.*comments.json'):
+        self.apply()
+        self.assertEqual(other.read_text(), contents)
+        self.assertEqual(json.loads(self.path.read_text())['BrowserThemeColor'], '#123abc')
+
+    def test_commented_policy_with_escaped_theme_key_still_conflicts(self):
+        other = self.directory/'comments.json'
+        contents = '{/* comment */ "BrowserTheme\\u0043olor": "#111111", // trailing\n}'
+        other.write_text(contents)
+        with self.assertRaisesRegex(ValueError, 'theme policy.*comments.json'):
             self.apply()
         self.assertEqual(other.read_text(), contents)
+        self.assertFalse(self.path.exists())
         self.assertFalse(self.recovery.exists())
+
+    def test_malformed_extensions_are_refused_before_writing(self):
+        other = self.directory/'comments.json'
+        for contents in ('{/* unterminated', '{,}', '{"x":[,]}',
+                         '{"x":1,,}', '{"x":"bad\nstring"}', '{"x":NaN}'):
+            with self.subTest(contents=contents):
+                other.write_text(contents)
+                with self.assertRaisesRegex(ValueError, 'cannot inspect.*comments.json'):
+                    self.apply()
+                self.assertEqual(other.read_text(), contents)
+                self.assertFalse(self.path.exists())
+                self.assertFalse(self.recovery.exists())
 
     def test_policy_inspection_is_bounded(self):
         for index in range(129):
