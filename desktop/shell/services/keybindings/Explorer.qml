@@ -1347,16 +1347,20 @@ PanelWindow {
             anchors.centerIn: parent
             spacing: 8
             visible: macroList.count === 0
-            width: parent.width - 32
+            width: parent.width - 48
             Text {
-              anchors.horizontalCenter: parent.horizontalCenter
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
               text: panel.macros.length === 0 ? "No text macros defined" : "No matching macros found"
               font.bold: true
               font.pixelSize: 16
               color: Commons.Color.menu.text
             }
             Text {
-              anchors.horizontalCenter: parent.horizontalCenter
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
               text: panel.macros.length === 0 ? "Click '+ Add Macro' above to create your first text expansion shortcut." : "Try clearing your search query."
               color: Commons.Color.menu.text
               opacity: 0.6
@@ -1377,16 +1381,20 @@ PanelWindow {
             anchors.centerIn: parent
             spacing: 8
             visible: panel.macroEditorMode === "none" && !panel.selectedMacro
-            width: parent.width - 32
+            width: parent.width - 48
             Text {
-              anchors.horizontalCenter: parent.horizontalCenter
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
               text: "Select a text macro"
               font.bold: true
               font.pixelSize: 16
               color: Commons.Color.menu.text
             }
             Text {
-              anchors.horizontalCenter: parent.horizontalCenter
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
               text: "Choose a macro on the left to inspect, edit, or test, or click + Add Macro"
               color: Commons.Color.menu.text
               opacity: 0.6
@@ -1452,6 +1460,7 @@ PanelWindow {
 
                 Text {
                   width: parent.width
+                  wrapMode: Text.WordWrap
                   text: (panel.selectedMacro && panel.selectedMacro.description) ? panel.selectedMacro.description : "User text macro"
                   color: Commons.Color.foreground
                   font.pixelSize: 18
@@ -1569,6 +1578,7 @@ PanelWindow {
                   spacing: 10
                   Text {
                     width: parent.width
+                    wrapMode: Text.WordWrap
                     text: "Delete macro on Meta + Alt + " + (panel.selectedMacro ? panel.selectedMacro.key : "") + "?"
                     color: Commons.Color.foreground
                     font.bold: true
@@ -1576,6 +1586,7 @@ PanelWindow {
                   }
                   Text {
                     width: parent.width
+                    wrapMode: Text.WordWrap
                     text: "This will remove the text shortcut and unbind it from Hyprland."
                     color: Commons.Color.muted
                     font.pixelSize: 12
@@ -1770,6 +1781,7 @@ PanelWindow {
               Text {
                 visible: panel.macroValidationError !== ""
                 width: parent.width
+                wrapMode: Text.WordWrap
                 text: panel.macroValidationError
                 color: Commons.Color.accent
                 font.bold: true
