@@ -181,9 +181,9 @@ class TamMacroTest(unittest.TestCase):
         self.assertIsNotNone(wl_copy_call)
         self.assertEqual(wl_copy_call[1].get("input"), b"hello world")
 
-        # Subsequent calls are sendkeystate down and up
-        down_call = next((c for c in calls if c[0] and c[0][:3] == ["hyprctl", "dispatch", "sendkeystate"] and "down" in c[0][3]), None)
-        up_call = next((c for c in calls if c[0] and c[0][:3] == ["hyprctl", "dispatch", "sendkeystate"] and "up" in c[0][3]), None)
+        # Subsequent calls are send_key_state down and up
+        down_call = next((c for c in calls if c[0] and c[0][:2] == ["hyprctl", "dispatch"] and "state = \"down\"" in c[0][2]), None)
+        up_call = next((c for c in calls if c[0] and c[0][:2] == ["hyprctl", "dispatch"] and "state = \"up\"" in c[0][2]), None)
         self.assertIsNotNone(down_call)
         self.assertIsNotNone(up_call)
 
