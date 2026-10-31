@@ -132,6 +132,7 @@ install() {
   for old in "$builds"/*/; do
     [[ ${old%/} == "$out" ]] || remove_build "${old%/}"
   done
+  pkill -f "quickshell.*services/keybindings/dev-trial.qml" 2>/dev/null || true
   reload_bindings
   echo "dev-trial: SUPER + K now opens the explorer from tamlinux ${rev:0:12}"
 }
@@ -145,6 +146,7 @@ uninstall() {
   fi
   for old in "$builds"/* "$builds"/.build.*; do remove_build "$old"; done
   rm -f -- "$record"
+  pkill -f "quickshell.*services/keybindings/dev-trial.qml" 2>/dev/null || true
   reload_bindings
   rmdir --ignore-fail-on-non-empty -- "$builds" "$dev/share/tamlinux/dev-trials" "$dev/share/tamlinux" "$state" 2>/dev/null || true
   echo "dev-trial: removed; SUPER + K uses $(PATH=$dev/bin:$PATH; command -v "$name" || echo "nothing")"

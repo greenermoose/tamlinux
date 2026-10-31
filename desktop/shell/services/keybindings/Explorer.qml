@@ -68,7 +68,6 @@ PanelWindow {
 
   function loadMacros(raw) {
     var s = String(raw || "").trim()
-    if (!s && panel.macros.length > 0) return
     var parsed = Model.parseMacros(s || "[]")
     panel.macros = parsed
     panel.rawMacros = s
@@ -97,6 +96,23 @@ PanelWindow {
     panel.rawMacros = jsonText
     macrosFile.setText(jsonText)
     syncMacros()
+  }
+
+  function deleteMacro(key) {
+    var k = String(key || "").trim().toUpperCase()
+    if (!k) return
+    var updated = []
+    for (var i = 0; i < panel.macros.length; i++) {
+      var itemKey = String(panel.macros[i].key || "").trim().toUpperCase()
+      if (itemKey !== k) {
+        updated.push(panel.macros[i])
+      }
+    }
+    panel.saveMacroChanges(updated)
+    if (panel.selectedMacro && String(panel.selectedMacro.key || "").trim().toUpperCase() === k) {
+      panel.selectedMacro = updated.length > 0 ? updated[0] : null
+    }
+    panel.showDeleteConfirm = false
   }
 
   function syncMacros() {
@@ -370,9 +386,7 @@ PanelWindow {
     atomicWrites: true
     printErrors: false
     onLoaded: panel.loadMacros(text())
-    onLoadFailed: {
-      if (!panel.macros || panel.macros.length === 0) panel.loadMacros("[]")
-    }
+    onLoadFailed: panel.loadMacros("[]")
     onFileChanged: reload()
   }
   Process {
@@ -1284,6 +1298,11 @@ PanelWindow {
           model: panel.filteredMacros
           activeFocusOnTab: true
           ScrollBar.vertical: ScrollBar { }
+          Keys.onDeletePressed: {
+            if (panel.selectedMacro) {
+              panel.showDeleteConfirm = true
+            }
+          }
           delegate: Rectangle {
             id: macroRowDelegate
             required property var modelData
@@ -1637,16 +1656,7 @@ PanelWindow {
                       isAccent: true
                       onClicked: {
                         if (panel.selectedMacro) {
-                          var keyToDelete = panel.selectedMacro.key
-                          var updated = []
-                          for (var i = 0; i < panel.macros.length; i++) {
-                            if (panel.macros[i].key !== keyToDelete) {
-                              updated.push(panel.macros[i])
-                            }
-                          }
-                          panel.saveMacroChanges(updated)
-                          panel.selectedMacro = updated.length > 0 ? updated[0] : null
-                          panel.showDeleteConfirm = false
+                          panel.deleteMacro(panel.selectedMacro.key)
                         }
                       }
                     }
