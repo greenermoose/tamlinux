@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) checks generated btop palette contrast. [Session](docs/ai/2026-10-31-btop-contrast.md).
+
 2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-sol`) drafts the accepted 0.6 workstation upgrade plan and reviews 0.5 closure. [Session](docs/ai/2026-10-30-upgrade-plan-and-05-review.md).
 
 2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) fixes editor theme contrast. [Session](docs/ai/2026-10-30-editor-contrast.md).
