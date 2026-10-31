@@ -186,8 +186,8 @@ class ExplorerRecordsTest(unittest.TestCase):
         self.assertIn("terminal", rows[0]["explanation"].lower())
 
     def test_sort_can_use_key_or_action_without_changing_records(self):
-        rows = [{"does": "Zoom", "key": "A", "combo": "SUPER + A", "modmask": 64},
-                {"does": "Audio", "key": "Z", "combo": "SUPER + Z", "modmask": 64}]
+        rows = [{"does": "Zoom", "key": "A", "combo": "Meta + A", "modmask": 64},
+                {"does": "Audio", "key": "Z", "combo": "Meta + Z", "modmask": 64}]
         result = run_model("[M.sortExplorer(JSON.parse(TEXTS[0]), 'key'), M.sortExplorer(JSON.parse(TEXTS[0]), 'name')]", json.dumps(rows))
         self.assertEqual([r['does'] for r in result[0]], ['Zoom', 'Audio'])
         self.assertEqual([r['does'] for r in result[1]], ['Audio', 'Zoom'])
@@ -265,21 +265,21 @@ class ExplorerRecordsTest(unittest.TestCase):
         rows = run_model("M.explorerRecords(TEXTS[0], TEXTS[1])", HYPRLAND_BINDS, COMMAND_TABLE)
         zoom = next(row for row in rows if row["does"] == "Zoom out")
         self.assertEqual((zoom["modmask"], zoom["key"]), (65, "code:20"))
-        self.assertEqual(zoom["chord"], ["SUPER", "SHIFT", "MINUS"])
+        self.assertEqual(zoom["chord"], ["Meta", "Shift", "MINUS"])
         self.assertEqual((zoom["dispatcher"], zoom["arg"]),
                          ("lua", "hl.dsp.zoom({ by = -1 })"))
 
     def test_chord_keys_formats_distinct_key_badges(self):
-        self.assertEqual(run_model("M.chordKeys(65, 'W')"), ["SUPER", "SHIFT", "W"])
-        self.assertEqual(run_model("M.chordKeys(64, 'RETURN')"), ["SUPER", "RETURN"])
+        self.assertEqual(run_model("M.chordKeys(65, 'W')"), ["Meta", "Shift", "W"])
+        self.assertEqual(run_model("M.chordKeys(64, 'RETURN')"), ["Meta", "RETURN"])
         self.assertEqual(run_model("M.chordKeys(0, 'ESCAPE')"), ["ESCAPE"])
         self.assertEqual(run_model("M.chordKeys(9, 'L')"), ["SHIFT", "ALT", "L"])
-        self.assertEqual(run_model("M.chordKeys(64, 'code:20')"), ["SUPER", "MINUS"])
+        self.assertEqual(run_model("M.chordKeys(64, 'code:20')"), ["Meta", "MINUS"])
 
     def test_modifier_and_search_filters_combine(self):
         rows = run_model('M.filterExplorer(M.explorerRecords(TEXTS[0], TEXTS[1]), "shift", "zoom dsp")', HYPRLAND_BINDS, COMMAND_TABLE)
         self.assertEqual([row["does"] for row in rows], ["Zoom out"])
-        rows = run_model('M.filterExplorer(M.explorerRecords(TEXTS[0], TEXTS[1]), "super", "zoom")', HYPRLAND_BINDS, COMMAND_TABLE)
+        rows = run_model('M.filterExplorer(M.explorerRecords(TEXTS[0], TEXTS[1]), "meta", "zoom")', HYPRLAND_BINDS, COMMAND_TABLE)
         self.assertEqual(rows, [])
 
     def test_capture_matches_physical_code_and_exact_modifiers(self):
@@ -422,8 +422,8 @@ class ModelTests(unittest.TestCase):
             ),
             [
                 "", "SHIFT", "CTRL", "SHIFT CTRL", "ALT", "SHIFT ALT", "CTRL ALT",
-                "SHIFT CTRL ALT", "SUPER", "SUPER SHIFT", "SUPER CTRL", "SUPER SHIFT CTRL",
-                "SUPER ALT", "SUPER SHIFT ALT", "SUPER CTRL ALT", "SUPER SHIFT CTRL ALT",
+                "SHIFT CTRL ALT", "Meta", "Meta Shift", "Meta Ctrl", "Meta Shift Ctrl",
+                "Meta Alt", "Meta Shift Alt", "Meta Ctrl Alt", "Meta Shift Ctrl Alt",
             ],
         )
         self.assertEqual(run_model("M.modsText(66)"), "66")
@@ -448,15 +448,15 @@ class ModelTests(unittest.TestCase):
 
     def test_combines_the_modifiers_and_the_key_label(self):
         self.assertEqual(run_model('M.comboText(0, "XF86AudioMute")'), "XF86AudioMute")
-        self.assertEqual(run_model('M.comboText(65, "code:20")'), "SUPER SHIFT + MINUS")
+        self.assertEqual(run_model('M.comboText(65, "code:20")'), "Meta Shift + MINUS")
 
     def test_formats_the_rows_of_hyprland_binds(self):
         self.assertEqual(
             run_model("M.formatRecords(M.records(TEXTS[0], TEXTS[1]))", HYPRLAND_BINDS, COMMAND_TABLE),
             "SHIFT ALT + L                       → Copy URL from Web App\tsendshortcut\tSHIFT ALT,L,\n"
             "SHIFT ALT + D                       → Download Video from Web App\tsendshortcut\tSHIFT ALT,D,\n"
-            "SUPER + code:36                     → foot\texec\tuwsm app -- foot\n"
-            "SUPER SHIFT + MINUS                 → Zoom out\tlua\thl.dsp.zoom({ by = -1 })\n",
+            "Meta + code:36                      → foot\texec\tuwsm app -- foot\n"
+            "Meta Shift + MINUS                  → Zoom out\tlua\thl.dsp.zoom({ by = -1 })\n",
         )
 
     def test_sway_bindings_are_read_from_the_json_form(self):
@@ -466,7 +466,7 @@ class ModelTests(unittest.TestCase):
                 '[{"modmask":64,"key":"1","dispatcher":"workspace","arg":"number 1"}]', "",
             ),
             STATIC_ROWS + [{
-                "display": "SUPER + 1                           → workspace number 1",
+                "display": "Meta + 1                            → workspace number 1",
                 "dispatcher": "workspace",
                 "arg": "number 1",
             }],
@@ -497,7 +497,7 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(
             run_model("M.records(TEXTS[0], TEXTS[1])", bind + bind, COMMAND_TABLE),
             STATIC_ROWS + [{
-                "display": "SUPER SHIFT + MINUS                 → Zoom out",
+                "display": "Meta Shift + MINUS                  → Zoom out",
                 "dispatcher": "lua",
                 "arg": "hl.dsp.zoom({ by = -1 })",
             }],
@@ -521,7 +521,7 @@ class ModelTests(unittest.TestCase):
                               dispatcher="__lua", arg="4"),
                 COMMAND_TABLE,
             ),
-            STATIC_ROWS + [{"display": "SUPER + RETURN                      → Terminal",
+            STATIC_ROWS + [{"display": "Meta + RETURN                       → Terminal",
                             "dispatcher": "exec", "arg": "foot"}],
         )
 
@@ -545,12 +545,12 @@ class ModelTests(unittest.TestCase):
         rows = self.fixture_rows()
         self.assertEqual(len(rows), 249)
         self.assertEqual(rows[0], {
-            "display": "SUPER CTRL + T                      → Activity",
+            "display": "Meta Ctrl + T                       → Activity",
             "dispatcher": "exec",
             "arg": "tam-launch-tui 'btop'",
         })
         self.assertEqual(rows[-1], {
-            "display": "SUPER CTRL + Z                      → Zoom in",
+            "display": "Meta Ctrl + Z                       → Zoom in",
             "dispatcher": "",
             "arg": "",
         })
@@ -560,11 +560,11 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(
             [row_parts(row["display"]) for row in rows],
             [
-                ("SUPER CTRL ALT + Z", "Reset zoom"),
-                ("SUPER + C", "Universal copy"),
-                ("SUPER + X", "Universal cut"),
-                ("SUPER + V", "Universal paste"),
-                ("SUPER CTRL + Z", "Zoom in"),
+                ("Meta Ctrl Alt + Z", "Reset zoom"),
+                ("Meta + C", "Universal copy"),
+                ("Meta + X", "Universal cut"),
+                ("Meta + V", "Universal paste"),
+                ("Meta Ctrl + Z", "Zoom in"),
             ],
         )
         self.assertTrue(all(row["arg"] == "" for row in rows))
@@ -582,12 +582,12 @@ class ModelTests(unittest.TestCase):
     def test_fixture_desktops_sort_numerically(self):
         rows = self.fixture_rows()
         self.assertEqual(rows[187], {
-            "display": "SUPER + 2                           → Switch desktop 2",
+            "display": "Meta + 2                            → Switch desktop 2",
             "dispatcher": "exec",
             "arg": "tam-desktop-mode switch 2",
         })
         self.assertEqual(rows[203], {
-            "display": "SUPER + 0                           → Switch desktop 10",
+            "display": "Meta + 0                            → Switch desktop 10",
             "dispatcher": "exec",
             "arg": "tam-desktop-mode switch 10",
         })
@@ -667,6 +667,59 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("Process", text)
         # Only the attribution comment may name the inherited viewer it was ported from.
         self.assertNotIn("omarchy-", without_comments(text))
+
+
+class MacroModelTests(unittest.TestCase):
+    def test_parse_and_format_macros(self):
+        raw = json.dumps([
+            {"key": "m", "description": "Greeting", "text": "Hello world!"},
+            {"key": "RETURN", "description": "", "text": "Newline insert"},
+            {"key": "", "description": "Invalid", "text": "no key"},
+            {"key": "X", "description": "Empty text", "text": ""},
+        ])
+        parsed = run_model("M.parseMacros(TEXTS[0])", raw)
+        self.assertEqual(len(parsed), 2)
+        self.assertEqual(parsed[0]["key"], "M")
+        self.assertEqual(parsed[0]["description"], "Greeting")
+        self.assertEqual(parsed[0]["text"], "Hello world!")
+        self.assertEqual(parsed[0]["chord"], ["Meta", "Alt", "M"])
+        self.assertEqual(parsed[0]["combo"], "Meta + Alt + M")
+        self.assertEqual(parsed[1]["key"], "RETURN")
+
+        formatted = run_model("M.formatMacros(M.parseMacros(TEXTS[0]))", raw)
+        roundtrip = json.loads(formatted)
+        self.assertEqual(len(roundtrip), 2)
+        self.assertEqual(roundtrip[0]["key"], "M")
+        self.assertEqual(roundtrip[0]["text"], "Hello world!")
+
+    def test_parse_macros_resilient_to_malformed_input(self):
+        self.assertEqual(run_model("M.parseMacros(TEXTS[0])", ""), [])
+        self.assertEqual(run_model("M.parseMacros(TEXTS[0])", "{not json"), [])
+        self.assertEqual(run_model("M.parseMacros(TEXTS[0])", "{}"), [])
+        self.assertEqual(run_model("M.parseMacros(null)"), [])
+
+    def test_validate_macro(self):
+        self.assertEqual(run_model("M.validateMacro('m', 'Hello')"), {"valid": True, "error": ""})
+        self.assertEqual(run_model("M.validateMacro('F12', 'System glance')"), {"valid": True, "error": ""})
+        self.assertEqual(run_model("M.validateMacro('', 'Hello')")["valid"], False)
+        self.assertEqual(run_model("M.validateMacro('M', '')")["valid"], False)
+        self.assertEqual(run_model("M.validateMacro('INVALID KEYNAME', 'Text')")["valid"], False)
+
+    def test_macro_chord_and_filter(self):
+        self.assertEqual(run_model("M.macroChord('m')"), "Meta + Alt + M")
+        self.assertEqual(run_model("M.macroChord('F1')"), "Meta + Alt + F1")
+        macros = [
+            {"key": "M", "description": "Meeting link", "text": "https://meet.google.com/abc"},
+            {"key": "S", "description": "Signature", "text": "Kind regards,\nFred"},
+        ]
+        res = run_model("M.filterMacros(JSON.parse(TEXTS[0]), 'meet')", json.dumps(macros))
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["key"], "M")
+        res2 = run_model("M.filterMacros(JSON.parse(TEXTS[0]), 'regards')", json.dumps(macros))
+        self.assertEqual(len(res2), 1)
+        self.assertEqual(res2[0]["key"], "S")
+        res3 = run_model("M.filterMacros(JSON.parse(TEXTS[0]), 'none')", json.dumps(macros))
+        self.assertEqual(len(res3), 0)
 
 
 if __name__ == "__main__":

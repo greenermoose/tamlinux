@@ -31,6 +31,43 @@ PanelWindow {
   readonly property string cultivarVersion: Quickshell.env("TAMLINUX_VERSION") || ""
   signal dismissRequested()
 
+  property string currentSection: "shortcuts"
+  property var rawMacros: []
+  readonly property var macros: Model.parseMacros(rawMacros)
+  readonly property var filteredMacros: Model.filterMacros(macros, macroSearch.text)
+  property var selectedMacro: null
+  property string macroEditorMode: "none"
+  property string macroEditKey: ""
+  property string macroEditDesc: ""
+  property string macroEditText: ""
+  property string macroValidationError: ""
+  property bool showDeleteConfirm: false
+
+  function loadMacros(raw) {
+    panel.rawMacros = raw
+    if (panel.macros.length > 0 && !panel.selectedMacro) {
+      panel.selectedMacro = panel.macros[0]
+    }
+  }
+
+  function saveMacroChanges(updatedList) {
+    var jsonText = Model.formatMacros(updatedList)
+    macrosFile.setText(jsonText)
+    panel.rawMacros = jsonText
+    syncMacros()
+  }
+
+  function syncMacros() {
+    var bin = Quickshell.env("TAMLINUX_MACRO_BIN") || "tam-macro"
+    macroSyncProcess.command = [bin, "sync"]
+    macroSyncProcess.running = true
+  }
+
+  function copyMacroText(text) {
+    macroClipboardProcess.textToCopy = text
+    macroClipboardProcess.running = true
+  }
+
   component DarkButton: Button {
     id: btn
     property bool isAccent: false
@@ -114,6 +151,9 @@ PanelWindow {
   onVisibleChanged: {
     if (visible) {
       showingTable = false
+      currentSection = "shortcuts"
+      macroEditorMode = "none"
+      showDeleteConfirm = false
       search.text = ""
       modifier = "all"
       group = "All groups"
@@ -139,6 +179,22 @@ PanelWindow {
     || (groupSelect.popup && groupSelect.popup.visible)
     || (sortSelect.popup && sortSelect.popup.visible)
   function handleEscapeStep(event) {
+    if (panel.macroEditorMode !== "none") {
+      panel.macroEditorMode = "none"
+      if (event) event.accepted = true
+      return
+    }
+    if (panel.showDeleteConfirm) {
+      panel.showDeleteConfirm = false
+      if (event) event.accepted = true
+      return
+    }
+    if (panel.currentSection === "macros" && macroSearch.text.length > 0) {
+      macroSearch.text = ""
+      macroSearch.forceActiveFocus()
+      if (event) event.accepted = true
+      return
+    }
     if (capturing) {
       finishCapture()
       if (event) event.accepted = true
@@ -263,6 +319,45 @@ PanelWindow {
     sequence: "Meta+Backspace"
     onActivated: panel.closeExplorer()
   }
+  FileView {
+    id: macrosFile
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/macros.json"
+    watchChanges: true
+    atomicWrites: true
+    printErrors: false
+    onLoaded: panel.loadMacros(text())
+    onLoadFailed: panel.loadMacros("[]")
+    onFileChanged: panel.loadMacros(text())
+  }
+  Process {
+    id: macroSyncProcess
+    command: ["tam-macro", "sync"]
+    environment: Util.hostEnvironment()
+  }
+  Process {
+    id: macroClipboardProcess
+    property string textToCopy: ""
+    command: ["wl-copy", "--", textToCopy]
+    environment: Util.hostEnvironment()
+  }
+  Shortcut {
+    sequence: "Ctrl+1"
+    onActivated: {
+      panel.currentSection = "shortcuts"
+      search.forceActiveFocus()
+    }
+  }
+  Shortcut {
+    sequence: "Ctrl+2"
+    onActivated: {
+      panel.currentSection = "macros"
+      panel.macroEditorMode = "none"
+      if (panel.filteredMacros.length > 0 && !panel.selectedMacro) {
+        panel.selectedMacro = panel.filteredMacros[0]
+      }
+      macroSearch.forceActiveFocus()
+    }
+  }
   Rectangle { anchors.fill: parent; color: Commons.Color.menu.scrim }
   MouseArea { anchors.fill: parent; onClicked: panel.closeExplorer() }
   Rectangle {
@@ -286,11 +381,53 @@ PanelWindow {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 12
           Text {
-            text: "Keyboard shortcuts"
+            text: panel.currentSection === "macros" ? "Text macros" : "Keyboard shortcuts"
             color: Commons.Color.menu.text
-            font.pixelSize: 24
+            font.pixelSize: 22
             font.bold: true
             anchors.verticalCenter: parent.verticalCenter
+          }
+          Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            height: 30
+            width: tabSwitcherRow.implicitWidth + 4
+            radius: Style.cornerRadius
+            color: Util.alpha(Commons.Color.foreground, 0.05)
+            border.color: Util.alpha(Commons.Color.foreground, 0.15)
+            border.width: 1
+            Row {
+              id: tabSwitcherRow
+              anchors.centerIn: parent
+              spacing: 2
+              DarkButton {
+                id: shortcutsTabBtn
+                text: "Shortcuts"
+                isAccent: panel.currentSection === "shortcuts"
+                height: 26
+                leftPadding: 10
+                rightPadding: 10
+                onClicked: {
+                  panel.currentSection = "shortcuts"
+                  search.forceActiveFocus()
+                }
+              }
+              DarkButton {
+                id: macrosTabBtn
+                text: "Text Macros"
+                isAccent: panel.currentSection === "macros"
+                height: 26
+                leftPadding: 10
+                rightPadding: 10
+                onClicked: {
+                  panel.currentSection = "macros"
+                  panel.macroEditorMode = "none"
+                  if (panel.filteredMacros.length > 0 && !panel.selectedMacro) {
+                    panel.selectedMacro = panel.filteredMacros[0]
+                  }
+                  macroSearch.forceActiveFocus()
+                }
+              }
+            }
           }
           Rectangle {
             id: versionBadge
@@ -342,6 +479,8 @@ PanelWindow {
         }
       }
       Row {
+        id: shortcutsSearchRow
+        visible: panel.currentSection === "shortcuts"
         width: parent.width; height: 40; spacing: 10
         TextField {
           id: search
@@ -396,6 +535,8 @@ PanelWindow {
         }
       }
       Item {
+        id: shortcutsFilterRow
+        visible: panel.currentSection === "shortcuts"
         width: parent.width; height: 34
         Row {
           anchors.left: parent.left
@@ -404,16 +545,16 @@ PanelWindow {
           Text { text: "Modifier keys"; color: Commons.Color.foreground; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
           FilterBox {
             id: modifierSelect
-            model: ["All", "Super", "Super + Alt", "Super + Ctrl", "Super + Shift"]
+            model: ["All", "Meta", "Meta + Alt", "Meta + Ctrl", "Meta + Shift"]
             KeyNavigation.tab: groupSelect
             KeyNavigation.backtab: tryButton
             KeyNavigation.right: groupSelect
             KeyNavigation.left: tryButton
-            onCurrentIndexChanged: panel.modifier = ["all", "super", "alt", "ctrl", "shift"][currentIndex] || "all"
+            onCurrentIndexChanged: panel.modifier = ["all", "meta", "alt", "ctrl", "shift"][currentIndex] || "all"
             Connections {
               target: panel
               function onModifierChanged() {
-                var index = ["all", "super", "alt", "ctrl", "shift"].indexOf(panel.modifier)
+                var index = ["all", "meta", "alt", "ctrl", "shift"].indexOf(panel.modifier)
                 if (index >= 0 && modifierSelect.currentIndex !== index) modifierSelect.currentIndex = index
               }
             }
@@ -549,6 +690,8 @@ PanelWindow {
         }
       }
       Row {
+        id: shortcutsContentRow
+        visible: panel.currentSection === "shortcuts"
         width: parent.width
         height: parent.height - y
         spacing: 18
@@ -1003,6 +1146,669 @@ PanelWindow {
           }
         }
       }
+      Row {
+        id: macroSearchRow
+        visible: panel.currentSection === "macros"
+        width: parent.width; height: 40; spacing: 10
+        TextField {
+          id: macroSearch
+          width: parent.width - 150
+          height: parent.height
+          color: Commons.Color.foreground
+          placeholderTextColor: Commons.Color.muted
+          selectedTextColor: Commons.Color.accentText
+          selectionColor: Commons.Color.accent
+          font.pixelSize: 13
+          leftPadding: 14
+          rightPadding: 14
+          verticalAlignment: Text.AlignVCenter
+          activeFocusOnTab: true
+          background: Rectangle {
+            radius: Style.cornerRadius
+            color: Commons.Color.background
+            border.color: macroSearch.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
+            border.width: 1
+          }
+          placeholderText: "Search macros by key, description, or phrase..."
+          Keys.priority: Keys.BeforeItem
+          Keys.onDownPressed: if (macroList.count > 0) macroList.forceActiveFocus()
+          Keys.onReturnPressed: if (macroList.count > 0) macroList.forceActiveFocus()
+        }
+        DarkButton {
+          id: addMacroButton
+          width: 140
+          height: parent.height
+          isAccent: true
+          text: "+ Add Macro"
+          onClicked: {
+            panel.macroEditKey = ""
+            panel.macroEditDesc = ""
+            panel.macroEditText = ""
+            panel.macroValidationError = ""
+            panel.macroEditorMode = "add"
+          }
+        }
+      }
+      Item {
+        id: macroSubtitleRow
+        visible: panel.currentSection === "macros"
+        width: parent.width; height: 30
+        Row {
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: 8
+          Text {
+            text: "Press Meta + Alt + [Key] to type pre-defined phrases into any focused window."
+            color: Commons.Color.menu.text
+            opacity: 0.75
+            font.pixelSize: 12
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+        Rectangle {
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          height: 24
+          width: macroCountText.implicitWidth + 16
+          radius: 12
+          color: Util.alpha(Commons.Color.foreground, 0.04)
+          border.color: Util.alpha(Commons.Color.foreground, 0.16)
+          border.width: 1
+          Text {
+            id: macroCountText
+            anchors.centerIn: parent
+            text: panel.macros.length + (panel.macros.length === 1 ? " macro" : " macros")
+            color: Commons.Color.foreground
+            opacity: 0.85
+            font.pixelSize: 11
+            font.bold: true
+          }
+        }
+      }
+      Row {
+        id: macroContentRow
+        visible: panel.currentSection === "macros"
+        width: parent.width
+        height: parent.height - y
+        spacing: 18
+
+        ListView {
+          id: macroList
+          width: Math.floor((parent.width - 18) * 0.57)
+          height: parent.height
+          clip: true
+          spacing: 4
+          model: panel.filteredMacros
+          activeFocusOnTab: true
+          ScrollBar.vertical: ScrollBar { }
+          delegate: Rectangle {
+            id: macroRowDelegate
+            required property var modelData
+            required property int index
+            readonly property bool isSelected: panel.selectedMacro && panel.selectedMacro.key === modelData.key
+            width: macroList.width
+            height: 50
+            radius: 6
+            color: isSelected ? Util.alpha(Commons.Color.accent, 0.22) : (macroHover.containsMouse ? Util.alpha(Commons.Color.foreground, 0.06) : "transparent")
+            border.color: isSelected ? Commons.Color.accent : (macroHover.containsMouse ? Util.alpha(Commons.Color.foreground, 0.15) : "transparent")
+            border.width: 1
+
+            Rectangle {
+              anchors.left: parent.left
+              anchors.leftMargin: 3
+              anchors.verticalCenter: parent.verticalCenter
+              width: 3
+              height: 26
+              radius: 1.5
+              color: Commons.Color.accent
+              visible: macroRowDelegate.isSelected
+            }
+
+            Row {
+              id: macroChordRow
+              anchors.left: parent.left
+              anchors.leftMargin: macroRowDelegate.isSelected ? 14 : 12
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: 4
+
+              Repeater {
+                model: ["Meta", "Alt", modelData.key]
+                Row {
+                  spacing: 4
+                  anchors.verticalCenter: parent.verticalCenter
+                  Text {
+                    visible: index > 0
+                    text: "+"
+                    color: macroRowDelegate.isSelected ? Commons.Color.foreground : Commons.Color.menu.text
+                    font.pixelSize: 11
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                  Rectangle {
+                    height: 22
+                    width: Math.max(22, macroKeyLabel.implicitWidth + 12)
+                    radius: 4
+                    color: macroRowDelegate.isSelected ? Util.alpha(Commons.Color.accent, 0.28) : Util.alpha(Commons.Color.foreground, 0.08)
+                    border.color: macroRowDelegate.isSelected ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.18)
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      id: macroKeyLabel
+                      anchors.centerIn: parent
+                      text: modelData
+                      color: macroRowDelegate.isSelected ? Commons.Color.foreground : Commons.Color.menu.text
+                      font.pixelSize: 11
+                      font.bold: true
+                      font.family: Style.fontFamily
+                    }
+                  }
+                }
+              }
+            }
+
+            Column {
+              anchors.left: macroChordRow.right
+              anchors.leftMargin: 14
+              anchors.right: parent.right
+              anchors.rightMargin: 12
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: 3
+              Text {
+                width: parent.width
+                text: modelData.description || ("Macro " + modelData.key)
+                color: macroRowDelegate.isSelected ? Commons.Color.foreground : Commons.Color.menu.text
+                font.bold: true
+                font.pixelSize: 13
+                elide: Text.ElideRight
+              }
+              Text {
+                width: parent.width
+                text: modelData.text.replace(/\n/g, " ")
+                color: Commons.Color.muted
+                font.pixelSize: 11
+                elide: Text.ElideRight
+              }
+            }
+
+            MouseArea {
+              id: macroHover
+              anchors.fill: parent
+              hoverEnabled: true
+              onClicked: {
+                panel.selectedMacro = modelData
+                panel.macroEditorMode = "none"
+                panel.showDeleteConfirm = false
+                macroList.forceActiveFocus()
+              }
+            }
+          }
+
+          Column {
+            anchors.centerIn: parent
+            spacing: 8
+            visible: macroList.count === 0
+            width: parent.width - 32
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: panel.macros.length === 0 ? "No text macros defined" : "No matching macros found"
+              font.bold: true
+              font.pixelSize: 16
+              color: Commons.Color.menu.text
+            }
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: panel.macros.length === 0 ? "Click '+ Add Macro' above to create your first text expansion shortcut." : "Try clearing your search query."
+              color: Commons.Color.menu.text
+              opacity: 0.6
+              font.pixelSize: 13
+            }
+          }
+        }
+
+        Rectangle {
+          width: parent.width - macroList.width - 18
+          height: parent.height
+          radius: 8
+          color: Util.alpha(Commons.Color.foreground, 0.03)
+          border.color: Util.alpha(Commons.Color.foreground, 0.12)
+          border.width: 1
+
+          Column {
+            anchors.centerIn: parent
+            spacing: 8
+            visible: panel.macroEditorMode === "none" && !panel.selectedMacro
+            width: parent.width - 32
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "Select a text macro"
+              font.bold: true
+              font.pixelSize: 16
+              color: Commons.Color.menu.text
+            }
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "Choose a macro on the left to inspect, edit, or test, or click + Add Macro"
+              color: Commons.Color.menu.text
+              opacity: 0.6
+              font.pixelSize: 13
+            }
+          }
+
+          Flickable {
+            id: macroReviewFlick
+            anchors.fill: parent
+            anchors.margins: 18
+            visible: panel.macroEditorMode === "none" && !!panel.selectedMacro
+            contentWidth: width
+            contentHeight: macroReviewCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Column {
+              id: macroReviewCol
+              width: parent.width
+              spacing: 16
+
+              Column {
+                width: parent.width
+                spacing: 8
+                Row {
+                  spacing: 6
+                  anchors.left: parent.left
+                  Repeater {
+                    model: ["Meta", "Alt", panel.selectedMacro ? panel.selectedMacro.key : ""]
+                    Row {
+                      spacing: 6
+                      anchors.verticalCenter: parent.verticalCenter
+                      Text {
+                        visible: index > 0
+                        text: "+"
+                        color: Commons.Color.foreground
+                        font.pixelSize: 13
+                        font.bold: true
+                        anchors.verticalCenter: parent.verticalCenter
+                      }
+                      Rectangle {
+                        height: 28
+                        width: Math.max(28, macroRevKeyText.implicitWidth + 16)
+                        radius: 5
+                        color: Util.alpha(Commons.Color.accent, 0.25)
+                        border.color: Commons.Color.accent
+                        border.width: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text {
+                          id: macroRevKeyText
+                          anchors.centerIn: parent
+                          text: modelData
+                          color: Commons.Color.foreground
+                          font.pixelSize: 12
+                          font.bold: true
+                          font.family: Style.fontFamily
+                        }
+                      }
+                    }
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: (panel.selectedMacro && panel.selectedMacro.description) ? panel.selectedMacro.description : "User text macro"
+                  color: Commons.Color.foreground
+                  font.pixelSize: 18
+                  font.bold: true
+                }
+
+                Row {
+                  spacing: 12
+                  Rectangle {
+                    height: 22
+                    width: macroStatsText.implicitWidth + 14
+                    radius: 11
+                    color: Util.alpha(Commons.Color.foreground, 0.08)
+                    border.color: Util.alpha(Commons.Color.foreground, 0.2)
+                    border.width: 1
+                    Text {
+                      id: macroStatsText
+                      anchors.centerIn: parent
+                      text: {
+                        if (!panel.selectedMacro) return ""
+                        var len = panel.selectedMacro.text.length
+                        var lines = panel.selectedMacro.text.split("\n").length
+                        return len + " characters · " + lines + (lines === 1 ? " line" : " lines")
+                      }
+                      color: Commons.Color.foreground
+                      font.pixelSize: 11
+                      font.bold: true
+                    }
+                  }
+                }
+              }
+
+              Column {
+                width: parent.width
+                spacing: 6
+                Text {
+                  text: "Snippet preview"
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Commons.Color.foreground
+                  opacity: 0.6
+                }
+                Rectangle {
+                  width: parent.width
+                  height: Math.min(220, Math.max(80, macroPreviewText.contentHeight + 24))
+                  radius: Style.cornerRadius
+                  color: Commons.Color.background
+                  border.color: Util.alpha(Commons.Color.foreground, 0.18)
+                  border.width: 1
+                  Flickable {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    contentWidth: macroPreviewText.implicitWidth
+                    contentHeight: macroPreviewText.implicitHeight
+                    clip: true
+                    ScrollBar.vertical: ScrollBar { }
+                    ScrollBar.horizontal: ScrollBar { }
+                    TextEdit {
+                      id: macroPreviewText
+                      text: panel.selectedMacro ? panel.selectedMacro.text : ""
+                      readOnly: true
+                      selectByMouse: true
+                      color: Commons.Color.foreground
+                      font.pixelSize: 12
+                      font.family: Style.fontFamily
+                    }
+                  }
+                }
+              }
+
+              Row {
+                width: parent.width
+                spacing: 10
+                visible: !panel.showDeleteConfirm
+
+                DarkButton {
+                  text: "Edit Macro"
+                  isAccent: true
+                  onClicked: {
+                    panel.macroEditKey = panel.selectedMacro.key
+                    panel.macroEditDesc = panel.selectedMacro.description
+                    panel.macroEditText = panel.selectedMacro.text
+                    panel.macroValidationError = ""
+                    panel.macroEditorMode = "edit"
+                  }
+                }
+
+                DarkButton {
+                  text: "Copy to Clipboard"
+                  onClicked: {
+                    if (panel.selectedMacro) {
+                      panel.copyMacroText(panel.selectedMacro.text)
+                    }
+                  }
+                }
+
+                DarkButton {
+                  text: "Delete Macro"
+                  onClicked: panel.showDeleteConfirm = true
+                }
+              }
+
+              Rectangle {
+                width: parent.width
+                height: delCol.implicitHeight + 24
+                visible: panel.showDeleteConfirm
+                radius: Style.cornerRadius
+                color: Util.alpha(Commons.Color.foreground, 0.05)
+                border.color: Commons.Color.accent
+                border.width: 1
+                Column {
+                  id: delCol
+                  anchors.fill: parent
+                  anchors.margins: 12
+                  spacing: 10
+                  Text {
+                    width: parent.width
+                    text: "Delete macro on Meta + Alt + " + (panel.selectedMacro ? panel.selectedMacro.key : "") + "?"
+                    color: Commons.Color.foreground
+                    font.bold: true
+                    font.pixelSize: 13
+                  }
+                  Text {
+                    width: parent.width
+                    text: "This will remove the text shortcut and unbind it from Hyprland."
+                    color: Commons.Color.muted
+                    font.pixelSize: 12
+                  }
+                  Row {
+                    spacing: 8
+                    DarkButton {
+                      text: "Confirm Delete"
+                      isAccent: true
+                      onClicked: {
+                        if (panel.selectedMacro) {
+                          var keyToDelete = panel.selectedMacro.key
+                          var updated = panel.macros.filter(function(m) { return m.key !== keyToDelete })
+                          panel.saveMacroChanges(updated)
+                          panel.selectedMacro = updated.length > 0 ? updated[0] : null
+                          panel.showDeleteConfirm = false
+                        }
+                      }
+                    }
+                    DarkButton {
+                      text: "Cancel"
+                      onClicked: panel.showDeleteConfirm = false
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          Flickable {
+            id: macroEditorFlick
+            anchors.fill: parent
+            anchors.margins: 18
+            visible: panel.macroEditorMode !== "none"
+            contentWidth: width
+            contentHeight: macroEditorCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Column {
+              id: macroEditorCol
+              width: parent.width
+              spacing: 14
+
+              Text {
+                text: panel.macroEditorMode === "add" ? "Add Text Macro" : "Edit Text Macro"
+                font.bold: true
+                font.pixelSize: 18
+                color: Commons.Color.foreground
+              }
+
+              Column {
+                width: parent.width
+                spacing: 6
+                Text {
+                  text: "Key combination"
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Commons.Color.foreground
+                }
+                Row {
+                  width: parent.width
+                  spacing: 8
+                  Text {
+                    text: "Meta + Alt +"
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Commons.Color.foreground
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                  TextField {
+                    id: keyInputField
+                    width: 70
+                    height: 32
+                    text: panel.macroEditKey
+                    color: Commons.Color.foreground
+                    placeholderTextColor: Commons.Color.muted
+                    selectedTextColor: Commons.Color.accentText
+                    selectionColor: Commons.Color.accent
+                    font.pixelSize: 13
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    maximumLength: 10
+                    background: Rectangle {
+                      radius: 4
+                      color: Commons.Color.background
+                      border.color: keyInputField.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
+                      border.width: 1
+                    }
+                    onTextChanged: panel.macroEditKey = text.toUpperCase().trim()
+                  }
+                  Rectangle {
+                    height: 24
+                    width: availText.implicitWidth + 14
+                    radius: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    readonly property var existingMatch: {
+                      var k = panel.macroEditKey.toUpperCase()
+                      if (!k) return null
+                      for (var i = 0; i < panel.macros.length; i++) {
+                        if (panel.macros[i].key === k) return panel.macros[i]
+                      }
+                      return null
+                    }
+                    readonly property bool isOverwrite: existingMatch && (panel.macroEditorMode === "add" || existingMatch.key !== (panel.selectedMacro ? panel.selectedMacro.key : ""))
+                    color: isOverwrite ? Util.alpha(Commons.Color.foreground, 0.12) : Util.alpha(Commons.Color.accent, 0.16)
+                    border.color: isOverwrite ? Util.alpha(Commons.Color.foreground, 0.3) : Commons.Color.accent
+                    border.width: 1
+                    Text {
+                      id: availText
+                      anchors.centerIn: parent
+                      text: {
+                        if (!panel.macroEditKey) return "Enter key"
+                        if (parent.isOverwrite) return "Assigned: will overwrite"
+                        return "Available"
+                      }
+                      color: Commons.Color.foreground
+                      font.pixelSize: 11
+                      font.bold: true
+                    }
+                  }
+                }
+              }
+
+              Column {
+                width: parent.width
+                spacing: 6
+                Text {
+                  text: "Description (optional)"
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Commons.Color.foreground
+                }
+                TextField {
+                  id: descInputField
+                  width: parent.width
+                  height: 34
+                  text: panel.macroEditDesc
+                  color: Commons.Color.foreground
+                  placeholderTextColor: Commons.Color.muted
+                  selectedTextColor: Commons.Color.accentText
+                  selectionColor: Commons.Color.accent
+                  font.pixelSize: 13
+                  placeholderText: "e.g. Work Signature, Meeting Link, Shell One-liner"
+                  background: Rectangle {
+                    radius: Style.cornerRadius
+                    color: Commons.Color.background
+                    border.color: descInputField.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
+                    border.width: 1
+                  }
+                  onTextChanged: panel.macroEditDesc = text
+                }
+              }
+
+              Column {
+                width: parent.width
+                spacing: 6
+                Text {
+                  text: "Text to type / expand"
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Commons.Color.foreground
+                }
+                Rectangle {
+                  width: parent.width
+                  height: 180
+                  radius: Style.cornerRadius
+                  color: Commons.Color.background
+                  border.color: textInputArea.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
+                  border.width: 1
+                  ScrollView {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    TextArea {
+                      id: textInputArea
+                      text: panel.macroEditText
+                      placeholderText: "Enter the full text phrase, snippet, or boilerplate..."
+                      color: Commons.Color.foreground
+                      placeholderTextColor: Commons.Color.muted
+                      selectedTextColor: Commons.Color.accentText
+                      selectionColor: Commons.Color.accent
+                      font.pixelSize: 12
+                      font.family: Style.fontFamily
+                      wrapMode: TextEdit.Wrap
+                      onTextChanged: panel.macroEditText = text
+                    }
+                  }
+                }
+              }
+
+              Text {
+                visible: panel.macroValidationError !== ""
+                width: parent.width
+                text: panel.macroValidationError
+                color: Commons.Color.accent
+                font.bold: true
+                font.pixelSize: 12
+              }
+
+              Row {
+                spacing: 10
+                DarkButton {
+                  text: "Save Macro"
+                  isAccent: true
+                  onClicked: {
+                    var val = Model.validateMacro(panel.macroEditKey, panel.macroEditText)
+                    if (!val.valid) {
+                      panel.macroValidationError = val.error
+                      return
+                    }
+                    var key = panel.macroEditKey.toUpperCase()
+                    var updated = panel.macros.filter(function(m) { return m.key !== key })
+                    var item = {
+                      key: key,
+                      description: panel.macroEditDesc.trim(),
+                      text: panel.macroEditText
+                    }
+                    updated.push(item)
+                    panel.saveMacroChanges(updated)
+                    panel.selectedMacro = item
+                    panel.macroEditorMode = "none"
+                  }
+                }
+                DarkButton {
+                  text: "Cancel"
+                  onClicked: panel.macroEditorMode = "none"
+                }
+              }
+            }
+          }
+        }
+      }
     }
     Rectangle {
       anchors.fill: parent
@@ -1046,14 +1852,14 @@ PanelWindow {
           spacing: 8
           Text {
             width: parent.width
-            text: panel.bindingsAvailable ? "Live bindings · * means no reported binding · Super is held in every column" : "No bindings available from the compositor"
+            text: panel.bindingsAvailable ? "Live bindings · * means no reported binding · Meta is held in every column" : "No bindings available from the compositor"
             color: Commons.Color.foreground
             font.pixelSize: 12
           }
           Row {
             width: parent.width; height: 28; spacing: 2
             Repeater {
-              model: ["Key", "Super", "+ Alt", "+ Ctrl", "+ Shift"]
+              model: ["Key", "Meta", "+ Alt", "+ Ctrl", "+ Shift"]
               Rectangle {
                 required property int index
                 required property var modelData
@@ -1419,11 +2225,12 @@ PanelWindow {
 
                   Repeater {
                     model: [
-                      { combo: "SUPER + RETURN", desc: "Terminal" },
-                      { combo: "SUPER + BACKSPACE", desc: "Close" },
-                      { combo: "SUPER + K", desc: "Explorer" },
-                      { combo: "SUPER + SPACE", desc: "Launcher" },
-                      { combo: "ALT + TAB", desc: "Cycle" }
+                      { combo: "Meta + Return", desc: "Terminal" },
+                      { combo: "Meta + Backspace", desc: "Close" },
+                      { combo: "Meta + F", desc: "Files" },
+                      { combo: "Meta + K", desc: "Explorer" },
+                      { combo: "Meta + Space", desc: "Launcher" },
+                      { combo: "Alt + Tab", desc: "Cycle" }
                     ]
                     Rectangle {
                       height: 24

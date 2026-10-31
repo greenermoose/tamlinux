@@ -326,7 +326,7 @@ var entries = [
     "mnemonic": "Remember T for toggle window floating/tiling."
   },
   {
-    "mask": 64,
+    "mask": 65,
     "key": "F",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })",
@@ -344,15 +344,6 @@ var entries = [
     "mnemonic": "Remember F for tiled full screen."
   },
   {
-    "mask": 72,
-    "key": "F",
-    "dispatcher": "lua",
-    "arg": "hl.dsp.window.fullscreen({ mode = \"maximized\" })",
-    "action": "Maximize the focused window without using true fullscreen.",
-    "why": "The letter groups this action with related shortcuts while its modifiers distinguish the variant.",
-    "mnemonic": "Remember F for full width."
-  },
-  {
     "mask": 64,
     "key": "O",
     "dispatcher": "exec",
@@ -362,7 +353,7 @@ var entries = [
     "mnemonic": "Remember O for pop window out (float & pin)."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "Home",
     "dispatcher": "exec",
     "arg": "tam-hyprland-window-width save",
@@ -704,7 +695,7 @@ var entries = [
     "mnemonic": "Remember S for toggle scratchpad."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "S",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ follow = false, workspace = \"special:scratchpad\" })",
@@ -848,7 +839,7 @@ var entries = [
     "mnemonic": "Use TAB for reveal active window on top."
   },
   {
-    "mask": 72,
+    "mask": 64,
     "key": "Next",
     "dispatcher": "lua",
     "arg": "hl.dsp.focus({ monitor = \"+1\" })",
@@ -857,7 +848,7 @@ var entries = [
     "mnemonic": "Use Next for focus on next monitor."
   },
   {
-    "mask": 72,
+    "mask": 64,
     "key": "Prior",
     "dispatcher": "lua",
     "arg": "hl.dsp.focus({ monitor = \"-1\" })",
@@ -902,7 +893,7 @@ var entries = [
     "mnemonic": "Semicolon and apostrophe adjust height; the right key moves the edge right or down."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "comma",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.resize({ relative = true, x = -25, y = 0 })",
@@ -911,7 +902,7 @@ var entries = [
     "mnemonic": "Comma and period adjust width; the left key moves the edge left or up."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "period",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.resize({ relative = true, x = 25, y = 0 })",
@@ -920,7 +911,7 @@ var entries = [
     "mnemonic": "Comma and period adjust width; the right key moves the edge right or down."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "semicolon",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.resize({ relative = true, x = 0, y = -25 })",
@@ -929,7 +920,7 @@ var entries = [
     "mnemonic": "Semicolon and apostrophe adjust height; the left key moves the edge left or up."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "apostrophe",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.resize({ relative = true, x = 0, y = 25 })",
@@ -1028,7 +1019,7 @@ var entries = [
     "mnemonic": "Remember G for toggle window grouping."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "G",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ out_of_group = true })",
@@ -1037,7 +1028,7 @@ var entries = [
     "mnemonic": "Remember G for move active window out of group."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "LEFT",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"l\" })",
@@ -1046,7 +1037,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "RIGHT",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"r\" })",
@@ -1055,7 +1046,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "UP",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"u\" })",
@@ -1064,7 +1055,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "DOWN",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"d\" })",
@@ -1073,7 +1064,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "TAB",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.next()",
@@ -1100,7 +1091,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "mouse_down",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.next()",
@@ -1109,7 +1100,7 @@ var entries = [
     "mnemonic": "Use mouse_down for next window in group."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "mouse_up",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.prev()",
@@ -1118,7 +1109,7 @@ var entries = [
     "mnemonic": "Use mouse_up for previous window in group."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "code:10",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.active({ index = 1 })",
@@ -1127,7 +1118,7 @@ var entries = [
     "mnemonic": "Use keycode 10 for switch to group window 1."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "code:11",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.active({ index = 2 })",
@@ -1136,7 +1127,7 @@ var entries = [
     "mnemonic": "Use keycode 11 for switch to group window 2."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "code:12",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.active({ index = 3 })",
@@ -1145,7 +1136,7 @@ var entries = [
     "mnemonic": "Use keycode 12 for switch to group window 3."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "code:13",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.active({ index = 4 })",
@@ -1154,7 +1145,7 @@ var entries = [
     "mnemonic": "Use keycode 13 for switch to group window 4."
   },
   {
-    "mask": 72,
+    "mask": 5,
     "key": "code:14",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.active({ index = 5 })",
@@ -1172,7 +1163,7 @@ var entries = [
     "mnemonic": "Use SLASH for monitor scaling up."
   },
   {
-    "mask": 72,
+    "mask": 4,
     "key": "SLASH",
     "dispatcher": "exec",
     "arg": "tam-hyprland-monitor-scaling down",
@@ -1190,8 +1181,8 @@ var entries = [
     "mnemonic": "Use SPACE for tamlinux menu."
   },
   {
-    "mask": 72,
-    "key": "SPACE",
+    "mask": 4,
+    "key": "F12",
     "dispatcher": "exec",
     "arg": "tam-menu toggle apps",
     "action": "Open the applications menu to launch an app.",
@@ -1271,7 +1262,7 @@ var entries = [
     "mnemonic": "Remember K for keybindings."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "K",
     "dispatcher": "exec",
     "arg": "tam-menu-tmux-keybindings",
@@ -1379,8 +1370,8 @@ var entries = [
     "mnemonic": "Remember N for toggle silencing notifications."
   },
   {
-    "mask": 72,
-    "key": "N",
+    "mask": 4,
+    "key": "F11",
     "dispatcher": "exec",
     "arg": "tam-shell notifications invokeLast",
     "action": "Invoke last notification. Use this to manage notifications.",
@@ -1388,7 +1379,7 @@ var entries = [
     "mnemonic": "Remember N for invoke last notification."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "H",
     "dispatcher": "exec",
     "arg": "tam-shell notifications showHistory",
@@ -1424,7 +1415,7 @@ var entries = [
     "mnemonic": "Use Delete for toggle laptop display."
   },
   {
-    "mask": 72,
+    "mask": 65,
     "key": "Delete",
     "dispatcher": "exec",
     "arg": "tam-hyprland-monitor-internal-mirror toggle",
@@ -1451,7 +1442,7 @@ var entries = [
     "mnemonic": "Use PRINT for screenrecording."
   },
   {
-    "mask": 72,
+    "mask": 68,
     "key": "code:34",
     "dispatcher": "exec",
     "arg": "tam-capture-webcam-resize smaller",
@@ -1460,7 +1451,7 @@ var entries = [
     "mnemonic": "Use keycode 34 for make webcam overlay smaller."
   },
   {
-    "mask": 72,
+    "mask": 68,
     "key": "code:35",
     "dispatcher": "exec",
     "arg": "tam-capture-webcam-resize larger",
@@ -1514,8 +1505,8 @@ var entries = [
     "mnemonic": "Remember R for set reminder."
   },
   {
-    "mask": 72,
-    "key": "R",
+    "mask": 4,
+    "key": "F9",
     "dispatcher": "exec",
     "arg": "tam-reminder show",
     "action": "List currently scheduled reminders.",
@@ -1532,8 +1523,8 @@ var entries = [
     "mnemonic": "Remember R for clear reminders."
   },
   {
-    "mask": 72,
-    "key": "T",
+    "mask": 4,
+    "key": "F1",
     "dispatcher": "exec",
     "arg": "tam-notification-time",
     "action": "Display the current time in a notification.",
@@ -1541,8 +1532,8 @@ var entries = [
     "mnemonic": "Remember T for show time."
   },
   {
-    "mask": 72,
-    "key": "P",
+    "mask": 4,
+    "key": "F2",
     "dispatcher": "exec",
     "arg": "tam-notification-battery",
     "action": "Display remaining battery charge in a notification.",
@@ -1550,8 +1541,8 @@ var entries = [
     "mnemonic": "Remember P for show battery remaining."
   },
   {
-    "mask": 72,
-    "key": "W",
+    "mask": 4,
+    "key": "F3",
     "dispatcher": "exec",
     "arg": "tam-shell tamlinux-shell toggle fred.weather",
     "action": "Toggle weather. Use it to switch this setting or view.",
@@ -1595,8 +1586,8 @@ var entries = [
     "mnemonic": "Remember D for display."
   },
   {
-    "mask": 72,
-    "key": "D",
+    "mask": 4,
+    "key": "F4",
     "dispatcher": "exec",
     "arg": "tam-shell tamlinux-shell toggle fred.clock",
     "action": "Open the calendar to inspect dates.",
@@ -1766,7 +1757,7 @@ var entries = [
     "mnemonic": "Use RETURN for browser."
   },
   {
-    "mask": 65,
+    "mask": 64,
     "key": "F",
     "dispatcher": "exec",
     "arg": "tam-launch-nautilus",
@@ -1775,8 +1766,8 @@ var entries = [
     "mnemonic": "Remember F for file manager."
   },
   {
-    "mask": 72,
-    "key": "E",
+    "mask": 64,
+    "key": "D",
     "dispatcher": "exec",
     "arg": "tam-launch-nautilus-cwd",
     "action": "Open File manager (cwd) so you can use it.",
@@ -1793,8 +1784,8 @@ var entries = [
     "mnemonic": "Remember B for browser."
   },
   {
-    "mask": 72,
-    "key": "B",
+    "mask": 65,
+    "key": "W",
     "dispatcher": "exec",
     "arg": "tam-launch-browser --private",
     "action": "Open Browser (private) so you can use it.",
@@ -1811,8 +1802,8 @@ var entries = [
     "mnemonic": "Remember E for editor."
   },
   {
-    "mask": 72,
-    "key": "RETURN",
+    "mask": 4,
+    "key": "F8",
     "dispatcher": "exec",
     "arg": "tam-launch-terminal-tmux",
     "action": "Open Tmux so you can use it.",
@@ -1838,8 +1829,8 @@ var entries = [
     "mnemonic": "Remember M for music."
   },
   {
-    "mask": 72,
-    "key": "M",
+    "mask": 4,
+    "key": "F5",
     "dispatcher": "exec",
     "arg": "tam-launch-or-focus-tui 'cliamp'",
     "action": "Open Music TUI so you can use it.",
@@ -1910,8 +1901,8 @@ var entries = [
     "mnemonic": "Remember A for chatgpt."
   },
   {
-    "mask": 72,
-    "key": "A",
+    "mask": 4,
+    "key": "F6",
     "dispatcher": "exec",
     "arg": "tam-launch-webapp 'https://grok.com'",
     "action": "Open Grok so you can use it.",
@@ -1928,8 +1919,8 @@ var entries = [
     "mnemonic": "Remember Y for youtube."
   },
   {
-    "mask": 72,
-    "key": "I",
+    "mask": 4,
+    "key": "F7",
     "dispatcher": "exec",
     "arg": "tam-launch-or-focus-webapp 'WhatsApp' 'https://web.whatsapp.com/'",
     "action": "Open WhatsApp so you can use it.",
@@ -1973,8 +1964,8 @@ var entries = [
     "mnemonic": "Remember X for x."
   },
   {
-    "mask": 72,
-    "key": "X",
+    "mask": 4,
+    "key": "F10",
     "dispatcher": "exec",
     "arg": "tam-launch-webapp 'https://x.com/compose/post'",
     "action": "Open X Post so you can use it.",
