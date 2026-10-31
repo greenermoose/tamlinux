@@ -23,6 +23,7 @@ Run, and Release) is private operating procedure, not duplicated here.
 | [Easy workstation upgrades](workstation-upgrade.md) | Approved 2026-10-30: released-assembly upgrades and recovery. |
 | [Input usability](input-usability.md) | Approved for 0.5 (K22–K25): modifier model, clipboard, titlebar close. |
 | [Keybinding usability](keybinding-usability.md) | Open 0.5 binding and explorer work. |
+| [Text macros and Meta naming](text-macros-and-meta.md) | Complete desktop-wide macro delivery, reserve Meta+Alt, unify naming and package the trial. |
 | [Start menu](start-menu.md) | Combined Quick Launch + Settings; packaged acceptance pending. |
 | [Console-first startup](console-first-startup.md) | Text login; optional desktop via `tam-desktop`. |
 | [Console welcome](console-welcome.md) | Console greeting and first-run messaging. |

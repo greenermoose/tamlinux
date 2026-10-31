@@ -2,6 +2,15 @@
 
 **Status:** Approved by Fred on 2026-10-29; implementation in Develop. Physical and package trials remain open. Extends the approved [input-usability plan](input-usability.md) and its K22–K23 acceptance. The current running bindings remain the baseline until an exact candidate is promoted.
 
+## Current continuation (2026-10-31)
+
+The [text macros and Meta naming plan](text-macros-and-meta.md) is the current
+completion path. Fred now reserves Meta+Alt keyboard chords for text macros;
+the Meta+Alt system assignments below are superseded and must not be restored.
+The dated development handoff and map below describe the earlier baseline,
+not the installed explorer trial. Preserve the action coverage, explanation
+requirements and physical-key constraints while completing the newer plan.
+
 ## Development handoff (2026-10-29)
 
 The explorer is version 0.4.2. Its source is committed through `b756e27`;

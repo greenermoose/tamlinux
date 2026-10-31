@@ -59,3 +59,12 @@ BackSpace macro and one slash macro, both on Meta+Alt with release handling;
 Hyprland reports no configuration errors. No packaged Test/Run stage moved.
 The confirmation establishes the exercised text field, not every application
 or layer-shell surface.
+
+## Completion handoff
+
+Fred requested: “Write this up as a plan and handoff that another agent can complete.”
+The [completion plan](../plans/text-macros-and-meta.md) specifies remaining
+surface/timing compatibility, prefix migration, Meta naming, package lifecycle
+and acceptance. It marks earlier Meta+Alt default assignments superseded and
+keeps physical evidence separate from unverified application classes. This
+follow-up changes documentation only.
