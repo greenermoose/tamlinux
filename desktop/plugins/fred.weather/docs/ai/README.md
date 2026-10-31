@@ -1,3 +1,6 @@
+> **Historical 1.x archive.** These records document Omarchy-era plugin work. Product plugins now live in this repository under `desktop/plugins/`; marketplace Publish and Omarchy shell process are frozen. Private agent guides (for example `ai-session-stores.md`) are not in this tree — do not follow broken relative links as current procedure.
+
+
 # AI Collaboration Session Archive: `weather-fred-tamlinux`
 
 One file per session.

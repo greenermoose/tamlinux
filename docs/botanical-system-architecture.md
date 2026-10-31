@@ -1,5 +1,12 @@
 # Botanical System Architecture: Pots, Nuts, Root-stocks, and Cultivars
 
+**Target architecture — not the current host.** Today's workstation runs
+Arch Linux with Tamlinux's Hyprland/Quickshell cultivar (see
+[system-layers.md](system-layers.md) and [VERSION](../VERSION)). This document
+describes the intended layered design (Void root-stock, Limine/UKI, Sway
+cultivar). Do not treat its diagrams as a description of the machine you are
+editing now.
+
 Tamlinux is an independent workstation environment designed to deliver an exceptional, responsive, and reliable computing experience across modern and older hardware. A foundational principle of Tamlinux is **transparency and empowerment**: users should enjoy a streamlined, productive daily driver out of the box, while retaining complete clarity into how their operating system is built, why each component was chosen, and how every layer can be inspected and understood.
 
 To make the architecture intuitive, maintainable, and decoupled, Tamlinux uses a botanical taxonomy inspired by arboriculture and the tamarack (*Larix laricina*):

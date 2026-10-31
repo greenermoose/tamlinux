@@ -8,18 +8,13 @@ Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
-**Status:** First command slice approved by Fred on 2026-09-23; the component
-repository now implements milestones 1–5 (command foundation, offline guide,
-orientation/explanation, installation inspection, engine enhancements) and is
-at `tam 0.9.1`, with a native C renderer/pager, a native manual-page subsystem
-(`tam show`, `tam man`) and plain-text pipe output, in the
-[command source](https://github.com/greenermoose/tam). Milestones 6–9 (a corpus
-index and `tam search`, a content-depth ladder, read-only self-inspection, and
-an opt-in grounded `ask`) are planned in the component's
-[development plan](https://github.com/greenermoose/tam/blob/main/docs/plans/development.md).
-The command was named `tam` on 2026-10-07; the package/data namespace remains
-`tamlinux`. The approved first slice developed independently and feeds 0.7
-packaging; it does not block settings/menu/theme ownership or Omarchy removal.
+**Status (2026-10-31):** The separate [`tam`](https://github.com/greenermoose/tam)
+component ships with current Tamlinux assemblies (0.5.x pins; see
+`tamlinux-packages` deliveries). Milestones beyond the first slice (corpus
+search, content depth, read-only self-inspection, grounded `ask`) remain in
+the component's
+[development plan](https://github.com/greenermoose/tam/blob/develop/docs/plans/development.md).
+Gate A / Omarchy removal is complete and does not block this work.
 
 ## Purpose
 
