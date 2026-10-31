@@ -2,7 +2,7 @@
 
 # dev-trial — the keybinding explorer's development trial (D198).
 #
-#   dev-trial install [REV]   build REV (default HEAD) and put it on SUPER + K
+#   dev-trial install [REV]   build REV (default HEAD) and put it on Meta + K
 #   dev-trial uninstall       put back what was there before
 #   dev-trial status          print the record and which launcher wins
 #
@@ -11,7 +11,7 @@
 # launcher goes in ~/.local/dev/bin, ahead of the packaged one on Hyprland's
 # PATH, and runs the explorer as its own Quickshell instance. Any earlier
 # development launcher is kept beside the record and put back on uninstall.
-# The session PATH puts ~/.local/bin first, so SUPER + K reaches the launcher
+# The session PATH puts ~/.local/bin first, so Meta + K reaches the launcher
 # through a personal binding that checks for it when Hyprland loads its
 # config; install and uninstall reload Hyprland so that binding follows.
 
@@ -57,6 +57,10 @@ build() {
     remove_build "$tmp"
     die "test_keybindings.py failed at $rev; nothing installed"
   fi
+  if ! python3 -B -m unittest discover -s "$tmp/commands/tam-macro/tests" -q; then
+    remove_build "$tmp"
+    die "macro tests failed at $rev; nothing installed"
+  fi
   chmod -R a-w -- "$tmp"
   mv -- "$tmp" "$out"
 }
@@ -100,7 +104,7 @@ doc = {
     "app": app,
     "revision": rev,
     "built": out,
-    "installed": [launcher],
+    "installed": [launcher, str(os.path.join(os.path.dirname(launcher), "tam-macro"))],
     "previous": None if previous == "null" else previous,
     "restore": restore,
     "installed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -129,12 +133,13 @@ install() {
   fi
   write_launcher "$out" "$rev"
   write_record "$out" "$rev"
+  "$out/commands/tam-macro/tam-macro" sync || die "macro sync failed; previous builds retained for recovery"
   for old in "$builds"/*/; do
     [[ ${old%/} == "$out" ]] || remove_build "${old%/}"
   done
   pkill -f "quickshell.*services/keybindings/dev-trial.qml" 2>/dev/null || true
   reload_bindings
-  echo "dev-trial: SUPER + K now opens the explorer from tamlinux ${rev:0:12}"
+  echo "dev-trial: Meta + K now opens the explorer from tamlinux ${rev:0:12}"
 }
 
 uninstall() {
@@ -149,7 +154,7 @@ uninstall() {
   pkill -f "quickshell.*services/keybindings/dev-trial.qml" 2>/dev/null || true
   reload_bindings
   rmdir --ignore-fail-on-non-empty -- "$builds" "$dev/share/tamlinux/dev-trials" "$dev/share/tamlinux" "$state" 2>/dev/null || true
-  echo "dev-trial: removed; SUPER + K uses $(PATH=$dev/bin:$PATH; command -v "$name" || echo "nothing")"
+  echo "dev-trial: removed; Meta + K uses $(PATH=$dev/bin:$PATH; command -v "$name" || echo "nothing")"
 }
 
 status() {

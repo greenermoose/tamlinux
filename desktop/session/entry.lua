@@ -13,7 +13,7 @@ package.path = root .. "/?.lua;" .. paths.state_home .. "/?.lua;" .. package.pat
 require("hypr.tamlinux.defaults")
 -- Machine-specific monitors and personal settings are optional, never copied
 -- from the computer that built the package.
-for _, name in ipairs({"monitors", "input", "bindings", "looknfeel", "autostart", "local"}) do
+for _, name in ipairs({"monitors", "input", "bindings", "looknfeel", "autostart", "local", "macros"}) do
   local path = paths.config_home .. "/tamlinux/hypr/" .. name .. ".lua"
   local file = io.open(path, "r")
   if file then file:close(); dofile(path) end

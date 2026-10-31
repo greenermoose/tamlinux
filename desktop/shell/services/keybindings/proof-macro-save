@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Load an invisible editor and save a macro in a disposable configuration.
+Requires a Wayland session; never reloads or sends keyboard input.
+"""
+import os, subprocess, tempfile
+from pathlib import Path
+repo=Path(__file__).resolve().parents[4]
+with tempfile.TemporaryDirectory(prefix='macro-qml-proof-') as td:
+ p=Path(td); (p/'runtime').mkdir(mode=0o700)
+ (p/'shell.qml').write_text('''import QtQuick
+import Quickshell
+import "''' + (repo/'desktop/shell/services/keybindings').as_uri() + '''" as Keys
+ShellRoot {
+ Keys.Explorer { id: explorer; visible: false }
+ Timer { interval: 300; running: true; onTriggered: {
+   explorer.macroEditorMode = "add"
+   explorer.saveMacroChanges([{key: "Backspace", text: "test text", description: "Proof"}])
+ } }
+ Timer { interval: 1500; running: true; onTriggered: {
+   console.log("MACRO_PROOF " + JSON.stringify({macros:explorer.macros, error:explorer.macroSaveError}))
+   Qt.quit()
+ } }
+}
+''')
+ env=dict(os.environ)
+ env.update(QML_IMPORT_PATH=str(repo/'desktop/shell/modules'),XDG_CONFIG_HOME=str(p/'config'),TAMLINUX_MACRO_BIN=str(repo/'commands/tam-macro/tam-macro'),TAMLINUX_MACRO_SKIP_RELOAD='1')
+ result=subprocess.run(['quickshell','--path',str(p/'shell.qml')],env=env,text=True,capture_output=True,timeout=10)
+ print(result.stdout+result.stderr)
+ assert '"key":"BACKSPACE"' in result.stdout+result.stderr
+ assert '"error":""' in result.stdout+result.stderr
