@@ -24,6 +24,47 @@ from pathlib import Path
 VERSION = "0.5.0"
 MAX_MACRO_TEXT = 10000
 
+KEY_TO_XKB: dict[str, str] = {
+    "/": "slash",
+    ".": "period",
+    ",": "comma",
+    "-": "minus",
+    "=": "equal",
+    ";": "semicolon",
+    "'": "apostrophe",
+    "[": "bracketleft",
+    "]": "bracketright",
+    "\\": "backslash",
+    "`": "grave",
+    " ": "space",
+    "+": "plus",
+    "*": "asterisk",
+    ":": "colon",
+    "<": "less",
+    ">": "greater",
+    "?": "question",
+    "!": "exclam",
+    "@": "at",
+    "#": "numbersign",
+    "$": "dollar",
+    "%": "percent",
+    "^": "asciicircum",
+    "&": "ampersand",
+    "(": "parenleft",
+    ")": "parenright",
+    "_": "underscore",
+    "{": "braceleft",
+    "}": "braceright",
+    "|": "bar",
+    "~": "asciitilde",
+    '"': "quotedbl",
+}
+
+
+def to_xkb_keysym(key: str) -> str:
+    key_clean = key.strip()
+    return KEY_TO_XKB.get(key_clean, key_clean)
+
 
 def get_config_dir() -> Path:
     xdg = os.environ.get("XDG_CONFIG_HOME")
@@ -103,7 +144,9 @@ def run_sync() -> None:
         desc = m.get("description") or f"Macro {key}"
         safe_desc = desc.replace("\\", "\\\\").replace('"', '\\"')
         safe_key = key.replace("\\", "\\\\").replace('"', '\\"')
-        lines.append(f'bind("SUPER + ALT + {safe_key}", "Macro: {safe_desc}", "tam-macro run {safe_key}", {{ release = true }})')
+        xkb_key = to_xkb_keysym(key)
+        safe_xkb_key = xkb_key.replace("\\", "\\\\").replace('"', '\\"')
+        lines.append(f'bind("SUPER + ALT + {safe_xkb_key}", "Macro: {safe_desc}", "tam-macro run {safe_key}", {{ release = true }})')
 
     lines.append("")
     temp = tempfile.NamedTemporaryFile("w", dir=lua_file.parent, delete=False, encoding="utf-8")
@@ -241,9 +284,11 @@ def main():
     macros_file = get_macros_file()
 
     if args.subcommand == "run":
-        target_key = args.key.strip().upper()
+        target_key = args.key.strip()
         macros = load_macros(macros_file)
-        macro = next((m for m in macros if m["key"] == target_key), None)
+        macro = next((m for m in macros if m["key"] == target_key or m["key"].upper() == target_key.upper()), None)
+        if not macro:
+            macro = next((m for m in macros if to_xkb_keysym(m["key"]).upper() == target_key.upper()), None)
         if not macro:
             sys.stderr.write(f"tam-macro: no macro found for key '{args.key}'\n")
             sys.exit(1)
