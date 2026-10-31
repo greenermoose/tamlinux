@@ -210,7 +210,7 @@ def generated_lua(macros: list[dict], previous: str = "") -> str:
     for m in macros:
         key = to_xkb_keysym(m["key"])
         # Executable is this exact build; punctuation never becomes shell syntax.
-        command = shlex.join([str(Path(__file__).resolve()), "run", "--", key])
+        command = shlex.join([str(Path(__file__).resolve()), "run", key])
         description = "Macro: " + (m["description"] or m["key"])
         lines.append(f'hl.bind({lua_string("SUPER + ALT + " + key)}, '
                      f'function() run_macro({lua_string(command)}) end, '
@@ -221,6 +221,7 @@ def generated_lua(macros: list[dict], previous: str = "") -> str:
   local target = hl.get_active_window()
   if not target then return end
   local address = target.address
+  if not address or not address:match("^0x%x+$") then return end
   local attempts = 0
   local function ready()
     local current = hl.get_active_window()
@@ -234,7 +235,7 @@ def generated_lua(macros: list[dict], previous: str = "") -> str:
         return
       end
     end
-    hl.exec_cmd(command)
+    hl.exec_cmd(command .. " --target " .. address)
   end
   ready()
 end
@@ -275,6 +276,14 @@ def commit_macros(macros: list[dict], *, save: bool = True) -> None:
             else:
                 atomic_write(path, content)
         try:
+            if not os.environ.get("TAMLINUX_MACRO_SKIP_RELOAD"):
+                # A failed reload may have registered some new bindings. Remove
+                # those before loading the restored file, including renamed keys.
+                keys = {to_xkb_keysym(m["key"]) for m in macros}
+                keys.update(k.upper() for k in list(keys) if not k.startswith("code:"))
+                cleanup = "; ".join("hl.unbind(" + lua_string("SUPER + ALT + " + k) + ")" for k in sorted(keys))
+                if cleanup:
+                    checked_hypr("eval", cleanup)
             reload_config()
         except Exception:
             pass  # Report the original failure; retain previous files.
@@ -302,7 +311,7 @@ def active_window_is_terminal() -> bool:
     return window_is_terminal(active_window())
 
 
-def inject_text(text: str) -> None:
+def inject_text(text: str, expected_address: str | None = None) -> None:
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if not runtime:
         raise ValueError("Macros need a running desktop session")
@@ -312,6 +321,8 @@ def inject_text(text: str) -> None:
         address = target.get("address", "")
         if not re.fullmatch(r"0x[0-9a-fA-F]+", address) or address == "0x0":
             raise ValueError("Focus an application text field before running a macro")
+        if expected_address is not None and address != expected_address:
+            raise ValueError("Focus changed before the macro started; nothing pasted")
         subprocess.run(["wl-copy", "--type", "text/plain;charset=utf-8"],
                        input=text.encode("utf-8"), check=True, timeout=3)
         if active_window().get("address") != address:
@@ -352,6 +363,7 @@ def main():
 
     run_parser = subparsers.add_parser("run", help="Inject macro text for key")
     run_parser.add_argument("key", help="Key name (e.g. M, RETURN, F1)")
+    run_parser.add_argument("--target", help="Cancel if this triggering window is no longer active")
 
     subparsers.add_parser("replace", help="Read {macros, expected} JSON from stdin and save atomically")
 
@@ -382,7 +394,7 @@ def main():
             macro = next((m for m in load_macros(macros_file) if m["key"] == target_key), None)
         if not macro:
             raise ValueError("No macro found for key: " + args.key)
-        inject_text(macro["text"])
+        inject_text(macro["text"], args.target)
 
     elif args.subcommand == "replace":
         request = json.loads(sys.stdin.read(6_000_001))

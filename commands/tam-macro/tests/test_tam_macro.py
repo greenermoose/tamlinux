@@ -140,7 +140,7 @@ class TamMacroTest(unittest.TestCase):
         self.assertEqual(res.returncode, 0)
         content = self.hypr_file.read_text()
         self.assertIn('hl.bind("SUPER + ALT + slash"', content)
-        self.assertIn("run -- slash", content)
+        self.assertIn("run slash", content)
         self.assertIn('hl.bind("SUPER + ALT + period"', content)
         self.assertNotIn('SUPER + ALT + /', content)
         self.assertNotIn('SUPER + ALT + .', content)
@@ -232,7 +232,7 @@ class TamMacroTest(unittest.TestCase):
         import shlex
         for m in macros:
             key = module["to_xkb_keysym"](m["key"])
-            command = shlex.join([str(CMD), "run", "--", key])
+            command = shlex.join([str(CMD), "run", key]) + " --target 0x1"
             checks.append('bindings[' + quote("SUPER + ALT + " + key) + '][1]()')
             checks.append('assert(dispatched == ' + quote(command) + ')')
             checks.append('assert(bindings[' + quote("SUPER + ALT + " + key) + '][2].description == ' + quote("Macro: " + m["description"]) + ')')
@@ -271,7 +271,7 @@ held=true; callback(); address='0x2'; held=false; timer(); assert(sent == 1)
                 module["commit_macros"]([{"key": "B", "text": "new"}])
         self.assertEqual([p.read_text() for p in (self.macros_file, self.hypr_file)], before)
 
-    def injection(self, *, terminal=False, focus_change=False, down_error=False, clipboard_error=False):
+    def injection(self, *, terminal=False, focus_change=False, down_error=False, clipboard_error=False, expected_address=None):
         inject = runpy.run_path(str(CMD))["inject_text"]
         calls, probes = [], []
         def fake_run(cmd, *args, **kwargs):
@@ -288,7 +288,7 @@ held=true; callback(); address='0x2'; held=false; timer(); assert(sent == 1)
         error = None
         with patch.dict(os.environ, self.env), patch('time.sleep'), patch('subprocess.run', side_effect=fake_run):
             try:
-                inject("hello\n世界")
+                inject("hello\n世界", expected_address)
             except (ValueError, subprocess.SubprocessError) as e:
                 error = e
         return calls, error
@@ -307,7 +307,7 @@ held=true; callback(); address='0x2'; held=false; timer(); assert(sent == 1)
                 self.assertIn('"SHIFT"' if terminal else '"CTRL"', d)
 
     def test_focus_change_and_clipboard_failure_do_not_paste(self):
-        for options in ({"focus_change": True}, {"clipboard_error": True}):
+        for options in ({"focus_change": True}, {"clipboard_error": True}, {"expected_address": "0x2"}):
             calls, error = self.injection(**options)
             self.assertIsNotNone(error)
             self.assertFalse(any(c[0][:2] == ["hyprctl", "dispatch"] for c in calls))
