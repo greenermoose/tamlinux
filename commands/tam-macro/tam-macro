@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import pwd
 import subprocess
 import sys
 import tempfile
@@ -29,7 +30,8 @@ def get_config_dir() -> Path:
     if xdg:
         base = Path(xdg)
     else:
-        base = Path(os.environ.get("HOME", "/home/fred")) / ".config"
+        home = os.environ.get("HOME") or pwd.getpwuid(os.getuid()).pw_dir
+        base = Path(home) / ".config"
     return base / "tamlinux"
 
 
