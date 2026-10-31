@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 CMD = Path(__file__).resolve().parents[1] / "tam-macro"
 
@@ -40,6 +43,18 @@ class TamMacroTest(unittest.TestCase):
         res = self.run_cmd("--version")
         self.assertEqual(res.returncode, 0)
         self.assertIn("tam-macro 0.5.0", res.stdout)
+
+    def test_config_directory_uses_xdg_then_home_then_account_home(self):
+        get_config_dir = runpy.run_path(str(CMD))['get_config_dir']
+        account = SimpleNamespace(pw_dir='/home/example')
+        with patch('pwd.getpwuid', return_value=account), patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(get_config_dir(), Path('/home/example/.config/tamlinux'))
+            os.environ['HOME'] = ''
+            self.assertEqual(get_config_dir(), Path('/home/example/.config/tamlinux'))
+            os.environ['HOME'] = '/home/another'
+            self.assertEqual(get_config_dir(), Path('/home/another/.config/tamlinux'))
+            os.environ['XDG_CONFIG_HOME'] = '/tmp/example-config'
+            self.assertEqual(get_config_dir(), Path('/tmp/example-config/tamlinux'))
 
     def test_add_and_list_macro(self):
         # Empty initially
