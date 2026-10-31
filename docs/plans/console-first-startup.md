@@ -5,14 +5,16 @@ Status: approved by Fred, 2026-10-23; implementation in Develop.
 2026-10-29: The developer requested concise pre-login guidance to `hi` (an
 alias for `tam hi`) and `tam-desktop`, and visible boot logging that explains
 what commands are running. The packaged welcome text and Bash alias are in
-development. Normal progress is retained; command-level visibility still
-needs an implementation and physical verification. Changes to installed boot
-or login configuration require their own recorded rollback and approval.
+development. Normal progress is retained. On 2026-10-31, additional
+command-level tracing was deferred to 0.6 to keep 0.5.12 focused on the
+approved visible normal startup progress and physical fleet trials. Changes
+to installed boot or login configuration require their own recorded rollback
+and approval.
 The systemd manager can emit debug logs to the console using documented
 kernel parameters, but that is manager output, not proof that every command
 inside every service or initramfs script is shown. Assess the actual coverage,
 output volume and startup cost before choosing a mechanism; do not claim the
-command-level goal from ordinary unit progress alone. See the
+command-level goal from ordinary unit progress alone when it is taken up. See the
 [systemd debugging guide](https://wiki.freedesktop.org/www/Software/systemd/Debugging/).
 
 The explicit launcher and console guard are implemented. Focused session

@@ -37,3 +37,7 @@
   and suggested/destructive buttons in both variants, checking rendered fills
   and button text. All 43 theme ownership tests and four opt-in GTK probes
   passed. This is not an installed adapter or proof of all application states.
+
+The additional request for tracing individual commands during boot was
+deferred to 0.6 under the requested 0.5.12 scope discipline. Normal visible
+boot progress and its physical fleet verification remain in 0.5.
