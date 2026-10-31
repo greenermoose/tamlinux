@@ -118,6 +118,10 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('background-color: ' + payload['palette']['background'] + ';', gtk3)
             self.assertIn('--window-fg-color: ' + payload['palette']['foreground'] + ';', gtk4)
             self.assertIn('--window-bg-color: ' + payload['palette']['background'] + ';', gtk4)
+            for role in ('view', 'headerbar', 'sidebar', 'secondary-sidebar', 'card', 'dialog', 'popover', 'thumbnail'):
+                self.assertIn('--' + role + '-fg-color: ' + payload['palette']['foreground'] + ';', gtk4)
+                self.assertIn('--' + role + '-bg-color: ' + surfaces['bar.background'] + ';', gtk4)
+                check(payload['palette']['foreground'], surfaces['bar.background'])
             self.assertIn('--accent-bg-color: ' + payload['palette']['accent'] + ';', gtk4)
             self.assertIn('--accent-fg-color: ' + payload['palette']['accentText'] + ';', gtk4)
             check(payload['palette']['accentText'], payload['palette']['accent'])

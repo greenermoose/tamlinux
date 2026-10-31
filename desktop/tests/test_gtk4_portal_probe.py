@@ -1,5 +1,6 @@
 """Opt-in GTK portal proof, with an isolated bus, display and dconf profile."""
 import os
+import json
 from pathlib import Path
 import shlex
 import shutil
@@ -18,7 +19,7 @@ DESKTOP = Path(__file__).resolve().parents[1]
 @unittest.skipUnless(os.environ.get('TAMLINUX_GTK_PROOF') == '1', 'opt-in headless GTK proof')
 class Gtk4PortalProbe(unittest.TestCase):
     def test_generated_palette_follows_portal_without_restarting_window(self):
-        for command in ('sway', 'cc', 'pkg-config', 'dbus-run-session', 'dconf', 'gsettings'):
+        for command in ('sway', 'grim', 'cc', 'pkg-config', 'dbus-run-session', 'dconf', 'gsettings'):
             if not shutil.which(command):
                 self.skipTest(f'{command} is unavailable')
         if not Path('/usr/lib/xdg-desktop-portal').is_file():
@@ -71,7 +72,7 @@ class Gtk4PortalProbe(unittest.TestCase):
                         return ' '.join(f'{int(value[i:i+2], 16)/255:.3f}' for i in (1, 3, 5)) + ' 1.000'
                     result = subprocess.run(['dbus-run-session', '--', sys.executable,
                                              str(DESKTOP / 'tests/fixtures/gtk4_portal_runner.py'), str(root),
-                                             color('dark'), color('light')], env=env, text=True,
+                                             color('dark'), color('light'), json.dumps(tokens)], env=env, text=True,
                                             capture_output=True, timeout=45)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn('temporary database and dark-to-light portal change verified', result.stdout)

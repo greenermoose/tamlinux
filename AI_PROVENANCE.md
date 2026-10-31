@@ -1,6 +1,6 @@
 # AI Collaboration & Provenance
 
-2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) improves console deployment lock checks and tests GTK live switching. [Session](docs/ai/2026-10-31-console-lock-safety.md).
+2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) improves console deployment lock checks and develops and tests GTK palette surfaces and live switching. [Session](docs/ai/2026-10-31-console-lock-safety.md).
 
 2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) checks generated btop palette contrast. [Session](docs/ai/2026-10-31-btop-contrast.md).
 

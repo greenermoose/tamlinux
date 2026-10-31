@@ -26,3 +26,14 @@
   foregrounds in one running libadwaita window. The proof passed on GTK 4.24.1.
   All four opt-in GTK rendering/portal proofs and all 77 deployment tests pass.
   It does not establish installed adapter behavior, other controls or recovery.
+
+## Follow-up: GTK surface palette
+
+- **Prompt** (excerpt):
+  > continue and try to take more steps before stopping next time.
+- The inactive GTK 4 prototype now maps view, headerbar, sidebar, card,
+  dialog, popover, overview and thumbnail foreground/background roles to
+  generated colours. The private portal proof exercises a running text view
+  and suggested/destructive buttons in both variants, checking rendered fills
+  and button text. All 43 theme ownership tests and four opt-in GTK probes
+  passed. This is not an installed adapter or proof of all application states.
