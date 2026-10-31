@@ -1,5 +1,9 @@
 #!/usr/bin/python3
-"""Fixed native browser-color endpoint with explicit, preserving recovery."""
+"""Fixed native browser-color endpoint with explicit, preserving recovery.
+
+Other managed policy files must be inspectable as bounded strict JSON and must
+not define either theme key. They are never modified by this endpoint.
+"""
 import base64
 import hashlib
 import json
@@ -12,6 +16,7 @@ import tempfile
 DIRECTORIES = ['/etc/chromium/policies/managed','/etc/opt/chrome/policies/managed',
                '/etc/opt/edge/policies/managed','/etc/brave/policies/managed']
 RECOVERY = Path('/var/lib/tamlinux/browser-recovery')
+THEME_KEYS = frozenset(('BrowserThemeColor', 'BrowserColorScheme'))
 
 
 def validate_directory(path, uid):
@@ -53,6 +58,35 @@ def save(path, value):
     write(path,{'present':True,'mode':0o600,'bytes':base64.b64encode((json.dumps(value,indent=2)+'\n').encode()).decode()})
 
 
+def check_other_policies(directory, target, uid):
+    """Refuse duplicate theme keys without changing another owner's policy."""
+    total = 0
+    for index, path in enumerate(directory.iterdir()):
+        if index >= 128:
+            raise ValueError(f'Too many browser policy entries to inspect: {directory}')
+        if path == target:
+            continue
+        try:
+            if path.is_symlink():
+                raise ValueError('symbolic link')
+            if path.is_dir():
+                continue
+            value = snapshot(path, uid, 1024 * 1024)
+            if not value['present']:
+                raise ValueError('file disappeared')
+            data = base64.b64decode(value['bytes'], validate=True)
+            total += len(data)
+            if total > 4 * 1024 * 1024:
+                raise ValueError('policy data exceeds inspection limit')
+            document = json.loads(data)
+            if not isinstance(document, dict):
+                raise ValueError('expected a JSON object')
+        except (OSError, ValueError, UnicodeError, RecursionError) as error:
+            raise ValueError(f'cannot inspect browser policy {path}: {error}') from error
+        if THEME_KEYS.intersection(document):
+            raise ValueError(f'conflicting browser theme policy in {path}; review it before applying')
+
+
 def apply(color, directories, recovery, uid=0):
     if not re.fullmatch('[0-9a-f]{6}',color): raise ValueError('Expected one lowercase six-digit color')
     rows=[]
@@ -60,6 +94,7 @@ def apply(color, directories, recovery, uid=0):
         if not directory.exists(): continue
         validate_directory(directory,uid)
         target=directory/'tamlinux-color.json'
+        check_other_policies(directory,target,uid)
         rows.append({'path':str(target),'before':snapshot(target,uid)})
     if not rows: raise ValueError('No supported native browser policy directory is installed')
     if any(parent.is_symlink() for parent in (recovery,*recovery.parents)):
