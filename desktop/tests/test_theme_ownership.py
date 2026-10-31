@@ -142,6 +142,19 @@ class ThemeOwnership(unittest.TestCase):
             self.assertIn('theme[selected_fg]="'+colors['selection_foreground']+'"', btop)
             self.assertIn('theme[selected_bg]="'+colors['selection']+'"', btop)
             check(colors['selection_foreground'], colors['selection_background'])
+            btop_colors = dict(re.findall(r'^theme\[(\w+)\]="(#[0-9a-fA-F]{6})"$', btop, re.MULTILINE))
+            for role in ('main_fg', 'title', 'hi_fg', 'inactive_fg', 'graph_text', 'proc_misc'):
+                with self.subTest(variant=variant, btop_role=role):
+                    check(btop_colors[role], btop_colors['main_bg'])
+            for role in ('cpu_box', 'mem_box', 'net_box', 'proc_box', 'div_line',
+                         'temp_start', 'temp_mid', 'temp_end', 'cpu_start', 'cpu_mid', 'cpu_end',
+                         'free_start', 'free_mid', 'free_end', 'cached_start', 'cached_mid', 'cached_end',
+                         'available_start', 'available_mid', 'available_end', 'used_start', 'used_mid', 'used_end',
+                         'download_start', 'download_mid', 'download_end', 'upload_start', 'upload_mid', 'upload_end',
+                         'process_start', 'process_mid', 'process_end'):
+                with self.subTest(variant=variant, btop_role=role):
+                    low, high = sorted((luminance(btop_colors[role]), luminance(btop_colors['main_bg'])))
+                    self.assertGreaterEqual((high + 0.05) / (low + 0.05), 3.0)
             micro = (theme/'micro.micro').read_text()
             pairs = re.findall(r'^color-link \S+ "(?:bold )?(#[0-9a-fA-F]{6}),(#[0-9a-fA-F]{6})"$', micro, re.MULTILINE)
             self.assertEqual(len(pairs), 22, micro)
