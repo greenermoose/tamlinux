@@ -47,7 +47,7 @@ build() {
   mkdir -p "$builds"
   for tmp in "$builds"/.build.*; do remove_build "$tmp"; done
   tmp=$(mktemp -d "$builds/.build.XXXXXX")
-  git -C "$repo" archive "$rev" commands/tam-menu-keybindings commands/tam-macro desktop/shell \
+  git -C "$repo" archive "$rev" commands/tam-menu-keybindings commands/tam-macro desktop/shell desktop/assets \
     desktop/tests/test_keybindings.py desktop/tests/fixtures/keybindings | tar -x -C "$tmp"
   if [[ ! -f $tmp/desktop/shell/services/keybindings/dev-trial.qml ]]; then
     remove_build "$tmp"
