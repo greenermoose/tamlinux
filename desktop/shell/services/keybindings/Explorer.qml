@@ -94,8 +94,7 @@ PanelWindow {
     panel.macros = parsed
     var jsonText = Model.formatMacros(parsed)
     panel.rawMacros = jsonText
-    macrosFile.setText(jsonText)
-    syncMacros()
+    syncMacros(jsonText)
   }
 
   function deleteMacro(key) {
@@ -115,9 +114,10 @@ PanelWindow {
     panel.showDeleteConfirm = false
   }
 
-  function syncMacros() {
+  function syncMacros(jsonText) {
     var bin = Quickshell.env("TAMLINUX_MACRO_BIN") || "tam-macro"
-    macroSyncProcess.command = [bin, "sync"]
+    var path = (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/macros.json"
+    macroSyncProcess.command = ["sh", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s" "$1" > "$2" && "$3" sync', "sh", jsonText, path, bin]
     macroSyncProcess.running = true
   }
 

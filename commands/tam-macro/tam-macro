@@ -125,14 +125,14 @@ def run_sync() -> None:
 
 
 def inject_text(text: str) -> None:
-    # 0.1s delay to let user release physical modifiers (Meta+Alt)
-    time.sleep(0.1)
+    # 0.2s delay to give the user time to release physical Meta+Alt keys
+    time.sleep(0.2)
 
     is_simple = ("\n" not in text) and ("\r" not in text) and ("\t" not in text)
 
     if is_simple and len(text) < 120:
         try:
-            subprocess.run(["wtype", "--", text], check=True)
+            subprocess.run(["wtype", "-m", "win", "-m", "alt", "-m", "logo", "--", text], check=True)
             return
         except FileNotFoundError:
             pass
@@ -142,7 +142,7 @@ def inject_text(text: str) -> None:
     try:
         subprocess.run(["wl-copy", "--", text], check=True)
         time.sleep(0.05)
-        subprocess.run(["wtype", "-M", "shift", "-k", "Insert", "-m", "shift"], check=True)
+        subprocess.run(["wtype", "-m", "win", "-m", "alt", "-m", "logo", "-M", "shift", "-k", "Insert", "-m", "shift"], check=True)
     except Exception as e:
         sys.stderr.write(f"tam-macro: error injecting text: {e}\n")
         sys.exit(1)
