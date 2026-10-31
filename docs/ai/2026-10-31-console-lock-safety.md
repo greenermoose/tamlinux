@@ -14,3 +14,15 @@
 - **Verification**: 77 deployment tests and three isolated GTK proofs pass.
   The GTK test changes settings inside the application and does not prove
   desktop portal propagation, installed adapter behavior or recovery.
+
+## Follow-up: isolated portal proof
+
+- **Prompt** (excerpt):
+  > Continue.
+- A separate opt-in proof sets the temporary display, D-Bus environment and
+  uniquely named dconf database before starting the session bus. It checks the
+  dconf service environment and temporary database, then changes the colour
+  preference through the portal and observes the generated dark and light
+  foregrounds in one running libadwaita window. The proof passed on GTK 4.24.1.
+  All four opt-in GTK rendering/portal proofs and all 77 deployment tests pass.
+  It does not establish installed adapter behavior, other controls or recovery.
