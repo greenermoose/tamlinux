@@ -17,6 +17,12 @@ if [[ ! -x $adapter ]]; then
   echo "Required native browser policy adapter is unavailable: $adapter" >&2
   exit 1
 fi
+# Avoid an authorization prompt for known conflicts. The privileged apply
+# repeats the check because policy files can change between the two calls.
+if ! "$adapter" --check; then
+  echo "Browser policy preflight failed; inspect conflicts or update the native provider." >&2
+  exit 1
+fi
 pkexec "$adapter" "${color#\#}" || exit $?
 # A policy refresh with --no-startup-window still starts a background browser
 # when its default profile is closed. Refresh only an existing local singleton,
