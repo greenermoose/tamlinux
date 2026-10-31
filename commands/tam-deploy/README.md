@@ -95,6 +95,13 @@ generation. From a text login with no active graphical session, activation and
 rollback do not start the desktop or require shell IPC. If a graphical session
 is active, the shell is restarted and checked. An unavailable user service
 manager or ambiguous session state stops the operation.
+When the graphical target is active, deployment checks every non-manager
+login session belonging to the user for a lock, even when invoked from a
+different text console. It checks again before restarting the shell and
+before automatic generation recovery. Locked or uninspectable sessions stop
+the operation; a lock that appears during activation can leave a partial
+deployment requiring inspection. These checks cannot prevent a session from
+locking between inspection and the next operation.
 
 If recovery fails after an installation error, or recording fails after an
 activation, the generation, consumer lock and deployment record may disagree.

@@ -123,10 +123,60 @@ class ConsoleDeployment(Fixture):
         active = subprocess.CompletedProcess([], 0, stdout='active\n', stderr='')
         with patch.object(deploy.subprocess, 'run', return_value=active), \
              patch.object(deploy, 'command') as command, \
+             patch.object(self.app, 'require_unlocked_sessions') as unlocked, \
              patch.object(self.app, 'wait_ready') as ready:
             self.app.restart_if_graphical()
+            unlocked.assert_called_once_with()
             command.assert_called_once_with('tam-restart-shell')
             ready.assert_called_once_with()
+
+    def test_locked_graphical_session_is_detected_from_an_unlocked_console(self):
+        sessions = json.dumps([
+            {'uid': os.getuid(), 'class': 'user', 'session': 'console'},
+            {'uid': os.getuid(), 'class': 'user', 'session': 'desktop'},
+            {'uid': os.getuid(), 'class': 'manager', 'session': 'manager'},
+            {'uid': os.getuid() + 1, 'class': 'user', 'session': 'other'},
+        ])
+        def run(*args, **kwargs):
+            if args[1] == 'list-sessions':
+                return sessions
+            return {'console': 'no', 'desktop': 'yes'}[args[2]]
+        with patch.object(self.app, 'check_clean'), \
+             patch.object(self.app, 'graphical_active', return_value=True), \
+             patch.object(deploy, 'command', side_effect=run) as cmd:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'unlock all'):
+                self.app.preflight()
+            self.assertFalse(any(call.args[0] == 'home-manager' for call in cmd.call_args_list))
+
+    def test_lock_check_fails_closed_on_missing_or_unreadable_state(self):
+        uid = os.getuid()
+        for listing, lock in (('[]', 'no'), ('{}', 'no'), ('invalid', 'no'),
+                              (json.dumps([{'uid': uid, 'class': 'user', 'session': '1'}]), ''),
+                              (json.dumps([{'uid': uid, 'class': 'user', 'session': '../bad'}]), 'no')):
+            with self.subTest(listing=listing, lock=lock), \
+                 patch.object(deploy, 'command', side_effect=[listing, lock]):
+                with self.assertRaisesRegex(deploy.DeploymentError, 'cannot verify session lock state'):
+                    self.app.require_unlocked_sessions()
+
+    def test_all_unlocked_user_sessions_pass(self):
+        sessions = json.dumps([{'uid': os.getuid(), 'class': 'user', 'session': '1'},
+                               {'uid': os.getuid(), 'class': 'user', 'session': '2'}])
+        with patch.object(deploy, 'command', side_effect=[sessions, 'no', 'no']) as cmd:
+            self.app.require_unlocked_sessions()
+        self.assertEqual(cmd.call_count, 3)
+
+    def test_login_manager_failure_does_not_permit_deployment(self):
+        with patch.object(deploy, 'command', side_effect=subprocess.CalledProcessError(1, 'loginctl')):
+            with self.assertRaisesRegex(deploy.DeploymentError, 'cannot verify session lock state'):
+                self.app.require_unlocked_sessions()
+
+    def test_recheck_blocks_restart_if_session_locked_after_activation(self):
+        with patch.object(self.app, 'graphical_active', return_value=True), \
+             patch.object(self.app, 'require_unlocked_sessions', side_effect=deploy.DeploymentError('locked')), \
+             patch.object(deploy, 'command') as cmd:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'locked'):
+                self.app.restart_if_graphical()
+            cmd.assert_not_called()
 
 
 class FirstInstall(Fixture):
@@ -321,6 +371,7 @@ class TestStage(Fixture):
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
              patch.object(self.app, "activate", side_effect=deploy.DeploymentError("restart failed")), \
              patch.object(self.app, "generation", side_effect=lambda: next(generations)), \
+             patch.object(self.app, "graphical_active", return_value=False), \
              patch.object(self.app, "restart_if_graphical"), \
              patch.object(self.app, "verify", return_value=[]) as verify, \
              patch.object(deploy, "command", side_effect=self.passthrough):
@@ -347,6 +398,7 @@ class TestStage(Fixture):
              patch.object(self.app, "rollback_pin", return_value=self.packages_main), \
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
              patch.object(self.app, "activate", side_effect=deploy.DeploymentError("switch failed")), \
+             patch.object(self.app, "graphical_active", return_value=False), \
              patch.object(deploy, "command", side_effect=OSError("restore failed")):
             with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: restore failed.*before retrying"):
                 self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
@@ -357,11 +409,25 @@ class TestStage(Fixture):
              patch.object(self.app, "rollback_pin", return_value=self.packages_main), \
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
              patch.object(self.app, "activate", side_effect=deploy.DeploymentError("switch failed")), \
+             patch.object(self.app, "graphical_active", return_value=False), \
              patch.object(deploy, "command") as command, patch.object(self.app, "restart_if_graphical") as restart:
             with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: previous generation was not restored"):
                 self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
         command.assert_called_once_with("/nix/store/old-generation/activate")
         restart.assert_not_called()
+
+    def test_failed_install_does_not_activate_recovery_when_session_locks(self):
+        with patch.object(self.app, 'preflight'), \
+             patch.object(self.app, 'generation', side_effect=['/nix/store/old-generation', '/nix/store/new-generation']), \
+             patch.object(self.app, 'rollback_pin', return_value=self.packages_main), \
+             patch.object(self.app, 'pin', side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, 'activate', side_effect=deploy.DeploymentError('switch failed')), \
+             patch.object(self.app, 'graphical_active', return_value=True), \
+             patch.object(self.app, 'require_unlocked_sessions', side_effect=deploy.DeploymentError('locked')), \
+             patch.object(deploy, 'command') as cmd:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'switch failed.*recovery also failed: locked'):
+                self.app.install(self.packages_new, {'tamlinux': self.tamlinux_new}, 'test')
+        cmd.assert_not_called()
 
     def test_failed_install_reports_recovery_endpoint_mismatch_with_staged_lock(self):
         self.write_lock(self.packages_new, {})
@@ -636,6 +702,25 @@ class BackAndPin(Fixture):
             with self.assertRaisesRegex(deploy.DeploymentError, "unknown session"):
                 self.app.back()
         command.assert_not_called()
+        pin.assert_not_called()
+        self.assertEqual(self.app.lock.read_bytes(), before_lock)
+        self.assertEqual(self.app.state_file.read_bytes(), before_state)
+
+    def test_back_refuses_locked_session_before_changing_generation(self):
+        self.app.save_state({'stage': 'test', 'packages': self.packages_new,
+                             'generation': '/nix/store/new-generation',
+                             'previousGeneration': '/nix/store/old-generation', 'previousPin': self.packages_main})
+        before_lock = self.app.lock.read_bytes()
+        before_state = self.app.state_file.read_bytes()
+        with patch.object(deploy.Path, 'is_file', return_value=True), \
+             patch.object(self.app, 'generation', return_value='/nix/store/new-generation'), \
+             patch.object(self.app, 'rollback_pin', return_value=self.packages_new), \
+             patch.object(self.app, 'graphical_active', return_value=True), \
+             patch.object(self.app, 'require_unlocked_sessions', side_effect=deploy.DeploymentError('locked')), \
+             patch.object(deploy, 'command') as cmd, patch.object(self.app, 'pin') as pin:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'locked'):
+                self.app.back()
+        cmd.assert_not_called()
         pin.assert_not_called()
         self.assertEqual(self.app.lock.read_bytes(), before_lock)
         self.assertEqual(self.app.state_file.read_bytes(), before_state)
