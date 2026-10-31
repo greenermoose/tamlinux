@@ -1,11 +1,13 @@
 # Upstream sources and field surveys
 
-Tamlinux 0.x is currently based on [Omarchy](https://github.com/omacom/omarchy).
-Its public [README.md](README.md) credits the rolling updates of Arch Linux,
-AntiX Linux's commitment to ensuring Linux runs on older hardware, Nix's
-atomic rollbacks and declarative package management, and modern desktop ideas
-from Wayland, River, Hyprland, and Quickshell as technical inspirations. These
-are distinct kinds of influence: current base, system building blocks, and
+Tamlinux 0.x began on [Omarchy](https://github.com/omacom/omarchy). Gate A
+closed with released **0.4.8** (2026-10-22): the workstation no longer depends
+on Omarchy packages or servers. The current host is Arch Linux with Tamlinux's
+own Hyprland/Quickshell desktop (Blue Sparkler 0.5). The public
+[README.md](README.md) credits Arch rolling updates, AntiX's hardware
+longevity focus, Nix atomic rollbacks, and modern desktop ideas from Wayland,
+River, Hyprland, Quickshell, and Omarchy as technical inspirations. These are
+distinct kinds of influence: historical base, system building blocks, and
 ideas for the future. Neither an inspiration nor a survey finding commits
 Tamlinux to adopting a project's code or design without deliberate review.
 

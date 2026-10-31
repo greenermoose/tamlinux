@@ -13,8 +13,8 @@ from Wayland, River, Hyprland, Quickshell, and Omarchy.
 | **Version** | See [VERSION](VERSION), the [changelog](CHANGELOG.md) and [Releases](https://github.com/greenermoose/tamlinux/releases); [VERSIONING.md](VERSIONING.md) explains the numbers |
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
-| **Plugin suite** | [Fred's Tamlinux Plugin Suite](https://greenermoose.github.io/plugin-fred-tamlinux/) |
-| **Status** | Developed in public and used daily on the developer's workstation. Not an installable image yet |
+| **Plugin suite** | In-repo [`desktop/plugins/`](desktop/plugins/README.md) (`fred.*` 2.x) |
+| **Status** | Developed in public and used daily. Gate A complete (0.4.8); current develop is Blue Sparkler 0.5 |
 
 ---
 
@@ -32,12 +32,12 @@ version of the environment, not a separate operating system.
 
 *Tam* can mean **tamarack**, **total addressable market**, **the absolute
 max**, or **teaching and making**. Like the tamarack's needles, Tamlinux sheds old
-packages to make room for new so the project can continually improve. We are moving
-from Omarchy toward an installation package that turns an existing Linux distribution
-into a lean, ergonomic workstation environment, and then ultimately a package
-("cultivar") grafted onto a minimal Void base ("root-stock"), with antiX Core as the
-fallback if Void has a showstopper. The aim is a sustainable, feature-complete
-workstation environment that runs well on a wide variety of hardware.
+packages to make room for new so the project can continually improve. Gate A is
+complete: Tamlinux no longer depends on Omarchy. The current cultivar installs on
+Arch/Hyprland; the longer aim is a package ("cultivar") grafted onto a minimal
+Void base ("root-stock"), with antiX Core as the fallback if Void has a
+showstopper. The aim is a sustainable, feature-complete workstation environment
+that runs well on a wide variety of hardware.
 
 Simplifying and minimizing resource use not merely accommodates older computers:
 it is a virtue. Removing bloat, resident daemons, and polling loops allows Linux
@@ -56,33 +56,28 @@ repository yet.
 
 ## Current base and next steps
 
-The workstation runs Tamlinux's packaged Quickshell shell and eight 2.x
-plugins on Arch/Hyprland. The current version and its changes are in
-[VERSION](VERSION) and the [changelog](CHANGELOG.md).
+The workstation runs Tamlinux's packaged Quickshell shell and nine 2.x
+plugins on Arch/Hyprland (console-first login; optional desktop). The current
+version and its changes are in [VERSION](VERSION) and the
+[changelog](CHANGELOG.md). **Gate A is done:** released **0.4.8** (2026-10-22)
+removed Omarchy packages. Develop continues on **Blue Sparkler 0.5**.
 
-1. **0.4.3–0.4.5: leave Omarchy (Gate A).** 0.4.3 proved the desktop on a
-   clean Arch/Hyprland host. 0.4.4 cuts this workstation over to Tamlinux's
-   own login, boot, update, recovery and sleep handling, with Omarchy's
-   packages still installed as the fallback. 0.4.5 replaces the last Omarchy
-   calls and removes those packages; its release completes Gate A.
-2. **0.5: input and appearance.** Focused input usability starts at 0.5.0;
-   Tamarack visual redesign follows in later 0.5.x steps.
-3. **0.6: dependable baseline.** Fix the GPU-resume and hibernation faults or
+1. **0.5: input and appearance (current).** Input usability, console-first
+   startup, start menu, monitor control, and Tamarack visual redesign.
+2. **0.6: dependable baseline.** Fix GPU-resume and hibernation faults or
    accept mitigations, pin carried patches with upstream status, establish
    routine updates/rollback, and run a host-safe Arch install on a second laptop.
-   Laptop installation may start after the 0.4.4 Run.
-4. **0.7–1.0: Sway.** Complete compositor integration and install the package
-   beside the dependable Hyprland fallback (0.7). Prove physical daily parity
-   (0.8), then remove Hyprland (1.0).
-5. **1.1–1.3: other distributions and a minimal base.** Verify a different
-   distribution, then Void + runit + seatd + Btrfs and native `xbps-src` source
+3. **0.7–1.0: Sway.** Complete compositor integration beside Hyprland (0.7),
+   prove physical daily parity (0.8), then remove Hyprland (1.0).
+4. **1.1–1.3: other distributions and a minimal base.** Verify a different
+   distribution, then Void + runit + seatd + Btrfs and native `xbps-src`
    delivery; compare musl/glibc. antiX Core/runit is the fallback for a Void
    showstopper. Repeatable installation and terminal-only profiles follow.
 
-These are two separate desktop proofs. Prepared Sway adapters are retained;
-they do not move Sway integration ahead of accepted independence on Hyprland.
-The [development plans](docs/plans/README.md) carry detailed acceptance and
-recovery. Planning changes do not bump [VERSION](VERSION) or install components.
+Prepared Sway adapters are retained; they do not move Sway integration ahead
+of a dependable Hyprland baseline. The [development plans](docs/plans/README.md)
+carry detailed acceptance. Planning changes do not bump [VERSION](VERSION) or
+install components.
 
 ## Targets
 
@@ -180,12 +175,12 @@ namespaced `fred.<name>/` refs in this repository.
 | `fred.weather` | [`desktop/plugins/fred.weather/`](desktop/plugins/fred.weather) |
 | `fred.monitor` | [`desktop/plugins/fred.monitor/`](desktop/plugins/fred.monitor) |
 | `fred.agents` | [`desktop/plugins/fred.agents/`](desktop/plugins/fred.agents) |
+| `fred.tamversion` | [`desktop/plugins/fred.tamversion/`](desktop/plugins/fred.tamversion) |
 
-The independent `greenermoose/*-fred-tamlinux` plugin repositories are
-frozen; their released 1.x Omarchy versions and full history remain there
-for reference. The manager CLI is
-[`tam-plugin`](https://github.com/greenermoose/plugin-fred-tamlinux).
-Carried third-party patches are recorded in
+The independent `greenermoose/*-fred-tamlinux` plugin repositories and the
+Omarchy-era showcase site are frozen; their released 1.x versions remain for
+reference. Product plugins and [`tam-plugin`](commands/tam-plugin/README.md)
+live in this repository. Carried third-party patches are recorded in
 [`ecosystem-fred-tamlinux`](https://github.com/greenermoose/ecosystem-fred-tamlinux).
 
 ## License

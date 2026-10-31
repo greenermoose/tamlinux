@@ -31,11 +31,10 @@ prepared.
   or Hyprland. 0.4 removes Omarchy while Hyprland keeps running; **1.0**
   removes Hyprland.
 
-**0.4 is a mixed stage.** Before this scheme, 0.4.0 to 0.4.4 were milestones
-of their own, and 0.4.4 was tried as lettered candidates (0.4.4-a to
-0.4.4-m). What remains of 0.4 after the 0.4.4 Run, the Omarchy removal,
-follows the goal-list scheme with candidates from 0.4.5, and its release
-completes the first proof gate.
+**0.4 is complete.** Before this scheme, 0.4.0 to 0.4.4 were milestones of
+their own, and 0.4.4 used lettered candidates (0.4.4-a to 0.4.4-m). From
+0.4.5 the goal-list scheme applied; released **0.4.8** closed Gate A
+(Omarchy removed). Develop continues on **0.5** (Blue Sparkler).
 
 The scheme was adopted on 2026-10-05 and given goal lists on 2026-10-20.
 Before 2026-10-05, minor versions were fixed milestones and work between them
@@ -180,7 +179,7 @@ and each activation also sets it in the running user manager, so services
 and applications started after a switch see the new number without a new
 login. A process that was already running keeps the number it started with.
 
-`$OMARCHY_CONFIG_VERSION` and `~/.config/omarchy/version` remain as
-compatibility aliases in the earlier installation. Their active software
-cutover belongs in 0.4.3's session/consumer migration with preserved recovery.
-They are not a second product; this documentation does not remove them.
+Gate A (released 0.4.8) removed Omarchy as a dependency. Any leftover
+`$OMARCHY_CONFIG_VERSION` or `~/.config/omarchy/version` paths on a host are
+migration residue, not a second product version. Do not treat them as current
+Tamlinux versioning.
