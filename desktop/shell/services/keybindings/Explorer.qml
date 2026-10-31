@@ -43,8 +43,16 @@ PanelWindow {
   property string macroEditText: ""
   property string macroValidationError: ""
   property bool showDeleteConfirm: false
+  property bool macroCapturing: false
+  property int macroCapturedQtKey: 0
+  property string macroExpected: "[]"
+  property string macroSaveError: ""
+  property string pendingMacroKey: ""
+
 
   onMacroEditorModeChanged: {
+    macroExpected = Model.formatMacros(panel.macros)
+    macroSaveError = ""
     if (macroEditorMode === "add") {
       macroEditKey = ""
       macroEditDesc = ""
@@ -90,35 +98,25 @@ PanelWindow {
   }
 
   function saveMacroChanges(updatedList) {
-    var parsed = Model.parseMacros(updatedList)
-    panel.macros = parsed
-    var jsonText = Model.formatMacros(parsed)
-    panel.rawMacros = jsonText
-    syncMacros(jsonText)
+    if (macroSyncProcess.running) return
+    macroSaveError = ""
+    macroSyncProcess.payload = JSON.stringify({macros: updatedList, expected: JSON.parse(macroExpected)})
+    macroSyncProcess.command = [Quickshell.env("TAMLINUX_MACRO_BIN") || "tam-macro", "replace"]
+    macroSyncProcess.stdinEnabled = true
+    macroSyncProcess.running = true
   }
 
   function deleteMacro(key) {
-    var k = String(key || "").trim().toUpperCase()
-    if (!k) return
-    var updated = []
-    for (var i = 0; i < panel.macros.length; i++) {
-      var itemKey = String(panel.macros[i].key || "").trim().toUpperCase()
-      if (itemKey !== k) {
-        updated.push(panel.macros[i])
-      }
-    }
-    panel.saveMacroChanges(updated)
-    if (panel.selectedMacro && String(panel.selectedMacro.key || "").trim().toUpperCase() === k) {
-      panel.selectedMacro = updated.length > 0 ? updated[0] : null
-    }
-    panel.showDeleteConfirm = false
+    macroExpected = Model.formatMacros(panel.macros)
+    pendingMacroKey = ""
+    saveMacroChanges(panel.macros.filter(function(m) { return m.key !== key }))
   }
 
-  function syncMacros(jsonText) {
-    var bin = Quickshell.env("TAMLINUX_MACRO_BIN") || "tam-macro"
-    var path = (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/tamlinux/macros.json"
-    macroSyncProcess.command = ["sh", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s" "$1" > "$2" && "$3" sync', "sh", jsonText, path, bin]
-    macroSyncProcess.running = true
+  function beginMacroCapture() {
+    macroCapturing = true
+    pendingMacroKey = ""
+    macroCapturedQtKey = 0
+    beginCapture()
   }
 
   function copyMacroText(text) {
@@ -231,7 +229,7 @@ PanelWindow {
       inhibitor.enabled = false
     }
   }
-  function closeExplorer() { capturing = false; inhibitor.enabled = false; dismissRequested() }
+  function closeExplorer() { macroCapturing = false; capturing = false; inhibitor.enabled = false; dismissRequested() }
   // Esc peels one layer: leave capture/table, clear search, then close when
   // already on the empty list (initial browsing state). Plain Backspace never
   // closes; Meta+Backspace still closes like other focused windows.
@@ -304,6 +302,7 @@ PanelWindow {
   }
   function beginCapture() { lastCaptured = null; captureResult = ""; lastTriedChord = []; lastTriedCombo = ""; capturing = true; inhibitor.enabled = true; captureFocus.forceActiveFocus() }
   function finishCapture() {
+    panel.macroCapturing = false
     var target = panel.lastCaptured
     panel.capturing = false
     inhibitor.enabled = false
@@ -367,7 +366,7 @@ PanelWindow {
     id: inhibitor
     window: panel
     enabled: false
-    onCancelled: { panel.capturing = false; panel.captureResult = "Capture was stopped by the compositor." }
+    onCancelled: { panel.macroCapturing = false; panel.capturing = false; panel.captureResult = "Capture was stopped by the compositor." }
   }
   // Esc peels/closes from any browse control; Meta+Backspace matches window close.
   Shortcut {
@@ -377,6 +376,7 @@ PanelWindow {
   }
   Shortcut {
     sequence: "Meta+Backspace"
+    enabled: !panel.capturing
     onActivated: panel.closeExplorer()
   }
   FileView {
@@ -391,8 +391,27 @@ PanelWindow {
   }
   Process {
     id: macroSyncProcess
-    command: ["tam-macro", "sync"]
+    property string payload: ""
+    command: ["tam-macro", "replace"]
     environment: Util.hostEnvironment()
+    onStarted: { write(payload); stdinEnabled = false }
+    stdout: StdioCollector { id: macroSaveOutput }
+    stderr: StdioCollector { id: macroSaveErrors }
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode !== 0) {
+        panel.macroSaveError = macroSaveErrors.text.trim() || "Could not save macros. Your previous assignments are unchanged."
+        return
+      }
+      panel.loadMacros(macroSaveOutput.text)
+      panel.macroEditorMode = "none"
+      panel.showDeleteConfirm = false
+      for (var i = 0; i < panel.macros.length; i++) {
+        if (Model.macroKeyIdentity(panel.macros[i].key) === Model.macroKeyIdentity(panel.pendingMacroKey)) {
+          panel.selectedMacro = panel.macros[i]
+          break
+        }
+      }
+    }
   }
   Process {
     id: macroClipboardProcess
@@ -402,6 +421,7 @@ PanelWindow {
   }
   Shortcut {
     sequence: "Ctrl+1"
+    enabled: !panel.capturing
     onActivated: {
       panel.currentSection = "shortcuts"
       search.forceActiveFocus()
@@ -409,6 +429,7 @@ PanelWindow {
   }
   Shortcut {
     sequence: "Ctrl+2"
+    enabled: !panel.capturing
     onActivated: {
       panel.currentSection = "macros"
       panel.macroEditorMode = "none"
@@ -586,7 +607,7 @@ PanelWindow {
           width: 140
           height: parent.height
           isAccent: true
-          text: "Try a shortcut"
+          text: panel.macroCapturing ? "Press a key for the macro" : "Try a shortcut"
           KeyNavigation.tab: modifierSelect
           KeyNavigation.backtab: search
           KeyNavigation.right: modifierSelect
@@ -1206,6 +1227,14 @@ PanelWindow {
           }
         }
       }
+      Text {
+        visible: panel.currentSection === "macros" && panel.macroSaveError !== ""
+        width: parent.width
+        text: panel.macroSaveError
+        wrapMode: Text.Wrap
+        color: Commons.Color.urgent
+      }
+
       Row {
         id: macroSearchRow
         visible: panel.currentSection === "macros"
@@ -1713,7 +1742,7 @@ PanelWindow {
                   }
                   TextField {
                     id: keyInputField
-                    width: 70
+                    width: 150
                     height: 32
                     text: panel.macroEditKey
                     color: Commons.Color.foreground
@@ -1725,7 +1754,7 @@ PanelWindow {
                     font.family: Style.fontFamily
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    maximumLength: 10
+                    maximumLength: 64
                     background: Rectangle {
                       radius: 4
                       color: Commons.Color.background
@@ -1734,38 +1763,21 @@ PanelWindow {
                     }
                     onTextChanged: panel.macroEditKey = text.toUpperCase().trim()
                   }
+                  DarkButton {
+                    text: "Record key"
+                    onClicked: panel.beginMacroCapture()
+                  }
                   Rectangle {
                     height: 24
                     width: availText.implicitWidth + 14
                     radius: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    readonly property var systemConflict: {
-                      var k = (keyInputField.text || panel.macroEditKey || "").trim()
-                      if (!k || !panel.rows) return null
-                      var xkbMap = {
-                        "/": "SLASH", ".": "PERIOD", ",": "COMMA", "-": "MINUS", "=": "EQUAL",
-                        ";": "SEMICOLON", "'": "APOSTROPHE", "[": "BRACKETLEFT", "]": "BRACKETRIGHT",
-                        "\\": "BACKSLASH", "`": "GRAVE", " ": "SPACE"
-                      }
-                      var upperKey = k.toUpperCase()
-                      var xkbKey = xkbMap[k] || upperKey
-                      for (var i = 0; i < panel.rows.length; i++) {
-                        var r = panel.rows[i]
-                        if (r.modmask === 72) {
-                          var rk = String(r.key).toUpperCase()
-                          if (rk === upperKey || rk === xkbKey) {
-                            if (r.does && r.does.indexOf("Macro:") === 0) continue
-                            return r.does
-                          }
-                        }
-                      }
-                      return null
-                    }
+                    readonly property var systemConflict: Model.macroConflict(panel.rows, keyInputField.text)
                     readonly property var existingMatch: {
                       var k = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
                       if (!k) return null
                       for (var i = 0; i < panel.macros.length; i++) {
-                        if (panel.macros[i].key === k) return panel.macros[i]
+                        if (Model.macroKeyIdentity(panel.macros[i].key) === Model.macroKeyIdentity(k)) return panel.macros[i]
                       }
                       return null
                     }
@@ -1779,7 +1791,7 @@ PanelWindow {
                       text: {
                         var k = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
                         if (!k) return "Enter key"
-                        if (parent.systemConflict) return "Conflict: " + parent.systemConflict
+                        if (parent.systemConflict) return "Replaces: " + parent.systemConflict
                         if (parent.isOverwrite) return "Assigned: will overwrite"
                         return "Available"
                       }
@@ -1876,12 +1888,13 @@ PanelWindow {
               Row {
                 spacing: 10
                 DarkButton {
-                  text: "Save Macro"
+                  text: macroSyncProcess.running ? "Saving…" : "Save Macro"
+                  enabled: !macroSyncProcess.running
                   isAccent: true
                   onClicked: {
-                    var key = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
-                    var desc = (descInputField.text || panel.macroEditDesc || "").trim()
-                    var text = textInputArea.text || panel.macroEditText || ""
+                    var key = Model.macroKeyIdentity(keyInputField.text)
+                    var desc = descInputField.text.trim()
+                    var text = textInputArea.text
                     var val = Model.validateMacro(key, text)
                     if (!val.valid) {
                       panel.macroValidationError = val.error
@@ -1889,7 +1902,9 @@ PanelWindow {
                     }
                     var updated = []
                     for (var i = 0; i < panel.macros.length; i++) {
-                      if (panel.macros[i].key !== key) {
+                      if (Model.macroKeyIdentity(panel.macros[i].key) !== key
+                          && !(panel.macroEditorMode === "edit" && panel.selectedMacro
+                               && panel.macros[i].key === panel.selectedMacro.key)) {
                         updated.push(panel.macros[i])
                       }
                     }
@@ -1901,9 +1916,8 @@ PanelWindow {
                       combo: "Meta + Alt + " + key
                     }
                     updated.push(item)
+                    panel.pendingMacroKey = key
                     panel.saveMacroChanges(updated)
-                    panel.selectedMacro = item
-                    panel.macroEditorMode = "none"
                   }
                 }
                 DarkButton {
@@ -2030,11 +2044,11 @@ PanelWindow {
         id: captureFocus; anchors.fill: parent; focus: panel.capturing
         Keys.onPressed: function(event) {
           event.accepted = true
-          if (event.key === Qt.Key_Escape) {
+          if (event.key === Qt.Key_Escape && !panel.macroCapturing) {
             panel.handleEscapeStep(event)
             return
           }
-          if (panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+          if (!panel.macroCapturing && panel.lastCaptured && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
             panel.finishCapture()
             return
           }
@@ -2043,6 +2057,23 @@ PanelWindow {
           var mask = ((event.modifiers & Qt.MetaModifier) ? 64 : 0) | ((event.modifiers & Qt.ControlModifier) ? 4 : 0) | ((event.modifiers & Qt.AltModifier) ? 8 : 0) | ((event.modifiers & Qt.ShiftModifier) ? 1 : 0)
           var names = {}; names[Qt.Key_Space] = "SPACE"; names[Qt.Key_Return] = "RETURN"; names[Qt.Key_Tab] = "TAB"; names[Qt.Key_Backspace] = "BACKSPACE"; names[Qt.Key_Delete] = "DELETE"; names[Qt.Key_Left] = "LEFT"; names[Qt.Key_Right] = "RIGHT"; names[Qt.Key_Up] = "UP"; names[Qt.Key_Down] = "DOWN"
           var key = names[event.key] || (event.key >= 32 && event.key <= 126 ? String.fromCharCode(event.key).toUpperCase() : "")
+          if (panel.macroCapturing) {
+            if (event.isAutoRepeat) return
+            var special = {}
+            special[Qt.Key_Escape] = "Escape"; special[Qt.Key_Home] = "Home"; special[Qt.Key_End] = "End"
+            special[Qt.Key_PageUp] = "Prior"; special[Qt.Key_PageDown] = "Next"; special[Qt.Key_Insert] = "Insert"
+            if (event.modifiers & (Qt.KeypadModifier | Qt.ShiftModifier)) key = "code:" + event.nativeScanCode
+            else key = special[event.key] || key
+            if (event.key >= Qt.Key_F1 && event.key <= Qt.Key_F35) key = "F" + (event.key - Qt.Key_F1 + 1)
+            if (!key && event.nativeScanCode > 8) key = "code:" + event.nativeScanCode
+            if (!key) return
+            keyInputField.text = Model.macroKeyIdentity(key)
+            // Stay inhibited through release so recording cannot trigger a macro.
+            panel.captureResult = "Recorded " + keyInputField.text + ". Release the key."
+            panel.pendingMacroKey = keyInputField.text
+            panel.macroCapturedQtKey = event.key
+            return
+          }
           panel.lastTriedChord = Model.chordKeys(mask, key)
           panel.lastTriedCombo = Model.comboText(mask, key) || (key ? key : "Key")
           var found = Model.capturedBindings(panel.rows, mask, key, event.nativeScanCode)
@@ -2054,6 +2085,14 @@ PanelWindow {
             panel.lastCaptured = null
             panel.captureResult = panel.lastTriedCombo + "  →  No matching shortcut found"
           }
+        }
+        Keys.onReleased: function(event) {
+          if (!panel.macroCapturing || !panel.pendingMacroKey || event.key !== panel.macroCapturedQtKey) return
+          event.accepted = true
+          panel.macroCapturing = false
+          panel.capturing = false
+          inhibitor.enabled = false
+          keyInputField.forceActiveFocus()
         }
       }
       Column {
@@ -2068,7 +2107,7 @@ PanelWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
             Text {
-              text: "Try a shortcut"
+              text: panel.macroCapturing ? "Press a key for the macro" : "Try a shortcut"
               color: Commons.Color.menu.text
               font.pixelSize: 24
               font.bold: true
@@ -2104,7 +2143,7 @@ PanelWindow {
           DarkButton {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "Back to list  Esc"
+            text: panel.macroCapturing ? "Cancel recording" : "Back to list  Esc"
             onClicked: panel.finishCapture()
           }
         }
@@ -2115,7 +2154,9 @@ PanelWindow {
           color: Commons.Color.foreground
           opacity: 0.75
           font.pixelSize: 13
-          text: inhibitor.active
+          text: panel.macroCapturing
+            ? "Press and release the final key. Meta + Alt is added automatically. Escape can be assigned; use Cancel recording to stop."
+            : inhibitor.active
             ? "Shortcuts are intercepted and will not run the command. Press any key combination to test it, and press another anytime."
             : (panel.lastCaptured ? "Capture is paused. Focus this window to resume, or press Esc to exit." : "Waiting for the compositor to grant shortcut capture. Press Esc to exit.")
         }

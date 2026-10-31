@@ -705,6 +705,14 @@ class MacroModelTests(unittest.TestCase):
         self.assertEqual(run_model("M.validateMacro('M', '')")["valid"], False)
         self.assertEqual(run_model("M.validateMacro('INVALID KEYNAME', 'Text')")["valid"], False)
 
+    def test_macro_aliases_and_live_conflicts(self):
+        self.assertEqual(run_model("M.macroKeyIdentity('/')"), "SLASH")
+        self.assertEqual(run_model("M.macroKeyIdentity('PageUp')"), "PRIOR")
+        rows = [{"modmask":72, "key":"slash", "does":"Monitor scaling down"}]
+        self.assertEqual(run_model("M.macroConflict(JSON.parse(TEXTS[0]), '/')", json.dumps(rows)), "Monitor scaling down")
+        rows[0]["does"] = "Macro: Exit"
+        self.assertIsNone(run_model("M.macroConflict(JSON.parse(TEXTS[0]), '/')", json.dumps(rows)))
+
     def test_macro_chord_and_filter(self):
         self.assertEqual(run_model("M.macroChord('m')"), "Meta + Alt + M")
         self.assertEqual(run_model("M.macroChord('F1')"), "Meta + Alt + F1")

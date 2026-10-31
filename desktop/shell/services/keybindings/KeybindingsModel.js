@@ -397,6 +397,30 @@ function formatRecords(rows) {
   return out
 }
 
+// UI aliases are for display and matching; tam-macro validates with libxkbcommon.
+function macroKeyIdentity(key) {
+  var raw = String(key || "")
+  var symbols = {"/":"SLASH", ".":"PERIOD", ",":"COMMA", "-":"MINUS", "=":"EQUAL",
+    ";":"SEMICOLON", "'":"APOSTROPHE", "[":"BRACKETLEFT", "]":"BRACKETRIGHT",
+    "\\":"BACKSLASH", "`":"GRAVE", " ":"SPACE", "+":"PLUS", "*":"ASTERISK",
+    ":":"COLON", "<":"LESS", ">":"GREATER", "?":"QUESTION", "!":"EXCLAM", "@":"AT",
+    "#":"NUMBERSIGN", "$":"DOLLAR", "%":"PERCENT", "^":"ASCIICIRCUM", "&":"AMPERSAND",
+    "(":"PARENLEFT", ")":"PARENRIGHT", "_":"UNDERSCORE", "{":"BRACELEFT", "}":"BRACERIGHT",
+    "|":"BAR", "~":"ASCIITILDE", '\"':"QUOTEDBL"}
+  var k = symbols[raw] || raw.trim().toUpperCase()
+  return ({ENTER:"RETURN", ESC:"ESCAPE", PAGEUP:"PRIOR", PAGE_UP:"PRIOR",
+    PAGEDOWN:"NEXT", PAGE_DOWN:"NEXT"})[k] || k
+}
+
+function macroConflict(rows, key) {
+  var k = macroKeyIdentity(key)
+  if (!k) return null
+  var found = (rows || []).filter(function(r) {
+    return r.modmask === 72 && macroKeyIdentity(r.key) === k && String(r.does || "").indexOf("Macro:") !== 0
+  })
+  return found.length ? found.map(function(r) { return r.does }).join("; ") : null
+}
+
 var MAX_MACRO_TEXT = 10000
 
 function parseMacros(raw) {
@@ -414,7 +438,7 @@ function parseMacros(raw) {
   for (var i = 0; i < data.length && out.length < MAX_BINDS; i++) {
     var item = data[i]
     if (!item || typeof item !== "object") continue
-    var key = clip(item.key || "").trim().toUpperCase()
+    var key = macroKeyIdentity(item.key)
     var text = String(item.text === undefined || item.text === null ? "" : item.text)
     if (text.length > MAX_MACRO_TEXT) text = text.substring(0, MAX_MACRO_TEXT)
     var desc = clip(item.description || "").trim()
@@ -434,7 +458,7 @@ function formatMacros(macros) {
   if (!Array.isArray(macros)) return "[]\n"
   var clean = macros.map(function(m) {
     return {
-      key: String(m.key || "").toUpperCase().trim(),
+      key: macroKeyIdentity(m.key),
       description: String(m.description || "").trim(),
       text: String(m.text || "")
     }
@@ -443,12 +467,11 @@ function formatMacros(macros) {
 }
 
 function validateMacro(key, text) {
-  var k = String(key || "").trim().toUpperCase()
+  var k = macroKeyIdentity(key)
   if (!k) return { valid: false, error: "Key is required" }
-  if (k.length > 32) return { valid: false, error: "Key name too long" }
-  if (!/^[A-Z0-9_]+$/.test(k) && !/^(F[1-9]|F1[0-2])$/.test(k) && !/^(COMMA|PERIOD|SLASH|MINUS|EQUAL|SEMICOLON|APOSTROPHE|SPACE|RETURN|BACKSPACE|TAB|ESCAPE)$/.test(k)) {
-    if (k.length !== 1) return { valid: false, error: "Invalid key name: " + k }
-  }
+  if (k.length > 64) return { valid: false, error: "Key name too long" }
+  if (!/^[A-Z0-9_]+$/.test(k) && !/^CODE:[0-9]{1,3}$/.test(k))
+    return { valid: false, error: "Invalid key name: " + k }
   var t = String(text === undefined || text === null ? "" : text)
   if (!t.trim()) return { valid: false, error: "Text expansion cannot be empty" }
   if (t.length > MAX_MACRO_TEXT) return { valid: false, error: "Text exceeds maximum length of 10,000 characters" }
@@ -456,7 +479,7 @@ function validateMacro(key, text) {
 }
 
 function macroChord(key) {
-  var k = String(key || "").trim().toUpperCase()
+  var k = macroKeyIdentity(key)
   return k ? "Meta + Alt + " + k : "Meta + Alt"
 }
 
@@ -495,6 +518,8 @@ if (typeof module !== "undefined" && module.exports) {
     formatMacros: formatMacros,
     validateMacro: validateMacro,
     macroChord: macroChord,
+    macroKeyIdentity: macroKeyIdentity,
+    macroConflict: macroConflict,
     filterMacros: filterMacros,
     KEYCODE_NAMES: KEYCODE_NAMES,
     APP_VERSION: APP_VERSION,

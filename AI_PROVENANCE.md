@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-10-31: Codex CLI `0.166.0` (`gpt-6-astra`) takes over macro reliability and key recording. [Session](docs/ai/2026-10-31-macro-reliability.md).
+
 2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) improves console deployment lock checks, develops a preserving GTK adapter and fixes a macro configuration fallback. [Session](docs/ai/2026-10-31-console-lock-safety.md).
 
 2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) checks generated btop palette contrast. [Session](docs/ai/2026-10-31-btop-contrast.md).

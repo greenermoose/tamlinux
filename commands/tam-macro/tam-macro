@@ -12,6 +12,13 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import ctypes
+import ctypes.util
+import fcntl
+from functools import lru_cache
+import re
+import shlex
+from contextlib import contextmanager
 import json
 import os
 import pwd
@@ -61,9 +68,59 @@ KEY_TO_XKB: dict[str, str] = {
 }
 
 
+@lru_cache(maxsize=1024)
 def to_xkb_keysym(key: str) -> str:
-    key_clean = key.strip()
-    return KEY_TO_XKB.get(key_clean, key_clean)
+    """Resolve names case-insensitively, then emit XKB's canonical spelling."""
+    if not isinstance(key, str):
+        raise ValueError("Key must be text")
+    clean = KEY_TO_XKB.get(key, key.strip())
+    aliases = {"ENTER": "Return", "ESC": "Escape", "PAGEUP": "Prior",
+               "PAGE_UP": "Prior", "PAGEDOWN": "Next", "PAGE_DOWN": "Next"}
+    clean = aliases.get(clean.upper(), clean)
+    if re.fullmatch(r"code:[0-9]{1,3}", clean.lower()):
+        code = int(clean.split(":")[1])
+        if 9 <= code <= 255:
+            return f"code:{code}"
+    if not re.fullmatch(r"[A-Za-z0-9_]{1,64}", clean):
+        raise ValueError("Unknown key: " + key)
+    lib = ctypes.CDLL(os.environ.get("TAMLINUX_XKBCOMMON") or ctypes.util.find_library("xkbcommon") or "libxkbcommon.so.0")
+    lib.xkb_keysym_from_name.argtypes = [ctypes.c_char_p, ctypes.c_int]
+    lib.xkb_keysym_from_name.restype = ctypes.c_uint32
+    lib.xkb_keysym_get_name.argtypes = [ctypes.c_uint32, ctypes.c_char_p, ctypes.c_size_t]
+    symbol = lib.xkb_keysym_from_name(clean.encode("ascii"), 1)
+    if not symbol:
+        raise ValueError("Unknown key: " + key)
+    name = ctypes.create_string_buffer(128)
+    lib.xkb_keysym_get_name(symbol, name, len(name))
+    canonical = name.value.decode("ascii")
+    if canonical.startswith(("Shift_", "Control_", "Alt_", "Meta_", "Super_", "Hyper_")):
+        raise ValueError("Choose a key other than a modifier")
+    return canonical
+
+
+def key_identity(key: str) -> str:
+    return to_xkb_keysym(key).upper()
+
+
+def validate_macros(data) -> list[dict]:
+    if not isinstance(data, list) or len(data) > 512:
+        raise ValueError("Expected a list of at most 512 macros")
+    out, seen = [], set()
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid macro record")
+        key = key_identity(item.get("key", ""))
+        if key in seen:
+            raise ValueError("Duplicate macro key: " + key)
+        seen.add(key)
+        text = item.get("text", "")
+        desc = item.get("description", "")
+        if not isinstance(text, str) or not text or len(text) > MAX_MACRO_TEXT or "\0" in text:
+            raise ValueError("Macro text must contain 1–10,000 characters, without NUL")
+        if not isinstance(desc, str) or len(desc) > 512 or "\0" in desc:
+            raise ValueError("Description must contain at most 512 characters, without NUL")
+        out.append({"key": key, "text": text, "description": desc.strip()})
+    return out
 
 
 def get_config_dir() -> Path:
@@ -91,163 +148,197 @@ def get_hypr_macros_file() -> Path:
 
 
 def load_macros(path: Path) -> list[dict]:
-    if not path.is_file():
+    if not path.exists():
         return []
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, list):
-            return []
-        out = []
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            key = str(item.get("key", "")).strip().upper()
-            text = str(item.get("text", ""))
-            desc = str(item.get("description", "")).strip()
-            if key and text:
-                out.append({"key": key, "description": desc, "text": text})
-        return out
-    except Exception:
-        return []
+    return validate_macros(json.loads(path.read_text(encoding="utf-8")))
+
+
+def atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False, encoding="utf-8") as temp:
+        try:
+            temp.write(text)
+            temp.flush()
+            os.fsync(temp.fileno())
+            temp.close()
+            os.replace(temp.name, path)
+        finally:
+            if os.path.exists(temp.name):
+                os.unlink(temp.name)
 
 
 def save_macros(path: Path, macros: list[dict]) -> None:
+    atomic_write(path, json.dumps(validate_macros(macros), ensure_ascii=False, indent=2) + "\n")
+
+
+@contextmanager
+def locked(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False, encoding="utf-8")
+    with path.open("a", encoding="utf-8") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError("Another macro operation is still running; try again") from None
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def lua_string(text: str) -> str:
+    # JSON Unicode escapes are not Lua escapes. Encode control bytes as decimal.
+    out = []
+    for ch in text:
+        if ch in ('"', "\\"):
+            out.append("\\" + ch)
+        elif ord(ch) < 32 or ord(ch) == 127:
+            out.append("\\" + f"{ord(ch):03d}")
+        else:
+            out.append(ch)
+    return '"' + ''.join(out) + '"'
+
+
+def generated_lua(macros: list[dict], previous: str = "") -> str:
+    # Carry retired keys forward so repeated reloads cannot revive old macros.
+    keys = set(re.findall(r'SUPER \+ ALT \+ ([A-Za-z0-9_:]+)', previous))
+    keys.update(to_xkb_keysym(m["key"]) for m in macros)
+    lines = ["-- Generated by tam-macro. Meta + Alt assignments take precedence.",
+             "-- Remove previous assignments before adding this exact set."]
+    keys.update(key.upper() for key in list(keys) if not key.startswith("code:"))
+    for key in sorted(keys):
+        lines.append(f'hl.unbind({lua_string("SUPER + ALT + " + key)})')
+    for m in macros:
+        key = to_xkb_keysym(m["key"])
+        # Executable is this exact build; punctuation never becomes shell syntax.
+        command = shlex.join([str(Path(__file__).resolve()), "run", "--", key])
+        description = "Macro: " + (m["description"] or m["key"])
+        lines.append(f'hl.bind({lua_string("SUPER + ALT + " + key)}, '
+                     f'function() run_macro({lua_string(command)}) end, '
+                     f'{{ release = true, description = {lua_string(description)} }})')
+    # Queue outside the compositor callback and wait on real modifier state.
+    # Never sleep or run clipboard tools in Hyprland's event loop.
+    prelude = r'''local function run_macro(command)
+  local target = hl.get_active_window()
+  if not target then return end
+  local address = target.address
+  local attempts = 0
+  local function ready()
+    local current = hl.get_active_window()
+    if not current or current.address ~= address then return end
+    for _, key in ipairs({"Super_L", "Super_R", "Alt_L", "Alt_R", "Control_L", "Control_R", "Shift_L", "Shift_R"}) do
+      if hl.is_key_down(key) then
+        attempts = attempts + 1
+        if attempts < 100 then
+          hl.timer(ready, { timeout = 20, type = "oneshot" })
+        end
+        return
+      end
+    end
+    hl.exec_cmd(command)
+  end
+  ready()
+end
+'''
+    return prelude + "\n".join(lines) + "\n"
+
+
+def checked_hypr(*args: str) -> str:
+    result = subprocess.run(["hyprctl", *args], capture_output=True, text=True, timeout=5, check=True)
+    return result.stdout.strip()
+
+
+def reload_config() -> None:
+    if os.environ.get("TAMLINUX_MACRO_SKIP_RELOAD"):
+        return
+    answer = checked_hypr("reload")
+    if answer.lower() != "ok":
+        raise ValueError("Hyprland reload failed: " + answer)
+    errors = checked_hypr("configerrors")
+    if errors:
+        raise ValueError("Hyprland configuration errors: " + errors[:1000])
+
+
+def commit_macros(macros: list[dict], *, save: bool = True) -> None:
+    macros = validate_macros(macros)
+    json_file, lua_file = get_macros_file(), get_hypr_macros_file()
+    paths = [lua_file, json_file] if save else [lua_file]
+    old = {p: p.read_text(encoding="utf-8") if p.exists() else None for p in paths}
     try:
-        json.dump(macros, temp, indent=2)
-        temp.write("\n")
-        temp.flush()
-        os.fsync(temp.fileno())
-        temp.close()
-        os.replace(temp.name, path)
+        atomic_write(lua_file, generated_lua(macros, old[lua_file] or ""))
+        if save:
+            save_macros(json_file, macros)
+        reload_config()
     except Exception:
-        if os.path.exists(temp.name):
-            os.unlink(temp.name)
+        for path, content in old.items():
+            if content is None:
+                path.unlink(missing_ok=True)
+            else:
+                atomic_write(path, content)
+        try:
+            reload_config()
+        except Exception:
+            pass  # Report the original failure; retain previous files.
         raise
 
 
 def run_sync() -> None:
-    macros_file = get_macros_file()
-    lua_file = get_hypr_macros_file()
-    lua_file.parent.mkdir(parents=True, exist_ok=True)
+    with locked(get_macros_file().with_suffix(".lock")):
+        commit_macros(load_macros(get_macros_file()), save=False)
 
-    macros = load_macros(macros_file)
-    lines = [
-        "-- Generated by tam-macro. Do not edit manually.",
-        "local bind = (o and o.bind) or (hl and hl.bind) or function(...) end",
-        "",
-    ]
 
-    for m in macros:
-        key = m["key"]
-        desc = m.get("description") or f"Macro {key}"
-        safe_desc = desc.replace("\\", "\\\\").replace('"', '\\"')
-        safe_key = key.replace("\\", "\\\\").replace('"', '\\"')
-        xkb_key = to_xkb_keysym(key)
-        safe_xkb_key = xkb_key.replace("\\", "\\\\").replace('"', '\\"')
-        lines.append(f'bind("SUPER + ALT + {safe_xkb_key}", "Macro: {safe_desc}", "tam-macro run {safe_key}", {{ release = true }})')
+def active_window() -> dict:
+    data = json.loads(checked_hypr("activewindow", "-j"))
+    if not isinstance(data, dict):
+        raise ValueError("Could not determine the focused window")
+    return data
 
-    lines.append("")
-    temp = tempfile.NamedTemporaryFile("w", dir=lua_file.parent, delete=False, encoding="utf-8")
-    try:
-        temp.write("\n".join(lines))
-        temp.flush()
-        os.fsync(temp.fileno())
-        temp.close()
-        os.replace(temp.name, lua_file)
-    except Exception:
-        if os.path.exists(temp.name):
-            os.unlink(temp.name)
-        raise
 
-    # Reload Hyprland if available and not skipped in test
-    if not os.environ.get("TAMLINUX_MACRO_SKIP_RELOAD"):
-        try:
-            subprocess.run(["hyprctl", "reload"], capture_output=True, timeout=5)
-        except Exception:
-            pass
+def window_is_terminal(window: dict) -> bool:
+    return ("terminal" in [str(t).rstrip("*") for t in window.get("tags", [])]
+            or str(window.get("class", "")).lower() in ("foot", "kitty", "alacritty", "wezterm"))
 
 
 def active_window_is_terminal() -> bool:
-    try:
-        res = subprocess.run(
-            ["hyprctl", "activewindow", "-j"],
-            capture_output=True,
-            text=True,
-            timeout=2,
-            check=True,
-        )
-        data = json.loads(res.stdout)
-        tags = [str(t).rstrip("*") for t in data.get("tags", [])]
-        if "terminal" in tags:
-            return True
-        cls = str(data.get("class", "")).lower()
-        if cls in ("foot", "kitty", "alacritty", "wezterm"):
-            return True
-    except Exception:
-        pass
-    return False
+    return window_is_terminal(active_window())
 
 
 def inject_text(text: str) -> None:
-    # Brief pause to ensure physical modifier release events have been processed
-    time.sleep(0.05)
-
-    # Copy text to clipboard via stdin (clean, non-blocking, handles special characters)
-    try:
-        subprocess.run(["wl-copy"], input=text.encode("utf-8"), check=True, timeout=2)
-    except Exception as e:
-        sys.stderr.write(f"tam-macro: error copying text to clipboard: {e}\n")
-        sys.exit(1)
-
-    time.sleep(0.05)
-
-    is_term = active_window_is_terminal()
-    mods = "SHIFT" if is_term else "CTRL"
-    key = "Insert" if is_term else "V"
-
-    # Dispatch paste keystroke via Hyprland Lua dispatcher
-    # Using separate down and up state to prevent synthetic key sticking
-    # (matching desktop/session/hypr/tamlinux/bindings/clipboard.lua)
-    dispatched = False
-    try:
-        r1 = subprocess.run(
-            ["hyprctl", "dispatch", f'hl.dsp.send_key_state({{ mods = "{mods}", key = "{key}", state = "down" }})'],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-        time.sleep(0.05)
-        r2 = subprocess.run(
-            ["hyprctl", "dispatch", f'hl.dsp.send_key_state({{ mods = "{mods}", key = "{key}", state = "up" }})'],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-        if r1.returncode == 0 and r2.returncode == 0:
-            dispatched = True
-    except Exception:
-        pass
-
-    if not dispatched:
-        # Fallback to wtype
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if not runtime:
+        raise ValueError("Macros need a running desktop session")
+    # Do not queue: a queued request could paste into a different window.
+    with locked(Path(runtime) / "tamlinux-macro.lock"):
+        target = active_window()
+        address = target.get("address", "")
+        if not re.fullmatch(r"0x[0-9a-fA-F]+", address) or address == "0x0":
+            raise ValueError("Focus an application text field before running a macro")
+        subprocess.run(["wl-copy", "--type", "text/plain;charset=utf-8"],
+                       input=text.encode("utf-8"), check=True, timeout=3)
+        if active_window().get("address") != address:
+            raise ValueError("Focus changed; macro was copied but not pasted")
+        mods, key = ("SHIFT", "Insert") if window_is_terminal(target) else ("CTRL", "V")
+        def send(state):
+            expression = ('hl.dsp.send_key_state({ mods = ' + lua_string(mods)
+                          + ', key = ' + lua_string(key) + ', state = ' + lua_string(state)
+                          + ', window = ' + lua_string("address:" + address) + ' })')
+            answer = checked_hypr("dispatch", expression)
+            if answer.lower() != "ok":
+                raise ValueError("Paste dispatch failed: " + answer)
+        # Native explicit modifiers avoid merging held Meta/Alt into the paste.
+        # Always release the same target, even on timeout or a focus change.
         try:
-            if is_term:
-                subprocess.run(
-                    ["wtype", "-M", "shift", "-k", "Insert", "-m", "shift"],
-                    capture_output=True,
-                    timeout=2,
-                )
-            else:
-                subprocess.run(
-                    ["wtype", "-M", "ctrl", "-k", "v", "-m", "ctrl"],
-                    capture_output=True,
-                    timeout=2,
-                )
-        except Exception as e:
-            sys.stderr.write(f"tam-macro: error sending paste shortcut: {e}\n")
-            sys.exit(1)
+            send("down")
+        except Exception:
+            try:
+                send("up")
+            except Exception:
+                pass
+            raise
+        else:
+            send("up")
+        # Allow clients to request the selection before another macro replaces it.
+        # Clipboard ownership stays with wl-copy; no racing restoration timer.
+        time.sleep(0.2)
 
 
 def main():
@@ -261,6 +352,8 @@ def main():
 
     run_parser = subparsers.add_parser("run", help="Inject macro text for key")
     run_parser.add_argument("key", help="Key name (e.g. M, RETURN, F1)")
+
+    subparsers.add_parser("replace", help="Read {macros, expected} JSON from stdin and save atomically")
 
     subparsers.add_parser("sync", help="Generate Hyprland macros.lua and reload config")
 
@@ -284,15 +377,20 @@ def main():
     macros_file = get_macros_file()
 
     if args.subcommand == "run":
-        target_key = args.key.strip()
-        macros = load_macros(macros_file)
-        macro = next((m for m in macros if m["key"] == target_key or m["key"].upper() == target_key.upper()), None)
+        target_key = key_identity(args.key)
+        with locked(macros_file.with_suffix(".lock")):
+            macro = next((m for m in load_macros(macros_file) if m["key"] == target_key), None)
         if not macro:
-            macro = next((m for m in macros if to_xkb_keysym(m["key"]).upper() == target_key.upper()), None)
-        if not macro:
-            sys.stderr.write(f"tam-macro: no macro found for key '{args.key}'\n")
-            sys.exit(1)
+            raise ValueError("No macro found for key: " + args.key)
         inject_text(macro["text"])
+
+    elif args.subcommand == "replace":
+        request = json.loads(sys.stdin.read(6_000_001))
+        with locked(macros_file.with_suffix(".lock")):
+            if validate_macros(request["expected"]) != load_macros(macros_file):
+                raise ValueError("Macros changed in another window. Reopen the editor and try again.")
+            commit_macros(request["macros"])
+        print(json.dumps(load_macros(macros_file), ensure_ascii=False))
 
     elif args.subcommand == "sync":
         run_sync()
@@ -313,41 +411,26 @@ def main():
                     print(f"Meta + Alt + {m['key']}{desc}: \"{preview}\"")
 
     elif args.subcommand == "add":
-        key = args.key.strip().upper()
-        text = args.text
-        desc = args.desc.strip()
-        if not key:
-            sys.stderr.write("tam-macro: key cannot be empty\n")
-            sys.exit(1)
-        if not text:
-            sys.stderr.write("tam-macro: text cannot be empty\n")
-            sys.exit(1)
-        if len(text) > MAX_MACRO_TEXT:
-            sys.stderr.write(f"tam-macro: text exceeds maximum length of {MAX_MACRO_TEXT}\n")
-            sys.exit(1)
-
-        macros = load_macros(macros_file)
-        existing = next((m for m in macros if m["key"] == key), None)
-        if existing:
-            existing["text"] = text
-            if desc:
-                existing["description"] = desc
-        else:
-            macros.append({"key": key, "description": desc, "text": text})
-
-        save_macros(macros_file, macros)
-        run_sync()
+        key = key_identity(args.key)
+        with locked(macros_file.with_suffix(".lock")):
+            macros = load_macros(macros_file)
+            macros = [m for m in macros if m["key"] != key]
+            macros.append({"key": key, "text": args.text, "description": args.desc})
+            commit_macros(macros)
 
     elif args.subcommand == "remove":
-        key = args.key.strip().upper()
-        macros = load_macros(macros_file)
-        new_macros = [m for m in macros if m["key"] != key]
-        if len(new_macros) == len(macros):
-            sys.stderr.write(f"tam-macro: no macro found for key '{args.key}'\n")
-            sys.exit(1)
-        save_macros(macros_file, new_macros)
-        run_sync()
+        key = key_identity(args.key)
+        with locked(macros_file.with_suffix(".lock")):
+            macros = load_macros(macros_file)
+            new_macros = [m for m in macros if m["key"] != key]
+            if len(new_macros) == len(macros):
+                raise ValueError(f"no macro found for key '{args.key}'")
+            commit_macros(new_macros)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (ValueError, OSError, KeyError, subprocess.SubprocessError) as error:
+        sys.stderr.write(f"tam-macro: {error}\n")
+        sys.exit(1)
