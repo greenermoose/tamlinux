@@ -103,7 +103,7 @@ def run_sync() -> None:
         desc = m.get("description") or f"Macro {key}"
         safe_desc = desc.replace("\\", "\\\\").replace('"', '\\"')
         safe_key = key.replace("\\", "\\\\").replace('"', '\\"')
-        lines.append(f'bind("SUPER + ALT + {safe_key}", "Macro: {safe_desc}", "tam-macro run {safe_key}")')
+        lines.append(f'bind("SUPER + ALT + {safe_key}", "Macro: {safe_desc}", "tam-macro run {safe_key}", {{ release = true }})')
 
     lines.append("")
     temp = tempfile.NamedTemporaryFile("w", dir=lua_file.parent, delete=False, encoding="utf-8")
@@ -126,28 +126,99 @@ def run_sync() -> None:
             pass
 
 
-def inject_text(text: str) -> None:
-    # 0.2s delay to give the user time to release physical Meta+Alt keys
-    time.sleep(0.2)
-
-    is_simple = ("\n" not in text) and ("\r" not in text) and ("\t" not in text)
-
-    if is_simple and len(text) < 120:
-        try:
-            subprocess.run(["wtype", "-m", "win", "-m", "alt", "-m", "logo", "--", text], check=True)
-            return
-        except FileNotFoundError:
-            pass
-        except subprocess.CalledProcessError:
-            pass
-
+def active_window_is_terminal() -> bool:
     try:
-        subprocess.run(["wl-copy", "--", text], check=True)
-        time.sleep(0.05)
-        subprocess.run(["wtype", "-m", "win", "-m", "alt", "-m", "logo", "-M", "shift", "-k", "Insert", "-m", "shift"], check=True)
+        res = subprocess.run(
+            ["hyprctl", "activewindow", "-j"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=True,
+        )
+        data = json.loads(res.stdout)
+        tags = [str(t).rstrip("*") for t in data.get("tags", [])]
+        if "terminal" in tags:
+            return True
+        cls = str(data.get("class", "")).lower()
+        if cls in ("foot", "kitty", "alacritty", "wezterm"):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def inject_text(text: str) -> None:
+    # Brief pause to ensure physical modifier release events have been processed
+    time.sleep(0.05)
+
+    # Copy text to clipboard via stdin (clean, non-blocking, handles special characters)
+    try:
+        subprocess.run(["wl-copy"], input=text.encode("utf-8"), check=True, timeout=2)
     except Exception as e:
-        sys.stderr.write(f"tam-macro: error injecting text: {e}\n")
+        sys.stderr.write(f"tam-macro: error copying text to clipboard: {e}\n")
         sys.exit(1)
+
+    time.sleep(0.05)
+
+    is_term = active_window_is_terminal()
+    mods = "SHIFT" if is_term else "CTRL"
+    key = "Insert" if is_term else "V"
+
+    # Dispatch paste keystroke via Hyprland dispatcher
+    # Using separate down and up state to prevent synthetic key sticking
+    # (matching desktop/session/hypr/tamlinux/bindings/clipboard.lua)
+    dispatched = False
+    try:
+        r1 = subprocess.run(
+            ["hyprctl", "dispatch", "sendkeystate", f"{mods},{key},down,"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        time.sleep(0.05)
+        r2 = subprocess.run(
+            ["hyprctl", "dispatch", "sendkeystate", f"{mods},{key},up,"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if r1.returncode == 0 and r2.returncode == 0:
+            dispatched = True
+    except Exception:
+        pass
+
+    if not dispatched:
+        # Fallback to sendshortcut
+        try:
+            r = subprocess.run(
+                ["hyprctl", "dispatch", "sendshortcut", f"{mods},{key},"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            if r.returncode == 0:
+                dispatched = True
+        except Exception:
+            pass
+
+    if not dispatched:
+        # Fallback to wtype
+        try:
+            if is_term:
+                subprocess.run(
+                    ["wtype", "-M", "shift", "-k", "Insert", "-m", "shift"],
+                    capture_output=True,
+                    timeout=2,
+                )
+            else:
+                subprocess.run(
+                    ["wtype", "-M", "ctrl", "-k", "v", "-m", "ctrl"],
+                    capture_output=True,
+                    timeout=2,
+                )
+        except Exception as e:
+            sys.stderr.write(f"tam-macro: error sending paste shortcut: {e}\n")
+            sys.exit(1)
 
 
 def main():

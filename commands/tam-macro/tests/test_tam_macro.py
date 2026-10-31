@@ -83,7 +83,7 @@ class TamMacroTest(unittest.TestCase):
         # Verify macros.lua was generated
         self.assertTrue(self.hypr_file.is_file())
         lua_content = self.hypr_file.read_text()
-        self.assertIn('bind("SUPER + ALT + M", "Macro: Greeting", "tam-macro run M")', lua_content)
+        self.assertIn('bind("SUPER + ALT + M", "Macro: Greeting", "tam-macro run M", { release = true })', lua_content)
 
     def test_update_existing_macro(self):
         self.run_cmd("add", "M", "First version", "--desc", "Initial")
@@ -126,7 +126,66 @@ class TamMacroTest(unittest.TestCase):
         res = self.run_cmd("sync")
         self.assertEqual(res.returncode, 0)
         self.assertTrue(self.hypr_file.is_file())
-        self.assertIn('bind("SUPER + ALT + T", "Macro: Test", "tam-macro run T")', self.hypr_file.read_text())
+        self.assertIn('bind("SUPER + ALT + T", "Macro: Test", "tam-macro run T", { release = true })', self.hypr_file.read_text())
+
+    def test_generated_lua_has_no_blocking_calls(self):
+        self.macros_file.write_text(json.dumps([
+            {"key": "C", "description": "Continue", "text": "continue"}
+        ]))
+        res = self.run_cmd("sync")
+        self.assertEqual(res.returncode, 0)
+        content = self.hypr_file.read_text()
+        self.assertNotIn("io.popen", content)
+        self.assertNotIn("os.execute", content)
+        self.assertNotIn(":close()", content)
+        self.assertNotIn(":read()", content)
+        self.assertIn('{ release = true }', content)
+
+    def test_active_window_is_terminal(self):
+        active_window_is_terminal = runpy.run_path(str(CMD))['active_window_is_terminal']
+        with patch('subprocess.run') as mock_run:
+            # Window with terminal tag
+            mock_run.return_value = SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps({"tags": ["default-opacity*", "terminal*"], "class": "other"}),
+            )
+            self.assertTrue(active_window_is_terminal())
+
+            # Window with terminal class
+            mock_run.return_value = SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps({"tags": [], "class": "Foot"}),
+            )
+            self.assertTrue(active_window_is_terminal())
+
+            # GUI application window (e.g. Cursor or browser)
+            mock_run.return_value = SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps({"tags": [], "class": "cursor"}),
+            )
+            self.assertFalse(active_window_is_terminal())
+
+    def test_inject_text_uses_clipboard_and_sendkeystate(self):
+        inject_text = runpy.run_path(str(CMD))['inject_text']
+        calls = []
+
+        def fake_run(cmd, *args, **kwargs):
+            calls.append((cmd, kwargs))
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        with patch('time.sleep'), patch('subprocess.run', side_effect=fake_run):
+            inject_text("hello world")
+
+        # First call is wl-copy
+        wl_copy_call = next((c for c in calls if c[0] == ["wl-copy"]), None)
+        self.assertIsNotNone(wl_copy_call)
+        self.assertEqual(wl_copy_call[1].get("input"), b"hello world")
+
+        # Subsequent calls are sendkeystate down and up
+        down_call = next((c for c in calls if c[0] and c[0][:3] == ["hyprctl", "dispatch", "sendkeystate"] and "down" in c[0][3]), None)
+        up_call = next((c for c in calls if c[0] and c[0][:3] == ["hyprctl", "dispatch", "sendkeystate"] and "up" in c[0][3]), None)
+        self.assertIsNotNone(down_call)
+        self.assertIsNotNone(up_call)
 
 
 if __name__ == "__main__":
