@@ -5,11 +5,10 @@ o.bind("CTRL + ALT + DELETE", "Close all windows", "tam-hyprland-window-close-al
 o.bind("SUPER + J", "Toggle window split", hl.dsp.layout("togglesplit"))
 o.bind("SUPER + P", "Pseudo window", hl.dsp.window.pseudo())
 o.bind("SUPER + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
-o.bind("SUPER + F", "Full screen", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
+o.bind("SUPER + SHIFT + F", "Full screen", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 o.bind("SUPER + CTRL + F", "Tiled full screen", "tam-hyprland-window-tiled-fullscreen-toggle")
-o.bind("SUPER + ALT + F", "Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
 o.bind("SUPER + O", "Pop window out (float & pin)", "tam-hyprland-window-pop")
-o.bind("SUPER + ALT + Home", "Save window width", "tam-hyprland-window-width save")
+o.bind("SUPER + SHIFT + Home", "Save window width", "tam-hyprland-window-width save")
 o.bind("SUPER + Home", "Restore window width", "tam-hyprland-window-width restore")
 o.bind("SUPER + L", "Toggle workspace layout", "tam-hyprland-workspace-layout-toggle")
 
@@ -26,7 +25,7 @@ for workspace = 1, 10 do
 end
 
 o.bind("SUPER + S", "Toggle scratchpad", hl.dsp.workspace.toggle_special("scratchpad"))
-o.bind("SUPER + ALT + S", "Move window to scratchpad", hl.dsp.window.move({ workspace = "special:scratchpad", follow = false }))
+o.bind("CTRL + SHIFT + S", "Move window to scratchpad", hl.dsp.window.move({ workspace = "special:scratchpad", follow = false }))
 
 o.bind("SUPER + TAB", "Next workspace", hl.dsp.focus({ workspace = "e+1" }))
 o.bind("SUPER + SHIFT + TAB", "Previous workspace", hl.dsp.focus({ workspace = "e-1" }))
@@ -47,19 +46,19 @@ o.bind("ALT + SHIFT + TAB", "Focus on previous window", hl.dsp.window.cycle_next
 o.bind("ALT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
 o.bind("ALT + SHIFT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
 
-o.bind("SUPER + ALT + Next", "Focus on next monitor", hl.dsp.focus({ monitor = "+1" }))
-o.bind("SUPER + ALT + Prior", "Focus on previous monitor", hl.dsp.focus({ monitor = "-1" }))
+o.bind("SUPER + Next", "Focus on next monitor", hl.dsp.focus({ monitor = "+1" }))
+o.bind("SUPER + Prior", "Focus on previous monitor", hl.dsp.focus({ monitor = "-1" }))
 
 -- Adjacent unshifted punctuation keys keep resize chords to three physical
--- keys on a US layout. Alt selects small steps; Ctrl selects large steps.
+-- keys on a US layout. Shift selects small steps; Ctrl selects large steps.
 o.bind("SUPER + comma", "Expand window left", hl.dsp.window.resize({ x = -100, y = 0, relative = true }))
 o.bind("SUPER + period", "Shrink window left", hl.dsp.window.resize({ x = 100, y = 0, relative = true }))
 o.bind("SUPER + semicolon", "Shrink window up", hl.dsp.window.resize({ x = 0, y = -100, relative = true }))
 o.bind("SUPER + apostrophe", "Expand window down", hl.dsp.window.resize({ x = 0, y = 100, relative = true }))
-o.bind("SUPER + ALT + comma", "Expand window left a little", hl.dsp.window.resize({ x = -25, y = 0, relative = true }))
-o.bind("SUPER + ALT + period", "Shrink window left a little", hl.dsp.window.resize({ x = 25, y = 0, relative = true }))
-o.bind("SUPER + ALT + semicolon", "Shrink window up a little", hl.dsp.window.resize({ x = 0, y = -25, relative = true }))
-o.bind("SUPER + ALT + apostrophe", "Expand window down a little", hl.dsp.window.resize({ x = 0, y = 25, relative = true }))
+o.bind("SUPER + SHIFT + comma", "Expand window left a little", hl.dsp.window.resize({ x = -25, y = 0, relative = true }))
+o.bind("SUPER + SHIFT + period", "Shrink window left a little", hl.dsp.window.resize({ x = 25, y = 0, relative = true }))
+o.bind("SUPER + SHIFT + semicolon", "Shrink window up a little", hl.dsp.window.resize({ x = 0, y = -25, relative = true }))
+o.bind("SUPER + SHIFT + apostrophe", "Expand window down a little", hl.dsp.window.resize({ x = 0, y = 25, relative = true }))
 o.bind("SUPER + CTRL + comma", "Expand window left a lot", hl.dsp.window.resize({ x = -300, y = 0, relative = true }))
 o.bind("SUPER + CTRL + period", "Shrink window left a lot", hl.dsp.window.resize({ x = 300, y = 0, relative = true }))
 o.bind("SUPER + CTRL + semicolon", "Shrink window up a lot", hl.dsp.window.resize({ x = 0, y = -300, relative = true }))
@@ -73,24 +72,24 @@ o.bind("SUPER + mouse:273", "Start menu", "tam-menu toggle start")
 o.bind("SUPER + ALT + mouse:273", "Resize window", hl.dsp.window.resize(), { mouse = true })
 
 o.bind("SUPER + G", "Toggle window grouping", hl.dsp.group.toggle())
-o.bind("SUPER + ALT + G", "Move active window out of group", hl.dsp.window.move({ out_of_group = true }))
+o.bind("CTRL + SHIFT + G", "Move active window out of group", hl.dsp.window.move({ out_of_group = true }))
 
-o.bind("SUPER + ALT + LEFT", "Move window to group on left", hl.dsp.window.move({ into_group = "l" }))
-o.bind("SUPER + ALT + RIGHT", "Move window to group on right", hl.dsp.window.move({ into_group = "r" }))
-o.bind("SUPER + ALT + UP", "Move window to group on top", hl.dsp.window.move({ into_group = "u" }))
-o.bind("SUPER + ALT + DOWN", "Move window to group on bottom", hl.dsp.window.move({ into_group = "d" }))
+o.bind("CTRL + SHIFT + LEFT", "Move window to group on left", hl.dsp.window.move({ into_group = "l" }))
+o.bind("CTRL + SHIFT + RIGHT", "Move window to group on right", hl.dsp.window.move({ into_group = "r" }))
+o.bind("CTRL + SHIFT + UP", "Move window to group on top", hl.dsp.window.move({ into_group = "u" }))
+o.bind("CTRL + SHIFT + DOWN", "Move window to group on bottom", hl.dsp.window.move({ into_group = "d" }))
 
-o.bind("SUPER + ALT + TAB", "Next window in group", hl.dsp.group.next())
+o.bind("CTRL + SHIFT + TAB", "Next window in group", hl.dsp.group.next())
 
 o.bind("SUPER + CTRL + LEFT", "Move grouped window focus left", hl.dsp.group.prev())
 o.bind("SUPER + CTRL + RIGHT", "Move grouped window focus right", hl.dsp.group.next())
 
-o.bind("SUPER + ALT + mouse_down", "Next window in group", hl.dsp.group.next())
-o.bind("SUPER + ALT + mouse_up", "Previous window in group", hl.dsp.group.prev())
+o.bind("CTRL + SHIFT + mouse_down", "Next window in group", hl.dsp.group.next())
+o.bind("CTRL + SHIFT + mouse_up", "Previous window in group", hl.dsp.group.prev())
 
 for index = 1, 5 do
-  o.bind("SUPER + ALT + code:" .. tostring(index + 9), "Switch to group window " .. index, hl.dsp.group.active({ index = index }))
+  o.bind("CTRL + SHIFT + code:" .. tostring(index + 9), "Switch to group window " .. index, hl.dsp.group.active({ index = index }))
 end
 
 o.bind("SUPER + SLASH", "Monitor scaling up", "tam-hyprland-monitor-scaling up")
-o.bind("SUPER + ALT + SLASH", "Monitor scaling down", "tam-hyprland-monitor-scaling down")
+o.bind("CTRL + SLASH", "Monitor scaling down", "tam-hyprland-monitor-scaling down")

@@ -97,9 +97,9 @@ function parseCommands(text) {
 
 var MODS_TEXT = {
   0: "", 1: "SHIFT", 4: "CTRL", 5: "SHIFT CTRL", 8: "ALT", 9: "SHIFT ALT",
-  12: "CTRL ALT", 13: "SHIFT CTRL ALT", 64: "SUPER", 65: "SUPER SHIFT",
-  68: "SUPER CTRL", 69: "SUPER SHIFT CTRL", 72: "SUPER ALT",
-  73: "SUPER SHIFT ALT", 76: "SUPER CTRL ALT", 77: "SUPER SHIFT CTRL ALT"
+  12: "CTRL ALT", 13: "SHIFT CTRL ALT", 64: "Meta", 65: "Meta Shift",
+  68: "Meta Ctrl", 69: "Meta Shift Ctrl", 72: "Meta Alt",
+  73: "Meta Shift Alt", 76: "Meta Ctrl Alt", 77: "Meta Shift Ctrl Alt"
 }
 
 function modsText(modmask) {
@@ -330,7 +330,7 @@ function filterExplorer(rows, modifier, query) {
   var words = String(query || "").toLowerCase().trim().split(/\s+/).filter(Boolean)
   return rows.filter(function (row) {
     var mask = row.modmask
-    if (modifier === "super" && mask !== 64) return false
+    if ((modifier === "super" || modifier === "meta") && mask !== 64) return false
     if (modifier === "alt" && (mask & 72) !== 72) return false
     if (modifier === "ctrl" && (mask & 68) !== 68) return false
     if (modifier === "shift" && (mask & 65) !== 65) return false
@@ -397,6 +397,80 @@ function formatRecords(rows) {
   return out
 }
 
+var MAX_MACRO_TEXT = 10000
+
+function parseMacros(raw) {
+  var data
+  if (typeof raw === "string") {
+    if (!raw.trim()) return []
+    try { data = JSON.parse(raw) } catch (e) { return [] }
+  } else if (Array.isArray(raw)) {
+    data = raw
+  } else {
+    return []
+  }
+  if (!Array.isArray(data)) return []
+  var out = []
+  for (var i = 0; i < data.length && out.length < MAX_BINDS; i++) {
+    var item = data[i]
+    if (!item || typeof item !== "object") continue
+    var key = clip(item.key || "").trim().toUpperCase()
+    var text = String(item.text === undefined || item.text === null ? "" : item.text)
+    if (text.length > MAX_MACRO_TEXT) text = text.substring(0, MAX_MACRO_TEXT)
+    var desc = clip(item.description || "").trim()
+    if (!key || !text) continue
+    out.push({
+      key: key,
+      description: desc,
+      text: text,
+      chord: ["Meta", "Alt", key],
+      combo: "Meta + Alt + " + key
+    })
+  }
+  return out
+}
+
+function formatMacros(macros) {
+  if (!Array.isArray(macros)) return "[]\n"
+  var clean = macros.map(function(m) {
+    return {
+      key: String(m.key || "").toUpperCase().trim(),
+      description: String(m.description || "").trim(),
+      text: String(m.text || "")
+    }
+  })
+  return JSON.stringify(clean, null, 2) + "\n"
+}
+
+function validateMacro(key, text) {
+  var k = String(key || "").trim().toUpperCase()
+  if (!k) return { valid: false, error: "Key is required" }
+  if (k.length > 32) return { valid: false, error: "Key name too long" }
+  if (!/^[A-Z0-9_]+$/.test(k) && !/^(F[1-9]|F1[0-2])$/.test(k) && !/^(COMMA|PERIOD|SLASH|MINUS|EQUAL|SEMICOLON|APOSTROPHE|SPACE|RETURN|BACKSPACE|TAB|ESCAPE)$/.test(k)) {
+    if (k.length !== 1) return { valid: false, error: "Invalid key name: " + k }
+  }
+  var t = String(text === undefined || text === null ? "" : text)
+  if (!t.trim()) return { valid: false, error: "Text expansion cannot be empty" }
+  if (t.length > MAX_MACRO_TEXT) return { valid: false, error: "Text exceeds maximum length of 10,000 characters" }
+  return { valid: true, error: "" }
+}
+
+function macroChord(key) {
+  var k = String(key || "").trim().toUpperCase()
+  return k ? "Meta + Alt + " + k : "Meta + Alt"
+}
+
+function filterMacros(macros, query) {
+  if (!Array.isArray(macros)) return []
+  var q = String(query || "").toLowerCase().trim()
+  if (!q) return macros.slice()
+  var words = q.split(/\s+/).filter(Boolean)
+  return macros.filter(function(m) {
+    var haystack = [m.key, m.description, m.text, m.combo || ("Meta + Alt + " + m.key)].join(" ").toLowerCase()
+    return words.every(function(word) { return haystack.indexOf(word) !== -1 })
+  })
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     parseBinds: parseBinds,
@@ -417,6 +491,11 @@ if (typeof module !== "undefined" && module.exports) {
     availability: availability,
     availabilityKeyLabel: availabilityKeyLabel,
     formatRecords: formatRecords,
+    parseMacros: parseMacros,
+    formatMacros: formatMacros,
+    validateMacro: validateMacro,
+    macroChord: macroChord,
+    filterMacros: filterMacros,
     KEYCODE_NAMES: KEYCODE_NAMES,
     APP_VERSION: APP_VERSION,
     version: APP_VERSION
