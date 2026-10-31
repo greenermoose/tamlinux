@@ -60,3 +60,73 @@ class BrowserPolicy(unittest.TestCase):
         other=self.root/'unsafe';other.mkdir();other.chmod(0o777)
         with self.assertRaises(ValueError):m.apply('123abc',[str(self.directory),str(other)],self.recovery,os.getuid())
         self.assertFalse(self.path.exists());self.assertFalse(self.recovery.exists())
+
+    def test_other_managed_theme_policy_is_refused_before_writing(self):
+        other = self.directory/'personal-policy'
+        for key, value in (('BrowserThemeColor', '#123abc'), ('BrowserColorScheme', 'device')):
+            with self.subTest(key=key):
+                contents = json.dumps({key: value, 'OtherPolicy': True})
+                other.write_text(contents)
+                with self.assertRaisesRegex(ValueError, 'theme policy.*personal-policy'):
+                    self.apply()
+                self.assertEqual(other.read_text(), contents)
+                self.assertFalse(self.path.exists())
+                self.assertFalse(self.recovery.exists())
+
+    def test_unrelated_policy_is_preserved(self):
+        other = self.directory/'personal-policy.json'
+        original = '{"ShowHomeButton": true}\n'
+        other.write_text(original)
+        self.apply()
+        self.assertEqual(other.read_text(), original)
+        self.assertEqual(json.loads(self.path.read_text())['BrowserThemeColor'], '#123abc')
+
+    def test_escaped_theme_key_is_detected(self):
+        other = self.directory/'escaped.json'
+        original = '{"BrowserTheme\\u0043olor":"#111111"}'
+        other.write_text(original)
+        with self.assertRaisesRegex(ValueError, 'theme policy.*escaped.json'):
+            self.apply()
+        self.assertEqual(other.read_text(), original)
+        self.assertFalse(self.recovery.exists())
+
+    def test_uninspectable_other_policy_stops_without_changes(self):
+        other = self.directory/'personal-policy.json'
+        other.write_text('{malformed')
+        with self.assertRaisesRegex(ValueError, 'cannot inspect.*personal-policy'):
+            self.apply()
+        self.assertEqual(other.read_text(), '{malformed')
+        self.assertFalse(self.path.exists())
+        self.assertFalse(self.recovery.exists())
+        other.unlink()
+        other.symlink_to('/unavailable/personal-policy')
+        with self.assertRaisesRegex(ValueError, 'cannot inspect.*personal-policy'):
+            self.apply()
+        self.assertTrue(other.is_symlink())
+        self.assertFalse(self.path.exists())
+
+    def test_non_strict_policy_is_not_silently_assumed_safe(self):
+        other = self.directory/'comments.json'
+        contents = '{// browser accepts comments\n"ShowHomeButton": true,\n}'
+        other.write_text(contents)
+        with self.assertRaisesRegex(ValueError, 'cannot inspect.*comments.json'):
+            self.apply()
+        self.assertEqual(other.read_text(), contents)
+        self.assertFalse(self.recovery.exists())
+
+    def test_policy_inspection_is_bounded(self):
+        for index in range(129):
+            (self.directory/str(index)).write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'Too many browser policy entries'):
+            self.apply()
+        self.assertFalse(self.path.exists())
+        self.assertFalse(self.recovery.exists())
+
+    def test_other_browser_conflict_stops_before_any_write(self):
+        other = self.root/'second-managed'; other.mkdir()
+        policy = other/'other.json'; policy.write_text('{"BrowserThemeColor":"#ffffff"}')
+        with self.assertRaisesRegex(ValueError, 'theme policy.*other.json'):
+            m.apply('123abc', [str(self.directory), str(other)], self.recovery, os.getuid())
+        self.assertFalse(self.path.exists())
+        self.assertFalse((other/'tamlinux-color.json').exists())
+        self.assertFalse(self.recovery.exists())
