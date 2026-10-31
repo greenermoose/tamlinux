@@ -6,6 +6,7 @@ original bytes and link identities before writers run, and restore on failure.
 """
 import contextlib
 import ctypes
+import filecmp
 import fcntl
 import hashlib
 import json
@@ -13,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import struct
 import sys
@@ -167,6 +169,10 @@ class Journal:
                 if path.is_symlink():
                     observed['symlink'] = os.readlink(path)
                     saved.symlink_to(observed['symlink'])
+                    if path.is_file():
+                        target_saved = later / (str(index) + '.target')
+                        shutil.copy2(path, target_saved)
+                        observed['targetSaved'] = str(target_saved.relative_to(self.directory))
                 elif path.is_dir():
                     shutil.copytree(path, saved, symlinks=True)
                     observed['directory'] = True
@@ -174,6 +180,19 @@ class Journal:
                     shutil.copy2(path, saved)
                 observed['saved'] = str(saved.relative_to(self.directory))
             entry['afterFailure'] = observed
+            if 'symlink' in entry and not entry.get('directory'):
+                target = Path(entry['symlink'])
+                if not target.is_absolute():
+                    target = path.parent / target
+                target_state = {'present': target.exists()}
+                if target.is_file():
+                    if observed.get('symlink') == entry['symlink'] and observed.get('targetSaved'):
+                        target_state['saved'] = observed['targetSaved']
+                    else:
+                        target_saved = later / (str(index) + '.original-target')
+                        shutil.copy2(target, target_saved)
+                        target_state['saved'] = str(target_saved.relative_to(self.directory))
+                entry['originalTargetAfterFailure'] = target_state
         if self.dconf:
             self.gtk_after_failure = gtk_read(self.dconf)
         self.status('restoring-after-failure')
@@ -196,6 +215,18 @@ class Journal:
                     run(self.dconf, 'write', key, value)
             if gtk_read(self.dconf) != self.gtk_before:
                 raise ValueError('GTK settings were not restored')
+        for entry in self.entries:
+            if 'symlink' not in entry or entry.get('directory'):
+                continue
+            path = Path(entry['path'])
+            saved = entry.get('saved')
+            if saved:
+                original = self.directory / saved
+                if (not path.is_file() or not filecmp.cmp(path, original, shallow=False)
+                        or stat.S_IMODE(path.stat().st_mode) != stat.S_IMODE(original.stat().st_mode)):
+                    raise ValueError(f'symlink target changed during theme apply: {path}')
+            elif path.exists():
+                raise ValueError(f'previously unavailable symlink target now exists: {path}')
         self.status('restored-after-failure')
 
 @contextlib.contextmanager

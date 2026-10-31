@@ -337,6 +337,52 @@ class ThemeOwnership(unittest.TestCase):
                     journal.restore()
         self.assertEqual(settings.read_text(), 'later change')
 
+    def test_failed_apply_archives_changed_symlink_target_and_reports_incomplete(self):
+        spec = importlib.util.spec_from_file_location('theme_engine_symlink_proof', ENGINE)
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        target = self.base/'personal-settings'
+        target.write_text('original')
+        settings = self.config/'Code/User/settings.json'
+        settings.parent.mkdir(parents=True)
+        settings.symlink_to(target)
+        with patch.object(engine, 'STATE', self.state/'tamlinux'):
+            with self.assertRaisesRegex(ValueError, 'operation failed: adapter failed; recovery incomplete: symlink target changed'):
+                with engine.transaction('symlink-proof', [settings]) as journal:
+                    settings.write_text('later edit')
+                    raise ValueError('adapter failed')
+        self.assertEqual(os.readlink(settings), str(target))
+        self.assertEqual(target.read_text(), 'later edit')
+        doc = json.loads((journal.directory/'manifest.json').read_text())
+        self.assertEqual(doc['status'], 'restoring-after-failure')
+        entry = doc['files'][0]
+        self.assertEqual((journal.directory/entry['saved']).read_text(), 'original')
+        self.assertEqual((journal.directory/entry['afterFailure']['targetSaved']).read_text(), 'later edit')
+        self.assertEqual((journal.directory/entry['originalTargetAfterFailure']['saved']).read_text(), 'later edit')
+
+    def test_failed_apply_preserves_replaced_link_and_later_target_edit(self):
+        spec = importlib.util.spec_from_file_location('theme_engine_replaced_link_proof', ENGINE)
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        target = self.base/'personal-settings'
+        target.write_text('original')
+        settings = self.config/'Code/User/settings.json'
+        settings.parent.mkdir(parents=True)
+        relative = os.path.relpath(target, settings.parent)
+        settings.symlink_to(relative)
+        with patch.object(engine, 'STATE', self.state/'tamlinux'):
+            with self.assertRaisesRegex(ValueError, 'recovery incomplete: symlink target changed'):
+                with engine.transaction('replaced-link-proof', [settings]) as journal:
+                    settings.unlink()
+                    settings.write_text('adapter replacement')
+                    target.write_text('later target edit')
+                    raise ValueError('adapter failed')
+        self.assertEqual(os.readlink(settings), relative)
+        self.assertEqual(target.read_text(), 'later target edit')
+        entry = json.loads((journal.directory/'manifest.json').read_text())['files'][0]
+        self.assertEqual((journal.directory/entry['afterFailure']['saved']).read_text(), 'adapter replacement')
+        self.assertEqual((journal.directory/entry['originalTargetAfterFailure']['saved']).read_text(), 'later target edit')
+
     def fake_dconf(self):
         path = self.bin/'dconf'
         path.write_text('''#!/usr/bin/env python3
