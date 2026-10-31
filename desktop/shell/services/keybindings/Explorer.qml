@@ -32,9 +32,10 @@ PanelWindow {
   signal dismissRequested()
 
   property string currentSection: "shortcuts"
-  property var rawMacros: []
-  readonly property var macros: Model.parseMacros(rawMacros)
-  readonly property var filteredMacros: Model.filterMacros(macros, macroSearch.text)
+  property string macroSearchQuery: ""
+  property string rawMacros: "[]"
+  property var macros: []
+  readonly property var filteredMacros: Model.filterMacros(macros, macroSearchQuery)
   property var selectedMacro: null
   property string macroEditorMode: "none"
   property string macroEditKey: ""
@@ -43,17 +44,58 @@ PanelWindow {
   property string macroValidationError: ""
   property bool showDeleteConfirm: false
 
+  onMacroEditorModeChanged: {
+    if (macroEditorMode === "add") {
+      macroEditKey = ""
+      macroEditDesc = ""
+      macroEditText = ""
+      macroValidationError = ""
+      keyInputField.text = ""
+      descInputField.text = ""
+      textInputArea.text = ""
+      Qt.callLater(function() { keyInputField.forceActiveFocus() })
+    } else if (macroEditorMode === "edit" && selectedMacro) {
+      macroEditKey = selectedMacro.key
+      macroEditDesc = selectedMacro.description || ""
+      macroEditText = selectedMacro.text
+      macroValidationError = ""
+      keyInputField.text = selectedMacro.key
+      descInputField.text = selectedMacro.description || ""
+      textInputArea.text = selectedMacro.text
+      Qt.callLater(function() { descInputField.forceActiveFocus() })
+    }
+  }
+
   function loadMacros(raw) {
-    panel.rawMacros = raw
-    if (panel.macros.length > 0 && !panel.selectedMacro) {
-      panel.selectedMacro = panel.macros[0]
+    var s = String(raw || "").trim()
+    if (!s && panel.macros.length > 0) return
+    var parsed = Model.parseMacros(s || "[]")
+    panel.macros = parsed
+    panel.rawMacros = s
+    if (parsed.length > 0) {
+      if (!panel.selectedMacro) {
+        panel.selectedMacro = parsed[0]
+      } else {
+        var found = null
+        for (var i = 0; i < parsed.length; i++) {
+          if (parsed[i].key === panel.selectedMacro.key) {
+            found = parsed[i]
+            break
+          }
+        }
+        panel.selectedMacro = found || parsed[0]
+      }
+    } else {
+      panel.selectedMacro = null
     }
   }
 
   function saveMacroChanges(updatedList) {
-    var jsonText = Model.formatMacros(updatedList)
-    macrosFile.setText(jsonText)
+    var parsed = Model.parseMacros(updatedList)
+    panel.macros = parsed
+    var jsonText = Model.formatMacros(parsed)
     panel.rawMacros = jsonText
+    macrosFile.setText(jsonText)
     syncMacros()
   }
 
@@ -155,6 +197,8 @@ PanelWindow {
       macroEditorMode = "none"
       showDeleteConfirm = false
       search.text = ""
+      macroSearchQuery = ""
+      macroSearch.text = ""
       modifier = "all"
       group = "All groups"
       groupSelect.currentIndex = 0
@@ -189,7 +233,7 @@ PanelWindow {
       if (event) event.accepted = true
       return
     }
-    if (panel.currentSection === "macros" && macroSearch.text.length > 0) {
+    if (panel.currentSection === "macros" && panel.macroSearchQuery.length > 0) {
       macroSearch.text = ""
       macroSearch.forceActiveFocus()
       if (event) event.accepted = true
@@ -326,8 +370,10 @@ PanelWindow {
     atomicWrites: true
     printErrors: false
     onLoaded: panel.loadMacros(text())
-    onLoadFailed: panel.loadMacros("[]")
-    onFileChanged: panel.loadMacros(text())
+    onLoadFailed: {
+      if (!panel.macros || panel.macros.length === 0) panel.loadMacros("[]")
+    }
+    onFileChanged: reload()
   }
   Process {
     id: macroSyncProcess
@@ -1170,6 +1216,7 @@ PanelWindow {
             border.width: 1
           }
           placeholderText: "Search macros by key, description, or phrase..."
+          onTextChanged: panel.macroSearchQuery = text
           Keys.priority: Keys.BeforeItem
           Keys.onDownPressed: if (macroList.count > 0) macroList.forceActiveFocus()
           Keys.onReturnPressed: if (macroList.count > 0) macroList.forceActiveFocus()
@@ -1181,10 +1228,6 @@ PanelWindow {
           isAccent: true
           text: "+ Add Macro"
           onClicked: {
-            panel.macroEditKey = ""
-            panel.macroEditDesc = ""
-            panel.macroEditText = ""
-            panel.macroValidationError = ""
             panel.macroEditorMode = "add"
           }
         }
@@ -1540,10 +1583,6 @@ PanelWindow {
                   text: "Edit Macro"
                   isAccent: true
                   onClicked: {
-                    panel.macroEditKey = panel.selectedMacro.key
-                    panel.macroEditDesc = panel.selectedMacro.description
-                    panel.macroEditText = panel.selectedMacro.text
-                    panel.macroValidationError = ""
                     panel.macroEditorMode = "edit"
                   }
                 }
@@ -1599,7 +1638,12 @@ PanelWindow {
                       onClicked: {
                         if (panel.selectedMacro) {
                           var keyToDelete = panel.selectedMacro.key
-                          var updated = panel.macros.filter(function(m) { return m.key !== keyToDelete })
+                          var updated = []
+                          for (var i = 0; i < panel.macros.length; i++) {
+                            if (panel.macros[i].key !== keyToDelete) {
+                              updated.push(panel.macros[i])
+                            }
+                          }
                           panel.saveMacroChanges(updated)
                           panel.selectedMacro = updated.length > 0 ? updated[0] : null
                           panel.showDeleteConfirm = false
@@ -1668,6 +1712,7 @@ PanelWindow {
                     selectionColor: Commons.Color.accent
                     font.pixelSize: 13
                     font.bold: true
+                    font.family: Style.fontFamily
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     maximumLength: 10
@@ -1685,7 +1730,7 @@ PanelWindow {
                     radius: 12
                     anchors.verticalCenter: parent.verticalCenter
                     readonly property var existingMatch: {
-                      var k = panel.macroEditKey.toUpperCase()
+                      var k = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
                       if (!k) return null
                       for (var i = 0; i < panel.macros.length; i++) {
                         if (panel.macros[i].key === k) return panel.macros[i]
@@ -1700,7 +1745,8 @@ PanelWindow {
                       id: availText
                       anchors.centerIn: parent
                       text: {
-                        if (!panel.macroEditKey) return "Enter key"
+                        var k = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
+                        if (!k) return "Enter key"
                         if (parent.isOverwrite) return "Assigned: will overwrite"
                         return "Available"
                       }
@@ -1758,9 +1804,10 @@ PanelWindow {
                   color: Commons.Color.background
                   border.color: textInputArea.activeFocus ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.22)
                   border.width: 1
+                  clip: true
                   ScrollView {
                     anchors.fill: parent
-                    anchors.margins: 8
+                    anchors.margins: 4
                     TextArea {
                       id: textInputArea
                       text: panel.macroEditText
@@ -1769,9 +1816,14 @@ PanelWindow {
                       placeholderTextColor: Commons.Color.muted
                       selectedTextColor: Commons.Color.accentText
                       selectionColor: Commons.Color.accent
-                      font.pixelSize: 12
+                      font.pixelSize: 13
                       font.family: Style.fontFamily
                       wrapMode: TextEdit.Wrap
+                      padding: 8
+                      background: Rectangle {
+                        color: Commons.Color.background
+                        radius: Style.cornerRadius
+                      }
                       onTextChanged: panel.macroEditText = text
                     }
                   }
@@ -1794,17 +1846,26 @@ PanelWindow {
                   text: "Save Macro"
                   isAccent: true
                   onClicked: {
-                    var val = Model.validateMacro(panel.macroEditKey, panel.macroEditText)
+                    var key = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
+                    var desc = (descInputField.text || panel.macroEditDesc || "").trim()
+                    var text = textInputArea.text || panel.macroEditText || ""
+                    var val = Model.validateMacro(key, text)
                     if (!val.valid) {
                       panel.macroValidationError = val.error
                       return
                     }
-                    var key = panel.macroEditKey.toUpperCase()
-                    var updated = panel.macros.filter(function(m) { return m.key !== key })
+                    var updated = []
+                    for (var i = 0; i < panel.macros.length; i++) {
+                      if (panel.macros[i].key !== key) {
+                        updated.push(panel.macros[i])
+                      }
+                    }
                     var item = {
                       key: key,
-                      description: panel.macroEditDesc.trim(),
-                      text: panel.macroEditText
+                      description: desc,
+                      text: text,
+                      chord: ["Meta", "Alt", key],
+                      combo: "Meta + Alt + " + key
                     }
                     updated.push(item)
                     panel.saveMacroChanges(updated)
