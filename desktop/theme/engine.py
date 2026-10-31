@@ -6,6 +6,7 @@ original bytes and link identities before writers run, and restore on failure.
 """
 import contextlib
 import ctypes
+import ctypes.util
 import filecmp
 import fcntl
 import hashlib
@@ -296,7 +297,8 @@ def stage_tree(source, destination, restricted=False):
 ADAPTERS = ['foot', 'tmux', 'gnome', 'browser', 'pi', 'claude', 't3code', 'vscode', 'obsidian', 'keyboard']
 
 def application_paths():
-    paths = [CONFIG / 'Code/User/settings.json', CONFIG / 'Code - Insiders/User/settings.json',
+    paths = [CONFIG / 'gtk-4.0/gtk.css',
+             CONFIG / 'Code/User/settings.json', CONFIG / 'Code - Insiders/User/settings.json',
              CONFIG / 'VSCodium/User/settings.json', CONFIG / 'Cursor/User/settings.json',
              *[HOME / base / 'extensions' / leaf for base in ('.vscode', '.vscode-insiders', '.vscode-oss', '.cursor') for leaf in ('tam-theme', 'extensions.json', '.obsolete')],
              HOME / '.pi/agent/themes/tam-system.json', HOME / '.pi/agent/settings.json',
@@ -308,6 +310,71 @@ def application_paths():
         vaults = json.loads(obsidian.read_text()).get('vaults', {}).values()
         paths += [Path(v['path']) / '.obsidian/themes/Tamlinux' for v in vaults]
     return paths
+
+
+def gtk4_media_supported():
+    """GTK 4.20 added colour-scheme CSS media queries."""
+    try:
+        library = ctypes.util.find_library('gtk-4')
+        if not library:
+            return False
+        gtk = ctypes.CDLL(library)
+        return (gtk.gtk_get_major_version(), gtk.gtk_get_minor_version()) >= (4, 20)
+    except (OSError, AttributeError):
+        return False
+
+
+def prepare_gtk4_pair(stage, theme):
+    """Generate both built-in Tamarack variants without changing user CSS."""
+    if theme not in ('tamarack-dark', 'tamarack-light'):
+        return False
+    other = 'tamarack-light' if theme.endswith('dark') else 'tamarack-dark'
+    # Arbitrary personal CSS may contain top-level-only rules. Preserve it and
+    # leave it in control rather than embedding it into a media query.
+    overrides = [CONFIG / 'tamlinux/themed/gtk4.css.tpl',
+                 CONFIG / 'tamlinux/themed/gtk4-adaptive.css.tpl',
+                 CONFIG / 'tamlinux/themes' / theme / 'gtk4.css',
+                 CONFIG / 'tamlinux/themes' / other / 'gtk4.css',
+                 CONFIG / 'tamlinux/themes' / theme / 'gtk4-adaptive.css',
+                 CONFIG / 'tamlinux/themes' / other / 'gtk4-adaptive.css']
+    if any(path.exists() or path.is_symlink() for path in overrides):
+        return False
+    with tempfile.TemporaryDirectory(prefix='gtk4-pair-', dir=STATE / 'theme-generations') as scratch:
+        alternate = Path(scratch)
+        (alternate / 'colors.toml').write_text(tamarack_colors(other.removeprefix('tamarack-')))
+        user = CONFIG / 'tamlinux/themes' / other
+        if user.is_dir():
+            stage_tree(user, alternate, (user / '.git').exists())
+        run('tam-theme-colors-from-alacritty', alternate)
+        run('tam-theme-set-templates', env=dict(os.environ, TAMLINUX_THEME_STAGE=str(alternate)))
+        current_css = (stage / 'gtk4.css').read_text()
+        other_css = (alternate / 'gtk4.css').read_text()
+        if any('{{' in css for css in (current_css, other_css)):
+            raise ValueError('unresolved GTK 4 palette template')
+        styles = {theme.removeprefix('tamarack-'): current_css,
+                  other.removeprefix('tamarack-'): other_css}
+        (stage / 'gtk4-adaptive.css').write_text(''.join(
+            f'@media (prefers-color-scheme: {mode}) {{\n{styles[mode]}\n}}\n'
+            for mode in ('dark', 'light')))
+    return True
+
+
+def apply_gtk4_link(enabled):
+    """Manage only our exact symlink; never replace a personal GTK file."""
+    path = CONFIG / 'gtk-4.0/gtk.css'
+    target = str(CURRENT / 'theme/gtk4-adaptive.css')
+    owned = path.is_symlink() and os.readlink(path) == target
+    if not enabled:
+        if owned:
+            path.unlink()
+        return
+    if owned:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.symlink_to(target)
+    except FileExistsError:
+        print(f'GTK 4: preserving existing personal stylesheet {path}', file=sys.stderr)
 
 def tamarack_colors(variant):
     if variant not in ('dark', 'light'):
@@ -429,6 +496,20 @@ def set_theme(value, refresh=False, apply=True):
                 data = foot.read_text()
                 if data.startswith('[colors-dark]\n') and '[colors-light]' not in data:
                     foot.write_text(data + '\n' + data.replace('[colors-dark]', '[colors-light]', 1))
+        gtk4_pair = False
+        if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE'):
+            try:
+                gtk4_pair = prepare_gtk4_pair(stage, theme)
+            except (OSError, ValueError, UnicodeError, subprocess.SubprocessError) as error:
+                print(f'GTK 4: adaptive palette unavailable; preserving theme switch: {error}', file=sys.stderr)
+        elif apply and os.environ.get('TAMLINUX_THEME_OFFLINE'):
+            # Offline changes deliberately skip application adapters. Keep the
+            # existing managed target readable when the active directory moves.
+            link = CONFIG / 'gtk-4.0/gtk.css'
+            previous = CURRENT / 'theme/gtk4-adaptive.css'
+            if (link.is_symlink() and os.readlink(link) == str(previous) and previous.is_file()
+                    and not (stage / 'gtk4-adaptive.css').exists()):
+                shutil.copyfile(previous, stage / 'gtk4-adaptive.css')
         for item in stage.glob('*'):
             if item.suffix in {'.toml', '.ini', '.json', '.conf', '.lua', '.theme', '.css', '.micro'} and '{{' in item.read_text():
                 raise ValueError(f'unresolved template in {item.name}')
@@ -436,6 +517,10 @@ def set_theme(value, refresh=False, apply=True):
             previous_theme = selected()
         except (ValueError, UnicodeError):
             previous_theme = ''
+        gtk4_link = CONFIG / 'gtk-4.0/gtk.css'
+        gtk4_target = str(CURRENT / 'theme/gtk4-adaptive.css')
+        gtk4_was_owned = gtk4_link.is_symlink() and os.readlink(gtk4_link) == gtk4_target
+        previous_gtk4 = (CURRENT / 'theme/gtk4-adaptive.css').read_bytes() if gtk4_was_owned and (CURRENT / 'theme/gtk4-adaptive.css').is_file() else None
         paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
         dconf = None
         if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE') and os.environ.get('DBUS_SESSION_BUS_ADDRESS'):
@@ -462,11 +547,21 @@ def set_theme(value, refresh=False, apply=True):
                     index = next((i for i,p in enumerate(choices) if p.resolve() == old), -1)
                     atomic(CURRENT / 'background', link=choices[(index + 1) % len(choices)])
             if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE'):
+                gtk4_supported = gtk4_media_supported() if gtk4_pair else False
+                if theme in ('tamarack-dark', 'tamarack-light') and not gtk4_pair:
+                    print('GTK 4: personal or unavailable theme styles are not replaced.', file=sys.stderr)
+                elif gtk4_pair and not gtk4_supported:
+                    print('GTK 4: adaptive colours need GTK 4.20 or newer.', file=sys.stderr)
+                apply_gtk4_link(gtk4_pair and gtk4_supported)
                 for adapter in ADAPTERS: run('tam-theme-set-' + adapter, env=dict(os.environ, TAMLINUX_THEME_JOURNALED='1'))
                 for app in ('terminal', 'hyprctl', 'btop', 'opencode', 'helix'):
                     run('tam-restart-' + app, check=False)
                 run('tam-hook', 'theme-set', theme)
         published = True
+        gtk4_owned = gtk4_link.is_symlink() and os.readlink(gtk4_link) == gtk4_target
+        current_gtk4 = (CURRENT / 'theme/gtk4-adaptive.css').read_bytes() if gtk4_owned and (CURRENT / 'theme/gtk4-adaptive.css').is_file() else None
+        if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE') and (gtk4_owned or gtk4_was_owned) and previous_gtk4 != current_gtk4:
+            print('GTK 4: restart already-open applications to load changed theme colours.', file=sys.stderr)
         if apply: sync_shell()
     except BaseException:
         # A completed publication can have background links into this

@@ -1,4 +1,4 @@
-/* GTK 4/libadwaita prototype: generated, but not installed as user CSS. */
+/* GTK 4/libadwaita colours generated from the selected theme. */
 :root {
   --window-fg-color: {{ foreground }};
   --window-bg-color: {{ background }};
