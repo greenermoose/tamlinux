@@ -2,7 +2,8 @@
 """Fixed native browser-color endpoint with explicit, preserving recovery.
 
 Other managed policy files must be inspectable as bounded strict JSON and must
-not define either theme key. They are never modified by this endpoint.
+not define either theme key. They are never modified by this endpoint. The
+read-only --check is available without privilege; apply repeats the preflight.
 """
 import base64
 import hashlib
@@ -87,8 +88,8 @@ def check_other_policies(directory, target, uid):
             raise ValueError(f'conflicting browser theme policy in {path}; review it before applying')
 
 
-def apply(color, directories, recovery, uid=0):
-    if not re.fullmatch('[0-9a-f]{6}',color): raise ValueError('Expected one lowercase six-digit color')
+def preflight(directories, uid=0):
+    """Inspect the fixed policy targets without writing any files."""
     rows=[]
     for directory in map(Path,directories):
         if not directory.exists(): continue
@@ -97,6 +98,12 @@ def apply(color, directories, recovery, uid=0):
         check_other_policies(directory,target,uid)
         rows.append({'path':str(target),'before':snapshot(target,uid)})
     if not rows: raise ValueError('No supported native browser policy directory is installed')
+    return rows
+
+
+def apply(color, directories, recovery, uid=0):
+    if not re.fullmatch('[0-9a-f]{6}',color): raise ValueError('Expected one lowercase six-digit color')
+    rows=preflight(directories,uid)
     if any(parent.is_symlink() for parent in (recovery,*recovery.parents)):
         raise ValueError('Redirected recovery directory')
     recovery.mkdir(parents=True,mode=0o700,exist_ok=True)
@@ -140,6 +147,9 @@ def restore(journal, directories, uid=0):
 
 
 def main(arguments):
+    if arguments == ['--check']:
+        preflight(DIRECTORIES)
+        return
     if os.geteuid()!=0:raise ValueError('Native policy changes require root authorization')
     if len(arguments)==1:
         print(apply(arguments[0],DIRECTORIES,RECOVERY).name)
@@ -149,7 +159,7 @@ def main(arguments):
         validate_directory(journal,0)
         if journal.is_symlink():raise ValueError('Redirected recovery journal')
         restore(journal,DIRECTORIES)
-    else:raise ValueError('Expected COLOR or --restore JOURNAL')
+    else:raise ValueError('Expected --check, COLOR or --restore JOURNAL')
 
 
 if __name__=='__main__':

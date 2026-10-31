@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('browser_policy',ROOT/'desktop/native/browser_policy.py')
@@ -130,3 +131,25 @@ class BrowserPolicy(unittest.TestCase):
         self.assertFalse(self.path.exists())
         self.assertFalse((other/'tamlinux-color.json').exists())
         self.assertFalse(self.recovery.exists())
+
+    def test_read_only_preflight_checks_conflicts_without_creating_journal(self):
+        self.assertEqual(len(m.preflight([str(self.directory)], os.getuid())), 1)
+        self.assertFalse(self.path.exists())
+        self.assertFalse(self.recovery.exists())
+        other = self.directory/'other.json'
+        other.write_text('{"BrowserThemeColor":"#ffffff"}')
+        with self.assertRaisesRegex(ValueError, 'theme policy.*other.json'):
+            m.preflight([str(self.directory)], os.getuid())
+        self.assertFalse(self.path.exists())
+        self.assertFalse(self.recovery.exists())
+
+    def test_check_command_is_available_without_root_and_cannot_apply(self):
+        with patch.object(m, 'preflight') as preflight, \
+             patch.object(m.os, 'geteuid', return_value=1000), \
+             patch.object(m, 'apply') as apply:
+            m.main(['--check'])
+            preflight.assert_called_once_with(m.DIRECTORIES)
+            apply.assert_not_called()
+            with self.assertRaisesRegex(ValueError, 'require root'):
+                m.main(['123abc'])
+            apply.assert_not_called()
