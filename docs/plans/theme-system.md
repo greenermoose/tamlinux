@@ -19,6 +19,18 @@ speed-test startup sweep have been removed. The active theme uses an atomic
 directory exchange, with legacy-link migration and background recovery covered
 by source and packaged checks. Physical recovery proof remains open.
 
+**2026-10-31 GTK 4 development:** On GTK 4.20 and newer, an adaptive
+Tamarack stylesheet contains both variants so a running application can follow
+the desktop colour preference. Theme application creates its own user CSS
+symlink only when that path is absent and preserves personal stylesheets and
+links. Personal GTK templates take precedence. An existing application must be
+restarted manually after the stylesheet is first enabled, removed, or its
+contents change; applications are not restarted automatically. A dark/light
+change with an unchanged adaptive stylesheet needs no restart. Unsupported GTK
+versions keep their existing appearance. This is Develop work: installed
+integration, real applications, complete contrast and recovery still need
+candidate-bound checks and Fred's acceptance.
+
 ## Purpose and design
 
 Give the shell and supported applications a consistent, accessible Tamlinux
