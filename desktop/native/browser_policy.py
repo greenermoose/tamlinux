@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 """Fixed native browser-color endpoint with explicit, preserving recovery.
 
-Other managed policy files must be inspectable as bounded strict JSON and must
-not define either theme key. They are never modified by this endpoint. The
+Other managed policy files must be inspectable as bounded JSON, including
+comments and trailing commas, and must not define either theme key. They are
+never modified by this endpoint. The
 read-only --check is available without privilege; apply repeats the preflight.
 """
 import base64
@@ -59,6 +60,68 @@ def save(path, value):
     write(path,{'present':True,'mode':0o600,'bytes':base64.b64encode((json.dumps(value,indent=2)+'\n').encode()).decode()})
 
 
+def parse_policy(data):
+    """Parse the supported Chromium JSON extensions without altering strings."""
+    source = data.decode('utf-8')
+    cleaned = []
+    i = 0
+    quoted = escaped = False
+    while i < len(source):
+        char = source[i]
+        if quoted:
+            cleaned.append(char)
+            if escaped: escaped = False
+            elif char == '\\': escaped = True
+            elif char == '"': quoted = False
+            i += 1
+        elif char == '"':
+            quoted = True
+            cleaned.append(char)
+            i += 1
+        elif source[i:i+2] == '//':
+            cleaned.append(' ')
+            i += 2
+            while i < len(source) and source[i] not in '\r\n': i += 1
+        elif source[i:i+2] == '/*':
+            end = source.find('*/', i+2)
+            if end < 0: raise ValueError('unterminated policy comment')
+            cleaned.append(' ')
+            i = end+2
+        else:
+            cleaned.append(char)
+            i += 1
+    source = ''.join(cleaned)
+    cleaned = []
+    i = 0
+    quoted = escaped = False
+    previous = ''
+    while i < len(source):
+        char = source[i]
+        if quoted:
+            cleaned.append(char)
+            if escaped: escaped = False
+            elif char == '\\': escaped = True
+            elif char == '"': quoted = False
+        elif char == '"':
+            quoted = True
+            cleaned.append(char)
+        elif char == ',':
+            following = i+1
+            while following < len(source) and source[following] in ' \t\r\n': following += 1
+            if (following < len(source) and source[following] in '}]'
+                    and previous in '"0123456789]}el'):
+                i += 1
+                continue
+            cleaned.append(char)
+        else:
+            cleaned.append(char)
+        if not quoted and char not in ' \t\r\n': previous = char
+        i += 1
+    def reject_constant(value):
+        raise ValueError(f'invalid JSON constant {value}')
+    return json.loads(''.join(cleaned), parse_constant=reject_constant)
+
+
 def check_other_policies(directory, target, uid):
     """Refuse duplicate theme keys without changing another owner's policy."""
     total = 0
@@ -79,7 +142,7 @@ def check_other_policies(directory, target, uid):
             total += len(data)
             if total > 4 * 1024 * 1024:
                 raise ValueError('policy data exceeds inspection limit')
-            document = json.loads(data)
+            document = parse_policy(data)
             if not isinstance(document, dict):
                 raise ValueError('expected a JSON object')
         except (OSError, ValueError, UnicodeError, RecursionError) as error:
