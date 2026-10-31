@@ -38,7 +38,8 @@ compatibility require live acceptance. See `commands/tam-macro/README.md`.
 - 49 keybinding model/explorer tests passed.
 - Invisible Wayland QML proof saved a Backspace macro through the real backend
   into temporary configuration; no reload or keyboard input.
-- Physical acceptance pending the updated development trial.
+- 5 packaged session-default tests passed.
+- Physical key sequencing and text insertion confirmed below.
 
 ## Development-trial observations
 
@@ -47,8 +48,14 @@ errors were empty. Live Meta+Alt+slash had one macro binding and no monitor
 scaling binding. Fred supplied physical Backspace and slash chords to wev:
 Backspace was released 656 ms before the modifiers; the slash macro emitted
 one Ctrl+V down/up pair only after both Meta and Alt were released. No Meta or
-Alt modifier leaked into that pair. Text insertion acceptance is pending.
+Alt modifier leaked into that pair. Fred subsequently confirmed: “Text insertion works”.
 
 A follow-up carries the triggering window address into the runner, closing the
 focus-change gap between compositor dispatch and process startup. Save rollback
 also removes partially installed new bindings before reloading the prior file.
+
+The installed development trial is `020c8dc`. Its live bindings include one
+BackSpace macro and one slash macro, both on Meta+Alt with release handling;
+Hyprland reports no configuration errors. No packaged Test/Run stage moved.
+The confirmation establishes the exercised text field, not every application
+or layer-shell surface.
