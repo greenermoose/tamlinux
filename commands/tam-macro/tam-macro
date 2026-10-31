@@ -164,20 +164,20 @@ def inject_text(text: str) -> None:
     mods = "SHIFT" if is_term else "CTRL"
     key = "Insert" if is_term else "V"
 
-    # Dispatch paste keystroke via Hyprland dispatcher
+    # Dispatch paste keystroke via Hyprland Lua dispatcher
     # Using separate down and up state to prevent synthetic key sticking
     # (matching desktop/session/hypr/tamlinux/bindings/clipboard.lua)
     dispatched = False
     try:
         r1 = subprocess.run(
-            ["hyprctl", "dispatch", "sendkeystate", f"{mods},{key},down,"],
+            ["hyprctl", "dispatch", f'hl.dsp.send_key_state({{ mods = "{mods}", key = "{key}", state = "down" }})'],
             capture_output=True,
             text=True,
             timeout=2,
         )
         time.sleep(0.05)
         r2 = subprocess.run(
-            ["hyprctl", "dispatch", "sendkeystate", f"{mods},{key},up,"],
+            ["hyprctl", "dispatch", f'hl.dsp.send_key_state({{ mods = "{mods}", key = "{key}", state = "up" }})'],
             capture_output=True,
             text=True,
             timeout=2,
@@ -186,20 +186,6 @@ def inject_text(text: str) -> None:
             dispatched = True
     except Exception:
         pass
-
-    if not dispatched:
-        # Fallback to sendshortcut
-        try:
-            r = subprocess.run(
-                ["hyprctl", "dispatch", "sendshortcut", f"{mods},{key},"],
-                capture_output=True,
-                text=True,
-                timeout=2,
-            )
-            if r.returncode == 0:
-                dispatched = True
-        except Exception:
-            pass
 
     if not dispatched:
         # Fallback to wtype
