@@ -85,6 +85,9 @@ exec quickshell --no-duplicate --path "$out/desktop/shell/services/keybindings/d
 EOF
   chmod 755 "$launcher.tmp"
   mv -- "$launcher.tmp" "$launcher"
+  if [[ -f $out/commands/tam-macro/tam-macro ]]; then
+    ln -sf -- "$out/commands/tam-macro/tam-macro" "$dev/bin/tam-macro"
+  fi
 }
 
 write_record() {
@@ -135,7 +138,7 @@ install() {
 
 uninstall() {
   [[ -f $record ]] || die "no trial installed (no $record)"
-  rm -f -- "$launcher"
+  rm -f -- "$launcher" "$dev/bin/tam-macro"
   if [[ -e $saved || -L $saved ]]; then
     mv -- "$saved" "$launcher"
     echo "dev-trial: restored the earlier development launcher"
