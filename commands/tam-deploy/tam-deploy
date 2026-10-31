@@ -217,10 +217,43 @@ class Deployment:
 
     def preflight(self) -> None:
         self.check_clean()
-        self.graphical_active()
-        session = os.environ.get("XDG_SESSION_ID")
-        if session and command("loginctl", "show-session", session, "-p", "LockedHint", "--value", capture=True) == "yes":
-            raise DeploymentError("unlock the session before deploying")
+        if self.graphical_active():
+            self.require_unlocked_sessions()
+        else:
+            session = os.environ.get("XDG_SESSION_ID")
+            if session and command("loginctl", "show-session", session, "-p", "LockedHint", "--value", capture=True) == "yes":
+                raise DeploymentError("unlock the session before deploying")
+
+    def require_unlocked_sessions(self) -> None:
+        """A VT can coexist with a locked graphical session of this user."""
+        try:
+            listing = command("loginctl", "list-sessions", "--json=short", capture=True)
+            if len(listing) > 65536:
+                raise ValueError("session list is too large")
+            sessions = json.loads(listing)
+            if not isinstance(sessions, list):
+                raise ValueError("invalid session list")
+            checked = 0
+            for session in sessions:
+                if not isinstance(session, dict) or type(session.get("uid")) is not int:
+                    raise ValueError("invalid session entry")
+                if session["uid"] != os.getuid():
+                    continue
+                category, identifier = session.get("class"), session.get("session")
+                if not isinstance(category, str) or not isinstance(identifier, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", identifier):
+                    raise ValueError("invalid session identity")
+                if category in ("manager", "manager-early"):
+                    continue
+                locked = command("loginctl", "show-session", identifier, "-p", "LockedHint", "--value", capture=True)
+                if locked == "yes":
+                    raise DeploymentError("unlock all of this user's sessions before deploying")
+                if locked != "no":
+                    raise ValueError("unknown session lock state")
+                checked += 1
+            if not checked:
+                raise ValueError("no user session found")
+        except (OSError, subprocess.CalledProcessError, ValueError) as exc:
+            raise DeploymentError(f"cannot verify session lock state: {exc}") from exc
 
     def graphical_active(self) -> bool:
         result = subprocess.run(["systemctl", "--user", "is-active", "graphical-session.target"],
@@ -234,6 +267,7 @@ class Deployment:
 
     def restart_if_graphical(self) -> None:
         if self.graphical_active():
+            self.require_unlocked_sessions()
             command("tam-restart-shell")
             self.wait_ready()
 
@@ -414,6 +448,8 @@ class Deployment:
             try:
                 self.lock.write_bytes(before)
                 if self.generation() != previous:
+                    if self.graphical_active():
+                        self.require_unlocked_sessions()
                     command(str(Path(previous) / "activate"))
                     if self.generation() != previous:
                         raise DeploymentError("previous generation was not restored")
@@ -592,7 +628,8 @@ class Deployment:
         current_pin = self.rollback_pin(current)
         # Refuse before changing generations if session state is unavailable.
         # Recheck after activation because it can change during the switch.
-        self.graphical_active()
+        if self.graphical_active():
+            self.require_unlocked_sessions()
         try:
             command(str(target / "activate"))
             restored = self.generation()

@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-31 — Console deployment lock checks and GTK media proof](2026-10-31-console-lock-safety.md)
+
 - [2026-10-31 — Btop palette contrast audit](2026-10-31-btop-contrast.md)
 
 - [2026-10-30 — Accepted workstation upgrade plan and 0.5 review](2026-10-30-upgrade-plan-and-05-review.md)
