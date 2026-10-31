@@ -19,7 +19,8 @@ which action will be replaced. Retired macro chords remain in the generated
 cleanup list, so editing/deleting does not leave old bindings active.
 
 The release handler waits up to two seconds for Meta, Alt, Control and Shift
-to be released, without blocking Hyprland. A focus change cancels delivery.
+to be released, without blocking Hyprland. The triggering window identity is carried into the runner; a focus change
+cancels delivery, including during process startup.
 The runner copies UTF-8 text and uses native Hyprland key dispatch with
 explicit modifiers (Ctrl+V, or Shift+Insert in a terminal) and a paired release
 to the same application window. Concurrent invocations are rejected rather
