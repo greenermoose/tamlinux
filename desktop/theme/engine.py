@@ -30,6 +30,17 @@ CACHE = Path(os.environ.get('XDG_CACHE_HOME') or HOME / '.cache') / 'tamlinux'
 CURRENT = STATE / 'current'
 ASSETS = Path(os.environ.get('TAMLINUX_ASSETS_DIR') or Path(__file__).resolve().parents[1] / 'assets')
 IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+GTK_THEME_KEYS = tuple('/org/gnome/desktop/interface/' + key
+                       for key in ('color-scheme', 'gtk-theme', 'icon-theme'))
+
+def gtk_read(executable):
+    values = {}
+    for key in GTK_THEME_KEYS:
+        value = run(executable, 'read', key, capture=True).stdout
+        if len(value) > 65536:
+            raise ValueError('GTK value exceeds limit')
+        values[key] = value.strip() or None
+    return values
 
 def run(command, *args, check=True, capture=False, env=None):
     return subprocess.run([command, *map(str, args)], check=check,
@@ -111,12 +122,15 @@ def remove(path):
         path.unlink(missing_ok=True)
 
 class Journal:
-    def __init__(self, kind, paths):
+    def __init__(self, kind, paths, dconf=None):
         base = STATE / 'settings-recovery'
         base.mkdir(parents=True, exist_ok=True)
         self.directory = Path(tempfile.mkdtemp(prefix=kind + '.', dir=base))
         self.entries = []
         self.retired_theme = None
+        self.dconf = dconf
+        self.gtk_before = gtk_read(dconf) if dconf else None
+        self.gtk_after_failure = None
         for index, path in enumerate(dict.fromkeys(map(Path, paths))):
             entry = {'path': str(path), 'present': path.exists() or path.is_symlink()}
             if entry['present']:
@@ -136,6 +150,8 @@ class Journal:
     def status(self, status):
         atomic(self.directory / 'manifest.json', json.dumps(
             {'schema': 1, 'status': status, 'files': self.entries,
+             **({'gtkBefore': self.gtk_before} if self.gtk_before is not None else {}),
+             **({'gtkAfterFailure': self.gtk_after_failure} if self.gtk_after_failure is not None else {}),
              **({'retiredTheme': str(self.retired_theme)} if self.retired_theme else {})}, indent=2) + '\n')
 
     def restore(self):
@@ -158,6 +174,8 @@ class Journal:
                     shutil.copy2(path, saved)
                 observed['saved'] = str(saved.relative_to(self.directory))
             entry['afterFailure'] = observed
+        if self.dconf:
+            self.gtk_after_failure = gtk_read(self.dconf)
         self.status('restoring-after-failure')
         for entry in reversed(self.entries):
             path = Path(entry['path'])
@@ -170,15 +188,27 @@ class Journal:
                     shutil.copytree(self.directory / entry['saved'], path, symlinks=True)
                 else:
                     shutil.copy2(self.directory / entry['saved'], path)
+        if self.dconf:
+            for key, value in self.gtk_before.items():
+                if value is None:
+                    run(self.dconf, 'reset', key)
+                else:
+                    run(self.dconf, 'write', key, value)
+            if gtk_read(self.dconf) != self.gtk_before:
+                raise ValueError('GTK settings were not restored')
         self.status('restored-after-failure')
 
 @contextlib.contextmanager
-def transaction(kind, paths):
-    journal = Journal(kind, paths)
+def transaction(kind, paths, dconf=None):
+    journal = Journal(kind, paths, dconf)
     try:
         yield journal
-    except BaseException:
-        journal.restore()
+    except BaseException as original:
+        try:
+            journal.restore()
+        except (OSError, ValueError, subprocess.SubprocessError) as recovery:
+            raise ValueError(f'operation failed: {original}; recovery incomplete: {recovery}; '
+                             f'inspect journal {journal.directory}') from recovery
         raise
     else:
         journal.status('completed')
@@ -376,7 +406,14 @@ def set_theme(value, refresh=False, apply=True):
         except (ValueError, UnicodeError):
             previous_theme = ''
         paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
-        with transaction('theme', paths) as journal:
+        dconf = None
+        if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE') and os.environ.get('DBUS_SESSION_BUS_ADDRESS'):
+            if os.environ.get('GSETTINGS_BACKEND', 'dconf') not in ('', 'dconf'):
+                raise ValueError('cannot preserve GNOME settings with this GSettings backend')
+            dconf = shutil.which('dconf')
+            if not dconf or not Path(dconf).is_absolute():
+                raise ValueError('dconf is required to preserve GNOME settings')
+        with transaction('theme', paths, dconf) as journal:
             # Keep a personal background valid when the old active directory
             # is exchanged. Old generations remain available for rollback.
             preserve_active_background()

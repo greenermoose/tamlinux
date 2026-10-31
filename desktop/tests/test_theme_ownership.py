@@ -41,7 +41,8 @@ class ThemeOwnership(unittest.TestCase):
         self.env = dict(os.environ, HOME=str(self.base / 'home'), XDG_CONFIG_HOME=str(self.config),
                         XDG_STATE_HOME=str(self.state), XDG_CACHE_HOME=str(self.base/'cache'),
                         TAMLINUX_ASSETS_DIR=str(ASSETS), TAMLINUX_THEME_ENGINE=str(ENGINE),
-                        TAMLINUX_THEME_OFFLINE='1', PATH=str(self.bin)+':'+os.environ['PATH'])
+                        TAMLINUX_THEME_OFFLINE='1', DBUS_SESSION_BUS_ADDRESS='', GSETTINGS_BACKEND='',
+                        PATH=str(self.bin)+':'+os.environ['PATH'])
         for name in ('tam-theme-set-templates', 'tam-theme-color', 'tam-theme-colors-from-alacritty'):
             (self.bin / name).symlink_to(ROOT/'commands'/name/name)
         self.stub('tam-shell', 'exit 0')
@@ -335,6 +336,104 @@ class ThemeOwnership(unittest.TestCase):
                 with self.assertRaisesRegex(OSError, 'archive failed'):
                     journal.restore()
         self.assertEqual(settings.read_text(), 'later change')
+
+    def fake_dconf(self):
+        path = self.bin/'dconf'
+        path.write_text('''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+path = Path(os.environ['TEST_DCONF'])
+state = json.loads(path.read_text())
+op, key, *value = sys.argv[1:]
+if op == 'read':
+    if os.environ.get('TEST_DCONF_FAIL'): sys.exit(4)
+    print(state.get(key, ''))
+elif op == 'write':
+    state[key] = value[0]
+    path.write_text(json.dumps(state))
+elif op == 'reset':
+    if os.environ.get('TEST_DCONF_FAIL_RESET'): sys.exit(6)
+    state.pop(key, None)
+    path.write_text(json.dumps(state))
+else:
+    sys.exit(2)
+''')
+        path.chmod(0o755)
+        state = self.base/'fake-dconf.json'
+        initial = {'/org/gnome/desktop/interface/gtk-theme': "'Personal'",
+                   '/org/gnome/desktop/interface/icon-theme': "'Icons'"}
+        state.write_text(json.dumps(initial))
+        return state, initial
+
+    def test_failed_theme_apply_restores_and_archives_gnome_values(self):
+        self.call('set', 'tokyo-night')
+        state, initial = self.fake_dconf()
+        self.stub('tam-theme-set-foot', 'exit 0')
+        self.stub('tam-theme-set-tmux', 'exit 0')
+        self.stub('tam-theme-set-gnome',
+                  "dconf write /org/gnome/desktop/interface/color-scheme \"'prefer-dark'\"\n"
+                  "dconf write /org/gnome/desktop/interface/gtk-theme \"'Adwaita-dark'\"")
+        self.stub('tam-theme-set-browser', 'exit 7')
+        self.call('set', 'nord', success=False, env={'TAMLINUX_THEME_OFFLINE': '',
+                  'DBUS_SESSION_BUS_ADDRESS': 'test', 'TEST_DCONF': str(state)})
+        self.assertEqual(json.loads(state.read_text()), initial)
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+        journal = next(p for p in (self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json')
+                       if json.loads(p.read_text())['status'] == 'restored-after-failure')
+        doc = json.loads(journal.read_text())
+        key = '/org/gnome/desktop/interface/color-scheme'
+        self.assertIsNone(doc['gtkBefore'][key])
+        self.assertEqual(doc['gtkAfterFailure'][key], "'prefer-dark'")
+        self.assertEqual(doc['gtkAfterFailure']['/org/gnome/desktop/interface/gtk-theme'], "'Adwaita-dark'")
+
+    def test_dconf_snapshot_failure_does_not_publish_theme(self):
+        self.call('set', 'tokyo-night')
+        state, initial = self.fake_dconf()
+        self.call('set', 'nord', success=False, env={'TAMLINUX_THEME_OFFLINE': '',
+                  'DBUS_SESSION_BUS_ADDRESS': 'test', 'TEST_DCONF': str(state), 'TEST_DCONF_FAIL': '1'})
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+        self.assertEqual(json.loads(state.read_text()), initial)
+
+    def test_unknown_gsettings_backend_does_not_publish_theme(self):
+        self.call('set', 'tokyo-night')
+        state, initial = self.fake_dconf()
+        result = self.call('set', 'nord', success=False, env={'TAMLINUX_THEME_OFFLINE': '',
+                           'DBUS_SESSION_BUS_ADDRESS': 'test', 'GSETTINGS_BACKEND': 'memory',
+                           'TEST_DCONF': str(state)})
+        self.assertIn('cannot preserve GNOME settings', result.stderr)
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+        self.assertEqual(json.loads(state.read_text()), initial)
+
+    def test_gnome_adapter_failure_reverts_partial_settings(self):
+        self.call('set', 'tokyo-night')
+        state, initial = self.fake_dconf()
+        self.stub('tam-theme-set-foot', 'exit 0')
+        self.stub('tam-theme-set-tmux', 'exit 0')
+        self.stub('tam-theme-set-gnome',
+                  "dconf write /org/gnome/desktop/interface/color-scheme \"'prefer-dark'\"\nexit 7")
+        result = self.call('set', 'nord', success=False, env={'TAMLINUX_THEME_OFFLINE': '',
+                           'DBUS_SESSION_BUS_ADDRESS': 'test', 'TEST_DCONF': str(state)})
+        self.assertIn('tam-theme-set-gnome', result.stderr)
+        self.assertEqual(json.loads(state.read_text()), initial)
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
+
+    def test_failed_gnome_restore_reports_original_error_and_journal(self):
+        self.call('set', 'tokyo-night')
+        state, _ = self.fake_dconf()
+        self.stub('tam-theme-set-foot', 'exit 0')
+        self.stub('tam-theme-set-tmux', 'exit 0')
+        self.stub('tam-theme-set-gnome',
+                  "dconf write /org/gnome/desktop/interface/color-scheme \"'prefer-dark'\"\nexit 7")
+        result = self.call('set', 'nord', success=False, env={'TAMLINUX_THEME_OFFLINE': '',
+                           'DBUS_SESSION_BUS_ADDRESS': 'test', 'TEST_DCONF': str(state),
+                           'TEST_DCONF_FAIL_RESET': '1'})
+        self.assertIn('tam-theme-set-gnome', result.stderr)
+        self.assertIn('recovery incomplete', result.stderr)
+        journal = next(p for p in (self.state/'tamlinux/settings-recovery').glob('theme.*/manifest.json')
+                       if json.loads(p.read_text())['status'] == 'restoring-after-failure')
+        self.assertIn(str(journal.parent), result.stderr)
+        self.assertEqual(json.loads(journal.read_text())['gtkAfterFailure']
+                         ['/org/gnome/desktop/interface/color-scheme'], "'prefer-dark'")
 
     def test_local_palette_overlays_and_shell_section_templates(self):
         user=self.config/'tamlinux/themes/tokyo-night'; user.mkdir(parents=True)
