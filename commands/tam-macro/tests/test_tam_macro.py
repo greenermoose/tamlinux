@@ -128,6 +128,19 @@ class TamMacroTest(unittest.TestCase):
         self.assertTrue(self.hypr_file.is_file())
         self.assertIn('bind("SUPER + ALT + T", "Macro: Test", "tam-macro run T", { release = true })', self.hypr_file.read_text())
 
+    def test_sync_maps_punctuation_to_xkb_keysyms(self):
+        self.macros_file.write_text(json.dumps([
+            {"key": "/", "description": "Exit command", "text": "/exit"},
+            {"key": ".", "description": "Dot", "text": "..."},
+        ]))
+        res = self.run_cmd("sync")
+        self.assertEqual(res.returncode, 0)
+        content = self.hypr_file.read_text()
+        self.assertIn('bind("SUPER + ALT + slash", "Macro: Exit command", "tam-macro run /", { release = true })', content)
+        self.assertIn('bind("SUPER + ALT + period", "Macro: Dot", "tam-macro run .", { release = true })', content)
+        self.assertNotIn('SUPER + ALT + /', content)
+        self.assertNotIn('SUPER + ALT + .', content)
+
     def test_generated_lua_has_no_blocking_calls(self):
         self.macros_file.write_text(json.dumps([
             {"key": "C", "description": "Continue", "text": "continue"}

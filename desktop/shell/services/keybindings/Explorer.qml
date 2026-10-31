@@ -1739,6 +1739,28 @@ PanelWindow {
                     width: availText.implicitWidth + 14
                     radius: 12
                     anchors.verticalCenter: parent.verticalCenter
+                    readonly property var systemConflict: {
+                      var k = (keyInputField.text || panel.macroEditKey || "").trim()
+                      if (!k || !panel.rows) return null
+                      var xkbMap = {
+                        "/": "SLASH", ".": "PERIOD", ",": "COMMA", "-": "MINUS", "=": "EQUAL",
+                        ";": "SEMICOLON", "'": "APOSTROPHE", "[": "BRACKETLEFT", "]": "BRACKETRIGHT",
+                        "\\": "BACKSLASH", "`": "GRAVE", " ": "SPACE"
+                      }
+                      var upperKey = k.toUpperCase()
+                      var xkbKey = xkbMap[k] || upperKey
+                      for (var i = 0; i < panel.rows.length; i++) {
+                        var r = panel.rows[i]
+                        if (r.modmask === 72) {
+                          var rk = String(r.key).toUpperCase()
+                          if (rk === upperKey || rk === xkbKey) {
+                            if (r.does && r.does.indexOf("Macro:") === 0) continue
+                            return r.does
+                          }
+                        }
+                      }
+                      return null
+                    }
                     readonly property var existingMatch: {
                       var k = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
                       if (!k) return null
@@ -1748,8 +1770,8 @@ PanelWindow {
                       return null
                     }
                     readonly property bool isOverwrite: existingMatch && (panel.macroEditorMode === "add" || existingMatch.key !== (panel.selectedMacro ? panel.selectedMacro.key : ""))
-                    color: isOverwrite ? Util.alpha(Commons.Color.foreground, 0.12) : Util.alpha(Commons.Color.accent, 0.16)
-                    border.color: isOverwrite ? Util.alpha(Commons.Color.foreground, 0.3) : Commons.Color.accent
+                    color: systemConflict ? Util.alpha(Commons.Color.foreground, 0.2) : (isOverwrite ? Util.alpha(Commons.Color.foreground, 0.12) : Util.alpha(Commons.Color.accent, 0.16))
+                    border.color: systemConflict ? Util.alpha(Commons.Color.foreground, 0.6) : (isOverwrite ? Util.alpha(Commons.Color.foreground, 0.3) : Commons.Color.accent)
                     border.width: 1
                     Text {
                       id: availText
@@ -1757,6 +1779,7 @@ PanelWindow {
                       text: {
                         var k = (keyInputField.text || panel.macroEditKey || "").toUpperCase().trim()
                         if (!k) return "Enter key"
+                        if (parent.systemConflict) return "Conflict: " + parent.systemConflict
                         if (parent.isOverwrite) return "Assigned: will overwrite"
                         return "Available"
                       }
