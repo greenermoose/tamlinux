@@ -65,6 +65,22 @@ class DefaultsTest(unittest.TestCase):
             chords.setdefault(chord, []).append(description)
         self.assertEqual({k: v for k, v in chords.items() if len(v) > 1 and k not in allowed}, {})
 
+    def test_macro_prefix_and_common_editing_shortcuts_are_free(self):
+        forbidden = {(5, key) for key in ('left', 'right', 'up', 'down', 'tab')}
+        forbidden.add((4, 'slash'))
+        occupied = [(int(mask), key.lower(), description) for mask, description, key, *_ in self.rows
+                    if (int(mask), key.lower()) in forbidden or
+                    (int(mask) == 72 and not key.startswith(('mouse:', 'mouse_')))]
+        self.assertEqual(occupied, [])
+        for description, key in [('Move window to group on left', 'left'),
+                                 ('Move window to group on right', 'right'),
+                                 ('Move window to group on top', 'up'),
+                                 ('Move window to group on bottom', 'down'),
+                                 ('Next window in group', 'backslash'),
+                                 ('Monitor scaling down', 'slash')]:
+            self.assertIn([str(68), description, key],
+                          [[r[0], r[1], r[2].lower()] for r in self.rows])
+
     def test_start_and_resize_mouse_bindings_are_portable_defaults(self):
         right_click = [row for row in self.rows if row[2] == 'mouse:273']
         self.assertEqual(right_click, [

@@ -1028,7 +1028,7 @@ var entries = [
     "mnemonic": "Remember G for move active window out of group."
   },
   {
-    "mask": 5,
+    "mask": 68,
     "key": "LEFT",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"l\" })",
@@ -1037,7 +1037,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 5,
+    "mask": 68,
     "key": "RIGHT",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"r\" })",
@@ -1046,7 +1046,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 5,
+    "mask": 68,
     "key": "UP",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"u\" })",
@@ -1055,7 +1055,7 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 5,
+    "mask": 68,
     "key": "DOWN",
     "dispatcher": "lua",
     "arg": "hl.dsp.window.move({ into_group = \"d\" })",
@@ -1064,31 +1064,31 @@ var entries = [
     "mnemonic": "Press the arrow pointing where you want to go."
   },
   {
-    "mask": 5,
-    "key": "TAB",
+    "mask": 68,
+    "key": "backslash",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.next()",
     "action": "Select the next window in the current window group.",
     "why": "The key keeps this action near related controls or uses a dedicated key.",
-    "mnemonic": "Use TAB for next window in group."
+    "mnemonic": "Use backslash for next window in group."
   },
   {
     "mask": 68,
-    "key": "LEFT",
+    "key": "Prior",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.prev()",
     "action": "Move grouped window focus left. Use this to arrange your workspace.",
-    "why": "Arrow keys map directly to the direction of the action.",
-    "mnemonic": "Press the arrow pointing where you want to go."
+    "why": "Page keys cycle through windows in the group.",
+    "mnemonic": "Use Page Up or Page Down to change the grouped window."
   },
   {
     "mask": 68,
-    "key": "RIGHT",
+    "key": "Next",
     "dispatcher": "lua",
     "arg": "hl.dsp.group.next()",
     "action": "Move grouped window focus right. Use this to arrange your workspace.",
-    "why": "Arrow keys map directly to the direction of the action.",
-    "mnemonic": "Press the arrow pointing where you want to go."
+    "why": "Page keys cycle through windows in the group.",
+    "mnemonic": "Use Page Up or Page Down to change the grouped window."
   },
   {
     "mask": 5,
@@ -1163,7 +1163,7 @@ var entries = [
     "mnemonic": "Use SLASH for monitor scaling up."
   },
   {
-    "mask": 4,
+    "mask": 68,
     "key": "SLASH",
     "dispatcher": "exec",
     "arg": "tam-hyprland-monitor-scaling down",

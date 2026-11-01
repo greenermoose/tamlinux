@@ -90,8 +90,8 @@ Start with reproducible application trials, then repair the demonstrated gaps.
   sequence or report that it was rejected. Do not silently lose rapid presses,
   paste another macro's text or retry ambiguous delivery.
 - **Held keys:** Lua currently checks modifier state every 20 ms up to roughly
-  two seconds, then returns silently. Define and implement a visible cancellation
-  or a bounded event-driven release strategy. Test every release order,
+  two seconds; cancellation now requests a notification. Package and verify
+  its notification tool, and test every release order,
   long holds, auto-repeat and left/right modifiers. Keep all blocking subprocess
   and clipboard work out of Hyprland's event loop.
 - **Failure reporting:** editor save errors are shown, but runner stderr and
@@ -99,10 +99,15 @@ Start with reproducible application trials, then repair the demonstrated gaps.
   tools, busy requests, focus cancellation, dispatch failure and failed rollback
   understandable without showing macro contents in logs/notifications. Attempt
   key cleanup even if delivery fails. Do not hide an unsuccessful recovery.
+  Save recovery now reports restore failures and attempts both files; a failed
+  key release is reported. Shortcut-launched runner errors still need a visible
+  path.
 - **Clipboard:** current policy leaves the macro text on the clipboard. Keep
   that explicit; do not add an arbitrary restoration timer. Exercise clipboard
   managers and external clipboard changes. If preservation is added, verify
-  selection consumption/ownership before restoring anything.
+  selection consumption/ownership before restoring anything. Automatic
+  clipboard restoration is deferred: it is not needed for the stated policy,
+  and an unverified restoration can race a paste.
 
 **Exit:** exact-once insertion in the tested application classes; no wrong-target
 paste, stuck keys or hidden failure. Document unresolved cases individually.
@@ -120,6 +125,10 @@ a macro currently unbinds its chord; it does not reserve the entire prefix.
    assignments: they can intercept ordinary application editing/navigation.
    Prefer suitable Meta combinations, preserve the existing three-physical-key
    constraint, and resolve collisions across the whole map before activation.
+   Product defaults now move these actions to Meta+Ctrl: arrows move windows
+   into groups, Backslash selects the next group window, and Slash lowers
+   scaling. Meta+Ctrl+Page Up/Down changes the grouped window. The effective
+   personal map still needs a preserving migration and physical verification.
 3. Normalize symbols, named keys, physical codes, aliases and layout differences
    consistently across validation, availability, conflict reporting and lookup.
    Test Backspace, slash, other punctuation, navigation, function, keypad,
@@ -167,7 +176,8 @@ Meta and legacy input aliases resolve identically without changing shortcuts.
   environment; after a trial uninstall or store collection it can reference
   a removed executable. Choose a maintained entry point or regenerate bindings
   as part of every install/upgrade/rollback and prove the wrapper is retained.
-- The trial currently removes its executable/build on uninstall without first
+- The trial now refuses to uninstall while generated macro bindings exist;
+  this prevents loss but is not a handover. Previously it removed its executable/build without first
   regenerating packaged macro bindings. Fix this before handover. The current
   selected package may not include `tam-macro`; handle that explicitly. Preserve
   earlier overrides and the user's macro JSON. Do not delete the only working
@@ -207,8 +217,8 @@ keys that never reach the compositor from software binding defects.
 
 ## Next actions
 
-1. Reproduce remaining target, timing and failure cases against the current
-   trial; implement the delivery fixes with focused regression tests.
+1. Establish safe focused-surface delivery and visible runner failures; test
+   the resulting trial with Fred before claiming broad compatibility.
 2. Complete prefix reservation, preserving user migration and the Meta naming
    audit; validate both the proposed and effective maps.
 3. Fix package/trial lifecycle, prepare the authorized candidate, and collect

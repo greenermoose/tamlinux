@@ -74,15 +74,15 @@ o.bind("SUPER + ALT + mouse:273", "Resize window", hl.dsp.window.resize(), { mou
 o.bind("SUPER + G", "Toggle window grouping", hl.dsp.group.toggle())
 o.bind("CTRL + SHIFT + G", "Move active window out of group", hl.dsp.window.move({ out_of_group = true }))
 
-o.bind("CTRL + SHIFT + LEFT", "Move window to group on left", hl.dsp.window.move({ into_group = "l" }))
-o.bind("CTRL + SHIFT + RIGHT", "Move window to group on right", hl.dsp.window.move({ into_group = "r" }))
-o.bind("CTRL + SHIFT + UP", "Move window to group on top", hl.dsp.window.move({ into_group = "u" }))
-o.bind("CTRL + SHIFT + DOWN", "Move window to group on bottom", hl.dsp.window.move({ into_group = "d" }))
+o.bind("SUPER + CTRL + LEFT", "Move window to group on left", hl.dsp.window.move({ into_group = "l" }))
+o.bind("SUPER + CTRL + RIGHT", "Move window to group on right", hl.dsp.window.move({ into_group = "r" }))
+o.bind("SUPER + CTRL + UP", "Move window to group on top", hl.dsp.window.move({ into_group = "u" }))
+o.bind("SUPER + CTRL + DOWN", "Move window to group on bottom", hl.dsp.window.move({ into_group = "d" }))
 
-o.bind("CTRL + SHIFT + TAB", "Next window in group", hl.dsp.group.next())
+o.bind("SUPER + CTRL + backslash", "Next window in group", hl.dsp.group.next())
 
-o.bind("SUPER + CTRL + LEFT", "Move grouped window focus left", hl.dsp.group.prev())
-o.bind("SUPER + CTRL + RIGHT", "Move grouped window focus right", hl.dsp.group.next())
+o.bind("SUPER + CTRL + Prior", "Move grouped window focus left", hl.dsp.group.prev())
+o.bind("SUPER + CTRL + Next", "Move grouped window focus right", hl.dsp.group.next())
 
 o.bind("CTRL + SHIFT + mouse_down", "Next window in group", hl.dsp.group.next())
 o.bind("CTRL + SHIFT + mouse_up", "Previous window in group", hl.dsp.group.prev())
@@ -92,4 +92,4 @@ for index = 1, 5 do
 end
 
 o.bind("SUPER + SLASH", "Monitor scaling up", "tam-hyprland-monitor-scaling up")
-o.bind("CTRL + SLASH", "Monitor scaling down", "tam-hyprland-monitor-scaling down")
+o.bind("SUPER + CTRL + SLASH", "Monitor scaling down", "tam-hyprland-monitor-scaling down")
