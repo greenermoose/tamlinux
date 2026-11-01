@@ -8,6 +8,7 @@ import runpy
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import tomllib
 import unittest
@@ -402,7 +403,7 @@ class ThemeOwnership(unittest.TestCase):
 
     def fake_dconf(self):
         path = self.bin/'dconf'
-        path.write_text('''#!/usr/bin/env python3
+        path.write_text(f'#!{sys.executable}\n' + '''
 import json, os, sys
 from pathlib import Path
 path = Path(os.environ['TEST_DCONF'])

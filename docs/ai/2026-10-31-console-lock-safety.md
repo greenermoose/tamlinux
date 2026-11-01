@@ -63,3 +63,9 @@ boot progress and its physical fleet verification remain in 0.5.
 - Removed a machine-specific fallback from the macro command. With neither an
   XDG configuration directory nor `HOME`, it uses the current account's home
   directory. Seven focused macro tests pass, including the fallback order.
+
+## Follow-up: sandboxed theme tests
+
+- **Prompt**: `I approve the plan. Close the review window. Proceed.`
+- The theme ownership tests now use their running Python interpreter for the
+  fake dconf command, so the fixture also works where `/usr/bin/env` is absent.
