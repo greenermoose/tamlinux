@@ -64,6 +64,15 @@ keyboard-focused surface. The [layer properties](https://github.com/hyprwm/Hyprl
 include interactivity and mapping, not actual keyboard focus. Do not infer
 focus merely from a mapped interactive layer. Investigate a safe way to bind
 delivery to actual focus before replacing the existing window target.
+The [0.56.2 Lua event bridge](https://github.com/hyprwm/Hyprland/blob/v0.56.2/src/config/lua/LuaEventHandler.cpp)
+also exposes no keyboard-focus change event. Omitting `window` from the
+existing key dispatcher sends to the currently focused surface, but the
+clipboard operation is asynchronous: without an identity or focus-change
+signal, a focus change during that operation could direct text to another
+surface. Do not switch to untargeted dispatch until that race is addressed.
+Investigate a compositor-supported focus token or an explicitly designed
+integration; an upstream API or compositor plugin would be a larger change,
+not proof that the current API is safe.
 
 Already implemented: punctuation/name normalization through libxkbcommon;
 Lua and shell escaping; stale-editor detection; atomic file replacement;
