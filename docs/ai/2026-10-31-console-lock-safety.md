@@ -69,3 +69,5 @@ boot progress and its physical fleet verification remain in 0.5.
 - **Prompt**: `I approve the plan. Close the review window. Proceed.`
 - The theme ownership tests now use their running Python interpreter for the
   fake dconf command, so the fixture also works where `/usr/bin/env` is absent.
+- The browser client tests retain the build environment's PATH after their
+  stand-ins, so standard utilities are available inside a Nix build sandbox.

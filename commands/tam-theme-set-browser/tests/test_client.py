@@ -29,7 +29,7 @@ class BrowserClient(unittest.TestCase):
         self.client.chmod(0o755)
         self.policy_log = root/'policy.log'; self.privilege_log = root/'privilege.log'; self.refresh_log = root/'refresh.log'
         self.env = dict(os.environ, HOME=str(root/'home'), XDG_STATE_HOME=str(root/'state'),
-                        PATH=str(bin_dir)+':'+os.defpath, POLICY_LOG=str(self.policy_log),
+                        PATH=str(bin_dir)+':'+os.environ['PATH'], POLICY_LOG=str(self.policy_log),
                         PRIVILEGE_LOG=str(self.privilege_log), REFRESH_LOG=str(self.refresh_log))
 
     def test_failed_preflight_does_not_request_privilege_or_refresh(self):
