@@ -1,0 +1,14 @@
+# Deterministic CPU fixture for make check
+vendor=AuthenticAMD
+brand=Fixture Ryzen Test CPU
+codename=fixture-codename
+family=23
+model=104
+stepping=1
+cores=8
+logical_cpus=16
+l1d_kb=256
+l1i_kb=256
+l2_kb=4096
+l3_kb=8192
+features=aes,avx,avx2,sse2,sse4_1

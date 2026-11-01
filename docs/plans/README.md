@@ -32,6 +32,7 @@ Run, and Release) is private operating procedure, not duplicated here.
 | [Remove screensaver](remove-screensaver.md) | Retire screensaver paths. |
 | [Theme system](theme-system.md) | Retained theme ownership; Tamarack redesign in 0.5. |
 | [Fleet](fleet.md) | Registered-host deploy and fleet tools. |
+| [`tam-hardware`](tam-hardware.md) | Host CPU/ISA/DMI probe for agents (D209). |
 | [`tam` command](tamlinux-command.md) | Workstation plan for the separate `tam` component. |
 | [Compositor protocol layer](compositor-protocol-layer.md) | Protocol facade; Sway adapter later. |
 | [Sway integration](sway-integration.md) | After dependable Hyprland baseline (0.7+). |
