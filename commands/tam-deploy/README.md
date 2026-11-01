@@ -8,6 +8,15 @@ locations; only the evidence and the branch differ. An assembly is a
 [`tamlinux-packages`](https://github.com/greenermoose/tamlinux-packages)
 revision whose lock file pins every component.
 
+**Per-host pins.** In a fleet configuration (`hosts/<hostname>/host.json`), a
+host can record its own assembly revision in
+`hosts/<hostname>/state/assembly`, one 40-character revision per file. The
+consumer flake reads that file for the host, so machines on different
+versions never rewrite a shared lock. When the file exists, `tam-deploy`
+reads, pins, restores and commits it in place of `flake.lock`. A candidate
+build stages the file only for the duration of the build. Hosts without the
+file keep using the configuration lock.
+
 | Command | Effect |
 | --- | --- |
 | `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; compare required endpoints with the exact selected package outputs, rejecting missing/broken links and mixed assemblies. |

@@ -24,6 +24,10 @@ run [revision] [--untested]
               commit only on `develop` or another branch is untested and needs
               --untested. Older `main` commits run without moving branches.
 back:         activate the previous generation and restore its pin.
+
+A registered host that has hosts/<host>/state/assembly (one revision) follows
+that pin instead of the shared flake.lock; the consumer flake reads the same
+file, so hosts on different versions never rewrite a shared lock.
 """
 from __future__ import annotations
 
@@ -107,6 +111,8 @@ class Deployment:
         self.transaction_file = state / 'tamlinux/deploy-transaction.json'
         self.profile = state / "nix/profiles/home-manager"
         self.lock = self.config / "flake.lock"
+        self.host_pin = (self.config / "hosts" / self.hostname / "state/assembly"
+                         if (self.config / "hosts").is_dir() else None)
         self.selection_file = data / "tamlinux/deployment-selection.json"
         self.system = os.environ.get("TAMLINUX_NIX_SYSTEM", os.uname().machine + "-linux")
         self._outputs = {}
@@ -125,7 +131,29 @@ class Deployment:
     def installed(self) -> str:
         return self.revision_file.read_text().strip() if self.revision_file.exists() else "not installed"
 
+    def host_pinned(self) -> bool:
+        """True when this host records its own assembly revision."""
+        if self.host_pin is None or not os.path.lexists(self.host_pin):
+            return False
+        if any(p.is_symlink() for p in [self.host_pin, *self.host_pin.parents]
+               if p != self.config and p.is_relative_to(self.config)):
+            raise DeploymentError("refusing a symlink host assembly pin")
+        return True
+
+    @property
+    def pin_path(self) -> Path:
+        """The file whose content selects the assembly: host pin or lock."""
+        return self.host_pin if self.host_pinned() else self.lock
+
+    def pin_file(self) -> str:
+        return str(self.pin_path.relative_to(self.config))
+
     def locked(self) -> str:
+        if self.host_pinned():
+            revision = self.host_pin.read_text()
+            if not re.fullmatch(r"[0-9a-f]{40}\n?", revision):
+                raise DeploymentError(f"invalid host assembly pin: {self.pin_file()}")
+            return revision.strip()
         document = json.loads(self.lock.read_text())
         node = document["nodes"]["root"]["inputs"].get(self.input)
         if not node:
@@ -226,12 +254,12 @@ class Deployment:
                 raise DeploymentError(f'incomplete deployment transaction ({transaction.get("phase")}); inspect status before retrying')
         if revision is not None:
             report = self.require_consistent()
-            before = (self.lock.read_bytes(), self.state_file.read_bytes(), report['profileGeneration'])
+            before = (self.pin_path.read_bytes(), self.state_file.read_bytes(), report['profileGeneration'])
             self._prepared_generation = self.build_generation(revision)
             self.activation_validators(report['profileGeneration'])
             self.activation_validators(self._prepared_generation)
             self.check_clean()
-            if before != (self.lock.read_bytes(), self.state_file.read_bytes(), self.generation()):
+            if before != (self.pin_path.read_bytes(), self.state_file.read_bytes(), self.generation()):
                 raise DeploymentError('deployment baseline changed during preparation; prepare again')
         if self.graphical_active():
             self.require_unlocked_sessions()
@@ -289,7 +317,14 @@ class Deployment:
 
     def pin(self, revision: str) -> None:
         """Lock the configuration's input to an exact assembly revision,
-        keeping the input's declared source."""
+        keeping the input's declared source. A host pin is rewritten instead."""
+        if self.host_pinned():
+            if not re.fullmatch(r"[0-9a-f]{40}", revision):
+                raise DeploymentError("host assembly pin must be a full revision")
+            temporary = self.host_pin.with_name(".assembly.tmp")
+            temporary.write_text(revision + "\n")
+            temporary.replace(self.host_pin)
+            return
         document = json.loads(self.lock.read_text())
         node = document["nodes"]["root"]["inputs"][self.input]
         original = document["nodes"][node]["original"]
@@ -301,9 +336,19 @@ class Deployment:
 
     def build_generation(self, revision: str | None = None) -> str:
         args = ['nix', 'build', '--no-link', '--print-out-paths', '--no-write-lock-file']
-        if revision:
-            args += ['--override-input', self.input, f'github:{self.owner}/tamlinux-packages/{revision}']
-        result = command(*args, f'{self.config}#homeConfigurations.{self.home_configuration}.activationPackage', capture=True)
+        target = f'{self.config}#homeConfigurations.{self.home_configuration}.activationPackage'
+        if revision and self.host_pinned():
+            # The flake reads the tracked pin file; stage it only for this build.
+            before = self.host_pin.read_bytes()
+            try:
+                self.pin(revision)
+                result = command(*args, target, capture=True)
+            finally:
+                self.host_pin.write_bytes(before)
+        else:
+            if revision:
+                args += ['--override-input', self.input, f'github:{self.owner}/tamlinux-packages/{revision}']
+            result = command(*args, target, capture=True)
         if (not re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', result)
                 or not (Path(result) / 'activate').is_file()):
             raise DeploymentError('build did not return one activation generation')
@@ -548,7 +593,7 @@ class Deployment:
             raise DeploymentError('recorded generation is unavailable')
         plan = {'profile': str(self.profile), 'from': report['profileGeneration'], 'to': target,
                 'assembly': report['assembly'], 'receiptSha256': hashlib.sha256(self.state_file.read_bytes()).hexdigest(),
-                'lockSha256': hashlib.sha256(self.lock.read_bytes()).hexdigest(), 'runtime': report['runtime']}
+                'lockSha256': hashlib.sha256(self.pin_path.read_bytes()).hexdigest(), 'runtime': report['runtime']}
         return plan
 
     def reconcile(self, digest: str | None = None) -> None:
@@ -600,7 +645,8 @@ class Deployment:
         self.preflight(revision)
         previous = self.generation()
         previous_pin = self.rollback_pin(previous)
-        before = self.lock.read_bytes()
+        pin_path = self.pin_path
+        before = pin_path.read_bytes()
         self.transaction(phase='prepared', baselineGeneration=previous, baselineAssembly=previous_pin,
                          targetAssembly=revision, targetGeneration=getattr(self, '_prepared_generation', None))
         activation_attempted = False
@@ -617,7 +663,7 @@ class Deployment:
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
             try:
                 self.transaction(phase='recovering', deploymentError=str(exc))
-                self.lock.write_bytes(before)
+                pin_path.write_bytes(before)
                 if self.generation() != previous or activation_attempted:
                     if self.graphical_active():
                         self.require_unlocked_sessions()
@@ -641,8 +687,8 @@ class Deployment:
         try:
             self.transaction(phase='recording')
             generation = self.generation()
-            files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
-                                                      "stage": stage, "generation": generation})
+            files = [self.pin_file()] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
+                                                         "stage": stage, "generation": generation})
             self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
             self.save_state({"stage": stage, "packages": revision, "components": pins,
                              "generation": generation, "previousGeneration": previous,
@@ -675,7 +721,8 @@ class Deployment:
         revision = self.resolve(ref or self.locked())
         pins = self.components(revision)
         self.require_on("test" if test else "main", revision, pins)
-        before = self.lock.read_bytes()
+        pin_path = self.pin_path
+        before = pin_path.read_bytes()
         started = False
         try:
             self.pin(revision)
@@ -702,11 +749,11 @@ class Deployment:
                 details["status"] = "failed; inspect partial activation before recovery"
                 attempt.write_text(json.dumps(details, indent=2) + "\n")
             else:
-                self.lock.write_bytes(before)
+                pin_path.write_bytes(before)
             raise
         stage = "test" if test else "run"
-        files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
-                                                "stage": stage, "generation": generation})
+        files = [self.pin_file()] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
+                                                   "stage": stage, "generation": generation})
         self.record(f"deploy: first install tamlinux-packages {revision[:12]}", files)
         self.save_state({"stage": stage, "packages": revision, "components": pins,
                          "generation": generation, "previousGeneration": None, "previousPin": None,
@@ -824,7 +871,7 @@ class Deployment:
             if problems:
                 raise DeploymentError("restored endpoints do not match the previous assembly:\n  " + "\n  ".join(problems))
             self.pin(previous_pin)
-            files = ["flake.lock"] + self.update_bom({"packages": previous_pin, "stage": "restored",
+            files = [self.pin_file()] + self.update_bom({"packages": previous_pin, "stage": "restored",
                                                       "generation": restored})
             self.record(f"deploy: back to tamlinux-packages {previous_pin[:12]}", files)
             self.save_state({"stage": "restored", "packages": previous_pin,

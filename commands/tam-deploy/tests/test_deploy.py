@@ -1021,6 +1021,66 @@ class FleetProfiles(unittest.TestCase):
         self.assertEqual(other.read_text(), '{"components":{}}')
 
 
+class HostAssemblyPin(FleetProfiles):
+    """A host that records hosts/<host>/state/assembly never rewrites the shared lock."""
+
+    def setUp(self):
+        super().setUp()
+        self.lock = self.config / "flake.lock"
+        self.lock.write_text(json.dumps({"nodes": {
+            "root": {"inputs": {"tamlinux-packages": "tamlinux-packages"}},
+            "tamlinux-packages": {"locked": {"rev": "a" * 40}, "original": {}}}}))
+        self.pin = self.directory / "state/assembly"
+
+    def test_without_host_pin_the_shared_lock_selects_the_assembly(self):
+        app = deploy.Deployment()
+        self.assertEqual(app.locked(), "a" * 40)
+        self.assertEqual(app.pin_file(), "flake.lock")
+
+    def test_host_pin_selects_and_records_only_this_host(self):
+        self.pin.parent.mkdir()
+        self.pin.write_text("b" * 40 + "\n")
+        before = self.lock.read_bytes()
+        app = deploy.Deployment()
+        self.assertEqual(app.locked(), "b" * 40)
+        self.assertEqual(app.pin_file(), f"hosts/{self.name}/state/assembly")
+        with patch.object(deploy, "command") as command:
+            app.pin("c" * 40)
+        command.assert_not_called()
+        self.assertEqual(self.pin.read_text(), "c" * 40 + "\n")
+        self.assertEqual(self.lock.read_bytes(), before)
+
+    def test_invalid_or_symlinked_host_pin_is_rejected(self):
+        self.pin.parent.mkdir()
+        self.pin.write_text("main\n")
+        with self.assertRaisesRegex(deploy.DeploymentError, "invalid host assembly pin"):
+            deploy.Deployment().locked()
+        self.pin.unlink()
+        other = self.config / "other"
+        other.write_text("b" * 40 + "\n")
+        self.pin.symlink_to(other)
+        with self.assertRaisesRegex(deploy.DeploymentError, "symlink host assembly pin"):
+            deploy.Deployment().locked()
+
+    def test_candidate_build_stages_the_pin_and_always_restores_it(self):
+        self.pin.parent.mkdir()
+        self.pin.write_text("b" * 40 + "\n")
+        app = deploy.Deployment()
+        seen = []
+
+        def build(*args, **kwargs):
+            seen.append((args, self.pin.read_text()))
+            raise subprocess.CalledProcessError(1, args)
+
+        with patch.object(deploy, "command", side_effect=build):
+            with self.assertRaises(subprocess.CalledProcessError):
+                app.build_generation("d" * 40)
+        args, staged = seen[0]
+        self.assertEqual(staged, "d" * 40 + "\n")
+        self.assertNotIn("--override-input", args)
+        self.assertEqual(self.pin.read_text(), "b" * 40 + "\n")
+
+
 class ShellReadiness(unittest.TestCase):
     palette = {"foreground": "#a9b1d6", "background": "#1a1b26",
                "accent": "#7aa2f7", "muted": "#414868"}
