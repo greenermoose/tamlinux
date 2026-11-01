@@ -47,7 +47,10 @@ scratch editor behind it, Fred pressed Meta+Alt+Backspace. No text appeared
 in either surface; after dismissing the picker, Ctrl+V pasted the Backspace
 macro text into the editor. The clipboard's previous contents were not
 recorded, so this does not establish whether that particular press replaced
-it. It does establish that panel insertion was not observed. The trial used
+it. Fred repeated the test with a known different clipboard marker: the macro
+text replaced that marker, but still appeared in neither surface. The picker
+search handles individual key events rather than a paste-capable text field,
+so this is not a conclusive test of paste into a layer-shell text field. The trial used
 the existing `139b060a717573fb2740c0f5e3b5deb599a6aeff` explorer build and Hyprland 0.56.2. Do not infer safe
 targeting or general layer-shell support from this observation.
 
