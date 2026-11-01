@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-01 — Prepare 0.5.12](2026-11-01-0512-preparation.md)
+
 - [2026-11-01 — Tokyo Night and JetBrains Mono defaults](2026-11-01-tokyo-defaults.md)
 
 - [2026-10-31 — Develop continuation integration](2026-10-31-continuation-integration.md)

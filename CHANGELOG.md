@@ -8,6 +8,11 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.12 - Develop candidate
+
+- Use Tokyo Night and JetBrains Mono for fresh defaults; preserve existing selections.
+- Improve macro capture, safe delivery, error reporting, default shortcuts and packaged trial handover.
+- Support deployment from a text session and check graphical session lock and recovery state.
 - Correct version hover metadata and explorer path lookup; clarify paused shortcut capture.
 - Soften Tamarack Light with warm paper tones and improved text contrast.
 
