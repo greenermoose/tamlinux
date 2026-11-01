@@ -660,7 +660,7 @@ else:
         previews=Path(result.stdout)
         self.assertTrue(previews.is_dir())
         self.assertTrue(all(p.exists() for p in previews.iterdir()))
-        self.assertEqual(self.call('current').stdout,'Tamarack Dark\n')
+        self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
 
     def test_font_package_install_refuses_inherited_or_failed_resolution(self):
         command=ROOT/'commands/tam-pkg-add/tam-pkg-add'
