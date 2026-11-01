@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-10-31 — Develop continuation integration](2026-10-31-continuation-integration.md)
+
 - [2026-10-31 — Macro reliability takeover](2026-10-31-macro-reliability.md)
 
 - [2026-10-31 — Console deployment lock checks and GTK media proof](2026-10-31-console-lock-safety.md)

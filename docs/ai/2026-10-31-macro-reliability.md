@@ -43,7 +43,7 @@ compatibility require live acceptance. See `commands/tam-macro/README.md`.
 
 ## Development-trial observations
 
-`1a1030cdcc2320390c0dcc2248cdfba7a11fe06e` installed through the existing explorer trial. Hyprland configuration
+A build with the same source as `1a1030cdcc2320390c0dcc2248cdfba7a11fe06e` was installed through the existing explorer trial before the Develop history rewrite. Hyprland configuration
 errors were empty. Live Meta+Alt+slash had one macro binding and no monitor
 scaling binding. Fred supplied physical Backspace and slash chords to wev:
 Backspace was released 656 ms before the modifiers; the slash macro emitted
@@ -54,7 +54,7 @@ A follow-up carries the triggering window address into the runner, closing the
 focus-change gap between compositor dispatch and process startup. Save rollback
 also removes partially installed new bindings before reloading the prior file.
 
-The installed development trial is `139b060a717573fb2740c0f5e3b5deb599a6aeff`. Its live bindings include one
+The installed development trial used the source represented after the rewrite by `139b060a717573fb2740c0f5e3b5deb599a6aeff`; it was built from the original commit, not that replacement. Its live bindings included one
 BackSpace macro and one slash macro, both on Meta+Alt with release handling;
 Hyprland reports no configuration errors. No packaged Test/Run stage moved.
 The confirmation establishes the exercised text field, not every application

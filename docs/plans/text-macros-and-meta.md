@@ -16,6 +16,12 @@ many older system keyboard bindings still occupy the prefix. The source
 change is not yet an installed candidate. Verify the effective map after
 the relevant package is installed, including personal overrides and keycodes.
 
+The commands package was built with equivalent product and delivery source
+trees before the Develop history rewrite. In a temporary home, its wrapper
+saved a macro with a restricted PATH; trial uninstall regenerated bindings
+through that wrapper and preserved the macro JSON. This is not an installed
+or accepted assembly.
+
 **Status:** Completion plan requested on 2026-10-31. Basic macro insertion is
 confirmed in the development trial; desktop-wide compatibility, complete
 Meta+Alt reservation, product-wide naming and packaged acceptance remain open.
@@ -67,7 +73,8 @@ it. Fred repeated the test with a known different clipboard marker: the macro
 text replaced that marker, but still appeared in neither surface. The picker
 search handles individual key events rather than a paste-capable text field,
 so this is not a conclusive test of paste into a layer-shell text field. The trial used
-the existing `139b060a717573fb2740c0f5e3b5deb599a6aeff` explorer build and Hyprland 0.56.2. Do not infer safe
+the existing explorer trial, whose source is represented after the history
+rewrite by `139b060a717573fb2740c0f5e3b5deb599a6aeff`, and Hyprland 0.56.2. Do not infer safe
 targeting or general layer-shell support from this observation.
 Fred then tried the macro with the explorer's normal search field focused;
 he observed text in neither that field nor the scratch editor behind it.
@@ -224,9 +231,9 @@ Meta and legacy input aliases resolve identically without changing shortcuts.
   environment; after a trial uninstall or store collection it can reference
   a removed executable. Choose a maintained entry point or regenerate bindings
   as part of every install/upgrade/rollback and prove the wrapper is retained.
-- The trial now refuses to uninstall while generated macro bindings exist;
-  this prevents loss but is not a handover. Previously it removed its executable/build without first
-  regenerating packaged macro bindings. Fix this before handover. The current
+- Trial uninstall now regenerates bindings with the packaged runner first and
+  retains the trial if handover fails. Previously it removed its build without
+  regenerating packaged macro bindings. The current
   selected package may not include `tam-macro`; handle that explicitly. Preserve
   earlier overrides and the user's macro JSON. Do not delete the only working
   runner while bindings still refer to it.
@@ -265,8 +272,8 @@ keys that never reach the compositor from software binding defects.
 
 ## Next actions
 
-1. Finish packaging and trial handover for the working macro feature, preserving
-   saved data and the executable referenced by generated bindings.
+1. Include the verified macro source and package recipe in the authorized
+   candidate, preserving the trial until the packaged handover.
 2. On the authorized candidate, verify the effective keyboard map reserves
    Meta+Alt and test the packaged macro editor and insertion. Move stages only
    on Fred's exact-candidate instruction.
