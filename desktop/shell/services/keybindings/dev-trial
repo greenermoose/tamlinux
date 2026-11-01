@@ -144,6 +144,12 @@ install() {
 
 uninstall() {
   [[ -f $record ]] || die "no trial installed (no $record)"
+  # The generated bindings can point directly into this trial's build.  Until
+  # packaged handover can regenerate and verify them, retain the whole trial.
+  local macros_lua=${TAMLINUX_HYPR_MACROS_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/macros.lua}
+  if [[ -e $macros_lua || -L $macros_lua ]]; then
+    die "macro bindings exist at $macros_lua; packaged handover is required before uninstalling the trial"
+  fi
   rm -f -- "$launcher" "$dev/bin/tam-macro"
   if [[ -e $saved || -L $saved ]]; then
     mv -- "$saved" "$launcher"

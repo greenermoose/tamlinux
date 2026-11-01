@@ -243,11 +243,11 @@ class TamMacroTest(unittest.TestCase):
         module = runpy.run_path(str(CMD))
         lua = module["generated_lua"]([{"key": "BACKSPACE", "text": "hi", "description": ""}])
         harness = """local callback, timer
-local held, address, sent = true, '0x1', 0
+local held, address, sent, notices = true, '0x1', 0, 0
 hl = {
   get_active_window = function() return {address=address} end,
   is_key_down = function() return held end,
-  exec_cmd = function() sent=sent+1 end,
+  exec_cmd = function(c) if c:match('^notify%-send ') then notices=notices+1 else sent=sent+1 end end,
   timer = function(f, opts) assert(opts.timeout == 20); timer=f end,
   unbind = function() end,
   bind = function(k, f, opts) callback=f end
@@ -256,7 +256,9 @@ hl = {
         checks = """
 callback(); assert(sent == 0 and timer ~= nil)
 held=false; timer(); assert(sent == 1)
-held=true; callback(); address='0x2'; held=false; timer(); assert(sent == 1)
+held=true; callback(); address='0x2'; held=false; timer(); assert(sent == 1 and notices == 1)
+address='0x1'; held=true; callback(); for i=1,99 do timer() end
+assert(sent == 1 and notices == 2)
 """
         result = subprocess.run(["lua", "-"], input=harness+lua+checks, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -270,6 +272,35 @@ held=true; callback(); address='0x2'; held=false; timer(); assert(sent == 1)
             with self.assertRaisesRegex(ValueError, "reload failed"):
                 module["commit_macros"]([{"key": "B", "text": "new"}])
         self.assertEqual([p.read_text() for p in (self.macros_file, self.hypr_file)], before)
+
+    def test_restore_failure_still_restores_other_file_and_reports_recovery(self):
+        self.run_cmd("add", "A", "old")
+        old_json = self.macros_file.read_text()
+        module = runpy.run_path(str(CMD))
+        original_write = module["atomic_write"]
+        writes = []
+        def write(path, content):
+            writes.append(path)
+            if path == self.hypr_file and writes.count(path) == 2:
+                raise OSError("restore denied")
+            original_write(path, content)
+        with patch.dict(os.environ, self.env), patch.dict(module["commit_macros"].__globals__,
+                {"atomic_write": write, "reload_config": lambda: (_ for _ in ()).throw(ValueError("reload failed"))}):
+            with self.assertRaisesRegex(ValueError, "recovery failed.*restore denied.*reload failed"):
+                module["commit_macros"]([{"key": "B", "text": "new"}])
+        self.assertEqual(self.macros_file.read_text(), old_json)
+
+    def test_failed_key_release_is_reported_after_dispatch_failure(self):
+        inject = runpy.run_path(str(CMD))["inject_text"]
+        def run(cmd, *args, **kwargs):
+            if cmd[:2] == ["hyprctl", "activewindow"]:
+                return SimpleNamespace(stdout=json.dumps({"address": "0x1", "class": "editor"}))
+            if cmd[:2] == ["hyprctl", "dispatch"]:
+                raise subprocess.TimeoutExpired(cmd, 5)
+            return SimpleNamespace(stdout="ok")
+        with patch.dict(os.environ, self.env), patch("subprocess.run", side_effect=run):
+            with self.assertRaisesRegex(ValueError, "key release also failed"):
+                inject("private text", "0x1")
 
     def injection(self, *, terminal=False, focus_change=False, down_error=False, clipboard_error=False, expected_address=None):
         inject = runpy.run_path(str(CMD))["inject_text"]

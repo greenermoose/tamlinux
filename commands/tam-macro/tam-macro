@@ -218,19 +218,28 @@ def generated_lua(macros: list[dict], previous: str = "") -> str:
     # Queue outside the compositor callback and wait on real modifier state.
     # Never sleep or run clipboard tools in Hyprland's event loop.
     prelude = r'''local function run_macro(command)
+  local function cancelled(message)
+    hl.exec_cmd("notify-send 'Text macro' '" .. message .. "'")
+  end
   local target = hl.get_active_window()
-  if not target then return end
+  if not target then cancelled("No application window is focused"); return end
   local address = target.address
-  if not address or not address:match("^0x%x+$") then return end
+  if not address or not address:match("^0x%x+$") or address == "0x0" then
+    cancelled("No application window is focused"); return
+  end
   local attempts = 0
   local function ready()
     local current = hl.get_active_window()
-    if not current or current.address ~= address then return end
+    if not current or current.address ~= address then
+      cancelled("Focus changed; macro cancelled"); return
+    end
     for _, key in ipairs({"Super_L", "Super_R", "Alt_L", "Alt_R", "Control_L", "Control_R", "Shift_L", "Shift_R"}) do
       if hl.is_key_down(key) then
         attempts = attempts + 1
         if attempts < 100 then
           hl.timer(ready, { timeout = 20, type = "oneshot" })
+        else
+          cancelled("Keys held too long; macro cancelled")
         end
         return
       end
@@ -269,12 +278,16 @@ def commit_macros(macros: list[dict], *, save: bool = True) -> None:
         if save:
             save_macros(json_file, macros)
         reload_config()
-    except Exception:
+    except Exception as original:
+        recovery_errors = []
         for path, content in old.items():
-            if content is None:
-                path.unlink(missing_ok=True)
-            else:
-                atomic_write(path, content)
+            try:
+                if content is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    atomic_write(path, content)
+            except Exception as error:
+                recovery_errors.append(f"could not restore {path}: {error}")
         try:
             if not os.environ.get("TAMLINUX_MACRO_SKIP_RELOAD"):
                 # A failed reload may have registered some new bindings. Remove
@@ -284,9 +297,14 @@ def commit_macros(macros: list[dict], *, save: bool = True) -> None:
                 cleanup = "; ".join("hl.unbind(" + lua_string("SUPER + ALT + " + k) + ")" for k in sorted(keys))
                 if cleanup:
                     checked_hypr("eval", cleanup)
+        except Exception as error:
+            recovery_errors.append(f"could not remove partial bindings: {error}")
+        try:
             reload_config()
-        except Exception:
-            pass  # Report the original failure; retain previous files.
+        except Exception as error:
+            recovery_errors.append(f"could not reload restored bindings: {error}")
+        if recovery_errors:
+            raise ValueError(f"{original}; recovery failed: {'; '.join(recovery_errors)}") from original
         raise
 
 
@@ -339,11 +357,11 @@ def inject_text(text: str, expected_address: str | None = None) -> None:
         # Always release the same target, even on timeout or a focus change.
         try:
             send("down")
-        except Exception:
+        except Exception as original:
             try:
                 send("up")
-            except Exception:
-                pass
+            except Exception as error:
+                raise ValueError(f"Paste dispatch failed: {original}; key release also failed: {error}") from original
             raise
         else:
             send("up")
