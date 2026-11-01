@@ -42,6 +42,15 @@ modifiers. The slash macro emitted one Ctrl+V down/up pair after both modifiers
 were released. The user then confirmed, “Text insertion works”. The tested
 application was not recorded: this is not an all-applications result.
 
+In a later physical trial with the clipboard-history search focused and a
+scratch editor behind it, Fred pressed Meta+Alt+Backspace. No text appeared
+in either surface; after dismissing the picker, Ctrl+V pasted the Backspace
+macro text into the editor. The clipboard's previous contents were not
+recorded, so this does not establish whether that particular press replaced
+it. It does establish that panel insertion was not observed. The trial used
+the existing `139b060a717573fb2740c0f5e3b5deb599a6aeff` explorer build and Hyprland 0.56.2. Do not infer safe
+targeting or general layer-shell support from this observation.
+
 Already implemented: punctuation/name normalization through libxkbcommon;
 Lua and shell escaping; stale-editor detection; atomic file replacement;
 reload/configuration-error checking and attempted rollback; removal of prior
