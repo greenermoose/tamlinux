@@ -1,5 +1,9 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-01 — Plain suspend where hibernation is unavailable](2026-11-01-suspend-without-hibernation.md)
+
+- [2026-11-01 — Per-host assembly pin for tam-deploy](2026-11-01-per-host-assembly-pin.md)
+
 - [2026-11-01 — Keyboard panel stand-in board](2026-11-01-keyboard-standin-board.md)
 
 - [2026-11-01 — Deployment state and recovery transactions](2026-11-01-candidate-process.md)
