@@ -4,6 +4,10 @@ All notable changes to `fred.keyboard` in `tamlinux/desktop/plugins/fred.keyboar
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.3 - 2026-11-01
+
+- Draw a bundled generic 104-key board when no field-observed layout matches. Before this, any keyboard other than the Lenovo Calliope showed an empty panel, because the OS-geometry fallback named a board but loaded no layout file. Found on slowhp during the 0.5.12 deployment.
+
 ## 2.0.2 - 2026-10-16
 
 - Use the shell router for panel IPC; remove per-screen target registrations.

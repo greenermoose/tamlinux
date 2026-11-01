@@ -37,7 +37,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "2.0.2"
+  readonly property string pluginVersion: "2.0.3"
   readonly property string repoUrl: "https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.keyboard"
 
   // Closed environment: only these names reach a child process.
@@ -125,8 +125,11 @@ Panel {
   function resolveLayout() {
     if (!registry || !device) return
     root.resolution = Resolver.resolve(device, registry, root.osHas)
-    if (root.resolution.file)
-      layoutFile.path = Model.helperPath("layouts/" + root.resolution.file)
+    // An OS-geometry resolution names a board but carries no layout file;
+    // draw the bundled stand-in so the panel is never left without a board.
+    var file = root.resolution.file || registry.standIn
+    if (file)
+      layoutFile.path = Model.helperPath("layouts/" + file)
   }
 
   // --- Files -------------------------------------------------------------

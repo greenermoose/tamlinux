@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Draw a generic 104-key board in the keyboard panel when no specific layout is known (`fred.keyboard` 2.0.3); the panel was empty on any keyboard but the Lenovo Calliope.
+
 ## 0.5.12 - Develop candidate
 
 - Use Tokyo Night and JetBrains Mono for fresh defaults; preserve existing selections.

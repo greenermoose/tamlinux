@@ -23,5 +23,6 @@
     "vendorFiles": ["thinkpad", "dell", "hp", "chicony", "keytronic", "microsoft", "sony", "steelseries", "typematrix", "kinesis", "hhk", "teck", "macintosh"],
     "regional": ["jp106", "kr106", "abnt2"]
   },
+  "standIn": "pc104-standin.json",
   "fallback": "pc104"
 }

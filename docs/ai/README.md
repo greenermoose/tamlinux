@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-01 — Keyboard panel stand-in board](2026-11-01-keyboard-standin-board.md)
+
 - [2026-11-01 — Deployment state and recovery transactions](2026-11-01-candidate-process.md)
 
 - [2026-11-01 — Prepare 0.5.12](2026-11-01-0512-preparation.md)

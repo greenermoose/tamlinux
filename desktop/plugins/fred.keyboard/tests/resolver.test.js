@@ -81,6 +81,30 @@ try { R.resolve({}, null, null) } catch (e2) { check("null registry does not thr
   }
 })
 
+// 10. An OS-geometry resolution has no layout file, so the registry must name a
+// bundled stand-in board or the panel draws nothing (0.5.12, slowhp).
+check("registry names a stand-in board", typeof registry.standIn === "string" && registry.standIn !== "")
+var standInPath = path.resolve(__dirname, "..", "layouts", registry.standIn || "missing")
+check("stand-in board file exists", fs.existsSync(standInPath), registry.standIn)
+if (fs.existsSync(standInPath)) {
+  var standIn = JSON.parse(fs.readFileSync(standInPath, "utf8"))
+  var cells = []
+  ;(standIn.rows || []).forEach(function (row) { row.forEach(function (c) { cells.push(c) }) })
+  var codes = cells.filter(function (c) { return c.code !== undefined }).map(function (c) { return c.code })
+  check("stand-in has 104 keys", codes.length === 104, String(codes.length))
+  check("stand-in key codes are unique", new Set(codes).size === codes.length)
+  var ids = cells.map(function (c) { return c.id })
+  check("stand-in ids are unique", new Set(ids).size === ids.length)
+  ;["ESC", "ENTER", "SPACE", "LEFTMETA", "K", "KPENTER"].forEach(function (id) {
+    check("stand-in has " + id, ids.indexOf(id) >= 0)
+  })
+  check("stand-in keeps the lock LEDs", ids.indexOf("LED_CAPS") >= 0 && ids.indexOf("LED_NUM") >= 0)
+}
+var unknownBoard = R.resolve({ name: "AT Translated Set 2 keyboard", vendor: "0001", product: "0001" },
+                             registry, allOsPresent)
+check("unknown board resolves with no file but a stand-in exists",
+      unknownBoard.file === null && !!registry.standIn)
+
 if (failures.length) {
   console.error("FAIL (" + failures.length + ")")
   failures.forEach(function (f) { console.error("  - " + f) })
