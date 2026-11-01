@@ -11,7 +11,8 @@
 # suspend-then-hibernate: suspend to RAM now, arm the RTC wake alarm, and after
 # the native host's HibernateDelaySec wake just long enough to hibernate to its configured swap.
 # Timeout, swap, RTC and hibernation support are native host policy. If the hibernate
-# stage fails, systemd goes back to suspend rather than waking the desktop.
+# stage fails, systemd goes back to suspend rather than waking the desktop. A
+# host that cannot hibernate at all gets a plain suspend.
 
 STATE_FILE="${TAMLINUX_STAY_AWAKE_FILE:-}"
 # Match the shell's selection for absent or invalid overrides.
@@ -85,5 +86,13 @@ esac
 
 [[ -f $STATE_FILE ]] && exit 0
 
-capture_hibernate_preflight || true
-exec systemctl suspend-then-hibernate
+# Hibernate only where logind says it can. A host with no disk swap (zram only)
+# answers "na", and suspend-then-hibernate would then refuse outright ("Not
+# enough suitable swap space for hibernation"), so the machine never slept.
+can="$(busctl call org.freedesktop.login1 /org/freedesktop/login1 \
+  org.freedesktop.login1.Manager CanSuspendThenHibernate 2>/dev/null)"
+if [[ $can == 's "yes"' ]]; then
+  capture_hibernate_preflight || true
+  exec systemctl suspend-then-hibernate
+fi
+exec systemctl suspend
