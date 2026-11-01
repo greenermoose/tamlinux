@@ -53,6 +53,17 @@ search handles individual key events rather than a paste-capable text field,
 so this is not a conclusive test of paste into a layer-shell text field. The trial used
 the existing `139b060a717573fb2740c0f5e3b5deb599a6aeff` explorer build and Hyprland 0.56.2. Do not infer safe
 targeting or general layer-shell support from this observation.
+Fred then tried the macro with the explorer's normal search field focused;
+he observed text in neither that field nor the scratch editor behind it.
+This confirms the existing trial does not deliver to that field. It does not
+establish what happened to the clipboard or every other layer-shell target.
+
+Hyprland 0.56.2's [Lua query implementation](https://github.com/hyprwm/Hyprland/blob/v0.56.2/src/config/lua/bindings/LuaBindingsQuery.cpp)
+returns the active window and a list of layers, but does not expose the
+keyboard-focused surface. The [layer properties](https://github.com/hyprwm/Hyprland/blob/v0.56.2/src/config/lua/objects/LuaLayerSurface.cpp)
+include interactivity and mapping, not actual keyboard focus. Do not infer
+focus merely from a mapped interactive layer. Investigate a safe way to bind
+delivery to actual focus before replacing the existing window target.
 
 Already implemented: punctuation/name normalization through libxkbcommon;
 Lua and shell escaping; stale-editor detection; atomic file replacement;
