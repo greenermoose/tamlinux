@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -104,10 +105,11 @@ class ConsoleDeployment(Fixture):
         inactive = subprocess.CompletedProcess([], 3, stdout='inactive\n', stderr='')
         with patch.object(deploy.subprocess, 'run', return_value=inactive), \
              patch.object(deploy, 'command') as command, \
+             patch.object(self.app, 'build_generation', return_value='/nix/store/prepared-generation'), \
+             patch.object(self.app, 'generation', return_value='/nix/store/prepared-generation'), \
              patch.object(self.app, 'wait_ready') as ready:
             self.app.activate()
-            command.assert_called_once_with('home-manager', 'switch', '--flake',
-                                            f'{self.config}#alex')
+            command.assert_called_once_with('/nix/store/prepared-generation/activate')
             ready.assert_not_called()
             command.reset_mock()
             self.app.restart_if_graphical()
@@ -290,6 +292,12 @@ class FirstInstall(Fixture):
 class TestStage(Fixture):
     real_command = staticmethod(deploy.command)
 
+    def setUp(self):
+        super().setUp()
+        active = patch.object(self.app, 'verify_active')
+        active.start()
+        self.addCleanup(active.stop)
+
     def passthrough(self, *args, **kwargs):
         if args[0] == "git":
             return self.real_command(*args, **kwargs)
@@ -439,6 +447,9 @@ class TestStage(Fixture):
              patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
              patch.object(self.app, "activate", side_effect=deploy.DeploymentError("switch failed")), \
              patch.object(self.app, "components", return_value=old_pins), \
+             patch.object(deploy, 'command'), \
+             patch.object(self.app, 'graphical_active', return_value=False), \
+             patch.object(self.app, 'restart_if_graphical'), \
              patch.object(self.app, "verify", return_value=["wrong shell endpoint"]) as verify:
             with self.assertRaisesRegex(deploy.DeploymentError, "switch failed.*recovery also failed: recovered endpoints"):
                 self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
@@ -518,6 +529,13 @@ class LivePaths(Fixture):
 
 
 class RunStage(Fixture):
+    def setUp(self):
+        super().setUp()
+        # These tests exercise promotion after the separately tested state gate.
+        gate = patch.object(self.app, 'require_consistent')
+        gate.start()
+        self.addCleanup(gate.stop)
+
     def installed(self, revision, stage="test"):
         self.write_lock(revision, {})
         self.app.save_state({"stage": stage, "packages": revision,
@@ -626,6 +644,12 @@ class Arguments(unittest.TestCase):
 
 
 class BackAndPin(Fixture):
+    def setUp(self):
+        super().setUp()
+        gate = patch.object(self.app, 'require_consistent')
+        gate.start()
+        self.addCleanup(gate.stop)
+
     def test_back_refuses_to_record_mismatched_restored_endpoints(self):
         self.app.save_state({"stage": "test", "packages": self.packages_new,
                              "generation": "/nix/store/new-generation",
@@ -1025,6 +1049,177 @@ class ShellReadiness(unittest.TestCase):
             raise subprocess.CalledProcessError(1, args)
         with patch.object(deploy, "command", side_effect=reply), patch.object(deploy.time, "sleep"):
             with self.assertRaises(deploy.DeploymentError): app.wait_ready()
+
+
+class CoherentState(Fixture):
+    def setUp(self):
+        super().setUp()
+        self.old = self.root / 'old-generation'
+        self.new = self.root / 'new-generation'
+        for generation, revision in ((self.old, self.tamlinux_main), (self.new, self.tamlinux_new)):
+            files = generation / 'home-files'
+            for relative in ('.local/share/tamlinux/shell', '.local/share/tamlinux/shell-revision',
+                             '.config/systemd/user/tamlinux-shell.service'):
+                path = files / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(revision)
+                installed = self.app.home / relative
+                installed.parent.mkdir(parents=True, exist_ok=True)
+                if not installed.exists():
+                    installed.symlink_to(path)
+            (generation / 'activate').write_text('# fixture generation')
+        self.app.profile.parent.mkdir(parents=True)
+        self.app.profile.symlink_to(self.old)
+        self.app.save_state({'generation': str(self.old), 'packages': self.packages_main,
+                             'components': {'tamlinux': self.tamlinux_main}, 'stage': 'test'})
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch.dict(os.environ, {'XDG_SESSION_ID': ''}))
+        self.stack.enter_context(patch.object(self.app, 'verify', return_value=[]))
+        self.stack.enter_context(patch.object(self.app, 'runtime_state', return_value={'graphical': False, 'revision': None}))
+
+    def test_status_json_rejects_profile_receipt_mismatch(self):
+        self.app.profile.unlink()
+        self.app.profile.symlink_to(self.new)
+        with patch('sys.stdout', new_callable=io.StringIO) as output:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'inconsistent'):
+                self.app.status(json_output=True)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report['profileGeneration'], str(self.new))
+        self.assertEqual(report['receiptGeneration'], str(self.old))
+        self.assertEqual(len(report['problems']), 1)
+
+    def test_reconcile_is_digest_bound_and_changes_only_profile(self):
+        self.app.profile.unlink()
+        self.app.profile.symlink_to(self.new)
+        before = self.app.state_file.read_bytes(), self.app.lock.read_bytes()
+        with patch('sys.stdout', new_callable=io.StringIO) as output:
+            self.app.reconcile()
+        digest = json.loads(output.getvalue())['digest']
+        with self.assertRaisesRegex(deploy.DeploymentError, 'digest changed'):
+            self.app.reconcile('0'*64)
+        def set_profile(*args, **kwargs):
+            if args[0] == 'git':
+                return self.real_command(*args, **kwargs)
+            self.assertEqual(args, ('nix-env', '--profile', str(self.app.profile), '--set', str(self.old)))
+            self.app.profile.unlink()
+            self.app.profile.symlink_to(self.old)
+        self.real_command = deploy.command
+        with patch.object(deploy, 'command', side_effect=set_profile):
+            self.app.reconcile(digest)
+        self.assertEqual(before, (self.app.state_file.read_bytes(), self.app.lock.read_bytes()))
+        self.assertEqual(self.app.state_report()['problems'], [])
+
+    def test_reconcile_refuses_mixed_endpoints_and_unknown_runtime(self):
+        self.app.profile.unlink()
+        self.app.profile.symlink_to(self.new)
+        for problems in (['wrong endpoint'],):
+            with patch.object(self.app, 'verify', return_value=problems), \
+                 patch.object(deploy, 'command', wraps=deploy.command) as command:
+                with self.assertRaisesRegex(deploy.DeploymentError, 'profile-only'):
+                    self.app.reconcile()
+                self.assertFalse(any(call.args[0] == 'nix-env' for call in command.call_args_list))
+        with patch.object(self.app, 'runtime_state', side_effect=OSError('unavailable')):
+            with self.assertRaisesRegex(deploy.DeploymentError, 'profile-only'):
+                self.app.reconcile()
+
+    def test_preflight_mismatch_and_validator_failure_leave_profile_lock_receipt_unchanged(self):
+        before = self.app.generation(), self.app.lock.read_bytes(), self.app.state_file.read_bytes()
+        with patch.object(self.app, 'check_clean'), \
+             patch.object(self.app, 'build_generation', return_value=str(self.new)), \
+             patch.object(self.app, 'activation_validators', side_effect=deploy.DeploymentError('custom binding')):
+            with self.assertRaisesRegex(deploy.DeploymentError, 'custom binding'):
+                self.app.install(self.packages_new, {'tamlinux': self.tamlinux_new}, 'test')
+        self.assertEqual(before, (self.app.generation(), self.app.lock.read_bytes(), self.app.state_file.read_bytes()))
+        self.assertFalse(self.app.transaction_file.exists())
+        self.app.profile.unlink()
+        self.app.profile.symlink_to(self.new)
+        with patch.object(self.app, 'check_clean'), patch.object(self.app, 'build_generation') as build:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'disagrees'):
+                self.app.preflight(self.packages_new)
+            build.assert_not_called()
+
+    def test_incomplete_transaction_blocks_retry(self):
+        self.app.transaction(phase='partial', deploymentError='failed', recoveryError='also failed')
+        with patch.object(self.app, 'check_clean'), patch.object(self.app, 'build_generation') as build:
+            with self.assertRaisesRegex(deploy.DeploymentError, 'incomplete deployment'):
+                self.app.preflight(self.packages_new)
+            build.assert_not_called()
+        report = self.app.state_report()
+        self.assertEqual(report['transaction']['recoveryError'], 'also failed')
+
+    def test_baseline_change_during_preparation_refuses_before_mutation(self):
+        def build(revision):
+            state = self.app.read_state()
+            state['concurrentChange'] = True
+            self.app.save_state(state)
+            return str(self.new)
+        before = self.app.lock.read_bytes()
+        with patch.object(self.app, 'check_clean'), patch.object(self.app, 'build_generation', side_effect=build):
+            with self.assertRaisesRegex(deploy.DeploymentError, 'baseline changed'):
+                self.app.preflight(self.packages_new)
+        self.assertEqual(self.app.lock.read_bytes(), before)
+        self.assertEqual(self.app.generation(), str(self.old))
+        self.assertFalse(self.app.transaction_file.exists())
+
+    def test_run_and_back_refuse_partial_state_before_promotion_or_activation(self):
+        self.app.profile.unlink()
+        self.app.profile.symlink_to(self.new)
+        for action in (self.app.run, self.app.back):
+            with patch.object(self.app, 'git', wraps=self.app.git) as git_command:
+                with self.assertRaisesRegex(deploy.DeploymentError, 'disagrees'):
+                    action()
+                self.assertFalse(any('push' in call.args for call in git_command.call_args_list))
+            self.assertEqual(self.app.generation(), str(self.new))
+
+    def test_direct_activation_prerequisite_failure_does_not_move_profile(self):
+        # This executable models the pinned HM order: checks precede the
+        # generation's writeBoundary. No HM CLI or Nix mutation is mocked.
+        script = self.new / 'activate'
+        script.write_text('#!/bin/sh\nexit 19\n')
+        script.chmod(0o755)
+        self.app._prepared_generation = str(self.new)
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.app.activate()
+        self.assertEqual(self.app.generation(), str(self.old))
+
+    def test_failure_after_profile_write_restores_or_records_partial_state(self):
+        def activation(generation, revision, error):
+            lines = ['#!/bin/sh', 'set -e',
+                     f'ln -sfn {shlex.quote(str(generation))} {shlex.quote(str(self.app.profile))}']
+            for relative in ('.local/share/tamlinux/shell', '.local/share/tamlinux/shell-revision',
+                             '.config/systemd/user/tamlinux-shell.service'):
+                lines.append(f'ln -sfn {shlex.quote(str(generation / "home-files" / relative))} '
+                             f'{shlex.quote(str(self.app.home / relative))}')
+            lines.append(f'printf %s {revision} > {shlex.quote(str(self.app.revision_file))}')
+            lines.append(f'exit {error}')
+            (generation / 'activate').write_text('\n'.join(lines) + '\n')
+            (generation / 'activate').chmod(0o755)
+        activation(self.old, self.tamlinux_main, 0)
+        activation(self.new, self.tamlinux_new, 17)
+        original = self.app.lock.read_bytes(), self.app.state_file.read_bytes()
+        with patch.object(self.app, 'check_clean'), \
+             patch.object(self.app, 'build_generation', return_value=str(self.new)), \
+             patch.object(self.app, 'graphical_active', return_value=False), \
+             patch.object(self.app, 'pin', side_effect=lambda rev: self.write_lock(rev, {})):
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.app.install(self.packages_new, {'tamlinux': self.tamlinux_new}, 'test')
+        self.assertEqual(self.app.generation(), str(self.old))
+        self.assertEqual(original, (self.app.lock.read_bytes(), self.app.state_file.read_bytes()))
+        self.assertEqual(json.loads(self.app.transaction_file.read_text())['phase'], 'recovered')
+        # A failure of the recovery executable must retain both errors and
+        # explicitly block another attempt.
+        (self.old / 'activate').write_text('#!/bin/sh\nexit 23\n')
+        with patch.object(self.app, 'check_clean'), \
+             patch.object(self.app, 'build_generation', return_value=str(self.new)), \
+             patch.object(self.app, 'graphical_active', return_value=False), \
+             patch.object(self.app, 'pin', side_effect=lambda rev: self.write_lock(rev, {})):
+            with self.assertRaisesRegex(deploy.DeploymentError, 'recovery also failed'):
+                self.app.install(self.packages_new, {'tamlinux': self.tamlinux_new}, 'test')
+        transaction = json.loads(self.app.transaction_file.read_text())
+        self.assertEqual(transaction['phase'], 'partial')
+        self.assertIn('17', transaction['deploymentError'])
+        self.assertIn('23', transaction['recoveryError'])
 
 
 class Usage(unittest.TestCase):

@@ -5,6 +5,8 @@ Test and Run install the same package at the same locations. A deployment
 is a tamlinux-packages revision: its lock file pins every component.
 
 status:       show the pinned assembly, what is installed and the generation.
+preflight:    verify baseline, build the target and run registered read-only checks.
+reconcile:    plan a profile-only correction; execute with --digest HASH.
 init [rev] [--test]:
               first installation from a recorded main (or --test) assembly.
               Works from a text login without Home Manager installed. Does
@@ -102,6 +104,7 @@ class Deployment:
         self.plugins_dir = config / "tamlinux/plugins"
         self.bin_dir = self.home / ".local/bin"
         self.state_file = state / "tamlinux/deploy.json"
+        self.transaction_file = state / 'tamlinux/deploy-transaction.json'
         self.profile = state / "nix/profiles/home-manager"
         self.lock = self.config / "flake.lock"
         self.selection_file = data / "tamlinux/deployment-selection.json"
@@ -215,8 +218,21 @@ class Deployment:
         if dirty:
             raise DeploymentError("commit config changes before deploying:\n" + dirty)
 
-    def preflight(self) -> None:
+    def preflight(self, revision: str | None = None) -> None:
         self.check_clean()
+        if self.transaction_file.exists():
+            transaction = json.loads(self.transaction_file.read_text())
+            if transaction.get('phase') not in ('complete', 'recovered'):
+                raise DeploymentError(f'incomplete deployment transaction ({transaction.get("phase")}); inspect status before retrying')
+        if revision is not None:
+            report = self.require_consistent()
+            before = (self.lock.read_bytes(), self.state_file.read_bytes(), report['profileGeneration'])
+            self._prepared_generation = self.build_generation(revision)
+            self.activation_validators(report['profileGeneration'])
+            self.activation_validators(self._prepared_generation)
+            self.check_clean()
+            if before != (self.lock.read_bytes(), self.state_file.read_bytes(), self.generation()):
+                raise DeploymentError('deployment baseline changed during preparation; prepare again')
         if self.graphical_active():
             self.require_unlocked_sessions()
         else:
@@ -283,8 +299,42 @@ class Deployment:
         document["nodes"][document["nodes"]["root"]["inputs"][self.input]]["original"] = original
         self.lock.write_text(json.dumps(document, indent=2) + "\n")
 
+    def build_generation(self, revision: str | None = None) -> str:
+        args = ['nix', 'build', '--no-link', '--print-out-paths', '--no-write-lock-file']
+        if revision:
+            args += ['--override-input', self.input, f'github:{self.owner}/tamlinux-packages/{revision}']
+        result = command(*args, f'{self.config}#homeConfigurations.{self.home_configuration}.activationPackage', capture=True)
+        if (not re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', result)
+                or not (Path(result) / 'activate').is_file()):
+            raise DeploymentError('build did not return one activation generation')
+        return result
+
+    def activation_validators(self, generation: str) -> None:
+        registry = self.config / 'system/activation-preflight.json'
+        if not registry.exists():
+            return
+        script = (Path(generation) / 'activate').read_text()
+        for validator in json.loads(registry.read_text())['validators']:
+            name = validator['scriptName']
+            if not re.fullmatch(r'[a-z0-9-]+\.py', name):
+                raise DeploymentError('invalid registered activation validator')
+            source = (self.config / validator['source']).resolve(strict=True)
+            if not source.is_relative_to(self.config.resolve()):
+                raise DeploymentError('activation validator source escapes consumer')
+            helpers = set(re.findall(r'/nix/store/[a-z0-9]{32}-' + re.escape(name), script))
+            if not helpers:
+                raise DeploymentError(f'registered activation validator missing: {name}')
+            for helper in sorted(helpers):
+                command(sys.executable, helper, str(source))
+
     def activate(self) -> None:
-        command("home-manager", "switch", "--flake", f"{self.config}#{self.home_configuration}")
+        generation = getattr(self, '_prepared_generation', None) or self.build_generation()
+        # HM CLI switch changes the profile BEFORE prerequisite checks. Direct
+        # activation uses driver 0: its own writeBoundary moves the profile only
+        # after read-only checks pass. Never pass --driver-version 1 here.
+        command(str(Path(generation) / 'activate'))
+        if self.generation() != generation:
+            raise DeploymentError('candidate generation was not activated')
         self.restart_if_graphical()
 
     def wait_ready(self) -> None:
@@ -394,7 +444,79 @@ class Deployment:
 
     # Commands ------------------------------------------------------------
 
-    def status(self) -> None:
+    def runtime_state(self) -> dict:
+        if not self.graphical_active():
+            return {'graphical': False, 'revision': None}
+        pid = command('systemctl', '--user', 'show', 'tamlinux-shell.service', '-p', 'MainPID', '--value', capture=True)
+        if not pid.isdigit() or int(pid) <= 0:
+            raise DeploymentError('graphical shell has no running service process')
+        argv = (Path('/proc') / pid / 'cmdline').read_bytes().decode().split('\0')
+        paths = [argv[i + 1] for i, argument in enumerate(argv[:-1]) if argument in ('-p', '--path')]
+        if len(paths) != 1 or not re.fullmatch(r'/nix/store/[a-z0-9]{32}-[^/]+/share/tamlinux/shell', paths[0]):
+            raise DeploymentError('cannot identify running shell package path')
+        revision = (Path(paths[0]).parent / 'source-revision').read_text().strip()
+        if not re.fullmatch(r'[0-9a-f]{40}', revision):
+            raise DeploymentError('invalid running shell package revision')
+        return {'graphical': True, 'pid': int(pid), 'revision': revision, 'shell': paths[0]}
+
+    def generation_markers(self, generation: str) -> list[str]:
+        problems = []
+        files = Path(generation) / 'home-files'
+        for relative in ('.local/share/tamlinux/shell', '.local/share/tamlinux/shell-revision',
+                         '.config/systemd/user/tamlinux-shell.service'):
+            installed, expected = self.home / relative, files / relative
+            if not expected.exists() or not installed.exists() or installed.resolve() != expected.resolve():
+                problems.append(f'{relative} does not match recorded generation')
+        return problems
+
+    def verify_active(self, generation: str, pins: dict) -> None:
+        if self.generation() != generation:
+            raise DeploymentError('active profile does not match expected generation')
+        problems = self.generation_markers(generation)
+        runtime = self.runtime_state()
+        if runtime['graphical'] and runtime['revision'] != pins['tamlinux']:
+            problems.append('running shell does not match expected revision')
+        if problems:
+            raise DeploymentError('active generation verification failed: ' + '; '.join(problems))
+
+    def state_report(self) -> dict:
+        locked, state = self.locked(), self.read_state()
+        profile = self.generation()
+        pins = self.components(locked)
+        problems = list(self.verify(pins, locked))
+        if not state or state.get('packages') != locked or state.get('components') != pins:
+            problems.append('deployment receipt does not match lock/components')
+        if state.get('generation') != profile:
+            problems.append('profile generation does not match deployment receipt')
+        if state.get('generation'):
+            problems += self.generation_markers(state['generation'])
+        runtime = {}
+        try:
+            runtime = self.runtime_state()
+            if runtime['graphical'] and runtime['revision'] != pins['tamlinux']:
+                problems.append('running shell does not match assembly revision')
+        except (OSError, ValueError, subprocess.CalledProcessError, DeploymentError) as exc:
+            problems.append(f'runtime identity unavailable: {exc}')
+        transaction = json.loads(self.transaction_file.read_text()) if self.transaction_file.exists() else None
+        if transaction and transaction.get('phase') not in ('complete', 'recovered'):
+            problems.append(f'incomplete deployment transaction: {transaction.get("phase")}')
+        return {'assembly': locked, 'components': pins, 'installedShell': self.installed(),
+                'profileGeneration': profile, 'receiptGeneration': state.get('generation'),
+                'receipt': state, 'runtime': runtime, 'transaction': transaction, 'problems': problems}
+
+    def require_consistent(self) -> dict:
+        report = self.state_report()
+        if report['problems']:
+            raise DeploymentError('deployment state disagrees; reconcile before retrying:\n  ' + '\n  '.join(report['problems']))
+        return report
+
+    def status(self, json_output: bool = False) -> None:
+        report = self.state_report()
+        if json_output:
+            print(json.dumps(report, indent=2))
+            if report['problems']:
+                raise DeploymentError('deployment state is inconsistent')
+            return
         locked = self.locked()
         state = self.read_state()
         print(f"assembly: tamlinux-packages {locked}")
@@ -408,11 +530,52 @@ class Deployment:
         print(f"installed shell: {self.installed()}")
         print("stage: " + (state.get("stage", "unrecorded") if state.get("packages") == locked else "unrecorded"))
         print(f"generation: {self.generation()}")
-        problems = self.verify(pins, locked) if pins else []
+        print(f"receipt generation: {report['receiptGeneration']}")
+        print('runtime: ' + json.dumps(report['runtime'], sort_keys=True))
+        problems = report['problems']
         for problem in problems:
             print(f"mismatch: {problem}")
         if problems:
-            raise DeploymentError("installed endpoints do not match the pinned assembly")
+            raise DeploymentError("deployment state is inconsistent")
+
+    def reconcile_plan(self) -> dict:
+        """Only a profile pointer may disagree. All other evidence must agree."""
+        report = self.state_report()
+        if report['problems'] != ['profile generation does not match deployment receipt']:
+            raise DeploymentError('reconcile requires a proven profile-only mismatch; mixed or unknown state needs explicit recovery')
+        target = report['receiptGeneration']
+        if not (Path(target) / 'activate').is_file():
+            raise DeploymentError('recorded generation is unavailable')
+        plan = {'profile': str(self.profile), 'from': report['profileGeneration'], 'to': target,
+                'assembly': report['assembly'], 'receiptSha256': hashlib.sha256(self.state_file.read_bytes()).hexdigest(),
+                'lockSha256': hashlib.sha256(self.lock.read_bytes()).hexdigest(), 'runtime': report['runtime']}
+        return plan
+
+    def reconcile(self, digest: str | None = None) -> None:
+        plan = self.reconcile_plan()
+        actual = hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest()
+        if digest is None:
+            print(json.dumps({'plan': plan, 'digest': actual}, indent=2))
+            return
+        if digest != actual:
+            raise DeploymentError('reconcile digest changed; inspect and plan again')
+        command('nix-env', '--profile', str(self.profile), '--set', plan['to'])
+        if self.state_report()['problems']:
+            raise DeploymentError('profile reconciliation did not restore consistent state')
+        print('Profile reconciled; no activation, receipt or settings restoration performed.')
+
+    def transaction(self, **fields) -> None:
+        current = (json.loads(self.transaction_file.read_text())
+                   if self.transaction_file.exists() and fields.get('phase') != 'prepared' else {})
+        current.update(fields)
+        self.transaction_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.transaction_file.with_suffix('.tmp')
+        with temporary.open('w') as stream:
+            stream.write(json.dumps(current, indent=2) + '\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(self.transaction_file)
+        print('deploy phase: ' + str(current.get('phase')), flush=True)
 
     def fetch_all(self, pins: dict[str, str]) -> None:
         for name in ["tamlinux-packages", *sorted(pins)]:
@@ -434,20 +597,28 @@ class Deployment:
     def install(self, revision: str, pins: dict[str, str], stage: str) -> tuple[str, str]:
         """Pin, switch and verify an assembly; on failure restore the lock
         and the previous generation. Returns (previous generation, previous pin)."""
-        self.preflight()
+        self.preflight(revision)
         previous = self.generation()
         previous_pin = self.rollback_pin(previous)
         before = self.lock.read_bytes()
+        self.transaction(phase='prepared', baselineGeneration=previous, baselineAssembly=previous_pin,
+                         targetAssembly=revision, targetGeneration=getattr(self, '_prepared_generation', None))
+        activation_attempted = False
         try:
+            self.transaction(phase='pinning')
             self.pin(revision)
+            self.transaction(phase='activating')
+            activation_attempted = True
             self.activate()
             problems = self.verify(pins, revision)
             if problems:
                 raise DeploymentError("installed endpoints do not match the assembly:\n  " + "\n  ".join(problems))
+            self.verify_active(getattr(self, '_prepared_generation', previous), pins)
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
             try:
+                self.transaction(phase='recovering', deploymentError=str(exc))
                 self.lock.write_bytes(before)
-                if self.generation() != previous:
+                if self.generation() != previous or activation_attempted:
                     if self.graphical_active():
                         self.require_unlocked_sessions()
                     command(str(Path(previous) / "activate"))
@@ -458,13 +629,17 @@ class Deployment:
                 problems = self.verify(previous_pins, previous_pin)
                 if problems:
                     raise DeploymentError("recovered endpoints do not match the previous assembly:\n  " + "\n  ".join(problems))
+                self.verify_active(previous, previous_pins)
+                self.transaction(phase='recovered')
             except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as recovery:
+                self.transaction(phase='partial', recoveryError=str(recovery))
                 raise DeploymentError(
                     f"deployment failed: {exc}; recovery also failed: {recovery}; "
                     "inspect tam-deploy status, the active generation and the consumer lock before retrying"
                 ) from recovery
             raise
         try:
+            self.transaction(phase='recording')
             generation = self.generation()
             files = ["flake.lock"] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
                                                       "stage": stage, "generation": generation})
@@ -472,7 +647,9 @@ class Deployment:
             self.save_state({"stage": stage, "packages": revision, "components": pins,
                              "generation": generation, "previousGeneration": previous,
                              "previousPin": previous_pin, "livePaths": self.live_digests()})
+            self.transaction(phase='complete')
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
+            self.transaction(phase='partial', recordingError=str(exc))
             raise DeploymentError(
                 f"activation succeeded but deployment recording failed: {exc}; "
                 "inspect tam-deploy status, the active generation and the consumer lock before retrying"
@@ -559,6 +736,7 @@ class Deployment:
         self.status()
 
     def run(self, ref: str | None = None, untested: bool = False) -> None:
+        self.require_consistent()
         installed = self.locked()
         if ref is None:
             revision = installed
@@ -617,6 +795,7 @@ class Deployment:
         self.status()
 
     def back(self) -> None:
+        self.require_consistent()
         state = self.read_state()
         previous, previous_pin = state.get("previousGeneration"), state.get("previousPin")
         if not previous or not previous_pin:
@@ -630,7 +809,11 @@ class Deployment:
         # Recheck after activation because it can change during the switch.
         if self.graphical_active():
             self.require_unlocked_sessions()
+        self.activation_validators(previous)
+        self.transaction(phase='prepared', baselineGeneration=current, baselineAssembly=current_pin,
+                         targetGeneration=previous, targetAssembly=previous_pin)
         try:
+            self.transaction(phase='activating')
             command(str(target / "activate"))
             restored = self.generation()
             if restored != previous:
@@ -648,15 +831,17 @@ class Deployment:
                              "generation": restored, "components": pins,
                              "previousGeneration": current,
                              "previousPin": current_pin})
+            self.transaction(phase='complete')
             self.status()
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
+            self.transaction(phase='partial', deploymentError=str(exc))
             raise DeploymentError(
                 f"rollback may be incomplete after activation was attempted: {exc}; "
                 "inspect tam-deploy status, the active generation and the consumer lock before retrying"
             ) from exc
 
 
-USAGE = "usage: tam-deploy status | init [revision] [--test] | test [revision] | run [revision] [--untested] | back"
+USAGE = "usage: tam-deploy status [--json] | preflight <assembly> | reconcile [--digest HASH] | init [revision] [--test] | test [revision] | run [revision] [--untested] | back"
 
 
 def parse(argv: list[str]) -> tuple[str, list, dict] | None:
@@ -665,6 +850,15 @@ def parse(argv: list[str]) -> tuple[str, list, dict] | None:
     name, rest = argv[0], argv[1:]
     if name in ("status", "back") and not rest:
         return name, [], {}
+    if name == 'status' and rest == ['--json']:
+        return name, [], {'json_output': True}
+    if name == 'preflight' and len(rest) == 1 and re.fullmatch(r'[0-9a-f]{40}', rest[0]):
+        return name, rest, {}
+    if name == 'reconcile':
+        if not rest:
+            return name, [], {}
+        if len(rest) == 2 and rest[0] == '--digest' and re.fullmatch(r'[0-9a-f]{64}', rest[1]):
+            return name, [rest[1]], {}
     if name == "test" and len(rest) <= 1 and not any(a.startswith("-") for a in rest):
         return name, rest, {}
     if name == "run":
@@ -692,6 +886,9 @@ def main(argv: list[str]) -> int:
     try:
         deployment = Deployment()
         getattr(deployment, name)(*args, **options)
+        if name == 'preflight':
+            print(json.dumps({'generation': deployment._prepared_generation,
+                              'baselineGeneration': deployment.read_state()['generation']}))
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
         print(f"tam-deploy: {exc}", file=sys.stderr)
         return 1

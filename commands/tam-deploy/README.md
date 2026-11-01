@@ -11,6 +11,9 @@ revision whose lock file pins every component.
 | Command | Effect |
 | --- | --- |
 | `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; compare required endpoints with the exact selected package outputs, rejecting missing/broken links and mixed assemblies. |
+| `status --json` | Separately report profile, receipt, lock, endpoints, running shell identity and the transaction. Disagreement returns a nonzero exit status. |
+| `preflight <assembly>` | Require a coherent baseline, build the exact target without changing the consumer lock, and run registered read-only checks on candidate and recovery generations. Print the built generation as JSON. |
+| `reconcile [--digest HASH]` | Plan a correction only when the profile pointer is the sole mismatch. The digest-bound execution changes that pointer using Nix; it does not activate, restore settings or invent a receipt. Unknown runtime or mixed endpoints are refused. |
 | `init [revision] [--test]` | First installation on a registered local host without an existing generation. Require all components on `main` (or `test` with `--test`), build the exact consumer generation, activate and verify its package endpoints. Works from a text session without a Home Manager CLI. Records no previous generation; never promotes branches or enables graphical login. |
 | `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell if active, verify the installed paths and commit the pin. Activation or verification failure attempts to restore the lock and previous generation. |
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
@@ -21,6 +24,27 @@ record for the active generation. A prepared but inactive consumer lock is not
 the rollback assembly. Without a matching record, the current lock must match
 the installed source revision; otherwise deployment stops before activation.
 Back identifies its return pin from the active deployment record too, so a staged consumer lock cannot pair the old generation with a newer assembly. It records the restored generation and components for subsequent deployments.
+
+Before Test, Run or Back, the profile, receipt, selected assembly, generation
+markers, package endpoints and running shell must agree. A staged lock or stale
+receipt requires explicit reconciliation before another deployment.
+
+Test builds before changing the live lock, then invokes the built generation's
+`activate` script with its default Home Manager driver. That script runs its
+prerequisite checks before moving the profile at `writeBoundary`. The Home
+Manager CLI's `switch` ordering, which moves the profile first, is not used.
+Consumer-specific read-only helpers can be registered in
+`system/activation-preflight.json` as `validators` with `scriptName` and
+repository-relative `source`. The named immutable Python helper is located in
+each generation's activation script. Only registered helpers run; full
+activation and arbitrary DRY_RUN hooks are never used for preparation.
+
+`$XDG_STATE_HOME/tamlinux/deploy-transaction.json` records baseline, target and
+phase before mutation. Activation failure restores the lock and attempts the
+previous generation, checking endpoints, generation markers and runtime before
+claiming recovery. Both the original and recovery errors survive a partial
+failure. An incomplete transaction blocks another attempt. Status exposes it
+for explicit recovery; deleting the file is not a recovery procedure.
 
 Promote a candidate from `develop` to `test` (a fast-forward push) before
 `tam-deploy test`; `tam-deploy` never resolves a moving branch at build time.

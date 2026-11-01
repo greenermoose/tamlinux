@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements deployment state and recovery transactions. [Session](docs/ai/2026-11-01-candidate-process.md).
+
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) prepares the 0.5.12 product version. [Session](docs/ai/2026-11-01-0512-preparation.md).
 
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) aligns fresh appearance defaults. [Session](docs/ai/2026-11-01-tokyo-defaults.md).
