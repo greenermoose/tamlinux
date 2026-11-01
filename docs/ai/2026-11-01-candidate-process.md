@@ -11,4 +11,6 @@
 
 - **Implementation**: Status compares profile, receipt, lock, immutable endpoints and running shell. Direct generation activation retains Home Manager prerequisite ordering. Transactions preserve deployment and recovery failures and block unsafe retries. Reconciliation is limited to a digest-bound, proven profile-only mismatch.
 - **Delivery boundary**: Develop improvements; the prepared 0.5.12 assembly is unchanged. These changes require a later recorded candidate before deployment.
-- **Verification**: 86 deployment tests pass, including real temporary-profile writes, verified recovery, explicit partial failure, mismatch refusal and digest-bound reconciliation. The read-only status was also checked against a coherent installed candidate. No physical rollback trial is claimed.
+- **Verification**: 87 deployment tests pass, including real temporary-profile writes, verified recovery, explicit partial failure, mismatch refusal and digest-bound reconciliation. The read-only status was also checked against a coherent installed candidate. No physical rollback trial is claimed.
+
+Actual non-activating preflight rebuilt the existing recorded consumer generation. Validator output is captured so the preflight JSON remains parseable; a regression test covers that interface. The live lock, receipt and profile were preserved.

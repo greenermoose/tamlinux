@@ -1162,6 +1162,18 @@ class CoherentState(Fixture):
         self.assertEqual(self.app.generation(), str(self.old))
         self.assertFalse(self.app.transaction_file.exists())
 
+    def test_registered_validator_stdout_cannot_corrupt_preflight_json(self):
+        (self.config / 'bindings.lua').write_text('known binding')
+        (self.config / 'system/activation-preflight.json').write_text(json.dumps({
+            'validators': [{'scriptName': 'start-menu-binding.py', 'source': 'bindings.lua'}]}))
+        helper = '/nix/store/' + 'a'*32 + '-start-menu-binding.py'
+        (self.new / 'activate').write_text(helper)
+        with patch.object(deploy, 'command', return_value='check passed') as command, \
+             patch('sys.stdout', new_callable=io.StringIO) as output:
+            self.app.activation_validators(str(self.new))
+        self.assertEqual(output.getvalue(), '')
+        command.assert_called_once_with(deploy.sys.executable, helper, str(self.config / 'bindings.lua'), capture=True)
+
     def test_run_and_back_refuse_partial_state_before_promotion_or_activation(self):
         self.app.profile.unlink()
         self.app.profile.symlink_to(self.new)

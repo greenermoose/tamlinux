@@ -325,7 +325,7 @@ class Deployment:
             if not helpers:
                 raise DeploymentError(f'registered activation validator missing: {name}')
             for helper in sorted(helpers):
-                command(sys.executable, helper, str(source))
+                command(sys.executable, helper, str(source), capture=True)
 
     def activate(self) -> None:
         generation = getattr(self, '_prepared_generation', None) or self.build_generation()
