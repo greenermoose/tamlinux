@@ -209,8 +209,12 @@ def generated_lua(macros: list[dict], previous: str = "") -> str:
         lines.append(f'hl.unbind({lua_string("SUPER + ALT + " + key)})')
     for m in macros:
         key = to_xkb_keysym(m["key"])
-        # Executable is this exact build; punctuation never becomes shell syntax.
-        command = shlex.join([str(Path(__file__).resolve()), "run", key])
+        # A packaged wrapper supplies the stable Home Manager entry point;
+        # direct development builds retain their exact executable identity.
+        entry = os.environ.get("TAMLINUX_MACRO_ENTRY") or str(Path(__file__).resolve())
+        if not os.path.isabs(entry):
+            raise ValueError("Macro entry point must be an absolute path")
+        command = shlex.join([entry, "run", key])
         description = "Macro: " + (m["description"] or m["key"])
         lines.append(f'hl.bind({lua_string("SUPER + ALT + " + key)}, '
                      f'function() run_macro({lua_string(command)}) end, '

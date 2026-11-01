@@ -144,11 +144,20 @@ install() {
 
 uninstall() {
   [[ -f $record ]] || die "no trial installed (no $record)"
-  # The generated bindings can point directly into this trial's build.  Until
-  # packaged handover can regenerate and verify them, retain the whole trial.
+  # Switch generated bindings to the selected package before deleting the
+  # build they may still reference. A missing or failed package keeps the trial.
   local macros_lua=${TAMLINUX_HYPR_MACROS_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/macros.lua}
+  local packaged_macro=${TAMLINUX_BIN:-$HOME/.local/bin}/tam-macro
   if [[ -e $macros_lua || -L $macros_lua ]]; then
-    die "macro bindings exist at $macros_lua; packaged handover is required before uninstalling the trial"
+    [[ -x $packaged_macro ]] || die "packaged macro runner is unavailable; trial retained"
+    "$packaged_macro" sync || die "packaged macro sync failed; trial retained"
+    [[ -f $macros_lua ]] || die "packaged macro sync did not produce bindings; trial retained"
+    if grep -Fq -- "$builds/" "$macros_lua" || grep -Fq -- "$dev/bin/tam-macro" "$macros_lua"; then
+      die "macro bindings still reference the trial; trial retained"
+    fi
+    if grep -Fq 'hl.bind(' "$macros_lua" && ! grep -Fq -- "$packaged_macro" "$macros_lua"; then
+      die "macro bindings do not reference the packaged entry point; trial retained"
+    fi
   fi
   rm -f -- "$launcher" "$dev/bin/tam-macro"
   if [[ -e $saved || -L $saved ]]; then

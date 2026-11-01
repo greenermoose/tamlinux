@@ -131,6 +131,13 @@ class TamMacroTest(unittest.TestCase):
         self.assertTrue(self.hypr_file.is_file())
         self.assertIn('hl.bind("SUPER + ALT + t"', self.hypr_file.read_text())
 
+    def test_generated_binding_preserves_packaged_wrapper_path(self):
+        self.macros_file.write_text(json.dumps([{"key": "T", "text": "test"}]))
+        self.env["TAMLINUX_MACRO_ENTRY"] = "/home/example/.local/bin/tam-macro"
+        result = self.run_cmd("sync")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("/home/example/.local/bin/tam-macro run t", self.hypr_file.read_text())
+
     def test_sync_maps_punctuation_to_xkb_keysyms(self):
         self.macros_file.write_text(json.dumps([
             {"key": "/", "description": "Exit command", "text": "/exit"},
