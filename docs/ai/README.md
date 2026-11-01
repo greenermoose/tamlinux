@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-01 — Tokyo Night and JetBrains Mono defaults](2026-11-01-tokyo-defaults.md)
+
 - [2026-10-31 — Develop continuation integration](2026-10-31-continuation-integration.md)
 
 - [2026-10-31 — Macro reliability takeover](2026-10-31-macro-reliability.md)

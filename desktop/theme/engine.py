@@ -247,8 +247,7 @@ def transaction(kind, paths, dconf=None):
 
 def selected():
     path = CURRENT / 'theme.name'
-    default = 'tamarack-dark' if (ASSETS / 'themes/tamarack-dark').is_dir() else 'tokyo-night'
-    return name(path.read_text().strip()) if path.exists() else default
+    return name(path.read_text().strip()) if path.exists() else 'tokyo-night'
 
 def themes():
     return sorted({p.name for base in (ASSETS / 'themes', CONFIG / 'tamlinux/themes')
@@ -673,8 +672,7 @@ def main():
             # even dangling links, require explicit recovery/user action.
             if not any(path.exists() or path.is_symlink() for path in (CURRENT / 'theme', CURRENT / 'theme.name')):
                 background = CURRENT / 'background'
-                default = 'tamarack-dark' if (ASSETS / 'themes/tamarack-dark').is_dir() else 'tokyo-night'
-                set_theme(default, refresh=background.exists() or background.is_symlink(), apply=False)
+                set_theme('tokyo-night', refresh=background.exists() or background.is_symlink(), apply=False)
             else:
                 active = CURRENT / 'theme'
                 if active.is_symlink() and active.is_dir():

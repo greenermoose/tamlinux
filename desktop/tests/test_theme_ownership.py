@@ -216,7 +216,7 @@ class ThemeOwnership(unittest.TestCase):
     def test_fresh_initialize_generates_owned_state_without_application_adapters(self):
         self.stub('tam-theme-set-foot', 'exit 17')
         self.call('initialize', env={'TAMLINUX_THEME_OFFLINE': ''})
-        self.assertEqual((self.current/'theme.name').read_text(), 'tamarack-dark\n')
+        self.assertEqual((self.current/'theme.name').read_text(), 'tokyo-night\n')
         self.assertTrue((self.current/'background').is_symlink())
         self.assertFalse(self.config.exists())
         before = (self.current/'theme/colors.toml').read_bytes()

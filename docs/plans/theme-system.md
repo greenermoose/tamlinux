@@ -1,5 +1,10 @@
 # Theme system, fonts and identity
 
+**0.5.12 decision, 2026-11-01:** Tokyo Night and JetBrains Mono are the
+accepted appearance and fresh defaults. Full Tamarack surface coverage and
+physical appearance acceptance are not required for 0.5.12. The historical
+Tamarack work below remains available; it does not set the current goal.
+
 **Status — reviewed 2026-10-13:** retained theme generation, pickers, application
 adapters, fonts, assets and About/screensaver identity are implemented for
 **0.4.3**. Effective consumer wiring, native browser/boot ownership, interrupted

@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) aligns fresh appearance defaults. [Session](docs/ai/2026-11-01-tokyo-defaults.md).
+
 2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) reviews the Develop continuation and corrects trial evidence. [Session](docs/ai/2026-10-31-continuation-integration.md).
 
 2026-10-31: Codex CLI `0.166.0` (`gpt-6-astra`) takes over macro reliability and key recording. [Session](docs/ai/2026-10-31-macro-reliability.md).
