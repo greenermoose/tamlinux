@@ -1,5 +1,21 @@
 # Finish text macros and Meta naming
 
+**0.5 scope update:** Fred considers the current macro trial sufficient for
+his needs and wants to reserve Meta+Alt+keyboard keys for macros. Complete
+the default and effective binding migration and deliver the working macro
+editor and runner through the normal package path. Defer the broader Meta
+naming audit, layer-shell delivery, and the exhaustive compatibility matrix;
+they are not 0.5 acceptance requirements. The detailed sections below retain
+their earlier context, but do not expand this 0.5 scope. Preserve existing
+macros, avoid wrong-target delivery, and do not remove the trial runner before
+a safe packaged handover.
+
+The developed default map has no system keyboard bindings on Meta+Alt;
+mouse resize remains separate. On the currently installed 0.5.11 session,
+many older system keyboard bindings still occupy the prefix. The source
+change is not yet an installed candidate. Verify the effective map after
+the relevant package is installed, including personal overrides and keycodes.
+
 **Status:** Completion plan requested on 2026-10-31. Basic macro insertion is
 confirmed in the development trial; desktop-wide compatibility, complete
 Meta+Alt reservation, product-wide naming and packaged acceptance remain open.
@@ -249,9 +265,8 @@ keys that never reach the compositor from software binding defects.
 
 ## Next actions
 
-1. Establish safe focused-surface delivery and visible runner failures; test
-   the resulting trial with Fred before claiming broad compatibility.
-2. Complete prefix reservation, preserving user migration and the Meta naming
-   audit; validate both the proposed and effective maps.
-3. Fix package/trial lifecycle, prepare the authorized candidate, and collect
-   packaged acceptance on the user's stage instruction.
+1. Finish packaging and trial handover for the working macro feature, preserving
+   saved data and the executable referenced by generated bindings.
+2. On the authorized candidate, verify the effective keyboard map reserves
+   Meta+Alt and test the packaged macro editor and insertion. Move stages only
+   on Fred's exact-candidate instruction.
