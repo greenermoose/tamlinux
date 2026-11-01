@@ -1,5 +1,11 @@
 # AI Collaboration & Provenance
 
+2026-11-01: Fred releases **0.5.12**, the final **Blue Sparkler** cultivar. Claude Code `2.1.316` (`claude-opus-5-5`) runs the scripted release and writes its records. [Release session](docs/ai/2026-11-01-release-0.5.12.md).
+
+2026-11-01: Claude Code `2.1.316` (`claude-opus-5-5`) makes idle suspend fall back to plain suspend where hibernation is unavailable. [Session](docs/ai/2026-11-01-suspend-without-hibernation.md).
+
+2026-11-01: Claude Code `2.1.316` (`claude-opus-5-5`) lets fleet hosts follow their own assembly pin in `tam-deploy`. [Session](docs/ai/2026-11-01-per-host-assembly-pin.md).
+
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements deployment state and recovery transactions. [Session](docs/ai/2026-11-01-candidate-process.md).
 
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) prepares the 0.5.12 product version. [Session](docs/ai/2026-11-01-0512-preparation.md).

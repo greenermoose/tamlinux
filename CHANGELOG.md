@@ -8,9 +8,24 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Let a fleet host follow its own assembly revision (`hosts/<host>/state/assembly`); `tam-deploy` reads, pins, restores and commits that file instead of the shared lock.
+- Suspend plainly where logind cannot hibernate (`suspend-unless-stay-awake`); hosts with only zram swap previously never slept on idle.
 - Draw a generic 104-key board in the keyboard panel when no specific layout is known (`fred.keyboard` 2.0.3); the panel was empty on any keyboard but the Lenovo Calliope.
 
-## 0.5.12 - Develop candidate
+## 0.5.12 - 2026-11-01
+
+Final release of the **0.5 Blue Sparkler cultivar**: safer keyboard
+shortcuts and a shortcut finder, consistent clipboard in the terminal and
+editor, Tokyo Night and JetBrains Mono as the accepted appearance, and
+console-first startup with the desktop started on request. The exact tested
+Run is released without a version bump or rebuild. Unfinished 0.5 goals,
+including an account of the system's layers and measured startup, continue
+in 0.6.
+
+[Release notes](https://github.com/greenermoose/tamlinux/releases/tag/0.5.12)
+cover all changes since 0.4.8. Candidate entries below retain their
+preparation history.
+
 
 - Use Tokyo Night and JetBrains Mono for fresh defaults; preserve existing selections.
 - Improve macro capture, safe delivery, error reporting, default shortcuts and packaged trial handover.

@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-01 — Release 0.5.12, final Blue Sparkler](2026-11-01-release-0.5.12.md)
+
 - [2026-11-01 — Plain suspend where hibernation is unavailable](2026-11-01-suspend-without-hibernation.md)
 
 - [2026-11-01 — Per-host assembly pin for tam-deploy](2026-11-01-per-host-assembly-pin.md)
