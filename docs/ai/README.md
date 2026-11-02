@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-01 — Keyboard rendering and press/release verification](2026-11-01-keyboard-render.md)
+
 - [2026-11-01 — tam-hardware host probe](2026-11-01-tam-hardware.md)
 
 - [2026-11-01 — Release 0.5.12, final Blue Sparkler](2026-11-01-release-0.5.12.md)

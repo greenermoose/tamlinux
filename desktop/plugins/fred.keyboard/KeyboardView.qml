@@ -75,83 +75,88 @@ Item {
             width: modelData.w * view.unit
             height: (modelData.cell.h || 1) * view.unit
 
-            sourceComponent: Rectangle {
-              readonly property var cell: modelData.cell
-              readonly property bool isLed: !!cell.led
-              readonly property bool ledLit: isLed && !!view.ledState[cell.led]
-              readonly property bool isDead: !cell.led &&
-                                            (cell.code === null || cell.code === undefined)
-              readonly property bool down: view.isDown(cell.code)
-              readonly property bool bound: !isDead && !isLed &&
-                                            !!view.bindings[cell.code]
-              readonly property bool marked: !isDead && !isLed &&
-                                             !!view.marked[cell.code]
+            // Loader owns the loaded item's size. Keep an intermediate Item
+            // so it cannot stretch the keycap across the gutter.
+            sourceComponent: Item {
+              Rectangle {
+                id: keycap
+                readonly property var cell: modelData.cell
+                readonly property bool isLed: !!cell.led
+                readonly property bool ledLit: isLed && !!view.ledState[cell.led]
+                readonly property bool isDead: !cell.led &&
+                                              (cell.code === null || cell.code === undefined)
+                readonly property bool down: view.isDown(cell.code)
+                readonly property bool bound: !isDead && !isLed &&
+                                              !!view.bindings[cell.code]
+                readonly property bool marked: !isDead && !isLed &&
+                                               !!view.marked[cell.code]
 
-              x: view.gutter / 2
-              y: view.gutter / 2
-              width: parent.width - view.gutter
-              height: parent.height - view.gutter
-              radius: isLed ? height / 2 : Math.max(2, Style.space(3))
+                x: view.gutter / 2
+                y: view.gutter / 2
+                width: parent.width - view.gutter
+                height: parent.height - view.gutter
+                radius: isLed ? height / 2 : Math.max(2, Style.space(3))
 
-              color: down ? Commons.Color.accent
-                          : isLed ? (ledLit
-                                     ? Commons.Color.accent
-                                     : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
-                                               Commons.Color.foreground.b, 0.08))
-                          : marked ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g,
-                                             Commons.Color.accent.b, 0.38)
-                          : bound ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g,
-                                            Commons.Color.accent.b, 0.16)
-                          : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
-                                    Commons.Color.foreground.b, 0.06)
+                color: down ? Commons.Color.accent
+                            : isLed ? (ledLit
+                                       ? Commons.Color.accent
+                                       : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                                 Commons.Color.foreground.b, 0.08))
+                            : marked ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g,
+                                               Commons.Color.accent.b, 0.38)
+                            : bound ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g,
+                                              Commons.Color.accent.b, 0.16)
+                            : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                      Commons.Color.foreground.b, 0.06)
 
-              border.width: marked ? 2 : 1
-              border.color: (down || ledLit || marked)
-                ? Commons.Color.accent
-                : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b,
-                          isDead ? 0.12 : 0.22)
+                border.width: marked ? 2 : 1
+                border.color: (down || ledLit || marked)
+                  ? Commons.Color.accent
+                  : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b,
+                            isDead ? 0.12 : 0.22)
 
-              Text {
-                anchors.centerIn: parent
-                width: parent.width - 4
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-                text: cell.label !== undefined ? cell.label : cell.id
-                font.family: Style.font.family
-                font.pixelSize: Math.max(8, view.unit * 0.30)
-                color: (down || ledLit)
-                  ? Commons.Color.background
-                  : isDead ? Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
-                                     Commons.Color.foreground.b, 0.40)
-                           : Commons.Color.foreground
-              }
+                Text {
+                  anchors.centerIn: parent
+                  width: parent.width - 4
+                  horizontalAlignment: Text.AlignHCenter
+                  elide: Text.ElideRight
+                  text: keycap.cell.label !== undefined ? keycap.cell.label : keycap.cell.id
+                  font.family: Style.font.family
+                  font.pixelSize: Math.max(8, view.unit * 0.30)
+                  color: (keycap.down || keycap.ledLit)
+                    ? Commons.Color.background
+                    : keycap.isDead ? Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                       Commons.Color.foreground.b, 0.40)
+                             : Commons.Color.foreground
+                }
 
-              // Hover shows the key's code and every bind on it. Hover only:
-              // no buttons accepted, so clicks fall through to whatever owns
-              // them (the capture surface, when the mode is on).
-              MouseArea {
-                id: hover
-                anchors.fill: parent
-                hoverEnabled: !isLed
-                acceptedButtons: Qt.NoButton
-              }
+                // Hover shows the key's code and every bind on it. Hover only:
+                // no buttons accepted, so clicks fall through to whatever owns
+                // them (the capture surface, when the mode is on).
+                MouseArea {
+                  id: hover
+                  anchors.fill: parent
+                  hoverEnabled: !keycap.isLed
+                  acceptedButtons: Qt.NoButton
+                }
 
-              PanelToolTip {
-                visible: hover.containsMouse && text !== ""
-                text: view.tooltipFor(cell)
-              }
+                PanelToolTip {
+                  visible: hover.containsMouse && text !== ""
+                  text: view.tooltipFor(keycap.cell)
+                }
 
-              // A key the OS never sees (firmware-local, e.g. Fn) is marked so
-              // its permanent inertness reads as intentional, not broken.
-              Text {
-                visible: isDead && !isLed
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.margins: 1
-                text: "○"
-                font.pixelSize: Math.max(6, view.unit * 0.18)
-                color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
-                               Commons.Color.foreground.b, 0.45)
+                // A key the OS never sees (firmware-local, e.g. Fn) is marked so
+                // its permanent inertness reads as intentional, not broken.
+                Text {
+                  visible: keycap.isDead && !keycap.isLed
+                  anchors.top: parent.top
+                  anchors.right: parent.right
+                  anchors.margins: 1
+                  text: "○"
+                  font.pixelSize: Math.max(6, view.unit * 0.18)
+                  color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
+                                 Commons.Color.foreground.b, 0.45)
+                }
               }
             }
           }

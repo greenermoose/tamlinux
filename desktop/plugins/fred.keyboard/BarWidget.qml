@@ -369,7 +369,8 @@ Panel {
             var legend = ". Tinted keys have Hyprland binds - hover a key to see them."
             if (root.resolution.kind === "field-observed")
               return "Layout: " + root.resolution.layoutId + " - transcribed for this board" + legend
-            return "Layout: " + root.resolution.layoutId + " - stand-in, " + root.resolution.why + legend
+            return "Layout: " + (root.layout ? root.layout.name : "Loading generic board...") +
+                   " - exact key positions for this device are not known" + legend
           }
         }
 

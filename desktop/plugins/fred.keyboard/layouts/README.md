@@ -3,22 +3,17 @@
 Layouts describe where the keys physically are on a board, so the panel can
 draw your keyboard rather than a generic one.
 
-`fred.keyboard` draws from two supplies:
+`fred.keyboard` draws a transcribed layout when its USB vendor:product or
+device name matches a library entry. Otherwise it draws the bundled
+`pc104-standin.json`: a generic ANSI board with navigation keys and a number
+pad, with press and release highlighting for its keys. Its positions may
+differ from a laptop's physical arrangement.
 
-1. **The OS supply.** XKB geometries shipped in
-   `/usr/share/X11/xkb/geometry` - `pc101`, `pc104`, `pc105`, regional boards
-   such as `jp106`, and vendor files such as `thinkpad`, `dell` and `hp`.
-   These are correct for ordinary keyboards and cost us nothing to use, so
-   they are preferred whenever they fit.
-2. **This library.** Boards that have been physically transcribed because no
-   stock geometry describes them correctly. These win over stock geometries
-   for the same device, because they exist precisely where the stock one was
-   wrong.
-
-Resolution order lives in `../LayoutResolver.js` and is: USB vendor:product
-match, then device-name match, then a vendor XKB geometry, then a generic one,
-then the declared fallback. Only the first two are reported as exact; anything
-else is shown to the user as a plausible stand-in they are invited to correct.
+`../LayoutResolver.js` also discovers OS XKB geometry names, but the renderer
+does not read XKB geometry files. An OS geometry name alone cannot supply a
+drawable layout. The registry's `standIn` file supplies the board in this
+case, including when no OS geometry exists. Only a matched, transcribed
+layout is reported as exact.
 
 ## Why a field-observed library is necessary
 

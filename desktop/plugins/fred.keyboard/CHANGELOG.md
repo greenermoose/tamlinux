@@ -7,6 +7,8 @@ The 2.x line ships with Tamlinux. Headings identify the containing product relea
 ## 2.0.3 - 2026-11-01
 
 - Draw a bundled generic 104-key board when no field-observed layout matches. Before this, any keyboard other than the Lenovo Calliope showed an empty panel, because the OS-geometry fallback named a board but loaded no layout file. Found on slowhp during the 0.5.12 deployment.
+- Identify the actual bundled board in the panel and explain that its key positions are approximate. Verify keycap rendering and press/release highlighting offscreen for both bundled layouts.
+- Preserve the gaps between keycaps: an intermediate item prevents Qt's loader from stretching each key into its neighbours.
 
 ## 2.0.2 - 2026-10-16
 

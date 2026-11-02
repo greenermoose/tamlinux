@@ -11,6 +11,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 - Let a fleet host follow its own assembly revision (`hosts/<host>/state/assembly`); `tam-deploy` reads, pins, restores and commits that file instead of the shared lock.
 - Suspend plainly where logind cannot hibernate (`suspend-unless-stay-awake`); hosts with only zram swap previously never slept on idle.
 - Draw a generic 104-key board in the keyboard panel when no specific layout is known (`fred.keyboard` 2.0.3); the panel was empty on any keyboard but the Lenovo Calliope.
+- Name the keyboard panel's actual fallback board, preserve gaps between keycaps, and verify rendering and press/release highlighting offscreen.
 
 ## 0.5.12 - 2026-11-01
 
