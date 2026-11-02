@@ -21,7 +21,7 @@ import "."
 // recipe in UPSTREAM.md stays small.
 //
 // Layer-shell popup attached to a bar widget icon, designed for
-// click-driven AND keyboard-driven panels (e.g. SUPER+CTRL+W summon).
+// click-driven AND keyboard-driven panels (e.g. Meta+Ctrl+W summon).
 //
 // Built on PanelWindow with a brief WlrKeyboardFocus.Exclusive prime followed
 // by OnDemand rather than PopupWindow (xdg-popup). The prime acquires focus

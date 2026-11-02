@@ -508,7 +508,7 @@ Panel {
       // card, so every click and wheel step inside the panel is recorded
       // rather than acted on - including on the toggle, which is why Escape
       // is the way out. Hyprland's inhibitor already keeps the compositor
-      // from claiming Super+click first (KeybindManager::onMouseEvent goes
+      // from claiming Meta+click first (KeybindManager::onMouseEvent goes
       // through the same inhibited path as keys). Off, the surface is
       // disabled and invisible to the pointer, and the controls work.
       MouseArea {

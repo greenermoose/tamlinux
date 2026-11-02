@@ -46,7 +46,7 @@ sudo gpasswd -d "$USER" docker >/dev/null
 # do it now.
 echo ""
 echo "Sudoless Docker DISABLED. Docker access goes through a polkit/sudo prompt"
-echo "again: the Docker TUI (Super + Shift + D) asks when it needs it, and the"
+echo "again: the Docker TUI (Meta + Shift + D) asks when it needs it, and the"
 echo "plain 'docker' CLI runs under sudo. It takes effect after a reboot."
 echo ""
 if gum confirm "Reboot now to apply?"; then

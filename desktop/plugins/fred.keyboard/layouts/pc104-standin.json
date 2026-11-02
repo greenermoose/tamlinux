@@ -514,7 +514,7 @@
    },
    {
     "id": "LEFTMETA",
-    "label": "Super",
+    "label": "Meta",
     "code": 125,
     "w": 1.25
    },
@@ -538,7 +538,7 @@
    },
    {
     "id": "RIGHTMETA",
-    "label": "Super",
+    "label": "Meta",
     "code": 126,
     "w": 1.25
    },

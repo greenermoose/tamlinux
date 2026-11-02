@@ -8,7 +8,7 @@
 //! This module sidesteps GTK entirely: it opens evdev keyboards, derives
 //! the keysym + modifier mask via xkbcommon, and returns the first
 //! non-modifier press as a chord string in the canonical
-//! `CTRL+SHIFT+ALT+SUPER+KEY` form. This is the same mechanism (and the
+//! `CTRL+SHIFT+ALT+META+KEY` form. This is the same mechanism (and the
 //! same token vocabulary) the cohort apps vernier / hyprcorrect use, so
 //! a chord recorded here registers with Hyprland identically.
 //!
@@ -233,7 +233,7 @@ fn read_until_chord(mut device: Device, keymap_text: &str, tx: &mpsc::Sender<Str
 /// Build the chord string for a non-modifier key pressed in the current
 /// xkb modifier state. Returns `None` for a bare modifier press (so the
 /// caller keeps reading). Modifier order is the canonical
-/// CTRL, SHIFT, ALT, SUPER — what Hyprland and the cohort chip expect.
+/// CTRL, SHIFT, ALT, META — Tamlinux Hyprland chords (D217); Logo is Mod4.
 fn chord_from_state(state: &xkb::State, keycode: xkb::Keycode) -> Option<String> {
     let sym = state.key_get_one_sym(keycode).raw();
     if is_modifier_keysym(sym) {
@@ -252,7 +252,7 @@ fn chord_from_state(state: &xkb::State, keycode: xkb::Keycode) -> Option<String>
         parts.push("ALT");
     }
     if active(xkb::MOD_NAME_LOGO) {
-        parts.push("SUPER");
+        parts.push("META");
     }
     Some(if parts.is_empty() {
         key_token

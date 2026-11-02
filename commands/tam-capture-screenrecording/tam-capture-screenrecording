@@ -346,7 +346,7 @@ stop_screenrecording() {
   printf '%s\n' "$filename"
   preview="${filename%.mp4}-preview.png"
   ffmpeg -y -i "$filename" -ss 00:00:00.1 -vframes 1 -q:v 2 "$preview" -loglevel quiet 2>/dev/null || true
-  tam-notification-send "Screen recording saved" "Open with Super + Alt + , (or click this)" \
+  tam-notification-send "Screen recording saved" "Open with Meta + Alt + , (or click this)" \
     -t 10000 --image "$preview" --exec mpv -- "$filename" || true
   (sleep 2; rm -f -- "$preview") 9>&- >/dev/null 2>&1 &
   rm -f -- "$RECORDING_FILE"

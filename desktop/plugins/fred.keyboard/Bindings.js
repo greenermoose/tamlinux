@@ -19,15 +19,16 @@ function evdevFromNative(nativeScanCode) {
   return n - NATIVE_OFFSET
 }
 
-// Modifier keys by evdev code, named the way Hyprland spells them in a bind.
+// Modifier keys by evdev code, labeled the Tamlinux way (D217). Hyprland
+// bind tokens use META for Mod4; display chords say Meta.
 var MODIFIERS = {
-  125: "Super", 126: "Super",
+  125: "Meta", 126: "Meta",
   29: "Ctrl",   97: "Ctrl",
   56: "Alt",    100: "Alt",
   42: "Shift",  54: "Shift"
 }
 
-var MODIFIER_ORDER = ["Super", "Ctrl", "Alt", "Shift"]
+var MODIFIER_ORDER = ["Meta", "Ctrl", "Alt", "Shift"]
 
 // Names for keys whose keycap legend does not work in a sentence, keyed by
 // layout cell id: a blank space bar, and keypad keys whose caps repeat the
@@ -104,10 +105,12 @@ function comboLabel(pressed, byCode) {
 //
 // The plain-text form is read, not `-j`: on Hyprland 0.56.2 the JSON drops
 // the key of every `code:N` bind (key "", keycode 0), and Fred's digit-row
-// binds are all `code:N`. The text form keeps them as "SUPER + code:10". A
-// JSON array is still accepted for callers that have one.
+// binds are all `code:N`. The text form keeps them as "META + code:10"
+// (legacy configs may still say SUPER). A JSON array is still accepted.
 
-var MODMASK = { Shift: 1, Caps: 2, Ctrl: 4, Alt: 8, Mod2: 16, Mod3: 32, Super: 64, Mod5: 128 }
+var MODMASK = { Shift: 1, Caps: 2, Ctrl: 4, Alt: 8, Mod2: 16, Mod3: 32, Meta: 64, Mod5: 128 }
+// Legacy alias for parsers that still name the Mod4 bit Super.
+MODMASK.Super = MODMASK.Meta
 
 // Bitmask of the modifiers held in a pressed set.
 function modmaskFromPressed(pressed) {
@@ -190,7 +193,7 @@ function bindKind(key) {
   return "key"
 }
 
-// The text form writes a keycode bind's key as "SUPER + ALT + code:10": the
+// The text form writes a keycode bind's key as "META + ALT + code:10": the
 // modifiers ride along in the string. The key proper is the last term.
 function keyTerm(key) {
   var parts = String(key || "").split("+")
@@ -246,7 +249,7 @@ function mouseName(key) {
   return Object.prototype.hasOwnProperty.call(MOUSE_NAMES, k) ? MOUSE_NAMES[k] : key
 }
 
-// Label for held modifiers plus a mouse action: "Super + Right Click".
+// Label for held modifiers plus a mouse action: "Meta + Right Click".
 function mouseLabel(pressed, mouseKey) {
   return modmaskNames(modmaskFromPressed(pressed)).concat([mouseName(mouseKey)]).join(" + ")
 }
@@ -408,7 +411,7 @@ function lookupMouse(index, pressed, mouseKey) {
   return out
 }
 
-// Label for a bind as a chord, e.g. "Super + Shift + K".
+// Label for a bind as a chord, e.g. "Meta + Shift + K".
 function bindLabel(bind, byId, byCode) {
   var cell
   if (bind.kind === "keycode") cell = byCode && bind.code !== null ? byCode[bind.code] : undefined
@@ -425,7 +428,7 @@ function bindLabel(bind, byId, byCode) {
 // Feature 3's other direction: from a command to the keys that run it. A
 // query matches when every space-separated term occurs in the bind's
 // description, dispatcher or argument, or when the whole query occurs in
-// the chord label ("super + k"), case-insensitively. The label is matched as
+// the chord label ("meta + k"), case-insensitively. The label is matched as
 // a phrase because its single letters would otherwise match everything.
 
 var MAX_RESULTS = 60
@@ -469,7 +472,7 @@ function searchBinds(index, byId, byCode, query) {
 
 // evdev codes to mark on the board for a result set: each result's key plus
 // the modifiers of its chord (left-hand side, which every layout has).
-var MODIFIER_LEFT_CODES = { Super: 125, Ctrl: 29, Alt: 56, Shift: 42 }
+var MODIFIER_LEFT_CODES = { Meta: 125, Ctrl: 29, Alt: 56, Shift: 42 }
 
 function markedCodes(results) {
   var out = {}
@@ -483,7 +486,7 @@ function markedCodes(results) {
   return out
 }
 
-// How many binds hold a given modifier (by its name: "Super", "Ctrl"...).
+// How many binds hold a given modifier (by its name: "Meta", "Ctrl"...).
 // A modifier never carries a bind of its own; it lives in other keys' masks.
 function modifierBindCount(index, name) {
   var bit = MODMASK[name]

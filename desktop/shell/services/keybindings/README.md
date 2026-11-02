@@ -27,7 +27,7 @@ the same fields as a catalog entry, for example:
 ]
 ```
 
-Masks use Hyprland's modifier bits: Shift 1, Ctrl 4, Alt 8 and Super 64.
+Masks use Hyprland's modifier bits: Shift 1, Ctrl 4, Alt 8 and Meta 64.
 Use the key and dispatcher shown by the compositor scan, including `code:`
 keys where used. A user entry takes precedence only when its complete chord,
 dispatcher and argument match. Invalid or missing files are ignored; the

@@ -64,8 +64,8 @@ pub fn wire_capture_key(key: &str) -> Result<()> {
 mod tests {
     #[test]
     fn capture_dropin_quotes_both_lua_and_shell() {
-        let lua = super::contents("SUPER + S", "/path with spaces/tensaku");
-        assert!(lua.contains("hl.unbind(\"SUPER + S\")"));
+        let lua = super::contents("META + S", "/path with spaces/tensaku");
+        assert!(lua.contains("hl.unbind(\"META + S\")"));
         assert!(lua.contains("hl.dsp.exec_cmd(\"'/path with spaces/tensaku' --capture\")"));
         assert!(!lua.contains("o.bind"));
         assert!(!lua.contains("default.hypr"));

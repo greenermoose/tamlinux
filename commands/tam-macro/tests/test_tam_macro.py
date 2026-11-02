@@ -84,7 +84,7 @@ class TamMacroTest(unittest.TestCase):
         # Verify macros.lua was generated
         self.assertTrue(self.hypr_file.is_file())
         lua_content = self.hypr_file.read_text()
-        self.assertIn('hl.bind("SUPER + ALT + m",', lua_content)
+        self.assertIn('hl.bind("META + ALT + m",', lua_content)
         self.assertIn('description = "Macro: Greeting"', lua_content)
 
     def test_update_existing_macro(self):
@@ -112,9 +112,9 @@ class TamMacroTest(unittest.TestCase):
         self.assertEqual(data[0]["key"], "B")
 
         lua_content = self.hypr_file.read_text()
-        self.assertNotIn('hl.bind("SUPER + ALT + a"', lua_content)
+        self.assertNotIn('hl.bind("META + ALT + a"', lua_content)
         self.assertIn('hl.unbind("SUPER + ALT + a")', lua_content)
-        self.assertIn('hl.bind("SUPER + ALT + b"', lua_content)
+        self.assertIn('hl.bind("META + ALT + b"', lua_content)
 
     def test_remove_nonexistent_fails(self):
         res = self.run_cmd("remove", "Z")
@@ -129,7 +129,7 @@ class TamMacroTest(unittest.TestCase):
         res = self.run_cmd("sync")
         self.assertEqual(res.returncode, 0)
         self.assertTrue(self.hypr_file.is_file())
-        self.assertIn('hl.bind("SUPER + ALT + t"', self.hypr_file.read_text())
+        self.assertIn('hl.bind("META + ALT + t"', self.hypr_file.read_text())
 
     def test_generated_binding_preserves_packaged_wrapper_path(self):
         self.macros_file.write_text(json.dumps([{"key": "T", "text": "test"}]))
@@ -146,11 +146,11 @@ class TamMacroTest(unittest.TestCase):
         res = self.run_cmd("sync")
         self.assertEqual(res.returncode, 0)
         content = self.hypr_file.read_text()
-        self.assertIn('hl.bind("SUPER + ALT + slash"', content)
+        self.assertIn('hl.bind("META + ALT + slash"', content)
         self.assertIn("run slash", content)
-        self.assertIn('hl.bind("SUPER + ALT + period"', content)
-        self.assertNotIn('SUPER + ALT + /', content)
-        self.assertNotIn('SUPER + ALT + .', content)
+        self.assertIn('hl.bind("META + ALT + period"', content)
+        self.assertNotIn('META + ALT + /', content)
+        self.assertNotIn('META + ALT + .', content)
 
     def test_generated_lua_has_no_blocking_calls(self):
         self.macros_file.write_text(json.dumps([
@@ -221,7 +221,7 @@ class TamMacroTest(unittest.TestCase):
         self.assertEqual(self.replace(new, old).returncode, 0)
         self.assertEqual(json.loads(self.macros_file.read_text())[0]["key"], "BACKSPACE")
         self.assertIn('hl.unbind("SUPER + ALT + slash")', self.hypr_file.read_text())
-        self.assertNotIn('hl.bind("SUPER + ALT + slash"', self.hypr_file.read_text())
+        self.assertNotIn('hl.bind("META + ALT + slash"', self.hypr_file.read_text())
         before = self.macros_file.read_text()
         self.assertNotEqual(self.replace(old, old).returncode, 0)
         self.assertNotEqual(self.replace(old + [{"key": "SLASH", "text": "duplicate"}], new).returncode, 0)
@@ -240,9 +240,9 @@ class TamMacroTest(unittest.TestCase):
         for m in macros:
             key = module["to_xkb_keysym"](m["key"])
             command = shlex.join([str(CMD), "run", key]) + " --target 0x1"
-            checks.append('bindings[' + quote("SUPER + ALT + " + key) + '][1]()')
+            checks.append('bindings[' + quote("META + ALT + " + key) + '][1]()')
             checks.append('assert(dispatched == ' + quote(command) + ')')
-            checks.append('assert(bindings[' + quote("SUPER + ALT + " + key) + '][2].description == ' + quote("Macro: " + m["description"]) + ')')
+            checks.append('assert(bindings[' + quote("META + ALT + " + key) + '][2].description == ' + quote("Macro: " + m["description"]) + ')')
         result = subprocess.run(["lua", "-"], input=harness + lua + "\n".join(checks), text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 

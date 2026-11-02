@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # tam-launch-terminal — open the default terminal in the focused terminal's
-# directory (SUPER + RETURN).
+# directory (Meta + RETURN).
 #
 #   tam-launch-terminal [command...]
 #

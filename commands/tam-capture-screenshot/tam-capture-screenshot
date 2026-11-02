@@ -102,7 +102,7 @@ case "$PROCESSING" in
 
     # Best-effort: the screenshot is already saved and on the clipboard, so a
     # notification outage must not report the capture itself as failed.
-    tam-notification-send "Screenshot saved to clipboard and file" "Edit with Super + Alt + , (or click this)" \
+    tam-notification-send "Screenshot saved to clipboard and file" "Edit with Meta + Alt + , (or click this)" \
       --image "$FILEPATH" \
       --exec "$SCREENSHOT_EDITOR" "$FILEPATH" || true
     ;;

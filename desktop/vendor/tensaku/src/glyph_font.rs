@@ -112,10 +112,10 @@ pub fn tamlinux_available() -> bool {
     *TAMLINUX_AVAILABLE.get().unwrap_or(&false)
 }
 
-/// Build Pango markup rendering a chord string (e.g. `"SUPER+SHIFT+S"`,
-/// in the canonical CTRL+SHIFT+ALT+SUPER+KEY order produced by the
-/// recorder) as glyph chips: ⌃ ⇧ ⌥ in Adwaita Sans, the Super key as the
-/// Omarchy logo (or ⌘ fallback), and the trigger as a letter/symbol.
+/// Build Pango markup rendering a chord string (e.g. `"META+SHIFT+S"`,
+/// in the canonical CTRL+SHIFT+ALT+META+KEY order produced by the
+/// recorder) as glyph chips: ⌃ ⇧ ⌥ in Adwaita Sans, the Meta key as the
+/// Tamlinux logo (or ⌘ fallback), and the trigger as a letter/symbol.
 /// Segments are separated by a three-per-em space, matching the cohort.
 pub fn chord_markup(chord: &str) -> String {
     chord
@@ -138,7 +138,7 @@ fn token_markup(token: &str) -> String {
         "CTRL" => mod_glyph("\u{2303}"),  // ⌃
         "SHIFT" => mod_glyph("\u{21E7}"), // ⇧
         "ALT" => mod_glyph("\u{2325}"),   // ⌥
-        "SUPER" => super_markup(),
+        "META" | "SUPER" => super_markup(),
         // Named non-letter keys → their conventional glyph, so the chip
         // reads the way the cohort's chips do.
         "ENTER" => mod_glyph("\u{21B5}"),     // ↵
@@ -259,7 +259,7 @@ mod tests {
     fn chord_markup_super_falls_back_without_face() {
         // In unit tests `install` never runs, so the Tamlinux Icons face is
         // unavailable and SUPER must render the ⌘ fallback.
-        let m = chord_markup("SUPER+SPACE");
+        let m = chord_markup("META+SPACE");
         assert!(m.contains("\u{2318}")); // ⌘ fallback
         assert!(m.contains("\u{2423}")); // ␣
     }

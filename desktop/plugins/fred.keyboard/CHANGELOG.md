@@ -133,7 +133,7 @@ section; 1.0.0 is 0.3.6 with the README and screenshots brought up to date.
 
 ### Added
 - Reverse lookup (M6, `SearchView.qml`): type part of a command ("volume",
-  "workspace", or a chord such as "super + k") and the matching binds are
+  "workspace", or a chord such as "meta + k") and the matching binds are
   listed as chord and description, with their keys and modifiers marked on
   the board. Orphan binds are findable but shown muted. Escape clears the
   query, then returns focus to the live board. `Bindings.searchBinds` and
@@ -162,7 +162,7 @@ section; 1.0.0 is 0.3.6 with the README and screenshots brought up to date.
 
 ### Added
 - Capture mode records mouse actions too: clicks (left, right, middle, back,
-  forward) and wheel steps, with the modifiers held, so "Super + Right Click"
+  forward) and wheel steps, with the modifiers held, so "Meta + Right Click"
   reads out and resolves to its binds ("Resize window; Quick Launch menu").
   Hyprland's inhibitor already covers mouse binds (`onMouseEvent` and
   `onAxisEvent` go through the same inhibited path as keys), so no second
@@ -200,7 +200,7 @@ section; 1.0.0 is 0.3.6 with the README and screenshots brought up to date.
 - The chord readout names the space bar "Space Bar" instead of ending in a
   blank, since that keycap carries no legend (`Bindings.cellName`).
 - Escape pressed to leave capture mode is now recorded in the readout ("Esc",
-  or "Super + Esc") and lights on the board before the mode turns off. With
+  or "Meta + Esc") and lights on the board before the mode turns off. With
   capture mode off, Escape still closes the panel.
 
 ## [0.1.1] - Unreleased
@@ -209,12 +209,12 @@ section; 1.0.0 is 0.3.6 with the README and screenshots brought up to date.
 - Capture mode (`CaptureMode.qml`): a toggle in the panel, off by default,
   that suspends Hyprland's keybind matching for the panel window through the
   `keyboard-shortcuts-inhibit` protocol while the panel is focused. Bound
-  combinations such as Super+K then reach the board instead of running. Escape
+  combinations such as Meta+K then reach the board instead of running. Escape
   turns it off (a second Escape closes the panel), closing the panel turns it
   off, and a compositor cancel is honoured. An accent banner shows while it is
   in force.
 - "Pressed:" readout naming the current chord in Hyprland's modifier order
-  ("Super + Shift + K"); a key the layout does not place is shown as `#code`.
+  ("Meta + Shift + K"); a key the layout does not place is shown as `#code`.
 - `Bindings.js`: the keycode-space bridge (native scan code to evdev, modifier
   set, chord labels), pure and unit-tested. Plan section 4a.
 

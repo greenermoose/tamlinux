@@ -19,7 +19,7 @@ function clip(value) {
   return s.length > MAX_FIELD ? s.substring(0, MAX_FIELD) : s
 }
 
-// Lua binds report the whole chord ("SUPER + code:20") as the key; the
+// Lua binds report the whole chord ("META + code:20") as the key; the
 // modifiers are already in modmask, so keep only the last part.
 function bindKey(rawKey, keycode) {
   var key = clip(rawKey)
@@ -139,7 +139,7 @@ function comboText(modmask, key) {
   return mods === "" ? label : mods + " + " + label
 }
 
-// Individual keys for pill/badge rendering: ["SUPER", "SHIFT", "W"]
+// Individual keys for pill/badge rendering: ["Meta", "Shift", "W"]
 function chordKeys(modmask, key) {
   var mods = modsText(modmask)
   var label = keyLabel(key)
@@ -325,7 +325,7 @@ function records(bindingsText, commandsText) {
 }
 
 // Filters combine with search. A multi-modifier chord appears in each
-// applicable modifier filter; plain Super means Super alone.
+// applicable modifier filter; plain Meta means Meta alone.
 function filterExplorer(rows, modifier, query) {
   var words = String(query || "").toLowerCase().trim().split(/\s+/).filter(Boolean)
   return rows.filter(function (row) {
@@ -347,7 +347,7 @@ function sortExplorer(rows, order) {
   })
 }
 
-// A quick scan of the common Super chords, plus every other reported chord.
+// A quick scan of the common Meta chords, plus every other reported chord.
 // Keys use the same US-layout labels as the rest of the explorer.
 function availabilityKeyLabel(key) {
   var symbols = { BRACKETLEFT: "[", BRACKETRIGHT: "]", BACKSLASH: "\\", SLASH: "/",

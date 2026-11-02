@@ -525,7 +525,7 @@
       },
       {
         "id": "LEFTMETA",
-        "label": "Super",
+        "label": "Meta",
         "code": 125,
         "w": 1.25
       },

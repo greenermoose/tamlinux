@@ -1,46 +1,46 @@
-o.bind("SUPER + SPACE", "Tamlinux menu", "tam-menu toggle")
+o.bind("META + SPACE", "Tamlinux menu", "tam-menu toggle")
 o.bind("CTRL + F12", "Apps menu", "tam-menu toggle apps")
-o.bind("SUPER + CTRL + E", "Emojis", "tam-shell emojis toggle")
-o.bind("SUPER + CTRL + C", "Capture menu", "tam-menu toggle capture")
-o.bind("SUPER + CTRL + O", "Toggle menu", "tam-menu toggle toggle")
-o.bind("SUPER + CTRL + H", "Hardware menu", "tam-menu toggle hardware")
-o.bind("SUPER + SHIFT + code:201", "Tamlinux menu", "tam-menu toggle root")
-o.bind("SUPER + ESCAPE", "System menu", "tam-menu toggle system")
+o.bind("META + CTRL + E", "Emojis", "tam-shell emojis toggle")
+o.bind("META + CTRL + C", "Capture menu", "tam-menu toggle capture")
+o.bind("META + CTRL + O", "Toggle menu", "tam-menu toggle toggle")
+o.bind("META + CTRL + H", "Hardware menu", "tam-menu toggle hardware")
+o.bind("META + SHIFT + code:201", "Tamlinux menu", "tam-menu toggle root")
+o.bind("META + ESCAPE", "System menu", "tam-menu toggle system")
 o.bind("XF86PowerOff", "Power menu", "tam-menu toggle system", { locked = true })
-o.bind("SUPER + K", "Keybindings", "tam-menu-keybindings")
-o.bind("SUPER + SHIFT + K", "Tmux keybindings", "tam-menu-tmux-keybindings")
-o.bind("SUPER + CTRL + K", "Herdr keybindings", "tam-menu-herdr-keybindings")
+o.bind("META + K", "Keybindings", "tam-menu-keybindings")
+o.bind("META + SHIFT + K", "Tmux keybindings", "tam-menu-tmux-keybindings")
+o.bind("META + CTRL + K", "Herdr keybindings", "tam-menu-herdr-keybindings")
 o.bind("XF86Calculator", "Calculator", "omacalc")
 
-o.bind("SUPER + SHIFT + SPACE", "Toggle top bar", "tam-shell tamlinux-shell toggleBar")
-o.bind("SUPER + CTRL + SPACE", "Background switcher", "tam-menu toggle background")
-o.bind("SUPER + SHIFT + T", "Theme menu", "tam-menu toggle theme")
+o.bind("META + SHIFT + SPACE", "Toggle top bar", "tam-shell tamlinux-shell toggleBar")
+o.bind("META + CTRL + SPACE", "Background switcher", "tam-menu toggle background")
+o.bind("META + SHIFT + T", "Theme menu", "tam-menu toggle theme")
 -- Appearance toggles live on U so Backspace stays a close chord without a
 -- Hamming collision (missing Shift on gaps would otherwise close the window).
-o.bind("SUPER + U", "Toggle window transparency", "tam-hyprland-window-transparency-toggle")
-o.bind("SUPER + SHIFT + U", "Toggle window gaps", "tam-hyprland-window-gaps-toggle")
-o.bind("SUPER + CTRL + U", "Toggle single-window square aspect", "tam-hyprland-window-single-square-aspect-toggle")
+o.bind("META + U", "Toggle window transparency", "tam-hyprland-window-transparency-toggle")
+o.bind("META + SHIFT + U", "Toggle window gaps", "tam-hyprland-window-gaps-toggle")
+o.bind("META + CTRL + U", "Toggle single-window square aspect", "tam-hyprland-window-single-square-aspect-toggle")
 
 -- Notification shortcuts share N; Shift+H opens history.
-o.bind("SUPER + N", "Dismiss last notification", "tam-shell notifications dismissOne")
-o.bind("SUPER + SHIFT + N", "Dismiss all notifications", "tam-shell notifications dismissAll")
-o.bind("SUPER + CTRL + N", "Toggle silencing notifications", "tam-toggle-notification-silencing")
+o.bind("META + N", "Dismiss last notification", "tam-shell notifications dismissOne")
+o.bind("META + SHIFT + N", "Dismiss all notifications", "tam-shell notifications dismissAll")
+o.bind("META + CTRL + N", "Toggle silencing notifications", "tam-toggle-notification-silencing")
 o.bind("CTRL + F11", "Invoke last notification", "tam-shell notifications invokeLast")
-o.bind("SUPER + SHIFT + H", "Open notification history", "tam-shell notifications showHistory")
+o.bind("META + SHIFT + H", "Open notification history", "tam-shell notifications showHistory")
 
-o.bind("SUPER + CTRL + I", "Toggle locking on idle", "tam-toggle-idle")
-o.bind("SUPER + CTRL + J", "Toggle nightlight", "tam-toggle-nightlight")
-o.bind("SUPER + CTRL + Delete", "Toggle laptop display", "tam-hyprland-monitor-internal toggle")
-o.bind("SUPER + SHIFT + Delete", "Toggle laptop display mirroring", "tam-hyprland-monitor-internal-mirror toggle")
+o.bind("META + CTRL + I", "Toggle locking on idle", "tam-toggle-idle")
+o.bind("META + CTRL + J", "Toggle nightlight", "tam-toggle-nightlight")
+o.bind("META + CTRL + Delete", "Toggle laptop display", "tam-hyprland-monitor-internal toggle")
+o.bind("META + SHIFT + Delete", "Toggle laptop display mirroring", "tam-hyprland-monitor-internal-mirror toggle")
 o.bind("switch:on:Lid Switch", nil, "tam-system-lid-close", { locked = true })
 o.bind("switch:off:Lid Switch", nil, "tam-hyprland-monitor-clamshell", { locked = true })
 
 o.bind("PRINT", "Screenshot", "tam-capture-screenshot")
 o.bind("ALT + PRINT", "Screenrecording", "tam-capture-screenrecording --stop-recording || tam-menu toggle trigger.capture.screenrecord")
-o.bind("SUPER + CTRL + code:34", "Make webcam overlay smaller", "tam-capture-webcam-resize smaller")
-o.bind("SUPER + CTRL + code:35", "Make webcam overlay larger", "tam-capture-webcam-resize larger")
-o.bind("SUPER + PRINT", "Color picker", "pkill hyprpicker || hyprpicker -a")
-o.bind("SUPER + CTRL + PRINT", "Extract text (OCR) from screenshot", "tam-capture-text")
+o.bind("META + CTRL + code:34", "Make webcam overlay smaller", "tam-capture-webcam-resize smaller")
+o.bind("META + CTRL + code:35", "Make webcam overlay larger", "tam-capture-webcam-resize larger")
+o.bind("META + PRINT", "Color picker", "pkill hyprpicker || hyprpicker -a")
+o.bind("META + CTRL + PRINT", "Extract text (OCR) from screenshot", "tam-capture-text")
 
 -- Keyboard control for the slurp region picker (see tam-capture-region).
 -- The binds live exactly as long as a selection layer is on screen (slurp
@@ -82,27 +82,27 @@ hl.on("layer.closed", function(layer)
   end
 end)
 
-o.bind("SUPER + CTRL + S", "Share", "tam-menu toggle share")
+o.bind("META + CTRL + S", "Share", "tam-menu toggle share")
 
 -- Y leaves the punctuation keys available for window resizing.
-o.bind("SUPER + CTRL + Y", "Transcode", "tam-transcode")
+o.bind("META + CTRL + Y", "Transcode", "tam-transcode")
 
-o.bind("SUPER + CTRL + R", "Set reminder", "tam-reminder -i")
+o.bind("META + CTRL + R", "Set reminder", "tam-reminder -i")
 o.bind("CTRL + F9", "Show reminders", "tam-reminder show")
-o.bind("SUPER + SHIFT + R", "Clear reminders", "tam-reminder --confirm-clear")
+o.bind("META + SHIFT + R", "Clear reminders", "tam-reminder --confirm-clear")
 
 o.bind("CTRL + F1", "Show time", "tam-notification-time")
 o.bind("CTRL + F2", "Show battery remaining", "tam-notification-battery")
 o.bind("CTRL + F3", "Toggle weather", "tam-shell tamlinux-shell toggle fred.weather")
 
-o.bind("SUPER + SHIFT + C", "Agent", "tam-agent --pick")
-o.bind("SUPER + CTRL + A", "Audio", "tam-shell tamlinux-shell toggle tamlinux.audio")
-o.bind("SUPER + CTRL + B", "Bluetooth", "tam-shell tamlinux-shell toggle tamlinux.bluetooth")
-o.bind("SUPER + CTRL + D", "Display", "tam-shell tamlinux-shell toggle fred.monitor")
+o.bind("META + SHIFT + C", "Agent", "tam-agent --pick")
+o.bind("META + CTRL + A", "Audio", "tam-shell tamlinux-shell toggle tamlinux.audio")
+o.bind("META + CTRL + B", "Bluetooth", "tam-shell tamlinux-shell toggle tamlinux.bluetooth")
+o.bind("META + CTRL + D", "Display", "tam-shell tamlinux-shell toggle fred.monitor")
 o.bind("CTRL + F4", "Calendar", "tam-shell tamlinux-shell toggle fred.clock")
-o.bind("SUPER + CTRL + W", "Network", "tam-shell tamlinux-shell toggle tamlinux.network")
-o.bind("SUPER + CTRL + P", "Power", "tam-shell tamlinux-shell toggle tamlinux.power")
-o.bind("SUPER + CTRL + T", "Activity", { tui = "btop" })
+o.bind("META + CTRL + W", "Network", "tam-shell tamlinux-shell toggle tamlinux.network")
+o.bind("META + CTRL + P", "Power", "tam-shell tamlinux-shell toggle tamlinux.power")
+o.bind("META + CTRL + T", "Activity", { tui = "btop" })
 
 -- The letters above name a panel; the numbers count them. 1 is the leftmost
 -- panel in the bar's right section, and a widget with no panel of its own (the
@@ -110,19 +110,19 @@ o.bind("SUPER + CTRL + T", "Activity", { tui = "btop" })
 -- A bar with fewer panels than this leaves the tail of the range doing nothing.
 for panel = 1, 9 do
   o.bind(
-    "SUPER + CTRL + code:" .. tostring(panel + 9),
+    "META + CTRL + code:" .. tostring(panel + 9),
     "Bar panel " .. panel,
     "tam-shell -q tamlinux-shell togglePanelAt right " .. panel
   )
 end
 
-o.bind("SUPER + CTRL + Z", "Zoom in", function()
+o.bind("META + CTRL + Z", "Zoom in", function()
   local zoom = hl.get_config("cursor.zoom_factor") or 1
   hl.config({ cursor = { zoom_factor = zoom + 1 } })
 end)
 
-o.bind("SUPER + SHIFT + Z", "Reset zoom", function()
+o.bind("META + SHIFT + Z", "Reset zoom", function()
   hl.config({ cursor = { zoom_factor = 1 } })
 end)
 
-o.bind("SUPER + CTRL + L", "Lock system", "tam-system-lock")
+o.bind("META + CTRL + L", "Lock system", "tam-system-lock")

@@ -18,7 +18,7 @@
 //!   `require_all.files`) and which `tamlinux-refresh-hyprland` leaves
 //!   untouched. The file re-binds the chord every Hyprland start.
 //!
-//! Input chords are in the recorder's canonical `CTRL+SHIFT+ALT+SUPER+KEY`
+//! Input chords are in the recorder's canonical `CTRL+SHIFT+ALT+META+KEY`
 //! form (see [`crate::chord_capture`]).
 
 use std::path::PathBuf;
@@ -101,7 +101,7 @@ pub fn reconcile_saved_shortcut() {
     }
 }
 
-/// Register `chord` (e.g. `"SUPER+SHIFT+S"`) so it launches scroll
+/// Register `chord` (e.g. `"META+SHIFT+S"`) so it launches scroll
 /// capture: live in the running session and persisted for future starts.
 /// Best-effort — see [`RegisterOutcome`].
 pub fn register(chord: &str) -> RegisterOutcome {
@@ -214,12 +214,12 @@ fn dropin_path() -> Option<PathBuf> {
 
 // ===== chord formatting ===============================================
 
-/// Convert the recorder's `CTRL+SHIFT+ALT+SUPER+KEY` chord into
+/// Convert the recorder's `CTRL+SHIFT+ALT+META+KEY` chord into
 /// Hyprland's Lua bind string `"MOD + MOD + KEY"` (with the key mapped to
-/// its XKB keysym name).
+/// its XKB keysym name). Legacy `SUPER` tokens normalize to `META` (D217).
 fn lua_chord(chord: &str) -> String {
     let (mods, key) = split_chord(chord);
-    let mut parts: Vec<String> = mods.iter().map(|m| (*m).to_string()).collect();
+    let mut parts: Vec<String> = mods.iter().map(|m| normalize_mod(m).to_string()).collect();
     parts.push(hypr_key(key));
     parts.join(" + ")
 }
@@ -227,6 +227,7 @@ fn lua_chord(chord: &str) -> String {
 /// The legacy `keyword` form: `("MOD MOD", "Key")`.
 fn keyword_chord(chord: &str) -> (String, String) {
     let (mods, key) = split_chord(chord);
+    let mods: Vec<String> = mods.iter().map(|m| normalize_mod(m).to_string()).collect();
     (mods.join(" "), hypr_key(key))
 }
 
@@ -236,6 +237,13 @@ fn split_chord(chord: &str) -> (Vec<&str>, &str) {
     let mut tokens: Vec<&str> = chord.split('+').filter(|t| !t.is_empty()).collect();
     let key = tokens.pop().unwrap_or("");
     (tokens, key)
+}
+
+fn normalize_mod(token: &str) -> &str {
+    match token {
+        "SUPER" | "WIN" | "LOGO" | "MOD4" => "META",
+        other => other,
+    }
 }
 
 /// Map a recorder key token to the XKB keysym name Hyprland's bind
@@ -297,7 +305,8 @@ mod tests {
 
     #[test]
     fn lua_chord_joins_with_spaces_and_maps_key() {
-        assert_eq!(lua_chord("SUPER+SHIFT+S"), "SUPER + SHIFT + S");
+        assert_eq!(lua_chord("META+SHIFT+S"), "META + SHIFT + S");
+        assert_eq!(lua_chord("SUPER+SHIFT+S"), "META + SHIFT + S");
         assert_eq!(lua_chord("CTRL+ENTER"), "CTRL + Return");
         assert_eq!(lua_chord("ALT+SPACE"), "ALT + Space");
         assert_eq!(lua_chord("F5"), "F5");
@@ -306,8 +315,8 @@ mod tests {
     #[test]
     fn keyword_chord_space_joins_mods() {
         assert_eq!(
-            keyword_chord("SUPER+SHIFT+S"),
-            ("SUPER SHIFT".to_string(), "S".to_string())
+            keyword_chord("META+SHIFT+S"),
+            ("META SHIFT".to_string(), "S".to_string())
         );
         assert_eq!(
             keyword_chord("CTRL+ESC"),
@@ -322,10 +331,10 @@ mod tests {
 
     #[test]
     fn dropin_contents_rebinds_and_overrides() {
-        let body = dropin_contents("SUPER+SHIFT+S", "/usr/bin/tensaku --scroll-capture");
-        assert!(body.contains("hl.unbind(\"SUPER + SHIFT + S\")"));
+        let body = dropin_contents("META+SHIFT+S", "/usr/bin/tensaku --scroll-capture");
+        assert!(body.contains("hl.unbind(\"META + SHIFT + S\")"));
         assert!(body.contains(
-            "hl.bind(\"SUPER + SHIFT + S\", hl.dsp.exec_cmd(\"/usr/bin/tensaku --scroll-capture\"), {description = \"Tensaku scroll capture\"})"
+            "hl.bind(\"META + SHIFT + S\", hl.dsp.exec_cmd(\"/usr/bin/tensaku --scroll-capture\"), {description = \"Tensaku scroll capture\"})"
         ));
     }
 

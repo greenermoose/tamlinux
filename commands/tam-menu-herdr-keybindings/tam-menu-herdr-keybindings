@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # tam-menu-herdr-keybindings — list the Herdr keybindings in a searchable menu
-# (Menu → Learn → Herdr, SUPER + CTRL + K).
+# (Menu → Learn → Herdr, Meta + CTRL + K).
 #
 #   tam-menu-herdr-keybindings [--print|-p] [--config <path>]
 #

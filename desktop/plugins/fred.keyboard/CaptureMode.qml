@@ -9,7 +9,7 @@ import "."
 // explains, inside the same box, what that means.
 //
 // Hyprland matches keybinds before the focused surface sees the key, so a
-// panel-scoped listener never receives Super+K - the combination fires its
+// panel-scoped listener never receives Meta+K - the combination fires its
 // command instead. The keyboard-shortcuts-inhibit protocol suspends that
 // matching for this window while it holds keyboard focus, and only then:
 // every bound combination then reaches the panel verbatim, and nothing typed
@@ -124,7 +124,7 @@ BorderSurface {
                  "key combination and mouse action reaches the board instead of running."
                : "Waiting for the compositor to grant it. Click the panel if it does " +
                  "not have focus.")
-            : "Off. Bound combinations such as Super+K still run their command and " +
+            : "Off. Bound combinations such as Meta+K still run their command and " +
               "never reach this panel. Switch on to inspect them."
           color: root.muted
           font.family: Style.font.family

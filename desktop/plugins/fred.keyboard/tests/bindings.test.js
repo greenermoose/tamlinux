@@ -6,7 +6,7 @@ var B = load.loadQmlJs("Bindings.js")
 
 // native -> evdev is a fixed offset of 8; junk never becomes a code.
 assert.strictEqual(B.evdevFromNative(45), 37)          // K
-assert.strictEqual(B.evdevFromNative(133), 125)        // left Super
+assert.strictEqual(B.evdevFromNative(133), 125)        // left Meta
 assert.strictEqual(B.evdevFromNative(8), 0)
 assert.strictEqual(B.evdevFromNative(7), null)
 assert.strictEqual(B.evdevFromNative(undefined), null)
@@ -22,9 +22,9 @@ var byCode = { 37: { id: "K", label: "K" }, 28: { id: "ENTER", label: "Enter" },
                1: { id: "ESC", label: "Esc" } }
 
 // Modifiers lead in Hyprland's order regardless of the key order given.
-assert.strictEqual(B.comboLabel({ 37: true, 42: true, 125: true }, byCode), "Super + Shift + K")
+assert.strictEqual(B.comboLabel({ 37: true, 42: true, 125: true }, byCode), "Meta + Shift + K")
 assert.strictEqual(B.comboLabel({ 56: true, 29: true, 125: true, 54: true }, byCode),
-                   "Super + Ctrl + Alt + Shift")
+                   "Meta + Ctrl + Alt + Shift")
 
 // Left and right of the same modifier collapse to one name.
 assert.strictEqual(B.comboLabel({ 42: true, 54: true, 37: true }, byCode), "Shift + K")
@@ -34,15 +34,15 @@ assert.strictEqual(B.comboLabel({ 37: false, 16: true }, byCode), "Q")
 
 // A blank keycap gets its spoken name; the readout never ends in "+ ".
 assert.strictEqual(B.cellName(byCode[57]), "Space Bar")
-assert.strictEqual(B.comboLabel({ 125: true, 57: true }, byCode), "Super + Space Bar")
+assert.strictEqual(B.comboLabel({ 125: true, 57: true }, byCode), "Meta + Space Bar")
 assert.strictEqual(B.cellName({ id: "NOLEGEND", label: "" }), "NOLEGEND")
 
 // Escape reads as its keycap, alone or in a chord.
 assert.strictEqual(B.comboLabel({ 1: true }, byCode), "Esc")
-assert.strictEqual(B.comboLabel({ 125: true, 1: true }, byCode), "Super + Esc")
+assert.strictEqual(B.comboLabel({ 125: true, 1: true }, byCode), "Meta + Esc")
 
 // A code the layout does not place is shown, not dropped.
-assert.strictEqual(B.comboLabel({ 125: true, 999: true }, byCode), "Super + #999")
+assert.strictEqual(B.comboLabel({ 125: true, 999: true }, byCode), "Meta + #999")
 assert.strictEqual(B.comboLabel({ 37: true }, null), "#37")
 
 // Multiple plain keys sort by code so the label is stable.
@@ -63,10 +63,10 @@ var layout = JSON.parse(fs.readFileSync(path.resolve(__dirname, "..",
                                                      "layouts", "lenovo-calliope.json"), "utf8"))
 var byId = KM.byId(layout), layoutByCode = KM.byCode(layout)
 
-// Modifier masks round-trip: Hyprland's bits are Shift 1, Ctrl 4, Alt 8, Super 64.
+// Modifier masks round-trip: Hyprland's bits are Shift 1, Ctrl 4, Alt 8, Meta 64.
 assert.strictEqual(B.modmaskFromPressed({ 125: true, 42: true }), 65)
 assert.strictEqual(B.modmaskFromPressed({ 29: true, 100: true, 37: true }), 12)
-assert.deepEqual(B.modmaskNames(73), ["Super", "Alt", "Shift"])
+assert.deepEqual(B.modmaskNames(73), ["Meta", "Alt", "Shift"])
 assert.deepEqual(B.modmaskNames(2), [])          // Caps Lock bit is not held
 
 // Keysym spellings the config uses, case-insensitively, land on the right cap.
@@ -90,7 +90,7 @@ assert.strictEqual(B.bindKind("switch:on:Lid Switch"), "switch")
 assert.strictEqual(B.bindKind(""), "none")
 
 // The text form carries modifiers inside a keycode bind's key string.
-assert.strictEqual(B.keyTerm("SUPER + ALT + code:10"), "code:10")
+assert.strictEqual(B.keyTerm("META + ALT + code:10"), "code:10")
 assert.strictEqual(B.keyTerm("K"), "K")
 assert.strictEqual(B.keycodeToEvdev("code:10"), 2)      // X11 10 -> evdev 2 -> "1"
 assert.strictEqual(B.keycodeToEvdev("K"), null)
@@ -99,7 +99,7 @@ assert.strictEqual(B.keycodeToEvdev("K"), null)
 var text = [
   "bindd", "\tmodmask: 64", "\tsubmap: ", "\tkey: K", "\tkeycode: 0", "\tcatchall: false",
   "\tdescription: Keybindings", "\tdispatcher: __lua", "\targ: 74",
-  "bindd", "\tmodmask: 72", "\tsubmap: ", "\tkey: SUPER + ALT + code:10", "\tkeycode: 0",
+  "bindd", "\tmodmask: 72", "\tsubmap: ", "\tkey: META + ALT + code:10", "\tkeycode: 0",
   "\tcatchall: false", "\tdescription: Switch to group window 1", "\tdispatcher: __lua", "\targ: 225",
   "bindld", "\tmodmask: 0", "\tsubmap: ", "\tkey: XF86AudioMute", "\tkeycode: 0", "\tcatchall: false",
   "\tdescription: Mute", "\tdispatcher: __lua", "\targ: 8",
@@ -144,18 +144,18 @@ assert.deepEqual(B.boundCounts(idx), { 2: 1, 37: 1, 57: 1 })
 
 // Lookup needs exactly one non-modifier key and an exact modifier match.
 assert.deepEqual(B.lookup(idx, { 125: true, 37: true }).map(B.describe), ["Keybindings"])
-assert.deepEqual(B.lookup(idx, { 125: true, 42: true, 37: true }), [])   // Super+Shift+K unbound
+assert.deepEqual(B.lookup(idx, { 125: true, 42: true, 37: true }), [])   // Meta+Shift+K unbound
 assert.deepEqual(B.lookup(idx, { 125: true, 56: true, 2: true }).map(B.describe),
                        ["Switch to group window 1"])
 assert.deepEqual(B.lookup(idx, { 125: true }), [])                       // modifiers only
 assert.deepEqual(B.lookup(idx, { 125: true, 37: true, 2: true }), [])    // two keys
 
 // Labels for binds, including keycode binds and orphans.
-assert.strictEqual(B.bindLabel(binds[0], byId, layoutByCode), "Super + K")
-assert.strictEqual(B.bindLabel(binds[1], byId, layoutByCode), "Super + Alt + 1")
+assert.strictEqual(B.bindLabel(binds[0], byId, layoutByCode), "Meta + K")
+assert.strictEqual(B.bindLabel(binds[1], byId, layoutByCode), "Meta + Alt + 1")
 assert.strictEqual(B.bindLabel(binds[2], byId, layoutByCode), "XF86AudioMute")
-assert.strictEqual(B.bindLabel(binds[4], byId, layoutByCode), "Super + Shift + F23")
-assert.strictEqual(B.bindLabel(binds[5], byId, layoutByCode), "Super + Space Bar")
+assert.strictEqual(B.bindLabel(binds[4], byId, layoutByCode), "Meta + Shift + F23")
+assert.strictEqual(B.bindLabel(binds[5], byId, layoutByCode), "Meta + Space Bar")
 
 // Mouse: Qt buttons and wheel steps map to Hyprland's names, and a click with
 // modifiers held resolves like a chord.
@@ -168,19 +168,19 @@ assert.strictEqual(B.wheelKey(120, 0), "mouse_left")
 assert.strictEqual(B.wheelKey(0, 0), null)
 assert.strictEqual(B.mouseName("mouse:273"), "Right Click")
 assert.strictEqual(B.mouseName("MOUSE_DOWN"), "Scroll Down")
-assert.strictEqual(B.mouseLabel({ 125: true, 42: true }, "mouse:273"), "Super + Shift + Right Click")
+assert.strictEqual(B.mouseLabel({ 125: true, 42: true }, "mouse:273"), "Meta + Shift + Right Click")
 assert.strictEqual(B.mouseLabel({}, "mouse_up"), "Scroll Up")
 assert.deepEqual(B.lookupMouse(idx, { 125: true }, "mouse:272").map(B.describe), ["Move window"])
 assert.deepEqual(B.lookupMouse(idx, { 125: true, 42: true }, "mouse:272"), [])   // wrong mods
 assert.deepEqual(B.lookupMouse(idx, { 125: true, 37: true }, "mouse:272"), [])   // a key is down
 assert.deepEqual(B.lookupMouse(idx, {}, "mouse:273"), [])
-assert.strictEqual(B.bindLabel(binds[3], byId, layoutByCode), "Super + Left Click")
+assert.strictEqual(B.bindLabel(binds[3], byId, layoutByCode), "Meta + Left Click")
 
 // Reverse lookup: every term must match; placed binds lead; results carry
 // the code to light and the modifiers of the chord.
 var hits = B.searchBinds(idx, byId, layoutByCode, "window")
 assert.deepEqual(hits.map(function (h) { return h.label }),
-                 ["Super + Alt + 1", "Super + Left Click"])   // group window; move window
+                 ["Meta + Alt + 1", "Meta + Left Click"])   // group window; move window
 assert.strictEqual(hits[0].code, 2)
 assert.strictEqual(hits[0].placed, true)
 assert.strictEqual(hits[1].code, null)                        // mouse: nothing to light
@@ -189,29 +189,29 @@ assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "MUTE").map(function (h)
 assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "group 1").map(function (h) { return h.does }),
                  ["Switch to group window 1"])
 assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "group 9"), [])
-assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "super + k").map(function (h) { return h.does }),
+assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "meta + k").map(function (h) { return h.does }),
                  ["Keybindings"])                              // the chord itself matches
 assert.deepEqual(B.searchBinds(idx, byId, layoutByCode, "   "), [])
 assert.deepEqual(B.markedCodes(B.searchBinds(idx, byId, layoutByCode, "group 1")),
-                 { 2: true, 125: true, 56: true })            // "1", left Super, left Alt
+                 { 2: true, 125: true, 56: true })            // "1", left Meta, left Alt
 assert.deepEqual(B.markedCodes([]), {})
 
 // Hover text: name and evdev code, then binds sorted by chord; unbound and
 // firmware-local keys explain themselves; LEDs have none.
 assert.strictEqual(B.keyTooltip(idx, byId.K, byId, layoutByCode),
-                   "K  (evdev 37)\nSuper + K - Keybindings")
+                   "K  (evdev 37)\nMeta + K - Keybindings")
 assert.strictEqual(B.keyTooltip(idx, byId["1"], byId, layoutByCode),
-                   "1  (evdev 2)\nSuper + Alt + 1 - Switch to group window 1")
+                   "1  (evdev 2)\nMeta + Alt + 1 - Switch to group window 1")
 assert.strictEqual(B.keyTooltip(idx, byId.Q, byId, layoutByCode), "Q  (evdev 16)\nNo Hyprland binds")
 
 // Modifiers never carry a bind; they are held in other keys' binds. In the
-// fixture Super is in five (K, code:10, mouse:272, code:201, space), Alt in
+// fixture Meta is in five (K, code:10, mouse:272, code:201, space), Alt in
 // one, Ctrl in none.
-assert.strictEqual(B.modifierBindCount(idx, "Super"), 5)
+assert.strictEqual(B.modifierBindCount(idx, "Meta"), 5)
 assert.strictEqual(B.modifierBindCount(idx, "Alt"), 1)
 assert.strictEqual(B.modifierBindCount(idx, "Ctrl"), 0)
 assert.strictEqual(B.keyTooltip(idx, byId.LEFTMETA, byId, layoutByCode),
-                   "Super  (evdev 125)\nModifier - held in 5 binds with other keys")
+                   "Meta  (evdev 125)\nModifier - held in 5 binds with other keys")
 assert.strictEqual(B.keyTooltip(idx, byId.LEFTALT, byId, layoutByCode),
                    "Alt  (evdev 56)\nModifier - held in 1 bind with other keys")
 assert.strictEqual(B.keyTooltip(idx, byId.RIGHTSHIFT, byId, layoutByCode),

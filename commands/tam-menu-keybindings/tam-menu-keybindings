@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # tam-menu-keybindings — open the keybinding explorer
-# (Menu → Learn → Keybindings, SUPER + K).
+# (Menu → Learn → Keybindings, Meta + K).
 #
 #   tam-menu-keybindings [--print|-p|--scan]
 #
@@ -42,7 +42,11 @@ scan_commands() {
   tam-cmd-present lua || return 0
 
   lua <<'LUA'
-local modifiers = { SHIFT = 1, CTRL = 4, CONTROL = 4, ALT = 8, SUPER = 64 }
+-- META is Tamlinux's Mod4 token (D217). SUPER/WIN/LOGO/MOD4 remain read aliases.
+local modifiers = {
+  SHIFT = 1, CTRL = 4, CONTROL = 4, ALT = 8,
+  META = 64, SUPER = 64, WIN = 64, LOGO = 64, MOD4 = 64
+}
 
 local function split_keys(keys)
   local modmask = 0

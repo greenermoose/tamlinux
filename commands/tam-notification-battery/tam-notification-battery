@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # tam-notification-battery — show the battery status (tam-battery-status) as
-# a notification. Bound to SUPER + CTRL + ALT + B. Without a battery the
+# a notification. Bound to Meta + CTRL + ALT + B. Without a battery the
 # notification says so.
 #
 # Ported from omarchy 4.0.4 (omarchy-notification-battery) for plan 18

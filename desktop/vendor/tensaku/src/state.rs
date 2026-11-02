@@ -103,7 +103,7 @@ pub struct PersistedState {
     #[serde(default)]
     pub layer_panel_width: Option<f32>,
     /// The keyboard chord recorded in Preferences to trigger
-    /// scroll-capture mode, in the canonical `CTRL+SHIFT+ALT+SUPER+KEY`
+    /// scroll-capture mode, in the canonical `CTRL+SHIFT+ALT+META+KEY`
     /// form (see `chord_capture`). `None` means no shortcut is set. This
     /// is purely the recorder's display/source-of-truth; the actual bind
     /// lives in Hyprland (registered via `hypr_bind`).
@@ -417,7 +417,7 @@ pub fn save_layer_panel_width(value: f32) {
 }
 
 /// The recorded scroll-capture shortcut chord (canonical
-/// `CTRL+SHIFT+ALT+SUPER+KEY` form), or `None` when unset.
+/// `CTRL+SHIFT+ALT+META+KEY` form), or `None` when unset.
 pub fn load_scroll_capture_shortcut() -> Option<String> {
     load().scroll_capture_shortcut
 }

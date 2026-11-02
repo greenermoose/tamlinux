@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # tam-toggle-nightlight — toggle the night light screen temperature
-# (SUPER + CTRL + N, Trigger → Toggle → Nightlight).
+# (Meta + CTRL + N, Trigger → Toggle → Nightlight).
 #
 #   tam-toggle-nightlight [--status]
 #

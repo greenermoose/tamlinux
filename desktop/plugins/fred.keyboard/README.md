@@ -19,16 +19,16 @@ Quickshell). Version 2.0.4.
 
   ![Hovering the 1 key: evdev 2 and its five binds](assets/hover.png)
 
-- **Press a chord** and the panel reads it back ("Pressed: Super + K") and
+- **Press a chord** and the panel reads it back ("Pressed: Meta + K") and
   says what it runs ("Runs: Keybindings"), or that it is not bound.
 - **Capture mode** (a switch in the panel, off by default) suspends
   Hyprland's own keybind handling for the panel while it is focused, so bound
-  combinations - `Super+K`, `Super`+right-click, `Super`+wheel - reach the
+  combinations - `Meta+K`, `Super`+right-click, `Super`+wheel - reach the
   board instead of firing. Press Esc to leave it.
 
-  ![Capture mode on: Super+K read back as "Runs: Keybindings" instead of opening the menu](assets/capture-mode.png)
+  ![Capture mode on: Meta+K read back as "Runs: Keybindings" instead of opening the menu](assets/capture-mode.png)
 - **Search** a command ("volume", "workspace", or a chord such as
-  "super + k") and the matching binds are listed with their keys marked on
+  "meta + k") and the matching binds are listed with their keys marked on
   the board.
 
   ![Searching "workspace": ten binds in two columns, their keys outlined on the board](assets/search.png)
@@ -121,7 +121,7 @@ after studying them. Credit where due, all MIT licensed:
 - [`neilerua973/omarchy-keybindings-editor`](https://github.com/neilerua973/omarchy-keybindings-editor) - on-screen keyboard binding editor
 - [`felixzsh/omarchy-key-visualizer`](https://github.com/felixzsh/omarchy-key-visualizer) - on-screen key display for screencasts
 - [`seth-wood/keyarchy`](https://github.com/seth-wood/keyarchy) - tracks which shortcuts you actually use
-- [`fze-fze/omarchy-shortcut-sheet`](https://github.com/fze-fze/omarchy-shortcut-sheet) - tap-Super shortcut overlay
+- [`fze-fze/omarchy-shortcut-sheet`](https://github.com/fze-fze/omarchy-shortcut-sheet) - tap-Meta shortcut overlay
 - [`YonatanBaum/omarchy-app-shortcuts`](https://github.com/YonatanBaum/omarchy-app-shortcuts) - per-application cheat sheet
 - [`balazsorban44/omarchy-keyboard-minimap`](https://github.com/balazsorban44/omarchy-keyboard-minimap) - keyboard minimap with global capture via `/dev/input`, the approach this plugin deliberately does not take
 - [`balazsorban44/omarchy-keybinding-coach`](https://github.com/balazsorban44/omarchy-keybinding-coach) - one binding at a time in the bar

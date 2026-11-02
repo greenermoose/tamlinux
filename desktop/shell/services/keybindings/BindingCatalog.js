@@ -422,7 +422,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"1\" })",
     "action": "Switch to workspace 1 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -449,7 +449,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"2\" })",
     "action": "Switch to workspace 2 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -476,7 +476,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"3\" })",
     "action": "Switch to workspace 3 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -503,7 +503,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"4\" })",
     "action": "Switch to workspace 4 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -530,7 +530,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"5\" })",
     "action": "Switch to workspace 5 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -557,7 +557,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"6\" })",
     "action": "Switch to workspace 6 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -584,7 +584,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"7\" })",
     "action": "Switch to workspace 7 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -611,7 +611,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"8\" })",
     "action": "Switch to workspace 8 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -638,7 +638,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"9\" })",
     "action": "Switch to workspace 9 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -665,7 +665,7 @@ var entries = [
     "arg": "hl.dsp.focus({ workspace = \"10\" })",
     "action": "Switch to workspace 10 to view its windows.",
     "why": "Number keys identify the destination workspace; modifiers distinguish switching and moving.",
-    "mnemonic": "Choose the workspace number; Super switches there."
+    "mnemonic": "Choose the workspace number; Meta switches there."
   },
   {
     "mask": 65,
@@ -998,7 +998,7 @@ var entries = [
     "arg": "tam-menu toggle start",
     "action": "Open Start with Quick Launch and desktop appearance settings.",
     "why": "The same menu is available over apps and on unused bar space.",
-    "mnemonic": "Super plus right-click opens Start anywhere."
+    "mnemonic": "Meta plus right-click opens Start anywhere."
   },
   {
     "mask": 72,
@@ -1006,8 +1006,8 @@ var entries = [
     "dispatcher": "lua",
     "arg": "hl.dsp.window.resize()",
     "action": "Drag the focused window edge to resize it.",
-    "why": "Alt distinguishes resizing from the Start menu on Super plus right-click.",
-    "mnemonic": "Add Alt to Super plus right-drag to resize."
+    "why": "Alt distinguishes resizing from the Start menu on Meta plus right-click.",
+    "mnemonic": "Add Alt to Meta plus right-drag to resize."
   },
   {
     "mask": 64,
