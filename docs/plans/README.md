@@ -27,6 +27,7 @@ Run, and Release) is private operating procedure, not duplicated here.
 | [Start menu](start-menu.md) | Combined Quick Launch + Settings; packaged acceptance pending. |
 | [Console-first startup](console-first-startup.md) | Text login; optional desktop via `tam-desktop`. |
 | [Console welcome](console-welcome.md) | Console greeting and first-run messaging. |
+| [First login activities](first-login-activities.md) | First text-login orientation (`hi`) and activities (`start`) (D214, D215). |
 | [Targeted text-console monitors](console-monitor-control.md) | Console fb mapping and native monitor CLI/TUI. |
 | [Native input startup](native-input-startup.md) | Input stack at session start. |
 | [Remove screensaver](remove-screensaver.md) | Retire screensaver paths. |

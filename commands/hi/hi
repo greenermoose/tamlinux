@@ -1,0 +1,15 @@
+#!/bin/sh
+# hi — terminal orientation for Tamlinux (invokes 'tam hi', D215)
+#
+# Part of Tamlinux.
+# Copyright (c) Fred Horch and contributors.
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+set -e
+
+if ! command -v tam >/dev/null 2>&1; then
+    echo "hi: 'tam' command not found on PATH. Please ensure Tamlinux is installed." >&2
+    exit 1
+fi
+
+exec tam hi "$@"

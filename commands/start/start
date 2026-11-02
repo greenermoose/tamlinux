@@ -1,0 +1,336 @@
+#!/usr/bin/env python3
+"""start — First text-login orientation, activities, and desktop launcher (D215).
+
+Presents an actionable terminal activities menu at text console login,
+offering orientation, curated games and simulations (D214), and an explicit
+option to launch the graphical desktop.
+
+Invariants (D215):
+- Opening this menu NEVER starts graphics.
+- Choosing a terminal activity or game NEVER starts graphics.
+- The desktop starts ONLY through explicit selection of the desktop action.
+- Exits cleanly back to the text login shell prompt.
+"""
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+
+VERSION = "0.6.1"
+
+# ANSI styling helpers (disabled when stdout is not a tty or NO_COLOR is set)
+USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
+
+def _c(seq: str, text: str) -> str:
+    return f"\033[{seq}m{text}\033[0m" if USE_COLOR else text
+
+def bold(text: str) -> str:
+    return _c("1", text)
+
+def dim(text: str) -> str:
+    return _c("2", text)
+
+def green(text: str) -> str:
+    return _c("32", text)
+
+def yellow(text: str) -> str:
+    return _c("33", text)
+
+def cyan(text: str) -> str:
+    return _c("36", text)
+
+def banner() -> str:
+    tree = (
+        "       /\\\n"
+        "      /\\/\\\n"
+        "     ///\\\\\\       " + bold("Tamlinux Activities & Start") + "\n"
+        "       ||\n"
+    )
+    return tree
+
+
+ACTIVITIES = [
+    # Category 1: Orientation & Guide
+    {
+        "id": "hi",
+        "category": "Orientation & Learning",
+        "label": "Welcome to Tamlinux",
+        "command": ["tam", "hi"],
+        "check_cmd": "tam",
+        "description": "First-boot orientation and system introduction (invokes tam hi)",
+    },
+    {
+        "id": "tam",
+        "category": "Orientation & Learning",
+        "label": "Offline Knowledge Guide",
+        "command": ["tam"],
+        "check_cmd": "tam",
+        "description": "Interactive terminal documentation and learning journeys",
+    },
+    {
+        "id": "tam-search",
+        "category": "Orientation & Learning",
+        "label": "Search Knowledge Guide",
+        "command": ["tam", "search"],
+        "check_cmd": "tam",
+        "description": "Interactive search across all Tamlinux documentation topics",
+    },
+    {
+        "id": "tam-man",
+        "category": "Orientation & Learning",
+        "label": "Manual Pages & References",
+        "command": ["tam", "man"],
+        "check_cmd": "tam",
+        "description": "Hyperlinked system man pages, info manuals, and curated tldr",
+    },
+
+    # Category 2: Curated Games & Simulations (0.6.1, D214)
+    {
+        "id": "cataclysm-dda",
+        "category": "Curated Games & Simulations",
+        "label": "Cataclysm: Dark Days Ahead",
+        "command": ["cataclysm-dda"],
+        "check_cmd": "cataclysm-dda",
+        "description": "Deep metabolic survival simulation, vehicle engineering, and thermodynamics",
+    },
+    {
+        "id": "frotz",
+        "category": "Curated Games & Simulations",
+        "label": "Frotz Interactive Fiction",
+        "command": ["frotz"],
+        "check_cmd": "frotz",
+        "description": "Cognition, linguistics, natural-language parser, and AI exploration",
+    },
+    {
+        "id": "bsdgames",
+        "category": "Curated Games & Simulations",
+        "label": "BSD Games (Trek / Sail / Doctor)",
+        "command": ["trek"],
+        "check_cmd": "trek",
+        "description": "Operations research (trek), Age of Sail hydrodynamics (sail), early NLP (doctor)",
+    },
+    {
+        "id": "astroterm",
+        "category": "Curated Games & Simulations",
+        "label": "Astroterm Celestial Mechanics",
+        "command": ["astroterm"],
+        "check_cmd": "astroterm",
+        "description": "Real-time Keplerian orbital calculations, precession, and Yale Bright Star catalog",
+    },
+    {
+        "id": "curseofwar",
+        "category": "Curated Games & Simulations",
+        "label": "Curse of War",
+        "command": ["curseofwar"],
+        "check_cmd": "curseofwar",
+        "description": "Fast-paced macroeconomic logistics, resource draw, and demographic exhaustion",
+    },
+    {
+        "id": "gnugo",
+        "category": "Curated Games & Simulations",
+        "label": "GNU Go",
+        "command": ["gnugo", "--mode", "curses"],
+        "check_cmd": "gnugo",
+        "description": "Combinatorial depth, territorial balance, and spatial intuition in curses",
+    },
+    {
+        "id": "pmars",
+        "category": "Curated Games & Simulations",
+        "label": "pMARS Core War VM",
+        "command": ["pmars"],
+        "check_cmd": "pmars",
+        "description": "Virtual machine memory architecture combat and self-modifying assembly code",
+    },
+    {
+        "id": "bastet",
+        "category": "Curated Games & Simulations",
+        "label": "Bastet Adversarial Tetrominoes",
+        "command": ["bastet"],
+        "check_cmd": "bastet",
+        "description": "Minimax adversarial game-tree heuristic calculating worst-case tile drops",
+    },
+    {
+        "id": "cbonsai",
+        "category": "Curated Games & Simulations",
+        "label": "cbonsai Procedural Botany",
+        "command": ["cbonsai", "-l"],
+        "check_cmd": "cbonsai",
+        "description": "Procedural botanical growth simulation using Lindenmayer systems (L-systems)",
+    },
+    {
+        "id": "vms-empire",
+        "category": "Curated Games & Simulations",
+        "label": "VMS Empire Grand Strategy",
+        "command": ["vms-empire"],
+        "check_cmd": "vms-empire",
+        "description": "Industrial production cycles, strategic logistics, and operational fog of war",
+    },
+    {
+        "id": "nethack",
+        "category": "Curated Games & Simulations",
+        "label": "NetHack Emergent Physics",
+        "command": ["nethack"],
+        "check_cmd": "nethack",
+        "description": "Object-oriented causal physics (conductivity, petrification, reflection)",
+    },
+
+    # Category 3: Desktop Session
+    {
+        "id": "desktop",
+        "category": "Graphical Desktop",
+        "label": "Launch Graphical Desktop",
+        "command": ["tam-desktop"],
+        "check_cmd": "tam-desktop",
+        "description": "Start the installed Tamlinux Hyprland desktop session",
+    },
+]
+
+
+def is_installed(check_cmd: str) -> bool:
+    """Check if the given command executable is available on PATH."""
+    return shutil.which(check_cmd) is not None
+
+
+def render_menu(activities=None) -> str:
+    """Format the activities menu into readable text."""
+    if activities is None:
+        activities = ACTIVITIES
+
+    lines = [banner(), "Choose an activity to explore from your terminal:\n"]
+
+    current_category = None
+    item_num = 1
+    num_map = {}
+
+    for item in activities:
+        cat = item["category"]
+        if cat != current_category:
+            current_category = cat
+            lines.append(f"  {bold(cyan('── ' + cat + ' ──'))}")
+
+        installed = is_installed(item["check_cmd"])
+        status = "" if installed else dim(" [not installed]")
+
+        if item["id"] == "desktop":
+            key_label = bold(green(" d"))
+            num_map["d"] = item
+        else:
+            key_label = f"{item_num:2d}"
+            num_map[str(item_num)] = item
+            item_num += 1
+
+        label_colored = item["label"] if installed else dim(item["label"])
+        lines.append(f"  [{key_label}] {label_colored}{status}")
+        lines.append(f"       {dim(item['description'])}")
+
+    lines.append(f"\n  {bold(cyan('── Actions ──'))}")
+    lines.append(f"  [{bold(' q')}] Return to shell prompt")
+    lines.append("")
+
+    return "\n".join(lines), num_map
+
+
+def run_activity(item: dict) -> int:
+    """Run the selected activity."""
+    cmd = item["command"]
+    if not is_installed(item["check_cmd"]):
+        print(f"\n{bold(yellow('Notice:'))} '{item['check_cmd']}' is not currently installed.")
+        if item["category"] == "Curated Games & Simulations":
+            print("To include the curated games/simulations set in your Tamlinux profile,")
+            print("enable the package set in your configuration:")
+            print(f"  {bold('tamlinux.terminalGames.enable = true;')}")
+            print(f"or install the package via Arch/Nix.")
+        print("\nPress Enter to return to menu...")
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            pass
+        return 1
+
+    try:
+        # Run foreground job with terminal attached
+        res = subprocess.run(cmd)
+        return res.returncode
+    except FileNotFoundError:
+        print(f"Error: Command '{cmd[0]}' not found.", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        return 0
+
+
+def interactive_loop() -> int:
+    """Main interactive menu loop."""
+    while True:
+        menu_text, num_map = render_menu()
+        print(menu_text)
+
+        try:
+            choice = input(bold("Choice: ")).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting to shell prompt.")
+            return 0
+
+        if not choice:
+            continue
+
+        if choice in ("q", "quit", "exit", "0"):
+            return 0
+
+        if choice in num_map:
+            item = num_map[choice]
+            run_activity(item)
+            if item["id"] == "desktop":
+                # When desktop session finishes or exits, return to prompt
+                return 0
+        else:
+            print(f"Invalid selection: '{choice}'. Enter a number, 'd' for desktop, or 'q' to quit.")
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="start",
+        description="First text-login orientation, activities, and desktop launcher (D215)."
+    )
+    parser.add_argument(
+        "--version", "-V", action="version", version=f"start (Tamlinux) {VERSION}"
+    )
+    parser.add_argument(
+        "--list", action="store_true", help="List available activities and commands"
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="Check which activities are installed on this system"
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> int:
+    args = parse_args(argv)
+
+    if args.list:
+        print(f"{'ID':<16} {'Command':<25} {'Installed':<10} {'Description'}")
+        print("─" * 80)
+        for act in ACTIVITIES:
+            inst = "yes" if is_installed(act["check_cmd"]) else "no"
+            cmd_str = " ".join(act["command"])
+            print(f"{act['id']:<16} {cmd_str:<25} {inst:<10} {act['description']}")
+        return 0
+
+    if args.check:
+        installed_count = 0
+        total = len(ACTIVITIES)
+        for act in ACTIVITIES:
+            inst = is_installed(act["check_cmd"])
+            if inst:
+                installed_count += 1
+            mark = green("✓") if inst else dim("✗")
+            print(f" {mark} {act['label']} ({act['check_cmd']})")
+        print(f"\n{installed_count}/{total} activities installed on this system.")
+        return 0
+
+    return interactive_loop()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
