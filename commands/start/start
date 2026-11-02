@@ -14,11 +14,31 @@ Invariants (D215):
 
 import argparse
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
 
-VERSION = "0.6.1"
+
+def read_version() -> str:
+    xdg = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
+    candidates = [
+        xdg / "tamlinux" / "version",
+        Path(__file__).resolve().parents[1] / "share" / "tamlinux" / "assets" / "version",
+        Path(__file__).resolve().parents[2] / "VERSION",
+    ]
+    for path in candidates:
+        try:
+            if path.is_file():
+                val = path.read_text(encoding="utf-8").strip()
+                if val:
+                    return val
+        except OSError:
+            continue
+    return os.environ.get("TAMLINUX_VERSION") or "0.6.1"
+
+
+VERSION = read_version()
 
 # ANSI styling helpers (disabled when stdout is not a tty or NO_COLOR is set)
 USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
@@ -106,10 +126,10 @@ ACTIVITIES = [
     {
         "id": "bsdgames",
         "category": "Curated Games & Simulations",
-        "label": "BSD Games (Trek / Sail / Doctor)",
+        "label": "BSD Games (Trek / Adventure / ATC / Wump)",
         "command": ["trek"],
         "check_cmd": "trek",
-        "description": "Operations research (trek), Age of Sail hydrodynamics (sail), early NLP (doctor)",
+        "description": "Operations research (trek), Colossal Cave (adventure), air traffic (atc), topology (wump)",
     },
     {
         "id": "astroterm",
@@ -232,9 +252,45 @@ def render_menu(activities=None) -> str:
     return "\n".join(lines), num_map
 
 
+def resolve_command(item: dict) -> list[str] | None:
+    """Resolve interactive arguments for tools that require sample or user inputs."""
+    cmd = list(item["command"])
+    if item["id"] == "pmars":
+        exe = shutil.which("pmars")
+        if exe:
+            warriors = Path(exe).resolve().parents[1] / "share" / "pmars" / "warriors"
+            w1 = warriors / "excalibur.red"
+            w2 = warriors / "sonofvain.red"
+            if w1.is_file() and w2.is_file():
+                return ["pmars", "-e", str(w1), str(w2)]
+    elif item["id"] == "frotz":
+        print("\nFrotz Z-machine interpreter (.z3/.z5/.z8/.zblorb story file required).")
+        try:
+            story = input("Story file path (or Enter to show version and return): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return None
+        if not story:
+            subprocess.run(["frotz", "-v"])
+            try:
+                input("\nPress Enter to return to menu...")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            return None
+        expanded = str(Path(story).expanduser())
+        if not Path(expanded).is_file():
+            print(f"{bold(yellow('Notice:'))} Story file not found: {expanded}")
+            try:
+                input("\nPress Enter to return to menu...")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            return None
+        return ["frotz", expanded]
+    return cmd
+
+
 def run_activity(item: dict) -> int:
     """Run the selected activity."""
-    cmd = item["command"]
     if not is_installed(item["check_cmd"]):
         print(f"\n{bold(yellow('Notice:'))} '{item['check_cmd']}' is not currently installed.")
         if item["category"] == "Curated Games & Simulations":
@@ -248,6 +304,10 @@ def run_activity(item: dict) -> int:
         except (EOFError, KeyboardInterrupt):
             pass
         return 1
+
+    cmd = resolve_command(item)
+    if cmd is None:
+        return 0
 
     try:
         # Run foreground job with terminal attached

@@ -31,10 +31,11 @@ prepared.
   or Hyprland. 0.4 removes Omarchy while Hyprland keeps running; **1.0**
   removes Hyprland.
 
-**0.4 is complete.** Before this scheme, 0.4.0 to 0.4.4 were milestones of
+**0.4 and 0.5 are complete.** Before this scheme, 0.4.0 to 0.4.4 were milestones of
 their own, and 0.4.4 used lettered candidates (0.4.4-a to 0.4.4-m). From
 0.4.5 the goal-list scheme applied; released **0.4.8** closed Gate A
-(Omarchy removed). Develop continues on **0.5** (Blue Sparkler).
+(Omarchy removed) and released **0.5.12** completed **0.5** (Blue Sparkler).
+Develop continues on **0.6** (KBN WB).
 
 The scheme was adopted on 2026-10-05 and given goal lists on 2026-10-20.
 Before 2026-10-05, minor versions were fixed milestones and work between them

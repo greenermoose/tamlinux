@@ -4,10 +4,11 @@ Tamlinux is an independent Linux workstation environment. The package remains
 `tamlinux`; its terminal command is `tam`. A plan describes work and
 acceptance, not an installed component.
 
-**Status (2026-10-31):** Product develop is **Blue Sparkler 0.5.11**
+**Status (2026-11-02):** Product develop is **KBN WB 0.6.1**
 ([VERSION](../../VERSION), [CULTIVAR](../../CULTIVAR)). Gate A closed with
-released **0.4.8** (2026-10-22): Omarchy packages are gone; Arch/Hyprland
-remains the current host. Candidate assemblies and deployment live in
+released **0.4.8** (2026-10-22) and **Blue Sparkler 0.5.12** released on
+2026-11-01; Arch/Hyprland remains the current host. Candidate assemblies and
+deployment live in
 [tamlinux-packages](https://github.com/greenermoose/tamlinux-packages).
 
 This index lists **open** product plans only. Finished Gate A / 0.4.3–0.4.4

@@ -1,5 +1,9 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-02 — Prepare Tamlinux 0.6.1 KBN WB](2026-11-02-061-preparation.md)
+
+- [2026-11-02 — First text-login entry points hi and start](2026-11-02-first-login-hi-and-start.md)
+
 - [2026-11-01 — HP notebook keyboard diagram](2026-11-01-hp-keyboard-layout.md)
 
 - [2026-11-01 — Independent keyboard development application](2026-11-01-keyboard-app-trial.md)

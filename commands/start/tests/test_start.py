@@ -90,6 +90,35 @@ class TestStartCommand(unittest.TestCase):
             self.assertEqual(rc, 0)
             mock_run.assert_called_once_with(["tam-desktop"])
 
+    def test_pmars_resolves_bundled_warriors(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            bin_dir = root / "bin"
+            warriors = root / "share" / "pmars" / "warriors"
+            bin_dir.mkdir(parents=True)
+            warriors.mkdir(parents=True)
+            exe = bin_dir / "pmars"
+            exe.write_text("#!/bin/sh\n")
+            exe.chmod(0o755)
+            w1 = warriors / "excalibur.red"
+            w2 = warriors / "sonofvain.red"
+            w1.write_text(";redcode\n")
+            w2.write_text(";redcode\n")
+            pmars_item = next(a for a in start_mod.ACTIVITIES if a["id"] == "pmars")
+            with patch("shutil.which", return_value=str(exe)):
+                cmd = start_mod.resolve_command(pmars_item)
+            self.assertEqual(cmd, ["pmars", "-e", str(w1), str(w2)])
+
+    def test_frotz_empty_prompt_shows_version_and_returns(self):
+        frotz_item = next(a for a in start_mod.ACTIVITIES if a["id"] == "frotz")
+        with patch("builtins.input", side_effect=["", ""]), \
+             patch("builtins.print"), \
+             patch("subprocess.run") as mock_run:
+            cmd = start_mod.resolve_command(frotz_item)
+            self.assertIsNone(cmd)
+            mock_run.assert_called_once_with(["frotz", "-v"])
+
 
 if __name__ == "__main__":
     unittest.main()

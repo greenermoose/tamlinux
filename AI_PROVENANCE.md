@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-02: Antigravity CLI `1.4.12` (`gemini-4-argon-medium`) prepares the Tamlinux 0.6.1 KBN WB product candidate and refines `start` interactive launches. [Session](docs/ai/2026-11-02-061-preparation.md).
+
 2026-11-02: Antigravity CLI `1.4.12` (`gemini-3.8-flash`) implements the bare console entry points `hi` and `start` for first text login before graphics (D215). [Session](docs/ai/2026-11-02-first-login-hi-and-start.md).
 
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an HP notebook reference diagram with exact SKU matching, split arrows and media-key aliases, and updates the independent keyboard app. [Session](docs/ai/2026-11-01-hp-keyboard-layout.md).

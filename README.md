@@ -14,7 +14,7 @@ from Wayland, River, Hyprland, Quickshell, and Omarchy.
 | **License** | GPL-3.0-or-later |
 | **Desktop** | Hyprland + Quickshell (target: Sway + Quickshell, as one installable workstation package) |
 | **Plugin suite** | In-repo [`desktop/plugins/`](desktop/plugins/README.md) (`fred.*` 2.x) |
-| **Status** | Developed in public and used daily. Gate A complete (0.4.8); current develop is Blue Sparkler 0.5 |
+| **Status** | Developed in public and used daily. Gate A complete (0.4.8), Blue Sparkler released (0.5.12); current develop is KBN WB 0.6 |
 
 ---
 
@@ -27,8 +27,9 @@ laptops that can be kept in delightful, productive use for decades.
 
 On the current Arch-based installation, Arch Linux is the operating system,
 while Tamlinux is the installed workstation environment on top of it.
-Blue Sparkler is the cultivar name for Tamlinux 0.5: a name for that
-version of the environment, not a separate operating system.
+Blue Sparkler names the released Tamlinux 0.5 cultivar and KBN WB names
+Tamlinux 0.6: cultivar names identify minor versions of the environment, not
+a separate operating system.
 
 *Tam* can mean **tamarack**, **total addressable market**, **the absolute
 max**, or **teaching and making**. Like the tamarack's needles, Tamlinux sheds old
@@ -60,11 +61,13 @@ The workstation runs Tamlinux's packaged Quickshell shell and nine 2.x
 plugins on Arch/Hyprland (console-first login; optional desktop). The current
 version and its changes are in [VERSION](VERSION) and the
 [changelog](CHANGELOG.md). **Gate A is done:** released **0.4.8** (2026-10-22)
-removed Omarchy packages. Develop continues on **Blue Sparkler 0.5**.
+removed Omarchy packages, and **Blue Sparkler 0.5.12** released on 2026-11-01.
+Develop continues on **KBN WB 0.6**.
 
-1. **0.5: input and appearance (current).** Input usability, console-first
-   startup, start menu, monitor control, and Tamarack visual redesign.
-2. **0.6: dependable baseline.** Fix GPU-resume and hibernation faults or
+1. **0.5: input and appearance (released 0.5.12).** Input usability,
+   console-first startup, start menu, monitor control, and Tokyo Night /
+   JetBrains Mono defaults.
+2. **0.6: dependable baseline (current).** Fix GPU-resume and hibernation faults or
    accept mitigations, pin carried patches with upstream status, establish
    routine updates/rollback, and run a host-safe Arch install on a second laptop.
 3. **0.7–1.0: Sway.** Complete compositor integration beside Hyprland (0.7),

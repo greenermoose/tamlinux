@@ -8,10 +8,20 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
-- Let a fleet host follow its own assembly revision (`hosts/<host>/state/assembly`); `tam-deploy` reads, pins, restores and commits that file instead of the shared lock.
+## 0.6.1 - Develop candidate
+
+First candidate of the **0.6 KBN WB cultivar**: useful and enjoyable first
+text login before graphics, host hardware probing, keyboard layout fallback and
+local widget development trials, and per-host fleet assembly pins.
+
+- Add bare console entry points `hi` (dispatching to `tam hi`) and `start`
+  (actionable terminal orientation, curated games and simulations, and explicit
+  optional `tam-desktop` launch without auto-starting graphics).
+- Add `tam-hardware`: C host CPU, instruction-set (ISA) and DMI probe with
+  human-readable and structured `--json` output.
+- Let a fleet host follow its own assembly revision (`hosts/<host>/state/assembly`); `tam-deploy` reads, pins, restores and commits that file instead of the shared lock, and keeps `preflight` output machine-readable.
 - Suspend plainly where logind cannot hibernate (`suspend-unless-stay-awake`); hosts with only zram swap previously never slept on idle.
-- Draw a generic 104-key board in the keyboard panel when no specific layout is known (`fred.keyboard` 2.0.3); the panel was empty on any keyboard but the Lenovo Calliope.
-- Name the keyboard panel's actual fallback board, preserve gaps between keycaps, and verify rendering and press/release highlighting offscreen.
+- Draw a generic 104-key board in the keyboard panel when no specific layout is known (`fred.keyboard` 2.0.3), add an HP 15-f233wm notebook diagram and an independent `dev-trial` application, preserve keycap gutters, and verify rendering and press/release highlighting offscreen.
 
 ## 0.5.12 - 2026-11-01
 
