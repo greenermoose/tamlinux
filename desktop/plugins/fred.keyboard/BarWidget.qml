@@ -37,7 +37,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "2.0.3"
+  readonly property string pluginVersion: "2.0.4"
   readonly property string repoUrl: "https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.keyboard"
 
   // Closed environment: only these names reach a child process.
@@ -52,6 +52,8 @@ Panel {
   ]
 
   property var device: null           // primary physical keyboard
+  property string systemVendor: ""
+  property string systemSku: ""
   property string keymap: ""          // e.g. "English (US)"
   property var layout: null           // resolved layout object
   property var resolution: null       // how that layout was chosen
@@ -124,7 +126,8 @@ Panel {
 
   function resolveLayout() {
     if (!registry || !device) return
-    root.resolution = Resolver.resolve(device, registry, root.osHas)
+    var facts = Object.assign({}, device, { systemVendor: root.systemVendor, systemSku: root.systemSku })
+    root.resolution = Resolver.resolve(facts, registry, root.osHas)
     // An OS-geometry resolution names a board but carries no layout file;
     // draw the bundled stand-in so the panel is never left without a board.
     var file = root.resolution.file || registry.standIn
@@ -133,6 +136,18 @@ Panel {
   }
 
   // --- Files -------------------------------------------------------------
+
+  property FileView systemVendorFile: FileView {
+    path: "/sys/class/dmi/id/sys_vendor"
+    printErrors: false
+    onLoaded: { root.systemVendor = text().trim(); root.resolveLayout() }
+  }
+
+  property FileView systemSkuFile: FileView {
+    path: "/sys/class/dmi/id/product_sku"
+    printErrors: false
+    onLoaded: { root.systemSku = text().trim(); root.resolveLayout() }
+  }
 
   property FileView registryFile: FileView {
     path: Model.helperPath("layouts/index.json")
@@ -369,6 +384,9 @@ Panel {
             var legend = ". Tinted keys have Hyprland binds - hover a key to see them."
             if (root.resolution.kind === "field-observed")
               return "Layout: " + root.resolution.layoutId + " - transcribed for this board" + legend
+            if (root.resolution.kind === "reference-transcribed")
+              return "Layout: " + (root.layout ? root.layout.name : root.resolution.layoutId) +
+                     " - model reference; confirm against your keycaps" + legend
             return "Layout: " + (root.layout ? root.layout.name : "Loading generic board...") +
                    " - exact key positions for this device are not known" + legend
           }
@@ -385,7 +403,7 @@ Panel {
             return Bindings.keyTooltip(root.bindIndex, cell, root.byId, root.byCode)
           }
           unit: Math.max(Style.space(20),
-                         Math.min(Style.space(38),
+                         Math.min(Style.space(48),
                                   (panelColumn.width - Style.space(6)) /
                                   Math.max(1, board.boardUnits)))
         }

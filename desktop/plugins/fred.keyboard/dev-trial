@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import shutil
@@ -110,6 +111,9 @@ def install(revision: str):
               "quickshell": quickshell, "installed": [str(LAUNCHER), str(DESKTOP)],
               "previous": previous, "restore": str(LAUNCHER) + " --uninstall"}
     RECORD.write_text(json.dumps(record, indent=2) + "\n")
+    for old in BUILDS.iterdir():
+        if old != build and old.is_dir() and not old.is_symlink() and re.fullmatch(r"[0-9a-f]{40}", old.name):
+            shutil.rmtree(old)
     print(f"Installed Keyboard (Development), {version} at {rev[:12]}\nLaunch: {LAUNCHER}\nRemove: {LAUNCHER} --uninstall")
 
 

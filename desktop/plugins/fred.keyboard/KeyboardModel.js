@@ -39,6 +39,8 @@ function byCode(layout) {
     if (c.led) continue
     if (c.code === null || c.code === undefined) continue
     map[c.code] = c
+    for (var j = 0; j < (c.actions || []).length; j++)
+      map[c.actions[j].code] = c.actions[j]
   }
   return map
 }
@@ -46,32 +48,40 @@ function byCode(layout) {
 function byId(layout) {
   var map = {}
   var cells = allCells(layout)
-  for (var i = 0; i < cells.length; i++) map[cells[i].id] = cells[i]
+  for (var i = 0; i < cells.length; i++) {
+    map[cells[i].id] = cells[i]
+    for (var j = 0; j < (cells[i].actions || []).length; j++)
+      map[cells[i].actions[j].id] = cells[i].actions[j]
+  }
   return map
+}
+
+// One physical key can emit its F-key code or a firmware action code.
+function cellCodes(cell) {
+  var codes = cell.code === null || cell.code === undefined ? [] : [cell.code]
+  for (var i = 0; i < (cell.actions || []).length; i++) codes.push(cell.actions[i].code)
+  return codes
 }
 
 // Width of the main alphanumeric block: everything before the nav cluster,
 // which is the first cell carrying a gap. Every row should agree, and a
 // mis-sized modifier shows up here immediately.
 function mainBlockWidth(row) {
-  var w = 0
+  var x = 0, extent = 0
   for (var i = 0; i < row.length; i++) {
     if (row[i].gap) break
-    w += (row[i].w || 1)
+    if (row[i].x !== undefined) x = row[i].x
+    x += (row[i].w || 1)
+    extent = Math.max(extent, x)
   }
-  return w
+  return extent
 }
 
 // Total declared width of a row in keycap units.
 // Note: a double-height key declared in an earlier row contributes nothing
 // here, so a row it spans into measures narrower than it renders.
 function rowWidth(row) {
-  var w = 0
-  for (var i = 0; i < row.length; i++) {
-    w += (row[i].gap || 0)
-    w += (row[i].w || 1)
-  }
-  return w
+  return placeRow(row, 0, []).width
 }
 
 // Lays a row out as absolute positions, resolving gaps into x offsets and
@@ -79,7 +89,7 @@ function rowWidth(row) {
 // returned as `spans` by the previous row's call; pass [] for the first row.
 function placeRow(row, rowIndex, carry) {
   var placed = [], spans = []
-  var x = 0, i
+  var x = 0, extent = 0, i
 
   for (i = 0; i < (carry || []).length; i++) {
     // A key spanning into this row occupies its column but is drawn once,
@@ -90,14 +100,15 @@ function placeRow(row, rowIndex, carry) {
 
   for (i = 0; i < row.length; i++) {
     var cell = row[i]
-    x += (cell.gap || 0)
+    x = cell.x === undefined ? x + (cell.gap || 0) : cell.x
     var w = cell.w || 1
     placed.push({ cell: cell, x: x, w: w, continued: false })
     if ((cell.h || 1) > 1) spans.push({ cell: cell, x: x, w: w })
     x += w
+    extent = Math.max(extent, x)
   }
 
-  return { row: rowIndex, placed: placed, spans: spans, width: x }
+  return { row: rowIndex, placed: placed, spans: spans, width: extent }
 }
 
 // Full board layout as rows of absolute-positioned cells.
@@ -106,6 +117,8 @@ function place(layout) {
   if (!layout || !layout.rows) return out
   for (var r = 0; r < layout.rows.length; r++) {
     var res = placeRow(layout.rows[r], r, carry)
+    res.height = (layout.rowHeights || [])[r] || 1
+    res.gapAfter = (layout.rowGaps || [])[r] || 0
     out.push(res)
     carry = res.spans
   }
@@ -121,6 +134,7 @@ if (typeof module !== "undefined" && module.exports) {
     allCells: allCells,
     byCode: byCode,
     byId: byId,
+    cellCodes: cellCodes,
     mainBlockWidth: mainBlockWidth,
     rowWidth: rowWidth,
     placeRow: placeRow,

@@ -4,7 +4,10 @@ Layouts describe where the keys physically are on a board, so the panel can
 draw your keyboard rather than a generic one.
 
 `fred.keyboard` draws a transcribed layout when its USB vendor:product or
-device name matches a library entry. Otherwise it draws the bundled
+device name matches a library entry. Built-in laptop boards can instead
+match an exact system vendor/SKU together with the input-device name and
+bus; generic PS/2 names never identify a laptop layout by themselves.
+Otherwise it draws the bundled
 `pc104-standin.json`: a generic ANSI board with navigation keys and a number
 pad, with press and release highlighting for its keys. Its positions may
 differ from a laptop's physical arrangement.
@@ -14,6 +17,17 @@ does not read XKB geometry files. An OS geometry name alone cannot supply a
 drawable layout. The registry's `standIn` file supplies the board in this
 case, including when no OS geometry exists. Only a matched, transcribed
 layout is reported as exact.
+
+The HP 15-f233wm US profile matches HP SKU `L0T33UA#ABA` and its built-in
+`AT Translated Set 2 keyboard` on the PS/2 bus. It is transcribed from the
+[HP service guide](https://h10032.www1.hp.com/ctg/Manual/c04763947.pdf), page 11,
+and a [compatible US replacement-board photograph](https://www.reliablelaptopparts.com/genuine-new-hp-15-f023wm-15-f024wm-us-notebook-keyboard-with-frame/).
+It has 100 physical keys, a compact function/navigation row, a 14.5-unit
+main block, an integrated number pad and stacked half-height Up/Down keys.
+Its `reference-transcribed` source remains distinct from a physically
+confirmed layout. The service guide lists US spare `776778-001`; compatible
+replacement-part listings cross-reference several other assemblies, so no
+OEM part number is inferred from the generic PS/2 device id.
 
 ## Why a field-observed library is necessary
 
@@ -76,6 +90,15 @@ records.
 | `h` | Rows spanned, default `1`. Use `2` for a double-height key. |
 | `gap` | Blank space in keycap units **before** this cell. |
 | `led` | Indicator name. An LED is drawn, never pressed. |
+| `x`, `y` | Optional absolute horizontal position and vertical offset within a row, in keycap units. Allows stacked arrows to share a column. |
+| `secondaryLabel` | Smaller second keycap legend, such as a shifted symbol or Fn action. |
+| `actions` | Alternate emitted keys on the same keycap, each with `id`, `code` and `label`; used for media/F-key highlighting and shortcut lookup. |
+
+Optional `rowHeights` and `rowGaps` arrays give each row's height and gap
+after it in keycap units. The defaults are one unit and no extra gap. A
+cell without `h` uses the row height; explicit fractional heights describe
+split keys. Action codes are standard Linux input codes corresponding to
+the printed legends; which the firmware emits still needs physical testing.
 
 ### Rules
 

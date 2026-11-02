@@ -5,7 +5,7 @@ Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermo
 ![The panel: your keyboard drawn from a field-observed layout, bound keys tinted](assets/screenshot.png)
 
 Built for the Tamlinux personal Linux workstation environment (Hyprland +
-Quickshell). Version 1.0.0.
+Quickshell). Version 2.0.4.
 
 ## Overview
 
@@ -40,12 +40,15 @@ Quickshell). Version 1.0.0.
 
 ## Keyboard layouts
 
-Layouts come from two sources: the XKB geometries the OS already ships
-(`pc104`, `pc105`, `jp106`, vendor boards) and a field-observed library in
-`layouts/` for boards no stock geometry describes correctly. The first
-entry is the Lenovo Calliope, transcribed from its keycaps: Insert on the
-function row, a double-height Delete, an Fn key the OS never sees. Whether
-the match is exact or a stand-in is stated on the panel. To add a board, see
+The bundled library includes the physically transcribed Lenovo Calliope
+and a reference transcription for the HP 15-f233wm US laptop. The latter
+matches its exact system SKU and built-in PS/2 device, and draws the compact
+function row, integrated number pad and stacked half-height arrows. Media
+actions highlight the corresponding F-key; Fn itself stays firmware-local.
+An unknown board uses a generic 104-key diagram. The panel names the source
+and distinguishes a reference from a physically confirmed layout. OS XKB
+geometry names are discovered but their geometry files are not rendered.
+To add a board, see
 [`layouts/README.md`](layouts/README.md).
 
 ## Key Event Capture

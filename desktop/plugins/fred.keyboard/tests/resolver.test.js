@@ -111,4 +111,4 @@ if (failures.length) {
   process.exit(1)
 }
 console.log("ok - resolver: " + (registry.layouts || []).length +
-            " field-observed layout(s), OS fallback " + registry.fallback)
+            " registered layout(s), OS fallback " + registry.fallback)

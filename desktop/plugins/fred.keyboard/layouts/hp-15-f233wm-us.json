@@ -1,0 +1,729 @@
+{
+  "schemaVersion": 1,
+  "id": "hp-15-f233wm-us",
+  "name": "HP 15-f233wm (US)",
+  "source": "reference-transcribed",
+  "contributor": "greenermoose",
+  "verified": "2026-11-01",
+  "verification": "Transcribed from the HP service-guide illustration and a compatible US replacement-board photo; physical confirmation pending.",
+  "mainBlockWidth": 14.5,
+  "firmwareLocal": [
+    "FN"
+  ],
+  "declaredButAbsent": [],
+  "rowHeights": [
+    0.6,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "rowGaps": [
+    0.15,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "references": [
+    "https://h10032.www1.hp.com/ctg/Manual/c04763947.pdf",
+    "https://www.reliablelaptopparts.com/genuine-new-hp-15-f023wm-15-f024wm-us-notebook-keyboard-with-frame/"
+  ],
+  "rows": [
+    [
+      {
+        "id": "ESC",
+        "label": "Esc",
+        "code": 1,
+        "w": 0.981578947368421
+      },
+      {
+        "id": "F1",
+        "label": "F1",
+        "code": 59,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Help",
+        "actions": [
+          {
+            "id": "HELP",
+            "code": 138,
+            "label": "F1 / Help"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "label": "F2",
+        "code": 60,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Dim",
+        "actions": [
+          {
+            "id": "BRIGHTNESSDOWN",
+            "code": 224,
+            "label": "F2 / Brightness down"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "label": "F3",
+        "code": 61,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Bright",
+        "actions": [
+          {
+            "id": "BRIGHTNESSUP",
+            "code": 225,
+            "label": "F3 / Brightness up"
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "label": "F4",
+        "code": 62,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Display",
+        "actions": [
+          {
+            "id": "DISPLAY",
+            "code": 227,
+            "label": "F4 / Display"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "label": "F5",
+        "code": 63,
+        "w": 0.981578947368421
+      },
+      {
+        "id": "F6",
+        "label": "F6",
+        "code": 64,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Mute",
+        "actions": [
+          {
+            "id": "MUTE",
+            "code": 113,
+            "label": "F6 / Mute"
+          }
+        ]
+      },
+      {
+        "id": "F7",
+        "label": "F7",
+        "code": 65,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Vol −",
+        "actions": [
+          {
+            "id": "VOLUMEDOWN",
+            "code": 114,
+            "label": "F7 / Volume down"
+          }
+        ]
+      },
+      {
+        "id": "F8",
+        "label": "F8",
+        "code": 66,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Vol +",
+        "actions": [
+          {
+            "id": "VOLUMEUP",
+            "code": 115,
+            "label": "F8 / Volume up"
+          }
+        ]
+      },
+      {
+        "id": "F9",
+        "label": "F9",
+        "code": 67,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Prev",
+        "actions": [
+          {
+            "id": "PREVIOUSSONG",
+            "code": 165,
+            "label": "F9 / Previous track"
+          }
+        ]
+      },
+      {
+        "id": "F10",
+        "label": "F10",
+        "code": 68,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Play",
+        "actions": [
+          {
+            "id": "PLAYPAUSE",
+            "code": 164,
+            "label": "F10 / Play-pause"
+          }
+        ]
+      },
+      {
+        "id": "F11",
+        "label": "F11",
+        "code": 87,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Next",
+        "actions": [
+          {
+            "id": "NEXTSONG",
+            "code": 163,
+            "label": "F11 / Next track"
+          }
+        ]
+      },
+      {
+        "id": "F12",
+        "label": "F12",
+        "code": 88,
+        "w": 0.981578947368421,
+        "secondaryLabel": "Wireless",
+        "actions": [
+          {
+            "id": "WLAN",
+            "code": 238,
+            "label": "F12 / Wireless"
+          },
+          {
+            "id": "RFKILL",
+            "code": 247,
+            "label": "F12 / Radio toggle"
+          }
+        ]
+      },
+      {
+        "id": "INSERT",
+        "label": "Insert",
+        "code": 110,
+        "secondaryLabel": "PrtSc",
+        "actions": [
+          {
+            "id": "SYSRQ",
+            "code": 99,
+            "label": "Insert / PrtSc"
+          }
+        ],
+        "w": 0.981578947368421
+      },
+      {
+        "id": "DELETE",
+        "label": "Delete",
+        "code": 111,
+        "w": 0.981578947368421
+      },
+      {
+        "id": "HOME",
+        "label": "Home",
+        "code": 102,
+        "w": 0.981578947368421
+      },
+      {
+        "id": "END",
+        "label": "End",
+        "code": 107,
+        "w": 0.981578947368421
+      },
+      {
+        "id": "PAGEUP",
+        "label": "PgUp",
+        "code": 104,
+        "w": 0.981578947368421
+      },
+      {
+        "id": "PAGEDOWN",
+        "label": "PgDn",
+        "code": 109,
+        "w": 0.981578947368421
+      }
+    ],
+    [
+      {
+        "id": "GRAVE",
+        "label": "`",
+        "code": 41,
+        "secondaryLabel": "~"
+      },
+      {
+        "id": "1",
+        "label": "1",
+        "code": 2,
+        "secondaryLabel": "!"
+      },
+      {
+        "id": "2",
+        "label": "2",
+        "code": 3,
+        "secondaryLabel": "@"
+      },
+      {
+        "id": "3",
+        "label": "3",
+        "code": 4,
+        "secondaryLabel": "#"
+      },
+      {
+        "id": "4",
+        "label": "4",
+        "code": 5,
+        "secondaryLabel": "$"
+      },
+      {
+        "id": "5",
+        "label": "5",
+        "code": 6,
+        "secondaryLabel": "%"
+      },
+      {
+        "id": "6",
+        "label": "6",
+        "code": 7,
+        "secondaryLabel": "^"
+      },
+      {
+        "id": "7",
+        "label": "7",
+        "code": 8,
+        "secondaryLabel": "&"
+      },
+      {
+        "id": "8",
+        "label": "8",
+        "code": 9,
+        "secondaryLabel": "*"
+      },
+      {
+        "id": "9",
+        "label": "9",
+        "code": 10,
+        "secondaryLabel": "("
+      },
+      {
+        "id": "0",
+        "label": "0",
+        "code": 11,
+        "secondaryLabel": ")"
+      },
+      {
+        "id": "MINUS",
+        "label": "−",
+        "code": 12,
+        "secondaryLabel": "_"
+      },
+      {
+        "id": "EQUAL",
+        "label": "=",
+        "code": 13,
+        "secondaryLabel": "+"
+      },
+      {
+        "id": "BACKSPACE",
+        "label": "Backspace",
+        "code": 14,
+        "w": 1.5
+      },
+      {
+        "id": "NUMLOCK",
+        "label": "Num",
+        "code": 69,
+        "secondaryLabel": "Lock",
+        "gap": 0.15
+      },
+      {
+        "id": "KPSLASH",
+        "label": "/",
+        "code": 98
+      },
+      {
+        "id": "KPASTERISK",
+        "label": "*",
+        "code": 55
+      },
+      {
+        "id": "KPMINUS",
+        "label": "−",
+        "code": 74
+      }
+    ],
+    [
+      {
+        "id": "TAB",
+        "label": "Tab",
+        "code": 15,
+        "w": 1.5
+      },
+      {
+        "id": "Q",
+        "label": "Q",
+        "code": 16
+      },
+      {
+        "id": "W",
+        "label": "W",
+        "code": 17
+      },
+      {
+        "id": "E",
+        "label": "E",
+        "code": 18
+      },
+      {
+        "id": "R",
+        "label": "R",
+        "code": 19
+      },
+      {
+        "id": "T",
+        "label": "T",
+        "code": 20
+      },
+      {
+        "id": "Y",
+        "label": "Y",
+        "code": 21
+      },
+      {
+        "id": "U",
+        "label": "U",
+        "code": 22
+      },
+      {
+        "id": "I",
+        "label": "I",
+        "code": 23
+      },
+      {
+        "id": "O",
+        "label": "O",
+        "code": 24
+      },
+      {
+        "id": "P",
+        "label": "P",
+        "code": 25
+      },
+      {
+        "id": "BRACKETLEFT",
+        "label": "[",
+        "code": 26,
+        "secondaryLabel": "{"
+      },
+      {
+        "id": "BRACKETRIGHT",
+        "label": "]",
+        "code": 27,
+        "secondaryLabel": "}"
+      },
+      {
+        "id": "BACKSLASH",
+        "label": "\\",
+        "code": 43,
+        "secondaryLabel": "|"
+      },
+      {
+        "id": "KP7",
+        "label": "7",
+        "code": 71,
+        "secondaryLabel": "Home",
+        "gap": 0.15
+      },
+      {
+        "id": "KP8",
+        "label": "8",
+        "code": 72,
+        "secondaryLabel": "↑"
+      },
+      {
+        "id": "KP9",
+        "label": "9",
+        "code": 73,
+        "secondaryLabel": "PgUp"
+      },
+      {
+        "id": "KPPLUS",
+        "label": "+",
+        "code": 78,
+        "h": 2
+      }
+    ],
+    [
+      {
+        "id": "CAPSLOCK",
+        "label": "Caps Lock",
+        "code": 58,
+        "w": 1.75
+      },
+      {
+        "id": "A",
+        "label": "A",
+        "code": 30
+      },
+      {
+        "id": "S",
+        "label": "S",
+        "code": 31
+      },
+      {
+        "id": "D",
+        "label": "D",
+        "code": 32
+      },
+      {
+        "id": "F",
+        "label": "F",
+        "code": 33
+      },
+      {
+        "id": "G",
+        "label": "G",
+        "code": 34
+      },
+      {
+        "id": "H",
+        "label": "H",
+        "code": 35
+      },
+      {
+        "id": "J",
+        "label": "J",
+        "code": 36
+      },
+      {
+        "id": "K",
+        "label": "K",
+        "code": 37
+      },
+      {
+        "id": "L",
+        "label": "L",
+        "code": 38
+      },
+      {
+        "id": "SEMICOLON",
+        "label": ";",
+        "code": 39,
+        "secondaryLabel": ":"
+      },
+      {
+        "id": "APOSTROPHE",
+        "label": "'",
+        "code": 40,
+        "secondaryLabel": "\""
+      },
+      {
+        "id": "ENTER",
+        "label": "Enter",
+        "code": 28,
+        "w": 1.75
+      },
+      {
+        "id": "KP4",
+        "label": "4",
+        "code": 75,
+        "secondaryLabel": "←",
+        "gap": 0.15
+      },
+      {
+        "id": "KP5",
+        "label": "5",
+        "code": 76
+      },
+      {
+        "id": "KP6",
+        "label": "6",
+        "code": 77,
+        "secondaryLabel": "→"
+      }
+    ],
+    [
+      {
+        "id": "LEFTSHIFT",
+        "label": "Shift",
+        "code": 42,
+        "w": 2.25
+      },
+      {
+        "id": "Z",
+        "label": "Z",
+        "code": 44
+      },
+      {
+        "id": "X",
+        "label": "X",
+        "code": 45
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "code": 46
+      },
+      {
+        "id": "V",
+        "label": "V",
+        "code": 47
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "code": 48
+      },
+      {
+        "id": "N",
+        "label": "N",
+        "code": 49
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "code": 50
+      },
+      {
+        "id": "COMMA",
+        "label": ",",
+        "code": 51,
+        "secondaryLabel": "<"
+      },
+      {
+        "id": "PERIOD",
+        "label": ".",
+        "code": 52,
+        "secondaryLabel": ">"
+      },
+      {
+        "id": "SLASH",
+        "label": "/",
+        "code": 53,
+        "secondaryLabel": "?"
+      },
+      {
+        "id": "RIGHTSHIFT",
+        "label": "Shift",
+        "code": 54,
+        "secondaryLabel": "Pause",
+        "actions": [
+          {
+            "id": "PAUSE",
+            "code": 119,
+            "label": "Right Shift / Pause"
+          }
+        ],
+        "w": 2.25
+      },
+      {
+        "id": "KP1",
+        "label": "1",
+        "code": 79,
+        "secondaryLabel": "End",
+        "gap": 0.15
+      },
+      {
+        "id": "KP2",
+        "label": "2",
+        "code": 80,
+        "secondaryLabel": "↓"
+      },
+      {
+        "id": "KP3",
+        "label": "3",
+        "code": 81,
+        "secondaryLabel": "PgDn"
+      },
+      {
+        "id": "KPENTER",
+        "label": "Enter",
+        "code": 96,
+        "h": 2
+      }
+    ],
+    [
+      {
+        "id": "LEFTCTRL",
+        "label": "Ctrl",
+        "code": 29
+      },
+      {
+        "id": "FN",
+        "label": "Fn",
+        "code": null
+      },
+      {
+        "id": "LEFTMETA",
+        "label": "Win",
+        "code": 125
+      },
+      {
+        "id": "LEFTALT",
+        "label": "Alt",
+        "code": 56,
+        "w": 1.25
+      },
+      {
+        "id": "SPACE",
+        "label": "",
+        "code": 57,
+        "w": 5
+      },
+      {
+        "id": "RIGHTALT",
+        "label": "Alt",
+        "code": 100,
+        "w": 1.25
+      },
+      {
+        "id": "RIGHTCTRL",
+        "label": "Ctrl",
+        "code": 97
+      },
+      {
+        "id": "LEFT",
+        "label": "←",
+        "code": 105
+      },
+      {
+        "id": "UP",
+        "label": "↑",
+        "code": 103,
+        "h": 0.5
+      },
+      {
+        "id": "DOWN",
+        "label": "↓",
+        "code": 108,
+        "x": 12.5,
+        "y": 0.5,
+        "h": 0.5
+      },
+      {
+        "id": "RIGHT",
+        "label": "→",
+        "code": 106
+      },
+      {
+        "id": "KP0",
+        "label": "0",
+        "code": 82,
+        "secondaryLabel": "Ins",
+        "gap": 0.15,
+        "w": 2
+      },
+      {
+        "id": "KPDOT",
+        "label": ".",
+        "code": 83,
+        "secondaryLabel": "Del"
+      }
+    ]
+  ]
+}

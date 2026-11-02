@@ -78,7 +78,7 @@ assert.strictEqual(B.keysymToCellId("comma"), "COMMA")
 assert.strictEqual(B.keysymToCellId("less"), "COMMA")   // shifted symbol, same cap
 assert.strictEqual(B.keysymToCellId("F12"), "F12")
 assert.strictEqual(B.keysymToCellId("KP_7"), "KP7")
-assert.strictEqual(B.keysymToCellId("XF86AudioMute"), null)
+assert.strictEqual(B.keysymToCellId("XF86AudioMute"), "MUTE")
 assert.strictEqual(B.keysymToCellId(""), null)
 
 // Kinds: only keys and keycodes belong on a board.

@@ -45,7 +45,9 @@ Item {
   }
 
   implicitWidth: boardUnits * unit
-  implicitHeight: placedRows.length * unit
+  implicitHeight: placedRows.reduce(function (height, row) {
+    return height + (row.height + row.gapAfter) * view.unit
+  }, 0)
 
   function isDown(code) {
     return code !== null && code !== undefined && !!view.pressed[code]
@@ -58,9 +60,11 @@ Item {
       model: view.placedRows
 
       Item {
+        id: rowItem
         required property var modelData
+        readonly property real rowHeight: modelData.height
         width: view.boardUnits * view.unit
-        height: view.unit
+        height: (modelData.height + modelData.gapAfter) * view.unit
 
         Repeater {
           model: modelData.placed
@@ -71,9 +75,9 @@ Item {
             required property var modelData
             active: !modelData.continued
             x: modelData.x * view.unit
-            y: 0
+            y: (modelData.cell.y || 0) * view.unit
             width: modelData.w * view.unit
-            height: (modelData.cell.h || 1) * view.unit
+            height: (modelData.cell.h || rowItem.rowHeight) * view.unit
 
             // Loader owns the loaded item's size. Keep an intermediate Item
             // so it cannot stretch the keycap across the gutter.
@@ -85,11 +89,12 @@ Item {
                 readonly property bool ledLit: isLed && !!view.ledState[cell.led]
                 readonly property bool isDead: !cell.led &&
                                               (cell.code === null || cell.code === undefined)
-                readonly property bool down: view.isDown(cell.code)
+                readonly property var codes: KM.cellCodes(cell)
+                readonly property bool down: codes.some(function (code) { return view.isDown(code) })
                 readonly property bool bound: !isDead && !isLed &&
-                                              !!view.bindings[cell.code]
+                                              codes.some(function (code) { return !!view.bindings[code] })
                 readonly property bool marked: !isDead && !isLed &&
-                                               !!view.marked[cell.code]
+                                               codes.some(function (code) { return !!view.marked[code] })
 
                 x: view.gutter / 2
                 y: view.gutter / 2
@@ -115,19 +120,39 @@ Item {
                   : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b,
                             isDead ? 0.12 : 0.22)
 
-                Text {
+                Column {
                   anchors.centerIn: parent
                   width: parent.width - 4
-                  horizontalAlignment: Text.AlignHCenter
-                  elide: Text.ElideRight
-                  text: keycap.cell.label !== undefined ? keycap.cell.label : keycap.cell.id
-                  font.family: Style.font.family
-                  font.pixelSize: Math.max(8, view.unit * 0.30)
-                  color: (keycap.down || keycap.ledLit)
+                  spacing: 0
+                  readonly property color labelColor: (keycap.down || keycap.ledLit)
                     ? Commons.Color.background
                     : keycap.isDead ? Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g,
                                        Commons.Color.foreground.b, 0.40)
                              : Commons.Color.foreground
+                  Text {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    fontSizeMode: Text.HorizontalFit
+                    minimumPixelSize: 7
+                    text: keycap.cell.label !== undefined ? keycap.cell.label : keycap.cell.id
+                    font.family: Style.font.family
+                    font.pixelSize: Math.max(8, Math.min(view.unit * 0.30, keycap.height * 0.52))
+                    color: parent.labelColor
+                  }
+                  Text {
+                    visible: text !== ""
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    fontSizeMode: Text.HorizontalFit
+                    minimumPixelSize: 6
+                    text: keycap.cell.secondaryLabel || ""
+                    font.family: Style.font.family
+                    font.pixelSize: Math.max(6, view.unit * 0.18)
+                    color: parent.labelColor
+                    opacity: 0.75
+                  }
                 }
 
                 // Hover shows the key's code and every bind on it. Hover only:

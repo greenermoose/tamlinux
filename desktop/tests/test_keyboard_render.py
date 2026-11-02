@@ -70,8 +70,32 @@ ShellRoot {
         board.pressed = ({})
         Qt.callLater(function() {
           report.released = !k.down && String(k.color) === idle
-          console.log("KEYBOARD_RENDER " + JSON.stringify(report))
-          Qt.quit()
+          if (board.layout.id !== "hp-15-f233wm-us") {
+            console.log("KEYBOARD_RENDER " + JSON.stringify(report)); Qt.quit(); return
+          }
+          function cap(id) { return keys.filter(function(item) { return item.cell.id === id })[0] }
+          var up = cap("UP"), down = cap("DOWN"), f6 = cap("F6")
+          var upPos = up.mapToItem(board, 0, 0), downPos = down.mapToItem(board, 0, 0)
+          report.splitArrows = Math.abs(upPos.x - downPos.x) < 0.01 &&
+            upPos.y + up.height < downPos.y && up.height < cap("LEFT").height
+          report.shortFunctionRow = f6.height < cap("A").height
+          board.pressed = ({103: true})
+          Qt.callLater(function() {
+            report.onlyUp = up.down && !down.down && keys.filter(function(item) { return item.down }).length === 1
+            board.pressed = ({108: true})
+            Qt.callLater(function() {
+              report.onlyDown = down.down && !up.down && keys.filter(function(item) { return item.down }).length === 1
+              board.pressed = ({113: true})
+              Qt.callLater(function() {
+                report.mediaAlias = f6.down && keys.filter(function(item) { return item.down }).length === 1
+                board.pressed = ({})
+                Qt.callLater(function() {
+                  report.mediaReleased = !f6.down
+                  console.log("KEYBOARD_RENDER " + JSON.stringify(report)); Qt.quit()
+                })
+              })
+            })
+          })
         })
       })
     }
@@ -118,6 +142,9 @@ class KeyboardRender(unittest.TestCase):
                 self.assertGreater(report["height"], 0, report)
                 for flag in ("sized", "gutters", "initiallyUp", "pressed", "onlyK", "released"):
                     self.assertTrue(report[flag], (flag, report))
+                if layout["id"] == "hp-15-f233wm-us":
+                    for flag in ("splitArrows", "shortFunctionRow", "onlyUp", "onlyDown", "mediaAlias", "mediaReleased"):
+                        self.assertTrue(report[flag], (flag, report))
 
 
 if __name__ == "__main__":

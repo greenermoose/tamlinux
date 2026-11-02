@@ -4,6 +4,12 @@ All notable changes to `fred.keyboard` in `tamlinux/desktop/plugins/fred.keyboar
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.4 - 2026-11-01
+
+- Add the US HP 15-f233wm reference layout, selected only for its exact system SKU and built-in PS/2 keyboard. Draw its compact function row, integrated numeric keypad, stacked half-height arrows, and secondary legends.
+- Highlight function-row media/brightness actions on the same physical key and include their shortcuts in lookup and search.
+- Update the independent keyboard development app without replacing the installed shell.
+
 ## 2.0.3 - 2026-11-01
 
 - Draw a bundled generic 104-key board when no field-observed layout matches. Before this, any keyboard other than the Lenovo Calliope showed an empty panel, because the OS-geometry fallback named a board but loaded no layout file. Found on slowhp during the 0.5.12 deployment.

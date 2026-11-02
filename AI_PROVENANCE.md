@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an HP notebook reference diagram with exact SKU matching, split arrows and media-key aliases, and updates the independent keyboard app. [Session](docs/ai/2026-11-01-hp-keyboard-layout.md).
+
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an independent keyboard development app so the widget can be tried without a desktop candidate. [Session](docs/ai/2026-11-01-keyboard-app-trial.md).
 
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) verifies the keyboard fallback offscreen, preserves keycap gutters and identifies the board actually drawn. [Session](docs/ai/2026-11-01-keyboard-render.md).

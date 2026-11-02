@@ -160,7 +160,13 @@ var KEYSYM_CELLS = {
   "kp_home": "KP7", "kp_up": "KP8", "kp_prior": "KP9",
   "super_l": "LEFTMETA", "super_r": "RIGHTMETA", "shift_l": "LEFTSHIFT",
   "shift_r": "RIGHTSHIFT", "control_l": "LEFTCTRL", "control_r": "RIGHTCTRL",
-  "alt_l": "LEFTALT", "alt_r": "RIGHTALT"
+  "alt_l": "LEFTALT", "alt_r": "RIGHTALT",
+  "help": "HELP", "xf86monbrightnessdown": "BRIGHTNESSDOWN",
+  "xf86monbrightnessup": "BRIGHTNESSUP", "xf86display": "DISPLAY",
+  "xf86audiomute": "MUTE", "xf86audiolowervolume": "VOLUMEDOWN",
+  "xf86audioraisevolume": "VOLUMEUP", "xf86audioprev": "PREVIOUSSONG",
+  "xf86audioplay": "PLAYPAUSE", "xf86audiopause": "PLAYPAUSE",
+  "xf86audionext": "NEXTSONG", "xf86wlan": "WLAN", "xf86rfkill": "RFKILL"
 }
 
 function keysymToCellId(keysym) {
@@ -495,6 +501,13 @@ function modifierBindCount(index, name) {
 // binds it is held in, since it never has a bind of its own; any other key
 // without binds says so, so hovering any key answers the question.
 function keyTooltip(index, cell, byId, byCode) {
+  var text = singleKeyTooltip(index, cell, byId, byCode)
+  for (var i = 0; i < ((cell && cell.actions) || []).length; i++)
+    text += "\n\n" + singleKeyTooltip(index, cell.actions[i], byId, byCode)
+  return text
+}
+
+function singleKeyTooltip(index, cell, byId, byCode) {
   if (!cell || cell.led) return ""
   var name = cellName(cell)
   if (cell.code === null || cell.code === undefined)

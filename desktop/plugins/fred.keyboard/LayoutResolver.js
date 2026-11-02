@@ -23,6 +23,7 @@
 // to the user rather than presenting a layout as if it were certain.
 var MATCH_USB_ID = "usb-id"          // vendor:product - unambiguous
 var MATCH_NAME = "name-pattern"      // device name matched a library entry
+var MATCH_SYSTEM = "system-sku"      // exact laptop SKU and built-in device
 var MATCH_OS_VENDOR = "os-vendor"    // an OS vendor geometry named the device
 var MATCH_OS_DEFAULT = "os-default"  // generic OS geometry, e.g. pc104
 var MATCH_FALLBACK = "fallback"      // nothing matched; last resort
@@ -59,10 +60,21 @@ function resolve(device, registry, osHas) {
     }
   }
 
+  // Laptop PS/2 ids are generic. Require the exact host SKU, vendor, bus
+  // and device name together; an external keyboard must not inherit it.
+  for (var s = 0; s < entries.length; s++) {
+    var sm = entries[s].match || {}
+    if (sm.systemVendor && sm.systemSku && sm.bus && sm.namePattern &&
+        norm(sm.systemVendor) === norm(device.systemVendor) &&
+        norm(sm.systemSku) === norm(device.systemSku) &&
+        norm(sm.bus) === norm(device.bus) && name === norm(sm.namePattern))
+      return result(entries[s], MATCH_SYSTEM, true, "built-in keyboard on the matched system SKU")
+  }
+
   // 2. Field-observed, matched on the device name.
   for (var j = 0; j < entries.length; j++) {
     var mm = entries[j].match || {}
-    if (mm.namePattern && name.indexOf(norm(mm.namePattern)) >= 0) {
+    if (!mm.systemSku && mm.namePattern && name.indexOf(norm(mm.namePattern)) >= 0) {
       return result(entries[j], MATCH_NAME, true,
                     "device name contains \"" + mm.namePattern + "\"")
     }
@@ -107,7 +119,7 @@ function result(entry, match, confident, why) {
   return {
     layoutId: entry.id,
     file: entry.file,
-    kind: "field-observed",
+    kind: entry.source || "field-observed",
     match: match,
     confident: confident,
     why: why
@@ -127,6 +139,7 @@ if (typeof module !== "undefined" && module.exports) {
     isExact: isExact,
     MATCH_USB_ID: MATCH_USB_ID,
     MATCH_NAME: MATCH_NAME,
+    MATCH_SYSTEM: MATCH_SYSTEM,
     MATCH_OS_VENDOR: MATCH_OS_VENDOR,
     MATCH_OS_DEFAULT: MATCH_OS_DEFAULT,
     MATCH_FALLBACK: MATCH_FALLBACK
