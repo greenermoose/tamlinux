@@ -66,7 +66,7 @@ elif name=='pgrep': sys.exit(0 if os.environ.get('TEST_EFFECT_RUNNING') and '-t'
 elif name=='pidwait': sys.exit(1)
 elif name=='pkill': pass
 elif name=='setsid': pass
-elif name=='busctl': print('t 5000000')
+elif name=='busctl': print(os.environ.get('TEST_CAN_HIBERNATE','s "yes"') if 'CanSuspendThenHibernate' in args else 't 5000000')
 elif name=='systemctl': pass
 elif name=='logger': sys.stdin.read()
 elif name=='xdg-terminal-exec': print('foot.desktop')
@@ -120,6 +120,8 @@ elif name=='xdg-terminal-exec': print('foot.desktop')
         self.assertEqual(self.run_command('tam-toggle-idle','allow-idle').returncode,0)
         self.assertEqual(self.run_command('suspend-unless-stay-awake').returncode,0)
         self.assertEqual(self.calls('systemctl')[-1]['args'],['suspend-then-hibernate'])
+        self.assertEqual(self.run_command('suspend-unless-stay-awake',TEST_CAN_HIBERNATE='s "na"').returncode,0)
+        self.assertEqual(self.calls('systemctl')[-1]['args'],['suspend'])
         explicit=self.temp/'explicit'; explicit.touch()
         before=len(self.calls('systemctl'))
         self.run_command('suspend-unless-stay-awake',TAMLINUX_STAY_AWAKE_FILE=str(explicit))

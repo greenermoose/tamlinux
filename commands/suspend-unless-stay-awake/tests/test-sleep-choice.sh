@@ -6,15 +6,15 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/state/tamlinux"
 cat > "$work/bin/busctl" <<'S'
-#!/bin/bash
-[[ ${CAN:-} == fail ]] && exit 1
+#!/bin/sh
+[ "${CAN:-}" = fail ] && exit 1
 printf 's "%s"\n' "$CAN"
 S
 cat > "$work/bin/systemctl" <<'S'
-#!/bin/bash
+#!/bin/sh
 printf '%s\n' "$*" > "$CALLED"
 S
-printf '#!/bin/bash\ncat >/dev/null\n' > "$work/bin/logger"
+printf '#!/bin/sh\ncat >/dev/null\n' > "$work/bin/logger"
 chmod +x "$work/bin/"*
 failed=0
 check() {  # can-answer stay-awake expected
