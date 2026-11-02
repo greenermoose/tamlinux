@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an independent keyboard development app so the widget can be tried without a desktop candidate. [Session](docs/ai/2026-11-01-keyboard-app-trial.md).
+
 2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) verifies the keyboard fallback offscreen, preserves keycap gutters and identifies the board actually drawn. [Session](docs/ai/2026-11-01-keyboard-render.md).
 
 2026-11-01: Fred releases **0.5.12**, the final **Blue Sparkler** cultivar. Claude Code `2.1.316` (`claude-opus-5-5`) runs the scripted release and writes its records. [Release session](docs/ai/2026-11-01-release-0.5.12.md).

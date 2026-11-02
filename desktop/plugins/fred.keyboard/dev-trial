@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Install the keyboard alone from an exact commit; never activate the shell."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import shlex
+import shutil
+import subprocess
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[2]
+HOME = Path.home()
+DEV = HOME / ".local/dev"
+BUILDS = DEV / "share/tamlinux/dev-trials/keyboard"
+STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "tamlinux/dev-trials"
+RECORD = STATE / "keyboard.json"
+LAUNCHER = DEV / "bin/tam-keyboard"
+DESKTOP = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "applications/tamlinux-keyboard-dev.desktop"
+PLUGIN = Path("desktop/plugins/fred.keyboard")
+
+
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, text=True, **kwargs)
+
+
+def check(build: Path, quickshell: str):
+    env = dict(os.environ, QML_IMPORT_PATH=str(build / "desktop/shell/modules"),
+               TAMLINUX_KEYBOARD_CHECK="1")
+    result = subprocess.run([quickshell, "--path", str(build / PLUGIN / "dev-trial.qml")],
+                            env=env, capture_output=True, timeout=15, text=True)
+    output = result.stdout + result.stderr
+    if result.returncode:
+        raise RuntimeError("keyboard app failed to start:\n" + output)
+    reports = [line.split("KEYBOARD_APP_CHECK ", 1)[1]
+               for line in output.splitlines() if "KEYBOARD_APP_CHECK " in line]
+    if not reports:
+        raise RuntimeError("keyboard app did not load:\n" + output)
+    report = json.loads(reports[-1])
+    if (report["rows"] != 6 or report["error"] or not report["device"]
+            or report["bindings"] < 1 or "ERROR:" in output
+            or "ReferenceError" in output or "TypeError" in output):
+        raise RuntimeError("keyboard app check failed:\n" + output)
+    print(json.dumps(report, indent=2))
+
+
+def install(revision: str):
+    rev = run("git", "-C", str(REPO), "rev-parse", "--verify", revision + "^{commit}",
+              capture_output=True).stdout.strip()
+    quickshell = shutil.which("quickshell")
+    if not quickshell:
+        raise RuntimeError("quickshell is not installed")
+    quickshell = str(Path(quickshell).resolve())
+    build = BUILDS / rev
+    BUILDS.mkdir(parents=True, exist_ok=True)
+    if not build.exists():
+        with tempfile.TemporaryDirectory(prefix=".build-", dir=BUILDS) as temp:
+            stage = Path(temp)
+            archive = subprocess.run(
+                ["git", "-C", str(REPO), "archive", rev, str(PLUGIN),
+                 "desktop/shell/modules", "desktop/widget-proof",
+                 "desktop/tests/test_keyboard_render.py"],
+                stdout=subprocess.PIPE, check=True).stdout
+            subprocess.run(["tar", "-x", "-C", str(stage)], input=archive, check=True)
+            run("python3", "-B", "-m", "unittest", "discover", "-s",
+                str(stage / "desktop/tests"), "-p", "test_keyboard_render.py", "-q")
+            check(stage, quickshell)
+            # Move the exact archive into place only after both checks pass.
+            stage.rename(build)
+    else:
+        check(build, quickshell)
+
+    STATE.mkdir(parents=True, exist_ok=True)
+    if RECORD.exists():
+        previous = json.loads(RECORD.read_text())["previous"]
+    else:
+        previous = {}
+        for index, target in enumerate((LAUNCHER, DESKTOP)):
+            if target.exists() or target.is_symlink():
+                saved = STATE / f"keyboard.previous.{index}"
+                if saved.exists() or saved.is_symlink():
+                    raise RuntimeError(f"inspect existing backup before installing: {saved}")
+                previous[str(target)] = str(saved)
+        for target, saved in previous.items():
+            Path(target).rename(saved)
+
+    version = json.loads((build / PLUGIN / "manifest.json").read_text())["version"]
+    LAUNCHER.parent.mkdir(parents=True, exist_ok=True)
+    q = shlex.quote
+    LAUNCHER.write_text(
+        "#!/bin/bash\nset -euo pipefail\n"
+        f"if [[ ${{1:-}} == --version ]]; then echo {q(f'tam-keyboard {version} (dev {rev[:12]})')}; exit 0; fi\n"
+        f"if [[ ${{1:-}} == --uninstall ]]; then exec python3 {q(str(build / PLUGIN / 'dev-trial'))} uninstall; fi\n"
+        f"export QML_IMPORT_PATH={q(str(build / 'desktop/shell/modules'))}\n"
+        f"exec {q(quickshell)} --no-duplicate --path {q(str(build / PLUGIN / 'dev-trial.qml'))}\n"
+    )
+    LAUNCHER.chmod(0o755)
+    DESKTOP.parent.mkdir(parents=True, exist_ok=True)
+    escaped = str(LAUNCHER).replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$")
+    DESKTOP.write_text(
+        "[Desktop Entry]\nType=Application\nName=Keyboard (Development)\n"
+        "Comment=Test keys and inspect shortcuts on a keyboard diagram\n"
+        f'Exec="{escaped}"\nIcon=input-keyboard\nTerminal=false\nCategories=Utility;\n'
+    )
+    record = {"app": "keyboard", "revision": rev, "built": str(build),
+              "quickshell": quickshell, "installed": [str(LAUNCHER), str(DESKTOP)],
+              "previous": previous, "restore": str(LAUNCHER) + " --uninstall"}
+    RECORD.write_text(json.dumps(record, indent=2) + "\n")
+    print(f"Installed Keyboard (Development), {version} at {rev[:12]}\nLaunch: {LAUNCHER}\nRemove: {LAUNCHER} --uninstall")
+
+
+def uninstall():
+    if not RECORD.exists():
+        raise RuntimeError("no keyboard trial installed")
+    record = json.loads(RECORD.read_text())
+    for path in record["installed"]:
+        if path not in (str(LAUNCHER), str(DESKTOP)):
+            raise RuntimeError("unrecognized installed path; inspect the trial record")
+    for path in record["installed"]:
+        Path(path).unlink(missing_ok=True)
+        if path in record["previous"]:
+            Path(record["previous"][path]).rename(path)
+    RECORD.unlink()
+    for build in BUILDS.iterdir():
+        if build.is_dir() and not build.is_symlink():
+            shutil.rmtree(build)
+    BUILDS.rmdir()
+    print("Removed the independent keyboard trial.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=("install", "uninstall", "status", "check"))
+    parser.add_argument("revision", nargs="?", default="HEAD")
+    args = parser.parse_args()
+    if args.action == "install":
+        install(args.revision)
+    elif args.action == "uninstall":
+        uninstall()
+    elif args.action == "status":
+        print(RECORD.read_text() if RECORD.exists() else "Keyboard trial not installed.")
+    else:
+        check(REPO, shutil.which("quickshell") or "quickshell")
+
+
+if __name__ == "__main__":
+    main()

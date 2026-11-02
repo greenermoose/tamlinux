@@ -131,6 +131,37 @@ identity, and treating capture mode as a deliberate, visible toggle.
 
 ## Development
 
+### Independent keyboard trial
+
+To try this widget without rebuilding or activating the desktop, install its
+standalone development app from an exact committed revision:
+
+```bash
+python3 desktop/plugins/fred.keyboard/dev-trial install HEAD
+```
+
+Open **Keyboard (Development)** in the application launcher, or run
+`~/.local/dev/bin/tam-keyboard`. It runs the same widget in its own Quickshell
+instance, reads the current keyboard and Hyprland shortcuts, and exits when
+its panel closes. The packaged bar widget stays as it is. Capture mode starts
+off and is scoped to the trial's focused window. An unknown keyboard uses the
+bundled generic board; its exact key positions are not inferred.
+
+The installer archives the selected commit and checks actual key rendering,
+press/release highlighting, device detection and shortcut loading before
+installing the launcher. Builds live under `~/.local/dev/share/tamlinux/dev-trials/keyboard/`;
+the record is `~/.local/state/tamlinux/dev-trials/keyboard.json`. Inspect it
+with `python3 desktop/plugins/fred.keyboard/dev-trial status`. After closing
+the trial, remove it with:
+
+```bash
+~/.local/dev/bin/tam-keyboard --uninstall
+```
+
+Removal restores any launcher or desktop entry displaced by the first
+installation. The standalone trial is for development feedback; it does not
+advance the Tamlinux package's stage.
+
 Tests run with Node and need nothing else:
 
 ```bash
