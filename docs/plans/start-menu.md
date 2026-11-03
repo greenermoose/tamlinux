@@ -224,3 +224,12 @@ Next: include these commits in the recorded 0.5.10 assembly, then request
 packaged Test and physical acceptance. No assembly was prepared or activated
 by this implementation slice. Existing Foot windows require restart for a
 new text size; native app appearance still needs physical review.
+
+## Tamlinux 0.6 Evolution (D220)
+
+Decision D220 unified the Go menu invocation and desktop mouse interaction:
+- The top-left Go icon (`tamlinux.menu`) is removed from the default bar layout; `fred.workspaces` becomes the leftmost widget.
+- `Meta + Right Click` (`META + mouse:273`), right-clicking an empty topbar area, and single right-clicking the empty desktop open the Go menu (`root`) anchored near the pointer.
+- Right double-clicking the empty desktop remains the theme picker (`theme`), while left double-clicking opens `background`.
+- Once the menu is open, only the left mouse button selects items in it (`acceptedButtons: Qt.LeftButton`).
+- Selecting `Start` from `Go` allows `Backspace`/`Left` to navigate back to `Go`.

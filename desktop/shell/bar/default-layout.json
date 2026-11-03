@@ -2,7 +2,6 @@
   "centerAnchor": "fred.clock",
   "layout": {
     "left": [
-      { "id": "tamlinux.menu" },
       { "id": "fred.workspaces" }
     ],
     "center": [

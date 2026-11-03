@@ -42,7 +42,9 @@ Item {
   readonly property alias visibleModel: displayModel
   readonly property alias menuWindow: panel
 
-  function startAt(anchor) {
+  property string pendingPointerMenu: "start"
+
+  function openAt(menuId, anchor) {
     if (root.dmenuActive && root.requestActive) root.finishRequest(null)
     panel.cardTop = -1
     panel.maxRowsHeight = -1
@@ -62,14 +64,24 @@ Item {
       }
     }
     startSession = true
-    root.openExistingMenu("start")
+    var target = root.resolveRoute(menuId || "root")
+    root.openExistingMenu(target)
   }
 
-  function startAtPointer() {
+  function startAt(anchor) {
+    root.openAt("start", anchor)
+  }
+
+  function openAtPointer(menuId) {
+    pendingPointerMenu = menuId || "root"
     startPending = true
     startGeneration++
     if (!compositor || !compositor.requestPointerPosition(startGeneration))
       root.finishPointer(1, "{}", startGeneration)
+  }
+
+  function startAtPointer() {
+    root.openAtPointer("start")
   }
 
   Connections {
@@ -87,7 +99,7 @@ Item {
       var screen = code === 0 ? StartModel.screenAt(Quickshell.screens, point.x, point.y) : null
       if (screen) anchor = {output: screen.name, x: point.x - screen.x, y: point.y - screen.y}
     } catch (e) {}
-    root.startAt(anchor)
+    root.openAt(root.pendingPointerMenu || "root", anchor)
   }
 
   Connections {
@@ -110,8 +122,14 @@ Item {
     if (payload.mode === "select" || payload.mode === "input") {
       root.openDmenu(payload)
     } else {
-      if ((payload.initialMenu || payload.menu) === "start" && payload.anchor) root.startAt(payload.anchor)
-      else root.openRoute(payload.initialMenu || payload.menu || "root")
+      var target = payload.initialMenu || payload.menu || "root"
+      if (payload.pointer) {
+        root.openAtPointer(target)
+      } else if (payload.anchor) {
+        root.openAt(target, payload.anchor)
+      } else {
+        root.openRoute(target)
+      }
     }
   }
 
@@ -135,6 +153,8 @@ Item {
 
   function toggle(route) {
     if (root.opened || root.startPending) root.cancel()
+    else if (route === "pointer" || route === "pointer-root") root.openAtPointer("root")
+    else if (route === "start") root.startAtPointer()
     else root.openRoute(route || "root")
   }
 
@@ -863,7 +883,7 @@ Item {
   }
 
   function goBack() {
-    if (root.activeMenu === "root" || root.startView) return false
+    if (root.activeMenu === "root" || (root.startView && root.navStack.length === 0)) return false
 
     if (root.navStack.length > 0) {
       var previous = root.navStack[root.navStack.length - 1]
@@ -1563,6 +1583,7 @@ Item {
               MouseArea {
                 id: mouseArea
                 anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onEntered: root.selectFromPointer(row.index, row, {
@@ -1572,7 +1593,8 @@ Item {
                 onPositionChanged: function(mouse) {
                   root.selectFromPointer(row.index, row, mouse)
                 }
-                onClicked: {
+                onClicked: function(mouse) {
+                  if (mouse.button !== Qt.LeftButton) return
                   root.cursorActive = true
                   root.selectedIndex = row.index
                   root.activateIndex(row.index, true)

@@ -57,6 +57,13 @@ Item {
     if (root.menu) root.menu.openRoute(route)
   }
 
+  function openAt(menuId, anchor) {
+    if (root.menu) {
+      if (root.menu.openAt) root.menu.openAt(menuId, anchor)
+      else root.menu.openRoute(menuId)
+    }
+  }
+
   Process {
     environment: Util.hostEnvironment()
     id: readlinkProc
@@ -175,12 +182,38 @@ Item {
 
       }
 
+      Timer {
+        id: rightClickTimer
+        interval: 220
+        repeat: false
+        property real clickX: 0
+        property real clickY: 0
+        onTriggered: {
+          var scr = panel.screen ? panel.screen.name : ""
+          root.openAt("root", {output: scr, x: clickX, y: clickY, edge: "pointer"})
+        }
+      }
+
       MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onClicked: function(mouse) {
+          if (mouse.button === Qt.RightButton) {
+            rightClickTimer.clickX = mouse.x
+            rightClickTimer.clickY = mouse.y
+            rightClickTimer.restart()
+            mouse.accepted = true
+          }
+        }
         onDoubleClicked: function(mouse) {
-          root.openRoute(mouse.button === Qt.RightButton ? "theme" : "background")
-          mouse.accepted = true
+          if (mouse.button === Qt.RightButton) {
+            rightClickTimer.stop()
+            root.openRoute("theme")
+            mouse.accepted = true
+          } else if (mouse.button === Qt.LeftButton) {
+            root.openRoute("background")
+            mouse.accepted = true
+          }
         }
       }
     }

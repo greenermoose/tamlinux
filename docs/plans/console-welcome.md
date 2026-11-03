@@ -58,5 +58,28 @@ Avoid a background service or network dependency for display.
 - Before any actual login change, record the previous Home Manager generation
   and a Snapper snapshot; obtain approval for the concrete privileged step.
   Test and Run of an exact assembly require their respective stage words.
+
+## Symbol Sizes (D199)
+
+Fred designed three ASCII forms for the Tamlinux tamarack symbol (D199):
+
+```text
+  /\
+ /\/\  Small
+  ||  
+
+  /\
+ /\/\
+///\\\ Medium (used in console welcome)
+  || 
+
+   /\
+  /\/\
+ ///\\\
+///\/\\\  Large
+/  ||  \
+   ||   
+```
+
 - Fred verifies a physical console login and recovery after the candidate is
   installed; automated rendering does not establish that the console works.

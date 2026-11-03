@@ -66,7 +66,7 @@ PanelWindow {
     onTapped: function(point) {
       if (!win.hidden && !api.occupiedAt(point.position.x, point.position.y)) {
         win.tooltipText = ""
-        api.openStart(point.position.x)
+        api.openGoAt(point.position.x)
       }
     }
   }
