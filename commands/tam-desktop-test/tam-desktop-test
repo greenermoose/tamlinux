@@ -39,11 +39,6 @@ def find_battery_executable() -> Path | None:
     if sys_battery.is_file():
         return sys_battery
 
-    # 5. Local development checkout fallback
-    dev_battery = Path("/home/fred/Code/tamlinux/tamlinux/desktop/test-battery")
-    if dev_battery.is_file() and os.access(dev_battery, os.X_OK):
-        return dev_battery
-
     return None
 
 

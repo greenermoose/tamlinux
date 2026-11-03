@@ -60,7 +60,6 @@ except ImportError:
             trigger_emergency_stop,
         )
 
-BENIGN_MESSAGES_DIR = Path("/home/fred/Code/tamlinux/improvements-fred-tamlinux/benign-messages")
 
 
 def hypr_dispatch(lua_expr: str) -> None:

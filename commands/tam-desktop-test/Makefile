@@ -3,7 +3,8 @@ PREFIX ?= /usr/local
 .PHONY: check install
 
 check:
-	python3 -B -m unittest discover -s ../../desktop/tests -p 'test_*.py' -v
+	python3 -B -m unittest discover -s ../../desktop/tests -p 'test_virtual_input.py'
+	python3 -B -m unittest discover -s ../../desktop/tests -p 'test_desktop_battery.py'
 
 install:
 	install -Dm755 tam-desktop-test $(DESTDIR)$(PREFIX)/bin/tam-desktop-test

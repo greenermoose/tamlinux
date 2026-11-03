@@ -54,10 +54,12 @@ class TestDesktopTestBattery(unittest.TestCase):
         runner_1x = DesktopTestRunner(speed=1.0, output_dir=self.out_dir, dry_run=True)
         self.assertAlmostEqual(runner_1x.step_pace(), 0.10, places=2)
         self.assertAlmostEqual(runner_1x.ws_pace(), 0.50, places=2)
+        runner_1x.telemetry.close()
 
         runner_2x = DesktopTestRunner(speed=2.0, output_dir=self.out_dir, dry_run=True)
         self.assertAlmostEqual(runner_2x.step_pace(), 0.05, places=2)
         self.assertAlmostEqual(runner_2x.ws_pace(), 0.25, places=2)
+        runner_2x.telemetry.close()
 
     def test_runner_dry_run_execution(self):
         runner = DesktopTestRunner(
