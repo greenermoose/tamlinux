@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""tam-desktop-test — Physical Desktop Test Battery CLI for Tamlinux.
+
+Usage:
+  tam-desktop-test [--speed <N>] [--phases <list>] [--workspace <N>]
+  tam-desktop-test --stop
+  tam-desktop-test --dry-run
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def find_battery_executable() -> Path | None:
+    # 1. TAMLINUX_DESKTOP_TEST override
+    if os.environ.get("TAMLINUX_DESKTOP_TEST"):
+        p = Path(os.environ["TAMLINUX_DESKTOP_TEST"]).resolve()
+        if p.is_file():
+            return p
+
+    # 2. Checkout relative path: ../../desktop/test-battery
+    self_dir = Path(__file__).resolve().parent
+    repo_battery = (self_dir.parent.parent / "desktop/test-battery").resolve()
+    if repo_battery.is_file() and os.access(repo_battery, os.X_OK):
+        return repo_battery
+
+    # 3. Installed desktop directory
+    data_home = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local/share"))
+    installed_battery = (data_home / "tamlinux/desktop/test-battery").resolve()
+    if installed_battery.is_file():
+        return installed_battery
+
+    # 4. System / Nix store path relative to binary
+    sys_battery = (self_dir.parent / "share/tamlinux/desktop/test-battery").resolve()
+    if sys_battery.is_file():
+        return sys_battery
+
+    # 5. Local development checkout fallback
+    dev_battery = Path("/home/fred/Code/tamlinux/tamlinux/desktop/test-battery")
+    if dev_battery.is_file() and os.access(dev_battery, os.X_OK):
+        return dev_battery
+
+    return None
+
+
+def main() -> int:
+    battery = find_battery_executable()
+    if not battery:
+        sys.stderr.write("tam-desktop-test: could not find 'test-battery' executable\n")
+        return 1
+
+    try:
+        proc = subprocess.run([str(battery), *sys.argv[1:]])
+        return proc.returncode
+    except KeyboardInterrupt:
+        return 130
+
+
+if __name__ == "__main__":
+    sys.exit(main())

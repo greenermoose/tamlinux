@@ -1244,6 +1244,15 @@ var entries = [
     "mnemonic": "Use ESCAPE for system menu."
   },
   {
+    "mask": 65,
+    "key": "ESCAPE",
+    "dispatcher": "exec",
+    "arg": "tam-desktop-test --stop",
+    "action": "Stop automated desktop test immediately.",
+    "why": "The emergency stop chord is held permanently in reserve to halt any automated workstation testing immediately.",
+    "mnemonic": "Use Meta + Shift + Escape to emergency stop automated desktop tests."
+  },
+  {
     "mask": 0,
     "key": "XF86PowerOff",
     "dispatcher": "exec",

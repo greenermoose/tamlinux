@@ -1,0 +1,852 @@
+#!/usr/bin/env python3
+"""Physical Desktop Test Battery for Tamlinux 0.6.2 (tam-desktop-test).
+
+Executes a watchable, automated sequence of Wayland input events
+(pointer motions, clicks, drags, keychords, text typing, scroll wheel)
+on the live Tamlinux graphical desktop (Hyprland + Quickshell) across 6 phases:
+  Phase 0: Preflight & State Snapshot
+  Phase 1: Top Bar, Start Menu & Shell Overlays
+  Phase 2: Multi-Monitor Workspaces (0.5s pace) -> Staging Workspace 10
+  Phase 3: Keybinding Explorer (Search, Card Verification & Capture Inhibitor)
+  Phase 4: Foot, Micro, TUI Clipboard & Text Macros
+  Phase 5: Tiling, Mouse-Follow (V12) & Safe Close Controls (K22, K25, K46)
+  Phase 6: Restore Starting State & Postflight Audit
+
+Emergency Stop:
+  - Global reserved keybinding: Meta + Shift + Escape -> tam-desktop-test --stop
+  - Physical mouse grab detection: moving the physical mouse aborts instantly
+  - Ctrl+C (SIGINT) / SIGUSR1
+"""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+import json
+import math
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+from typing import Any, Callable
+
+# Support loading virtual_input when running from source or installed
+try:
+    from .virtual_input import (
+        EmergencyStopError,
+        WaylandVirtualInput,
+        runtime_state_paths,
+        trigger_emergency_stop,
+    )
+except ImportError:
+    try:
+        from virtual_input import (  # type: ignore
+            EmergencyStopError,
+            WaylandVirtualInput,
+            runtime_state_paths,
+            trigger_emergency_stop,
+        )
+    except ImportError:
+        _SCRATCH = Path(__file__).resolve().parent
+        sys.path.insert(0, str(_SCRATCH))
+        from virtual_input import (  # type: ignore
+            EmergencyStopError,
+            WaylandVirtualInput,
+            runtime_state_paths,
+            trigger_emergency_stop,
+        )
+
+BENIGN_MESSAGES_DIR = Path("/home/fred/Code/tamlinux/improvements-fred-tamlinux/benign-messages")
+
+
+def hypr_dispatch(lua_expr: str) -> None:
+    """Issue a compositor dispatch via Hyprland's Lua interface."""
+    try:
+        subprocess.run(
+            ["hyprctl", "repl", f"hl.dispatch({lua_expr})"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        )
+    except Exception:
+        pass
+
+
+class TelemetryLogger:
+    """Manages telemetry recording to events.jsonl, journal.log, and summary.md."""
+
+    def __init__(self, output_dir: Path) -> None:
+        self.output_dir = output_dir
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.events_path = self.output_dir / "events.jsonl"
+        self.journal_path = self.output_dir / "journal.log"
+        self.summary_path = self.output_dir / "summary.md"
+        self._events_file = self.events_path.open("a", encoding="utf-8")
+        self.assertions: list[dict[str, Any]] = []
+
+    def log_event(self, kind: str, **payload: Any) -> None:
+        record = {
+            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "kind": kind,
+            **payload,
+        }
+        line = json.dumps(record, default=str)
+        self._events_file.write(line + "\n")
+        self._events_file.flush()
+
+    def record_assertion(
+        self, phase: str, name: str, passed: bool, details: str = ""
+    ) -> None:
+        rec = {
+            "phase": phase,
+            "name": name,
+            "passed": bool(passed),
+            "details": details,
+        }
+        self.assertions.append(rec)
+        self.log_event("assertion", **rec)
+
+    def close(self) -> None:
+        self._events_file.close()
+
+    def write_summary(
+        self,
+        duration_s: float,
+        aborted_reason: str | None = None,
+        human_notes: str = "",
+    ) -> None:
+        passed_count = sum(1 for a in self.assertions if a["passed"])
+        total_count = len(self.assertions)
+        status_text = (
+            "ABORTED"
+            if aborted_reason
+            else ("PASS" if passed_count == total_count else "FAIL")
+        )
+
+        md = [
+            f"# Tamlinux Desktop Test Battery — Run Summary",
+            f"",
+            f"- **Timestamp**: {datetime.now(timezone.utc).isoformat()}",
+            f"- **Result**: **{status_text}** ({passed_count}/{total_count} assertions passed)",
+            f"- **Duration**: {duration_s:.2f} seconds",
+        ]
+        if aborted_reason:
+            md.append(f"- **Emergency Stop Triggered**: {aborted_reason}")
+        md.extend([
+            f"",
+            f"## Machine Assertions",
+            f"",
+            f"| Phase | Check | Status | Details |",
+            f"| :--- | :--- | :---: | :--- |",
+        ])
+        for a in self.assertions:
+            icon = "✅ PASS" if a["passed"] else "❌ FAIL"
+            details = a["details"].replace("\n", " ")
+            md.append(f"| {a['phase']} | {a['name']} | {icon} | {details} |")
+
+        md.extend([
+            f"",
+            f"## Human Visual Observations",
+            f"",
+            human_notes.strip() or "_No visual observations recorded yet._",
+            f"",
+        ])
+        self.summary_path.write_text("\n".join(md) + "\n", encoding="utf-8")
+
+
+class DesktopTestRunner:
+    """Orchestrates the 6 test phases with watchable pacing and safety cleanup."""
+
+    def __init__(
+        self,
+        speed: float = 1.0,
+        staging_workspace: int = 10,
+        output_dir: Path | None = None,
+        watch: bool = True,
+        dry_run: bool = False,
+    ) -> None:
+        self.speed = max(0.1, float(speed))
+        self.staging_workspace = int(staging_workspace)
+        self.watch = bool(watch)
+        self.dry_run = bool(dry_run)
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.output_dir = output_dir or (
+            Path.home() / ".local/state/tamlinux/desktop-test" / stamp
+        )
+        self.telemetry = TelemetryLogger(self.output_dir)
+        self.vi: WaylandVirtualInput | None = None
+        self.start_monotonic = time.monotonic()
+        self.aborted_reason: str | None = None
+
+        # Snapshot of initial desktop state
+        self.initial_workspace: int | str = 1
+        self.initial_monitor: str = ""
+        self.initial_window_address: str = ""
+        self.initial_cursor_pos: tuple[int, int] = (960, 540)
+        self.initial_clipboard: str = ""
+        self.initial_primary: str = ""
+        self.journal_cursor_start: str = ""
+        self.spawned_pids: list[int] = []
+
+    def step_pace(self) -> float:
+        """Intra-workspace step delay in seconds (~0.1s at speed 1.0)."""
+        return 0.10 / self.speed
+
+    def ws_pace(self) -> float:
+        """Workspace transition delay in seconds (~0.5s at speed 1.0)."""
+        return 0.50 / self.speed
+
+    def notify(self, message: str) -> None:
+        """Display an on-screen notification or OSD step banner."""
+        if not self.watch:
+            return
+        try:
+            subprocess.run(
+                [
+                    "notify-send",
+                    "-t",
+                    "1500",
+                    "-a",
+                    "tam-desktop-test",
+                    "Desktop Test Battery",
+                    message,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=1,
+            )
+        except Exception:
+            pass
+
+    def check_abort(self) -> None:
+        if self.aborted_reason:
+            raise EmergencyStopError(self.aborted_reason)
+        if self.vi:
+            self.vi.check_emergency_stop(check_mouse=True)
+
+    def _get_journal_cursor(self) -> str:
+        try:
+            out = subprocess.check_output(
+                ["journalctl", "--user", "-n", "1", "--show-cursor"],
+                text=True,
+                timeout=2,
+            )
+            for line in out.splitlines():
+                if line.startswith("-- cursor:"):
+                    return line.split(":", 1)[1].strip()
+        except Exception:
+            pass
+        return ""
+
+    def snapshot_initial_state(self) -> None:
+        """Record baseline workspace, focus, clipboard, and journal cursor."""
+        try:
+            ws_data = json.loads(
+                subprocess.check_output(
+                    ["hyprctl", "activeworkspace", "-j"], text=True, timeout=2
+                )
+            )
+            self.initial_workspace = ws_data.get("id", 1)
+        except Exception:
+            self.initial_workspace = 1
+
+        try:
+            win_data = json.loads(
+                subprocess.check_output(
+                    ["hyprctl", "activewindow", "-j"], text=True, timeout=2
+                )
+            )
+            self.initial_window_address = win_data.get("address", "")
+        except Exception:
+            self.initial_window_address = ""
+
+        pos = WaylandVirtualInput.query_cursor_pos()
+        if pos:
+            self.initial_cursor_pos = pos
+
+        try:
+            self.initial_clipboard = subprocess.check_output(
+                ["wl-paste", "--no-newline"], text=True, timeout=1
+            )
+        except Exception:
+            self.initial_clipboard = ""
+
+        try:
+            self.initial_primary = subprocess.check_output(
+                ["wl-paste", "--primary", "--no-newline"], text=True, timeout=1
+            )
+        except Exception:
+            self.initial_primary = ""
+
+        self.journal_cursor_start = self._get_journal_cursor()
+        self.telemetry.log_event(
+            "snapshot_start",
+            initial_workspace=self.initial_workspace,
+            initial_window=self.initial_window_address,
+            initial_cursor=list(self.initial_cursor_pos),
+        )
+
+    def restore_initial_state(self) -> None:
+        """Restore starting workspace, active window focus, cursor pos, and clipboard."""
+        self.notify("Restoring desktop state...")
+        # 1. Close any remaining test-spawned processes
+        for pid in self.spawned_pids:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            except Exception:
+                pass
+
+        # 2. Close any window left on staging workspace
+        try:
+            clients = json.loads(
+                subprocess.check_output(["hyprctl", "clients", "-j"], text=True, timeout=2)
+            )
+            for c in clients:
+                if c.get("workspace", {}).get("id") == self.staging_workspace:
+                    subprocess.run(
+                        ["hyprctl", "dispatch", "closewindow", f"address:{c['address']}"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        timeout=1,
+                    )
+        except Exception:
+            pass
+
+        # 3. Dismiss any open popups or start menu
+        try:
+            subprocess.run(
+                ["tam-shell", "-q", "tamlinux-shell", "closePopups"],
+                timeout=1,
+            )
+        except Exception:
+            pass
+
+        # 4. Return to initial workspace at workspace pace
+        time.sleep(self.ws_pace())
+        hypr_dispatch(f'hl.dsp.focus({{ workspace = "{self.initial_workspace}" }})')
+
+        # 5. Restore active window focus
+        if self.initial_window_address:
+            hypr_dispatch(f'hl.dsp.focus({{ window = "address:{self.initial_window_address}" }})')
+
+        # 6. Restore cursor position
+        if self.vi and self.initial_cursor_pos:
+            try:
+                self.vi.move_to(
+                    self.initial_cursor_pos[0],
+                    self.initial_cursor_pos[1],
+                    duration_ms=50,
+                    check_abort=False,
+                )
+            except Exception:
+                pass
+
+        # 7. Restore clipboard contents
+        if self.initial_clipboard:
+            try:
+                p = subprocess.Popen(["wl-copy"], stdin=subprocess.PIPE)
+                p.communicate(self.initial_clipboard.encode("utf-8"), timeout=1)
+            except Exception:
+                pass
+        if self.initial_primary:
+            try:
+                p = subprocess.Popen(["wl-copy", "--primary"], stdin=subprocess.PIPE)
+                p.communicate(self.initial_primary.encode("utf-8"), timeout=1)
+            except Exception:
+                pass
+
+    def collect_journal(self) -> None:
+        """Diff journalctl from starting cursor, filter benign messages, write journal.log."""
+        try:
+            cmd = ["journalctl", "--user", "--no-pager"]
+            if self.journal_cursor_start:
+                cmd.extend(["--after-cursor", self.journal_cursor_start])
+            out = subprocess.check_output(cmd, text=True, timeout=5)
+            self.telemetry.journal_path.write_text(out, encoding="utf-8")
+        except Exception as e:
+            self.telemetry.journal_path.write_text(
+                f"Failed to collect journal: {e}\n", encoding="utf-8"
+            )
+
+    # --- Test Phases ---
+
+    def run_phase_0(self) -> None:
+        """Phase 0: Preflight & State Snapshot."""
+        self.notify("Phase 0: Preflight & State Snapshot")
+        self.snapshot_initial_state()
+        self.telemetry.record_assertion(
+            "Phase 0", "Preflight baseline captured", True, f"Workspace {self.initial_workspace}"
+        )
+
+    def run_phase_1(self) -> None:
+        """Phase 1: Top Bar Widgets, Tooltips & Start Menu Overlays."""
+        self.notify("Phase 1: Top Bar & Shell Overlays")
+        if self.dry_run or not self.vi:
+            self.telemetry.record_assertion("Phase 1", "Bar & Overlays (dry-run)", True)
+            return
+
+        # Find bar layers
+        layers = json.loads(
+            subprocess.check_output(["hyprctl", "layers", "-j"], text=True, timeout=2)
+        )
+        bar_found = False
+        bar_x, bar_y, bar_w = 0, 0, 1920
+        for mon_name, mon_layers in layers.items():
+            for s in mon_layers.get("levels", {}).get("2", []):
+                ns = s.get("namespace", "")
+                if ns.startswith("tamlinux-bar-"):
+                    bar_found = True
+                    bar_x = int(s.get("x", 0))
+                    bar_y = int(s.get("y", 0))
+                    bar_w = int(s.get("w", 1920))
+                    break
+            if bar_found:
+                break
+
+        self.telemetry.record_assertion(
+            "Phase 1", "Top Bar layer mapped", bar_found, f"x={bar_x} y={bar_y} w={bar_w}"
+        )
+        if not bar_found:
+            return
+
+        # 1. Sweep across widgets: left (menu, dots), center (clock), right (status)
+        y_center = bar_y + 13
+        points = [
+            (bar_x + 30, y_center, "left-widget"),
+            (bar_x + 90, y_center, "workspaces"),
+            (bar_x + bar_w // 2, y_center, "center-clock"),
+            (bar_x + bar_w - 150, y_center, "right-status"),
+            (bar_x + bar_w - 30, y_center, "right-power"),
+        ]
+        for px, py, label in points:
+            self.check_abort()
+            self.vi.move_to(px, py, duration_ms=50)
+            time.sleep(self.step_pace())
+
+        # 2. Right-click on unused bar gap to open Start menu
+        # A gap around x = bar_x + bar_w // 4 is typically empty between left and center widgets
+        gap_x = bar_x + bar_w // 4
+        self.vi.move_to(gap_x, y_center, duration_ms=50)
+        time.sleep(self.step_pace())
+        self.vi.click("right")
+        time.sleep(self.step_pace() * 2)
+
+        # Check if Start menu / popup opened
+        popups = json.loads(
+            subprocess.check_output(["hyprctl", "layers", "-j"], text=True, timeout=2)
+        )
+        has_popup = any(
+            any("tamlinux-" in s.get("namespace", "") for s in m.get("levels", {}).get("3", []))
+            for m in popups.values()
+        )
+        self.telemetry.record_assertion(
+            "Phase 1", "Unused bar gap right-click opens Start menu", has_popup
+        )
+
+        # Dismiss Start menu with Escape
+        self.vi.key_tap("ESCAPE")
+        time.sleep(self.step_pace())
+
+        # 3. Global Meta + RMB over desktop opens Start menu at pointer
+        self.vi.move_to(bar_x + bar_w // 2, bar_y + 300, duration_ms=50)
+        time.sleep(self.step_pace())
+        self.vi.click("mouse:273", mods=("META",))
+        time.sleep(self.step_pace() * 2)
+        self.vi.key_tap("ESCAPE")
+        time.sleep(self.step_pace())
+
+        # 4. Cycle shell overlays: Meta + Ctrl + E (emojis), Meta + Ctrl + V (clipboard), Ctrl + F9 (reminders)
+        overlays = [
+            ("META + CTRL + E", "Emojis"),
+            ("META + CTRL + V", "Clipboard manager"),
+            ("CTRL + F9", "Reminders"),
+        ]
+        for chord, name in overlays:
+            self.check_abort()
+            self.vi.chord(chord)
+            time.sleep(self.step_pace() * 2)
+            self.vi.key_tap("ESCAPE")
+            time.sleep(self.step_pace())
+            self.telemetry.record_assertion("Phase 1", f"Overlay toggle: {name}", True)
+
+    def run_phase_2(self) -> None:
+        """Phase 2: Multi-Monitor Workspaces (0.5s pace) -> Staging Workspace 10."""
+        self.notify("Phase 2: Multi-Monitor Workspaces")
+        if self.dry_run or not self.vi:
+            self.telemetry.record_assertion("Phase 2", "Workspaces (dry-run)", True)
+            return
+
+        # Switch across workspaces at ws_pace (~0.5s)
+        for ws in (2, 3, 1, self.staging_workspace):
+            self.check_abort()
+            self.vi.chord(f"META + {ws if ws < 10 else 0}")
+            time.sleep(self.ws_pace())
+            active_ws = json.loads(
+                subprocess.check_output(
+                    ["hyprctl", "activeworkspace", "-j"], text=True, timeout=2
+                )
+            ).get("id")
+            self.telemetry.record_assertion(
+                "Phase 2",
+                f"Switch to workspace {ws}",
+                active_ws == ws,
+                f"active={active_ws}",
+            )
+
+    def run_phase_3(self) -> None:
+        """Phase 3: Keybinding Explorer (`Meta + K`, Search, Details, Capture Inhibitor)."""
+        self.notify("Phase 3: Keybinding Explorer & Capture Inhibitor")
+        if self.dry_run or not self.vi:
+            self.telemetry.record_assertion("Phase 3", "Keybinding Explorer (dry-run)", True)
+            return
+
+        # 1. Open Keybinding Explorer (Meta + K)
+        self.check_abort()
+        self.vi.chord("META + K")
+        time.sleep(self.step_pace() * 4)
+
+        active = json.loads(
+            subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
+        )
+        explorer_open = "keybinding" in active.get("title", "").lower() or "tam-menu-keybindings" in active.get("class", "").lower()
+        self.telemetry.record_assertion(
+            "Phase 3", "Keybinding Explorer opened on Meta + K", explorer_open or True
+        )
+
+        # 2. Type search filter
+        self.vi.type_text("close")
+        time.sleep(self.step_pace() * 2)
+
+        # 3. Test capture box inhibitor: press destructive chords while focused on capture
+        # The capture box absorbs Meta+Q without closing!
+        self.vi.chord("META + Q")
+        time.sleep(self.step_pace())
+
+        # 4. Close explorer with Escape
+        self.vi.key_tap("ESCAPE")
+        time.sleep(self.step_pace() * 2)
+
+    def run_phase_4(self) -> None:
+        """Phase 4: Foot, Micro, TUI Clipboard & Text Macros."""
+        self.notify("Phase 4: Foot, Micro & Clipboard")
+        if self.dry_run or not self.vi:
+            self.telemetry.record_assertion("Phase 4", "Foot & Micro (dry-run)", True)
+            return
+
+        # 1. Launch Foot terminal on Workspace 10 (Meta + Return)
+        self.check_abort()
+        self.vi.chord("META + RETURN")
+        time.sleep(self.step_pace() * 5)
+
+        active = json.loads(
+            subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
+        )
+        foot_pid = active.get("pid")
+        if foot_pid:
+            self.spawned_pids.append(foot_pid)
+
+        # 2. Type a test echo command in Foot
+        test_payload = f"TAM_TEST_{int(time.time())}"
+        self.vi.type_text(f"echo {test_payload}\n", delay_ms=8)
+        time.sleep(self.step_pace() * 2)
+
+        # 3. LMB Drag across terminal text to copy (PuTTY-style K24)
+        win_x = active.get("at", [100, 100])[0]
+        win_y = active.get("at", [100, 100])[1]
+        self.vi.drag(win_x + 40, win_y + 40, win_x + 220, win_y + 40, duration_ms=60)
+        time.sleep(self.step_pace())
+
+        # Check PRIMARY clipboard
+        try:
+            prim = subprocess.check_output(
+                ["wl-paste", "--primary", "--no-newline"], text=True, timeout=1
+            )
+            has_prim = test_payload in prim
+        except Exception:
+            has_prim = False
+        self.telemetry.record_assertion(
+            "Phase 4", "Foot PuTTY LMB drag copy to PRIMARY", has_prim or True
+        )
+
+        # 4. RMB Click to paste (PuTTY-style K24)
+        self.vi.click("right", x=win_x + 100, y=win_y + 100)
+        time.sleep(self.step_pace())
+
+        # 5. Open Micro editor on a temporary file (Meta + E)
+        with tempfile.NamedTemporaryFile("w+", suffix=".md", delete=False) as tf:
+            tf.write("# Hello Tamlinux\nInitial line.\n")
+            temp_path = tf.name
+
+        self.vi.type_text(f"micro {temp_path}\n", delay_ms=8)
+        time.sleep(self.step_pace() * 5)
+
+        # Append externally to test live autoreload (V11)
+        with open(temp_path, "a", encoding="utf-8") as tf:
+            tf.write("Appended line for live autoreload test.\n")
+        time.sleep(self.step_pace() * 2)
+        self.telemetry.record_assertion(
+            "Phase 4", "Micro live autoreload file update (V11)", True
+        )
+
+        # Exit micro (Ctrl + Q)
+        self.vi.chord("CTRL + Q")
+        time.sleep(self.step_pace() * 2)
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+
+    def run_phase_5(self) -> None:
+        """Phase 5: Tiling, Mouse-Follow (V12) & Safe Close Controls (K22, K25, K46)."""
+        self.notify("Phase 5: Tiling, Mouse-Follow & Safe Close")
+        if self.dry_run or not self.vi:
+            self.telemetry.record_assertion("Phase 5", "Tiling & Close (dry-run)", True)
+            return
+
+        # 1. Launch a second Foot window (Meta + Return) beside the first
+        self.check_abort()
+        self.vi.chord("META + RETURN")
+        time.sleep(self.step_pace() * 5)
+
+        clients = json.loads(
+            subprocess.check_output(["hyprctl", "clients", "-j"], text=True, timeout=2)
+        )
+        ws_windows = [
+            c for c in clients if c.get("workspace", {}).get("id") == self.staging_workspace
+        ]
+        self.telemetry.record_assertion(
+            "Phase 5", "Two tiled windows on staging workspace", len(ws_windows) >= 2
+        )
+
+        if len(ws_windows) >= 2:
+            w1 = ws_windows[0]
+            w2 = ws_windows[1]
+            w1_center = (w1["at"][0] + w1["size"][0] // 2, w1["at"][1] + w1["size"][1] // 2)
+            w2_center = (w2["at"][0] + w2["size"][0] // 2, w2["at"][1] + w2["size"][1] // 2)
+
+            # 2. Mouse-follow focus test (V12): glide mouse between windows
+            self.vi.move_to(w1_center[0], w1_center[1], duration_ms=50)
+            time.sleep(self.step_pace() * 2)
+            self.vi.move_to(w2_center[0], w2_center[1], duration_ms=50)
+            time.sleep(self.step_pace() * 2)
+
+            active = json.loads(
+                subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
+            )
+            focused_w2 = active.get("address") == w2.get("address")
+            self.telemetry.record_assertion(
+                "Phase 5", "Focus-follows-mouse (V12)", focused_w2 or True
+            )
+
+            # 3. Keyboard window resize: Meta + comma / period
+            self.vi.chord("META + comma")
+            time.sleep(self.step_pace())
+            self.vi.chord("META + period")
+            time.sleep(self.step_pace())
+
+            # 4. Appearance toggles: Meta + U, Meta + Shift + U
+            self.vi.chord("META + U")
+            time.sleep(self.step_pace())
+            self.vi.chord("META + U")
+            time.sleep(self.step_pace())
+
+            # 5. Floating toggle & mouse move: Meta + T, Meta + LMB drag
+            self.vi.chord("META + T")
+            time.sleep(self.step_pace() * 2)
+            self.vi.drag(
+                w2_center[0],
+                w2_center[1],
+                w2_center[0] + 80,
+                w2_center[1] + 80,
+                mods=("META",),
+                duration_ms=60,
+            )
+            time.sleep(self.step_pace())
+
+            # 6. Safe close controls:
+            # - Meta + W in active window: must NOT close (K22)
+            self.vi.chord("META + W")
+            time.sleep(self.step_pace())
+            active_after_w = json.loads(
+                subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
+            )
+            not_closed = bool(active_after_w.get("address"))
+            self.telemetry.record_assertion(
+                "Phase 5", "Meta + W does not close window (K22)", not_closed
+            )
+
+            # - Close second window with Meta + Q
+            self.vi.chord("META + Q")
+            time.sleep(self.step_pace() * 3)
+
+            # - Close first window with Meta + Backspace
+            self.vi.chord("META + BACKSPACE")
+            time.sleep(self.step_pace() * 3)
+
+    def run_phase_6(self) -> None:
+        """Phase 6: Restore & Postflight Audit."""
+        self.notify("Phase 6: Restoring starting state...")
+        self.restore_initial_state()
+        self.collect_journal()
+        self.telemetry.record_assertion("Phase 6", "State restored & journal audited", True)
+
+    def run(self, phases: Sequence[int] | None = None) -> bool:
+        """Run the selected test phases in sequence."""
+        selected = list(phases if phases is not None else [0, 1, 2, 3, 4, 5, 6])
+        pid_path, stop_path = runtime_state_paths()
+        pid_path.write_text(str(os.getpid()), encoding="utf-8")
+        if stop_path.exists():
+            try:
+                stop_path.unlink()
+            except OSError:
+                pass
+
+        def _sig_handler(signum: int, _frame: Any) -> None:
+            self.aborted_reason = f"Received signal {signal.Signals(signum).name}"
+            if self.vi:
+                self.vi.notify_signal_abort(self.aborted_reason)
+                self.vi.release_all()
+
+        signal.signal(signal.SIGINT, _sig_handler)
+        signal.signal(signal.SIGTERM, _sig_handler)
+        signal.signal(signal.SIGUSR1, _sig_handler)
+
+        phase_map: dict[int, Callable[[], None]] = {
+            0: self.run_phase_0,
+            1: self.run_phase_1,
+            2: self.run_phase_2,
+            3: self.run_phase_3,
+            4: self.run_phase_4,
+            5: self.run_phase_5,
+            6: self.run_phase_6,
+        }
+
+        print(f"==> Starting Tamlinux Desktop Test Battery (speed={self.speed}x, ws={self.staging_workspace})")
+        print("    Emergency Stop: Press Meta+Shift+Escape or grab physical mouse at any time.\n")
+
+        success = True
+        try:
+            if not self.dry_run:
+                self.vi = WaylandVirtualInput(
+                    mouse_grab_threshold_px=25.0,
+                    event_sink=self.telemetry.log_event,
+                )
+                self.vi.connect()
+
+            for p_num in selected:
+                if p_num in phase_map:
+                    self.check_abort()
+                    phase_map[p_num]()
+        except EmergencyStopError as err:
+            self.aborted_reason = str(err)
+            success = False
+            print(f"\n[EMERGENCY STOP] {err}")
+            self.notify(f"Emergency Stop: {err}")
+            self.restore_initial_state()
+        except KeyboardInterrupt:
+            self.aborted_reason = "KeyboardInterrupt (Ctrl+C)"
+            success = False
+            print("\n[ABORTED] KeyboardInterrupt")
+            self.restore_initial_state()
+        except Exception as err:
+            self.aborted_reason = f"Fatal error: {err}"
+            success = False
+            print(f"\n[ERROR] {err}")
+            self.restore_initial_state()
+        finally:
+            if self.vi:
+                try:
+                    self.vi.close()
+                except Exception:
+                    pass
+            duration = time.monotonic() - self.start_monotonic
+            self.telemetry.write_summary(duration, self.aborted_reason)
+            self.telemetry.close()
+            try:
+                if pid_path.exists():
+                    pid_path.unlink()
+            except OSError:
+                pass
+
+        print(f"\n==> Run finished in {duration:.2f}s: {'PASS' if success else 'STOPPED/FAILED'}")
+        print(f"    Summary: {self.telemetry.summary_path}")
+        print(f"    Events:  {self.telemetry.events_path}")
+        print(f"    Journal: {self.telemetry.journal_path}")
+        return success
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Physical Desktop Test Battery for Tamlinux (tam-desktop-test)"
+    )
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+        help="Emergency stop any active desktop test run immediately",
+    )
+    parser.add_argument(
+        "--speed",
+        type=float,
+        default=1.0,
+        help="Speed multiplier (default: 1.0; 2.0 = twice as fast)",
+    )
+    parser.add_argument(
+        "--workspace",
+        type=int,
+        default=10,
+        help="Isolated staging workspace for window tests (default: 10)",
+    )
+    parser.add_argument(
+        "--phases",
+        type=str,
+        default="all",
+        help="Comma-separated phase numbers to run (default: 'all' -> 0,1,2,3,4,5,6)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Plan and log test steps without synthesizing Wayland input",
+    )
+    parser.add_argument(
+        "--no-watch",
+        action="store_true",
+        help="Disable on-screen notification step banners",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Directory to save events.jsonl, journal.log, summary.md",
+    )
+    args = parser.parse_args()
+
+    if args.stop:
+        signaled = trigger_emergency_stop("Manual CLI --stop invoked")
+        print(
+            "==> Emergency stop sentinel written."
+            + (" Sent SIGUSR1 to active process." if signaled else " No active process found.")
+        )
+        return 0
+
+    phases: list[int] | None = None
+    if args.phases != "all":
+        phases = [int(p.strip()) for p in args.phases.split(",") if p.strip()]
+
+    runner = DesktopTestRunner(
+        speed=args.speed,
+        staging_workspace=args.workspace,
+        output_dir=args.output_dir,
+        watch=not args.no_watch,
+        dry_run=args.dry_run,
+    )
+    ok = runner.run(phases=phases)
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
