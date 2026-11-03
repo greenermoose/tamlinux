@@ -246,6 +246,17 @@ class Deployment:
         if dirty:
             raise DeploymentError("commit config changes before deploying:\n" + dirty)
 
+    def preparation_identity(self, revision: str, baseline: str) -> dict:
+        excluded = [':(exclude)system/bom.json', ':(exclude)system/plugin-runs']
+        excluded += [f':(exclude,literal){entry}' for entry in self.live_paths()]
+        tree = command('git', '-C', str(self.config), 'ls-files', '-s', '--', '.', *excluded, capture=True)
+        return {'assembly': revision, 'baseline': baseline,
+                'consumer': hashlib.sha256(tree.encode()).hexdigest(),
+                'live': self.live_digests(), 'host': self.home_configuration,
+                'pin': hashlib.sha256(self.pin_path.read_bytes()).hexdigest(),
+                'receipt': hashlib.sha256(self.state_file.read_bytes()).hexdigest(),
+                'operator': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+
     def preflight(self, revision: str | None = None) -> None:
         self.check_clean()
         if self.transaction_file.exists():
@@ -255,12 +266,27 @@ class Deployment:
         if revision is not None:
             report = self.require_consistent()
             before = (self.pin_path.read_bytes(), self.state_file.read_bytes(), report['profileGeneration'])
-            self._prepared_generation = self.build_generation(revision)
+            identity = self.preparation_identity(revision, report['profileGeneration'])
+            cache = self.state_file.parent / 'prepared-generation.json'
+            saved = json.loads(cache.read_text()) if cache.is_file() else {}
+            generation = saved.get('generation', '')
+            if (saved.get('identity') == identity
+                    and re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', generation)
+                    and (Path(generation) / 'activate').is_file()):
+                self._prepared_generation = generation
+            else:
+                self._prepared_generation = self.build_generation(revision)
             self.activation_validators(report['profileGeneration'])
             self.activation_validators(self._prepared_generation)
             self.check_clean()
             if before != (self.pin_path.read_bytes(), self.state_file.read_bytes(), self.generation()):
                 raise DeploymentError('deployment baseline changed during preparation; prepare again')
+            if self.preparation_identity(revision, report['profileGeneration']) != identity:
+                raise DeploymentError('consumer inputs changed during preparation; prepare again')
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            temporary = cache.with_suffix('.tmp')
+            temporary.write_text(json.dumps({'identity': identity, 'generation': self._prepared_generation}) + '\n')
+            temporary.replace(cache)
         if self.graphical_active():
             self.require_unlocked_sessions()
         else:

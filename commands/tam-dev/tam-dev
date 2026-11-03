@@ -1,0 +1,483 @@
+#!/usr/bin/env python3
+"""Build, check and try local Tamlinux components without assembling a candidate.
+
+Selectors: tam, libtam, tamlinux-tools, command:tam-NAME, app:keybindings,
+app:keyboard, plugin:fred.NAME, shell. GUI trials are interactive previews;
+--live deliberately replaces the shell until stop. Nothing invokes Nix.
+"""
+from __future__ import annotations
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import signal
+import subprocess
+import sys
+import time
+
+
+class DevError(Exception):
+    pass
+
+
+def run(*args, cwd=None, capture=False):
+    return subprocess.run(list(map(str, args)), cwd=cwd, check=True, text=True,
+                          stdout=subprocess.PIPE if capture else None, timeout=300).stdout
+
+
+def save(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix('.tmp')
+    temp.write_text(json.dumps(value, indent=2) + '\n')
+    temp.chmod(0o600)
+    temp.replace(path)
+
+
+def state_root():
+    return Path(os.environ.get('XDG_STATE_HOME', Path.home()/'.local/state'))/'tamlinux/development'
+
+
+def select(workspace, name):
+    if name in ('tam', 'libtam', 'tamlinux-tools'):
+        return workspace/name, ['.'], '.'
+    repo = workspace/'tamlinux'
+    if name == 'shell' or name.startswith(('plugin:', 'app:')):
+        if name.startswith('plugin:'):
+            plugin = name.split(':', 1)[1]
+            if not re.fullmatch(r'fred\.[a-z][a-z0-9-]*', plugin) or not (repo/'desktop/plugins'/plugin/'manifest.json').is_file():
+                raise DevError('unknown plugin')
+        elif name not in ('shell', 'app:keybindings', 'app:keyboard'):
+            raise DevError('unknown app')
+        metadata=['VERSION','CULTIVAR','LICENSE']
+        if name.startswith('plugin:'):
+            return repo,['desktop/plugins/'+plugin,'desktop/widget-proof',*metadata],None
+        if name=='app:keybindings':
+            return repo,['desktop/shell/services/keybindings','desktop/shell/modules','desktop/assets',
+                         'desktop/tests/test_keybindings.py','desktop/tests/fixtures/keybindings',
+                         'commands/tam-menu-keybindings','commands/tam-macro',*metadata],None
+        if name=='app:keyboard':
+            return repo,['desktop/plugins/fred.keyboard','desktop/shell/modules','desktop/assets',
+                         'desktop/widget-proof','desktop/tests/test_keyboard_render.py',*metadata],None
+        return repo, ['desktop', 'commands', *metadata], None
+    if name.startswith('command:'):
+        command = name.split(':', 1)[1]
+        if re.fullmatch(r'tam-[a-z0-9-]+', command) and (repo/'commands'/command/'Makefile').is_file():
+            # Some checks read sibling commands or desktop contracts. Unknown
+            # closures retain the product snapshot rather than testing a partial tree.
+            makefile=(repo/'commands'/command/'Makefile').read_text()
+            check_body=makefile.split('check:',1)[1].split('\n\n',1)[0].strip() if 'check:' in makefile else ''
+            isolated=command in ('tam-dev','tam-deploy') or (check_body.startswith('bash -n ') and '\n' not in check_body)
+            return repo, ['commands/'+command, 'LICENSE'] if isolated else ['.'], 'commands/'+command
+    raise DevError('unknown component; see --help')
+
+
+def source_files(repo, scopes):
+    paths = run('git', 'ls-files', '-co', '--exclude-standard', '-z', '--', *scopes, cwd=repo, capture=True).split('\0')
+    return sorted(set(p for p in paths if p))
+
+
+def content(repo, scopes):
+    result = {}
+    for relative in source_files(repo, scopes):
+        path = repo/relative
+        if not path.exists() and not path.is_symlink():
+            continue
+        if path.is_symlink():
+            if not path.resolve().is_relative_to(repo.resolve()):
+                raise DevError('source symlink escapes checkout: '+relative)
+            result[relative] = ['link', os.readlink(path)]
+        elif path.is_file():
+            result[relative] = [path.stat().st_mode & 0o777, hashlib.sha256(path.read_bytes()).hexdigest()]
+    return result
+
+
+def identity(repo, scopes):
+    files = content(repo, scopes)
+    return hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest(), files
+
+
+def toolchain_key(component=None):
+    database = Path('/var/lib/pacman/local')
+    packages = sorted(p.name for p in database.iterdir()) if database.exists() else []
+    development=Path.home()/'.local/dev'
+    roots=[development/'lib',development/'include'] if component != 'libtam' else []
+    inputs = {str(p):hashlib.sha256(p.read_bytes()).hexdigest()
+              for root in roots for p in root.rglob('*') if p.is_file()}
+    for name in ('cc','make','pkg-config'):
+        binary=shutil.which(name)
+        inputs['tool:'+name]=[binary,hashlib.sha256(Path(binary).read_bytes()).hexdigest()] if binary else None
+    inputs['environment']={name:os.environ.get(name) for name in ('PATH','PKG_CONFIG_PATH','CC','CFLAGS','CPPFLAGS','LDFLAGS')}
+    return hashlib.sha256(json.dumps([sys.version, packages, inputs, str((Path.home()/'.local/share/tamlinux/shell').resolve()), str((Path.home()/'.config/systemd/user/tamlinux-shell.service').resolve()), hashlib.sha256(Path(__file__).read_bytes()).hexdigest()], sort_keys=True).encode()).hexdigest()
+
+
+def remove_build(folder):
+    root=(state_root()/'builds').resolve()
+    if folder.is_symlink() or not folder.resolve().is_relative_to(root) or not re.fullmatch('[0-9a-f]{64}',folder.name):
+        raise DevError('refusing unrecognized build cache path')
+    for base,dirs,files in os.walk(folder):
+        Path(base).chmod(Path(base).stat().st_mode|0o700)
+    shutil.rmtree(folder)
+
+
+def prune_builds(current):
+    protected={str(current)}
+    for path in (state_root()/'trials').glob('*.json'):
+        value=json.loads(path.read_text())
+        protected.add(str(Path(value['source']).parent))
+        for entry in value.get('overrides',[]):
+            previous=entry.get('previous')
+            if isinstance(previous,str):
+                for candidate in current.parent.iterdir():
+                    if previous.startswith(str(candidate)+'/'):protected.add(str(candidate))
+    candidates=sorted((p for p in current.parent.iterdir() if p.is_dir() and not p.is_symlink()
+                       and re.fullmatch('[0-9a-f]{64}',p.name) and (p/'build.json').exists()),
+                      key=lambda p:p.stat().st_mtime,reverse=True)
+    for candidate in candidates[4:]:
+        if str(candidate) not in protected:remove_build(candidate)
+
+
+def build(workspace, name):
+    repo, scopes, make_dir = select(workspace, name)
+    key, files = identity(repo, scopes)
+    revision=run('git','rev-parse','HEAD',cwd=repo,capture=True).strip()
+    dirty=bool(run('git','status','--porcelain','--',*scopes,cwd=repo,capture=True))
+    dependency_key = toolchain_key(name)
+    build_key = hashlib.sha256((key+dependency_key).encode()).hexdigest()
+    folder = state_root()/'builds'/name.replace(':', '-')/build_key
+    manifest = folder/'build.json'
+    if manifest.exists():
+        return json.loads(manifest.read_text())
+    if folder.exists():
+        remove_build(folder)
+    source = folder/'source'
+    source.mkdir(parents=True, exist_ok=True)
+    for relative, entry in files.items():
+        target = source/relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        if entry[0] == 'link':
+            target.symlink_to(entry[1])
+        else:
+            shutil.copy2(repo/relative, target)
+    if identity(repo, scopes)[0] != key:
+        raise DevError('source changed while snapshotting; retry build')
+    if name.startswith('plugin:'):
+        packaged=Path.home()/'.local/share/tamlinux/shell'
+        if not (packaged/'shell.qml').is_file():
+            raise DevError('plugin trials need the installed packaged shell as their runtime')
+        shutil.copytree(packaged,source/'desktop/shell',dirs_exist_ok=True)
+    prefix = folder/'prefix'
+    development=Path.home()/'.local/dev'
+    make_arguments=['LIBTAM_PREFIX='+str(development)] if (development/'lib/pkgconfig/libtam.pc').is_file() and name!='libtam' else []
+    if make_dir is not None:
+        directory = source/make_dir
+        # Native targets install into an isolated prefix before overriding any command.
+        targets=['install']
+        if name=='libtam' and 'install-session:' in (directory/'Makefile').read_text():
+            targets += ['install-display','install-session']
+        run('make', '-C', directory, *targets, 'PREFIX='+str(prefix),*make_arguments,
+            'TAM_BUILD_ID='+revision[:12]+('-dirty' if dirty else ''),
+            'TAM_SOURCE_REVISION='+revision,'TAM_SOURCE_DIRTY='+('1' if dirty else '0'))
+    record = {'schema': 1, 'component': name, 'repo': str(repo), 'scopes': scopes,
+              'revision': revision,'dirty':dirty,
+              'sourceKey': key, 'dependencyKey': dependency_key, 'files': files, 'source': str(source), 'prefix': str(prefix),
+              'makeDirectory': make_dir,'makeArguments':make_arguments}
+    save(manifest, record)
+    prune_builds(folder)
+    return record
+
+
+def check(record):
+    source = Path(record['source'])
+    checked = source.parent/'checked.json'
+    if checked.exists() and json.loads(checked.read_text()).get('dependencyKey') == toolchain_key(record['component']):
+        print('check: reuse passing focused checks for identical source and tools')
+        return
+    if record['makeDirectory'] is not None:
+        directory = source/record['makeDirectory']
+        target = 'test' if record['component'] in ('tam', 'libtam', 'tamlinux-tools') else 'check'
+        targets=[target]
+        if record['component']=='libtam' and 'test-session:' in (directory/'Makefile').read_text():
+            targets += ['test-display','test-session']
+        run('make', '-C', directory,*targets, 'PREFIX='+record['prefix'],*record.get('makeArguments',[]),
+            'TAM_BUILD_ID='+record['revision'][:12]+('-dirty' if record['dirty'] else ''),
+            'TAM_SOURCE_REVISION='+record['revision'],'TAM_SOURCE_DIRTY='+('1' if record['dirty'] else '0'))
+    elif record['component'].startswith('plugin:'):
+        run(sys.executable, source/'desktop/widget-proof', record['component'].split(':', 1)[1])
+    else:
+        pattern = 'test_keybindings.py' if record['component'] == 'app:keybindings' else 'test_keyboard_render.py' if record['component'] == 'app:keyboard' else 'test_protocol.py'
+        run(sys.executable, '-B', '-m', 'unittest', 'discover', '-s', source/'desktop/tests', '-p', pattern, '-q', cwd=source)
+    save(Path(record['source']).parent/'checked.json', {'sourceKey': record['sourceKey'], 'dependencyKey': toolchain_key(record['component'])})
+
+
+def quickshell():
+    installed = Path.home()/'.local/share/tamlinux/shell'
+    text = run('systemctl', '--user', 'show', 'tamlinux-shell.service', '-p', 'Environment', '--value', capture=True)
+    env = dict(item.split('=', 1) for item in shlex.split(text) if '=' in item)
+    session=run('systemctl','--user','show-environment',capture=True)
+    needed={'WAYLAND_DISPLAY','DISPLAY','DBUS_SESSION_BUS_ADDRESS','XDG_RUNTIME_DIR','HYPRLAND_INSTANCE_SIGNATURE','XDG_SESSION_TYPE'}
+    for line in session.splitlines():
+        key,separator,value=line.partition('=')
+        if separator and key in needed:env.setdefault(key,value)
+    binary = env.get('TAMLINUX_QUICKSHELL') or shutil.which('quickshell')
+    if not binary:
+        raise DevError('no Quickshell; select the installed provider')
+    return binary, env
+
+
+def gui(record, live):
+    source = Path(record['source'])
+    name = record['component']
+    binary, inherited = quickshell()
+    env = {k:v for k,v in os.environ.items() if live or not k.startswith('TAMLINUX_')}
+    env.update(inherited if live else {k:v for k,v in inherited.items() if k in {'WAYLAND_DISPLAY','DISPLAY','DBUS_SESSION_BUS_ADDRESS','XDG_RUNTIME_DIR','HYPRLAND_INSTANCE_SIGNATURE','XDG_SESSION_TYPE'}})
+    env['QML_IMPORT_PATH'] = str(source/'desktop/shell/modules')
+    env['TAMLINUX_PLUGINS_DIR'] = str(source/'desktop/plugins')
+    env['TAMLINUX_SHELL_DIR'] = str(source/'desktop/shell')
+    env['TAMLINUX_SHELL_REVISION'] = 'dev-'+record['sourceKey']
+    if not live:
+        isolated = Path(record['source']).parent/'preview'
+        isolated.mkdir(exist_ok=True)
+        env.update(HOME=str(isolated), XDG_CONFIG_HOME=str(isolated/'config'),
+                   XDG_STATE_HOME=str(isolated/'state'), XDG_DATA_HOME=str(isolated/'data'))
+    if name == 'app:keybindings':
+        entry = source/'desktop/shell/services/keybindings/dev-trial.qml'
+        env['TAMLINUX_KEYBINDINGS_SCAN'] = str(source/'commands/tam-menu-keybindings/tam-menu-keybindings')
+        env['TAMLINUX_MACRO_BIN'] = str(source/'commands/tam-macro/tam-macro')
+    elif name == 'app:keyboard':
+        entry = source/'desktop/plugins/fred.keyboard/dev-trial.qml'
+    else:
+        entry = source/'desktop/shell/shell.qml'
+        if not live:
+            isolated = Path(record['source']).parent/'preview'
+            isolated.mkdir(exist_ok=True)
+            env.update(HOME=str(isolated), XDG_CONFIG_HOME=str(isolated/'config'),
+                       XDG_STATE_HOME=str(isolated/'state'), XDG_DATA_HOME=str(isolated/'data'),
+                       TAMLINUX_SERVICES='', TAMLINUX_BAR_EXCLUSIVE='0', TAMLINUX_HOST_ACTIONS='0',
+                       TAMLINUX_COMPOSITOR_LIVE_ACTIONS='0')
+        if name.startswith('plugin:'):
+            plugin = name.split(':', 1)[1]
+            manifest = json.loads((source/'desktop/plugins'/plugin/'manifest.json').read_text())
+            entries = manifest.get('entryPoints', {})
+            if 'barWidget' not in entries:
+                raise DevError('plugin needs an explicit interactive entry point; use shell --live')
+            manifest_entry=entries['barWidget']
+            env['TAMLINUX_PLUGIN_IDS'] = plugin
+            env['TAMLINUX_PLUGIN_ENTRIES'] = json.dumps({plugin:str(source/'desktop/plugins'/plugin/entries['barWidget'])})
+    if name=='shell' or name.startswith('plugin:'):
+        env['TAMLINUX_QUICKSHELL']=binary
+        if name.startswith('plugin:') and not live:
+            layout=Path(env['XDG_CONFIG_HOME'])/'tamlinux/shell/layout.json'
+            save(layout,{'centerAnchor':plugin,'layout':{'left':[],'center':[{'id':plugin}],'right':[]}})
+            env['TAMLINUX_BAR_LAYOUT']=str(layout)
+        if name.startswith('plugin:') and live:
+            # Keep all other plugins on their packaged paths during a plugin-only trial.
+            installed=Path.home()/'.config/tamlinux/plugins'
+            entries={}
+            for manifest in installed.glob('*/manifest.json'):
+                value=json.loads(manifest.read_text())
+                if value.get('entryPoints',{}).get('barWidget'):
+                    entries[value['id']]=str(manifest.parent/value['entryPoints']['barWidget'])
+            entries[plugin]=str(source/'desktop/plugins'/plugin/manifest_entry)
+            env['TAMLINUX_PLUGIN_ENTRIES']=json.dumps(entries)
+        return [sys.executable,'-I',str(source/'desktop/shell/host/session_start.py')],env
+    return [binary, '--no-duplicate', '--path', str(entry)], env
+
+
+def record_path(name):
+    return state_root()/'trials'/(name.replace(':', '-')+'.json')
+
+
+def process_id(pid):
+    try:
+        fields=Path(f'/proc/{pid}/stat').read_text().split(') ', 1)[1].split()
+        return None if fields[0] in ('Z','X') else fields[19]
+    except (OSError, IndexError):
+        return None
+
+
+def restore_overrides(record):
+    # Inspect every endpoint before restoring any, and recognize a partially
+    # completed earlier install/restore. Later user changes always win.
+    for entry in record.get('overrides', []):
+        target=Path(entry['path']);previous=entry['previous']
+        installed=target.is_symlink() and os.readlink(target)==entry['target']
+        untouched=(isinstance(previous,str) and target.is_symlink() and os.readlink(target)==previous)
+        original=(isinstance(previous,dict) and target.is_file() and not target.is_symlink()
+                  and hashlib.sha256(target.read_bytes()).hexdigest()==previous['sha256'])
+        if not installed and not untouched and not original and (target.exists() or target.is_symlink()):
+            raise DevError('override changed since trial; preserving '+str(target))
+    for entry in record.get('overrides', []):
+        target=Path(entry['path']);previous=entry['previous']
+        if target.is_symlink() and os.readlink(target)==entry['target']:
+            target.unlink()
+        if not target.exists() and not target.is_symlink():
+            if isinstance(previous,str):target.symlink_to(previous)
+            elif isinstance(previous,dict):
+                backup=Path(previous['backup'])
+                if not backup.is_file() or hashlib.sha256(backup.read_bytes()).hexdigest()!=previous['sha256']:
+                    raise DevError('saved development file is missing or changed')
+                backup.rename(target)
+
+
+def stop(name):
+    path = record_path(name)
+    if not path.exists():
+        return
+    record = json.loads(path.read_text())
+    pid = record.get('pid')
+    if pid and process_id(pid) == record.get('processId'):
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(50):
+            if process_id(pid) != record.get('processId'):
+                break
+            time.sleep(.1)
+        else:
+            raise DevError('trial did not stop; packaged restore remains pending')
+    restore_overrides(record)
+    if record.get('live'):
+        clear_live(record.get('pid'))
+        run('systemctl', '--user', 'start', 'tamlinux-shell.service')
+    path.with_suffix('.launch.json').unlink(missing_ok=True)
+    path.unlink()
+
+
+def trial(record, live=False):
+    name = record['component']
+    if live and record['makeDirectory'] is not None:
+        raise DevError('--live is for shell/plugin integration')
+    # A live shell trial is exclusive across components.
+    for path in (state_root()/'trials').glob('*.json'):
+        previous = json.loads(path.read_text())
+        if previous.get('live') and previous['component'] != name:
+            raise DevError('stop the existing live trial before starting another')
+    stop(name)
+    record = dict(record, live=live, overrides=[])
+    path = record_path(name)
+    if record['makeDirectory'] is not None:
+        prefix = Path(record['prefix'])
+        for binary in sorted(prefix.rglob('*')):
+            if binary.is_dir():
+                continue
+            target = Path.home()/'.local/dev'/binary.relative_to(prefix)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            previous=os.readlink(target) if target.is_symlink() else None
+            if target.exists() and not target.is_symlink():
+                if not target.is_file():raise DevError('cannot override a directory: '+str(target))
+                backup=path.parent/(path.stem+'.previous.'+str(len(record['overrides'])))
+                if backup.exists():raise DevError('saved development file already exists; inspect '+str(backup))
+                previous={'backup':str(backup),'sha256':hashlib.sha256(target.read_bytes()).hexdigest()}
+            entry = {'path':str(target),'target':str(binary),'previous':previous}
+            record['overrides'].append(entry)
+        save(path, record)  # recovery information precedes side effects
+        for entry in record['overrides']:
+            target = Path(entry['path'])
+            if isinstance(entry['previous'],dict):
+                target.rename(entry['previous']['backup'])
+            else:target.unlink(missing_ok=True)
+            target.symlink_to(entry['target'])
+    else:
+        command, env = gui(record, live)
+        record.update(command=command)
+        if live:
+            ipc=Path(os.environ.get('TAMLINUX_DEV_IPC',Path.home()/'.local/bin/tam-shell'))
+            if not ipc.is_file() or 'Development live routing: v1' not in run(ipc,'--help',capture=True):
+                raise DevError('live integration needs the tam-shell live-routing capability delivered with this workflow; use an interactive preview until that package is installed')
+        save(path, record)
+        if live:
+            run('systemctl', '--user', 'stop', 'tamlinux-shell.service')
+        try:
+            # A supervisor restores the packaged service when the GUI exits.
+            spec = path.with_suffix('.launch.json')
+            save(spec, {'command':command,'environment':env,'live':live,'record':record})
+            log = path.with_suffix('.log').open('w')
+            proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_run', str(spec)],
+                                    stdout=log, stderr=log, start_new_session=True)
+            log.close()
+            record.update(pid=proc.pid, processId=process_id(proc.pid))
+            save(path, record)
+            if live:
+                save(state_root()/'live.json',{'schema':1,'component':name,'shell':str(Path(record['source'])/'desktop/shell'),
+                     'pid':proc.pid,'processId':record['processId'],'boot':Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
+            time.sleep(.5)
+            if proc.poll() is not None:
+                raise DevError('trial exited during startup; inspect '+str(path.with_suffix('.log')))
+        except BaseException:
+            if live:
+                clear_live(record.get('pid'))
+                run('systemctl', '--user', 'start', 'tamlinux-shell.service')
+            raise
+    print(json.dumps(record, indent=2))
+
+
+def clear_live(pid):
+    path=state_root()/'live.json'
+    if path.exists() and json.loads(path.read_text()).get('pid')==pid:
+        path.unlink()
+
+
+def supervise(spec):
+    value = json.loads(Path(spec).read_text())
+    proc = None
+    def terminate(signum, frame):
+        if proc is not None:
+            proc.terminate()
+    signal.signal(signal.SIGTERM, terminate)
+    signal.signal(signal.SIGINT, terminate)
+    try:
+        proc = subprocess.Popen(value['command'], env=value['environment'])
+        return proc.wait()
+    finally:
+        if value['live']:
+            clear_live(os.getpid())
+            run('systemctl', '--user', 'start', 'tamlinux-shell.service')
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if len(argv) == 2 and argv[0] == '_run':
+        return supervise(argv[1])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=['build','check','try','status','stop'])
+    parser.add_argument('component', nargs='?')
+    parser.add_argument('--workspace', type=Path, default=Path(os.environ.get('TAMLINUX_WORKSPACE', Path.home()/'Code/tamlinux')))
+    parser.add_argument('--live', action='store_true')
+    args = parser.parse_args(argv)
+    root = state_root();root.mkdir(parents=True, exist_ok=True)
+    try:
+        with (root/'operation.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
+            if args.action == 'status':
+                records = []
+                for p in (root/'trials').glob('*.json'):
+                    value = json.loads(p.read_text())
+                    repo = Path(value['repo'])
+                    value['sourceChanged'] = identity(repo, value['scopes'])[0] != value['sourceKey']
+                    value['running'] = bool(value.get('pid') and process_id(value['pid']) == value.get('processId'))
+                    records.append(value)
+                print(json.dumps({'trials': records}, indent=2));return 0
+            if not args.component:
+                parser.error('component is required')
+            select(args.workspace, args.component)
+            if args.action == 'stop':
+                stop(args.component);return 0
+            record = build(args.workspace, args.component)
+            if args.action in ('check', 'try'):
+                check(record)
+            if args.action == 'try':
+                trial(record, args.live)
+            else:
+                print(json.dumps(record, indent=2))
+        return 0
+    except (DevError, OSError, ValueError, subprocess.SubprocessError) as exc:
+        print('tam-dev: '+str(exc), file=sys.stderr);return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

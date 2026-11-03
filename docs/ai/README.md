@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-02 — Development and candidate workflow](2026-11-02-candidate-workflow.md)
+
 - [2026-11-02 — Prepare Tamlinux 0.6.1 KBN WB](2026-11-02-061-preparation.md)
 
 - [2026-11-02 — First text-login entry points hi and start](2026-11-02-first-login-hi-and-start.md)

@@ -1114,6 +1114,11 @@ class ShellReadiness(unittest.TestCase):
 class CoherentState(Fixture):
     def setUp(self):
         super().setUp()
+        git(self.config, 'init', '-q')
+        git(self.config, 'config', 'user.email', 'fixture@example.invalid')
+        git(self.config, 'config', 'user.name', 'Fixture')
+        git(self.config, 'add', '--', 'flake.lock')
+        git(self.config, 'commit', '-qm', 'Consumer inputs')
         self.old = self.root / 'old-generation'
         self.new = self.root / 'new-generation'
         for generation, revision in ((self.old, self.tamlinux_main), (self.new, self.tamlinux_new)):
@@ -1137,6 +1142,26 @@ class CoherentState(Fixture):
         self.stack.enter_context(patch.dict(os.environ, {'XDG_SESSION_ID': ''}))
         self.stack.enter_context(patch.object(self.app, 'verify', return_value=[]))
         self.stack.enter_context(patch.object(self.app, 'runtime_state', return_value={'graphical': False, 'revision': None}))
+
+    def test_prepared_generation_is_reused_until_consumer_inputs_change(self):
+        real_match=deploy.re.fullmatch
+        def match(pattern,value,*args,**kwargs):
+            if value==str(self.new) and pattern==r'/nix/store/[a-z0-9]{32}-home-manager-generation':
+                return True  # The fixture uses a writable temporary generation.
+            return real_match(pattern,value,*args,**kwargs)
+        with patch.object(self.app,'check_clean'),patch.object(self.app,'graphical_active',return_value=False), \
+             patch.object(self.app,'activation_validators') as validate, \
+             patch.object(self.app,'build_generation',return_value=str(self.new)) as build, \
+             patch.object(deploy.re,'fullmatch',side_effect=match):
+            self.app.preflight(self.packages_new)
+            self.app.preflight(self.packages_new)
+            self.assertEqual(build.call_count,1)
+            self.assertEqual(validate.call_count,4)  # Validators remain fresh.
+            changed=self.config/'consumer.nix';changed.write_text('{ changed = true; }')
+            git(self.config,'add','--','consumer.nix')
+            git(self.config,'commit','-qm','Consumer change')
+            self.app.preflight(self.packages_new)
+            self.assertEqual(build.call_count,2)
 
     def test_status_json_rejects_profile_receipt_mismatch(self):
         self.app.profile.unlink()

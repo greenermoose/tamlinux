@@ -47,11 +47,34 @@ fail() {
 
 if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
   echo "Usage: tam-shell [-q] <target> <method> [args...]"
+  echo "Development live routing: v1"
   exit 0
 fi
 (( $# >= 2 )) || fail "Usage: tam-shell [-q] <target> <method> [args...]"
 
-shell_dir=${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}
+dev_state=${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/development
+live_shell=""
+if [[ -z ${TAMLINUX_SHELL_DIR:-} && -f $dev_state/live.json ]]; then
+  live_shell=$(python3 -I - "$dev_state/live.json" "$dev_state" <<'PYLIVE'
+import json, os, sys
+from pathlib import Path
+try:
+    record=json.loads(Path(sys.argv[1]).read_text())
+    pid=int(record['pid'])
+    fields=Path(f'/proc/{pid}/stat').read_text().split(') ',1)[1].split()
+    shell=Path(record['shell']).resolve()
+    root=(Path(sys.argv[2])/'builds').resolve()
+    if (record.get('schema')==1 and fields[0] not in ('Z','X')
+            and fields[19]==record['processId']
+            and record['boot']==Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+            and shell.is_relative_to(root) and (shell/'shell.qml').is_file()):
+        print(shell)
+except (OSError,ValueError,KeyError,TypeError,IndexError):
+    pass
+PYLIVE
+  )
+fi
+shell_dir=${TAMLINUX_SHELL_DIR:-${live_shell:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}}
 [[ -f $shell_dir/shell.qml ]] || fail "Tamlinux shell config not found: $shell_dir/shell.qml"
 # session_start.py resolves the immutable tree before starting Quickshell.
 # Quickshell keys IPC instances by the literal config path, not its symlink.
