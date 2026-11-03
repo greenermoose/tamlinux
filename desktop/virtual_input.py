@@ -440,7 +440,8 @@ def compile_xkb_keymap(
     options: str = "",
 ) -> bytes:
     """Compile an XKB keymap string (NUL-terminated) using libxkbcommon.so.0."""
-    xkb = ctypes.CDLL("libxkbcommon.so.0")
+    xkb_lib = os.environ.get("TAMLINUX_XKBCOMMON") or "libxkbcommon.so.0"
+    xkb = ctypes.CDLL(xkb_lib)
     xkb.xkb_context_new.argtypes = [ctypes.c_int]
     xkb.xkb_context_new.restype = ctypes.c_void_p
     xkb.xkb_context_unref.argtypes = [ctypes.c_void_p]
@@ -643,7 +644,8 @@ class WaylandVirtualInput:
         self.last_target_pos: tuple[int, int] | None = None
         self._aborted_reason: str | None = None
 
-        self.wl = ctypes.CDLL("libwayland-client.so.0")
+        wl_lib = os.environ.get("TAMLINUX_WAYLAND_CLIENT") or "libwayland-client.so.0"
+        self.wl = ctypes.CDLL(wl_lib)
         self._setup_ctypes()
         self.proto = _WaylandProtocolDefinitions(self.wl)
 
