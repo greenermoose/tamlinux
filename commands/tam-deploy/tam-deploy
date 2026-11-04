@@ -24,6 +24,8 @@ run [revision] [--untested]
               commit only on `develop` or another branch is untested and needs
               --untested. Older `main` commits run without moving branches.
 back:         activate the previous generation and restore its pin.
+follow <rev>: install an accepted Run / main assembly on a follower host and
+              record stage label `follow` (plan 47), never rewriting Test.
 
 A registered host that has hosts/<host>/state/assembly (one revision) follows
 that pin instead of the shared flake.lock; the consumer flake reads the same
@@ -361,6 +363,7 @@ class Deployment:
         self.lock.write_text(json.dumps(document, indent=2) + "\n")
 
     def build_generation(self, revision: str | None = None) -> str:
+        started = time.monotonic()
         args = ['nix', 'build', '--no-link', '--print-out-paths', '--no-write-lock-file']
         target = f'{self.config}#homeConfigurations.{self.home_configuration}.activationPackage'
         if revision and self.host_pinned():
@@ -378,6 +381,8 @@ class Deployment:
         if (not re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', result)
                 or not (Path(result) / 'activate').is_file()):
             raise DeploymentError('build did not return one activation generation')
+        self._phase_times = getattr(self, '_phase_times', {})
+        self._phase_times['realize'] = round(time.monotonic() - started, 3)
         return result
 
     def activation_validators(self, generation: str) -> None:
@@ -403,10 +408,15 @@ class Deployment:
         # HM CLI switch changes the profile BEFORE prerequisite checks. Direct
         # activation uses driver 0: its own writeBoundary moves the profile only
         # after read-only checks pass. Never pass --driver-version 1 here.
+        started = time.monotonic()
         command(str(Path(generation) / 'activate'))
         if self.generation() != generation:
             raise DeploymentError('candidate generation was not activated')
+        self._phase_times = getattr(self, '_phase_times', {})
+        self._phase_times['activate'] = round(time.monotonic() - started, 3)
+        restart_started = time.monotonic()
         self.restart_if_graphical()
+        self._phase_times['shellRestart'] = round(time.monotonic() - restart_started, 3)
 
     def wait_ready(self) -> None:
         for _ in range(40):
@@ -668,7 +678,11 @@ class Deployment:
     def install(self, revision: str, pins: dict[str, str], stage: str) -> tuple[str, str]:
         """Pin, switch and verify an assembly; on failure restore the lock
         and the previous generation. Returns (previous generation, previous pin)."""
+        self._phase_times = {}
+        install_started = time.monotonic()
+        preflight_started = time.monotonic()
         self.preflight(revision)
+        self._phase_times['preflight'] = round(time.monotonic() - preflight_started, 3)
         previous = self.generation()
         previous_pin = self.rollback_pin(previous)
         pin_path = self.pin_path
@@ -682,10 +696,12 @@ class Deployment:
             self.transaction(phase='activating')
             activation_attempted = True
             self.activate()
+            verify_started = time.monotonic()
             problems = self.verify(pins, revision)
             if problems:
                 raise DeploymentError("installed endpoints do not match the assembly:\n  " + "\n  ".join(problems))
             self.verify_active(getattr(self, '_prepared_generation', previous), pins)
+            self._phase_times['verify'] = round(time.monotonic() - verify_started, 3)
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
             try:
                 self.transaction(phase='recovering', deploymentError=str(exc))
@@ -716,10 +732,17 @@ class Deployment:
             files = [self.pin_file()] + self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
                                                          "stage": stage, "generation": generation})
             self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
+            self._phase_times['total'] = round(time.monotonic() - install_started, 3)
             self.save_state({"stage": stage, "packages": revision, "components": pins,
                              "generation": generation, "previousGeneration": previous,
-                             "previousPin": previous_pin, "livePaths": self.live_digests()})
-            self.transaction(phase='complete')
+                             "previousPin": previous_pin, "livePaths": self.live_digests(),
+                             "phaseTimes": dict(self._phase_times)})
+            self.transaction(phase='complete', phaseTimes=dict(self._phase_times))
+            print(
+                "deploy phases: "
+                + " ".join(f"{name}={seconds}s" for name, seconds in self._phase_times.items()),
+                flush=True,
+            )
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
             self.transaction(phase='partial', recordingError=str(exc))
             raise DeploymentError(
@@ -806,6 +829,37 @@ class Deployment:
         pins = self.components(revision)
         self.require_on("test", revision, pins)
         self.install(revision, pins, "test")
+        self.status()
+
+    def follow(self, ref: str) -> None:
+        """Install an accepted Run assembly on a follower host (plan 47).
+
+        Records stage label `follow`, not `test`, so shared Test records stay
+        with the stage host.
+        """
+        revision = self.resolve(ref)
+        pins = self.components(revision)
+        self.fetch_all(pins)
+        if self.stage_of("tamlinux-packages", revision) != "main" and not self.follows_main(
+                "tamlinux-packages", revision):
+            # Accept an exact main commit or a Test assembly already accepted for Run.
+            acceptances = self.config / "system" / "acceptances"
+            accepted = False
+            if acceptances.is_dir():
+                for path in acceptances.glob("*.json"):
+                    try:
+                        data = json.loads(path.read_text())
+                    except (OSError, ValueError):
+                        continue
+                    if data.get("assemblyRevision") == revision and data.get("stage") in ("run", "Run", "release"):
+                        accepted = True
+                        break
+            if not accepted:
+                raise DeploymentError(
+                    f"{revision[:12]} is not on main and has no Run acceptance; "
+                    "followers only install accepted or main assemblies"
+                )
+        self.install(revision, pins, "follow")
         self.status()
 
     def run(self, ref: str | None = None, untested: bool = False) -> None:
@@ -914,7 +968,9 @@ class Deployment:
             ) from exc
 
 
-USAGE = "usage: tam-deploy status [--json] | preflight <assembly> | reconcile [--digest HASH] | init [revision] [--test] | test [revision] | run [revision] [--untested] | back"
+USAGE = ("usage: tam-deploy status [--json] | preflight <assembly> | reconcile [--digest HASH] | "
+         "init [revision] [--test] | test [revision] | run [revision] [--untested] | "
+         "follow <revision> | back")
 
 
 def parse(argv: list[str]) -> tuple[str, list, dict] | None:
@@ -933,6 +989,8 @@ def parse(argv: list[str]) -> tuple[str, list, dict] | None:
         if len(rest) == 2 and rest[0] == '--digest' and re.fullmatch(r'[0-9a-f]{64}', rest[1]):
             return name, [rest[1]], {}
     if name == "test" and len(rest) <= 1 and not any(a.startswith("-") for a in rest):
+        return name, rest, {}
+    if name == "follow" and len(rest) == 1 and not rest[0].startswith("-"):
         return name, rest, {}
     if name == "run":
         flags = [a for a in rest if a.startswith("-")]

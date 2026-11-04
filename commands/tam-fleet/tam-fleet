@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-shot, host-scoped registration and reconciliation. Python 3.11+."""
+"""One-shot, host-scoped registration, reconciliation and fleet deploy. Python 3.11+."""
 import argparse
 import contextlib
 import datetime as dt
@@ -20,6 +20,9 @@ USER = re.compile(r"[a-z_][a-z0-9_-]*\Z")
 STATES = {"planned", "installing", "active", "maintenance", "retired"}
 BEGIN = "<!-- tam-fleet index begin -->"
 END = "<!-- tam-fleet index end -->"
+STAGE_HOST = "bosgame-tamlinux"
+REV = re.compile(r"[0-9a-f]{40}\Z")
+VERSION = re.compile(r"\d+\.\d+\.\d+(?:-[a-z0-9.]+)?\Z")
 
 
 class FleetError(Exception):
@@ -321,6 +324,136 @@ class Fleet:
                 run("git", "add", "--", *paths, cwd=repo)
                 run("git", "commit", "-m", f"Reconcile {name}", "--", *paths, cwd=repo)
 
+    def workspace(self) -> Path:
+        """Parent checkout that holds config, packages and product clones."""
+        return self.config.parent
+
+    def delivery(self, version: str) -> dict:
+        if not VERSION.fullmatch(version):
+            raise FleetError(f"invalid version: {version}")
+        path = self.workspace() / "tamlinux-packages" / "deliveries" / f"tamlinux-{version}.json"
+        if not path.is_file():
+            raise FleetError(f"missing delivery record: {path}")
+        return json.loads(path.read_text())
+
+    def assembly_revision(self, delivery: dict) -> str:
+        rev = delivery.get("packagingRevision")
+        if isinstance(rev, str) and REV.fullmatch(rev):
+            return rev
+        # Prepared candidates store the commit containing the record later;
+        # resolve from the deliveries path's HEAD when still a placeholder.
+        packages = self.workspace() / "tamlinux-packages"
+        found = run("git", "-C", str(packages), "log", "-1", "--format=%H",
+                    "--", f"deliveries/tamlinux-{delivery['version']}.json")
+        if not REV.fullmatch(found):
+            raise FleetError("cannot resolve assembly revision for delivery")
+        return found
+
+    def deploy_plan(self, name: str, version: str) -> dict:
+        """Read-only plan for deploying an assembly to one follower (plan 47)."""
+        require_name(name)
+        if os.uname().nodename != STAGE_HOST:
+            raise FleetError(f"tam-fleet deploy runs on {STAGE_HOST}, not {os.uname().nodename}")
+        if name == STAGE_HOST:
+            raise FleetError("followers only; stage host uses fred-stage / tam-deploy locally")
+        host = self.host(name)
+        delivery = self.delivery(version)
+        assembly = self.assembly_revision(delivery)
+        native = delivery.get("nativePackage") or {}
+        profile = f"{host['username']}@{name}"
+        return {
+            "host": name,
+            "profile": profile,
+            "version": version,
+            "assembly": assembly,
+            "native": {
+                "version": native.get("version"),
+                "sha256": native.get("sha256") or native.get("archiveSha256"),
+                "archiveHint": f"~/Code/tamlinux/recovery/{version}-native/",
+            },
+            "privilege": {
+                "mechanism": "pkttyagent",
+                "note": "Native pacman -U over SSH needs Fred-run ssh -t with pkttyagent; "
+                        "console login/session steps stay at the machine (D156).",
+            },
+            "signing": {
+                "required": True,
+                "note": "Hosts must list bosgame's nix signing key in trusted-public-keys "
+                        "so nix copy needs no --no-check-sigs.",
+            },
+            "steps": [
+                "check host reachable and config can fast-forward to origin/main",
+                "evaluate activationPackage on bosgame and on the host; require identical drvPath",
+                "build on bosgame and nix copy the generation to the host",
+                "copy native archive and verify sha256",
+                "on host (approved): pkexec pacman -U of the recorded archive",
+                "on host (approved): tam-deploy follow <assembly>",
+                "restart/verify shell; append dossier Deployment history",
+            ],
+            "dryRunSafe": True,
+        }
+
+    def deploy(self, name: str, version: str, *, dry_run: bool = False,
+               word: str | None = None, execute: bool = False) -> dict:
+        plan = self.deploy_plan(name, version)
+        print(json.dumps(plan, indent=2))
+        if dry_run and not execute:
+            # Reachability without mutation. Offline hosts warn; the plan still prints.
+            try:
+                subprocess.run(
+                    ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", name, "true"],
+                    check=True, capture_output=True, text=True, timeout=20,
+                )
+                print(f"dry-run: {name} reachable")
+            except (subprocess.SubprocessError, OSError) as exc:
+                print(f"dry-run: {name} not reachable ({exc}); plan only", file=sys.stderr)
+            print(f"dry-run: plan for {version} on {name} printed; no copy or activation")
+            return plan
+        if not execute:
+            print("Plan only. Re-run with --execute --word \"...\" after Fred approves, "
+                  "or --dry-run for reachability.")
+            return plan
+        if not word or version not in word or name not in word:
+            raise FleetError('--word must name both the host and the version')
+        # Mutating path: build locally for the follower profile, copy, then hand
+        # privileged steps to Fred one at a time.
+        workspace = self.workspace()
+        config = self.config
+        profile = plan["profile"]
+        assembly = plan["assembly"]
+        attr = f"{config}#homeConfigurations.{profile}.activationPackage"
+        print(f"evaluate {attr} with assembly {assembly[:12]}", flush=True)
+        # Pin override mirrors tam-deploy for host-pinned fleets.
+        generation = run(
+            "nix", "build", "--no-link", "--print-out-paths", "--no-write-lock-file",
+            "--override-input", "tamlinux-packages",
+            f"github:greenermoose/tamlinux-packages/{assembly}",
+            attr,
+        )
+        if not re.fullmatch(r"/nix/store/[a-z0-9]{32}-home-manager-generation", generation):
+            raise FleetError("build did not return one Home Manager generation")
+        print(f"nix copy {generation} -> ssh-ng://{name}", flush=True)
+        copy = subprocess.run(
+            ["nix", "copy", "--to", f"ssh-ng://{name}", generation],
+            text=True, capture_output=True,
+        )
+        if copy.returncode:
+            # Fall back once for hosts that have not yet trusted bosgame's key.
+            copy = subprocess.run(
+                ["nix", "copy", "--no-check-sigs", "--to", f"ssh-ng://{name}", generation],
+                text=True, capture_output=True,
+            )
+            if copy.returncode:
+                raise FleetError(copy.stderr.strip() or copy.stdout.strip() or "nix copy failed")
+            print("warning: copied with --no-check-sigs; install bosgame signing trust on the host")
+        print("Stop for native install approval (D156). Suggested:")
+        archive = plan["native"]["archiveHint"]
+        print(f"  ssh -t {name} 'pkttyagent & pkexec pacman -U <absolute-archive-from-{archive}>'")
+        print(f"Then on {name}: tam-deploy follow {assembly}")
+        print("Then append Deployment history in systems/<host>.md")
+        print(f"word recorded: {word}")
+        return {**plan, "generation": generation, "copied": True}
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -335,6 +468,12 @@ def main(argv=None):
     register.add_argument("--capability", action="append", default=[])
     register.add_argument("--system", choices=["x86_64-linux", "aarch64-linux"], default="x86_64-linux")
     register.add_argument("--home")
+    deploy = sub.add_parser("deploy", help="plan or run one-host fleet delivery from the stage host")
+    deploy.add_argument("hostname")
+    deploy.add_argument("version")
+    deploy.add_argument("--dry-run", action="store_true", help="print plan and check SSH; mutate nothing")
+    deploy.add_argument("--execute", action="store_true", help="build/copy after Fred's word")
+    deploy.add_argument("--word", help="Fred's exact words naming host and version")
     for name in ["status", "index", "check", "root-files", "capture", "reconcile"]:
         child = sub.add_parser(name)
         if name in ["root-files", "capture", "reconcile"]:
@@ -358,6 +497,15 @@ def main(argv=None):
             fleet.local(args.hostname)
             for source, target, mode in fleet.root_files(args.hostname):
                 print(f"{target}\t{mode:o}\t{source}")
+        elif args.command == "deploy":
+            # Dry-run/plan must not take the writer lock; execute does.
+            if args.execute and not args.dry_run:
+                with fleet.locked():
+                    fleet.deploy(args.hostname, args.version, dry_run=False,
+                                 word=args.word, execute=True)
+            else:
+                fleet.deploy(args.hostname, args.version, dry_run=args.dry_run,
+                             word=args.word, execute=False)
         else:
             with fleet.locked():
                 if args.command == "index":

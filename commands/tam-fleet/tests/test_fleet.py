@@ -208,6 +208,24 @@ class FleetTests(unittest.TestCase):
                 with self.fleet.locked():
                     self.fail("second writer acquired lock")
 
+    def test_deploy_plan_is_stage_host_only_and_refuses_self(self):
+        delivery = {
+            "version": "0.5.12",
+            "packagingRevision": "cfe46791c015932c900999737b85ef9a2a4b5b40",
+            "nativePackage": {"version": "0.5.12-0.1", "sha256": "ab" * 32},
+        }
+        with patch.object(fleet.os, "uname", return_value=SimpleNamespace(nodename="other-host")):
+            with self.assertRaisesRegex(fleet.FleetError, "bosgame-tamlinux"):
+                self.fleet.deploy_plan("alpha", "0.5.12")
+        with patch.object(fleet.os, "uname", return_value=SimpleNamespace(nodename=fleet.STAGE_HOST)), \
+             patch.object(self.fleet, "delivery", return_value=delivery):
+            with self.assertRaisesRegex(fleet.FleetError, "followers only"):
+                self.fleet.deploy_plan(fleet.STAGE_HOST, "0.5.12")
+            plan = self.fleet.deploy_plan("alpha", "0.5.12")
+        self.assertEqual(plan["assembly"], delivery["packagingRevision"])
+        self.assertEqual(plan["privilege"]["mechanism"], "pkttyagent")
+        self.assertTrue(plan["dryRunSafe"])
+
 
 if __name__ == "__main__":
     unittest.main()

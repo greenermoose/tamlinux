@@ -18,6 +18,9 @@ tam-fleet root-files laptop
 tam-fleet capture laptop
 tam-fleet reconcile laptop
 tam-fleet reconcile laptop --commit
+# Stage host only (plan 47):
+tam-fleet deploy slowhp 0.5.12 --dry-run
+tam-fleet deploy slowhp 0.5.12 --execute --word "deploy 0.5.12 to slowhp"
 ```
 
 Registration creates a planned dossier, `hosts/<hostname>/host.json`, an empty
