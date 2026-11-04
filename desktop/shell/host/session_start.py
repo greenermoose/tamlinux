@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,7 +29,21 @@ sys.path.insert(0, str(HOST))
 
 from registry import plugin_entries  # noqa: E402
 
-QUICKSHELL = "/usr/bin/quickshell"
+
+def resolve_quickshell(env: dict[str, str] | None = None) -> str:
+    """Prefer session-selected Nix Quickshell; do not require Pacman /usr/bin."""
+    environ = env if env is not None else os.environ
+    selected = environ.get("TAMLINUX_QUICKSHELL")
+    if selected:
+        return selected
+    nix_profile = Path.home() / ".nix-profile/bin/quickshell"
+    if nix_profile.is_file():
+        return str(nix_profile)
+    found = shutil.which("quickshell")
+    if found:
+        return found
+    return "/usr/bin/quickshell"
+
 
 # Fault H: menu-launched Arch Qt apps must not inherit the shell's Nix Qt
 # paths or shell-only PATH / platform overrides. Keys listed in
@@ -210,7 +225,7 @@ def main() -> int:
     env, notes = session_environment(dict(os.environ))
     for note in notes:
         print(f"tamlinux-shell: {note}", file=sys.stderr, flush=True)
-    quickshell = env.get("TAMLINUX_QUICKSHELL") or QUICKSHELL
+    quickshell = resolve_quickshell(env)
     if not Path(quickshell).is_absolute():
         print("tamlinux-shell: selected Quickshell executable must be absolute", file=sys.stderr)
         return 2

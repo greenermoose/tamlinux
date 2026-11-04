@@ -122,3 +122,81 @@ hl.config({
     hide_special_on_workspace_change = true,
   },
 })
+
+-- K25: accessible titlebar Close / Float / Maximize on windows without
+-- client decorations. hyprbars has no native right-click menu, so the three
+-- actions are explicit bar buttons. Degrades to no bars when the plugin is
+-- missing or ABI-stale (see hyprland-plugin-abi runbook).
+local hyprbars = "/usr/lib/libhyprbars.so"
+
+local function hyprbars_usable()
+  local so = io.open(hyprbars, "r")
+  if not so then return false end
+  so:close()
+
+  local state = io.open("/var/lib/hyprland-plugin-abi/status", "r")
+  if not state then return true end
+  local verdict = state:read("*l") or ""
+  state:close()
+
+  return verdict:match("^%s*(.-)%s*$") ~= "stale"
+end
+
+if hyprbars_usable() then
+  hl.plugin.load(hyprbars)
+
+  local function theme_color(name, fallback)
+    local path = os.getenv("HOME") .. "/.local/state/tamlinux/current/theme/colors.toml"
+    local file = io.open(path, "r")
+    if not file then return fallback end
+
+    local value = fallback
+    for line in file:lines() do
+      local key, hex = line:match('^%s*([%w_]+)%s*=%s*"#(%x%x%x%x%x%x)"')
+      if key == name then value = "rgb(" .. hex .. ")" end
+    end
+    file:close()
+    return value
+  end
+
+  local bar_bg = theme_color("dark_background", "rgb(1a1a1a)")
+  local text = theme_color("foreground", "rgb(cccccc)")
+  local close_bg = theme_color("red", "rgb(ff5345)")
+
+  hl.config({
+    plugin = {
+      hyprbars = {
+        bar_height = 26,
+        bar_color = bar_bg,
+        col = { text = text },
+        bar_text_size = 10,
+        bar_text_font = "JetBrainsMono Nerd Font",
+        bar_text_align = "center",
+        bar_buttons_alignment = "right",
+        bar_part_of_window = true,
+        bar_precedence_over_border = true,
+        bar_button_padding = 8,
+        on_double_click = "hyprctl dispatch fullscreen 1",
+      },
+    },
+  })
+
+  -- Buttons render right to left; first added sits furthest right.
+  local function bar_button(fg, letter, action)
+    hl.plugin.hyprbars.add_button({
+      bg_color = "rgba(00000000)",
+      fg_color = fg,
+      size = 18,
+      icon = letter,
+      action = action,
+    })
+  end
+
+  bar_button(close_bg, "X", "hyprctl dispatch 'hl.dsp.window.close()'")
+  bar_button(text, "F", "hyprctl dispatch 'hl.dsp.window.float({ action = \"toggle\" })'")
+  bar_button(text, "M", "hyprctl dispatch fullscreen 1")
+
+  -- Bars only on terminal-tagged windows (foot and friends have no client
+  -- headerbar). Chromium, Cursor and other GTK/Electron apps keep their own.
+  o.window({ tag = "negative:terminal" }, { ["hyprbars:no_bar"] = true })
+end

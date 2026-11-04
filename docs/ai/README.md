@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-04 — Tamlinux 0.6.9 K25, speed, Plan 32 quickshell](2026-11-04-0.6.9-k25-speed-quickshell.md)
+
 - [2026-11-04 — Tamlinux 0.6.7 workstation upgrade (K52)](2026-11-04-0.6.7-workstation-upgrade.md)
 
 - [2026-11-04 — Tamlinux 0.6.6 package/test speed and fleet deploy](2026-11-04-0.6.6-package-speed.md)

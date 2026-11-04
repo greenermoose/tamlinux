@@ -6,9 +6,13 @@ from pathlib import Path
 import shutil
 import subprocess
 import tarfile
+import sys
 import tempfile
 import time
 import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from quickshell_bin import quickshell_bin
 
 DESKTOP = Path(__file__).resolve().parents[1]
 MENU = DESKTOP / "shell/services/menu"
@@ -120,7 +124,9 @@ class NativeTests(unittest.TestCase):
                         time.sleep(0.05)
                     self.assertIsNotNone(socket,(root/'sway.log').read_text())
                     env.update(WAYLAND_DISPLAY=socket.name,QT_QPA_PLATFORM='wayland')
-                    result=subprocess.run(['/usr/bin/quickshell','--no-color','-p',str(shell/'proof-start.qml')],env=env,capture_output=True,text=True,timeout=20)
+                    qs=quickshell_bin()
+                    env['TAMLINUX_QUICKSHELL']=qs
+                    result=subprocess.run([qs,'--no-color','-p',str(shell/'proof-start.qml')],env=env,capture_output=True,text=True,timeout=20)
                 finally:
                     sway.terminate();sway.wait(timeout=5)
             output=result.stdout+result.stderr

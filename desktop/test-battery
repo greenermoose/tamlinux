@@ -680,6 +680,17 @@ class DesktopTestRunner:
                 "Phase 5", "Meta + W does not close window (K22)", not_closed
             )
 
+            # - K25: product hyprbars exposes X / F / M on terminal windows when
+            #   the ABI-matched plugin is loaded. Record presence; Fred's mouse
+            #   acceptance after Test remains the checklist pass.
+            plugins = subprocess.check_output(
+                ["hyprctl", "plugin", "list"], text=True, timeout=2, stderr=subprocess.DEVNULL
+            )
+            hyprbars_loaded = "hyprbars" in plugins.lower()
+            self.telemetry.record_assertion(
+                "Phase 5", "hyprbars plugin loaded for titlebar close (K25)", hyprbars_loaded
+            )
+
             # - Close second window with Meta + Q
             self.vi.chord("META + Q")
             time.sleep(self.step_pace() * 3)

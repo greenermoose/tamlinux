@@ -16,6 +16,14 @@ import tempfile
 from pathlib import Path
 
 DESKTOP = Path(__file__).resolve().parent
+sys_path_host = DESKTOP / "shell" / "host"
+
+
+def _quickshell() -> str:
+    import sys
+    sys.path.insert(0, str(sys_path_host))
+    from session_start import resolve_quickshell
+    return resolve_quickshell()
 
 
 def main() -> None:
@@ -44,9 +52,11 @@ def main() -> None:
         for name in ("XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
             if os.environ.get(name):
                 env[name] = os.environ[name]
+        qs = os.environ.get("TAMLINUX_QUICKSHELL") or _quickshell()
+        env["TAMLINUX_QUICKSHELL"] = qs
         try:
             result = subprocess.run(
-                ["/usr/bin/quickshell", "--no-color", "-p", str(config)],
+                [qs, "--no-color", "-p", str(config)],
                 env=env, capture_output=True, text=True, timeout=15, check=False,
             )
         except subprocess.TimeoutExpired as error:

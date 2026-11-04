@@ -7,10 +7,14 @@ import json
 import shutil
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from quickshell_bin import quickshell_bin
 
 DESKTOP = Path(__file__).resolve().parents[1]
 loader = importlib.machinery.SourceFileLoader("protocol_shadow", str(DESKTOP / "protocol-shadow"))
@@ -142,9 +146,11 @@ class ShadowQmlTests(unittest.TestCase):
             shutil.copyfile(DESKTOP / "fixtures/protocol-shadow/shell.qml", root / "shell.qml")
             for name in ("ProtocolShadow.qml", "protocol_model.js"):
                 shutil.copyfile(DESKTOP / "shell/host" / name, root / "host" / name)
-            result = subprocess.run(["/usr/bin/quickshell", "--no-color", "-p", str(root)],
+            qs = quickshell_bin()
+            result = subprocess.run([qs, "--no-color", "-p", str(root)],
                                     env={"PATH": "/usr/bin", "HOME": directory, "XDG_RUNTIME_DIR": directory,
-                                         "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic"},
+                                         "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic",
+                                         "TAMLINUX_QUICKSHELL": qs},
                                     capture_output=True, text=True, timeout=15)
         log = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, log)

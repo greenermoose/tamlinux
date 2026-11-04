@@ -9,8 +9,12 @@ import io
 import tarfile
 import time
 import socket as sockets
+import sys
 import tempfile
 import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from quickshell_bin import quickshell_bin
 
 DESKTOP = Path(__file__).resolve().parents[1]
 MENU = DESKTOP / "shell/services/menu"
@@ -178,7 +182,9 @@ ShellRoot {
                         time.sleep(0.05)
                     self.assertIsNotNone(socket, (root / "sway.log").read_text())
                     env.update(WAYLAND_DISPLAY=socket.name, QT_QPA_PLATFORM="wayland")
-                    result = subprocess.run(["/usr/bin/quickshell", "--no-color", "-p", str(shell / "proof-menu.qml")],
+                    qs = quickshell_bin()
+                    env["TAMLINUX_QUICKSHELL"] = qs
+                    result = subprocess.run([qs, "--no-color", "-p", str(shell / "proof-menu.qml")],
                                             env=env, capture_output=True, text=True, timeout=10)
                 finally:
                     sway.terminate()
@@ -232,11 +238,13 @@ ShellRoot {
 }
 '''.replace('__PATH__', json.dumps(str(path))).replace('__MISSING__', json.dumps(str(root / "missing.jsonc")))
             (root / "shell.qml").write_text(qml)
+            qs = quickshell_bin()
             env = {"PATH": "/usr/bin", "HOME": directory, "XDG_CONFIG_HOME": directory,
                    "XDG_CACHE_HOME": directory, "XDG_RUNTIME_DIR": directory,
                    "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic",
-                   "QML_IMPORT_PATH": str(MENU.parents[1] / "modules")}
-            result = subprocess.run(["/usr/bin/quickshell", "--no-color", "-p", str(root)],
+                   "QML_IMPORT_PATH": str(MENU.parents[1] / "modules"),
+                   "TAMLINUX_QUICKSHELL": qs}
+            result = subprocess.run([qs, "--no-color", "-p", str(root)],
                                     env=env, capture_output=True, text=True, timeout=10)
         log = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, log)

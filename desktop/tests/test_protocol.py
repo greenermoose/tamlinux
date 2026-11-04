@@ -5,15 +5,20 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from quickshell_bin import quickshell_bin
 
 DESKTOP = Path(__file__).resolve().parents[1]
 
 
 class ProtocolTests(unittest.TestCase):
     def test_reactive_protocol_fixtures(self):
+        qs = quickshell_bin()
         with tempfile.TemporaryDirectory(prefix="tamlinux-protocol-") as directory:
             root = Path(directory)
             config = root / "config"
@@ -23,9 +28,10 @@ class ProtocolTests(unittest.TestCase):
                 shutil.copyfile(DESKTOP / "shell/host" / name, config / "host" / name)
             env = {"PATH": "/usr/bin", "HOME": directory, "XDG_RUNTIME_DIR": directory,
                    "XDG_CONFIG_HOME": directory, "XDG_CACHE_HOME": directory,
-                   "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic"}
+                   "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic",
+                   "TAMLINUX_QUICKSHELL": qs}
             result = subprocess.run(
-                ["/usr/bin/quickshell", "--no-color", "-p", str(config)],
+                [qs, "--no-color", "-p", str(config)],
                 env=env, capture_output=True, text=True, timeout=15, check=False,
             )
         log = result.stdout + result.stderr
