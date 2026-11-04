@@ -42,8 +42,9 @@ for arg in "$@"; do
   -h | --help)
     echo "Usage: tam-setup-security-sshd [--key=<public-key>]"
     echo
-    echo "Sets up the OpenSSH server, opens the SSH port in the UFW firewall,"
-    echo "and authorizes an SSH key (from GitHub, pasted, or passed via --key)."
+    echo "Sets up the OpenSSH server, opens the SSH port in the host firewall"
+    echo "(nftables when active, otherwise UFW), and authorizes an SSH key"
+    echo "(from GitHub, pasted, or passed via --key). Ensures PermitRootLogin no."
     exit 0
     ;;
   *)
@@ -59,15 +60,42 @@ setup_sshd() {
   sudo systemctl enable --now sshd.service
 }
 
-open_firewall() {
+nftables_active() {
+  tam-cmd-present nft || return 1
+  systemctl is-active --quiet nftables.service 2>/dev/null || return 1
+  # Owned Tamlinux table, or any loaded ruleset that already admits SSH.
+  sudo nft list table inet tamlinux-filter >/dev/null 2>&1
+}
+
+open_firewall_nftables() {
+  echo "nftables owns the host firewall; SSH must be admitted in /etc/nftables.conf"
+  echo "(template: \$HOME/.local/share/tamlinux/nftables/tamlinux-host.conf.template)."
+  echo "Not rewriting the live ruleset from this helper — confirm tamlinux-sshd is present."
+  if sudo nft list chain inet tamlinux-filter input 2>/dev/null | grep -q 'tamlinux-sshd'; then
+    echo "Found tamlinux-sshd accept rule in inet tamlinux-filter."
+  else
+    echo "Warning: no tamlinux-sshd rule found in inet tamlinux-filter." >&2
+  fi
+}
+
+open_firewall_ufw() {
   if ! tam-cmd-present ufw; then
-    echo "UFW is not installed; skipping firewall rule."
+    echo "Neither an active Tamlinux nftables policy nor UFW is available;"
+    echo "skipping automatic firewall rule. Install the nftables template first."
     return
   fi
 
-  echo "Opening the SSH port in the firewall (rate limited against brute force)..."
+  echo "Opening the SSH port in UFW (transitional until nftables cutover)..."
   sudo ufw limit 22/tcp comment "tamlinux-sshd" >/dev/null
   sudo ufw reload >/dev/null
+}
+
+open_firewall() {
+  if nftables_active; then
+    open_firewall_nftables
+  else
+    open_firewall_ufw
+  fi
 }
 
 valid_key() {
@@ -144,10 +172,11 @@ disable_password_auth() {
     return 1
   fi
 
-  echo "Disabling SSH password authentication, now that a key is authorized..."
+  echo "Disabling SSH password authentication and root login, now that a key is authorized..."
   sudo install -Dm644 /dev/stdin "$config" <<'CONF'
 # Written by tam-setup-security-sshd once an SSH key was authorized.
 # Delete this file and reload sshd to allow password logins again.
+PermitRootLogin no
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 CONF
@@ -166,8 +195,9 @@ CONF
   # in CamelCase.
   if ! effective_config=$(sudo sshd -T) ||
     ! grep -qixF "passwordauthentication no" <<<"$effective_config" ||
-    ! grep -qixF "kbdinteractiveauthentication no" <<<"$effective_config"; then
-    echo -e "\e[31msshd did not apply the password-authentication restrictions; removing the ineffective config.\e[0m" >&2
+    ! grep -qixF "kbdinteractiveauthentication no" <<<"$effective_config" ||
+    ! grep -qixE "permitrootlogin (no|prohibit-password|without-password)" <<<"$effective_config"; then
+    echo -e "\e[31msshd did not apply the password/root restrictions; removing the ineffective config.\e[0m" >&2
     sudo rm -f "$config"
     return 1
   fi

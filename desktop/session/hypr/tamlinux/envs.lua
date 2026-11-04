@@ -37,6 +37,13 @@ hl.env("TAMLINUX_BIN", paths.home .. "/.local/bin")
 
 -- The owned session and its native shortcut writer share this explicit signal.
 hl.env("TAMLINUX_SESSION", "1")
+
+-- K47: keep Hyprland off rtkit realtime until its RT watchdog kills are fixed
+-- (hyprwm/Hyprland#16648). UWSM sessions also set this in uwsm-env.
+if not os.getenv("HYPRLAND_NO_RT") then
+  hl.env("HYPRLAND_NO_RT", "1")
+end
+
 local bin_dir = paths.home .. "/.local/bin"
 local kept = {}
 for entry in (os.getenv("PATH") or "/usr/local/bin:/usr/bin"):gmatch("[^:]+") do

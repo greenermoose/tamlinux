@@ -1,0 +1,40 @@
+#!/usr/bin/nft -f
+# Tamlinux owned host firewall (D204). Replace __TAMLINUX_SSH_SUBNET__ with the
+# machine's home IPv4 CIDR before install. Never commit real subnet values to
+# public Git. See docs/plans/nftables-host-firewall.md.
+#
+# Does not manage Docker's iptables chains. Keep Docker's iptables compatibility
+# packages; do not enable Docker's experimental nftables backend for this cutover.
+
+flush ruleset
+
+table inet tamlinux-filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+
+    ct state invalid drop comment "drop invalid"
+    ct state { established, related } accept comment "tracked"
+    iif "lo" accept comment "loopback"
+
+    meta l4proto icmp accept comment "icmp"
+    meta l4proto ipv6-icmp accept comment "icmp6"
+
+    # SSH and mDNS only from the home subnet (IPv4).
+    ip saddr __TAMLINUX_SSH_SUBNET__ tcp dport 22 accept comment "tamlinux-sshd"
+    ip saddr __TAMLINUX_SSH_SUBNET__ udp dport 5353 accept comment "mdns"
+
+    # LocalSend (53317) from the home subnet.
+    ip saddr __TAMLINUX_SSH_SUBNET__ tcp dport 53317 accept comment "localsend"
+    ip saddr __TAMLINUX_SSH_SUBNET__ udp dport 53317 accept comment "localsend"
+
+    counter comment "drop remainder"
+  }
+
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+  }
+
+  chain output {
+    type filter hook output priority filter; policy accept;
+  }
+}

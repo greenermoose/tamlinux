@@ -30,6 +30,23 @@ from registry import plugin_entries  # noqa: E402
 
 QUICKSHELL = "/usr/bin/quickshell"
 
+# Fault H: menu-launched Arch Qt apps must not inherit the shell's Nix Qt
+# paths or shell-only PATH / platform overrides. Keys listed in
+# TAMLINUX_LAUNCH_HOST_ENV are stripped or restored for every host child.
+LAUNCH_HOST_KEYS = (
+    "QT_PLUGIN_PATH",
+    "NIXPKGS_QT6_QML_IMPORT_PATH",
+    "QML_IMPORT_PATH",
+    "QT_QPA_PLATFORM",
+    "PATH",
+)
+# Always remove these from host children; Arch Qt resolves its own plugins.
+LAUNCH_HOST_UNSET = frozenset({
+    "QT_PLUGIN_PATH",
+    "NIXPKGS_QT6_QML_IMPORT_PATH",
+    "QML_IMPORT_PATH",
+})
+
 
 def config_home(environ: dict[str, str]) -> Path:
     if environ.get("XDG_CONFIG_HOME"):
@@ -63,10 +80,83 @@ def compositor_version(environ: dict[str, str]) -> str:
     except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
         return ""
 
+def hyprland_environ(environ: dict[str, str]) -> dict[str, str]:
+    """Read the compositor's environment for host-app restores (Fault H)."""
+    signature = environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    runtime = environ.get("XDG_RUNTIME_DIR")
+    if not signature or not runtime:
+        return {}
+    # hyprland stores a pid file under XDG_RUNTIME_DIR/hypr/<signature>/hyprland.lock
+    # Fallback: scan /proc for Hyprland belonging to this user.
+    try:
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                cmdline = (entry / "cmdline").read_bytes().split(b"\0", 1)[0]
+            except OSError:
+                continue
+            base = cmdline.rsplit(b"/", 1)[-1]
+            if base != b"Hyprland":
+                continue
+            try:
+                raw = (entry / "environ").read_bytes()
+            except OSError:
+                continue
+            values: dict[str, str] = {}
+            for item in raw.split(b"\0"):
+                if not item or b"=" not in item:
+                    continue
+                key, _, value = item.partition(b"=")
+                try:
+                    values[key.decode()] = value.decode()
+                except UnicodeDecodeError:
+                    continue
+            if values.get("HYPRLAND_INSTANCE_SIGNATURE") == signature:
+                return values
+    except OSError:
+        return {}
+    return {}
+
+
+def host_path(path: str) -> str:
+    """Drop Nix store entries so Arch apps resolve /usr binaries first."""
+    kept = [entry for entry in path.split(":") if entry and not entry.startswith("/nix/store/")]
+    return ":".join(kept) if kept else "/usr/local/bin:/usr/bin"
+
+
+def save_launch_host_environment(env: dict[str, str], session: dict[str, str]) -> None:
+    """Record session values for Util.hostEnvironment to restore into children."""
+    present: list[str] = []
+    for key in LAUNCH_HOST_KEYS:
+        backup = f"TAMLINUX_HOST_{key}"
+        env.pop(backup, None)
+        if key in LAUNCH_HOST_UNSET:
+            continue
+        if key == "PATH":
+            value = session.get("PATH") or host_path(env.get("PATH", ""))
+            env[backup] = host_path(value)
+            present.append(key)
+        elif key == "QT_QPA_PLATFORM":
+            value = session.get("QT_QPA_PLATFORM") or "wayland;xcb"
+            env[backup] = value
+            present.append(key)
+        elif key in session:
+            env[backup] = session[key]
+            present.append(key)
+    env["TAMLINUX_LAUNCH_HOST_ENV"] = " ".join(LAUNCH_HOST_KEYS)
+    if present:
+        env["TAMLINUX_HOST_PRESENT"] = " ".join(present)
+    else:
+        env.pop("TAMLINUX_HOST_PRESENT", None)
+
+
 def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[str]]:
     """The shell's environment, and what to say in the journal."""
     env = {key: value for key, value in environ.items() if not key.startswith("OMARCHY_")}
     notes: list[str] = []
+    session = hyprland_environ(env)
+    save_launch_host_environment(env, session)
     env.setdefault("QML_IMPORT_PATH", str(SHELL / "modules"))
     # Plugin helpers (fred.workspaces, fred.monitor) and the Sway adapter load
     # the compositor backend from here; without it they fail closed.

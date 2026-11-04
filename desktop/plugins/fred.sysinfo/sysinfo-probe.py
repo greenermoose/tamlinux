@@ -634,6 +634,65 @@ def get_dynamic_memory_and_storage(storage_model):
     }
 
 
+def get_dynamic_network():
+    """Primary non-loopback interface rates from /proc/net/dev (K48)."""
+    result = {
+        "iface": None,
+        "rx_kbps": None,
+        "tx_kbps": None,
+        "rx_bytes": None,
+        "tx_bytes": None,
+        "available": False,
+    }
+    lines = read_file("/proc/net/dev").splitlines()
+    if not lines:
+        return result
+    best = None
+    best_total = -1
+    for line in lines:
+        if ":" not in line:
+            continue
+        name, _, rest = line.partition(":")
+        iface = name.strip()
+        if not iface or iface == "lo" or iface.startswith("veth") or iface.startswith("br-"):
+            continue
+        parts = rest.split()
+        if len(parts) < 9:
+            continue
+        try:
+            rx_b = int(parts[0])
+            tx_b = int(parts[8])
+        except ValueError:
+            continue
+        total = rx_b + tx_b
+        if total > best_total:
+            best_total = total
+            best = (iface, rx_b, tx_b)
+    if best is None:
+        return result
+    iface, rx_b, tx_b = best
+    result["iface"] = iface
+    result["rx_bytes"] = rx_b
+    result["tx_bytes"] = tx_b
+    result["available"] = True
+    now = time.time()
+    prev_raw = read_private_file("network-counters.json", max_age=30)
+    if prev_raw:
+        try:
+            prev = json.loads(prev_raw.decode())
+            if prev.get("iface") == iface and "t" in prev:
+                dt = max(now - float(prev["t"]), 0.05)
+                result["rx_kbps"] = round(max(rx_b - int(prev["rx"]), 0) / 1024.0 / dt, 1)
+                result["tx_kbps"] = round(max(tx_b - int(prev["tx"]), 0) / 1024.0 / dt, 1)
+        except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+            pass
+    write_private_file(
+        "network-counters.json",
+        json.dumps({"iface": iface, "rx": rx_b, "tx": tx_b, "t": now}).encode(),
+    )
+    return result
+
+
 def get_usb_peripherals():
     usb_peripherals = []
     seen = set()
@@ -656,6 +715,7 @@ def get_stats(force_static=False):
     cpu_dyn = get_dynamic_cpu(static_data["cpu"])
     temps, gpu_telemetry = get_dynamic_thermals_and_gpu()
     mem_storage = get_dynamic_memory_and_storage(static_data["storage_model"])
+    network = get_dynamic_network()
     usb_devices = get_usb_peripherals()
 
     up_secs = parse_float(read_file("/proc/uptime", "0").split()[0])
@@ -698,6 +758,7 @@ def get_stats(force_static=False):
         "temperatures": temps,
         "memory": mem_storage["memory"],
         "storage": mem_storage["storage"],
+        "network": network,
         "io": io_info
     }
 

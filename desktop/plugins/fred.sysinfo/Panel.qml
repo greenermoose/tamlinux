@@ -13,7 +13,7 @@ Panel {
   id: root
   moduleName: "fred.sysinfo"
 
-  readonly property string pluginVersion: "2.0.4"
+  readonly property string pluginVersion: "2.0.5"
 
   property var stats: ({})
   property int phraseIndex: 0
@@ -212,7 +212,12 @@ Panel {
       var cpuUsage = (root.stats.cpu && root.stats.cpu.usage_percent !== undefined && root.stats.cpu.usage_percent !== null) ? root.stats.cpu.usage_percent.toFixed(1) + "%" : "--"
       var ramAvailable = (root.stats.memory && root.stats.memory.avail_gb !== undefined && root.stats.memory.avail_gb !== null) ? root.stats.memory.avail_gb.toFixed(1) + " GB available" : "--"
       var diskFree = (root.stats.storage && root.stats.storage.free_gb !== undefined && root.stats.storage.free_gb !== null) ? root.stats.storage.free_gb.toFixed(1) + " GB free" : "--"
-      var resources = "CPU " + cpuUsage + " · RAM " + ramAvailable + " · Disk " + diskFree
+      var net = root.stats.network
+      var netText = (net && net.available && net.iface)
+        ? (net.iface + " ↓" + (net.rx_kbps !== null && net.rx_kbps !== undefined ? net.rx_kbps.toFixed(1) : "--")
+           + " ↑" + (net.tx_kbps !== null && net.tx_kbps !== undefined ? net.tx_kbps.toFixed(1) : "--") + " KB/s")
+        : "net unavailable"
+      var resources = "CPU " + cpuUsage + " · RAM " + ramAvailable + " · Disk " + diskFree + " · " + netText
       var ver = "fred.sysinfo v" + root.pluginVersion
       return prod + "\n" + resources + "\n\n" + ver
     }
@@ -569,6 +574,18 @@ Panel {
 
               InfoPair { label: "Ethernet"; value: root.stats.io ? root.stats.io.ethernet : "--" }
               InfoPair { label: "Wireless"; value: root.stats.io ? root.stats.io.wifi : "--" }
+              InfoPair {
+                label: "Net rate";
+                value: (root.stats.network && root.stats.network.available && root.stats.network.iface)
+                  ? (root.stats.network.iface + " ↓"
+                     + (root.stats.network.rx_kbps !== null && root.stats.network.rx_kbps !== undefined
+                        ? root.stats.network.rx_kbps.toFixed(1) : "--")
+                     + " ↑"
+                     + (root.stats.network.tx_kbps !== null && root.stats.network.tx_kbps !== undefined
+                        ? root.stats.network.tx_kbps.toFixed(1) : "--")
+                     + " KB/s")
+                  : "unavailable"
+              }
             }
 
             Column {

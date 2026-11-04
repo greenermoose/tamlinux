@@ -18,3 +18,7 @@ export QT_QPA_PLATFORM='wayland;xcb'
 export GDK_BACKEND='wayland,x11,*'
 export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=wayland
+# Hyprland 0.57 asks rtkit for realtime scheduling and can be SIGKILL'd by the
+# kernel RT watchdog under load (hyprwm/Hyprland#16648). Keep it off until that
+# is fixed. Set HYPRLAND_NO_RT=0 to opt back in (K47 / Omarchy cf71857c).
+export HYPRLAND_NO_RT="${HYPRLAND_NO_RT:-1}"

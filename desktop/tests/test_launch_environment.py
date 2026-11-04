@@ -83,6 +83,52 @@ class LaunchEnvironment(unittest.TestCase):
                 # These APIs may replace the environment configured on Process.
                 self.assertNotRegex(path.read_text(), r"\.(?:exec|startDetached)\s*\(", str(path))
 
+    def test_host_environment_strips_shell_qt_and_path(self):
+        """Fault H: menu launches must not inherit Nix Qt or shell PATH."""
+        util = (DESKTOP / "shell/modules/Tam/Commons/Util.qml").read_text()
+        for key in (
+            "QT_PLUGIN_PATH",
+            "NIXPKGS_QT6_QML_IMPORT_PATH",
+            "QML_IMPORT_PATH",
+            "QT_QPA_PLATFORM",
+            "PATH",
+        ):
+            with self.subTest(key=key):
+                self.assertIn(f'"{key}"', util)
+        self.assertIn("TAMLINUX_LAUNCH_HOST_ENV", util)
+        self.assertIn("TAMLINUX_HOST_PRESENT", util)
+        self.assertIn("launchHostKeys", util)
+
+    def test_session_start_records_launch_host_backups(self):
+        import importlib.util
+
+        path = DESKTOP / "shell/host/session_start.py"
+        spec = importlib.util.spec_from_file_location("session_start", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        env = {
+            "PATH": "/home/fred/.local/bin:/nix/store/aaaa/bin:/usr/bin",
+            "QT_QPA_PLATFORM": "wayland",
+            "QML_IMPORT_PATH": "/shell/modules",
+            "QT_PLUGIN_PATH": "/nix/store/qt/plugins",
+            "HOME": "/home/fred",
+        }
+        module.save_launch_host_environment(env, {
+            "PATH": "/home/fred/.local/bin:/usr/local/bin:/usr/bin",
+            "QT_QPA_PLATFORM": "wayland;xcb",
+        })
+        self.assertEqual(
+            env["TAMLINUX_LAUNCH_HOST_ENV"],
+            "QT_PLUGIN_PATH NIXPKGS_QT6_QML_IMPORT_PATH QML_IMPORT_PATH QT_QPA_PLATFORM PATH",
+        )
+        self.assertEqual(env["TAMLINUX_HOST_QT_QPA_PLATFORM"], "wayland;xcb")
+        self.assertEqual(env["TAMLINUX_HOST_PATH"], "/home/fred/.local/bin:/usr/local/bin:/usr/bin")
+        self.assertNotIn("TAMLINUX_HOST_QT_PLUGIN_PATH", env)
+        self.assertNotIn("TAMLINUX_HOST_QML_IMPORT_PATH", env)
+        self.assertIn("PATH", env["TAMLINUX_HOST_PRESENT"])
+        self.assertIn("QT_QPA_PLATFORM", env["TAMLINUX_HOST_PRESENT"])
+        self.assertNotIn("QT_PLUGIN_PATH", env["TAMLINUX_HOST_PRESENT"])
+
 
 if __name__ == "__main__":
     unittest.main()

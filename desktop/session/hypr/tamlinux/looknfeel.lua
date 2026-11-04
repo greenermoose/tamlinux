@@ -90,7 +90,29 @@ hl.config({
     -- died, so omarchy-restart-shell can recover the LOCK failsafe.
     allow_session_lock_restore = true,
   },
+})
 
+-- K47: Hyprland 0.57+ plays canberra on every xdg-system-bell; mute it so
+-- terminal BEL does not chime (Omarchy c019850d). Absent on 0.56.x.
+do
+  local major, minor = 0, 0
+  local handle = io.popen("/usr/bin/Hyprland --version 2>/dev/null")
+  if handle then
+    local out = handle:read("*a") or ""
+    handle:close()
+    major = tonumber(out:match("(%d+)%.%d+")) or 0
+    minor = tonumber(out:match("%d+%.(%d+)")) or 0
+  end
+  if major > 0 or minor >= 57 then
+    hl.config({
+      misc = {
+        bell_sound = "none",
+      },
+    })
+  end
+end
+
+hl.config({
   cursor = {
     hide_on_key_press = true,
     warp_on_change_workspace = 1,

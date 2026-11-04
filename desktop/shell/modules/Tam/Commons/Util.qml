@@ -9,15 +9,39 @@ QtObject {
   readonly property var providerEnvironment: String(Quickshell.env("TAMLINUX_GRAPHICS_PROVIDER_ENV") || "")
     .split(" ").filter(function (name) { return graphicsProviderKeys.indexOf(name) !== -1 })
 
+  // Shell/Nix Qt and PATH must not reach Arch-packaged apps (Fault H). The
+  // session starter lists managed keys in TAMLINUX_LAUNCH_HOST_ENV and names
+  // keys that had a real session value in TAMLINUX_HOST_PRESENT.
+  readonly property var launchHostKeys: [
+    "QT_PLUGIN_PATH", "NIXPKGS_QT6_QML_IMPORT_PATH", "QML_IMPORT_PATH",
+    "QT_QPA_PLATFORM", "PATH"
+  ]
+  readonly property var launchHostEnvironment: String(Quickshell.env("TAMLINUX_LAUNCH_HOST_ENV") || "")
+    .split(" ").filter(function (name) { return launchHostKeys.indexOf(name) !== -1 })
+  readonly property var launchHostPresent: String(Quickshell.env("TAMLINUX_HOST_PRESENT") || "")
+    .split(" ").filter(function (name) { return launchHostKeys.indexOf(name) !== -1 })
+
   function hostEnvironment(overrides) {
     var result = {}
     for (var key in (overrides || {})) result[key] = overrides[key]
     result.TAMLINUX_GRAPHICS_PROVIDER_ENV = null
+    result.TAMLINUX_LAUNCH_HOST_ENV = null
+    result.TAMLINUX_HOST_PRESENT = null
     for (var i = 0; i < graphicsProviderKeys.length; i++) {
       var name = graphicsProviderKeys[i]
       result["TAMLINUX_HOST_" + name] = null
       if (providerEnvironment.indexOf(name) !== -1)
         result[name] = Quickshell.env("TAMLINUX_HOST_" + name)
+    }
+    for (var j = 0; j < launchHostKeys.length; j++) {
+      var launchName = launchHostKeys[j]
+      result["TAMLINUX_HOST_" + launchName] = null
+      if (launchHostEnvironment.indexOf(launchName) !== -1) {
+        if (launchHostPresent.indexOf(launchName) !== -1)
+          result[launchName] = Quickshell.env("TAMLINUX_HOST_" + launchName)
+        else
+          result[launchName] = null
+      }
     }
     return result
   }

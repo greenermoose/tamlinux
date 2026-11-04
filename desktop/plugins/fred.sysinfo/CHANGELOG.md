@@ -4,6 +4,12 @@ All notable changes to `fred.sysinfo` in `tamlinux/desktop/plugins/fred.sysinfo`
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.5 - Tamlinux 0.6.4 candidate
+
+- K48: add lean primary-interface network rates from `/proc/net/dev` (no
+  extra daemon). Hover and panel show ↓/↑ KB/s or "unavailable".
+- Keep the existing 2.5–3 s refresh; `--bench` records probe cost.
+
 ## 2.0.4 - 2026-10-16
 
 - Use the shell router for panel IPC; remove per-screen target registrations.
