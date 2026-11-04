@@ -682,3 +682,5 @@ Earlier imv development: [session](docs/ai/2026-10-28-imv-input.md).
 Candidate 0.6.2: [source selection](docs/ai/0.6.2-candidate-selection.md).
 
 Candidate 0.6.3: [source selection](docs/ai/0.6.3-candidate-selection.md).
+
+Candidate 0.6.4: [source selection](docs/ai/0.6.4-candidate-selection.md).
