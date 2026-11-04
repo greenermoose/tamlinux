@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-04 — Tamlinux 0.6.6 package/test speed and fleet deploy](2026-11-04-0.6.6-package-speed.md)
+
 - [2026-11-02 — Development and candidate workflow](2026-11-02-candidate-workflow.md)
 
 - [2026-11-02 — Prepare Tamlinux 0.6.1 KBN WB](2026-11-02-061-preparation.md)
