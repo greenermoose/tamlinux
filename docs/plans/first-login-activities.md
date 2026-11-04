@@ -80,11 +80,13 @@ Neither command requires X11, Wayland, or Quickshell to function.
   - Divided into sections:
     1. **Graphical Desktop:**
        - Start graphical desktop shell (`tam-desktop`) — letter `a`
-    2. **Orientation & Learning:**
-       - Welcome & orientation (`hi` / `tam hi`)
-       - Offline Knowledge Guide (`tam`)
-       - Knowledge search (`tam search`)
-       - System reference (`tam man`)
+    2. **Guides & References** (quick paths into installed reference material):
+       - Tamlinux Guide (`tam show`)
+       - Keyword Index (`tam explain`)
+       - Glossary (`tam show glossary`)
+       - Manual Pages (`tam man`)
+       - Info Manuals (`tam info`)
+       - TLDR Pages (`tam tldr`)
     3. **Curated Games & Simulations (D214):**
        - Cataclysm: Dark Days Ahead (`cataclysm-dda`)
        - Frotz Interactive Fiction (`frotz`, prompting for a story file)

@@ -29,8 +29,8 @@ make install PREFIX=$HOME/.local/dev
 | `$PREFIX/share/start/VERSION` | Command semver |
 | `$PREFIX/share/licenses/start/LICENSE` | GPL-3.0-or-later |
 
-Optional override: `START_MENU` points at an alternate catalog file.
-`START_VERSION` overrides the version string when no VERSION file is found.
+Optional overrides: `START_MENU` points at an alternate catalog file;
+`START_VERSION` overrides the version string (checked before VERSION files).
 
 ## Usage
 
@@ -43,7 +43,7 @@ start --help|-h
 ```
 
 Opening the menu never starts graphics; the desktop launches only when the
-user selects that activity.
+user selects that activity. Quit with Esc (Backspace and Delete also quit).
 
 ## License
 

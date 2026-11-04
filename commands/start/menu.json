@@ -8,36 +8,52 @@
     "description": "Leave the text shell and start the Tamlinux Hyprland desktop"
   },
   {
-    "id": "hi",
-    "category": "Orientation & Learning",
-    "label": "Welcome to Tamlinux",
+    "id": "tam-guide",
+    "category": "Guides & References",
+    "label": "Tamlinux Guide",
     "check": "tam",
-    "argv": ["tam", "hi"],
-    "description": "First-boot orientation and system introduction (invokes tam hi)"
+    "argv": ["tam", "show"],
+    "description": "Browse the offline Tamlinux knowledge guide in the terminal pager"
   },
   {
-    "id": "tam",
-    "category": "Orientation & Learning",
-    "label": "Offline Knowledge Guide",
+    "id": "tam-explain",
+    "category": "Guides & References",
+    "label": "Keyword Index",
     "check": "tam",
-    "argv": ["tam"],
-    "description": "Interactive terminal documentation and learning journeys"
+    "argv": ["tam", "explain"],
+    "description": "Look up guide topics by keyword (tam explain / whatis)"
   },
   {
-    "id": "tam-search",
-    "category": "Orientation & Learning",
-    "label": "Search Knowledge Guide",
+    "id": "tam-glossary",
+    "category": "Guides & References",
+    "label": "Glossary",
     "check": "tam",
-    "argv": ["tam", "search"],
-    "description": "Interactive search across all Tamlinux documentation topics"
+    "argv": ["tam", "show", "glossary"],
+    "description": "Open the Tamlinux glossary of terms used across the guide"
   },
   {
     "id": "tam-man",
-    "category": "Orientation & Learning",
-    "label": "Manual Pages & References",
+    "category": "Guides & References",
+    "label": "Manual Pages",
     "check": "tam",
     "argv": ["tam", "man"],
-    "description": "Hyperlinked system man pages, info manuals, and curated tldr"
+    "description": "Hyperlinked system man pages for installed commands and APIs"
+  },
+  {
+    "id": "tam-info",
+    "category": "Guides & References",
+    "label": "Info Manuals",
+    "check": "tam",
+    "argv": ["tam", "info"],
+    "description": "Browse GNU Info manuals with hyperlinked cross-references"
+  },
+  {
+    "id": "tam-tldr",
+    "category": "Guides & References",
+    "label": "TLDR Pages",
+    "check": "tam",
+    "argv": ["tam", "tldr"],
+    "description": "Short command examples from the curated tldr collection"
   },
   {
     "id": "cataclysm-dda",

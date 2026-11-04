@@ -9,7 +9,7 @@
 #define START_MAX_ACTIVITIES 26
 #define START_MAX_ARGV 8
 #define START_FOOTER_HINTS \
-	"Down/Up Arrow scroll  Home top  End bottom  Backspace quit"
+	"Down/Up Arrow scroll  Home top  End bottom  Esc quit"
 
 bool start_use_color(void);
 const char *start_version(void);

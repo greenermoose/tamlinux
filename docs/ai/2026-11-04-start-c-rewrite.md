@@ -14,6 +14,9 @@
 
 Rewrote `commands/start` from a Python TUI to a pure C binary linked only
 against `libtam` (and libc). Menu catalog moved to `menu.json`. Version
-bumped to 0.2.0. Packaging drops the Python runtime wrap and builds `start`
-as a native payload. Recorded D224; updated the first-login plan, component
-README, and developing-tamlinux-components runbook note.
+landed at 0.2.4 after footer EL truncation fixes and Esc-as-quit.
+Orientation entries became Guides & References (`tam show` / `explain` /
+glossary / `man` / `info` / `tldr`). Packaging drops the Python runtime wrap
+and builds `start` as a native payload. Recorded D224; updated the
+first-login plan, component README, and developing-tamlinux-components
+runbook note.

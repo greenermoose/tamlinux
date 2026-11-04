@@ -131,20 +131,46 @@ static void test_paginate(void)
 	start_menu_free(&menu);
 }
 
+static void check_footer_version(const char *semver, int width)
+{
+	char footer[512];
+	char plain[512];
+	char expect[64];
+	char name[96];
+
+	snprintf(expect, sizeof(expect), "v%s", semver);
+	setenv("START_VERSION", semver, 1);
+	/* start_version caches; override via env checked first only before
+	 * first load — reset by exec. Call format which uses start_version. */
+	start_format_footer(footer, sizeof(footer), width);
+	start_strip_ansi(plain, sizeof(plain), footer);
+	snprintf(name, sizeof(name), "footer %s w=%d contains full version", semver, width);
+	expect_true(name, strstr(plain, expect) != NULL);
+	snprintf(name, sizeof(name), "footer %s w=%d ends with version", semver, width);
+	expect_true(name, strlen(plain) >= strlen(expect) &&
+			  strcmp(plain + strlen(plain) - strlen(expect), expect) == 0);
+}
+
 static void test_footer(void)
 {
 	char footer[256];
 	char plain[256];
+	int widths[] = {40, 48, 65, 80, 100};
+	size_t j;
 
-	setenv("START_VERSION", "0.2.0", 1);
-	/* force reload path: util caches after first call — call before if needed */
+	/* Env override must win before any cached load in this process. */
+	setenv("START_VERSION", "0.2.4", 1);
 	start_format_footer(footer, sizeof(footer), 80);
 	start_strip_ansi(plain, sizeof(plain), footer);
 	expect_true("footer starts with hints",
-		    strncmp(plain, START_FOOTER_HINTS, strlen(START_FOOTER_HINTS)) == 0 ||
-			strstr(plain, "Down/Up Arrow scroll") != NULL);
-	expect_true("footer has version", strstr(plain, "v0.2.0") != NULL);
-	expect_eq("footer width", (int)strlen(plain), 80);
+		    strstr(plain, "Down/Up Arrow scroll") != NULL);
+	expect_true("footer has Esc quit", strstr(plain, "Esc quit") != NULL);
+	expect_true("footer has v0.2.4", strstr(plain, "v0.2.4") != NULL);
+	expect_eq("footer visible width", (int)start_visible_len(plain), 80);
+
+	/* Width sweep for the in-process cached version (env set above). */
+	for (j = 0; j < sizeof(widths) / sizeof(widths[0]); j++)
+		check_footer_version("0.2.4", widths[j]);
 }
 
 static void test_compose(void)
@@ -172,7 +198,7 @@ static void test_compose(void)
 	expect_true("banner", strstr(joined, "Tamlinux Start") != NULL);
 	expect_true("desktop label", strstr(joined, "Start graphical desktop shell") != NULL);
 	expect_true("version footer", strstr(joined, "v") != NULL);
-	expect_true("hints", strstr(joined, "Backspace quit") != NULL);
+	expect_true("hints", strstr(joined, "Esc quit") != NULL);
 	start_menu_free(&menu);
 	unsetenv("NO_COLOR");
 }
@@ -190,23 +216,38 @@ static void test_screen_diff(void)
 	expect_true("first paint cup", strstr(cap.blob, "\033[1;1H") != NULL);
 	expect_true("no clear on update", strstr(cap.blob, "\033[2J") == NULL);
 	expect_true("flushed", cap.flushes > 0);
+	expect_true("short row still gets EL", strstr(cap.blob, "\033[K") != NULL);
 
 	free(cap.blob);
-	cap.blob = NULL;
-	cap.len = 0;
-	cap.cap = 0;
-	cap.flushes = 0;
+	memset(&cap, 0, sizeof(cap));
 	changed = start_screen_update(&sc, f2, 3, 10);
 	expect_eq("one row changed", changed, 1);
 	expect_true("middle cup", strstr(cap.blob, "\033[2;1H") != NULL);
 	expect_true("no first cup", strstr(cap.blob, "\033[1;1H") == NULL);
 	expect_true("no third cup", strstr(cap.blob, "\033[3;1H") == NULL);
 
+	/* Full-width row must not be followed by EL (would erase last digit). */
+	{
+		char full10[] = "0123456789";
+		char *f_full[] = {full10};
+		char *at;
+
+		free(cap.blob);
+		memset(&cap, 0, sizeof(cap));
+		start_screen_clear(&sc);
+		start_screen_init(&sc, cap_write, cap_flush, &cap);
+		start_screen_update(&sc, f_full, 1, 10);
+		at = strstr(cap.blob, full10);
+		expect_true("full row painted", at != NULL);
+		expect_true("no EL after full-width row",
+			    at && strncmp(at + 10, "\033[K", 3) != 0);
+	}
+
 	free(cap.blob);
-	cap.blob = NULL;
-	cap.len = 0;
+	memset(&cap, 0, sizeof(cap));
 	start_screen_enter(&sc);
 	expect_true("alt screen", strstr(cap.blob, "\033[?1049h") != NULL);
+	expect_true("disable wrap", strstr(cap.blob, "\033[?7l") != NULL);
 	expect_true("clear on enter", strstr(cap.blob, "\033[2J") != NULL);
 	free(cap.blob);
 	cap.blob = NULL;
@@ -220,6 +261,7 @@ static void test_screen_diff(void)
 	cap.blob = NULL;
 	cap.len = 0;
 	start_screen_leave(&sc);
+	expect_true("restore wrap", strstr(cap.blob, "\033[?7h") != NULL);
 	expect_true("leave alt", strstr(cap.blob, "\033[?1049l") != NULL);
 	free(cap.blob);
 	start_screen_clear(&sc);
@@ -235,11 +277,14 @@ static void test_packaged_menu_file(void)
 		failures++;
 		return;
 	}
-	expect_eq("16 activities", (int)menu.count, 16);
+	expect_eq("18 activities", (int)menu.count, 18);
 	expect_streq("desktop first", menu.items[0].id, "desktop");
 	expect_streq("desktop argv", menu.items[0].argv[0], "tam-desktop");
-	expect_eq("gnugo argc", menu.items[10].argc, 3);
-	expect_streq("gnugo mode", menu.items[10].argv[1], "--mode");
+	expect_streq("guide second", menu.items[1].id, "tam-guide");
+	expect_streq("guide argv", menu.items[1].argv[1], "show");
+	expect_streq("glossary argv", menu.items[3].argv[2], "glossary");
+	expect_eq("gnugo argc", menu.items[12].argc, 3);
+	expect_streq("gnugo mode", menu.items[12].argv[1], "--mode");
 	start_menu_free(&menu);
 }
 

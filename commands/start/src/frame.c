@@ -37,36 +37,68 @@ void start_format_footer(char *dst, size_t dstsz, int width)
 	int gap;
 	size_t keep;
 
-	snprintf(left, sizeof(left), "%s", START_FOOTER_HINTS);
+	/*
+	 * Version is never truncated. Reserve its columns first, then fit
+	 * hints into the remainder. Trailing ".0" patch numbers (0.2.0,
+	 * 0.3.0, …) must remain intact — a prior full-width write could
+	 * auto-wrap and hide the last digit on some terminals; the screen
+	 * layer disables wrap, and this layout always keeps `right` whole.
+	 */
 	snprintf(right, sizeof(right), "v%s", start_version());
-	lvis = start_visible_len(left);
 	rvis = start_visible_len(right);
+	if (width < 1) {
+		dst[0] = '\0';
+		return;
+	}
+	if ((int)rvis >= width) {
+		/* Pathological narrow terminal: show as much version as fits. */
+		snprintf(line, sizeof(line), "%s", right);
+		start_clip_pad(dst, dstsz, line, width);
+		return;
+	}
+
+	snprintf(left, sizeof(left), "%s", START_FOOTER_HINTS);
+	lvis = start_visible_len(left);
+	/* Need at least one gap column between hints and version when both fit. */
 	if ((int)(lvis + 1 + rvis) > width) {
-		keep = (size_t)width > rvis + 1 ? (size_t)width - rvis - 1 : 0;
-		if (keep && strlen(START_FOOTER_HINTS) > keep) {
-			if (keep > 1) {
-				memcpy(left, START_FOOTER_HINTS, keep - 1);
-				left[keep - 1] = '\0';
-				strcat(left, "…");
+		keep = (size_t)width - rvis;
+		if (keep > 0)
+			keep--; /* gap */
+		if (keep == 0) {
+			left[0] = '\0';
+		} else if (strlen(START_FOOTER_HINTS) > keep) {
+			if (keep >= 4) {
+				memcpy(left, START_FOOTER_HINTS, keep - 3);
+				left[keep - 3] = '\0';
+				strcat(left, "...");
 			} else {
-				left[0] = '\0';
+				memcpy(left, START_FOOTER_HINTS, keep);
+				left[keep] = '\0';
 			}
 		} else {
 			left[keep] = '\0';
 		}
 		lvis = start_visible_len(left);
 	}
+
 	gap = width - (int)lvis - (int)rvis;
-	if (gap < 1) {
+	if (gap < 1)
 		gap = 1;
-		keep = (size_t)width > rvis + 1 ? (size_t)width - rvis - 1 : 0;
-		left[keep] = '\0';
+	/* Re-trim hints if gap forced the line over width (should not happen). */
+	while ((int)lvis + gap + (int)rvis > width && lvis > 0) {
+		left[strlen(left) > 0 ? strlen(left) - 1 : 0] = '\0';
 		lvis = start_visible_len(left);
 		gap = width - (int)lvis - (int)rvis;
 		if (gap < 1)
 			gap = 1;
 	}
+
 	snprintf(line, sizeof(line), "%s%*s%s", left, gap, "", right);
+	/* Guarantee the version suffix is present and complete. */
+	if (!strstr(line, right)) {
+		snprintf(line, sizeof(line), "%*s%s",
+			 width > (int)rvis ? width - (int)rvis : 0, "", right);
+	}
 	if (start_use_color())
 		snprintf(dst, dstsz, "%s%s%s", start_sgr_dim(), line, start_sgr_reset());
 	else

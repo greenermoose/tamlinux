@@ -19,7 +19,7 @@ static void usage(FILE *out)
 {
 	fputs("Usage: start [--list] [--check] [--version|-V] [--help|-h]\n"
 	      "First text-login workstation activities menu (D215).\n"
-	      "Choose what to start doing; Backspace or Delete returns to the shell.\n"
+	      "Choose what to start doing; Esc (or Backspace/Delete) returns to the shell.\n"
 	      "Opening the menu never starts graphics.\n",
 	      out);
 }
@@ -165,7 +165,8 @@ static int interactive_loop(start_menu_t *menu)
 		if (start_read_key(fd, key, sizeof(key)) != 0)
 			break;
 
-		if (strcmp(key, START_KEY_BACKSPACE) == 0 ||
+		if (strcmp(key, START_KEY_ESC) == 0 ||
+		    strcmp(key, START_KEY_BACKSPACE) == 0 ||
 		    strcmp(key, START_KEY_DELETE) == 0) {
 			break;
 		}

@@ -48,6 +48,10 @@ check: build/start build/test_start
 	@START_MENU="$(CURDIR)/menu.json" ./build/start --list | head -n 3 | grep -E '^a +desktop'
 	@START_MENU="$(CURDIR)/menu.json" ./build/start --check | grep -E 'activities installed'
 	@START_MENU="$(CURDIR)/menu.json" ./build/start --help | grep -qi workstation
+	@# Full patch versions must survive (regression: terminal wrap ate the last digit).
+	@START_VERSION=0.3.0 START_MENU="$(CURDIR)/menu.json" ./build/start --check | grep -Eq 'v0\.3\.0$$'
+	@START_VERSION=0.2.0 START_MENU="$(CURDIR)/menu.json" ./build/start --check | grep -Eq 'v0\.2\.0$$'
+	@START_VERSION=0.2.4 START_MENU="$(CURDIR)/menu.json" ./build/start --check | grep -Eq 'v0\.2\.4$$'
 
 install: build/start
 	install -Dm755 build/start $(DESTDIR)$(PREFIX)/bin/start

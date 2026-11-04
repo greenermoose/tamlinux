@@ -1,5 +1,7 @@
 #include "screen.h"
 
+#include "util.h"
+
 #include <tam.h>
 
 #include <stdio.h>
@@ -45,7 +47,9 @@ void start_screen_clear(start_screen_t *sc)
 
 void start_screen_enter(start_screen_t *sc)
 {
-	sc->write_fn("\033[?1049h\033[?25l\033[H\033[2J", sc->user);
+	/* ?7l disables wraparound so a full-width footer cannot auto-wrap and
+	 * hide its last character (e.g. the final 0 in v0.2.0 / v0.3.0). */
+	sc->write_fn("\033[?1049h\033[?7l\033[?25l\033[H\033[2J", sc->user);
 	sc->flush_fn(sc->user);
 	sc->entered = 1;
 	start_screen_clear(sc);
@@ -54,7 +58,7 @@ void start_screen_enter(start_screen_t *sc)
 void start_screen_leave(start_screen_t *sc)
 {
 	if (sc->entered) {
-		sc->write_fn("\033[?25h\033[?1049l", sc->user);
+		sc->write_fn("\033[?25h\033[?7h\033[?1049l", sc->user);
 		sc->flush_fn(sc->user);
 		sc->entered = 0;
 	}
@@ -112,15 +116,31 @@ int start_screen_update(start_screen_t *sc, char **rows, size_t height, int widt
 	if (use_sync_update() && append_str(&out, &out_len, &out_cap, "\033[?2026h") != 0)
 		goto fail;
 	for (i = 0; i < height; i++) {
+		const char *row;
+		size_t vis;
+
 		if (!full && i < sc->height && sc->rows[i] &&
 		    strcmp(sc->rows[i], rows[i]) == 0)
 			continue;
 		changed++;
+		row = rows[i] ? rows[i] : "";
+		vis = start_visible_len(row);
 		snprintf(cup, sizeof(cup), "\033[%zu;1H", i + 1);
 		if (append_str(&out, &out_len, &out_cap, cup) != 0 ||
-		    append_str(&out, &out_len, &out_cap, rows[i] ? rows[i] : "") != 0 ||
-		    append_str(&out, &out_len, &out_cap, "\033[K") != 0 ||
-		    append_str(&out, &out_len, &out_cap, "\033[0m") != 0)
+		    append_str(&out, &out_len, &out_cap, row) != 0)
+			goto fail;
+		/*
+		 * Erase-to-EOL clears from the cursor through the end of the
+		 * line, including the current cell. After a full-width write
+		 * the cursor sits on the last column, so EL would wipe the
+		 * last glyph (the final digit of "v0.2.3"). Only EL when the
+		 * row is shorter than the terminal width.
+		 */
+		if ((int)vis < width) {
+			if (append_str(&out, &out_len, &out_cap, "\033[K") != 0)
+				goto fail;
+		}
+		if (append_str(&out, &out_len, &out_cap, "\033[0m") != 0)
 			goto fail;
 	}
 	if (use_sync_update() && append_str(&out, &out_len, &out_cap, "\033[?2026l") != 0)

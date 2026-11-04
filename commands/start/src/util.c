@@ -69,8 +69,15 @@ const char *start_version(void)
 	const char *env;
 
 	if (g_version_loaded)
-		return g_version[0] ? g_version : "0.2.0";
+		return g_version[0] ? g_version : "0.2.4";
 	g_version_loaded = 1;
+
+	/* Explicit override wins (tests, packaging trials). */
+	env = getenv("START_VERSION");
+	if (env && *env) {
+		snprintf(g_version, sizeof(g_version), "%s", env);
+		return g_version;
+	}
 
 	path = start_find_data_file("VERSION");
 	if (path) {
@@ -80,12 +87,7 @@ const char *start_version(void)
 		}
 		free(path);
 	}
-	env = getenv("START_VERSION");
-	if (env && *env) {
-		snprintf(g_version, sizeof(g_version), "%s", env);
-		return g_version;
-	}
-	snprintf(g_version, sizeof(g_version), "0.2.0");
+	snprintf(g_version, sizeof(g_version), "0.2.4");
 	return g_version;
 }
 
@@ -225,6 +227,12 @@ size_t start_visible_len(const char *text)
 				p++;
 			continue;
 		}
+		/* Count UTF-8 code points as one column (UI strings are ASCII or
+		 * single-width punctuation). Skip continuation bytes. */
+		if ((*p & 0xc0) == 0x80) {
+			p++;
+			continue;
+		}
 		n++;
 		p++;
 	}
@@ -267,11 +275,18 @@ void start_clip_pad(char *dst, size_t dstsz, const char *text, int width)
 	if ((int)vis > width) {
 		start_strip_ansi(plain, sizeof(plain), text);
 		if (width == 1) {
-			snprintf(dst, dstsz, "…");
+			snprintf(dst, dstsz, ".");
 			return;
 		}
-		plain[width - 1] = '\0';
-		snprintf(dst, dstsz, "%s…", plain);
+		/* ASCII ellipsis: three dots if room, else one. Avoid UTF-8
+		 * width bugs that can steal columns from the footer version. */
+		if (width >= 4) {
+			plain[width - 3] = '\0';
+			snprintf(dst, dstsz, "%s...", plain);
+		} else {
+			plain[width - 1] = '\0';
+			snprintf(dst, dstsz, "%s.", plain);
+		}
 		return;
 	}
 	snprintf(dst, dstsz, "%s", text);
