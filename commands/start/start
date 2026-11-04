@@ -1,31 +1,32 @@
 #!/usr/bin/env python3
-"""start — First text-login orientation, activities, and desktop launcher (D215).
+"""start — First text-login workstation activities menu (D215).
 
-Presents an actionable terminal activities menu at text console login,
-offering orientation, curated games and simulations (D214), and an explicit
-option to launch the graphical desktop.
-
-Invariants (D215):
-- Opening this menu NEVER starts graphics.
-- Choosing a terminal activity or game NEVER starts graphics.
-- The desktop starts ONLY through explicit selection of the desktop action.
-- Exits cleanly back to the text login shell prompt.
+Presents an actionable terminal menu at text console login so you can choose
+what to start doing with your workstation. Opening the menu never starts
+graphics; the desktop starts only through explicit selection.
 """
+
+from __future__ import annotations
 
 import argparse
 import os
 from pathlib import Path
+import re
+import select
 import shutil
 import subprocess
 import sys
+import termios
+import tty
+from typing import Callable
 
 
 def read_version() -> str:
-    xdg = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
+    """Return start's own semver from VERSION beside the script or under share/."""
+    here = Path(__file__).resolve()
     candidates = [
-        xdg / "tamlinux" / "version",
-        Path(__file__).resolve().parents[1] / "share" / "tamlinux" / "assets" / "version",
-        Path(__file__).resolve().parents[2] / "VERSION",
+        here.parent / "VERSION",
+        here.parents[1] / "share" / "start" / "VERSION",
     ]
     for path in candidates:
         try:
@@ -35,44 +36,83 @@ def read_version() -> str:
                     return val
         except OSError:
             continue
-    return os.environ.get("TAMLINUX_VERSION") or "0.6.1"
+    return os.environ.get("START_VERSION") or "0.1.2"
 
 
 VERSION = read_version()
 
-# ANSI styling helpers (disabled when stdout is not a tty or NO_COLOR is set)
-USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
+USE_COLOR = (
+    sys.stdout.isatty()
+    and "NO_COLOR" not in os.environ
+    and os.environ.get("TERM", "") not in ("", "dumb")
+)
+
+_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
+FOOTER_HINTS = "Down/Up Arrow scroll  Home top  End bottom  Backspace quit"
+
 
 def _c(seq: str, text: str) -> str:
     return f"\033[{seq}m{text}\033[0m" if USE_COLOR else text
 
+
 def bold(text: str) -> str:
     return _c("1", text)
+
 
 def dim(text: str) -> str:
     return _c("2", text)
 
+
 def green(text: str) -> str:
     return _c("32", text)
+
 
 def yellow(text: str) -> str:
     return _c("33", text)
 
+
 def cyan(text: str) -> str:
     return _c("36", text)
 
-def banner() -> str:
-    tree = (
-        "       /\\\n"
-        "      /\\/\\\n"
-        "     ///\\\\\\       " + bold("Tamlinux Activities & Start") + "\n"
-        "       ||\n"
-    )
-    return tree
+
+def attention_on() -> str:
+    """Match tam pager attention: charcoal bg 236 + pale fg 15, else reverse."""
+    if not USE_COLOR:
+        return ""
+    term = os.environ.get("TERM", "")
+    colorterm = os.environ.get("COLORTERM", "")
+    if "256color" in term or colorterm in ("truecolor", "24bit"):
+        return "\033[38;5;15m\033[48;5;236m"
+    return "\033[7m"
 
 
+def attention_off() -> str:
+    return "\033[0m" if USE_COLOR else ""
+
+
+def visible_len(text: str) -> int:
+    return len(_ANSI_RE.sub("", text))
+
+
+def banner_lines() -> list[str]:
+    return [
+        "       /\\",
+        "      /\\/\\",
+        "     ///\\\\\\       " + bold("Tamlinux Start"),
+        "       ||",
+    ]
+
+
+# Desktop first (letter a). Remaining choices keep prior categories.
 ACTIVITIES = [
-    # Category 1: Orientation & Guide
+    {
+        "id": "desktop",
+        "category": "Graphical Desktop",
+        "label": "Start graphical desktop shell",
+        "command": ["tam-desktop"],
+        "check_cmd": "tam-desktop",
+        "description": "Leave the text shell and start the Tamlinux Hyprland desktop",
+    },
     {
         "id": "hi",
         "category": "Orientation & Learning",
@@ -105,8 +145,6 @@ ACTIVITIES = [
         "check_cmd": "tam",
         "description": "Hyperlinked system man pages, info manuals, and curated tldr",
     },
-
-    # Category 2: Curated Games & Simulations (0.6.1, D214)
     {
         "id": "cataclysm-dda",
         "category": "Curated Games & Simulations",
@@ -195,61 +233,265 @@ ACTIVITIES = [
         "check_cmd": "nethack",
         "description": "Object-oriented causal physics (conductivity, petrification, reflection)",
     },
-
-    # Category 3: Desktop Session
-    {
-        "id": "desktop",
-        "category": "Graphical Desktop",
-        "label": "Launch Graphical Desktop",
-        "command": ["tam-desktop"],
-        "check_cmd": "tam-desktop",
-        "description": "Start the installed Tamlinux Hyprland desktop session",
-    },
 ]
 
 
+def letter_for_index(index: int) -> str:
+    if index < 0 or index >= 26:
+        raise ValueError(f"activity index out of letter range: {index}")
+    return chr(ord("a") + index)
+
+
+def assign_letters(activities=None) -> dict[str, dict]:
+    """Map sequential letters a–z to activities in menu order."""
+    if activities is None:
+        activities = ACTIVITIES
+    mapping: dict[str, dict] = {}
+    for i, item in enumerate(activities):
+        mapping[letter_for_index(i)] = item
+    return mapping
+
+
 def is_installed(check_cmd: str) -> bool:
-    """Check if the given command executable is available on PATH."""
     return shutil.which(check_cmd) is not None
 
 
-def render_menu(activities=None) -> str:
-    """Format the activities menu into readable text."""
+def terminal_size() -> tuple[int, int]:
+    cols, rows = shutil.get_terminal_size(fallback=(80, 24))
+    return max(cols, 40), max(rows, 8)
+
+
+# Banner(4) + blank + prompt + blank, then menu, then footer on the last row.
+CHROME_TOP = 7
+CHROME_BOTTOM = 1
+
+
+def page_capacity(rows: int | None = None) -> int:
+    """How many menu rows fit between the chrome and the footer."""
+    if rows is None:
+        _, rows = terminal_size()
+    return max(1, rows - CHROME_TOP - CHROME_BOTTOM)
+
+
+def build_menu_rows(activities=None) -> list[dict]:
+    """Flatten activities into display rows (category headers + choices)."""
     if activities is None:
         activities = ACTIVITIES
-
-    lines = [banner(), "Choose an activity to explore from your terminal:\n"]
-
+    rows: list[dict] = []
     current_category = None
-    item_num = 1
-    num_map = {}
-
-    for item in activities:
+    for i, item in enumerate(activities):
         cat = item["category"]
         if cat != current_category:
             current_category = cat
-            lines.append(f"  {bold(cyan('── ' + cat + ' ──'))}")
+            rows.append({"kind": "header", "text": cat})
+        rows.append({
+            "kind": "choice",
+            "index": i,
+            "letter": letter_for_index(i),
+            "item": item,
+        })
+    return rows
 
-        installed = is_installed(item["check_cmd"])
-        status = "" if installed else dim(" [not installed]")
 
-        if item["id"] == "desktop":
-            key_label = bold(green(" d"))
-            num_map["d"] = item
+def paginate_rows(rows: list[dict], capacity: int) -> list[list[dict]]:
+    """Split rows into screens that fit within capacity lines each."""
+    if capacity < 1:
+        capacity = 1
+    pages: list[list[dict]] = []
+    current: list[dict] = []
+    for row in rows:
+        if len(current) >= capacity:
+            pages.append(current)
+            current = []
+        if (
+            row["kind"] == "header"
+            and len(current) + 2 > capacity
+            and current
+        ):
+            pages.append(current)
+            current = []
+        current.append(row)
+    if current:
+        pages.append(current)
+    return pages or [[]]
+
+
+def choice_indices_on_page(page: list[dict]) -> list[int]:
+    return [r["index"] for r in page if r["kind"] == "choice"]
+
+
+def clip_pad(text: str, width: int) -> str:
+    """Clip or pad plain (or already-styled) text to width display columns."""
+    vis = visible_len(text)
+    if vis > width:
+        plain = _ANSI_RE.sub("", text)
+        return plain[: max(0, width - 1)] + "…"
+    return text + (" " * (width - vis))
+
+
+def format_choice_line(row: dict, width: int, focused: bool) -> str:
+    item = row["item"]
+    installed = is_installed(item["check_cmd"])
+    status = "" if installed else " [not installed]"
+    letter = row["letter"]
+    body = f"  [{letter}] {item['label']}{status}"
+    body = clip_pad(body, width)
+    if focused:
+        if USE_COLOR:
+            return attention_on() + body + attention_off()
+        return ">" + body[1:] if body else ">"
+    if not installed and USE_COLOR:
+        return dim(body)
+    return body
+
+
+def format_header_line(row: dict, width: int) -> str:
+    text = f"  ── {row['text']} ──"
+    text = clip_pad(text, width)
+    if USE_COLOR:
+        # Restyle after clip (clip may have stripped ANSI).
+        plain = _ANSI_RE.sub("", text).rstrip()
+        return cyan(bold(plain)) + (" " * (width - visible_len(plain)))
+    return text
+
+
+def format_footer(width: int) -> str:
+    """Hints on the left, start semver right-aligned on the footer row."""
+    left = FOOTER_HINTS
+    right = f"v{VERSION}"
+    if visible_len(left) + 1 + visible_len(right) > width:
+        # Prefer keeping the version; trim hints from the right.
+        keep = max(0, width - visible_len(right) - 1)
+        left = left[:keep].rstrip()
+        if keep and len(FOOTER_HINTS) > keep:
+            left = left[:-1] + "…" if keep > 1 else left
+    gap = width - visible_len(left) - visible_len(right)
+    if gap < 1:
+        gap = 1
+        left = left[: max(0, width - visible_len(right) - 1)]
+    line = left + (" " * gap) + right
+    return dim(line) if USE_COLOR else line
+
+
+def compose_frame(
+    page: list[dict],
+    attention_index: int,
+    width: int,
+    height: int,
+) -> list[str]:
+    """Build exactly `height` screen rows; footer is always the last row."""
+    lines: list[str] = []
+    for bl in banner_lines():
+        lines.append(clip_pad(bl, width))
+    lines.append(" " * width)  # blank
+    lines.append(clip_pad("Choose what to start with your workstation:", width))
+    lines.append(" " * width)  # blank
+
+    for row in page:
+        if row["kind"] == "header":
+            lines.append(format_header_line(row, width))
         else:
-            key_label = f"{item_num:2d}"
-            num_map[str(item_num)] = item
-            item_num += 1
+            focused = row["index"] == attention_index
+            lines.append(format_choice_line(row, width, focused))
 
-        label_colored = item["label"] if installed else dim(item["label"])
-        lines.append(f"  [{key_label}] {label_colored}{status}")
-        lines.append(f"       {dim(item['description'])}")
+    # Pad body so the footer sits on the last terminal row.
+    while len(lines) < height - 1:
+        lines.append(" " * width)
+    if len(lines) > height - 1:
+        lines = lines[: height - 1]
+    lines.append(format_footer(width))
+    return lines
 
-    lines.append(f"\n  {bold(cyan('── Actions ──'))}")
-    lines.append(f"  [{bold(' q')}] Return to shell prompt")
-    lines.append("")
 
-    return "\n".join(lines), num_map
+def render_screen(
+    page: list[dict],
+    page_index: int,
+    page_count: int,
+    attention_index: int,
+    width: int,
+    height: int = 24,
+) -> str:
+    """Join a composed frame for tests and non-diff callers."""
+    del page_index, page_count  # footer no longer carries page numbers
+    return "\n".join(compose_frame(page, attention_index, width, height))
+
+
+class Screen:
+    """Diff-updating terminal screen (tam pager approach: no full clears)."""
+
+    def __init__(
+        self,
+        write_fn: Callable[[str], None] | None = None,
+        flush_fn: Callable[[], None] | None = None,
+    ):
+        # Default must flush: CUP/EL frames have no newlines, so line-buffered
+        # stdout would otherwise hold the first paint until the buffer fills
+        # while we block in read_key — blank hang.
+        if write_fn is None:
+            self._write = sys.stdout.write
+            self._flush_fn = sys.stdout.flush
+        else:
+            self._write = write_fn
+            self._flush_fn = flush_fn
+        self._rows: list[str] = []
+        self._width = 0
+        self._height = 0
+        self._entered = False
+
+    def enter(self) -> None:
+        # Alternate screen + hide cursor; one place for the initial clear.
+        self._write("\033[?1049h\033[?25l\033[H\033[2J")
+        self._flush()
+        self._entered = True
+        self._rows = []
+        self._width = 0
+        self._height = 0
+
+    def leave(self) -> None:
+        if self._entered:
+            self._write("\033[?25h\033[?1049l")
+            self._flush()
+            self._entered = False
+        self._rows = []
+
+    def _flush(self) -> None:
+        if self._flush_fn is not None:
+            self._flush_fn()
+
+    def update(self, rows: list[str], width: int) -> int:
+        """Paint `rows` in place. Returns the number of changed rows written."""
+        height = len(rows)
+        full = (
+            not self._rows
+            or self._width != width
+            or self._height != height
+        )
+        buf: list[str] = []
+        changed = 0
+        # Synchronized update when the terminal likely supports it (Foot/kitty).
+        use_sync = os.environ.get("TERM", "").startswith(("foot", "xterm", "kitty")) or (
+            os.environ.get("COLORTERM") in ("truecolor", "24bit")
+        )
+        if use_sync:
+            buf.append("\033[?2026h")
+        for i, row in enumerate(rows):
+            if not full and i < len(self._rows) and self._rows[i] == row:
+                continue
+            changed += 1
+            # CUP is 1-based: row i -> \033[<i+1>;1H ; EL clears stale cells.
+            buf.append(f"\033[{i + 1};1H")
+            buf.append(row)
+            buf.append("\033[K")
+            buf.append("\033[0m")
+        if use_sync:
+            buf.append("\033[?2026l")
+        if changed:
+            self._write("".join(buf))
+            self._flush()
+        self._rows = list(rows)
+        self._width = width
+        self._height = height
+        return changed
 
 
 def resolve_command(item: dict) -> list[str] | None:
@@ -272,37 +514,24 @@ def resolve_command(item: dict) -> list[str] | None:
             return None
         if not story:
             subprocess.run(["frotz", "-v"])
-            try:
-                input("\nPress Enter to return to menu...")
-            except (EOFError, KeyboardInterrupt):
-                pass
             return None
         expanded = str(Path(story).expanduser())
         if not Path(expanded).is_file():
             print(f"{bold(yellow('Notice:'))} Story file not found: {expanded}")
-            try:
-                input("\nPress Enter to return to menu...")
-            except (EOFError, KeyboardInterrupt):
-                pass
             return None
         return ["frotz", expanded]
     return cmd
 
 
 def run_activity(item: dict) -> int:
-    """Run the selected activity."""
+    """Run the selected activity once, then return to the caller (shell)."""
     if not is_installed(item["check_cmd"]):
         print(f"\n{bold(yellow('Notice:'))} '{item['check_cmd']}' is not currently installed.")
         if item["category"] == "Curated Games & Simulations":
             print("To include the curated games/simulations set in your Tamlinux profile,")
             print("enable the package set in your configuration:")
             print(f"  {bold('tamlinux.terminalGames.enable = true;')}")
-            print(f"or install the package via Arch/Nix.")
-        print("\nPress Enter to return to menu...")
-        try:
-            input()
-        except (EOFError, KeyboardInterrupt):
-            pass
+            print("or install the package via Arch/Nix.")
         return 1
 
     cmd = resolve_command(item)
@@ -310,7 +539,6 @@ def run_activity(item: dict) -> int:
         return 0
 
     try:
-        # Run foreground job with terminal attached
         res = subprocess.run(cmd)
         return res.returncode
     except FileNotFoundError:
@@ -320,47 +548,209 @@ def run_activity(item: dict) -> int:
         return 0
 
 
-def interactive_loop() -> int:
-    """Main interactive menu loop."""
-    while True:
-        menu_text, num_map = render_menu()
-        print(menu_text)
+# Key names returned by read_key()
+KEY_UP = "up"
+KEY_DOWN = "down"
+KEY_RIGHT = "right"
+KEY_ENTER = "enter"
+KEY_BACKSPACE = "backspace"
+KEY_DELETE = "delete"
+KEY_PGUP = "pgup"
+KEY_PGDN = "pgdn"
+KEY_HOME = "home"
+KEY_END = "end"
+KEY_SPACE = "space"
+KEY_BACKTICK = "backtick"
 
-        try:
-            choice = input(bold("Choice: ")).strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("\nExiting to shell prompt.")
-            return 0
 
-        if not choice:
-            continue
+def _read_byte(fd: int) -> bytes:
+    ready, _, _ = select.select([fd], [], [], None)
+    if not ready:
+        return b""
+    return os.read(fd, 1)
 
-        if choice in ("q", "quit", "exit", "0"):
-            return 0
 
-        if choice in num_map:
-            item = num_map[choice]
-            run_activity(item)
-            if item["id"] == "desktop":
-                # When desktop session finishes or exits, return to prompt
+def read_key(fd: int) -> str:
+    """Read one logical key from a tty in cbreak mode."""
+    ch = _read_byte(fd)
+    if not ch:
+        return ""
+    if ch in (b"\r", b"\n"):
+        return KEY_ENTER
+    if ch == b" ":
+        return KEY_SPACE
+    if ch == b"`":
+        return KEY_BACKTICK
+    if ch in (b"\x7f", b"\x08"):
+        return KEY_BACKSPACE
+    if ch == b"\x1b":
+        seq = ch
+        ready, _, _ = select.select([fd], [], [], 0.05)
+        if not ready:
+            return "esc"
+        seq += _read_byte(fd)
+        ready, _, _ = select.select([fd], [], [], 0.05)
+        if ready:
+            seq += _read_byte(fd)
+        if seq.startswith(b"\x1b[") and len(seq) >= 3 and seq[-1:] not in (
+            b"A", b"B", b"C", b"D", b"H", b"F", b"~",
+        ):
+            while True:
+                ready, _, _ = select.select([fd], [], [], 0.05)
+                if not ready:
+                    break
+                nxt = _read_byte(fd)
+                seq += nxt
+                if nxt in (b"~", b"A", b"B", b"C", b"D", b"H", b"F"):
+                    break
+        if seq in (b"\x1b[A", b"\x1bOA"):
+            return KEY_UP
+        if seq in (b"\x1b[B", b"\x1bOB"):
+            return KEY_DOWN
+        if seq in (b"\x1b[C", b"\x1bOC"):
+            return KEY_RIGHT
+        if seq in (b"\x1b[H", b"\x1bOH", b"\x1b[1~", b"\x1b[7~"):
+            return KEY_HOME
+        if seq in (b"\x1b[F", b"\x1bOF", b"\x1b[4~", b"\x1b[8~"):
+            return KEY_END
+        if seq == b"\x1b[5~":
+            return KEY_PGUP
+        if seq == b"\x1b[6~":
+            return KEY_PGDN
+        if seq == b"\x1b[3~":
+            return KEY_DELETE
+        return "esc"
+    try:
+        text = ch.decode("utf-8")
+    except UnicodeDecodeError:
+        return ""
+    if text.isalpha() and len(text) == 1:
+        return text.lower()
+    return text
+
+
+def interactive_loop(
+    activities=None,
+    read_key_fn: Callable[[int], str] | None = None,
+    size_fn: Callable[[], tuple[int, int]] | None = None,
+    screen: Screen | None = None,
+) -> int:
+    """Keyboard-driven menu. Quits on Backspace/Delete; runs once then exits."""
+    if activities is None:
+        activities = ACTIVITIES
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        print("start: interactive menu requires a terminal", file=sys.stderr)
+        return 1
+
+    letter_map = assign_letters(activities)
+    attention = 0
+    page_index = 0
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    key_reader = read_key_fn or read_key
+    sizing = size_fn or terminal_size
+    display = screen if screen is not None else Screen()
+
+    try:
+        tty.setcbreak(fd)
+        display.enter()
+        while True:
+            width, rows = sizing()
+            menu_rows = build_menu_rows(activities)
+            pages = paginate_rows(menu_rows, page_capacity(rows))
+            page_count = len(pages)
+            if page_index >= page_count:
+                page_index = page_count - 1
+            page = pages[page_index]
+            on_page = choice_indices_on_page(page)
+            if attention not in on_page and on_page:
+                attention = on_page[0]
+
+            frame = compose_frame(page, attention, width, rows)
+            display.update(frame, width)
+
+            key = key_reader(fd)
+            if key in (KEY_BACKSPACE, KEY_DELETE):
                 return 0
-        else:
-            print(f"Invalid selection: '{choice}'. Enter a number, 'd' for desktop, or 'q' to quit.")
+            if key == KEY_UP:
+                if attention > 0:
+                    attention -= 1
+                    for pi, pg in enumerate(pages):
+                        if attention in choice_indices_on_page(pg):
+                            page_index = pi
+                            break
+                continue
+            if key == KEY_DOWN:
+                if attention < len(activities) - 1:
+                    attention += 1
+                    for pi, pg in enumerate(pages):
+                        if attention in choice_indices_on_page(pg):
+                            page_index = pi
+                            break
+                continue
+            if key in (KEY_PGDN, KEY_SPACE):
+                if page_count > 1 and page_index < page_count - 1:
+                    page_index += 1
+                    nxt = choice_indices_on_page(pages[page_index])
+                    if nxt:
+                        attention = nxt[0]
+                continue
+            if key in (KEY_PGUP, KEY_BACKTICK):
+                if page_count > 1 and page_index > 0:
+                    page_index -= 1
+                    nxt = choice_indices_on_page(pages[page_index])
+                    if nxt:
+                        attention = nxt[0]
+                continue
+            if key == KEY_HOME:
+                page_index = 0
+                attention = 0
+                continue
+            if key == KEY_END:
+                page_index = page_count - 1
+                attention = len(activities) - 1
+                continue
+            if key in (KEY_ENTER, KEY_RIGHT) or (
+                len(key) == 1 and key.isalpha() and key in letter_map
+            ):
+                if key in (KEY_ENTER, KEY_RIGHT):
+                    item = activities[attention]
+                else:
+                    item = letter_map[key]
+                display.leave()
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+                return run_activity(item)
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        try:
+            display.leave()
+        except Exception:
+            pass
+        try:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        except termios.error:
+            pass
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         prog="start",
-        description="First text-login orientation, activities, and desktop launcher (D215)."
+        description=(
+            "First text-login workstation activities menu (D215). "
+            "Choose what to start doing; Backspace or Delete returns to the shell."
+        ),
     )
     parser.add_argument(
-        "--version", "-V", action="version", version=f"start (Tamlinux) {VERSION}"
+        "--version", "-V", action="version", version=f"start {VERSION}"
     )
     parser.add_argument(
         "--list", action="store_true", help="List available activities and commands"
     )
     parser.add_argument(
-        "--check", action="store_true", help="Check which activities are installed on this system"
+        "--check",
+        action="store_true",
+        help="Check which activities are installed on this system",
     )
     return parser.parse_args(argv)
 
@@ -369,24 +759,28 @@ def main(argv=None) -> int:
     args = parse_args(argv)
 
     if args.list:
-        print(f"{'ID':<16} {'Command':<25} {'Installed':<10} {'Description'}")
-        print("─" * 80)
-        for act in ACTIVITIES:
+        print(f"{'Letter':<8} {'ID':<16} {'Command':<25} {'Installed':<10} {'Description'}")
+        print("─" * 90)
+        for i, act in enumerate(ACTIVITIES):
             inst = "yes" if is_installed(act["check_cmd"]) else "no"
             cmd_str = " ".join(act["command"])
-            print(f"{act['id']:<16} {cmd_str:<25} {inst:<10} {act['description']}")
+            print(
+                f"{letter_for_index(i):<8} {act['id']:<16} {cmd_str:<25} "
+                f"{inst:<10} {act['description']}"
+            )
         return 0
 
     if args.check:
         installed_count = 0
         total = len(ACTIVITIES)
-        for act in ACTIVITIES:
+        for i, act in enumerate(ACTIVITIES):
             inst = is_installed(act["check_cmd"])
             if inst:
                 installed_count += 1
             mark = green("✓") if inst else dim("✗")
-            print(f" {mark} {act['label']} ({act['check_cmd']})")
+            print(f" {mark} [{letter_for_index(i)}] {act['label']} ({act['check_cmd']})")
         print(f"\n{installed_count}/{total} activities installed on this system.")
+        print(f"v{VERSION}")
         return 0
 
     return interactive_loop()
