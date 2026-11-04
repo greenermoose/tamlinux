@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-04: Cursor (`composer`) implements `tam-workstation-upgrade` for Tamlinux 0.6.7 (K52). [Session](docs/ai/2026-11-04-0.6.7-workstation-upgrade.md).
+
 2026-11-04: Cursor (`composer`) adds `tam-fleet deploy` and `tam-deploy follow` for Tamlinux 0.6.6 fleet delivery, with deploy phase timings. [Session](docs/ai/2026-11-04-0.6.6-package-speed.md).
 
 2026-11-04: Cursor (`composer`) rewrites `start` 0.2.0 as pure C with `libtam` and a JSON menu catalog (D224). [Session](docs/ai/2026-11-04-start-c-rewrite.md).

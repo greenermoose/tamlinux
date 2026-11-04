@@ -1,29 +1,34 @@
 # Workstation upgrades from a text login
 
-**Status:** Expanded plan accepted by Fred, 2026-10-30. Implementation
-deferred to 0.6. Plan acceptance authorizes the design; development of this
-command resumes in 0.6.
+**Status:** Developing for Tamlinux 0.6.7 (K52). Design accepted 2026-10-30;
+implementation resumed 2026-11-04 under the single-theme 0.6.7 inclusion.
 **Target:** Upgrade a supported existing workstation to a released Tamlinux
 assembly from text login, without reinstalling or keeping component clones.
 
-## Current work and the 0.5 boundary
+## Current work (0.6.7)
 
-The prototype contains `commands/tam-workstation-upgrade/release.py` and five
-release-selection tests. It resolves plain release tags and annotated tags,
-reads the delivery record and lock at the resolved commit, and compares their
-direct inputs. All five tests pass as of 2026-10-30. There is no executable
-entry point, installed command, local-host integration, activation transaction
-or recovery implementation.
+`commands/tam-workstation-upgrade/` now provides:
+
+- Release selection (`release.py`) with plain/annotated tag resolution
+- Local host profile and native package identity (`host.py`)
+- Compatibility assessment with a reviewed delivery-record adapter (`compat.py`)
+- Durable receipts and a single-host lock (`receipt.py`)
+- CLI entry point: `--check`, interactive apply, `--version`/`--revision`/`--yes`,
+  `--status`, `--recover`
+- Apply through `tam-deploy follow`; recover through `tam-deploy back`
+- Makefile install under `libexec` with a `bin` symlink
+
+Compatibility schema version 1 is defined by `compat.py`. Deliveries may carry
+an explicit `compatibility` object; otherwise a reviewed adapter synthesizes
+one from `nativePackage` + `readiness`. Missing metadata blocks as unknown
+native requirements, never as “no native changes”.
+
+Still open for later proof on an exact candidate: physical reboot-to-VT
+upgrade/recovery, full lock-graph checks beyond direct inputs, settings
+migration checkpoints, and archive sha256 confirmation at apply time.
 
 Separately, `tam-deploy` can skip graphical restart and shell IPC when the
-user graphical target is inactive, including during rollback. Development
-tests do not prove a physical VT upgrade. Retain and verify that existing
-console deployment capability for 0.5.12; do not complete the new command
-there. Upgrade operations must remain possible after reboot and text login
-without starting the desktop.
-
-Keep the selector as unfinished source for 0.6. Do not expose it as a usable
-0.5 command or claim that it establishes native compatibility.
+user graphical target is inactive, including during rollback.
 
 ## Proposed interface
 
@@ -135,10 +140,10 @@ or boot mutation occurs, and text-mode apply/recovery never launches graphics.
 A two-process test proves concurrent upgrade refusal. Physical recovery must
 work without network access after failed activation.
 
-## Next actions for 0.6
+## Next actions for 0.6.7
 
-1. Define and review the concrete compatibility schema and supported starting
-   states against this accepted interface before implementation.
-2. Audit the selector and deployment transaction against the accepted contract.
-3. Implement read-only planning, transaction/recovery and packaging in order;
-   bind physical evidence to exact candidates.
+1. Local trials: `--check` / `--status` on bosgame; unit tests green.
+2. Record inclusion on Fred's Include words; package with the 0.6.7 candidate.
+3. Bind physical VT upgrade and recovery evidence to the exact Test candidate.
+4. Extend lock-graph validation and settings-migration coverage as needed for
+   K52 acceptance.
