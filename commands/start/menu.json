@@ -1,0 +1,130 @@
+[
+  {
+    "id": "desktop",
+    "category": "Graphical Desktop",
+    "label": "Start graphical desktop shell",
+    "check": "tam-desktop",
+    "argv": ["tam-desktop"],
+    "description": "Leave the text shell and start the Tamlinux Hyprland desktop"
+  },
+  {
+    "id": "hi",
+    "category": "Orientation & Learning",
+    "label": "Welcome to Tamlinux",
+    "check": "tam",
+    "argv": ["tam", "hi"],
+    "description": "First-boot orientation and system introduction (invokes tam hi)"
+  },
+  {
+    "id": "tam",
+    "category": "Orientation & Learning",
+    "label": "Offline Knowledge Guide",
+    "check": "tam",
+    "argv": ["tam"],
+    "description": "Interactive terminal documentation and learning journeys"
+  },
+  {
+    "id": "tam-search",
+    "category": "Orientation & Learning",
+    "label": "Search Knowledge Guide",
+    "check": "tam",
+    "argv": ["tam", "search"],
+    "description": "Interactive search across all Tamlinux documentation topics"
+  },
+  {
+    "id": "tam-man",
+    "category": "Orientation & Learning",
+    "label": "Manual Pages & References",
+    "check": "tam",
+    "argv": ["tam", "man"],
+    "description": "Hyperlinked system man pages, info manuals, and curated tldr"
+  },
+  {
+    "id": "cataclysm-dda",
+    "category": "Curated Games & Simulations",
+    "label": "Cataclysm: Dark Days Ahead",
+    "check": "cataclysm-dda",
+    "argv": ["cataclysm-dda"],
+    "description": "Deep metabolic survival simulation, vehicle engineering, and thermodynamics"
+  },
+  {
+    "id": "frotz",
+    "category": "Curated Games & Simulations",
+    "label": "Frotz Interactive Fiction",
+    "check": "frotz",
+    "argv": ["frotz"],
+    "description": "Cognition, linguistics, natural-language parser, and AI exploration"
+  },
+  {
+    "id": "bsdgames",
+    "category": "Curated Games & Simulations",
+    "label": "BSD Games (Trek / Adventure / ATC / Wump)",
+    "check": "trek",
+    "argv": ["trek"],
+    "description": "Operations research (trek), Colossal Cave (adventure), air traffic (atc), topology (wump)"
+  },
+  {
+    "id": "astroterm",
+    "category": "Curated Games & Simulations",
+    "label": "Astroterm Celestial Mechanics",
+    "check": "astroterm",
+    "argv": ["astroterm"],
+    "description": "Real-time Keplerian orbital calculations, precession, and Yale Bright Star catalog"
+  },
+  {
+    "id": "curseofwar",
+    "category": "Curated Games & Simulations",
+    "label": "Curse of War",
+    "check": "curseofwar",
+    "argv": ["curseofwar"],
+    "description": "Fast-paced macroeconomic logistics, resource draw, and demographic exhaustion"
+  },
+  {
+    "id": "gnugo",
+    "category": "Curated Games & Simulations",
+    "label": "GNU Go",
+    "check": "gnugo",
+    "argv": ["gnugo", "--mode", "curses"],
+    "description": "Combinatorial depth, territorial balance, and spatial intuition in curses"
+  },
+  {
+    "id": "pmars",
+    "category": "Curated Games & Simulations",
+    "label": "pMARS Core War VM",
+    "check": "pmars",
+    "argv": ["pmars"],
+    "description": "Virtual machine memory architecture combat and self-modifying assembly code"
+  },
+  {
+    "id": "bastet",
+    "category": "Curated Games & Simulations",
+    "label": "Bastet Adversarial Tetrominoes",
+    "check": "bastet",
+    "argv": ["bastet"],
+    "description": "Minimax adversarial game-tree heuristic calculating worst-case tile drops"
+  },
+  {
+    "id": "cbonsai",
+    "category": "Curated Games & Simulations",
+    "label": "cbonsai Procedural Botany",
+    "check": "cbonsai",
+    "argv": ["cbonsai", "-l"],
+    "description": "Procedural botanical growth simulation using Lindenmayer systems (L-systems)"
+  },
+  {
+    "id": "vms-empire",
+    "category": "Curated Games & Simulations",
+    "label": "VMS Empire Grand Strategy",
+    "check": "vms-empire",
+    "argv": ["vms-empire"],
+    "description": "Industrial production cycles, strategic logistics, and operational fog of war"
+  },
+  {
+    "id": "nethack",
+    "category": "Curated Games & Simulations",
+    "label": "NetHack Emergent Physics",
+    "check": "nethack",
+    "argv": ["nethack"],
+    "description": "Object-oriented causal physics (conductivity, petrification, reflection)"
+  }
+]

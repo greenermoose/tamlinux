@@ -1,6 +1,6 @@
 # First text-login orientation and activities (hi and start)
 
-Status: Draft for Tamlinux 0.6.x; follows decisions D214 and D215.
+Status: Draft for Tamlinux 0.6.x; follows decisions D214, D215 and D224.
 
 ## Context and Goal
 
@@ -37,9 +37,19 @@ Neither command requires X11, Wayland, or Quickshell to function.
   message to standard error and exits with code 1.
 - **Licensing:** GPL-3.0-or-later.
 
-### 2. `start` — Terminal Activities Menu
+### 2. `start` — Terminal Activities Menu (C from 0.2.x)
 
-- **Location:** `commands/start/start`
+- **Location:** `commands/start/` (binary built from `src/`; installed as
+  `$PREFIX/bin/start`). From **0.2.0** (D224) this is a **pure C** program
+  linked only against `libtam` and libc. It is **not** a Python script and
+  must not regain a Python runtime dependency. It must work on systems without
+  a Python interpreter. Ownership stays in `tamlinux` (not `tam`, not
+  `tamlinux-tools`).
+- **Catalog vs pager:** Activity text lives in `menu.json` (installed to
+  `$PREFIX/share/start/menu.json`), separate from the TUI code — same
+  separation as `tam`'s pager vs knowledge corpus. Edit the catalog without
+  rebuilding for label/argv/description changes. Id-specific launch helpers
+  (Frotz story prompt, pMARS warriors) remain in C.
 - **Own version:** `commands/start/VERSION` (semver). The footer row shows
   navigation hints on the left and right-aligned `vX.Y.Z`; `--version` prints
   `start X.Y.Z`.
@@ -47,6 +57,7 @@ Neither command requires X11, Wayland, or Quickshell to function.
   or terminal emulator with a keyboard-driven menu (cbreak input, alternate
   screen). Redraws use row diffs (cursor address + erase-to-EOL), not a full
   clear on every key — the same anti-flicker approach as the `tam` pager.
+  Terminal control uses hardcoded ANSI/termios only (no ncurses).
 - **Behavior:**
   - Displays a clean text banner and an organized menu of actionable choices.
   - **First choice** is Start graphical desktop shell (`tam-desktop`), letter `a`.
@@ -98,13 +109,14 @@ Neither command requires X11, Wayland, or Quickshell to function.
 
 Both commands are packaged as part of `tamlinux-commands` in `tamlinux-packages`.
 They install to `$PREFIX/bin/hi` and `$PREFIX/bin/start`. `start` also installs
-`$PREFIX/share/start/VERSION`.
+`$PREFIX/share/start/VERSION` and `$PREFIX/share/start/menu.json`. The C binary
+is built as a native payload with `libtam` (no Python wrap).
 
 ## Verification and Acceptance
 
 - Unit tests in `commands/hi/tests/` verify argument forwarding and fallback.
-- Unit tests in `commands/start/tests/` verify argument handling (`--help`,
-  `--version`, `--list`, `--check`), letter mapping with desktop first, attention
-  / paging / quit keys, single-run-then-exit selection, non-graphical invariants,
-  and the `vX.Y.Z` footer.
+- C tests in `commands/start/tests/test_start.c` (`make check`, no Python)
+  verify menu JSON parse, letter mapping with desktop first, pagination,
+  footer/semver, differential screen paint, and CLI `--help` / `--version` /
+  `--list` / `--check`.
 - Real VT execution proof on supported hardware before launching graphics.

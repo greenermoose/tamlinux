@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-04: Cursor (`composer`) rewrites `start` 0.2.0 as pure C with `libtam` and a JSON menu catalog (D224). [Session](docs/ai/2026-11-04-start-c-rewrite.md).
+
 2026-11-04: Cursor (`composer`) implements Tamlinux 0.6.3 local-dev proof and nautilus launcher packaging. [Session](docs/ai/2026-11-04-0.6.3-local-dev-and-nautilus.md).
 
 2026-11-02: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements the development and candidate workflow. [Session](docs/ai/2026-11-02-candidate-workflow.md).
