@@ -6,8 +6,18 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-if str(HERE) not in sys.path:
-    sys.path.insert(0, str(HERE))
+CANDIDATES = (
+    HERE,
+    HERE.parent / "libexec/tam-workstation-upgrade",
+)
+for path in CANDIDATES:
+    if (path / "cli.py").is_file():
+        if str(path) not in sys.path:
+            sys.path.insert(0, str(path))
+        break
+else:
+    sys.stderr.write("tam-workstation-upgrade: cannot find cli.py beside the command or under libexec\n")
+    sys.exit(1)
 
 from cli import main
 
