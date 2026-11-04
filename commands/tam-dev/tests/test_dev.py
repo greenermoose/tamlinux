@@ -87,6 +87,65 @@ class Development(unittest.TestCase):
         self.assertEqual(run.call_args_list[-1].args,('systemctl','--user','start','tamlinux-shell.service'))
         self.assertEqual(os.readlink(endpoint),'/packaged/shell')
 
+    def test_live_plugin_stop_restores_packaged_service(self):
+        """Successful live plugin trial: stop restores the packaged shell service."""
+        import sys
+        source=self.repo
+        plugin=source/'desktop/plugins/fred.demo'
+        plugin.mkdir(parents=True)
+        (plugin/'manifest.json').write_text(json.dumps({
+            'id':'fred.demo','entryPoints':{'barWidget':'BarWidget.qml'}}))
+        (plugin/'BarWidget.qml').write_text('Item {}\n')
+        (source/'desktop/shell/host').mkdir(parents=True)
+        (source/'desktop/shell/host/session_start.py').write_text('print("fixture")\n')
+        (source/'desktop/shell/modules').mkdir(parents=True)
+        (source/'desktop/shell/shell.qml').write_text('Shell {}\n')
+        record={
+            'component':'plugin:fred.demo','makeDirectory':None,
+            'source':str(source),'sourceKey':'fixture','files':{},
+        }
+        endpoint=Path.home()/'.local/share/tamlinux/shell'
+        endpoint.parent.mkdir(parents=True, exist_ok=True)
+        endpoint.symlink_to('/packaged/shell')
+        ipc=Path.home()/'.local/bin/tam-shell'
+        ipc.parent.mkdir(parents=True, exist_ok=True)
+        ipc.write_text('# fixture\n')
+        installed=Path.home()/'.config/tamlinux/plugins/fred.other'
+        installed.mkdir(parents=True)
+        (installed/'manifest.json').write_text(json.dumps({
+            'id':'fred.other','entryPoints':{'barWidget':'Other.qml'}}))
+        (installed/'Other.qml').write_text('Item {}\n')
+
+        class FakeProc:
+            pid=4242
+            def poll(self):
+                return None
+
+        alive={'value':True}
+        def process_id(_pid):
+            return '1' if alive['value'] else None
+
+        with patch.object(dev,'quickshell',return_value=('/qs',{'WAYLAND_DISPLAY':'wayland-1'})), \
+             patch.object(dev,'run',return_value='Development live routing: v1') as run, \
+             patch.object(dev.subprocess,'Popen',return_value=FakeProc()) as popen, \
+             patch.object(dev,'process_id',side_effect=process_id), \
+             patch.object(dev.time,'sleep',return_value=None), \
+             patch.object(dev.os,'kill',side_effect=lambda *_: alive.__setitem__('value', False)):
+            dev.trial(record, True)
+            self.assertTrue((dev.state_root()/'live.json').exists())
+            stops=[c for c in run.call_args_list if c.args[:3]==('systemctl','--user','stop')]
+            self.assertEqual(stops[-1].args,
+                             ('systemctl','--user','stop','tamlinux-shell.service'))
+            popen.assert_called_once()
+            # After stop, packaged service must be started again.
+            dev.stop('plugin:fred.demo')
+        starts=[c for c in run.call_args_list if c.args[:3]==('systemctl','--user','start')]
+        self.assertTrue(starts, 'stop must restart tamlinux-shell.service')
+        self.assertEqual(starts[-1].args,('systemctl','--user','start','tamlinux-shell.service'))
+        self.assertFalse((dev.state_root()/'trials'/'plugin-fred.demo.json').exists())
+        self.assertFalse((dev.state_root()/'live.json').exists())
+        self.assertEqual(os.readlink(endpoint),'/packaged/shell')
+
     def test_previews_do_not_inherit_live_settings_paths(self):
         source=self.root/'preview-source';source.mkdir()
         record={'component':'app:keybindings','source':str(source),'sourceKey':'dev-identity'}

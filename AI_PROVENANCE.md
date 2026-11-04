@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-04: Cursor (`composer`) implements Tamlinux 0.6.3 local-dev proof and nautilus launcher packaging. [Session](docs/ai/2026-11-04-0.6.3-local-dev-and-nautilus.md).
+
 2026-11-02: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements the development and candidate workflow. [Session](docs/ai/2026-11-02-candidate-workflow.md).
 
 2026-11-02: Antigravity CLI `1.4.12` (`gemini-4-argon-medium`) prepares the Tamlinux 0.6.1 KBN WB product candidate and refines `start` interactive launches. [Session](docs/ai/2026-11-02-061-preparation.md).

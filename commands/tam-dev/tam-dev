@@ -193,7 +193,7 @@ def build(workspace, name):
     return record
 
 
-def check(record):
+def check(record, live=False):
     source = Path(record['source'])
     checked = source.parent/'checked.json'
     if checked.exists() and json.loads(checked.read_text()).get('dependencyKey') == toolchain_key(record['component']):
@@ -209,7 +209,17 @@ def check(record):
             'TAM_BUILD_ID='+record['revision'][:12]+('-dirty' if record['dirty'] else ''),
             'TAM_SOURCE_REVISION='+record['revision'],'TAM_SOURCE_DIRTY='+('1' if record['dirty'] else '0'))
     elif record['component'].startswith('plugin:'):
-        run(sys.executable, source/'desktop/widget-proof', record['component'].split(':', 1)[1])
+        plugin = record['component'].split(':', 1)[1]
+        manifest = json.loads((source/'desktop/plugins'/plugin/'manifest.json').read_text())
+        entries = manifest.get('entryPoints', {})
+        if 'barWidget' not in entries:
+            raise DevError('plugin needs an explicit interactive entry point; use shell --live')
+        if live:
+            # PanelWindow plugins need a real output; widget-proof cannot
+            # pass them. Live try is the integration check.
+            print('check: live plugin trial skips offscreen widget-proof')
+        else:
+            run(sys.executable, source/'desktop/widget-proof', plugin)
     else:
         pattern = 'test_keybindings.py' if record['component'] == 'app:keybindings' else 'test_keyboard_render.py' if record['component'] == 'app:keyboard' else 'test_protocol.py'
         run(sys.executable, '-B', '-m', 'unittest', 'discover', '-s', source/'desktop/tests', '-p', pattern, '-q', cwd=source)
@@ -457,8 +467,10 @@ def main(argv=None):
                 records = []
                 for p in (root/'trials').glob('*.json'):
                     value = json.loads(p.read_text())
-                    repo = Path(value['repo'])
-                    value['sourceChanged'] = identity(repo, value['scopes'])[0] != value['sourceKey']
+                    if 'repo' in value and 'scopes' in value:
+                        value['sourceChanged'] = identity(Path(value['repo']), value['scopes'])[0] != value['sourceKey']
+                    else:
+                        value['sourceChanged'] = None
                     value['running'] = bool(value.get('pid') and process_id(value['pid']) == value.get('processId'))
                     records.append(value)
                 print(json.dumps({'trials': records}, indent=2));return 0
@@ -469,7 +481,7 @@ def main(argv=None):
                 stop(args.component);return 0
             record = build(args.workspace, args.component)
             if args.action in ('check', 'try'):
-                check(record)
+                check(record, live=args.live and args.action == 'try')
             if args.action == 'try':
                 trial(record, args.live)
             else:
