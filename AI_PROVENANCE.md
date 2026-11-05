@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.10 K53 — `tam-update` lists AUR updates for frozen-recipe review and never runs unattended AUR upgrades. [Session](docs/ai/2026-11-04-0.6.10-k53-tam-update.md).
+
 2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.9 — K25 hyprbars close controls, Package/Test speed recovery, and Plan 32 Quickshell decoupling. [Session](docs/ai/2026-11-04-0.6.9-k25-speed-quickshell.md).
 
 2026-11-04: Cursor (`composer`) implements `tam-workstation-upgrade` for Tamlinux 0.6.7 (K52). [Session](docs/ai/2026-11-04-0.6.7-workstation-upgrade.md).

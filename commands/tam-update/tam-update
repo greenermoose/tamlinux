@@ -7,6 +7,26 @@ case "${1:---apply}" in
   *) echo "Usage: tam-update [--check|--apply]" >&2; exit 2 ;;
 esac
 (( $# <= 1 )) || exit 2
+
+# List pending AUR updates for reviewed frozen-recipe builds (D168 / K53).
+# Read-only query only; never run unattended AUR upgrade helpers from here.
+list_aur_updates() {
+  if ! command -v yay >/dev/null; then
+    echo "AUR update listing requires the selected independent yay provider (search and fetch only)." >&2
+    return 0
+  fi
+  local aur=""
+  aur=$(yay -Qua 2>/dev/null) || true
+  # Empty output (including exit 1 on some yay versions) means none pending.
+  if [[ -z $aur ]]; then
+    echo "No pending AUR updates." >&2
+    return 0
+  fi
+  echo "Pending AUR updates (review frozen recipes before building; do not run unattended AUR upgrades):" >&2
+  printf '%s\n' "$aur"
+  return 0
+}
+
 # Never reactivate a retired repository/guard or substitute another updater.
 if /usr/bin/pacman -Sl 2>/dev/null | /usr/bin/grep -qi 'omarchy'; then
   echo "Remove inherited active repositories before native updates." >&2
@@ -21,7 +41,10 @@ else
   echo "Native checkupdates is required (Arch pacman-contrib)." >&2
   exit 1
 fi
-[[ $mode == apply ]] || exit 0
+if [[ $mode == check ]]; then
+  list_aur_updates
+  exit 0
+fi
 # Full upgrades exercise kernel/initramfs hooks. The separate boot owner must
 # provide recovery readiness before this desktop entry point can run them.
 record=/var/lib/tamlinux/recovery/native-update-ready.json
@@ -59,10 +82,5 @@ fi
 /usr/bin/systemd-inhibit --what=sleep:idle --why="Tamlinux native update" \
   /usr/bin/sudo /usr/bin/pacman -Syu
 
-# The independently packaged user AUR helper retains build/transaction review.
-if command -v yay >/dev/null; then
-  yay -Sua
-else
-  echo "AUR updates require the selected independent yay provider." >&2
-  exit 1
-fi
+# AUR packages are listed for frozen-recipe review; never upgraded here (D168).
+list_aur_updates

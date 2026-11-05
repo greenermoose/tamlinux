@@ -1,6 +1,7 @@
 """Execute the real read-only update preflight against recovery/transaction data."""
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -57,3 +58,26 @@ class UpdatePreflight(unittest.TestCase):
         self.assertEqual(self.validate(firmware=True).returncode,0)
         self.artifact.write_bytes(b'changed firmware recovery')
         self.assertNotEqual(self.validate(firmware=True).returncode,0)
+
+
+class AurListingPolicy(unittest.TestCase):
+    """K53 / D168: tam-update lists AUR updates; never upgrades them via yay."""
+
+    def script(self):
+        return (COMMANDS / 'tam-update' / 'tam-update').read_text()
+
+    def test_refuses_unattended_yay_aur_upgrades(self):
+        # Only non-comment code may invoke yay; the sole flag allowed is -Qua.
+        code = '\n'.join(
+            line.split('#', 1)[0]
+            for line in self.script().splitlines()
+        )
+        invocations = re.findall(r'\byay\s+(-\S+)', code)
+        self.assertEqual(invocations, ['-Qua'])
+        self.assertNotRegex(code, r'\byay\s+-S(ua|yu)?(\s|$)')
+
+    def test_lists_pending_aur_with_qua_only(self):
+        text = self.script()
+        self.assertIn('yay -Qua', text)
+        self.assertIn('list_aur_updates', text)
+        self.assertIn('review frozen recipes', text)
