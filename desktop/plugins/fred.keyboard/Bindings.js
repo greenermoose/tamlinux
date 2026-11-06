@@ -522,7 +522,7 @@ function singleKeyTooltip(index, cell, byId, byCode) {
            " with other keys"
   }
   var binds = index && index.byCode ? index.byCode[cell.code] || [] : []
-  if (binds.length === 0) return head + "\nNo Hyprland binds"
+  if (binds.length === 0) return head + "\nNo keybindings"
   var rows = []
   for (var i = 0; i < binds.length; i++)
     rows.push({ label: bindLabel(binds[i], byId, byCode), does: describe(binds[i]) })

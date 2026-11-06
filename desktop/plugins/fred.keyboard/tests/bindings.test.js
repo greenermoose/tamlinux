@@ -202,7 +202,7 @@ assert.strictEqual(B.keyTooltip(idx, byId.K, byId, layoutByCode),
                    "K  (evdev 37)\nMeta + K - Keybindings")
 assert.strictEqual(B.keyTooltip(idx, byId["1"], byId, layoutByCode),
                    "1  (evdev 2)\nMeta + Alt + 1 - Switch to group window 1")
-assert.strictEqual(B.keyTooltip(idx, byId.Q, byId, layoutByCode), "Q  (evdev 16)\nNo Hyprland binds")
+assert.strictEqual(B.keyTooltip(idx, byId.Q, byId, layoutByCode), "Q  (evdev 16)\nNo keybindings")
 
 // Modifiers never carry a bind; they are held in other keys' binds. In the
 // fixture Meta is in five (K, code:10, mouse:272, code:201, space), Alt in

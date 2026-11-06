@@ -5,7 +5,7 @@ Part of Fred's `fred.*` plugin suite for [Tamlinux](https://github.com/greenermo
 ![The panel: your keyboard drawn from a field-observed layout, bound keys tinted](assets/screenshot.png)
 
 Built for the Tamlinux personal Linux workstation environment (Hyprland +
-Quickshell). Version 2.0.4.
+Quickshell). Version 2.0.5.
 
 ## Overview
 
@@ -145,7 +145,7 @@ python3 desktop/plugins/fred.keyboard/dev-trial install HEAD
 
 Open **Keyboard (Development)** in the application launcher, or run
 `~/.local/dev/bin/tam-keyboard`. It runs the same widget in its own Quickshell
-instance, reads the current keyboard and Hyprland shortcuts, and exits when
+instance, reads the current keyboard and desktop shortcuts, and exits when
 its panel closes. The packaged bar widget stays as it is. Capture mode starts
 off and is scoped to the trial's focused window. An unknown keyboard uses the
 bundled generic board; its exact key positions are not inferred.

@@ -2512,7 +2512,7 @@ PanelWindow {
                 opacity: 0.70
                 font.pixelSize: 13
                 lineHeight: 1.3
-                text: "The combination '" + panel.lastTriedCombo + "' is not bound to any command in your Hyprland configuration. It is available to assign."
+                text: "The combination '" + panel.lastTriedCombo + "' is not bound to any command in your keybindings. It is available to assign."
               }
             }
 

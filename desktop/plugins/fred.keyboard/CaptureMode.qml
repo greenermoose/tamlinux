@@ -120,7 +120,7 @@ BorderSurface {
           wrapMode: Text.WordWrap
           text: root.wanted
             ? (root.active
-               ? "Hyprland shortcuts are paused while this panel is focused. Every " +
+               ? "Desktop shortcuts are paused while this panel is focused. Every " +
                  "key combination and mouse action reaches the board instead of running."
                : "Waiting for the compositor to grant it. Click the panel if it does " +
                  "not have focus.")

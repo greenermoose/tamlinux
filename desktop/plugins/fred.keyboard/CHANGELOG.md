@@ -4,6 +4,11 @@ All notable changes to `fred.keyboard` in `tamlinux/desktop/plugins/fred.keyboar
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.5 - 2026-11-06
+
+- Text people read no longer names the compositor: unbound keys say "No keybindings"
+  and "Not bound.", and capture mode says desktop shortcuts are paused.
+
 ## 2.0.4 - 2026-11-01
 
 - Add the US HP 15-f233wm reference layout, selected only for its exact system SKU and built-in PS/2 keyboard. Draw its compact function row, integrated numeric keypad, stacked half-height arrows, and secondary legends.

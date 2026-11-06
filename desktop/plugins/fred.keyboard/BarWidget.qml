@@ -37,7 +37,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property string pluginVersion: "2.0.4"
+  readonly property string pluginVersion: "2.0.5"
   readonly property string repoUrl: "https://github.com/greenermoose/tamlinux/tree/main/desktop/plugins/fred.keyboard"
 
   // Closed environment: only these names reach a child process.
@@ -381,7 +381,7 @@ Panel {
           text: {
             if (root.loadError !== "") return root.loadError
             if (!root.resolution) return "Resolving layout..."
-            var legend = ". Tinted keys have Hyprland binds - hover a key to see them."
+            var legend = ". Tinted keys have keybindings - hover a key to see them."
             if (root.resolution.kind === "field-observed")
               return "Layout: " + root.resolution.layoutId + " - transcribed for this board" + legend
             if (root.resolution.kind === "reference-transcribed")
@@ -430,7 +430,7 @@ Panel {
                  : Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.65)
           text: {
             if (root.binds.length === 0) return "Binds not loaded."
-            if (root.lastBinds.length === 0) return "Not bound in Hyprland."
+            if (root.lastBinds.length === 0) return "Not bound."
             var parts = []
             for (var i = 0; i < root.lastBinds.length; i++)
               parts.push(Bindings.describe(root.lastBinds[i]))
