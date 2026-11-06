@@ -20,3 +20,11 @@ Commands are exposed through the user development prefix. Clear your terminal's 
 Status identifies the source content, revision, dirty state, output and whether the source changed since building. Keep a trial current before selecting it for a candidate. Native build dependencies must already be available; a missing dependency is an explicit build error, not an implicit package installation.
 
 Builds retain the four most recent completed entries per component plus any active or referenced fallback. Build/check subprocesses have a five-minute limit. Builds and trial records live under `$XDG_STATE_HOME/tamlinux/development`. Trials are development feedback. Packaged Test observations must refer to the selected assembly and actual installed endpoints. Stop superseded trials during handover, preserving newer overrides. The candidate integration manages this handover for registered trials.
+
+## Run the whole test suite
+
+`desktop/check-all` runs every test file in `desktop/tests`, `make check` in every command, and the headless `check-panels` and `check-theme`, each alone with a time limit. It works from a clean clone with session variables removed, so uncommitted edits are not tested and results do not depend on being in a desktop session. It reports failures, skip reasons and core dumps the run left, and exits non-zero if any unit failed or a test left a core dump. Commands that link `libtam` need a current development `libtam`, including its display libraries.
+
+`--rev REVISION` tests another revision. `--proofs` also enables the opt-in proofs, which start real programs under private headless compositors; warn whoever is at the machine first. `desktop/check-live` is separate because it drives the real screens.
+
+A candidate must pass this suite at its frozen revision before Test.

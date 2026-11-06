@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import select
+import signal
 import subprocess
 import sys
 import time
@@ -16,6 +17,22 @@ env = os.environ.copy()
 
 def run(*args):
     return subprocess.run(args, env=env, check=True, text=True, capture_output=True, timeout=12).stdout.strip()
+
+
+def stop_hyprland_portal():
+    """Kill this private bus's Hyprland portal so it cannot crash on its way out.
+
+    xdg-desktop-portal-hyprland 1.4.1 segfaults in a Wayland call during exit()
+    and leaves a core dump, even when the proof passed. Only the owner of the name
+    on this private bus is killed. Retire this once the portal exits cleanly.
+    """
+    try:
+        reply = run('dbus-send', '--session', '--print-reply=literal', '--dest=org.freedesktop.DBus',
+                    '/org/freedesktop/DBus', 'org.freedesktop.DBus.GetConnectionUnixProcessID',
+                    'string:org.freedesktop.impl.portal.desktop.hyprland')
+    except subprocess.CalledProcessError:
+        return
+    os.kill(int(reply.split()[-1]), signal.SIGKILL)
 
 
 def verify_isolation():
@@ -103,5 +120,6 @@ with (root / 'portal.log').open('w') as log:
             app.terminate()
             app.wait(timeout=5)
             app.stdout.close()
+        stop_hyprland_portal()
         portal.terminate()
         portal.wait(timeout=5)
