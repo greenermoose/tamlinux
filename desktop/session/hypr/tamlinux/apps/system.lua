@@ -29,6 +29,8 @@ o.window("org.tamlinux.about", { size = { 920, 480 } })
 
 o.window("dev.tensaku.Tensaku", { float = true })
 o.window("dev.tensaku.Tensaku", { center = true })
+o.window("qalculate-gtk", { float = true })
+o.window("qalculate-gtk", { center = true })
 o.window("omacalc", { float = true })
 
 

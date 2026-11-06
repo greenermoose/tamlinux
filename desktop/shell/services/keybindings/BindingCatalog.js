@@ -1292,7 +1292,7 @@ var entries = [
     "mask": 0,
     "key": "XF86Calculator",
     "dispatcher": "exec",
-    "arg": "omacalc",
+    "arg": "uwsm-app -- qalculate-gtk",
     "action": "Open the calculator for a quick calculation.",
     "why": "The dedicated hardware key gives quick access to this device control.",
     "mnemonic": "Use the calculator key."

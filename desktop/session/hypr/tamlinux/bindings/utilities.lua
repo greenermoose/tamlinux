@@ -11,7 +11,7 @@ o.bind("XF86PowerOff", "Power menu", "tam-menu toggle system", { locked = true }
 o.bind("META + K", "Keybindings", "tam-menu-keybindings")
 o.bind("META + SHIFT + K", "Tmux keybindings", "tam-menu-tmux-keybindings")
 o.bind("META + CTRL + K", "Herdr keybindings", "tam-menu-herdr-keybindings")
-o.bind("XF86Calculator", "Calculator", "omacalc")
+o.bind("XF86Calculator", "Calculator", "uwsm-app -- qalculate-gtk")
 
 o.bind("META + SHIFT + SPACE", "Toggle top bar", "tam-shell tamlinux-shell toggleBar")
 o.bind("META + CTRL + SPACE", "Background switcher", "tam-menu toggle background")
