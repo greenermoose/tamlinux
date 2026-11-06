@@ -1,0 +1,7 @@
+# tam-open
+
+Inspect and open a file, directory, or URL.
+
+`tam-open` detects the target type and launches an appropriate viewer. GUI
+tools detach; terminal tools run in the foreground. It does not require XDG
+for its built-in handlers.
