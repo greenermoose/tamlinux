@@ -132,6 +132,6 @@ class NativeTests(unittest.TestCase):
             output=result.stdout+result.stderr
             self.assertEqual(result.returncode,0,output)
             self.assertIn('START_MENU_OK',output)
-            self.assertEqual(output.count('action-recorded open-start HEADLESS-1'), 1, output)
+            self.assertEqual(output.count('action-recorded open-go HEADLESS-1'), 1, output)
             for error in ['ReferenceError','TypeError','Binding loop','START_FAILED','Required property']:
                 self.assertNotIn(error,output)

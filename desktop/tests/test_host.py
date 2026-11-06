@@ -240,6 +240,19 @@ class SessionStartTests(unittest.TestCase):
         execute.assert_not_called()
         initialize.assert_not_called()
 
+    def test_missing_quickshell_fails_clearly_without_execution(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as home, \
+             patch.dict(os.environ, {"HOME": home, "TAMLINUX_BAR": "0"}, clear=True), \
+             patch.object(session_start.shutil, "which", return_value=None), \
+             patch.object(session_start.os, "execve") as execute, \
+             patch.object(session_start, "initialize_defaults") as initialize:
+            with self.assertRaises(FileNotFoundError):
+                session_start.resolve_quickshell({"HOME": home})
+            self.assertEqual(session_start.main(), 3)
+        execute.assert_not_called()
+        initialize.assert_not_called()
+
     def test_bar_maps_the_deployed_plugins_and_names_the_layout(self):
         with tempfile.TemporaryDirectory() as temporary:
             config = Path(temporary) / "config"

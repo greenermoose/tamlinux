@@ -72,7 +72,11 @@ def check(fixture, marker, mode="success", scale="1", quickshell=None):
         qs = quickshell or os.environ.get("TAMLINUX_QUICKSHELL")
         if not qs:
             nix_profile = Path.home() / ".nix-profile/bin/quickshell"
-            qs = str(nix_profile) if nix_profile.is_file() else "/usr/bin/quickshell"
+            qs = str(nix_profile) if nix_profile.is_file() else shutil.which("quickshell")
+        if not qs:
+            raise SystemExit(
+                "check-theme: quickshell not found; set TAMLINUX_QUICKSHELL "
+                "or install the Nix package")
         result = subprocess.run([qs, "-p", str(config)],
                                 env=env, stdin=subprocess.DEVNULL,
                                 capture_output=True, text=True, timeout=20)

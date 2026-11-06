@@ -1,8 +1,8 @@
 """Resolve the Quickshell binary for offscreen desktop tests.
 
 Prefer the session-selected Nix Quickshell (`TAMLINUX_QUICKSHELL`), then the
-user Nix profile, then PATH, then the transitional Pacman path. Tests must
-not require `/usr/bin/quickshell` once Plan 32 removes the native package.
+user Nix profile, then PATH. The native Pacman package is gone (Plan 32), so
+tests must not require `/usr/bin/quickshell`.
 """
 
 from __future__ import annotations
@@ -22,9 +22,6 @@ def quickshell_bin() -> str:
     found = shutil.which("quickshell")
     if found:
         return found
-    fallback = Path("/usr/bin/quickshell")
-    if fallback.is_file():
-        return str(fallback)
     raise FileNotFoundError(
         "quickshell not found; set TAMLINUX_QUICKSHELL or install the Nix package"
     )

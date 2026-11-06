@@ -9,6 +9,22 @@ set -uo pipefail
 desktop=$(cd "$(dirname "$0")" && pwd)
 panels=${1:-audio,bluetooth,network,wifiqr,power,speedtest,disk-speedtest}
 work=$(mktemp -d)
+# Resolve the Quickshell provider; the native Pacman package is gone (Plan 32).
+if [[ -n ${TAMLINUX_QUICKSHELL:-} && -x ${TAMLINUX_QUICKSHELL} ]]; then
+  quickshell=$TAMLINUX_QUICKSHELL
+else
+  quickshell=$(command -v quickshell || true)
+fi
+if [[ -z $quickshell ]]; then
+  nix_profile="$HOME/.nix-profile/bin/quickshell"
+  [[ -x $nix_profile ]] && quickshell=$nix_profile
+fi
+if [[ -z $quickshell || ! -x $quickshell ]]; then
+  echo "FAIL: quickshell not found; set TAMLINUX_QUICKSHELL or install the Nix package" >&2
+  exit 1
+fi
+qs=${quickshell%/*}/qs
+[[ -x $qs ]] || qs=$(command -v qs || true)
 # Wayland socket paths are limited to 108 bytes, so keep the runtime short.
 runtime=$(mktemp -d "/run/user/$(id -u)/tqp.XXXX")
 trap 'kill "${sway_pid:-}" 2>/dev/null; rm -rf "$work" "$runtime"' EXIT
@@ -54,14 +70,14 @@ if [[ -z $socket ]]; then
 fi
 
 shell_env=(env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin
-  WAYLAND_DISPLAY="$socket" QT_QPA_PLATFORM=wayland
+  LANG=C.utf8 WAYLAND_DISPLAY="$socket" QT_QPA_PLATFORM=wayland
   QML_IMPORT_PATH="$work/shell/modules" TAMLINUX_PANELS="$panels")
-"${shell_env[@]}" timeout 20 quickshell -p "$work/shell/check-panels.qml" >"$work/shell.log" 2>&1 &
+"${shell_env[@]}" timeout 20 "$quickshell" -p "$work/shell/check-panels.qml" >"$work/shell.log" 2>&1 &
 shell_pid=$!
 # While the shell runs, ask the host's IPC route for a panel it does not have:
 # it must answer false and log the miss, without opening anything.
 for _ in $(seq 25); do
-  ipc=$("${shell_env[@]}" timeout 2 qs ipc -p "$work/shell/check-panels.qml" call tamlinux-shell summon tamlinux.check-missing 2>/dev/null)
+  ipc=$("${shell_env[@]}" timeout 2 "$qs" ipc -p "$work/shell/check-panels.qml" call tamlinux-shell summon tamlinux.check-missing 2>/dev/null)
   [[ $ipc == true || $ipc == false ]] && break
   sleep 0.1
 done
