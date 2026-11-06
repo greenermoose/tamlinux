@@ -47,8 +47,8 @@ At `8965737`, `desktop/check-all` passed with 290 units, no failures and no core
 - In a desktop session with `--proofs`: 9 skips.
 - With an empty environment: 14 skips.
 
-At `acd6a77`, after the last two commits, it passed again with an empty-session run:
-290 units, no failures, no core dumps, 14 skips; the clock proof also passed.
+At `acd6a77`, after the last two commits, it passed again without `--proofs`:
+290 units, no failures, no core dumps, 14 skips. The clock proof also passed.
 
 All skips are the `json5` tests or the opt-in proofs. The first run of this work
 caused a portal crash in a private headless session, which led to the proof change.
