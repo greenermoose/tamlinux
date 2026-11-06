@@ -248,3 +248,4 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 - [2026-10-30 — Editor theme contrast](2026-10-30-editor-contrast.md)
 - [2026-10-30 — Editor surface contrast](2026-10-30-editor-surface-contrast.md)
 - [2026-10-30 — Explorer appearance and deployment test isolation](2026-10-30-explorer-appearance.md)
+- [2026-11-06 — Stop session default tests launching real Hyprland](2026-11-06-session-defaults-test-hermetic.md)
