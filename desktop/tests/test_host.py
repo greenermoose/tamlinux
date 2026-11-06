@@ -435,23 +435,6 @@ class PluginMetadataTests(unittest.TestCase):
                 self.assertEqual(manifest["homepage"], "https://github.com/greenermoose/tamlinux")
 
 
-class AdapterTests(unittest.TestCase):
-    def test_patch_drops_omarchy_routes(self):
-        patch_path = DESKTOP / "adapters" / "clock-step1.patch"
-        added = "\n".join(
-            line[1:] for line in patch_path.read_text(encoding="utf-8").splitlines()
-            if line.startswith("+") and not line.startswith("+++")
-        )
-        self.assertIn('target: "tamlinux.clock"', added)
-        self.assertNotIn('target: "omarchy.clock"', added)
-        self.assertNotIn('target: "fred.clock"', added)
-        self.assertNotIn("omarchy-menu-timezone", added)
-        self.assertNotIn("qs.Commons", added)
-        self.assertIn("TAMLINUX_CLOCK_OFFLINE", added)
-        self.assertIn('reportUnsupported("timezone")', added)
-        self.assertIn('reportUnsupported("event-edit")', added)
-
-
 class FreshSessionDefaults(unittest.TestCase):
     def test_empty_home_receives_all_plugins_and_mutable_settings(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -28,9 +28,7 @@ from registry import RegistryError, validate_directories  # noqa: E402
 from session_start import resolve_quickshell, session_environment  # noqa: E402
 from settings_store import SettingsError, read_settings, write_settings, validate_document  # noqa: E402
 
-PINNED_REVISION = "ed5140ccefc83c0a2fdd5f899bbd290acc35d88a"
 SHELL_DIR = Path(__file__).resolve().parent / "shell"
-PATCH = Path(__file__).resolve().parent / "adapters" / "clock-step1.patch"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "panel"
 COMPOSITOR = Path(__file__).resolve().parent / "fixtures" / "compositor"
 SWAY_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sway"
@@ -49,23 +47,7 @@ def clock_repo() -> Path:
     override = os.environ.get("TAMLINUX_CLOCK_SOURCE")
     if override:
         return Path(override)
-    local = Path(__file__).resolve().parent / "plugins" / "fred.clock"
-    if local.is_dir():
-        return local
-    return workspace() / "clock-fred-tamlinux"
-
-
-def workspace() -> Path:
-    """The directory holding the plugin repositories: the checkout's parent,
-    or the nearest ancestor that has them when run from a worktree."""
-    override = os.environ.get("TAMLINUX_WORKSPACE")
-    if override:
-        return Path(override)
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "clock-fred-tamlinux").is_dir():
-            return parent
-    return here.parents[2]
+    return Path(__file__).resolve().parent / "plugins" / "fred.clock"
 
 
 def evidence_lines(text: str) -> list[str]:
@@ -100,27 +82,7 @@ def copy_tree(source: Path, dest: Path) -> None:
 
 
 def stage_clock(plugin: Path) -> None:
-    source = clock_repo()
-    bar = source / "BarWidget.qml"
-    text = bar.read_text(encoding="utf-8") if bar.is_file() else ""
-    if "import Tam.Commons" in text and "import qs.Commons" not in text:
-        copy_tree(source, plugin)
-        return
-    plugin.mkdir()
-    archive = subprocess.run(
-        ["git", "-C", str(source), "archive", PINNED_REVISION],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(["tar", "-x", "-C", str(plugin)], input=archive.stdout, check=True)
-    applied = subprocess.run(
-        ["patch", "-p1", "--forward", "--input", str(PATCH)],
-        cwd=plugin,
-        capture_output=True,
-        text=True,
-    )
-    if applied.returncode != 0:
-        raise SystemExit(applied.stderr or applied.stdout)
+    copy_tree(clock_repo(), plugin)
 
 
 def stage_extras(state: Path) -> list[dict]:
@@ -1153,7 +1115,6 @@ def selftest(scale: str, output: str, state_root: Path) -> None:
     print("unsupported position checked")
     print("selftest ok")
     print(f"scale {scale}")
-    print(f"pinned {PINNED_REVISION}")
     for line in lines:
         if line.startswith(("ready ", "tooltip ", "settings-wrote ", "shell-id ")):
             print(line)
