@@ -19,6 +19,8 @@
   > Update the plan. Close it if you have no further questions for me. With those questions answered, I approve the plan and authorize you to proceed.
   >
   > take care of the leftovers. Do you need anything from me to finish them up?
+  >
+  > When will the portal exit cleanly?
 
 ### Work
 
@@ -33,8 +35,9 @@
   Reading the code showed that 73 of the 74 bar model skips did check our own model
   first, so they stay and now pass as ordinary tests.
 - The portal proof kills the portal on its private bus before it exits, because
-  `xdg-desktop-portal-hyprland` 1.4.1 segfaults during `exit()`. Retire this once the
-  portal exits cleanly.
+  `xdg-desktop-portal-hyprland` 1.4.1 segfaults during `exit()`. It does so only below
+  1.5.0, which has upstream's expected fix, so a crash on a newer version shows up as a
+  core dump in `check-all --proofs`.
 - Text people read in Explorer and `fred.keyboard` (2.0.5) no longer names the
   compositor.
 - The clock proof copies the in-tree plugin, so its pinned-revision fallback,

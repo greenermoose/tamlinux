@@ -10,10 +10,34 @@ import tempfile
 import time
 import tomllib
 import unittest
+from unittest.mock import patch
 
 import test_theme_ownership as theme_tests
 
 DESKTOP = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(DESKTOP / 'tests/fixtures'))
+
+from portal_exit import exits_cleanly, installed_version_text  # noqa: E402
+
+
+class PortalExitVersion(unittest.TestCase):
+    def test_kill_stops_being_used_from_the_fixed_version(self):
+        for text, clean in (('xdg-desktop-portal-hyprland v1.4.1\n', False),
+                            ('xdg-desktop-portal-hyprland v1.4.9\n', False),
+                            ('xdg-desktop-portal-hyprland v1.5.0\n', True),
+                            ('xdg-desktop-portal-hyprland v1.10.2\n', True),
+                            ('xdg-desktop-portal-hyprland v2.0.0\n', True)):
+            with self.subTest(text=text):
+                self.assertEqual(exits_cleanly(text), clean)
+
+    def test_an_unclear_version_keeps_the_kill(self):
+        for text in ('', 'xdg-desktop-portal-hyprland\n', 'version unknown\n'):
+            with self.subTest(text=text):
+                self.assertFalse(exits_cleanly(text))
+
+    def test_a_missing_portal_reports_no_version(self):
+        with patch('portal_exit.PORTAL', '/nonexistent/portal'):
+            self.assertEqual(installed_version_text(), '')
 
 
 @unittest.skipUnless(os.environ.get('TAMLINUX_GTK_PROOF') == '1', 'opt-in headless GTK proof')

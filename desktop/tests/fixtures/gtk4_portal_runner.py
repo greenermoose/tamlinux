@@ -9,6 +9,8 @@ import subprocess
 import sys
 import time
 
+from portal_exit import exits_cleanly, installed_version_text
+
 root = Path(sys.argv[1])
 dark, light = sys.argv[2:4]
 palettes = json.loads(sys.argv[4])
@@ -22,10 +24,11 @@ def run(*args):
 def stop_hyprland_portal():
     """Kill this private bus's Hyprland portal so it cannot crash on its way out.
 
-    xdg-desktop-portal-hyprland 1.4.1 segfaults in a Wayland call during exit()
-    and leaves a core dump, even when the proof passed. Only the owner of the name
-    on this private bus is killed. Retire this once the portal exits cleanly.
+    Only needed before the portal version that exits cleanly; see portal_exit.
+    Only the owner of the name on this private bus is killed.
     """
+    if exits_cleanly(installed_version_text(env)):
+        return
     try:
         reply = run('dbus-send', '--session', '--print-reply=literal', '--dest=org.freedesktop.DBus',
                     '/org/freedesktop/DBus', 'org.freedesktop.DBus.GetConnectionUnixProcessID',
