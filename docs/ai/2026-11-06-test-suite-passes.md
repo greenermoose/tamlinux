@@ -28,8 +28,8 @@
 - An imported Omarchy layout keeps its Go icon, because the person chose it.
 - Tests that need `json5` skip with a clear reason where Python lacks it.
 - Comparisons against `/usr/share/omarchy`, which cannot run since D200, are deleted.
-  Reading the code showed the 74 bar model skips did check our own model first, so
-  they stay and now pass as ordinary tests.
+  Reading the code showed that 73 of the 74 bar model skips did check our own model
+  first, so they stay and now pass as ordinary tests.
 - The portal proof kills the portal on its private bus before it exits, because
   `xdg-desktop-portal-hyprland` 1.4.1 segfaults during `exit()`. Retire this once the
   portal exits cleanly.
