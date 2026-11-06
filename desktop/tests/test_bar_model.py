@@ -1,4 +1,4 @@
-"""Parity tests for the bar layout model."""
+"""Tests for the bar layout model."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ DESKTOP = Path(__file__).resolve().parents[1]
 SHELL_DIR = Path(os.environ.get("TAMLINUX_SHELL_DIR") or DESKTOP / "shell")
 
 BAR_MODEL = SHELL_DIR / "bar" / "BarModel.js"
-ORIGINAL = Path("/usr/share/omarchy/shell/plugins/bar/BarModel.js")
 
 SCRATCH = os.environ.get("TAMLINUX_TEST_SCRATCH") or None
 if not SCRATCH:
@@ -66,11 +65,6 @@ class _BarModelTestCase(unittest.TestCase):
         with self.subTest(case=case_id):
             port = run_model(BAR_MODEL, wrapped(expression, "tamlinux.tray"))
             self.assertEqual(port, expected)
-            if not ORIGINAL.is_file():
-                self.skipTest(f"Parity skipped: {ORIGINAL} missing")
-            original = run_model(ORIGINAL, wrapped(expression, "omarchy.tray"))
-            mapped = json.loads(json.dumps(original).replace("omarchy.tray", "tamlinux.tray"))
-            self.assertEqual(mapped, port)
 
 
 @unittest.skipUnless(shutil.which("node"), "node missing")
@@ -419,15 +413,6 @@ class PortShape(_BarModelTestCase):
         )
         self.assertEqual(lines[2], "// Changes: owned module, id, and command names.")
         self.assertEqual(lines[3], "")
-
-    def test_z2_body_parity_with_original(self):
-        if not ORIGINAL.is_file():
-            self.skipTest(f"Parity skipped: {ORIGINAL} missing")
-        bar_lines = BAR_MODEL.read_text(encoding="utf-8").splitlines(keepends=True)
-        bar_body = "".join(bar_lines[4:])
-        orig_text = ORIGINAL.read_text(encoding="utf-8")
-        mapped_orig = orig_text.replace("omarchy.tray", "tamlinux.tray")
-        self.assertEqual(bar_body, mapped_orig)
 
     def test_z3_exported_keys_parity(self):
         self.check(

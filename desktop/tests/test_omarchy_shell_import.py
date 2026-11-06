@@ -33,6 +33,9 @@ class ConversionTests(unittest.TestCase):
         kept = {entry["id"] for section in layout["layout"].values() for entry in section}
         expected = {section: [entry for entry in entries if entry["id"] in kept]
                     for section, entries in default["layout"].items()}
+        # D220 removed the Go icon from the default bar. An imported layout
+        # keeps it, because the person chose it (plan 51).
+        expected["left"].insert(0, {"id": "tamlinux.menu"})
         self.assertEqual(layout["layout"], expected)
         self.assertEqual({section: len(entries) for section, entries in layout["layout"].items()},
                          {section: len(entries) for section, entries in fixture["bar"]["layout"].items()})

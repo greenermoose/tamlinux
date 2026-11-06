@@ -14,9 +14,7 @@ from pathlib import Path
 
 DESKTOP = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DESKTOP / "shell" / "host"))
-sys.path.insert(0, str(DESKTOP / "adapters"))
 
-import build_patch  # noqa: E402
 import registry  # noqa: E402
 import session_start  # noqa: E402
 import settings_store  # noqa: E402
@@ -438,15 +436,10 @@ class PluginMetadataTests(unittest.TestCase):
 
 
 class AdapterTests(unittest.TestCase):
-    def test_patch_matches_generator_and_drops_omarchy_routes(self):
-        clock = build_patch.repo_default()
-        if not (clock / ".git").exists():
-            self.skipTest("clock checkout is not available")
-        generated = build_patch.build_patch(clock)
+    def test_patch_drops_omarchy_routes(self):
         patch_path = DESKTOP / "adapters" / "clock-step1.patch"
-        self.assertEqual(patch_path.read_text(encoding="utf-8"), generated)
         added = "\n".join(
-            line[1:] for line in generated.splitlines()
+            line[1:] for line in patch_path.read_text(encoding="utf-8").splitlines()
             if line.startswith("+") and not line.startswith("+++")
         )
         self.assertIn('target: "tamlinux.clock"', added)

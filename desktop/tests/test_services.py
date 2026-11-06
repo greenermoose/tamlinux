@@ -236,7 +236,8 @@ class ServiceSourceTests(unittest.TestCase):
         self.assertIn('["setpriv", "--pdeathsig", "TERM", "inotifywait"', text)
         self.assertIn('["readlink", "-f", root.currentBackgroundLink]', text)
         # Double-clicks open menu routes; nothing runs a shell string here.
-        self.assertIn('root.openRoute(mouse.button === Qt.RightButton ? "theme" : "background")', text)
+        self.assertIn('root.openRoute("theme")', text)
+        self.assertIn('root.openRoute("background")', text)
         self.assertNotIn('"bash"', text)
         self.assertNotIn("omarchy-", text.split("\n\n", 1)[-1])
         self.assertNotIn("qs.Commons", text)

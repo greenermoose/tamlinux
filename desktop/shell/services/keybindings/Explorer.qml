@@ -1674,7 +1674,7 @@ PanelWindow {
                   Text {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: "This will remove the text shortcut and unbind it from Hyprland."
+                    text: "This will remove the text shortcut and its keybinding."
                     color: Commons.Color.muted
                     font.pixelSize: 12
                   }

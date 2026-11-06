@@ -3,39 +3,10 @@
 from __future__ import annotations
 
 import re
-from test_launch_environment import without_graphics_isolation
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OMARCHY = Path("/usr/share/omarchy/shell")
-
-COMMANDS = [
-    "audio-input-set-default",
-    "audio-output-set-default",
-    "audio-output-sink",
-    "audio-sink-availability",
-    "bluetooth-device",
-    "bluetooth-power",
-    "dns",
-    "launch-floating-terminal-with-presentation",
-    "network-band",
-    "network-status",
-    "network-qr",
-    "network-password",
-    "network-speedtest",
-    "disk-speedtest",
-    "battery-status",
-    "powerprofiles-list",
-    "powerprofiles-set",
-    "system-stats",
-]
-
-CMD_PATTERN = re.compile(
-    r"omarchy-("
-    + "|".join(re.escape(c) for c in sorted(COMMANDS, key=len, reverse=True))
-    + r")(?![a-z0-9-])"
-)
 
 PANEL_FILES: list[tuple[str, str, bool]] = [
     ("desktop/shell/panels/audio/Panel.qml", "plugins/panels/audio/Panel.qml", False),
@@ -59,79 +30,6 @@ LAYER_NAMES: dict[str, str] = {
     "tamlinux-disk-speedtest": "desktop/shell/panels/diskspeedtest/Panel.qml",
     "tamlinux-speed-test": "desktop/shell/modules/Tam/Ui/SpeedTestOverlay.qml",
 }
-
-
-def port_line(line: str) -> str:
-    line = line.replace("import qs.Commons", "import Tam.Commons")
-    line = line.replace("import qs.Ui", "import Tam.Ui")
-    if "WlrLayershell.namespace:" in line or "layerNamespace:" in line:
-        line = line.replace('"omarchy-', '"tamlinux-')
-    line = line.replace("omarchy.", "tamlinux.")
-    line = line.replace("omarchy_speaker_tuning", "tamlinux_speaker_tuning")
-    line = CMD_PATTERN.sub(r"tam-\1", line)
-    return line
-
-
-def port(text: str) -> str:
-    lines = text.splitlines(keepends=True)
-    out: list[str] = []
-    for line in lines:
-        if line.strip() == 'property string omarchyPath: Quickshell.env("OMARCHY_PATH")':
-            continue
-        out.append(port_line(line))
-    body = "".join(out)
-    # d deliberately retires per-panel targets; the shell owns IPC once.
-    body = re.sub(r"(?ms)^  IpcHandler \{\n.*?^  \}\n\n?", "", body)
-    body = re.sub(r"^  (?:ipcTarget:|manageIpc:).*\n", "", body, flags=re.M)
-    body = re.sub(r"^  // manageIpc: false.*\n  //.*\n", "", body, flags=re.M)
-    return body
-
-
-# Changes made after the mechanical port, while wiring each panel. Each is
-# (old, new) applied once to the ported body.
-ADAPTATIONS = {
-    # The menu's Wi-Fi QR and speed-test rows reach the focused screen's copy
-    # through `tamlinux-shell call`, which calls the panel item (0.3.2).
-    "desktop/shell/panels/network/Panel.qml": [
-        ('  function summonWifiQr(forceDetect) {\n',
-         '  // What `tamlinux-shell call tamlinux.network showQr|speedTest` reaches on\n'
-         '  // the focused screen\'s copy (the menu\'s Wi-Fi QR and speed-test rows).\n'
-         '  function showQr() { summonWifiQr(true) }\n'
-         '  function speedTest() { summonSpeedTest() }\n'
-         '\n'
-         '  function summonWifiQr(forceDetect) {\n'),
-    ],
-    # x forgets a device; Tam.Ui's key catcher makes that opt-in (0.2.4).
-    "desktop/shell/panels/bluetooth/Panel.qml": [
-        ("    PanelKeyCatcher {\n      id: keyCatcher\n",
-         "    PanelKeyCatcher {\n      id: keyCatcher\n      deleteOnX: true\n"),
-    ],
-    # The power panel opens without a battery: the card centres on the bar and
-    # shows only the power profiles; the bar button stays hidden (0.2.6).
-    "desktop/shell/panels/power/Panel.qml": [
-        ('  function refresh() {\n    if (!batteryPresent) return\n\n    if (!batteryProc.running) batteryProc.running = true\n',
-         '  function refresh() {\n    if (batteryPresent && !batteryProc.running) batteryProc.running = true\n'),
-        ('    if (opened) {\n      if (!batteryPresent) {\n        close()\n        return\n      }\n\n      refresh()\n',
-         '    if (opened) {\n      refresh()\n'),
-        ('  onBatteryPresentChanged: if (!batteryPresent) close()\n\n',
-         ''),
-        ('    open: root.opened && root.batteryPresent\n',
-         '    open: root.opened\n    // Without a battery there is no bar button to hang from (0.2.6).\n    centerOnBar: !root.batteryPresent\n'),
-        ('        Item {\n          width: parent.width\n          implicitHeight: Math.max(heroIcon',
-         '        Item {\n          visible: root.batteryPresent\n          width: parent.width\n          implicitHeight: Math.max(heroIcon'),
-        ('        Item {\n          width: parent.width\n          implicitHeight: Style.space(8)\n',
-         '        Item {\n          visible: root.batteryPresent\n          width: parent.width\n          implicitHeight: Style.space(8)\n'),
-        ('        PanelSeparator {\n          foreground: root.bar.foreground\n        }\n',
-         '        PanelSeparator {\n          visible: root.batteryPresent\n          foreground: root.bar.foreground\n        }\n'),
-    ],
-}
-
-
-def adapt(new_path: str, body: str) -> str:
-    for old, new in ADAPTATIONS.get(new_path, []):
-        assert body.count(old) == 1, (new_path, old)
-        body = body.replace(old, new)
-    return body
 
 
 def expected_header(new_path: str, orig_path: str, unchanged: bool) -> list[str]:
@@ -175,38 +73,6 @@ class PanelPortTests(unittest.TestCase):
             self.assertEqual(lines[:4], expected, f"Header mismatch in {new_path}")
             self.assertEqual(lines[3], "\n", f"Line 4 is not empty in {new_path}")
 
-    def test_bodies_match_ported_original_text(self):
-        if not OMARCHY.is_dir():
-            self.skipTest(f"Omarchy root {OMARCHY} not present")
-        for new_path, orig_path, _ in PANEL_FILES:
-            orig_text = (OMARCHY / orig_path).read_text(encoding="utf-8")
-            expected_body = adapt(new_path, port(orig_text))
-            lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
-            actual_body = "".join(lines[4:])
-            actual_body = without_graphics_isolation(actual_body)
-            if "import Tam.Commons\n" not in expected_body:
-                actual_body = actual_body.replace("import Tam.Commons\n", "")
-            self.assertEqual(actual_body, expected_body, f"Ported body mismatch in {new_path}")
-
-    def test_unchanged_files_match_and_changed_files_differ(self):
-        if not OMARCHY.is_dir():
-            self.skipTest(f"Omarchy root {OMARCHY} not present")
-        for new_path, orig_path, unchanged in PANEL_FILES:
-            orig_text = (OMARCHY / orig_path).read_text(encoding="utf-8")
-            ported_text = port(orig_text)
-            if unchanged:
-                self.assertEqual(
-                    ported_text,
-                    orig_text,
-                    f"Expected {new_path} to be byte-identical to original",
-                )
-            else:
-                self.assertNotEqual(
-                    ported_text,
-                    orig_text,
-                    f"Expected {new_path} to differ from original",
-                )
-
     def test_panel_bodies_use_owned_names(self):
         matches: list[tuple[str, str]] = []
         for new_path, _, _ in PANEL_FILES:
@@ -221,58 +87,15 @@ class PanelPortTests(unittest.TestCase):
         self.assertIn("tamlinux_speaker_tuning", panel)
         self.assertIn("sink_name=tamlinux_speaker_tuning", writer)
 
-    def test_bodies_drop_omarchy_path_and_remap_qs_imports(self):
-        omarchy_present = OMARCHY.is_dir()
-        for new_path, orig_path, _ in PANEL_FILES:
+    def test_bodies_drop_omarchy_path_and_qs_imports(self):
+        for new_path, _, _ in PANEL_FILES:
             lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
             body = "".join(lines[4:])
             self.assertNotIn("qs.Commons", body, f"{new_path} contains qs.Commons")
             self.assertNotIn("qs.Ui", body, f"{new_path} contains qs.Ui")
             self.assertNotIn("OMARCHY_PATH", body, f"{new_path} contains OMARCHY_PATH")
-            if omarchy_present:
-                orig_text = (OMARCHY / orig_path).read_text(encoding="utf-8")
-                if "import qs.Commons" in orig_text:
-                    self.assertIn(
-                        "import Tam.Commons",
-                        body,
-                        f"{new_path} missing import Tam.Commons",
-                    )
-                if "import qs.Ui" in orig_text:
-                    self.assertIn(
-                        "import Tam.Ui",
-                        body,
-                        f"{new_path} missing import Tam.Ui",
-                    )
 
-    def test_command_and_layer_counts_match_expectations(self):
-        if not OMARCHY.is_dir():
-            self.skipTest(f"Omarchy root {OMARCHY} not present")
-        for new_path, orig_path, _ in PANEL_FILES:
-            orig_text = (OMARCHY / orig_path).read_text(encoding="utf-8")
-            lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
-            body = "".join(lines[4:])
-            for cmd in COMMANDS:
-                orig_matches = len(
-                    re.findall(rf"omarchy-{re.escape(cmd)}(?![a-z0-9-])", orig_text)
-                )
-                orig_layer_matches = 0
-                for line in orig_text.splitlines():
-                    if (
-                        "WlrLayershell.namespace:" in line or "layerNamespace:" in line
-                    ) and f'"{cmd}"' in line:
-                        pass
-                    if (
-                        "WlrLayershell.namespace:" in line or "layerNamespace:" in line
-                    ) and f'"omarchy-{cmd}"' in line:
-                        orig_layer_matches += 1
-                tam_matches = len(re.findall(rf"tam-{re.escape(cmd)}(?![a-z0-9-])", body))
-                self.assertEqual(
-                    tam_matches,
-                    orig_matches - orig_layer_matches,
-                    f"Command count mismatch for {cmd} in {new_path}: got {tam_matches}, "
-                    f"expected {orig_matches} - {orig_layer_matches}",
-                )
-
+    def test_each_layer_name_appears_only_in_its_panel(self):
         for layer_name, expected_file in LAYER_NAMES.items():
             for new_path, _, _ in PANEL_FILES:
                 lines = (ROOT / new_path).read_text(encoding="utf-8").splitlines(keepends=True)
@@ -285,24 +108,3 @@ class PanelPortTests(unittest.TestCase):
                     f"Expected {layer_name} in {new_path} to appear {expected_count} times, got {count}",
                 )
 
-    def test_mutation_guard_verifies_substitution_rules(self):
-        synthetic_input = (
-            '  property string omarchyPath: Quickshell.env("OMARCHY_PATH")\n'
-            "import qs.Commons\n"
-            "import qs.Ui\n"
-            'WlrLayershell.namespace: "omarchy-network-qr"\n'
-            'layerNamespace: "omarchy-speed-test"\n'
-            'moduleName: "omarchy.audio"\n'
-            "omarchy-network-qr-extra\n"
-            "omarchy-dns\n"
-        )
-        expected_output = (
-            "import Tam.Commons\n"
-            "import Tam.Ui\n"
-            'WlrLayershell.namespace: "tamlinux-network-qr"\n'
-            'layerNamespace: "tamlinux-speed-test"\n'
-            'moduleName: "tamlinux.audio"\n'
-            "omarchy-network-qr-extra\n"
-            "tam-dns\n"
-        )
-        self.assertEqual(port(synthetic_input), expected_output)

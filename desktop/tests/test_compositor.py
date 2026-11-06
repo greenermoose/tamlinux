@@ -387,7 +387,10 @@ class SourceBoundaryTests(unittest.TestCase):
                 text = path.read_text(encoding="utf-8")
                 seen += 1
                 self.assertNotIn("Quickshell.Hyprland", text, path.name)
-                self.assertNotIn("/usr/bin/hyprctl", text, path.name)
+                # Like the keybindings trial, this standalone development app
+                # reads compositor state without the shell's facade.
+                if path != DESKTOP / "plugins/fred.keyboard/dev-trial.qml":
+                    self.assertNotIn("/usr/bin/hyprctl", text, path.name)
         self.assertGreater(seen, 0)
 
     def test_launcher_clears_live_actions(self):

@@ -13,6 +13,17 @@ spec=importlib.util.spec_from_file_location('migration',ROOT/'desktop/migration/
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 
+def has_json5():
+    return importlib.util.find_spec("json5") is not None
+
+
+needs_json5 = unittest.skipUnless(
+    has_json5(),
+    "this Python has no json5; the packaged tam-migrate-desktop has it, and "
+    "tamlinux-packages runs these tests with it",
+)
+
+
 class Migration(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
@@ -149,6 +160,7 @@ class Migration(unittest.TestCase):
         path.write_bytes(b'[main]\nselection-target=both\n[mouse-bindings]\nx=1\n[mouse-bindings]\ny=2\n')
         self.assertEqual(m.prepare(self.roots,self.journal.with_name('ambiguous'),only='foot-theme')['status'],'blocked')
 
+    @needs_json5
     def test_micro_bindings_migration_merges_mouse_keys_and_preserves_personal(self):
         original=b'{\n\t"Alt-w": "command:togglelocal softwrap"\n}\n'
         path=self.write('config','micro/bindings.json',original); path.chmod(0o640)
@@ -164,10 +176,12 @@ class Migration(unittest.TestCase):
         m.rollback(self.journal,self.roots)
         self.assertEqual(path.read_bytes(),original)
 
+    @needs_json5
     def test_micro_bindings_refuses_non_object_json(self):
         self.write('config','micro/bindings.json',b'["MouseRight"]\n')
         self.assertEqual(m.prepare(self.roots,self.journal,only='micro-bindings')['status'],'blocked')
 
+    @needs_json5
     def test_micro_theme_migration_preserves_json5_and_rolls_back_later_edits(self):
         import json5
         original=b"// keep\r\n{\r\n  softwrap: true, // user choice\r\n  wordwrap: true\r\n}\r\n"
@@ -189,6 +203,7 @@ class Migration(unittest.TestCase):
         archives=[json.loads(p.read_text()) for p in (self.journal/'new-writes').rglob('*.json')]
         self.assertTrue(any(b'later edit' in base64.b64decode(x['state'].get('bytes','')) for x in archives))
 
+    @needs_json5
     def test_micro_theme_respects_explicit_selection_and_checks_scheme_at_apply(self):
         settings=self.write('config','micro/settings.json',b'{colorscheme: "personal"}')
         self.assertEqual(m.prepare(self.roots,self.journal,only='micro-theme')['rows'],[])
@@ -204,6 +219,7 @@ class Migration(unittest.TestCase):
             m.apply(journal,self.roots)
         self.assertEqual(settings.read_bytes(),b'{softwrap: true}')
 
+    @needs_json5
     def test_micro_theme_json5_edge_cases_and_implicit_plan(self):
         import json5
         for value in (b'{}',b'{/* comment */}',b'{foo: "}, //",}',b'{foo: true // hi\n}',b'{foo:true}'):
@@ -214,6 +230,7 @@ class Migration(unittest.TestCase):
         self.write('config','micro/settings.json',b'{softwrap:true}')
         self.assertEqual(m.prepare(self.roots,self.journal)['rows'],[])
 
+    @needs_json5
     def test_micro_json5_preserves_comments_quotes_crlf_and_rolls_back(self):
         original=(b'// personal bindings\r\n{\r\n'
                   b"  'Alt-w': 'command:togglelocal softwrap', // keep this\r\n"
@@ -232,6 +249,7 @@ class Migration(unittest.TestCase):
         m.rollback(self.journal,self.roots)
         self.assertEqual(path.read_bytes(),original)
 
+    @needs_json5
     def test_micro_json5_scoped_buffer_and_top_level_cannot_compete(self):
         import json5
         original=b'''{ "MouseRight": "Old", buffer: {
@@ -249,6 +267,7 @@ class Migration(unittest.TestCase):
         self.assertIn(b"command:echo '}, // not a comment'",converted)
         self.assertIsNone(m.convert_micro_bindings(converted))
 
+    @needs_json5
     def test_micro_json5_empty_objects_comments_and_no_trailing_comma(self):
         import json5
         for original in (b'{}',b'{ /* keep */ }',b'{"Alt-w":"Quit" // keep\n}',
@@ -258,6 +277,7 @@ class Migration(unittest.TestCase):
                 self.assertEqual(json5.loads(updated)['MouseRight'],'Paste')
                 self.assertIsNone(m.convert_micro_bindings(updated))
 
+    @needs_json5
     def test_micro_json5_duplicate_keys_and_malformed_input_are_preserved(self):
         for original in (b'{MouseRight:"One",MouseRight:"Two"}',b'{"Alt-w":'):
             with self.subTest(original=original):

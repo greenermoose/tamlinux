@@ -25,6 +25,8 @@ class TrialHandoverTest(unittest.TestCase):
             env = {**os.environ, "HOME": tmp, "XDG_CONFIG_HOME": str(home / ".config"),
                    "XDG_STATE_HOME": str(home / ".local/state")}
             env.pop("TAMLINUX_HYPR_MACROS_FILE", None)
+            # A desktop session sets this to the real packaged runner.
+            env.pop("TAMLINUX_BIN", None)
             result = subprocess.run([str(SCRIPT), "uninstall"], env=env,
                                     capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
