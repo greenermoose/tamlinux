@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4 - Unreleased
+
+- Left-click the version label to show the Tamlinux version notes.
+
 ## 0.1.3 - Unreleased
 
 - Read metadata when environment overrides are empty and show the compositor version when available.

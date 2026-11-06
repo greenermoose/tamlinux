@@ -6,7 +6,12 @@ import Tam.Ui
 BarWidget {
   id: root
   moduleName: "fred.tamversion"
-  readonly property string pluginVersion: "0.1.3"
+  readonly property string pluginVersion: "0.1.4"
+
+  readonly property string versionNotes: "Tamlinux 0.6.13 version notes\n\n"
+    + "- Create version notes explaining what changed since 0.6.12.\n"
+    + "- Update fred.tamversion to 0.1.4.\n"
+    + "- Left-click fred.tamversion to show these version notes.\n"
 
   readonly property string installedVersion: Quickshell.env("TAMLINUX_VERSION") || "unknown"
   // A completed milestone can have a shorter label without changing package
@@ -104,6 +109,12 @@ BarWidget {
 
   readonly property string tooltipText: formatHover()
 
+  function showVersionNotes() {
+    if (root.bar && root.bar.showTooltip) root.bar.showTooltip(label, root.versionNotes)
+  }
+
+  onVersionNotesChanged: {}
+
   onTooltipTextChanged: {
     if (label.tooltipHovered && root.bar && root.bar.showTooltip) {
       root.bar.showTooltip(label, root.tooltipText)
@@ -119,7 +130,8 @@ BarWidget {
     bar: root.bar
     text: root.displayText
     tooltipText: root.tooltipText
-    pressable: false
+    pressable: true
+    onPressed: function(button) { if (button === Qt.LeftButton) root.showVersionNotes() }
     horizontalMargin: 8.75
   }
 }

@@ -114,7 +114,7 @@ class Render(unittest.TestCase):
             "Tamlinux cultivar Blue Sparkler 0.5.10\n"
             "Home Manager Generation 12\n"
             "Arch Linux · Linux 7.2.11 · Hyprland 0.56.2\n\n"
-            "fred.tamversion v0.1.3"
+            "fred.tamversion v0.1.4"
         )
         result = self.run_proof(
             "fred.tamversion",
@@ -143,7 +143,7 @@ class Render(unittest.TestCase):
                 "Tamlinux cultivar Blue Sparkler 0.5.11\n"
                 "Home Manager Generation 42\n"
                 "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
-                "fred.tamversion v0.1.3"
+                "fred.tamversion v0.1.4"
             )
             result = self.run_proof(
                 "fred.tamversion", "--property", "tooltipText",
@@ -160,7 +160,7 @@ class Render(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="version-missing-") as temp:
             expected = (
                 "Tamlinux 0.5.10\nHome Manager generation unavailable\n"
-                "Arch Linux · Linux 7.2.11 · Hyprland\n\nfred.tamversion v0.1.3"
+                "Arch Linux · Linux 7.2.11 · Hyprland\n\nfred.tamversion v0.1.4"
             )
             result = self.run_proof(
                 "fred.tamversion", "--property", "tooltipText",
@@ -186,7 +186,7 @@ class Render(unittest.TestCase):
                 "Tamlinux cultivar Blue Sparkler 0.5.10\n"
                 "Home Manager Generation 12\n"
                 "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
-                "fred.tamversion v0.1.3"
+                "fred.tamversion v0.1.4"
             )
             result = self.run_proof(
                 str(plugin),
