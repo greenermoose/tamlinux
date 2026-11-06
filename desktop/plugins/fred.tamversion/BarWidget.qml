@@ -8,8 +8,8 @@ BarWidget {
   moduleName: "fred.tamversion"
   readonly property string pluginVersion: "0.1.4"
 
-  readonly property string versionNotes: "Tamlinux 0.6.13 version notes\n\n"
-    + "- Create version notes explaining what changed since 0.6.12.\n"
+  readonly property string versionNotes: "Tamlinux 0.6.14 version notes\n\n"
+    + "- Create version notes explaining what changed since 0.6.13.\n"
     + "- Update fred.tamversion to 0.1.4.\n"
     + "- Left-click fred.tamversion to show these version notes.\n"
 

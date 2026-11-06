@@ -8,7 +8,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
-## 0.6.13 - Develop candidate
+## 0.6.14 - Develop candidate
 
 - Create version notes explaining what changed since 0.6.12.
 - Update fred.tamversion to 0.1.4; left click shows the version notes.
