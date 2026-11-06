@@ -21,7 +21,11 @@ end
 hl = {
   dsp = dispatcher("hl.dsp"),
   env = function(name, value) record("ENV", name .. "=" .. value) end,
-  config = function(_) end, curve = function(_) end, animation = function(_) end,
+  config = function(values)
+    if values.misc and values.misc.bell_sound then record("BELL", values.misc.bell_sound) end
+  end,
+  plugin = dispatcher("hl.plugin"),
+  curve = function(_) end, animation = function(_) end,
   window_rule = function(_) end, layer_rule = function(_) end,
   bind = function(key, action, options)
     record("BIND", key .. "=" .. (type(action) == "table" and
@@ -30,6 +34,18 @@ hl = {
   on = function(name, callback) if name == "hyprland.start" then callback() end end,
   exec_cmd = function(command) record("EXEC", command) end,
 }
+-- Never launch the real compositor binary: without XDG_RUNTIME_DIR it aborts
+-- and dumps core, even for --version. Other commands keep the real io.popen.
+local real_popen = io.popen
+io.popen = function(command, ...)
+  if command:match("^%S*Hyprland%s") then
+    return {
+      read = function() return os.getenv("TEST_HYPRLAND_VERSION") or "" end,
+      close = function() return true end,
+    }
+  end
+  return real_popen(command, ...)
+end
 dofile(arg[1])
 '''
 
@@ -61,7 +77,7 @@ class SessionDefaults(unittest.TestCase):
         self.assertEqual(env['TAMLINUX_MENU_EXTENSION'], '/personal-menu')
         self.assertEqual(env['TAMLINUX_SESSION'], '1')
 
-    def run_defaults(self, prepare=None):
+    def run_defaults(self, prepare=None, hyprland_version='Hyprland 0.56.2 built from branch v0.56.2'):
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary)
             if prepare:
@@ -70,15 +86,25 @@ class SessionDefaults(unittest.TestCase):
             recorder.write_text(RECORDER)
             result = subprocess.run([LUA, str(recorder), str(ROOT / 'entry.lua')],
                 env={'PATH': str(Path(LUA).parent), 'HOME': str(home), 'XDG_CONFIG_HOME': str(home / 'config'),
-                                  'XDG_STATE_HOME': str(home / 'state')},
+                                  'XDG_STATE_HOME': str(home / 'state'),
+                                  'TEST_HYPRLAND_VERSION': hyprland_version},
                 text=True, capture_output=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stderr)
             return result.stdout
 
+    def test_bell_is_muted_only_from_hyprland_0_57(self):
+        for version, muted in (('Hyprland 0.56.2 built from branch v0.56.2', False),
+                               ('Hyprland 0.57.0 built from branch v0.57.0', True),
+                               ('Hyprland 1.0.0 built from branch v1.0.0', True),
+                               ('', False)):
+            with self.subTest(version=version):
+                text = self.run_defaults(hyprland_version=version)
+                self.assertEqual('BELL\tnone' in text, muted)
+
     def test_empty_state_has_retained_bindings_and_owned_session_environment(self):
         text = self.run_defaults()
-        self.assertIn('BIND\tSUPER + Q=hl.dsp.window.close', text)
-        self.assertIn('BIND\tSUPER + RETURN=tam-launch-terminal', text)
+        self.assertIn('BIND\tMETA + Q=hl.dsp.window.close', text)
+        self.assertIn('BIND\tMETA + RETURN=tam-launch-terminal', text)
         self.assertIn('BIND\tPRINT=tam-capture-screenshot', text)
         self.assertIn('ENV\tTAMLINUX_SESSION=1', text)
         self.assertIn('EXEC\tuwsm finalize', text)
