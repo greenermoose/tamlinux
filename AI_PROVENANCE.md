@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) stops the session default tests launching the real Hyprland binary, and repairs the failures they already had. [Session](docs/ai/2026-11-06-session-defaults-test-hermetic.md).
+
 2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.10 K53 — `tam-update` lists AUR updates for frozen-recipe review and never runs unattended AUR upgrades. [Session](docs/ai/2026-11-04-0.6.10-k53-tam-update.md).
 
 2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.9 — K25 hyprbars close controls, Package/Test speed recovery, and Plan 32 Quickshell decoupling. [Session](docs/ai/2026-11-04-0.6.9-k25-speed-quickshell.md).
