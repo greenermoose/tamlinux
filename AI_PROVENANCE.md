@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) makes the whole test suite pass, adds `desktop/check-all`, and commits opencode's reviewed Quickshell edits. [Session](docs/ai/2026-11-06-test-suite-passes.md).
+
 2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) stops the session default tests launching the real Hyprland binary, and repairs the failures they already had. [Session](docs/ai/2026-11-06-session-defaults-test-hermetic.md).
 
 2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.10 K53 — `tam-update` lists AUR updates for frozen-recipe review and never runs unattended AUR upgrades. [Session](docs/ai/2026-11-04-0.6.10-k53-tam-update.md).
