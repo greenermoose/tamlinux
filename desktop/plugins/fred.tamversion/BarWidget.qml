@@ -6,12 +6,7 @@ import Tam.Ui
 BarWidget {
   id: root
   moduleName: "fred.tamversion"
-  readonly property string pluginVersion: "0.1.4"
-
-  readonly property string versionNotes: "Tamlinux 0.6.14 version notes\n\n"
-    + "- Create version notes explaining what changed since 0.6.13.\n"
-    + "- Update fred.tamversion to 0.1.4.\n"
-    + "- Left-click fred.tamversion to show these version notes.\n"
+  readonly property string pluginVersion: "0.1.5"
 
   readonly property string installedVersion: Quickshell.env("TAMLINUX_VERSION") || "unknown"
   // A completed milestone can have a shorter label without changing package
@@ -25,6 +20,10 @@ BarWidget {
   readonly property string displayText: "Tamlinux " + displayVersion
 
   readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "") + "/.config")
+  readonly property string stateDir: Quickshell.env("XDG_STATE_HOME") || ((Quickshell.env("HOME") || "/home/fred") + "/.local/state")
+  readonly property string versionNotesPath: Quickshell.env("TAMLINUX_VERSION_NOTES")
+    || (stateDir + "/nix/profiles/home-manager/home-path/share/tamlinux/version-notes.txt")
+  property string rawVersionNotes: ""
 
   readonly property bool hasCultivarEnv: !!Quickshell.env("TAMLINUX_CULTIVAR")
   property string cultivarName: hasCultivarEnv ? Quickshell.env("TAMLINUX_CULTIVAR") : ""
@@ -44,6 +43,17 @@ BarWidget {
     || "Hyprland"
 
   readonly property string compositorVersion: Quickshell.env("TAMLINUX_HYPRLAND_VERSION") || ""
+
+  FileView {
+    id: versionNotesFile
+    path: root.versionNotesPath
+    printErrors: false
+    watchChanges: true
+    blockLoading: true
+    onLoaded: root.rawVersionNotes = text().trim()
+    onLoadFailed: root.rawVersionNotes = ""
+    onFileChanged: reload()
+  }
 
   FileView {
     id: cultivarFile
@@ -108,6 +118,21 @@ BarWidget {
   }
 
   readonly property string tooltipText: formatHover()
+
+  function formatVersionNotes() {
+    var fallback = "Tamlinux " + root.displayVersion + " version notes\n\nNo version notes recorded for this version."
+    var raw = root.rawVersionNotes
+    if (!raw || root.installedVersion === "unknown") return fallback
+    var firstLine = raw.split(/\r?\n/, 1)[0].trim()
+    var displayHeader = "Tamlinux " + root.displayVersion + " version notes"
+    var installedHeader = "Tamlinux " + root.installedVersion + " version notes"
+    if (firstLine.indexOf(displayHeader) !== 0 && firstLine.indexOf(installedHeader) !== 0) {
+      return fallback
+    }
+    return raw
+  }
+
+  readonly property string versionNotes: formatVersionNotes()
 
   function showVersionNotes() {
     if (root.bar && root.bar.showTooltip) root.bar.showTooltip(label, root.versionNotes)

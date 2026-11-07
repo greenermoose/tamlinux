@@ -22,5 +22,9 @@ Hovering over the version label shows a concise, non-interactive system
 identity tooltip: the full cultivar name and version, the active Home Manager
 generation, host platform details (distribution, kernel, and
 compositor version when available), and the plugin version footer.
+Left-clicking the version label shows the version notes from
+`TAMLINUX_VERSION_NOTES` (or the active Home Manager profile's
+`share/tamlinux/version-notes.txt`) when its header matches the installed
+version, or a fallback message when no matching notes are recorded.
 
 Original Tamlinux code, licensed GPL-3.0-or-later under the repository license.

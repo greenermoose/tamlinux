@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 - Unreleased
+
+- Read version notes from `TAMLINUX_VERSION_NOTES` (falling back to the active
+  Home Manager profile) and require the header to match the installed version
+  so stale notes from an earlier version are never shown.
+
 ## 0.1.4 - Unreleased
 
 - Left-click the version label to show the Tamlinux version notes.

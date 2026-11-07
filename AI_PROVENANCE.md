@@ -1,5 +1,9 @@
 # AI Collaboration & Provenance
 
+2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) updates `fred.tamversion` 0.1.5 to read packaged `TAMLINUX_VERSION_NOTES` with version-header validation instead of a hard-coded string. [Session](docs/ai/2026-11-07-tamversion-version-notes.md).
+
+2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) adds `tam-deploy` home-file conflict detection, `.pre-<version>` automatic backups and rollback restoration, and non-consumer cleanliness filtering. [Session](docs/ai/2026-11-07-tam-deploy-home-file-conflicts.md).
+
 2026-11-06: Antigravity CLI `1.5.3` (`gemini-3.8-flash` / `claude-opus-5-5`) implements `tam-meter` (unprivileged energy meter, D191) and `tam-boot` (startup explainer, K60/K40), updates `start` menu catalog, and packages both native commands. [Session](docs/ai/2026-11-06-tam-meter-and-tam-boot.md).
 
 2026-11-06: Antigravity CLI `1.5.2` (`gemini-3.8-flash`) includes calculator in Quick Launch and Start menu, routes `XF86Calculator` key to `qalculate-gtk`, adds floating window rules, and records Tamlinux 0.6.15 inclusion. [Session](docs/ai/2026-11-06-calculator-quicklaunch.md).

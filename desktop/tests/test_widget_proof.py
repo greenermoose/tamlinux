@@ -114,7 +114,7 @@ class Render(unittest.TestCase):
             "Tamlinux cultivar Blue Sparkler 0.5.10\n"
             "Home Manager Generation 12\n"
             "Arch Linux · Linux 7.2.11 · Hyprland 0.56.2\n\n"
-            "fred.tamversion v0.1.4"
+            "fred.tamversion v0.1.5"
         )
         result = self.run_proof(
             "fred.tamversion",
@@ -143,7 +143,7 @@ class Render(unittest.TestCase):
                 "Tamlinux cultivar Blue Sparkler 0.5.11\n"
                 "Home Manager Generation 42\n"
                 "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
-                "fred.tamversion v0.1.4"
+                "fred.tamversion v0.1.5"
             )
             result = self.run_proof(
                 "fred.tamversion", "--property", "tooltipText",
@@ -160,7 +160,7 @@ class Render(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="version-missing-") as temp:
             expected = (
                 "Tamlinux 0.5.10\nHome Manager generation unavailable\n"
-                "Arch Linux · Linux 7.2.11 · Hyprland\n\nfred.tamversion v0.1.4"
+                "Arch Linux · Linux 7.2.11 · Hyprland\n\nfred.tamversion v0.1.5"
             )
             result = self.run_proof(
                 "fred.tamversion", "--property", "tooltipText",
@@ -186,7 +186,7 @@ class Render(unittest.TestCase):
                 "Tamlinux cultivar Blue Sparkler 0.5.10\n"
                 "Home Manager Generation 12\n"
                 "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
-                "fred.tamversion v0.1.4"
+                "fred.tamversion v0.1.5"
             )
             result = self.run_proof(
                 str(plugin),
@@ -203,6 +203,62 @@ class Render(unittest.TestCase):
             report = json.loads(result.stdout)
             self.assertTrue(report["ok"])
             self.assertEqual(report["text"], expected)
+
+    def test_version_notes_reads_matching_file_and_rejects_stale_or_missing_notes(self):
+        with tempfile.TemporaryDirectory(prefix="version-notes-") as temp:
+            notes = Path(temp) / "version-notes.txt"
+            expected = (
+                "Tamlinux 0.6.15 version notes\n\n"
+                "Changes since Tamlinux 0.6.14:\n"
+                "- tam 0.49.1 (0.75.3)"
+            )
+            notes.write_text(expected + "\n")
+            result = self.run_proof(
+                "fred.tamversion",
+                "--property", "versionNotes",
+                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", f"TAMLINUX_VERSION_NOTES={notes}",
+                "--expect", expected,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            # Stale notes for 0.6.14 must never be shown when 0.6.15 is installed.
+            notes.write_text("Tamlinux 0.6.14 version notes\n\n- Stale notes from 0.6.14\n")
+            fallback = "Tamlinux 0.6.15 version notes\n\nNo version notes recorded for this version."
+            result = self.run_proof(
+                "fred.tamversion",
+                "--property", "versionNotes",
+                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", f"TAMLINUX_VERSION_NOTES={notes}",
+                "--expect", fallback,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            # Missing notes file falls back cleanly.
+            result = self.run_proof(
+                "fred.tamversion",
+                "--property", "versionNotes",
+                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", f"TAMLINUX_VERSION_NOTES={Path(temp) / 'absent.txt'}",
+                "--expect", fallback,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_version_notes_falls_back_to_home_manager_profile_path(self):
+        with tempfile.TemporaryDirectory(prefix="version-notes-hm-") as temp:
+            hm_notes = Path(temp) / "nix/profiles/home-manager/home-path/share/tamlinux/version-notes.txt"
+            hm_notes.parent.mkdir(parents=True)
+            expected = "Tamlinux 0.6.15 version notes\n\n- opencode 2.2.5"
+            hm_notes.write_text(expected + "\n")
+            result = self.run_proof(
+                "fred.tamversion",
+                "--property", "versionNotes",
+                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", "TAMLINUX_VERSION_NOTES=",
+                "--env", f"XDG_STATE_HOME={temp}",
+                "--expect", expected,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

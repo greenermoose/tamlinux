@@ -178,12 +178,18 @@ class SessionStartTests(unittest.TestCase):
             shell = root / "share/tamlinux/shell"
             shell.mkdir(parents=True)
             (shell.parent / "version").write_text("0.4.4-a\n")
+            notes = shell.parent / "version-notes.txt"
+            notes.write_text("Tamlinux 0.4.4-a version notes\n")
             (shell.parent.parent / "VERSION").write_text("9.9.9\n")
             self.assertEqual(session_start.shell_version(shell), "0.4.4-a")
-            with patch.object(session_start, "shell_version", return_value="0.4.4-a"):
+            self.assertEqual(session_start.shell_version_notes(shell), str(notes))
+            with patch.object(session_start, "shell_version", return_value="0.4.4-a"), \
+                 patch.object(session_start, "shell_version_notes", return_value=str(notes)):
                 env, _ = session_start.session_environment({
-                    "HOME": str(root), "TAMLINUX_BAR": "0", "TAMLINUX_VERSION": "stale"})
+                    "HOME": str(root), "TAMLINUX_BAR": "0", "TAMLINUX_VERSION": "stale",
+                    "TAMLINUX_VERSION_NOTES": "/stale/notes.txt"})
             self.assertEqual(env["TAMLINUX_VERSION"], "0.4.4-a")
+            self.assertEqual(env["TAMLINUX_VERSION_NOTES"], str(notes))
 
     def test_compositor_version_is_bounded_and_fails_closed(self):
         from unittest.mock import patch

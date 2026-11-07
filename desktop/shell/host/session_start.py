@@ -81,6 +81,12 @@ def shell_version(shell: Path = SHELL) -> str:
         return "unknown"
 
 
+def shell_version_notes(shell: Path = SHELL) -> str:
+    """Resolve this shell's packaged version-notes path when present."""
+    packaged = shell.parent / "version-notes.txt"
+    return str(packaged) if packaged.is_file() else ""
+
+
 def compositor_version(environ: dict[str, str]) -> str:
     """Read the active Hyprland version once for the shared shell process."""
     if not environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -180,6 +186,9 @@ def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[s
     env.setdefault("TAMLINUX_COMPOSITOR_COMMANDS", str(HOST))
     # Always describe the shell being launched, never an inherited selection.
     env["TAMLINUX_VERSION"] = shell_version()
+    notes_file = shell_version_notes()
+    if notes_file:
+        env["TAMLINUX_VERSION_NOTES"] = notes_file
     env["TAMLINUX_HYPRLAND_VERSION"] = compositor_version(env)
     if env.get("TAMLINUX_BAR") == "0":
         return env, notes

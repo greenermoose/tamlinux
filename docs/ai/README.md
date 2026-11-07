@@ -1,5 +1,9 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-07 — fred.tamversion 0.1.5 packaged version notes and header validation](2026-11-07-tamversion-version-notes.md)
+
+- [2026-11-07 — tam-deploy home-file conflict detection and .pre-<version> backups](2026-11-07-tam-deploy-home-file-conflicts.md)
+
 - [2026-11-04 — Tamlinux 0.6.10 K53 tam-update AUR listing](2026-11-04-0.6.10-k53-tam-update.md)
 
 - [2026-11-04 — Tamlinux 0.6.9 K25, speed, Plan 32 quickshell](2026-11-04-0.6.9-k25-speed-quickshell.md)
