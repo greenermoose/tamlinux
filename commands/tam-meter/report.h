@@ -38,6 +38,8 @@ typedef struct {
     double avail_gib;
     double swap_used_gib;
     bool rapl_readable;
+    char power_source[32];
+    char temp_source[32];
 } tam_meter_report_data_t;
 
 void tam_meter_format_markdown(const tam_meter_report_data_t *data, tam_str_t *out);

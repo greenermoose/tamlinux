@@ -31,9 +31,11 @@ void tam_meter_format_markdown(const tam_meter_report_data_t *data, tam_str_t *o
 
     /* Power line */
     if (data->has_power) {
+        const char *psrc = (data->power_source[0] && strcmp(data->power_source, "amdgpu PPT") != 0)
+            ? data->power_source : "amdgpu PPT";
         *out = tam_str_cat_printf(*out,
-            "- **APU power (amdgpu PPT):** mean %.1f W, median %.1f W, range %.1f–%.1f W (%zu samples).\n",
-            data->power_stats.mean, data->power_stats.median,
+            "- **APU power (%s):** mean %.1f W, median %.1f W, range %.1f–%.1f W (%zu samples).\n",
+            psrc, data->power_stats.mean, data->power_stats.median,
             data->power_stats.min, data->power_stats.max,
             data->power_stats.count);
     } else {
@@ -101,25 +103,29 @@ void tam_meter_format_json(const tam_meter_report_data_t *data, tam_str_t *out)
     *out = tam_str_cat_printf(*out, "  \"kernel\": \"%s\",\n", data->kernel_release);
 
     /* Power */
-    *out = tam_str_cat(*out, "  \"power\": {\n");
-    *out = tam_str_cat_printf(*out, "    \"available\": %s,\n", data->has_power ? "true" : "false");
     if (data->has_power) {
-        *out = tam_str_cat(*out, "    \"sensor\": \"amdgpu PPT\",\n");
+        const char *psrc = (data->power_source[0] && strcmp(data->power_source, "amdgpu PPT") != 0)
+            ? data->power_source : "amdgpu PPT";
+        *out = tam_str_cat(*out, "  \"power\": {\n");
+        *out = tam_str_cat(*out, "    \"available\": true,\n");
+        *out = tam_str_cat_printf(*out, "    \"sensor\": \"%s\",\n", psrc);
         *out = tam_str_cat_printf(*out, "    \"mean_w\": %.2f,\n", data->power_stats.mean);
         *out = tam_str_cat_printf(*out, "    \"median_w\": %.2f,\n", data->power_stats.median);
         *out = tam_str_cat_printf(*out, "    \"min_w\": %.2f,\n", data->power_stats.min);
         *out = tam_str_cat_printf(*out, "    \"max_w\": %.2f,\n", data->power_stats.max);
         *out = tam_str_cat_printf(*out, "    \"samples\": %zu\n", data->power_stats.count);
+        *out = tam_str_cat(*out, "  },\n");
     } else {
-        *out = tam_str_cat(*out, "    \"sensor\": null\n");
+        *out = tam_str_cat(*out, "  \"power\": null,\n");
     }
-    *out = tam_str_cat(*out, "  },\n");
 
     /* Temperature */
     *out = tam_str_cat(*out, "  \"temperature\": {\n");
     *out = tam_str_cat_printf(*out, "    \"available\": %s,\n", data->has_temp ? "true" : "false");
     if (data->has_temp) {
-        *out = tam_str_cat(*out, "    \"sensor\": \"k10temp Tctl\",\n");
+        const char *tsrc = (data->temp_source[0] && strcmp(data->temp_source, "k10temp Tctl") != 0)
+            ? data->temp_source : "k10temp Tctl";
+        *out = tam_str_cat_printf(*out, "    \"sensor\": \"%s\",\n", tsrc);
         *out = tam_str_cat_printf(*out, "    \"mean_c\": %.2f,\n", data->temp_stats.mean);
         *out = tam_str_cat_printf(*out, "    \"min_c\": %.2f,\n", data->temp_stats.min);
         *out = tam_str_cat_printf(*out, "    \"max_c\": %.2f\n", data->temp_stats.max);

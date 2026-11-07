@@ -33,7 +33,7 @@
   "learn.keybindings": {"icon":"","label":"Keybindings","action":"tam-menu-keybindings"},
   "learn.hyprland": {"icon":"","label":"Hyprland","action":"tam-launch-webapp 'https://wiki.hypr.land/'"},
   "learn.arch": {"icon":"󰣇","label":"Arch","action":"tam-launch-webapp 'https://wiki.archlinux.org/title/Main_page'"},
-  "learn.neovim": {"icon":"","label":"Neovim","action":"tam-launch-webapp 'https://www.lazyvim.org/keymaps'"},
+
   "learn.bash": {"icon":"󱆃","label":"Bash","action":"tam-launch-webapp 'https://devhints.io/bash'"},
   "learn.tmux-keybindings": {"icon":"","label":"Tmux","action":"tam-menu-tmux-keybindings"},
   "learn.herdr-keybindings": {"icon":"","label":"Herdr","action":"tam-menu-herdr-keybindings"},
@@ -133,7 +133,8 @@
   "setup.default.terminal.ghostty": {"icon":"","label":"Ghostty","when":"tam-cmd-present ghostty","checked":"[[ \"$(tam-default-terminal)\" == \"ghostty\" ]]","action":"tam-default-terminal ghostty"},
   "setup.default.terminal.kitty": {"icon":"","label":"Kitty","when":"tam-cmd-present kitty","checked":"[[ \"$(tam-default-terminal)\" == \"kitty\" ]]","action":"tam-default-terminal kitty"},
   "setup.default.editor": {"icon":"","label":"Editor","title":"Default Editor"},
-  "setup.default.editor.neovim": {"icon":"","label":"Neovim","when":"tam-cmd-present nvim","checked":"[[ \"$(tam-default-editor)\" == \"nvim\" ]]","action":"tam-default-editor nvim"},
+  "setup.default.editor.micro": {"icon":"","label":"Micro","when":"tam-cmd-present micro","checked":"[[ \"$(tam-default-editor)\" == \"micro\" ]]","action":"tam-default-editor micro"},
+  "setup.default.editor.nano": {"icon":"","label":"Nano","when":"tam-cmd-present nano","checked":"[[ \"$(tam-default-editor)\" == \"nano\" ]]","action":"tam-default-editor nano"},
   "setup.default.editor.vscode": {"icon":"","label":"VSCode","when":"tam-cmd-present code","checked":"[[ \"$(tam-default-editor)\" == \"code\" ]]","action":"tam-default-editor code"},
   "setup.default.editor.cursor": {"icon":"","iconFont":"Tamlinux Icons","label":"Cursor","when":"tam-cmd-present cursor","checked":"[[ \"$(tam-default-editor)\" == \"cursor\" ]]","action":"tam-default-editor cursor"},
   "setup.default.editor.zed": {"icon":"","label":"Zed","when":"tam-cmd-present zeditor","checked":"[[ \"$(tam-default-editor)\" == \"zeditor\" ]]","action":"tam-default-editor zed"},

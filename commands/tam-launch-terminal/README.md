@@ -8,7 +8,7 @@ Hyprland and consumer-selected terminal/editor applications are host providers.
 | Interface | Caller and behavior | Owned mutable interface |
 | --- | --- | --- |
 | `tam-launch-terminal [command...]` | Bar terminal actions and session keybindings; opens the focused terminal's directory | `tam-cmd-terminal-cwd`; Kitty remote socket `$XDG_RUNTIME_DIR/tamlinux-kitty-<pid>` |
-| `tam-launch-editor [--inline] [paths...]` | Config editor and session editor actions; terminal editors use `tam-launch-tui`, graphical editors use UWSM | `${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/defaults/editor`; absent/unavailable selection uses baseline `nvim` |
+| `tam-launch-editor [--inline] [paths...]` | Config editor and session editor actions; terminal editors use `tam-launch-tui`, graphical editors use UWSM | `${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/defaults/editor`; absent/unavailable selection uses baseline `micro` |
 | `tam-launch-config-editor <path>` | Menu config actions; low-urgency notice and selected editor open the same path | Same editor state; notification failure does not prevent editing |
 | `tam-launch-floating-terminal-with-presentation <command> [args...]` | Menu maintenance actions; Tamlinux wordmark and completion pause | `${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/current/theme/gum_env.lua` |
 | `tam-default-editor [selection]` | Menu checked expressions and editor selection | Same editor state as the launcher |

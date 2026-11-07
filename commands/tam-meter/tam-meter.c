@@ -71,11 +71,6 @@ static int compare_proc_diff_items(const void *a, const void *b)
 
 static int do_reading(const tam_meter_sensors_t *sensors, int settle, double minutes, double interval, bool json)
 {
-    if (!sensors->power_available) {
-        fprintf(stderr, "tam-meter: error: no amdgpu power1_input sensor found (unsupported APU or missing sysfs)\n");
-        return 2;
-    }
-
     tam_str_t disp_start = NULL;
     tam_meter_read_displays(sensors, &disp_start);
 
@@ -234,6 +229,8 @@ static int do_reading(const tam_meter_sensors_t *sensors, int settle, double min
 
     tam_meter_read_meminfo(sensors, &rep.avail_gib, &rep.swap_used_gib);
     rep.rapl_readable = sensors->rapl_readable;
+    safe_strcpy(rep.power_source, sensors->power_source, sizeof(rep.power_source));
+    safe_strcpy(rep.temp_source, sensors->temp_source, sizeof(rep.temp_source));
 
     tam_str_t out = NULL;
     if (json) {

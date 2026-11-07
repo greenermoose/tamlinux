@@ -8,10 +8,15 @@
 
 typedef struct {
     char power_path[PATH_MAX];
+    char power_current_path[PATH_MAX];
+    char power_voltage_path[PATH_MAX];
+    bool power_is_battery_calc;
     char temp_path[PATH_MAX];
     bool power_available;
     bool temp_available;
     bool rapl_readable;
+    char power_source[32];
+    char temp_source[32];
     char sysfs_root[PATH_MAX];
     char proc_root[PATH_MAX];
 } tam_meter_sensors_t;

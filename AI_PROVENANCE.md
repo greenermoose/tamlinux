@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-07: OpenCode (`agy`) implements Tamlinux 0.6.16 Slice 1 (D231): Neovim retirement to Micro/Nano defaults, `tam-update` repository-column guard, and unprivileged laptop sensor support in `tam-meter`. [Session](docs/ai/2026-11-07-0.6.16-slice1.md).
+
 2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) updates `fred.tamversion` 0.1.5 to read packaged `TAMLINUX_VERSION_NOTES` with version-header validation instead of a hard-coded string. [Session](docs/ai/2026-11-07-tamversion-version-notes.md).
 
 2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) adds `tam-deploy` home-file conflict detection, `.pre-<version>` automatic backups and rollback restoration, and non-consumer cleanliness filtering. [Session](docs/ai/2026-11-07-tam-deploy-home-file-conflicts.md).

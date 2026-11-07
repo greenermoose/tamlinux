@@ -81,3 +81,8 @@ class AurListingPolicy(unittest.TestCase):
         self.assertIn('yay -Qua', text)
         self.assertIn('list_aur_updates', text)
         self.assertIn('review frozen recipes', text)
+
+    def test_omarchy_repo_guard_matches_only_repo_column(self):
+        text = self.script()
+        self.assertIn("grep -qi '^omarchy '", text)
+        self.assertNotIn("grep -qi 'omarchy'", text)

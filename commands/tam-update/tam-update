@@ -28,7 +28,7 @@ list_aur_updates() {
 }
 
 # Never reactivate a retired repository/guard or substitute another updater.
-if /usr/bin/pacman -Sl 2>/dev/null | /usr/bin/grep -qi 'omarchy'; then
+if /usr/bin/pacman -Sl 2>/dev/null | /usr/bin/grep -qi '^omarchy '; then
   echo "Remove inherited active repositories before native updates." >&2
   exit 1
 fi
@@ -74,7 +74,7 @@ for line in sys.argv[2].splitlines():
         sys.exit('Stage the maintained '+fields[0]+' provider for '+fields[3]+' before updating')
 PYTHON
 # Native confirmation remains interactive. A failed snapshot stops the update.
-if /usr/bin/pacman -Qq | /usr/bin/grep -qi 'omarchy'; then
+if /usr/bin/pacman -Qq | /usr/bin/grep -qx 'omarchy'; then
   echo "Full system/AUR updating awaits the old-package cutover." >&2
   exit 1
 fi

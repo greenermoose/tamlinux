@@ -43,13 +43,21 @@ fi
 if [[ -f $default_editor ]]; then
   read -r editor <"$default_editor"
 else
-  editor="nvim"
+  editor="${EDITOR:-micro}"
 fi
 
 if [[ $editor == "helix" ]] && ! tam-cmd-present helix && tam-cmd-present hx; then
   editor="hx"
 fi
-tam-cmd-present "$editor" || editor="nvim"
+
+editor_bin="${editor%% *}"
+if ! tam-cmd-present "$editor_bin"; then
+  if [[ -n ${EDITOR:-} ]] && tam-cmd-present "${EDITOR%% *}"; then
+    editor="${EDITOR%% *}"
+  else
+    editor="micro"
+  fi
+fi
 
 case "${editor##*/}" in
 nvim | vim | nano | micro | hx | helix | fresh)

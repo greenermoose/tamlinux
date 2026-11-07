@@ -64,8 +64,8 @@ open_text() {
   printf '%s' "$text" >"$open_file"
 
   # $EDITOR may carry arguments, so split it into words like a shell would.
-  read -ra editor <<<"${VISUAL:-${EDITOR:-nvim}}"
-  (( ${#editor[@]} > 0 )) || editor=(nvim)
+  read -ra editor <<<"${VISUAL:-${EDITOR:-micro}}"
+  (( ${#editor[@]} > 0 )) || editor=(micro)
   exec setsid uwsm-app -t service -- xdg-terminal-exec --app-id=tamlinux.clipboard -e "${editor[@]}" "$open_file"
 }
 

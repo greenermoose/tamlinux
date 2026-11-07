@@ -81,7 +81,7 @@ else:
     sys.exit(int(os.environ.get('TEST_COMMAND_STATUS', '0')))
 '''
         for name in ('setsid', 'uwsm-app', 'xdg-terminal-exec', 'hyprctl', 'kitten',
-                     'pgrep', 'busctl', 'clear', 'nvim', 'vim', 'code', 'capture-args'):
+                     'pgrep', 'busctl', 'clear', 'micro', 'nano', 'nvim', 'vim', 'code', 'capture-args'):
             path = self.bin / name
             path.write_text(source)
             path.chmod(0o755)
@@ -108,7 +108,7 @@ else:
         sock.bind(str(self.runtime / name))
 
     def test_fresh_defaults_read_without_creating_state(self):
-        self.assertEqual(self.run_command('tam-default-editor').stdout, 'nvim\n')
+        self.assertEqual(self.run_command('tam-default-editor').stdout, 'micro\n')
         self.assertEqual(self.run_command('tam-default-terminal').stdout, 'foot\n')
         self.assertFalse(self.state.exists())
         self.assertFalse(self.config.exists())
@@ -156,7 +156,7 @@ else:
         for choice, value in [('code', 'code'), ('cursor', 'cursor'), ('zed', 'zeditor'),
                               ('zeditor', 'zeditor'), ('sublime_text', 'sublime_text'),
                               ('helix', 'helix'), ('hx', 'helix'), ('vim', 'vim'), ('emacs', 'emacs'),
-                              ('nvim', 'nvim')]:
+                              ('micro', 'micro'), ('nano', 'nano')]:
             with self.subTest(choice=choice):
                 self.assertEqual(self.run_command('tam-default-editor', choice).returncode, 0)
                 self.assertEqual(self.run_command('tam-default-editor').stdout, value + '\n')
@@ -220,11 +220,11 @@ else:
         self.assertEqual(self.calls('vim')[0]['args'], ['a b'])
         self.assertFalse(self.calls('xdg-terminal-exec'))
 
-    def test_missing_selected_editor_uses_baseline_neovim_fallback(self):
+    def test_missing_selected_editor_uses_baseline_micro_fallback(self):
         self.choose_editor('uninstalled')
         result = self.run_command('tam-launch-editor', '--inline', 'file')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls('nvim')[0]['args'], ['file'])
+        self.assertEqual(self.calls('micro')[0]['args'], ['file'])
 
     def test_config_editor_notifies_and_opens_same_path(self):
         self.choose_editor('code')

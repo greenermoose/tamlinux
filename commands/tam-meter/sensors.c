@@ -57,7 +57,12 @@ int tam_meter_init_sensors(tam_meter_sensors_t *s, const char *sysfs_override, c
     safe_strcpy(s->sysfs_root, sys_root, sizeof(s->sysfs_root));
     safe_strcpy(s->proc_root, proc_root, sizeof(s->proc_root));
 
-    /* Check hwmon devices */
+    /* Collect hwmon candidates (temperature priority: k10temp, coretemp, acpitz). */
+    char temp_k10[PATH_MAX] = "";
+    char temp_core[PATH_MAX] = "";
+    char temp_acpi[PATH_MAX] = "";
+    char power_amd[PATH_MAX] = "";
+
     char *hwmon_dir = tam_path_join(s->sysfs_root, "class/hwmon");
     if (hwmon_dir) {
         DIR *d = opendir(hwmon_dir);
@@ -71,18 +76,28 @@ int tam_meter_init_sensors(tam_meter_sensors_t *s, const char *sysfs_override, c
                 char *name_path = tam_path_join(dev_dir, "name");
                 char name_buf[128];
                 if (name_path && read_single_line(name_path, name_buf, sizeof(name_buf))) {
-                    if (strcmp(name_buf, "amdgpu") == 0 && !s->power_available) {
+                    if (strcmp(name_buf, "amdgpu") == 0 && power_amd[0] == '\0') {
                         char *power_path = tam_path_join(dev_dir, "power1_input");
                         if (power_path && access(power_path, R_OK) == 0) {
-                            safe_strcpy(s->power_path, power_path, sizeof(s->power_path));
-                            s->power_available = true;
+                            safe_strcpy(power_amd, power_path, sizeof(power_amd));
                         }
                         if (power_path) free(power_path);
-                    } else if (strcmp(name_buf, "k10temp") == 0 && !s->temp_available) {
+                    } else if (strcmp(name_buf, "k10temp") == 0 && temp_k10[0] == '\0') {
                         char *temp_path = tam_path_join(dev_dir, "temp1_input");
                         if (temp_path && access(temp_path, R_OK) == 0) {
-                            safe_strcpy(s->temp_path, temp_path, sizeof(s->temp_path));
-                            s->temp_available = true;
+                            safe_strcpy(temp_k10, temp_path, sizeof(temp_k10));
+                        }
+                        if (temp_path) free(temp_path);
+                    } else if (strcmp(name_buf, "coretemp") == 0 && temp_core[0] == '\0') {
+                        char *temp_path = tam_path_join(dev_dir, "temp1_input");
+                        if (temp_path && access(temp_path, R_OK) == 0) {
+                            safe_strcpy(temp_core, temp_path, sizeof(temp_core));
+                        }
+                        if (temp_path) free(temp_path);
+                    } else if (strcmp(name_buf, "acpitz") == 0 && temp_acpi[0] == '\0') {
+                        char *temp_path = tam_path_join(dev_dir, "temp1_input");
+                        if (temp_path && access(temp_path, R_OK) == 0) {
+                            safe_strcpy(temp_acpi, temp_path, sizeof(temp_acpi));
                         }
                         if (temp_path) free(temp_path);
                     }
@@ -93,6 +108,97 @@ int tam_meter_init_sensors(tam_meter_sensors_t *s, const char *sysfs_override, c
             closedir(d);
         }
         free(hwmon_dir);
+    }
+
+    /* Temperature selection by priority */
+    if (temp_k10[0]) {
+        safe_strcpy(s->temp_path, temp_k10, sizeof(s->temp_path));
+        s->temp_available = true;
+        safe_strcpy(s->temp_source, "k10temp Tctl", sizeof(s->temp_source));
+    } else if (temp_core[0]) {
+        safe_strcpy(s->temp_path, temp_core, sizeof(s->temp_path));
+        s->temp_available = true;
+        safe_strcpy(s->temp_source, "coretemp", sizeof(s->temp_source));
+    } else if (temp_acpi[0]) {
+        safe_strcpy(s->temp_path, temp_acpi, sizeof(s->temp_path));
+        s->temp_available = true;
+        safe_strcpy(s->temp_source, "acpitz", sizeof(s->temp_source));
+    }
+
+    /* Power selection: amdgpu first, then battery discharge fallback */
+    if (power_amd[0]) {
+        safe_strcpy(s->power_path, power_amd, sizeof(s->power_path));
+        s->power_available = true;
+        safe_strcpy(s->power_source, "amdgpu PPT", sizeof(s->power_source));
+    } else {
+        char *ps_dir = tam_path_join(s->sysfs_root, "class/power_supply");
+        if (ps_dir) {
+            DIR *d = opendir(ps_dir);
+            if (d) {
+                struct dirent *ent;
+                while ((ent = readdir(d)) != NULL) {
+                    if (ent->d_name[0] == '.') continue;
+                    if (strncmp(ent->d_name, "BAT", 3) != 0) continue;
+
+                    char *bat_dir = tam_path_join(ps_dir, ent->d_name);
+                    if (!bat_dir) continue;
+
+                    /* status */
+                    char *status_path = tam_path_join(bat_dir, "status");
+                    char status_buf[64] = "";
+                    bool status_ok = true;
+                    if (status_path && read_single_line(status_path, status_buf, sizeof(status_buf))) {
+                        if (strcmp(status_buf, "Discharging") != 0) {
+                            status_ok = false;
+                        }
+                    }
+                    if (status_path) free(status_path);
+
+                    if (status_ok) {
+                        /* power_now */
+                        char *pn_path = tam_path_join(bat_dir, "power_now");
+                        if (pn_path && access(pn_path, R_OK) == 0) {
+                            char buf[64];
+                            if (read_single_line(pn_path, buf, sizeof(buf)) && atoll(buf) > 0) {
+                                safe_strcpy(s->power_path, pn_path, sizeof(s->power_path));
+                                s->power_available = true;
+                                safe_strcpy(s->power_source, "battery discharge", sizeof(s->power_source));
+                                free(pn_path);
+                                free(bat_dir);
+                                break;
+                            }
+                        }
+                        if (pn_path) free(pn_path);
+
+                        /* current_now + voltage_now */
+                        char *cn_path = tam_path_join(bat_dir, "current_now");
+                        char *vn_path = tam_path_join(bat_dir, "voltage_now");
+                        if (cn_path && vn_path && access(cn_path, R_OK) == 0 && access(vn_path, R_OK) == 0) {
+                            char buf1[64], buf2[64];
+                            if (read_single_line(cn_path, buf1, sizeof(buf1)) &&
+                                read_single_line(vn_path, buf2, sizeof(buf2)) &&
+                                atoll(buf1) > 0 && atoll(buf2) > 0) {
+                                safe_strcpy(s->power_current_path, cn_path, sizeof(s->power_current_path));
+                                safe_strcpy(s->power_voltage_path, vn_path, sizeof(s->power_voltage_path));
+                                s->power_is_battery_calc = true;
+                                s->power_available = true;
+                                safe_strcpy(s->power_source, "battery discharge", sizeof(s->power_source));
+                                if (cn_path) free(cn_path);
+                                if (vn_path) free(vn_path);
+                                free(bat_dir);
+                                break;
+                            }
+                        }
+                        if (cn_path) free(cn_path);
+                        if (vn_path) free(vn_path);
+                    }
+
+                    free(bat_dir);
+                }
+                closedir(d);
+            }
+            free(ps_dir);
+        }
     }
 
     /* Check RAPL */
@@ -108,6 +214,15 @@ int tam_meter_init_sensors(tam_meter_sensors_t *s, const char *sysfs_override, c
 int tam_meter_read_power_w(const tam_meter_sensors_t *s, double *out_w)
 {
     if (!s || !s->power_available || !out_w) return -1;
+    if (s->power_current_path[0] && s->power_voltage_path[0]) {
+        char buf1[64], buf2[64];
+        if (!read_single_line(s->power_current_path, buf1, sizeof(buf1))) return -1;
+        if (!read_single_line(s->power_voltage_path, buf2, sizeof(buf2))) return -1;
+        long long ua = atoll(buf1);
+        long long uv = atoll(buf2);
+        *out_w = (double)ua * (double)uv / 1e12;
+        return 0;
+    }
     char buf[64];
     if (!read_single_line(s->power_path, buf, sizeof(buf))) return -1;
     long long uw = atoll(buf);
