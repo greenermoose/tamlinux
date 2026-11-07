@@ -142,5 +142,21 @@
     "check": "nethack",
     "argv": ["nethack"],
     "description": "Object-oriented causal physics (conductivity, petrification, reflection)"
+  },
+  {
+    "id": "tam-meter-top",
+    "category": "System & Diagnostics",
+    "label": "See what's using power",
+    "check": "tam-meter",
+    "argv": ["tam-meter", "top"],
+    "description": "Live APU power, temperature, wakeups and busiest programs. q quits."
+  },
+  {
+    "id": "tam-boot",
+    "category": "System & Diagnostics",
+    "label": "Explain this boot",
+    "check": "tam-boot",
+    "argv": ["tam-boot"],
+    "description": "Where startup time went: machine work versus waiting for you."
   }
 ]

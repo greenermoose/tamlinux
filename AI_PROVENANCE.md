@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-06: Antigravity CLI `1.5.3` (`gemini-3.8-flash` / `claude-opus-5-5`) implements `tam-meter` (unprivileged energy meter, D191) and `tam-boot` (startup explainer, K60/K40), updates `start` menu catalog, and packages both native commands. [Session](docs/ai/2026-11-06-tam-meter-and-tam-boot.md).
+
 2026-11-06: Antigravity CLI `1.5.2` (`gemini-3.8-flash`) includes calculator in Quick Launch and Start menu, routes `XF86Calculator` key to `qalculate-gtk`, adds floating window rules, and records Tamlinux 0.6.15 inclusion. [Session](docs/ai/2026-11-06-calculator-quicklaunch.md).
 
 2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) makes the whole test suite pass, adds `desktop/check-all`, and commits opencode's reviewed Quickshell edits. [Session](docs/ai/2026-11-06-test-suite-passes.md).

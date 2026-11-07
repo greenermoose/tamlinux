@@ -8,6 +8,10 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Add `tam-meter`: Tamlinux's own unprivileged C energy meter (D191), replacing `fred-energy-reading` for Test candidate measurements (D170, D190); includes a live TUI monitor (`tam-meter top`) with power sparkline and busiest processes.
+- Add `tam-boot`: C startup explainer and diagnostics tool (K60, K40) separating machine time from time spent waiting for user interaction (disk passphrase prompt, console login).
+- Add "See what's using power" and "Explain this boot" to the `start` console activity catalog.
+
 ## 0.6.14 - Develop candidate
 
 - Create version notes explaining what changed since 0.6.12.

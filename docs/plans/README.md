@@ -36,6 +36,8 @@ Run, and Release) is private operating procedure, not duplicated here.
 | [Fleet](fleet.md) | Registered-host deploy and fleet tools. |
 | [nftables host firewall](nftables-host-firewall.md) | 0.6 D204: owned nftables, SSH helpers, ufw removal after cutover. |
 | [`tam-hardware`](tam-hardware.md) | Host CPU/ISA/DMI probe for agents (D209). |
+| [`tam-meter`](tam-meter.md) | Unprivileged C energy meter and live view (D191). |
+| [`tam-boot`](tam-boot.md) | Startup explainer and diagnostics tool (K40, K60). |
 | [`tam` command](tamlinux-command.md) | Workstation plan for the separate `tam` component. |
 | [Compositor protocol layer](compositor-protocol-layer.md) | Protocol facade; Sway adapter later. |
 | [Sway integration](sway-integration.md) | After dependable Hyprland baseline (0.7+). |

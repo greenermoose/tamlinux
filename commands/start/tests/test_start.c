@@ -277,7 +277,7 @@ static void test_packaged_menu_file(void)
 		failures++;
 		return;
 	}
-	expect_eq("18 activities", (int)menu.count, 18);
+	expect_eq("20 activities", (int)menu.count, 20);
 	expect_streq("desktop first", menu.items[0].id, "desktop");
 	expect_streq("desktop argv", menu.items[0].argv[0], "tam-desktop");
 	expect_streq("guide second", menu.items[1].id, "tam-guide");
