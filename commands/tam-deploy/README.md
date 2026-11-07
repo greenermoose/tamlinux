@@ -21,7 +21,8 @@ file keep using the configuration lock.
 | --- | --- |
 | `status` | Show the pinned assembly, its component revisions, the installed shell revision, the stage and the generation; compare required endpoints with the exact selected package outputs, rejecting missing/broken links and mixed assemblies. |
 | `status --json` | Separately report profile, receipt, lock, endpoints, running shell identity and the transaction. Disagreement returns a nonzero exit status. |
-| `preflight <assembly>` | Require a coherent baseline, build the exact target without changing the consumer lock, and run registered read-only checks on candidate and recovery generations. Print the built generation as JSON. |
+| `preflight <assembly> [--json]` | Require a coherent baseline, build the exact target without changing the consumer lock, and run registered read-only checks on candidate and recovery generations. Print the built generation and detected home-file conflicts as JSON. |
+| `conflicts <generation> [--json]` | List unmanaged `$HOME` files, directories or non-Home Manager symlinks that the generation's `home-files` would overwrite, along with their `<path>.pre-<version>` backup targets. Read-only; always exits 0 when the generation exists. |
 | `reconcile [--digest HASH]` | Plan a correction only when the profile pointer is the sole mismatch. The digest-bound execution changes that pointer using Nix; it does not activate, restore settings or invent a receipt. Unknown runtime or mixed endpoints are refused. |
 | `init [revision] [--test]` | First installation on a registered local host without an existing generation. Require all components on `main` (or `test` with `--test`), build the exact consumer generation, activate and verify its package endpoints. Works from a text session without a Home Manager CLI. Records no previous generation; never promotes branches or enables graphical login. |
 | `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell if active, verify the installed paths and commit the pin. Activation or verification failure attempts to restore the lock and previous generation. |
@@ -49,11 +50,17 @@ each generation's activation script. Only registered helpers run; full
 activation and arbitrary DRY_RUN hooks are never used for preparation.
 
 `$XDG_STATE_HOME/tamlinux/deploy-transaction.json` records baseline, target and
-phase before mutation. Activation failure restores the lock and attempts the
-previous generation, checking endpoints, generation markers and runtime before
-claiming recovery. Both the original and recovery errors survive a partial
-failure. An incomplete transaction blocks another attempt. Status exposes it
-for explicit recovery; deleting the file is not a recovery procedure.
+phase before mutation. Before running the generation's `activate` script,
+`tam-deploy` checks for unmanaged `$HOME` paths that `home-files` would
+overwrite, renames each to `<path>.pre-<version>` (or `.pre-tamlinux` when no
+version stamp is present) while setting `HOME_MANAGER_BACKUP_EXT`, and records
+`backedUp` in the transaction and deployment state. If `<path>.pre-<version>`
+already exists, activation is refused before any file is moved. Activation
+failure or `tam-deploy back` restores the moved `.pre-<version>` files alongside
+the previous lock and generation, checking endpoints, generation markers and
+runtime before claiming recovery. Both the original and recovery errors survive
+a partial failure. An incomplete transaction blocks another attempt. Status
+exposes it for explicit recovery; deleting the file is not a recovery procedure.
 
 Promote a candidate from `develop` to `test` (a fast-forward push) before
 `tam-deploy test`; `tam-deploy` never resolves a moving branch at build time.

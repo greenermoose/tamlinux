@@ -6,6 +6,7 @@ is a tamlinux-packages revision: its lock file pins every component.
 
 status:       show the pinned assembly, what is installed and the generation.
 preflight:    verify baseline, build the target and run registered read-only checks.
+conflicts:    list unmanaged home files that a generation would overwrite.
 reconcile:    plan a profile-only correction; execute with --digest HASH.
 init [rev] [--test]:
               first installation from a recorded main (or --test) assembly.
@@ -33,6 +34,7 @@ file, so hosts on different versions never rewrite a shared lock.
 """
 from __future__ import annotations
 
+import fnmatch
 import getpass
 import hashlib
 import json
@@ -54,6 +56,120 @@ class DeploymentError(Exception):
 # unidentifiable; the list lives in the consumer at system/live-paths.
 LIVE_PATHS_FILE = "system/live-paths"
 LIVE_PATH_RE = re.compile(r"^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
+
+# Consumer repository paths outside the Home Manager Nix evaluation inputs.
+NON_CONSUMER_PATHS = (
+    "agent/memory",
+    "agent/docs",
+    "agent/skills",
+    "agent/scripts",
+    "agent/archive",
+    "agent/codex",
+    "agent/claude/hooks",
+    "agent/AGENTS.md",
+    "agent/AI_AGENT_GUIDANCE_ARCHITECTURE.md",
+    "system/candidate-inclusions",
+    "system/acceptances",
+    "audit",
+    "tests",
+    "tools",
+    "README.md",
+    "CHANGELOG.md",
+    "ECOSYSTEM.md",
+    "UPSTREAM.md",
+)
+
+
+def generation_version(generation: Path | str) -> str | None:
+    """Return the Tamlinux version stamped in a Home Manager generation, if known."""
+    gen_path = Path(generation)
+    version_file = gen_path / "home-files/.config/tamlinux/version"
+    try:
+        if version_file.is_file():
+            value = version_file.read_text(encoding="utf-8").strip()
+            if value and re.fullmatch(r"[A-Za-z0-9._+-]+", value):
+                return value
+    except OSError:
+        pass
+    activate_file = gen_path / "activate"
+    try:
+        if activate_file.is_file():
+            text = activate_file.read_text(encoding="utf-8", errors="replace")
+            match = re.search(r"\bTAMLINUX_VERSION=([A-Za-z0-9._+-]+)", text)
+            if match:
+                return match.group(1)
+    except OSError:
+        pass
+    return None
+
+
+def _is_hm_symlink(path: Path, relative_path: str) -> bool:
+    """True when path is already a symlink into a Home Manager generation."""
+    if not path.is_symlink():
+        return False
+    try:
+        target = os.readlink(path)
+    except OSError:
+        return False
+    normalized = Path(target).as_posix()
+    store_root = Path(os.path.realpath("/nix/store")).as_posix()
+    if (fnmatch.fnmatch(normalized, "/nix/store/*-home-manager-files/*")
+            or fnmatch.fnmatch(normalized, f"{store_root}/*-home-manager-files/*")):
+        return True
+    if Path(target).is_absolute() and normalized.endswith(f"/home-files/{relative_path}"):
+        return True
+    return False
+
+
+def find_home_file_conflicts(
+    generation: Path | str,
+    home: Path | None = None,
+    version: str | None = None,
+) -> list[dict]:
+    """Return a deterministic sorted list of unmanaged $HOME paths that
+    generation/home-files would overwrite."""
+    gen_path = Path(generation)
+    home_path = Path(home) if home is not None else Path.home()
+    home_files = gen_path / "home-files"
+    if not home_files.exists():
+        return []
+    resolved_version = (version.strip() if isinstance(version, str) and version.strip()
+                        else generation_version(gen_path))
+    suffix = f".pre-{resolved_version}" if resolved_version else ".pre-tamlinux"
+    conflicts: dict[str, dict] = {}
+
+    def record_conflict(rel: str, target: Path) -> None:
+        if rel not in conflicts:
+            backup = Path(f"{target}{suffix}")
+            conflicts[rel] = {
+                "path": str(target),
+                "relativePath": rel,
+                "backupPath": str(backup),
+                "backupExists": os.path.lexists(backup),
+            }
+
+    def walk(directory: Path) -> None:
+        try:
+            entries = sorted(os.scandir(directory), key=lambda e: e.name)
+        except OSError:
+            return
+        for entry in entries:
+            entry_path = Path(entry.path)
+            rel = entry_path.relative_to(home_files).as_posix()
+            target = home_path / rel
+            if entry.is_symlink() or entry.is_file(follow_symlinks=False):
+                if os.path.lexists(target) and not _is_hm_symlink(target, rel):
+                    record_conflict(rel, target)
+            elif entry.is_dir(follow_symlinks=False):
+                if (os.path.lexists(target)
+                        and not _is_hm_symlink(target, rel)
+                        and not target.is_dir()):
+                    record_conflict(rel, target)
+                else:
+                    walk(entry_path)
+
+    walk(home_files)
+    return [conflicts[key] for key in sorted(conflicts)]
 
 
 def command(*args: str, capture: bool = False, quiet: bool = False) -> str:
@@ -237,20 +353,30 @@ class Deployment:
             digests[entry] = hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else None
         return digests
 
+    def _excluded_config_pathspecs(self) -> list[str]:
+        excluded = [":(exclude)system/bom.json", ":(exclude)system/plugin-runs"]
+        excluded += [f":(exclude){entry}" for entry in NON_CONSUMER_PATHS]
+        excluded += [f":(exclude,literal){entry}" for entry in self.live_paths()]
+        return excluded
+
     def check_clean(self) -> None:
         # Reject dirty deployment inputs so a generation has an identifiable
         # config commit. Deployment records may accumulate after activation,
-        # and live paths change while the session runs (recorded by digest).
-        excluded = [":(exclude)system/bom.json", ":(exclude)system/plugin-runs"]
-        excluded += [f":(exclude,literal){entry}" for entry in self.live_paths()]
+        # live paths change while the session runs (recorded by digest), and
+        # non-consumer paths outside Nix inputs are ignored with a note.
+        excluded = self._excluded_config_pathspecs()
         dirty = command("git", "-C", str(self.config), "status", "--porcelain", "--untracked-files=all",
                         "--", ".", *excluded, capture=True)
         if dirty:
             raise DeploymentError("commit config changes before deploying:\n" + dirty)
+        ignored = command("git", "-C", str(self.config), "status", "--porcelain", "--untracked-files=all",
+                          "--", *NON_CONSUMER_PATHS, capture=True)
+        if ignored:
+            paths = [line[3:].strip() for line in ignored.splitlines() if len(line) > 3]
+            print("tam-deploy: ignoring unrelated uncommitted paths: " + ", ".join(paths), file=sys.stderr)
 
     def preparation_identity(self, revision: str, baseline: str) -> dict:
-        excluded = [':(exclude)system/bom.json', ':(exclude)system/plugin-runs']
-        excluded += [f':(exclude,literal){entry}' for entry in self.live_paths()]
+        excluded = self._excluded_config_pathspecs()
         tree = command('git', '-C', str(self.config), 'ls-files', '-s', '--', '.', *excluded, capture=True)
         return {'assembly': revision, 'baseline': baseline,
                 'consumer': hashlib.sha256(tree.encode()).hexdigest(),
@@ -278,6 +404,7 @@ class Deployment:
                 self._prepared_generation = generation
             else:
                 self._prepared_generation = self.build_generation(revision)
+            self._prepared_conflicts = self.find_home_file_conflicts(self._prepared_generation)
             self.activation_validators(report['profileGeneration'])
             self.activation_validators(self._prepared_generation)
             self.check_clean()
@@ -403,20 +530,123 @@ class Deployment:
             for helper in sorted(helpers):
                 command(sys.executable, helper, str(source), capture=True)
 
+    def find_home_file_conflicts(self, generation: Path | str, version: str | None = None) -> list[dict]:
+        return find_home_file_conflicts(generation, home=self.home, version=version)
+
+    def conflicts(self, generation: Path | str, json_output: bool = False) -> list[dict]:
+        gen_path = Path(generation)
+        if not gen_path.exists():
+            raise DeploymentError(f"generation not found: {generation}")
+        items = self.find_home_file_conflicts(gen_path)
+        if json_output:
+            print(json.dumps({
+                "generation": str(gen_path),
+                "version": generation_version(gen_path),
+                "conflicts": items,
+            }, indent=2))
+        else:
+            for item in items:
+                suffix = " (backup exists)" if item["backupExists"] else ""
+                print(f"{item['path']} -> {item['backupPath']}{suffix}")
+        return items
+
+    def _record_transaction_fields(self, **fields) -> None:
+        if not self.transaction_file.exists():
+            return
+        current = json.loads(self.transaction_file.read_text())
+        current.update(fields)
+        temporary = self.transaction_file.with_suffix('.tmp')
+        with temporary.open('w') as stream:
+            stream.write(json.dumps(current, indent=2) + '\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(self.transaction_file)
+
+    def backup_home_file_conflicts(self, generation: Path | str, version: str | None = None) -> list[dict]:
+        items = self.find_home_file_conflicts(generation, version=version)
+        for item in items:
+            if item["backupExists"]:
+                raise DeploymentError(
+                    f"backup already exists and would be clobbered: {item['backupPath']} (for {item['path']})"
+                )
+        backed_up: list[dict] = []
+        try:
+            for item in items:
+                os.rename(item["path"], item["backupPath"])
+                backed_up.append({
+                    "path": item["path"],
+                    "relativePath": item["relativePath"],
+                    "backupPath": item["backupPath"],
+                })
+        except OSError as exc:
+            for done in reversed(backed_up):
+                try:
+                    os.rename(done["backupPath"], done["path"])
+                except OSError:
+                    pass
+            raise DeploymentError(f"failed to back up conflicting home file: {exc}") from exc
+        self._backed_up = backed_up
+        if backed_up:
+            self._record_transaction_fields(backedUp=list(backed_up))
+        return backed_up
+
+    def restore_home_file_backups(
+        self,
+        backups: list[dict] | None = None,
+        target_generation: Path | str | None = None,
+    ) -> list[dict]:
+        entries = list(getattr(self, "_backed_up", []) if backups is None else backups)
+        restored: list[dict] = []
+        for item in reversed(entries):
+            path = Path(item["path"])
+            backup = Path(item["backupPath"])
+            rel = item.get("relativePath") or path.relative_to(self.home).as_posix()
+            if target_generation is not None and os.path.lexists(Path(target_generation) / "home-files" / rel):
+                continue
+            if not os.path.lexists(backup):
+                continue
+            if os.path.lexists(path):
+                if path.is_symlink() and _is_hm_symlink(path, rel):
+                    path.unlink()
+                else:
+                    continue
+            os.rename(backup, path)
+            restored.append(item)
+        if restored:
+            self._record_transaction_fields(restoredBackups=list(reversed(restored)))
+        if backups is None:
+            self._backed_up = []
+        return list(reversed(restored))
+
     def activate(self) -> None:
         generation = getattr(self, '_prepared_generation', None) or self.build_generation()
         # HM CLI switch changes the profile BEFORE prerequisite checks. Direct
         # activation uses driver 0: its own writeBoundary moves the profile only
         # after read-only checks pass. Never pass --driver-version 1 here.
+        version = generation_version(generation)
+        backup_ext = f"pre-{version}" if version else "pre-tamlinux"
+        self.backup_home_file_conflicts(generation, version=version)
         started = time.monotonic()
-        command(str(Path(generation) / 'activate'))
-        if self.generation() != generation:
-            raise DeploymentError('candidate generation was not activated')
-        self._phase_times = getattr(self, '_phase_times', {})
-        self._phase_times['activate'] = round(time.monotonic() - started, 3)
-        restart_started = time.monotonic()
-        self.restart_if_graphical()
-        self._phase_times['shellRestart'] = round(time.monotonic() - restart_started, 3)
+        previous_ext = os.environ.get("HOME_MANAGER_BACKUP_EXT")
+        os.environ["HOME_MANAGER_BACKUP_EXT"] = backup_ext
+        try:
+            command(str(Path(generation) / 'activate'))
+            if self.generation() != generation:
+                raise DeploymentError('candidate generation was not activated')
+            self._phase_times = getattr(self, '_phase_times', {})
+            self._phase_times['activate'] = round(time.monotonic() - started, 3)
+            restart_started = time.monotonic()
+            self.restart_if_graphical()
+            self._phase_times['shellRestart'] = round(time.monotonic() - restart_started, 3)
+        except Exception:
+            if not getattr(self, "_in_install_transaction", False):
+                self.restore_home_file_backups()
+            raise
+        finally:
+            if previous_ext is None:
+                os.environ.pop("HOME_MANAGER_BACKUP_EXT", None)
+            else:
+                os.environ["HOME_MANAGER_BACKUP_EXT"] = previous_ext
 
     def wait_ready(self) -> None:
         for _ in range(40):
@@ -690,6 +920,8 @@ class Deployment:
         self.transaction(phase='prepared', baselineGeneration=previous, baselineAssembly=previous_pin,
                          targetAssembly=revision, targetGeneration=getattr(self, '_prepared_generation', None))
         activation_attempted = False
+        self._backed_up = []
+        self._in_install_transaction = True
         try:
             self.transaction(phase='pinning')
             self.pin(revision)
@@ -713,6 +945,7 @@ class Deployment:
                     if self.generation() != previous:
                         raise DeploymentError("previous generation was not restored")
                     self.restart_if_graphical()
+                self.restore_home_file_backups(target_generation=previous)
                 previous_pins = self.components(previous_pin)
                 problems = self.verify(previous_pins, previous_pin)
                 if problems:
@@ -726,6 +959,8 @@ class Deployment:
                     "inspect tam-deploy status, the active generation and the consumer lock before retrying"
                 ) from recovery
             raise
+        finally:
+            self._in_install_transaction = False
         try:
             self.transaction(phase='recording')
             generation = self.generation()
@@ -733,10 +968,13 @@ class Deployment:
                                                          "stage": stage, "generation": generation})
             self.record(f"deploy: {stage} tamlinux-packages {revision[:12]}", files)
             self._phase_times['total'] = round(time.monotonic() - install_started, 3)
-            self.save_state({"stage": stage, "packages": revision, "components": pins,
-                             "generation": generation, "previousGeneration": previous,
-                             "previousPin": previous_pin, "livePaths": self.live_digests(),
-                             "phaseTimes": dict(self._phase_times)})
+            state_record = {"stage": stage, "packages": revision, "components": pins,
+                            "generation": generation, "previousGeneration": previous,
+                            "previousPin": previous_pin, "livePaths": self.live_digests(),
+                            "phaseTimes": dict(self._phase_times)}
+            if self._backed_up:
+                state_record["backedUp"] = list(self._backed_up)
+            self.save_state(state_record)
             self.transaction(phase='complete', phaseTimes=dict(self._phase_times))
             print(
                 "deploy phases: "
@@ -945,6 +1183,8 @@ class Deployment:
             restored = self.generation()
             if restored != previous:
                 raise DeploymentError("previous generation was not activated")
+            if state.get("backedUp"):
+                self.restore_home_file_backups(state["backedUp"], target_generation=previous)
             self.restart_if_graphical()
             pins = self.components(previous_pin)
             problems = self.verify(pins, previous_pin)
@@ -968,7 +1208,8 @@ class Deployment:
             ) from exc
 
 
-USAGE = ("usage: tam-deploy status [--json] | preflight <assembly> | reconcile [--digest HASH] | "
+USAGE = ("usage: tam-deploy status [--json] | preflight <assembly> [--json] | "
+         "conflicts <generation> [--json] | reconcile [--digest HASH] | "
          "init [revision] [--test] | test [revision] | run [revision] [--untested] | "
          "follow <revision> | back")
 
@@ -981,8 +1222,16 @@ def parse(argv: list[str]) -> tuple[str, list, dict] | None:
         return name, [], {}
     if name == 'status' and rest == ['--json']:
         return name, [], {'json_output': True}
-    if name == 'preflight' and len(rest) == 1 and re.fullmatch(r'[0-9a-f]{40}', rest[0]):
-        return name, rest, {}
+    if name == 'preflight':
+        flags = [a for a in rest if a.startswith('-')]
+        args = [a for a in rest if not a.startswith('-')]
+        if set(flags) <= {'--json'} and len(args) == 1 and re.fullmatch(r'[0-9a-f]{40}', args[0]):
+            return name, args, {}
+    if name == 'conflicts':
+        flags = [a for a in rest if a.startswith('-')]
+        args = [a for a in rest if not a.startswith('-')]
+        if set(flags) <= {'--json'} and len(args) == 1 and args[0]:
+            return name, args, {'json_output': '--json' in flags}
     if name == 'reconcile':
         if not rest:
             return name, [], {}
@@ -1019,7 +1268,8 @@ def main(argv: list[str]) -> int:
         getattr(deployment, name)(*args, **options)
         if name == 'preflight':
             print(json.dumps({'generation': deployment._prepared_generation,
-                              'baselineGeneration': deployment.read_state()['generation']}))
+                              'baselineGeneration': deployment.read_state()['generation'],
+                              'conflicts': getattr(deployment, '_prepared_conflicts', [])}))
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
         print(f"tam-deploy: {exc}", file=sys.stderr)
         return 1

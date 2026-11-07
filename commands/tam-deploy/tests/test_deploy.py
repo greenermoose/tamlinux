@@ -527,6 +527,23 @@ class LivePaths(Fixture):
             with self.subTest(entry=entry), self.assertRaises(deploy.DeploymentError):
                 self.app.live_paths()
 
+    def test_non_consumer_uncommitted_paths_are_ignored_with_note(self):
+        self.app.save_state({"generation": "/nix/store/old"})
+        baseline_identity = self.app.preparation_identity(self.packages_main, "/nix/store/old")["consumer"]
+        memory = self.config / "agent/memory/session-note.md"
+        memory.parent.mkdir(parents=True)
+        memory.write_text("unrelated note\n")
+        (self.config / "README.md").write_text("docs change\n")
+        with patch("sys.stderr", new_callable=io.StringIO) as err:
+            self.app.check_clean()
+        self.assertIn("tam-deploy: ignoring unrelated uncommitted paths:", err.getvalue())
+        self.assertIn("agent/memory/session-note.md", err.getvalue())
+        self.assertIn("README.md", err.getvalue())
+        self.assertEqual(
+            self.app.preparation_identity(self.packages_main, "/nix/store/old")["consumer"],
+            baseline_identity,
+        )
+
 
 class RunStage(Fixture):
     def setUp(self):
@@ -637,6 +654,10 @@ class Arguments(unittest.TestCase):
         self.assertEqual(deploy.parse(["run", "abc", "--untested"]), ("run", ["abc"], {"untested": True}))
         self.assertEqual(deploy.parse(["run", "--untested", "abc"]), ("run", ["abc"], {"untested": True}))
         self.assertEqual(deploy.parse(["test"]), ("test", [], {}))
+        self.assertEqual(deploy.parse(["conflicts", "/nix/store/gen"]), ("conflicts", ["/nix/store/gen"], {"json_output": False}))
+        self.assertEqual(deploy.parse(["conflicts", "/nix/store/gen", "--json"]), ("conflicts", ["/nix/store/gen"], {"json_output": True}))
+        self.assertEqual(deploy.parse(["preflight", "a" * 40, "--json"]), ("preflight", ["a" * 40], {}))
+        self.assertIsNone(deploy.parse(["conflicts"]))
         self.assertIsNone(deploy.parse(["run", "a", "b"]))
         self.assertIsNone(deploy.parse(["run", "--force"]))
         self.assertIsNone(deploy.parse(["test", "--untested"]))
@@ -1317,6 +1338,197 @@ class CoherentState(Fixture):
         self.assertEqual(transaction['phase'], 'partial')
         self.assertIn('17', transaction['deploymentError'])
         self.assertIn('23', transaction['recoveryError'])
+
+
+class HomeFileConflicts(Fixture):
+    def setUp(self):
+        super().setUp()
+        self.old = self.root / "old-generation"
+        self.new = self.root / "new-generation"
+        for generation, revision in ((self.old, self.tamlinux_main), (self.new, self.tamlinux_new)):
+            files = generation / "home-files"
+            for relative in (".local/share/tamlinux/shell", ".local/share/tamlinux/shell-revision",
+                             ".config/systemd/user/tamlinux-shell.service"):
+                path = files / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(revision)
+                installed = self.app.home / relative
+                installed.parent.mkdir(parents=True, exist_ok=True)
+                if not installed.exists():
+                    installed.symlink_to(path)
+            (generation / "activate").write_text("#!/bin/sh\nexit 0\n")
+            (generation / "activate").chmod(0o755)
+        version_file = self.new / "home-files/.config/tamlinux/version"
+        version_file.parent.mkdir(parents=True, exist_ok=True)
+        version_file.write_text("0.6.15\n")
+        (self.app.home / ".config/tamlinux").mkdir(parents=True, exist_ok=True)
+        (self.app.home / ".config/tamlinux/version").symlink_to(version_file)
+        self.app.profile.parent.mkdir(parents=True, exist_ok=True)
+        self.app.profile.symlink_to(self.old)
+
+    def add_generation_file(self, rel: str, content: str = "managed\n", generation: Path | None = None) -> Path:
+        gen = generation or self.new
+        path = gen / "home-files" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        return path
+
+    def test_find_home_file_conflicts_detects_files_links_and_dirs(self):
+        self.add_generation_file(".manpath", "store manpath\n")
+        self.add_generation_file(". broken-target", "store broken\n")
+        self.add_generation_file(".foreign-link", "store foreign\n")
+        self.add_generation_file(".config/dir-block", "store leaf\n")
+        self.add_generation_file(".config/parent-block/leaf", "store child\n")
+        self.add_generation_file(".managed-store", "store managed\n")
+
+        (self.app.home / ".manpath").write_text("user manpath\n")
+        (self.app.home / ". broken-target").symlink_to(self.root / "nonexistent")
+        other = self.root / "outside-file"
+        other.write_text("outside\n")
+        (self.app.home / ".foreign-link").symlink_to(other)
+        (self.app.home / ".config/dir-block").mkdir(parents=True, exist_ok=True)
+        (self.app.home / ".config/parent-block").write_text("blocking file\n")
+        (self.app.home / ".managed-store").symlink_to(
+            "/nix/store/8iwylfp7rhakq4250apm251qk33h657k-home-manager-files/.managed-store"
+        )
+
+        conflicts = deploy.find_home_file_conflicts(self.new, home=self.app.home)
+        self.assertEqual(
+            [c["relativePath"] for c in conflicts],
+            [". broken-target", ".config/dir-block", ".config/parent-block", ".foreign-link", ".manpath"],
+        )
+        manpath_entry = next(c for c in conflicts if c["relativePath"] == ".manpath")
+        self.assertEqual(manpath_entry, {
+            "path": str(self.app.home / ".manpath"),
+            "relativePath": ".manpath",
+            "backupPath": str(self.app.home / ".manpath.pre-0.6.15"),
+            "backupExists": False,
+        })
+
+        # Fallback suffix when version is unknown
+        unversioned = self.root / "unversioned-gen"
+        self.add_generation_file(".manpath", "store\n", generation=unversioned)
+        fallback = deploy.find_home_file_conflicts(unversioned, home=self.app.home)
+        self.assertEqual(fallback[0]["backupPath"], str(self.app.home / ".manpath.pre-tamlinux"))
+
+    def test_conflicts_cli_json_and_plain_exit_zero(self):
+        self.add_generation_file(".manpath", "store manpath\n")
+        (self.app.home / ".manpath").write_text("user manpath\n")
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            rc = deploy.main(["conflicts", str(self.new), "--json"])
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["version"], "0.6.15")
+        self.assertEqual(len(payload["conflicts"]), 1)
+        self.assertEqual(payload["conflicts"][0]["relativePath"], ".manpath")
+
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            rc = deploy.main(["conflicts", str(self.new)])
+        self.assertEqual(rc, 0)
+        self.assertIn(".manpath -> ", out.getvalue())
+        self.assertIn(".manpath.pre-0.6.15", out.getvalue())
+
+    def test_activate_renames_conflict_to_pre_version_and_passes_env(self):
+        source = self.add_generation_file(".manpath", "store manpath\n")
+        user_file = self.app.home / ".manpath"
+        user_file.write_text("user manpath\n")
+        backup_file = self.app.home / ".manpath.pre-0.6.15"
+        seen_env = {}
+
+        def fake_activate(*args, **kwargs):
+            seen_env["HOME_MANAGER_BACKUP_EXT"] = os.environ.get("HOME_MANAGER_BACKUP_EXT")
+            self.assertFalse(user_file.exists())
+            self.assertEqual(backup_file.read_text(), "user manpath\n")
+            user_file.symlink_to(source)
+            self.app.profile.unlink()
+            self.app.profile.symlink_to(self.new)
+            return ""
+
+        self.app._prepared_generation = str(self.new)
+        with patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(deploy, "command", side_effect=fake_activate):
+            self.app.activate()
+        self.assertEqual(seen_env["HOME_MANAGER_BACKUP_EXT"], "pre-0.6.15")
+        self.assertIsNone(os.environ.get("HOME_MANAGER_BACKUP_EXT"))
+        self.assertTrue(user_file.is_symlink())
+        self.assertEqual(backup_file.read_text(), "user manpath\n")
+
+    def test_activate_refuses_when_pre_version_backup_already_exists(self):
+        self.add_generation_file(".manpath", "store manpath\n")
+        user_file = self.app.home / ".manpath"
+        user_file.write_text("user manpath\n")
+        backup_file = self.app.home / ".manpath.pre-0.6.15"
+        backup_file.write_text("earlier backup\n")
+        self.app._prepared_generation = str(self.new)
+        with patch.object(deploy, "command") as cmd:
+            with self.assertRaisesRegex(deploy.DeploymentError, "backup already exists"):
+                self.app.activate()
+        cmd.assert_not_called()
+        self.assertEqual(user_file.read_text(), "user manpath\n")
+        self.assertEqual(backup_file.read_text(), "earlier backup\n")
+
+    def test_install_rollback_and_back_restore_pre_version_backups(self):
+        source = self.add_generation_file(".manpath", "store manpath\n")
+        user_file = self.app.home / ".manpath"
+        user_file.write_text("user manpath\n")
+        backup_file = self.app.home / ".manpath.pre-0.6.15"
+
+        # 1. Rollback during install when verification fails after activation linked .manpath
+        self.new.joinpath("activate").write_text(
+            "#!/bin/sh\n"
+            f"ln -sfn {shlex.quote(str(source))} {shlex.quote(str(user_file))}\n"
+            f"ln -sfn {shlex.quote(str(self.new))} {shlex.quote(str(self.app.profile))}\n"
+        )
+        self.old.joinpath("activate").write_text(
+            "#!/bin/sh\n"
+            f"ln -sfn {shlex.quote(str(self.old))} {shlex.quote(str(self.app.profile))}\n"
+        )
+        self.app._prepared_generation = str(self.new)
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "verify_active"), \
+             patch.object(self.app, "verify", side_effect=[["endpoint mismatch"], []]):
+            with self.assertRaisesRegex(deploy.DeploymentError, "endpoint mismatch"):
+                self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+        self.assertFalse(user_file.is_symlink())
+        self.assertEqual(user_file.read_text(), "user manpath\n")
+        self.assertFalse(backup_file.exists())
+        tx = json.loads(self.app.transaction_file.read_text())
+        self.assertEqual(tx["phase"], "recovered")
+        self.assertEqual(tx["restoredBackups"][0]["relativePath"], ".manpath")
+
+        # 2. Successful install followed by `back` restores the backup
+        with patch.object(self.app, "preflight"), \
+             patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "verify_active"), \
+             patch.object(self.app, "record"), \
+             patch.object(self.app, "verify", return_value=[]):
+            self.app.install(self.packages_new, {"tamlinux": self.tamlinux_new}, "test")
+        self.assertTrue(user_file.is_symlink())
+        self.assertEqual(backup_file.read_text(), "user manpath\n")
+        state = self.app.read_state()
+        self.assertEqual(state["backedUp"][0]["relativePath"], ".manpath")
+        state["previousGeneration"] = "/nix/store/old-generation"
+        self.app.save_state(state)
+
+        with patch.object(self.app, "require_consistent"), \
+             patch.object(deploy.Path, "is_file", return_value=True), \
+             patch.object(self.app, "rollback_pin", return_value=self.packages_new), \
+             patch.object(self.app, "graphical_active", return_value=False), \
+             patch.object(self.app, "activation_validators"), \
+             patch.object(self.app, "components", return_value={"tamlinux": self.tamlinux_main}), \
+             patch.object(self.app, "verify", return_value=[]), \
+             patch.object(self.app, "pin", side_effect=lambda rev: self.write_lock(rev, {})), \
+             patch.object(self.app, "record"), \
+             patch.object(self.app, "status"), \
+             patch.object(self.app, "generation", side_effect=[str(self.new), "/nix/store/old-generation"]):
+            with patch.object(deploy, "command"):
+                self.app.back()
+        self.assertFalse(user_file.is_symlink())
+        self.assertEqual(user_file.read_text(), "user manpath\n")
+        self.assertFalse(backup_file.exists())
 
 
 class Usage(unittest.TestCase):
