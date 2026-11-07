@@ -722,3 +722,5 @@ Candidate 0.6.12: [source selection](docs/ai/0.6.12-candidate-selection.md).
 Candidate 0.6.13: [source selection](docs/ai/0.6.13-candidate-selection.md).
 
 Candidate 0.6.14: [source selection](docs/ai/0.6.14-candidate-selection.md).
+
+Candidate 0.6.15: [source selection](docs/ai/0.6.15-candidate-selection.md).
