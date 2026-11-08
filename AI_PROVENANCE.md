@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-08: Claude Code `2.1.319` (`claude-opus-5-5`) designs a higher-contrast 16-color Linux console (VT) palette and saves it as `share/console/tamlinux-vt.vtrgb` for Tamlinux 0.6.19. [Session](docs/ai/2026-11-08-vt-palette.md).
+
 2026-11-07: OpenCode (`opencode`) `2.2.5` implements Tamlinux 0.6.16 Slice 1 (D231): Neovim retirement to Micro/Nano defaults, `tam-update` repository-column guard, and unprivileged laptop sensor support in `tam-meter`. [Session](docs/ai/2026-11-07-0.6.16-slice1.md).
 
 2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) updates `fred.tamversion` 0.1.5 to read packaged `TAMLINUX_VERSION_NOTES` with version-header validation instead of a hard-coded string. [Session](docs/ai/2026-11-07-tamversion-version-notes.md).
