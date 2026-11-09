@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-09 — tam-monitor semver, console-size and console fit during keep](2026-11-09-tam-monitor-console-size.md)
+
 - [2026-11-09 — Host-independent tam-open text-console image test](2026-11-09-tam-open-tty-test.md)
 
 - [2026-11-09 — Tamlinux version in the console greeting](2026-11-09-console-welcome-version.md)
