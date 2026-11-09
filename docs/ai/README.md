@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-09 — Tamlinux version in the console greeting](2026-11-09-console-welcome-version.md)
+
 - [2026-11-08 — Reset games and add the AI Agents menu](2026-11-08-games-reset-and-ai-agents.md)
 
 - [2026-11-08 — Higher-contrast Linux console (VT) palette](2026-11-08-vt-palette.md)

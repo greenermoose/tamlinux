@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-09: Claude Code `2.1.319` (`claude-opus-5-5`) puts the Tamlinux version in the console greeting ("Welcome to Tamlinux 0.6.19!") for Tamlinux 0.6.19. [Session](docs/ai/2026-11-09-console-welcome-version.md).
+
 2026-11-08: Codex CLI `0.167.0` (`gpt-6.1-sol`) retires the legacy start games and adds an AI Agents section, advancing start to 0.2.5. [Session](docs/ai/2026-11-08-games-reset-and-ai-agents.md).
 
 2026-11-08: Claude Code `2.1.319` (`claude-opus-5-5`) designs a higher-contrast 16-color Linux console (VT) palette and saves it as `share/console/tamlinux-vt.vtrgb` for Tamlinux 0.6.19. [Session](docs/ai/2026-11-08-vt-palette.md).

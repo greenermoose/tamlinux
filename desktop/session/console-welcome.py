@@ -12,10 +12,11 @@ def identity(value):
 
 
 def render(cultivar=None, version=None):
-    if (cultivar is None) != (version is None):
-        raise ValueError("cultivar and version must be supplied together")
-    selected = "" if cultivar is None else f"     Cultivar:  {identity(cultivar)} {identity(version)}\n"
-    tree = "       /\\\n      /\\/\\\n     ///\\\\\\       Welcome to Tamlinux!\n       ||\n"
+    if cultivar is not None and version is None:
+        raise ValueError("a cultivar needs the version of its assembly")
+    greeting = "Welcome to Tamlinux!" if version is None else f"Welcome to Tamlinux {identity(version)}!"
+    selected = "" if cultivar is None else f"     Cultivar:  {identity(cultivar)}\n"
+    tree = "       /\\\n      /\\/\\\n     ///\\\\\\       " + greeting + "\n       ||\n"
     return (
         "\n" + tree.replace("\\", "\\\\") + "\n"
         + selected

@@ -17,8 +17,12 @@ spec.loader.exec_module(welcome)
 class ConsoleWelcomeTest(unittest.TestCase):
     def test_selected_identity_and_generic_fallback(self):
         selected = welcome.render("Blue Sparkler", "0.5.5")
-        self.assertIn("Cultivar:  Blue Sparkler 0.5.5", selected)
-        self.assertNotIn("Cultivar:", welcome.render())
+        self.assertIn("Welcome to Tamlinux 0.5.5!", selected)
+        self.assertIn("Cultivar:  Blue Sparkler\n", selected)
+        generic = welcome.render()
+        self.assertNotIn("Cultivar:", generic)
+        self.assertIn("Welcome to Tamlinux!", generic)
+        self.assertIn("Welcome to Tamlinux 0.6.19!", welcome.render(version="0.6.19"))
         self.assertTrue(selected.isascii())
         self.assertIn("type hi for help or tam-desktop", selected)
         with self.assertRaises(ValueError):
@@ -43,9 +47,8 @@ class ConsoleWelcomeTest(unittest.TestCase):
             finally:
                 os.close(master)
                 os.close(slave)
-        self.assertIn("Welcome to Tamlinux!", result)
-        self.assertIn("       /\\\r\n      /\\/\\\r\n     ///\\\\\\       Welcome to Tamlinux!", result)
-        self.assertIn("Cultivar:  Blue Sparkler 0.5.5", result)
+        self.assertIn("       /\\\r\n      /\\/\\\r\n     ///\\\\\\       Welcome to Tamlinux 0.5.5!", result)
+        self.assertIn("Cultivar:  Blue Sparkler\r\n", result)
         self.assertIn("Kernel:    " + os.uname().release, result)
         self.assertNotIn("\\S{PRETTY_NAME}", result)
         self.assertNotIn("\\S{BUILD_ID}", result)

@@ -11,10 +11,10 @@ accepted symbol is a simple text tamarack:
 ```text
        /\
       /\/\
-     ///\\\       Welcome to Tamlinux!
+     ///\\\       Welcome to Tamlinux 0.5.5!
        ||
 
-     Cultivar:  Blue Sparkler 0.5.5
+     Cultivar:  Blue Sparkler
      Rootstock: Arch Linux (rolling)
      Kernel:    7.2.11-arch1-1.1
      Console:   tty2
