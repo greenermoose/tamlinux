@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <tam_display.h>
 #include <tam_vt.h>
+#include "native-console.h"
 #include "native-hw.h"
 #include "native-preview.h"
 #include "native-tui.h"
@@ -10,8 +11,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 const char *tam_monitor_sysfs_drm_path(void) { return "/sys/class/drm"; }
+const char *tam_monitor_sysfs_graphics_path(void) { return "/sys/class/graphics"; }
+const char *tam_monitor_dev_path(void) { return "/dev"; }
+int tam_monitor_fb_get_var(int fd, struct fb_var_screeninfo *var)
+{
+    return ioctl(fd, FBIOGET_VSCREENINFO, var) ? -1 : 0;
+}
+int tam_monitor_fb_put_var(int fd, struct fb_var_screeninfo *var)
+{
+    return ioctl(fd, FBIOPUT_VSCREENINFO, var) ? -1 : 0;
+}
 const char *tam_monitor_sysfs_backlight_path(void) { return "/sys/class/backlight"; }
 const char *tam_monitor_consoleblank_path(void) { return "/sys/module/kernel/parameters/consoleblank"; }
 
@@ -150,6 +162,7 @@ static void print_help(void)
          "  blank [--monitor CONNECTOR ...] [--seconds 1..60] [--card N] [--json]\n"
          "  wake [--monitor CONNECTOR | --all] [--json]\n"
          "  idle 0..60\n"
+         "  console-size [CONNECTOR | WIDTHxHEIGHT | --all] [--fb N] [--json]\n"
          "  preview --card N --keep CONNECTOR --seconds 1..60 [--json]\n"
          "  inspect --fd FD [--keep CONNECTOR] [--json]\n\n"
          "Lifetime and safety:\n"
@@ -157,7 +170,14 @@ static void print_help(void)
          "  local login session. A separate recovery owner holds VT handoff and DRM state\n"
          "  and restores surviving console outputs on exit, shell completion, timeout,\n"
          "  signals, hotplug or VT switch.\n"
-         "  inspect --keep analyzes routing only; it does not blank any monitor.");
+         "  inspect --keep analyzes routing only; it does not blank any monitor.\n\n"
+         "Console size:\n"
+         "  With several monitors the kernel console uses the area every lit monitor can\n"
+         "  show, so a larger monitor shows it in its top-left corner. console-size with no\n"
+         "  target reports the area; CONNECTOR fits it to that monitor's mode, WIDTHxHEIGHT\n"
+         "  sets pixels, --all fits every lit monitor again. Changes apply to every VT until\n"
+         "  reboot, never exceed the framebuffer allocated at boot, change no display mode,\n"
+         "  and need write access to /dev/fbN (root).");
 }
 
 int main(int argc, char **argv)
@@ -256,6 +276,39 @@ int main(int argc, char **argv)
         printf("Console idle interval %s: %u minutes (0 = off; runtime only)\n",
             verified ? "verified" : "requested (readback unavailable)", minutes);
         return 0;
+    }
+
+    if (!strcmp(cmd, "console-size")) {
+        enum tam_monitor_console_target target = TAM_MONITOR_CONSOLE_SHOW;
+        const char *connector = NULL;
+        unsigned fb = 64, width = 0, height = 0;
+        for (int i = 2; i < argc; ++i) {
+            const char *a = argv[i];
+            if (!strcmp(a, "--json")) continue;
+            if (!strcmp(a, "--fb") && i + 1 < argc && fb == 64) {
+                if (!parse_bounded_uint(argv[++i], 0, 31, &fb))
+                    return failure(json, TAM_DISPLAY_INVALID, 0, "Invalid framebuffer number (0..31)");
+            } else if (!strcmp(a, "--all") && target == TAM_MONITOR_CONSOLE_SHOW) {
+                target = TAM_MONITOR_CONSOLE_ALL;
+            } else if (a[0] >= '0' && a[0] <= '9' && target == TAM_MONITOR_CONSOLE_SHOW) {
+                const char *x = strchr(a, 'x');
+                char w[8] = {0};
+                if (!x || (size_t)(x - a) >= sizeof(w))
+                    return failure(json, TAM_DISPLAY_INVALID, 0, "Size must be WIDTHxHEIGHT, e.g. 2560x1440");
+                memcpy(w, a, (size_t)(x - a));
+                if (!parse_bounded_uint(w, 1, 16384, &width) || !parse_bounded_uint(x + 1, 1, 16384, &height))
+                    return failure(json, TAM_DISPLAY_INVALID, 0, "Size must be WIDTHxHEIGHT, e.g. 2560x1440");
+                target = TAM_MONITOR_CONSOLE_PIXELS;
+            } else if (a[0] != '-' && target == TAM_MONITOR_CONSOLE_SHOW) {
+                if (strlen(a) >= 40 || strchr(a, '/'))
+                    return failure(json, TAM_DISPLAY_INVALID, 0, "Invalid connector name for console-size");
+                connector = a;
+                target = TAM_MONITOR_CONSOLE_MONITOR;
+            } else {
+                return failure(json, TAM_DISPLAY_INVALID, 0, "Unknown, repeated or incomplete console-size option");
+            }
+        }
+        return tam_monitor_console_size(fb == 64 ? 0 : fb, target, connector, width, height, json);
     }
 
     if (!strcmp(cmd, "keep")) {

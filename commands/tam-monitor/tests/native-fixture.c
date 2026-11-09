@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <tam_display.h>
 #include <tam_vt.h>
+#include "../native-console.h"
 #include "../native-hw.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -41,6 +42,41 @@ const char *__wrap_tam_monitor_consoleblank_path(void)
 {
     const char *p = getenv("TAM_MONITOR_FIXTURE_CONSOLEBLANK");
     return (p && *p) ? p : __real_tam_monitor_consoleblank_path();
+}
+
+extern const char *__real_tam_monitor_sysfs_graphics_path(void);
+extern const char *__real_tam_monitor_dev_path(void);
+
+const char *__wrap_tam_monitor_sysfs_graphics_path(void)
+{
+    const char *p = getenv("TAM_MONITOR_FIXTURE_GRAPHICS");
+    return (p && *p) ? p : __real_tam_monitor_sysfs_graphics_path();
+}
+
+const char *__wrap_tam_monitor_dev_path(void)
+{
+    const char *p = getenv("TAM_MONITOR_FIXTURE_DEV");
+    return (p && *p) ? p : __real_tam_monitor_dev_path();
+}
+
+/* A fixture framebuffer device is a regular file holding one raw
+ * fb_var_screeninfo. Put follows the DRM fbdev rule: the visible size may
+ * change, but never beyond the allocated (virtual) framebuffer. */
+int __wrap_tam_monitor_fb_get_var(int fd, struct fb_var_screeninfo *var)
+{
+    if (pread(fd, var, sizeof(*var), 0) != (ssize_t)sizeof(*var)) { errno = ENOTTY; return -1; }
+    return 0;
+}
+
+int __wrap_tam_monitor_fb_put_var(int fd, struct fb_var_screeninfo *var)
+{
+    struct fb_var_screeninfo cur;
+    if (pread(fd, &cur, sizeof(cur), 0) != (ssize_t)sizeof(cur)) { errno = ENOTTY; return -1; }
+    if (var->xres > cur.xres_virtual || var->yres > cur.yres_virtual ||
+        var->xres_virtual != cur.xres_virtual || var->yres_virtual != cur.yres_virtual ||
+        !(var->activate & FB_ACTIVATE_ALL)) { errno = EINVAL; return -1; }
+    if (pwrite(fd, var, sizeof(*var), 0) != (ssize_t)sizeof(*var)) return -1;
+    return 0;
 }
 
 int __wrap_tam_monitor_run_tool(const char *const *argv,
@@ -234,6 +270,30 @@ enum tam_display_result __wrap_tam_display_inspect_fd(int fd,
     *out = calloc(1, sizeof(**out));
     if (!*out) { error->system_errno = ENOMEM; return TAM_DISPLAY_IO; }
     struct tam_display_topology *t = *out;
+    /* "DP-1=2560x1440,HDMI-A-1=0x0": one CRTC per connector; 0x0 is dark. */
+    const char *modes = getenv("TAM_MONITOR_FIXTURE_CONSOLE_MODES");
+    if (modes && *modes) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "%s", modes);
+        strcpy(t->driver, "fixture");
+        char *save = NULL;
+        for (char *item = strtok_r(buf, ",", &save); item && t->connector_count < 8;
+             item = strtok_r(NULL, ",", &save)) {
+            unsigned w = 0, h = 0;
+            char *eq = strchr(item, '=');
+            if (!eq || sscanf(eq + 1, "%ux%u", &w, &h) != 2) continue;
+            *eq = '\0';
+            size_t i = t->connector_count++;
+            struct tam_display_connector *c = &t->connectors[i];
+            struct tam_display_crtc *k = &t->crtcs[t->crtc_count++];
+            c->object.id = 100 + (uint32_t)i; c->connection = 1;
+            snprintf(c->name, sizeof(c->name), "%s", item);
+            k->object.id = 10 + (uint32_t)i;
+            c->crtc_id = (w && h) ? k->object.id : 0;
+            k->mode_valid = w && h; k->width = w; k->height = h;
+        }
+        return TAM_DISPLAY_OK;
+    }
     strcpy(t->driver, "fixture\"driver\\");
     t->connector_count = 3; t->crtc_count = 2; t->plane_count = 2;
     for (int i = 0; i < 3; ++i) {

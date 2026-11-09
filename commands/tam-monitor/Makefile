@@ -42,7 +42,7 @@ build/.native-flags: FORCE | build
 
 # API check runs first even when the development package is missing. The
 # archive and generated header dependencies also invalidate existing clients.
-NATIVE_SRCS = native.c native-hw.c native-preview.c native-tui.c native-events.c
+NATIVE_SRCS = native.c native-console.c native-hw.c native-preview.c native-tui.c native-events.c
 NATIVE_OBJS = $(patsubst %.c,build/%.o,$(NATIVE_SRCS))
 SESSION_ARCHIVE = $(dir $(DISPLAY_ARCHIVE))libtam-display-session.a
 build/%.o: %.c build/.native-flags | display-api
@@ -53,7 +53,7 @@ build/tam-monitor: $(NATIVE_OBJS) $(wildcard $(DISPLAY_ARCHIVE) $(SESSION_ARCHIV
 
 -include $(NATIVE_OBJS:.o=.d)
 
-HW_WRAPS = tam_monitor_sysfs_drm_path tam_monitor_sysfs_backlight_path tam_monitor_consoleblank_path tam_monitor_run_tool tam_display_inspect_fd tam_vt_open tam_vt_check tam_vt_check_restore tam_vt_blank tam_vt_wake tam_vt_idle_path tam_vt_close
+HW_WRAPS = tam_monitor_sysfs_drm_path tam_monitor_sysfs_graphics_path tam_monitor_dev_path tam_monitor_fb_get_var tam_monitor_fb_put_var tam_monitor_sysfs_backlight_path tam_monitor_consoleblank_path tam_monitor_run_tool tam_display_inspect_fd tam_vt_open tam_vt_check tam_vt_check_restore tam_vt_blank tam_vt_wake tam_vt_idle_path tam_vt_close
 check-native: native
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) $(NATIVE_OBJS) tests/native-fixture.c $(DISPLAY_LIBS) \
 		$(foreach s,$(HW_WRAPS),-Wl,--wrap=$(s)) -o build/tam-monitor-fixture

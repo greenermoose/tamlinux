@@ -38,10 +38,44 @@ tam-monitor wake [--monitor CONNECTOR | --all] [--json]
 # Kernel console blanking idle interval (0 = off)
 tam-monitor idle 0..60
 
+# Kernel console size (fbcon area); setting it needs root
+tam-monitor console-size [--fb N] [--json]            # report
+tam-monitor console-size CONNECTOR [--fb N] [--json]  # fit one monitor, e.g. DP-1
+tam-monitor console-size WIDTHxHEIGHT [--fb N] [--json]
+tam-monitor console-size --all [--fb N] [--json]      # fit every lit monitor
+
 # Bounded feasibility inspection
 tam-monitor preview --card N --keep CONNECTOR --seconds 1..60 [--json]
 tam-monitor inspect --fd FD [--keep CONNECTOR] [--json]
 ```
+
+## Console size
+
+With several monitors mirrored, the kernel console allocates one framebuffer
+large enough for the biggest monitor but draws text only in the area every lit
+monitor can show. Each monitor scans out from the top-left corner at its own
+native mode, so a 2560x1440 monitor beside 1920x1080 ones shows the console in
+its top-left 1920x1080, with blank space to the right and below.
+
+`console-size` changes that area with `FBIOPUT_VSCREENINFO` on `/dev/fbN`:
+
+- No target reports the console area, the allocated framebuffer, this VT's
+  text grid and each lit monitor's current mode (from DRM, or the preferred
+  mode from sysfs when the card cannot be opened), with how much of the
+  console each monitor shows.
+- `CONNECTOR` fits the console to that monitor's current mode, for example
+  `DP-1` after the other monitors are dark (`keep DP-1 --shell`, or switched
+  off). Other monitors then show only the top-left part of the console.
+- `--all` fits every lit monitor again: the smallest width and height among
+  them, which is the kernel's own choice at boot.
+- `WIDTHxHEIGHT` sets pixels explicitly (at least 64x64).
+
+The area can never exceed the framebuffer allocated at boot, and no display
+mode changes. The change applies to every VT at once (`FB_ACTIVATE_ALL`) and
+lasts until reboot. Reporting needs no privilege. Changing needs write access to
+`/dev/fbN`, which is root-only here, so run it from the text console as
+`sudo "$(command -v tam-monitor)" console-size DP-1`; without access the command
+prints that line with its own path.
 
 ## Interactive TUI
 
