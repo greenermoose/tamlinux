@@ -139,9 +139,16 @@ class TamOpenCli(unittest.TestCase):
         import base64
         f = self.tmp / "image.png"
         f.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAADUExURf8AABniCTcAAAAHdElNRQfqCwYNCDDPaNV+AAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDI2LTExLTA2VDEzOjA4OjQ4KzAwOjAwG85jWQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyNi0xMS0wNlQxMzowODo0OCswMDowMGqT2+UAAAAodEVYdGRhdGU6dGltZXN0YW1wADIwMjYtMTEtMDZUMTM6MDg6NDgrMDA6MDA9hvo6AAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=="))
-        p = self.run_cmd(str(f))
+        # Only the fake tools: a host with chafa, viu or timg installed must not
+        # turn this into a success (file types come from libmagic, not PATH).
+        env = dict(self.env, PATH=str(self.bindir))
+        p = self.run_cmd(str(f), env=env)
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("text console", p.stderr)
+        make_tool(self.bindir, "chafa", f'printf "%s\\n" "$@" > "{self.marker}"')
+        p = self.run_cmd(str(f), env=env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn(str(f), self.marker.read_text())
 
     def test_text_file(self):
         make_tool(self.bindir, "micro", f'printf "%s\\n" "$@" > "{self.marker}"')
