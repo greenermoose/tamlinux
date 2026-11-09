@@ -23,7 +23,9 @@ Removed the eleven legacy game entries from the `start` catalog and added an
 AI Agents section for Claude Code, Codex, Antigravity CLI, OpenCode and Grok
 CLI. Each entry launches the existing PATH command without installing or
 reconfiguring it. Updated the command version to 0.2.5 and its catalog checks.
-Replacement games remain unselected pending the requested review.
+Replacement games remain unselected pending the requested review. The public
+provenance check also found a private local path in an earlier session prompt;
+redacted that path without changing the earlier authorship record.
 
 ## Verification
 
