@@ -42,6 +42,10 @@ start --version|-V
 start --help|-h
 ```
 
+The **AI Agents** section opens Claude Code, Codex, Antigravity CLI, OpenCode,
+and Grok CLI using their normal commands on `PATH`. Entries show whether the
+command is installed. The menu does not install agents or change their settings.
+
 Opening the menu never starts graphics; the desktop launches only when the
 user selects that activity. Quit with Esc (Backspace and Delete also quit).
 

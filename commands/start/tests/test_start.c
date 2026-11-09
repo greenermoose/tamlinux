@@ -277,14 +277,23 @@ static void test_packaged_menu_file(void)
 		failures++;
 		return;
 	}
-	expect_eq("20 activities", (int)menu.count, 20);
+	expect_eq("14 activities", (int)menu.count, 14);
 	expect_streq("desktop first", menu.items[0].id, "desktop");
 	expect_streq("desktop argv", menu.items[0].argv[0], "tam-desktop");
 	expect_streq("guide second", menu.items[1].id, "tam-guide");
 	expect_streq("guide argv", menu.items[1].argv[1], "show");
 	expect_streq("glossary argv", menu.items[3].argv[2], "glossary");
-	expect_eq("gnugo argc", menu.items[12].argc, 3);
-	expect_streq("gnugo mode", menu.items[12].argv[1], "--mode");
+	const char *agents[] = { "claude", "codex", "agy", "opencode", "grok" };
+	for (size_t i = 0; i < 5; i++) {
+		const start_activity_t *a = &menu.items[7 + i];
+		expect_streq("agent category", a->category, "AI Agents");
+		expect_streq("agent check", a->check, agents[i]);
+		expect_eq("agent argc", a->argc, 1);
+		expect_streq("agent argv", a->argv[0], agents[i]);
+	}
+	for (size_t i = 0; i < menu.count; i++)
+		expect_true("retired games removed", strcmp(menu.items[i].category,
+		            "Curated Games & Simulations") != 0);
 	start_menu_free(&menu);
 }
 

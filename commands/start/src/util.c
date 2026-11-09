@@ -69,7 +69,7 @@ const char *start_version(void)
 	const char *env;
 
 	if (g_version_loaded)
-		return g_version[0] ? g_version : "0.2.4";
+		return g_version[0] ? g_version : "0.2.5";
 	g_version_loaded = 1;
 
 	/* Explicit override wins (tests, packaging trials). */
@@ -87,7 +87,7 @@ const char *start_version(void)
 		}
 		free(path);
 	}
-	snprintf(g_version, sizeof(g_version), "0.2.4");
+	snprintf(g_version, sizeof(g_version), "0.2.5");
 	return g_version;
 }
 
