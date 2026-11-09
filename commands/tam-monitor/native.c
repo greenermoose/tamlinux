@@ -4,6 +4,7 @@
 #include "native-hw.h"
 #include "native-preview.h"
 #include "native-tui.h"
+#include "version.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -138,7 +139,7 @@ static bool parse_bounded_uint(const char *value, unsigned min_v, unsigned max_v
 
 static void print_help(void)
 {
-    puts("Usage: tam-monitor [COMMAND ...]\n"
+    puts("Usage: tam-monitor [COMMAND ...] | --version | --help\n"
          "Monitor information, brightness and targeted Linux text-console display control.\n"
          "Run without arguments on a terminal to open the interactive TUI.\n\n"
          "Commands:\n"
@@ -173,6 +174,11 @@ int main(int argc, char **argv)
             print_help();
             return 0;
         }
+    }
+
+    if (argc == 2 && (!strcmp(argv[1], "--version") || !strcmp(argv[1], "-v"))) {
+        printf("tam-monitor %s\n", TAM_MONITOR_VERSION);
+        return ferror(stdout) ? 1 : 0;
     }
 
     if (argc == 1)

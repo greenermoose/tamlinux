@@ -6,9 +6,17 @@ using `libtam-display` and `libtam-display-session` (API >= 0.4.0).
 
 Run without arguments on a terminal to open the keyboard TUI.
 
+The command version is `TAM_MONITOR_VERSION` in `version.h`, printed by
+`tam-monitor --version` (also `-v`). It follows semver on its own: minor for
+new commands, options or JSON output changes, patch for fixes. It is
+independent of the Tamlinux product version.
+
 ## Commands
 
 ```sh
+# Command version
+tam-monitor --version
+
 # List monitors and hardware capabilities
 tam-monitor list [--json] [--no-probe]
 

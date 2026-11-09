@@ -61,6 +61,16 @@ class NativeCLI(unittest.TestCase):
         self.assertEqual(p.returncode, 0)
         self.assertIn("does not blank any monitor", p.stdout)
 
+    def test_version_matches_header(self):
+        header = (ROOT / "version.h").read_text()
+        version = header.split('TAM_MONITOR_VERSION "', 1)[1].split('"', 1)[0]
+        self.assertRegex(version, r"^\d+\.\d+\.\d+$")
+        for flag in ("--version", "-v"):
+            with self.subTest(flag=flag):
+                p = self.run_cli(flag, fixture=False)
+                self.assertEqual(p.returncode, 0, p.stderr)
+                self.assertEqual(p.stdout, f"tam-monitor {version}\n")
+
     def test_preview_options_reject_before_access(self):
         for args in ([], ["--card", "64"], ["--card", "-1"],
                      ["--card", "1", "--keep", "DP-1", "--seconds", "0"],
