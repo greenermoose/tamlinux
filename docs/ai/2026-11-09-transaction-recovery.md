@@ -5,6 +5,7 @@
 - **Model:** `gpt-6.1-sol`
 - **Transcript:** Retained privately by the author.
 - **Authorship:** AI-assisted implementation, tests and documentation under Fred's direction.
+- **Implementation commit:** `5d180905ae6355a97b17a27b1589d911b5d8acf2`.
 
 ## Guiding prompts
 
@@ -33,6 +34,16 @@ this implementation.
   and execute the resulting detached-child argv to verify environment cleanup.
 
 ## Verification and limits
+
+- Focused suites: **30 upgrade tests, 116 deployment tests and 7 launcher tests passed**.
+- Complete suite: `desktop/check-all --rev 5d18090`, **292 units, zero failures,
+  424 seconds, zero core dumps**. Fourteen checks skipped: five opt-in GTK/D-Bus
+  proofs and nine migration checks requiring json5, absent from the runner's
+  Python. Those skips are not passes; package integration provides json5 and
+  retains its own checks.
+- Staged command layout: offline `--status` and backend recovery help passed.
+- Later changes in this session update provenance only; implementation and
+  executable tests remain those of the tested commit above.
 
 Focused upgrade, deployment and launch-environment suites cover apply success,
 failure before activation, successful/failed recovery, interrupted transactions,
