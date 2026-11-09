@@ -51,6 +51,11 @@ class Fixture(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
         self.app = deploy.Deployment()
+        # Older stage fixtures mock preflight and generation verification. The
+        # transaction recovery suite exercises real snapshot capture separately.
+        snapshot = patch.object(self.app, 'recovery_snapshot', return_value=None)
+        snapshot.start()
+        self.addCleanup(snapshot.stop)
         self.app.revision_file.parent.mkdir(parents=True, exist_ok=True)
         self.app.revision_file.write_text(self.tamlinux_main + "\n")
 

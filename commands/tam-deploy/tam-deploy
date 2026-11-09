@@ -27,6 +27,9 @@ run [revision] [--untested]
 back:         activate the previous generation and restore its pin.
 follow <rev>: install an accepted Run / main assembly on a follower host and
               record stage label `follow` (plan 47), never rewriting Test.
+              An upgrade caller binds --transaction ID --expect-baseline SHA256.
+recover <ID>: recover only that current transaction to its recorded baseline,
+              using cached endpoint identities; never guess a previous version.
 
 A registered host that has hosts/<host>/state/assembly (one revision) follows
 that pin instead of the shared flake.lock; the consumer flake reads the same
@@ -35,6 +38,8 @@ file, so hosts on different versions never rewrite a shared lock.
 from __future__ import annotations
 
 import fnmatch
+import base64
+import fcntl
 import getpass
 import hashlib
 import json
@@ -43,11 +48,41 @@ import re
 import subprocess
 import sys
 import time
+import tempfile
+import uuid
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 
 class DeploymentError(Exception):
     pass
+
+
+TRANSACTION_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,95}\Z')
+
+
+def atomic_bytes(path: Path, payload: bytes) -> None:
+    """Publish complete durable bytes, including exact recovery pin contents."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix='.' + path.name + '-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def atomic_json(path: Path, value: dict) -> None:
+    atomic_bytes(path, (json.dumps(value, indent=2) + '\n').encode())
 
 
 # Consumer files the running session writes through Home Manager's live
@@ -241,10 +276,103 @@ class Deployment:
         return json.loads(self.state_file.read_text()) if self.state_file.exists() else {}
 
     def save_state(self, state: dict) -> None:
+        atomic_json(self.state_file, state)
+
+    @contextmanager
+    def mutation_lock(self):
+        """All CLI mutation paths use the same nonblocking host lock."""
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.state_file.with_suffix(".tmp")
-        temp.write_text(json.dumps(state, indent=2) + "\n")
-        temp.replace(self.state_file)
+        with (self.state_file.parent / 'deploy.lock').open('a+') as stream:
+            try:
+                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise DeploymentError('another deployment is already in progress') from exc
+            try:
+                yield
+            finally:
+                fcntl.flock(stream, fcntl.LOCK_UN)
+
+    def baseline_token(self) -> str:
+        value = {'assembly': self.locked(), 'generation': self.generation(),
+                 'pinSha256': hashlib.sha256(self.pin_path.read_bytes()).hexdigest(),
+                 'receiptSha256': hashlib.sha256(self.state_file.read_bytes()).hexdigest()}
+        return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+    def check_requested_baseline(self) -> None:
+        expected = getattr(self, '_requested_baseline', None)
+        if expected is not None and self.baseline_token() != expected:
+            raise DeploymentError('deployment baseline changed after confirmation; plan again')
+
+    def recovery_snapshot(self, generation: str, assembly: str, pin: bytes) -> dict:
+        state = self.read_state()
+        if state.get('generation') != generation or state.get('packages') != assembly:
+            raise DeploymentError('cannot record recovery without a matching baseline receipt')
+        return {'generation': generation, 'assembly': assembly, 'state': state,
+                'pinPath': str(self.pin_path), 'pin': base64.b64encode(pin).decode('ascii'),
+                'outputs': self.expected_outputs(assembly), 'components': state['components']}
+
+    def recover(self, transaction_id: str) -> None:
+        """Recover only the current transaction using retained local package identities."""
+        if not TRANSACTION_ID.fullmatch(transaction_id):
+            raise DeploymentError('invalid recovery transaction ID')
+        tx = json.loads(self.transaction_file.read_text())
+        if (tx.get('id') != transaction_id or tx.get('host') != self.hostname
+                or tx.get('user') != getpass.getuser() or tx.get('config') != str(self.config.resolve())):
+            raise DeploymentError('stale or foreign recovery transaction; nothing changed')
+        snapshot = tx.get('recovery')
+        if not isinstance(snapshot, dict):
+            raise DeploymentError('legacy transaction has no verified recovery snapshot; inspect manually')
+        generation, assembly = snapshot['generation'], snapshot['assembly']
+        if (not re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', generation)
+                or not (Path(generation) / 'activate').is_file()
+                or not re.fullmatch(r'[0-9a-f]{40}', assembly)
+                or snapshot['pinPath'] != str(self.pin_path)
+                or tx.get('baselineGeneration') != generation or tx.get('baselineAssembly') != assembly):
+            raise DeploymentError('recorded recovery generation or pin is unavailable; nothing changed')
+        pin = base64.b64decode(snapshot['pin'], validate=True)
+        active = self.generation()
+        if active not in (generation, tx.get('targetGeneration')):
+            raise DeploymentError('active generation is unrelated to this transaction; nothing changed')
+        if self.locked() not in (assembly, tx.get('targetAssembly')):
+            raise DeploymentError('consumer pin is unrelated to this transaction; nothing changed')
+        current_pin = self.pin_path.read_bytes()
+        target_hash = tx.get('targetPinSha256')
+        if current_pin != pin and hashlib.sha256(current_pin).hexdigest() != target_hash:
+            raise DeploymentError('consumer pin was edited after deployment; nothing changed')
+        # verify() uses the recorded immutable outputs, without Nix evaluation or Git.
+        self._outputs[assembly] = snapshot['outputs']
+        pins = snapshot['components']
+        if not isinstance(pins, dict) or not pins.get('tamlinux') or not snapshot['outputs']:
+            raise DeploymentError('recovery snapshot lacks endpoint identities')
+        try:
+            already_restored = active == generation and current_pin == pin
+            if already_restored:
+                already_restored = not self.verify(pins, assembly)
+                if already_restored:
+                    self.verify_active(generation, pins)
+            self.transaction(phase='recovering')
+            if not already_restored:
+                if self.graphical_active():
+                    self.require_unlocked_sessions()
+                self.activation_validators(generation)
+                atomic_bytes(self.pin_path, pin)
+                command(str(Path(generation) / 'activate'))
+                self.restart_if_graphical()
+            self.restore_home_file_backups(tx.get('backedUp', []), target_generation=generation, strict=True)
+            problems = self.verify(pins, assembly)
+            if problems:
+                raise DeploymentError('recovered endpoints do not match baseline: ' + '; '.join(problems))
+            self.verify_active(generation, pins)
+            if self.locked() != assembly:
+                raise DeploymentError('consumer pin does not identify the recovered assembly')
+            files = [self.pin_file()] + self.update_bom(snapshot['state'])
+            self.record(f'deploy: recover transaction {transaction_id}', files)
+            self.save_state(snapshot['state'])
+            self.transaction(phase='recovered', recoveryError=None)
+        except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
+            self.transaction(phase='partial', recoveryError=str(exc))
+            raise DeploymentError(f'recovery incomplete: {exc}; retain transaction {transaction_id}') from exc
+        print(f'Recovered transaction {transaction_id}; verified baseline {assembly}.')
 
     def installed(self) -> str:
         return self.revision_file.read_text().strip() if self.revision_file.exists() else "not installed"
@@ -553,14 +681,7 @@ class Deployment:
     def _record_transaction_fields(self, **fields) -> None:
         if not self.transaction_file.exists():
             return
-        current = json.loads(self.transaction_file.read_text())
-        current.update(fields)
-        temporary = self.transaction_file.with_suffix('.tmp')
-        with temporary.open('w') as stream:
-            stream.write(json.dumps(current, indent=2) + '\n')
-            stream.flush()
-            os.fsync(stream.fileno())
-        temporary.replace(self.transaction_file)
+        self.transaction(**fields)
 
     def backup_home_file_conflicts(self, generation: Path | str, version: str | None = None) -> list[dict]:
         items = self.find_home_file_conflicts(generation, version=version)
@@ -569,6 +690,11 @@ class Deployment:
                 raise DeploymentError(
                     f"backup already exists and would be clobbered: {item['backupPath']} (for {item['path']})"
                 )
+        # Publish intent before the first rename. Recovery skips backups that
+        # do not exist, including when interruption precedes their rename.
+        self._backed_up = [{k: item[k] for k in ('path', 'relativePath', 'backupPath')} for item in items]
+        if items:
+            self._record_transaction_fields(backedUp=list(self._backed_up))
         backed_up: list[dict] = []
         try:
             for item in items:
@@ -594,9 +720,11 @@ class Deployment:
         self,
         backups: list[dict] | None = None,
         target_generation: Path | str | None = None,
+        strict: bool = False,
     ) -> list[dict]:
         entries = list(getattr(self, "_backed_up", []) if backups is None else backups)
         restored: list[dict] = []
+        conflicts: list[str] = []
         for item in reversed(entries):
             path = Path(item["path"])
             backup = Path(item["backupPath"])
@@ -609,6 +737,7 @@ class Deployment:
                 if path.is_symlink() and _is_hm_symlink(path, rel):
                     path.unlink()
                 else:
+                    conflicts.append(str(path))
                     continue
             os.rename(backup, path)
             restored.append(item)
@@ -616,6 +745,8 @@ class Deployment:
             self._record_transaction_fields(restoredBackups=list(reversed(restored)))
         if backups is None:
             self._backed_up = []
+        if strict and conflicts:
+            raise DeploymentError('later user files preserved; original backups need review: ' + ', '.join(conflicts))
         return list(reversed(restored))
 
     def activate(self) -> None:
@@ -878,14 +1009,14 @@ class Deployment:
     def transaction(self, **fields) -> None:
         current = (json.loads(self.transaction_file.read_text())
                    if self.transaction_file.exists() and fields.get('phase') != 'prepared' else {})
+        if fields.get('phase') == 'prepared':
+            current.update(id=getattr(self, '_requested_transaction', None) or uuid.uuid4().hex,
+                           host=self.hostname, user=getpass.getuser(), config=str(self.config.resolve()))
         current.update(fields)
-        self.transaction_file.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.transaction_file.with_suffix('.tmp')
-        with temporary.open('w') as stream:
-            stream.write(json.dumps(current, indent=2) + '\n')
-            stream.flush()
-            os.fsync(stream.fileno())
-        temporary.replace(self.transaction_file)
+        # History first: current remains the authoritative recovery selector.
+        if TRANSACTION_ID.fullmatch(current.get('id', '')):
+            atomic_json(self.state_file.parent / 'deploy-transactions' / (current['id'] + '.json'), current)
+        atomic_json(self.transaction_file, current)
         print('deploy phase: ' + str(current.get('phase')), flush=True)
 
     def fetch_all(self, pins: dict[str, str]) -> None:
@@ -909,22 +1040,27 @@ class Deployment:
         """Pin, switch and verify an assembly; on failure restore the lock
         and the previous generation. Returns (previous generation, previous pin)."""
         self._phase_times = {}
+        self.check_requested_baseline()
         install_started = time.monotonic()
         preflight_started = time.monotonic()
         self.preflight(revision)
+        self.check_requested_baseline()
         self._phase_times['preflight'] = round(time.monotonic() - preflight_started, 3)
         previous = self.generation()
         previous_pin = self.rollback_pin(previous)
         pin_path = self.pin_path
         before = pin_path.read_bytes()
+        recovery = self.recovery_snapshot(previous, previous_pin, before)
         self.transaction(phase='prepared', baselineGeneration=previous, baselineAssembly=previous_pin,
-                         targetAssembly=revision, targetGeneration=getattr(self, '_prepared_generation', None))
+                         targetAssembly=revision, targetGeneration=getattr(self, '_prepared_generation', None),
+                         recovery=recovery)
         activation_attempted = False
         self._backed_up = []
         self._in_install_transaction = True
         try:
             self.transaction(phase='pinning')
             self.pin(revision)
+            self.transaction(targetPinSha256=hashlib.sha256(pin_path.read_bytes()).hexdigest())
             self.transaction(phase='activating')
             activation_attempted = True
             self.activate()
@@ -937,7 +1073,7 @@ class Deployment:
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
             try:
                 self.transaction(phase='recovering', deploymentError=str(exc))
-                pin_path.write_bytes(before)
+                atomic_bytes(pin_path, before)
                 if self.generation() != previous or activation_attempted:
                     if self.graphical_active():
                         self.require_unlocked_sessions()
@@ -945,7 +1081,7 @@ class Deployment:
                     if self.generation() != previous:
                         raise DeploymentError("previous generation was not restored")
                     self.restart_if_graphical()
-                self.restore_home_file_backups(target_generation=previous)
+                self.restore_home_file_backups(target_generation=previous, strict=True)
                 previous_pins = self.components(previous_pin)
                 problems = self.verify(previous_pins, previous_pin)
                 if problems:
@@ -1069,12 +1205,20 @@ class Deployment:
         self.install(revision, pins, "test")
         self.status()
 
-    def follow(self, ref: str) -> None:
+    def follow(self, ref: str, transaction_id: str | None = None, baseline_token: str | None = None) -> None:
         """Install an accepted Run assembly on a follower host (plan 47).
 
         Records stage label `follow`, not `test`, so shared Test records stay
         with the stage host.
         """
+        if transaction_id is not None:
+            if not TRANSACTION_ID.fullmatch(transaction_id) or not re.fullmatch(r'[0-9a-f]{64}', baseline_token or ''):
+                raise DeploymentError('transaction binding requires an ID and baseline token')
+            if (self.state_file.parent / 'deploy-transactions' / (transaction_id + '.json')).exists():
+                raise DeploymentError('transaction ID has already been used')
+            self._requested_transaction = transaction_id
+            self._requested_baseline = baseline_token
+            self.check_requested_baseline()
         revision = self.resolve(ref)
         pins = self.components(revision)
         self.fetch_all(pins)
@@ -1184,7 +1328,7 @@ class Deployment:
             if restored != previous:
                 raise DeploymentError("previous generation was not activated")
             if state.get("backedUp"):
-                self.restore_home_file_backups(state["backedUp"], target_generation=previous)
+                self.restore_home_file_backups(state["backedUp"], target_generation=previous, strict=True)
             self.restart_if_graphical()
             pins = self.components(previous_pin)
             problems = self.verify(pins, previous_pin)
@@ -1211,7 +1355,7 @@ class Deployment:
 USAGE = ("usage: tam-deploy status [--json] | preflight <assembly> [--json] | "
          "conflicts <generation> [--json] | reconcile [--digest HASH] | "
          "init [revision] [--test] | test [revision] | run [revision] [--untested] | "
-         "follow <revision> | back")
+         "follow <revision> [--transaction ID --expect-baseline SHA256] | recover ID | back")
 
 
 def parse(argv: list[str]) -> tuple[str, list, dict] | None:
@@ -1241,6 +1385,15 @@ def parse(argv: list[str]) -> tuple[str, list, dict] | None:
         return name, rest, {}
     if name == "follow" and len(rest) == 1 and not rest[0].startswith("-"):
         return name, rest, {}
+    if name == 'follow' and len(rest) == 5 and not rest[0].startswith('-'):
+        options = dict(zip(rest[1::2], rest[2::2]))
+        if (set(options) == {'--transaction', '--expect-baseline'}
+                and TRANSACTION_ID.fullmatch(options['--transaction'])
+                and re.fullmatch(r'[0-9a-f]{64}', options['--expect-baseline'])):
+            return name, [rest[0]], {'transaction_id': options['--transaction'],
+                                     'baseline_token': options['--expect-baseline']}
+    if name == 'recover' and len(rest) == 1 and TRANSACTION_ID.fullmatch(rest[0]):
+        return name, rest, {}
     if name == "run":
         flags = [a for a in rest if a.startswith("-")]
         args = [a for a in rest if not a.startswith("-")]
@@ -1265,11 +1418,13 @@ def main(argv: list[str]) -> int:
     name, args, options = parsed
     try:
         deployment = Deployment()
-        getattr(deployment, name)(*args, **options)
-        if name == 'preflight':
-            print(json.dumps({'generation': deployment._prepared_generation,
-                              'baselineGeneration': deployment.read_state()['generation'],
-                              'conflicts': getattr(deployment, '_prepared_conflicts', [])}))
+        lock = deployment.mutation_lock() if name != 'status' else nullcontext()
+        with lock:
+            getattr(deployment, name)(*args, **options)
+            if name == 'preflight':
+                print(json.dumps({'generation': deployment._prepared_generation,
+                                  'baselineGeneration': deployment.read_state()['generation'],
+                                  'conflicts': getattr(deployment, '_prepared_conflicts', [])}))
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:
         print(f"tam-deploy: {exc}", file=sys.stderr)
         return 1

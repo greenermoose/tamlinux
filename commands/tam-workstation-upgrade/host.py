@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import getpass
+import hashlib
 import json
 import os
 import re
@@ -86,6 +87,13 @@ def local_profile(config: Path | None = None) -> dict:
     profile = state_home / "nix/profiles/home-manager"
     if profile.exists() or profile.is_symlink():
         generation = str(profile.resolve())
+    baseline = None
+    pin_file = pin_path if pin_path.is_file() else config / 'flake.lock'
+    if generation and deploy_path.is_file() and pin_file.is_file():
+        identity = {'assembly': assembly or deploy.get('packages'), 'generation': generation,
+                    'pinSha256': hashlib.sha256(pin_file.read_bytes()).hexdigest(),
+                    'receiptSha256': hashlib.sha256(deploy_path.read_bytes()).hexdigest()}
+        baseline = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     return {
         "hostname": hostname,
         "username": username,
@@ -97,4 +105,5 @@ def local_profile(config: Path | None = None) -> dict:
         "generation": generation or deploy.get("generation"),
         "deployStage": deploy.get("stage"),
         "native": native_package(),
+        "baselineToken": baseline,
     }

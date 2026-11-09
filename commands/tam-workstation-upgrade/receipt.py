@@ -5,6 +5,9 @@ import fcntl
 import json
 import os
 import time
+import re
+import tempfile
+import uuid
 from pathlib import Path
 
 
@@ -22,6 +25,26 @@ PHASES = (
     "recovering",
     "recovered",
 )
+
+IDENTIFIER = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,95}\Z')
+
+
+def atomic_write(path: Path, payload: str) -> None:
+    fd, temporary = tempfile.mkstemp(prefix='.' + path.name + '-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 class Store:
@@ -71,24 +94,25 @@ class Store:
             data = json.loads(self.current_path.read_text())
         except (OSError, ValueError) as exc:
             raise ReceiptError("current upgrade receipt is unreadable") from exc
-        if not isinstance(data, dict) or "id" not in data:
+        if (not isinstance(data, dict) or not isinstance(data.get('id'), str)
+                or not IDENTIFIER.fullmatch(data['id']) or data.get('phase') not in PHASES):
             raise ReceiptError("current upgrade receipt is malformed")
         return data
 
     def write(self, receipt: dict) -> dict:
         if receipt.get("phase") not in PHASES:
             raise ReceiptError(f"invalid receipt phase {receipt.get('phase')!r}")
+        if not IDENTIFIER.fullmatch(receipt.get('id', '')):
+            raise ReceiptError('invalid transaction ID')
         self.root.mkdir(parents=True, exist_ok=True)
         self.history.mkdir(parents=True, exist_ok=True)
         receipt = dict(receipt)
         receipt["updatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         payload = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
-        temporary = self.current_path.with_suffix(".tmp")
-        temporary.write_text(payload)
-        temporary.replace(self.current_path)
         archived = self.history / f"{receipt['id']}.json"
-        archived.write_text(payload)
+        atomic_write(archived, payload)
+        atomic_write(self.current_path, payload)
         return receipt
 
     def new_id(self) -> str:
-        return time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"-{os.getpid()}"
+        return uuid.uuid4().hex

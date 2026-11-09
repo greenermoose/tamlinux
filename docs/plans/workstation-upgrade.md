@@ -1,11 +1,11 @@
 # Workstation upgrades from a text login
 
-**Status:** Developing for Tamlinux 0.6.7 (K52). Design accepted 2026-10-30;
-implementation resumed 2026-11-04 under the single-theme 0.6.7 inclusion.
+**Status:** Recovery repair for Tamlinux 0.6.21 approved 2026-11-09.
+The full upgrade design accepted 2026-10-30 remains in development.
 **Target:** Upgrade a supported existing workstation to a released Tamlinux
 assembly from text login, without reinstalling or keeping component clones.
 
-## Current work (0.6.7)
+## Current implementation
 
 `commands/tam-workstation-upgrade/` now provides:
 
@@ -15,7 +15,7 @@ assembly from text login, without reinstalling or keeping component clones.
 - Durable receipts and a single-host lock (`receipt.py`)
 - CLI entry point: `--check`, interactive apply, `--version`/`--revision`/`--yes`,
   `--status`, `--recover`
-- Apply through `tam-deploy follow`; recover through `tam-deploy back`
+- Apply through transaction-bound `tam-deploy follow`; recover through `tam-deploy recover ID`
 - Makefile install under `libexec` with a `bin` symlink
 
 Compatibility schema version 1 is defined by `compat.py`. Deliveries may carry
@@ -30,7 +30,28 @@ migration checkpoints, and archive sha256 confirmation at apply time.
 Separately, `tam-deploy` can skip graphical restart and shell IPC when the
 user graphical target is inactive, including during rollback.
 
-## Proposed interface
+## Bounded recovery repair (0.6.21)
+
+The upgrade wrapper no longer mislabels successful recovery as failure or calls
+ordinary `back` after the backend has already restored the baseline. A caller
+transaction ID and baseline digest bind apply and recovery to the confirmed
+host, assembly, generation and consumer pin. Backend mutations share a lock.
+Snapshot endpoint identities permit local recovery without network discovery,
+component clones or a rebuild. Changed pins, stale/foreign receipts, missing
+generations and incomplete recovery refuse unsafe retries. File backup intent
+and current/history receipts survive interruption without partial JSON.
+Later user edits are retained and conflicting original backups are reported.
+
+A failed upgrade returns failure even after successful recovery; explicit
+successful recovery and status of a verified recovered transaction return 0.
+Legacy records stay readable but cannot authorize unbound automatic recovery.
+
+This slice does not complete indirect input-graph validation, migration
+checkpoints or native archive verification. Forward deployment still needs
+local component clones. Physical upgrade/recovery acceptance and whole-release
+acceptance remain open; an unreleased candidate is not made eligible by tests.
+
+## Interface
 
 | Invocation | Result |
 | --- | --- |
@@ -140,10 +161,11 @@ or boot mutation occurs, and text-mode apply/recovery never launches graphics.
 A two-process test proves concurrent upgrade refusal. Physical recovery must
 work without network access after failed activation.
 
-## Next actions for 0.6.7
+## Remaining acceptance
 
-1. Local trials: `--check` / `--status` on bosgame; unit tests green.
-2. Record inclusion on Fred's Include words; package with the 0.6.7 candidate.
-3. Bind physical VT upgrade and recovery evidence to the exact Test candidate.
-4. Extend lock-graph validation and settings-migration coverage as needed for
-   K52 acceptance.
+1. Deliver the selected recovery repair through an exact recorded candidate;
+   verify packaged command resolution and stop superseded development trials.
+2. Exercise VT plan/status and separately authorized real upgrade/recovery on
+   eligible releases. Use isolated fixtures for unreleased-candidate scenarios.
+3. Complete the deferred compatibility, input-graph and migration work before
+   claiming the entire console-upgrade goal passes.

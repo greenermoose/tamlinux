@@ -28,6 +28,8 @@ file keep using the configuration lock.
 | `test [revision]` | Require the assembly and each pinned component to be on `test`. Pin the revision (default: the head of `test`) in the configuration lock, switch Home Manager, restart the shell if active, verify the installed paths and commit the pin. Activation or verification failure attempts to restore the lock and previous generation. |
 | `run [revision] [--untested]` | Make an assembly the daily one and move it onto `main`. Without a revision: promote the installed Test to `main` without rebuilding, or report that a `main` commit is already running. With a revision (any `tamlinux-packages` commit, full or abbreviated): install it if needed, then fast-forward `main`; a `main` commit (including an older one) moves no branch. A commit, or a component it pins, that is only on `develop` or another branch is untested and needs `--untested`; it then moves `test` too. A revision `main` cannot fast-forward to is refused. |
 | `back` | Activate the previous generation, verify its endpoints against the recorded assembly, and restore its pin. |
+| `follow <revision> [--transaction ID --expect-baseline SHA256]` | Install an accepted assembly without stage promotion; an upgrade caller can bind it to the confirmed starting state. |
+| `recover ID` | Recover only the current identified deployment transaction to its saved baseline, using local generation and package verification data. |
 
 The rollback pin identifies the assembly actually running, using the deployment
 record for the active generation. A prepared but inactive consumer lock is not
@@ -148,6 +150,33 @@ activation, the generation, consumer lock and deployment record may disagree.
 The same is true if rollback fails after activation is attempted. Inspect
 `tam-deploy status`, the active generation and the consumer lock before
 retrying; the error does not claim that the prior state was restored.
-Automatic recovery and rollback verify the previous assembly's installed
-endpoints; this requires its recorded assembly to be available for Nix
-evaluation, even if the consumer lock was already staged for a newer one.
+Ordinary rollback verifies the previous assembly's endpoints using its
+recorded assembly. Identified transaction recovery instead retains those
+immutable package identities before mutation and uses them without Nix
+evaluation, component checkouts or network discovery.
+
+## Identified transaction recovery
+
+Every command that can change deployment state takes the same nonblocking
+`deploy.lock`, including preparation because it may temporarily stage a host
+pin. A transaction has a stable ID and records the local host, user, consumer
+configuration, baseline assembly/generation, exact original pin, deployment
+receipt and baseline endpoint identities. Current and historical JSON records
+are published atomically under the state directory.
+
+`recover ID` refuses stale/foreign IDs, missing generations, unrelated pins or
+profiles, and later pin edits. Legacy transactions lacking recovery identity
+remain readable but cannot be recovered by guessing. A baseline already
+restored by automatic recovery is checked without another activation. Partial
+activation or recording can recover to the saved baseline rather than the
+current deployment's ordinary previous generation. Recovery verifies actual
+package endpoints, profile, source marker and applicable shell runtime before
+recording success. It does not move stage branches.
+
+Home-file backup intent is recorded before renaming. Recovery restores only
+backups actually present, preserves later user edits and reports their
+conflicts as incomplete recovery. Original error and recovery error remain
+available. Recovery still needs the retained generation and local consumer;
+it is not a replacement for native/boot snapshots or a full settings checkpoint.
+An interrupted pin write whose exact target bytes were not recorded requires
+manual inspection; the tool does not guess that an edited lock is safe.

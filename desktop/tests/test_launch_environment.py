@@ -1,6 +1,9 @@
 """Every QML child boundary must isolate the shell's graphics provider."""
 from pathlib import Path
+import json
 import re
+import shutil
+import subprocess
 import unittest
 
 DESKTOP = Path(__file__).resolve().parents[1]
@@ -66,6 +69,47 @@ def without_graphics_isolation(text):
 
 
 class LaunchEnvironment(unittest.TestCase):
+    def evaluate_host_launch(self, environment, overrides=None):
+        if not shutil.which('node'):
+            self.skipTest('node is required to execute the launcher JavaScript')
+        util = (DESKTOP / 'shell/modules/Tam/Commons/Util.qml').read_text()
+        body = util[util.index('QtObject {') + len('QtObject {'):util.index('  function isPlainObject')]
+        body = re.sub(r'readonly property var (\w+):', r'const \1 =', body)
+        script = ('const values = ' + json.dumps(environment) + ';\n'
+                  'const Quickshell = {env: key => values[key]};\n' + body + '\n'
+                  'console.log(JSON.stringify({environment: hostEnvironment(' + json.dumps(overrides) + '),'
+                  'argv: hostArgv(["/usr/bin/python3", "-I", "-c", '
+                  + json.dumps('import json, os; print(json.dumps(dict(os.environ)))') + '])}));')
+        result = subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True, timeout=10)
+        return json.loads(result.stdout)
+
+    def test_detached_child_receives_session_environment_not_shell_qt(self):
+        keys = ['QT_PLUGIN_PATH', 'NIXPKGS_QT6_QML_IMPORT_PATH', 'QML_IMPORT_PATH', 'QT_QPA_PLATFORM', 'PATH']
+        env = {key: '/shell/qt-private' for key in keys}
+        env.update(TAMLINUX_LAUNCH_HOST_ENV=' '.join(keys), TAMLINUX_HOST_PRESENT='PATH QT_QPA_PLATFORM',
+                   TAMLINUX_HOST_PATH='/session/bin:/usr/bin', TAMLINUX_HOST_QT_QPA_PLATFORM='wayland;xcb',
+                   KEEP='caller-value')
+        actual = self.evaluate_host_launch(env, {'KEEP': 'process-override'})
+        self.assertEqual(actual['environment']['KEEP'], 'process-override')
+        self.assertEqual(actual['environment']['QT_QPA_PLATFORM'], 'wayland;xcb')
+        child = subprocess.run(actual['argv'], env=env, capture_output=True, text=True, check=True, timeout=10)
+        child_env = json.loads(child.stdout)
+        self.assertEqual(child_env['PATH'], '/session/bin:/usr/bin')
+        self.assertEqual(child_env['QT_QPA_PLATFORM'], 'wayland;xcb')
+        self.assertEqual(child_env['KEEP'], 'caller-value')
+        for name in keys[:3]:
+            self.assertNotIn(name, child_env)
+        self.assertFalse(any(name.startswith('TAMLINUX_HOST_') for name in child_env))
+        self.assertNotIn('TAMLINUX_LAUNCH_HOST_ENV', child_env)
+
+    def test_explicitly_empty_session_variable_is_preserved(self):
+        env = {'QT_PLUGIN_PATH': '/shell/plugins', 'TAMLINUX_HOST_QT_PLUGIN_PATH': '',
+               'TAMLINUX_LAUNCH_HOST_ENV': 'QT_PLUGIN_PATH', 'TAMLINUX_HOST_PRESENT': 'QT_PLUGIN_PATH'}
+        actual = self.evaluate_host_launch(env)
+        self.assertEqual(actual['environment']['QT_PLUGIN_PATH'], '')
+        child = subprocess.run(actual['argv'], env=env, capture_output=True, text=True, check=True, timeout=10)
+        self.assertEqual(json.loads(child.stdout)['QT_PLUGIN_PATH'], '')
+
     def test_every_child_boundary_is_isolated(self):
         rows = inventory()
         self.assertTrue(rows)
