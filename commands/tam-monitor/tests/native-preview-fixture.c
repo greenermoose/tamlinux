@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <tam_display_session.h>
+#include "../native-console.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -200,3 +201,34 @@ enum tam_display_result __wrap_tam_display_state_restore(struct tam_display_stat
     return TAM_DISPLAY_OK;
 }
 void __wrap_tam_display_state_free(struct tam_display_state *s) { if (s) { record("free"); free(s); } }
+
+/* Console fit: DP-1 is 2560x1440 and HDMI-A-1 1920x1080; the lit area is
+ * the larger one only while HDMI-A-1 is dark. */
+static uint32_t console_w = 1920, console_h = 1080;
+bool __wrap_tam_monitor_console_writable(unsigned fb)
+{ (void)fb; return !flag("TAM_MONITOR_FIXTURE_FB_READONLY"); }
+bool __wrap_tam_monitor_console_lit_area(int drm_fd, uint32_t *width, uint32_t *height)
+{
+    (void)drm_fd;
+    bool large = applied && !strcmp(detached_name, "HDMI-A-1");
+    *width = large ? 2560 : 1920;
+    *height = large ? 1440 : 1080;
+    return true;
+}
+enum tam_monitor_console_set __wrap_tam_monitor_console_set_area(unsigned fb, uint32_t width,
+    uint32_t height, uint32_t *before_w, uint32_t *before_h, int *syserr)
+{
+    (void)fb;
+    if (flag("TAM_MONITOR_FIXTURE_FB_READONLY")) { *syserr = EACCES; return TAM_MONITOR_CONSOLE_SET_OPEN; }
+    if (before_w) *before_w = console_w;
+    if (before_h) *before_h = console_h;
+    console_w = width;
+    console_h = height;
+    if (flag("TAM_MONITOR_FIXTURE_VERBOSE")) {
+        char buf[48];
+        snprintf(buf, sizeof(buf), "console:%ux%u", width, height);
+        record(buf);
+    }
+    *syserr = 0;
+    return TAM_MONITOR_CONSOLE_SET_OK;
+}

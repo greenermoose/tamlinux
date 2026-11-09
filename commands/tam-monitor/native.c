@@ -177,7 +177,10 @@ static void print_help(void)
          "  target reports the area; CONNECTOR fits it to that monitor's mode, WIDTHxHEIGHT\n"
          "  sets pixels, --all fits every lit monitor again. Changes apply to every VT until\n"
          "  reboot, never exceed the framebuffer allocated at boot, change no display mode,\n"
-         "  and need write access to /dev/fbN (root).");
+         "  and need write access to /dev/fbN (root).\n"
+         "  keep and targeted blank sessions fit the console to the lit monitors as they\n"
+         "  change and restore its size before the other monitors light again; without\n"
+         "  write access to /dev/fbN they say so and leave the size alone.");
 }
 
 int main(int argc, char **argv)

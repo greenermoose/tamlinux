@@ -108,6 +108,19 @@ KMS configuration, verifies the bound console framebuffer geometry (`GETFB2` str
 dimensions vs `/sys/class/graphics/fb*`), and listens on a peer-credential-verified UNIX domain socket
 (`SO_PEERCRED`).
 
+While a `keep` or targeted `blank` session holds the display, the recovery owner
+also fits the kernel console to the monitors that are lit, the same area
+`console-size --all` would choose. After the initial selection and after every
+successful request from inside the session (`keep`, `blank`, `wake`, the TUI's
+toggles) it recomputes that area from the current CRTC modes, so
+`keep DP-1 --shell` shows the console full screen on a 2560x1440 monitor even
+when 1080p monitors were mirrored beside it. Before restoring KMS on any exit
+path it puts back the area that was in effect when the session started, so the
+other monitors never relight showing a cropped console. Fitting is best effort:
+without write access to `/dev/fbN` the session works as before, and the command
+says on stderr that the console keeps its size (nothing is printed with
+`--json`). `preview` never fits the console.
+
 The recovery owner guarantees clean restoration on:
 - Interactive shell exit or command completion
 - Bounded trial timeout

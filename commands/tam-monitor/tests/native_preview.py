@@ -232,6 +232,57 @@ class NativePreview(unittest.TestCase):
         self.assertIn("keep:HDMI-A-1", acts)
         self.assertIn("vt_wake", acts)
         self.assertEqual(acts[-3:], ["restore", "free", "release"])
+        # Console follows the lit monitors and is back at its own size first.
+        consoles = [a for a in acts if a.startswith("console:")]
+        self.assertEqual(consoles[0], "console:2560x1440")
+        self.assertEqual(acts[acts.index("keep:DP-1") + 1], "console:2560x1440")
+        self.assertEqual(acts[acts.index("keep:HDMI-A-1") + 1], "console:1920x1080")
+        self.assertEqual(acts[-4], "console:1920x1080")
+
+    def keep_env(self, **flags):
+        env = dict(os.environ, TAM_MONITOR_FIXTURE_LOG=str(self.log),
+                   TAM_MONITOR_FIXTURE_VERBOSE="1", TAM_MONITOR_RUNTIME_DIR=self.tmp.name)
+        env.update({"TAM_MONITOR_FIXTURE_" + k: str(v) for k, v in flags.items()})
+        return env
+
+    def test_keep_fits_console_and_restores_it_before_kms(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        p = subprocess.run([exe, "keep", "DP-1", "--seconds", "1"], env=self.keep_env(),
+                           capture_output=True, text=True, timeout=5)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("keeps its size", p.stderr)
+        acts = [a for a, _ in self.actions()]
+        self.assertEqual(acts[acts.index("keep:DP-1"):],
+                         ["keep:DP-1", "console:2560x1440", "console:1920x1080",
+                          "restore", "free", "release"])
+
+    def test_keep_on_the_smaller_monitor_leaves_the_area(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        p = subprocess.run([exe, "keep", "HDMI-A-1", "--seconds", "1", "--json"],
+                           env=self.keep_env(), capture_output=True, text=True, timeout=5)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        acts = [a for a, _ in self.actions()]
+        self.assertEqual([a for a in acts if a.startswith("console:")],
+                         ["console:1920x1080", "console:1920x1080"])
+
+    def test_keep_without_framebuffer_access_still_keeps(self):
+        exe = str(ROOT / "build/tam-monitor-preview-fixture")
+        p = subprocess.run([exe, "keep", "DP-1", "--seconds", "1"],
+                           env=self.keep_env(FB_READONLY=1), capture_output=True, text=True, timeout=5)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("the console keeps its size", p.stderr)
+        acts = [a for a, _ in self.actions()]
+        self.assertIn("keep:DP-1", acts)
+        self.assertFalse([a for a in acts if a.startswith("console:")])
+        self.assertEqual(acts[-3:], ["restore", "free", "release"])
+        p = subprocess.run([exe, "keep", "DP-1", "--seconds", "1", "--json"],
+                           env=self.keep_env(FB_READONLY=1), capture_output=True, text=True, timeout=5)
+        self.assertEqual(p.stderr, "")
+        self.assertTrue(json.loads(p.stdout)["ok"])
+
+    def test_preview_never_fits_the_console(self):
+        self.finish(self.start(VERBOSE=1))
+        self.assertFalse([a for a, _ in self.actions() if a.startswith("console:")])
 
     def test_supervisor_toggle_uses_current_detached_state(self):
         import socket
@@ -321,7 +372,9 @@ class NativePreview(unittest.TestCase):
         self.processes.append(p)
         self.finish(p, success=True)
         acts = [a for a, _ in self.actions()]
-        self.assertEqual(acts, ["acquire", "capture", "verify_cfb", "apply", "blank:HDMI-A-1", "restore", "free", "release"])
+        self.assertEqual(acts, ["acquire", "capture", "verify_cfb", "apply", "blank:HDMI-A-1",
+                                "console:2560x1440", "console:1920x1080",
+                                "restore", "free", "release"])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

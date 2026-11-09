@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "native-preview.h"
+#include "native-console.h"
 #include "native-events.h"
 #include "native-hw.h"
 #include <tam_display.h>
@@ -207,8 +208,43 @@ int tam_monitor_supervisor_request(unsigned vt_number, const char *request,
 
 static bool extract_card_prefix(const char *name, unsigned *card_out);
 
+/* While a session holds the display, the kernel console fits the monitors
+ * that are lit: keeping only a larger monitor lets it show the console full
+ * screen. The guard puts the original area back before restoring KMS, on
+ * every exit path. Best effort: without write access to /dev/fbN (or on a
+ * kernel that refuses) the console area stays as it was. */
+struct console_fit {
+    bool enabled, saved;
+    unsigned fb;
+    int drm_fd;
+    uint32_t original_width, original_height;
+};
+
+static void console_fit(struct console_fit *f)
+{
+    uint32_t width, height, before_w = 0, before_h = 0;
+    int err = 0;
+    if (!f || !f->enabled || !tam_monitor_console_lit_area(f->drm_fd, &width, &height)) return;
+    enum tam_monitor_console_set rc = tam_monitor_console_set_area(f->fb, width, height,
+        &before_w, &before_h, &err);
+    if ((rc == TAM_MONITOR_CONSOLE_SET_OK || rc == TAM_MONITOR_CONSOLE_SET_UNVERIFIED) && !f->saved) {
+        f->saved = true;
+        f->original_width = before_w;
+        f->original_height = before_h;
+    }
+}
+
+static void console_unfit(struct console_fit *f)
+{
+    if (!f || !f->saved) return;
+    int err = 0;
+    tam_monitor_console_set_area(f->fb, f->original_width, f->original_height, NULL, NULL, &err);
+    f->saved = false;
+}
+
 static bool handle_client_request(int cfd, struct tam_display_state *state,
-    struct access *access, unsigned card, struct tam_display_error *session_err)
+    struct access *access, unsigned card, struct console_fit *fit,
+    struct tam_display_error *session_err)
 {
     struct ucred cred = {0};
     socklen_t clen = sizeof(cred);
@@ -269,8 +305,10 @@ static bool handle_client_request(int cfd, struct tam_display_state *state,
     } else if (!strncmp(buf, "KEEP ", 5)) {
         tam_display_state_keep(state, buf + 5, &reply);
     } else if (!strcmp(buf, "RESTORE")) {
+        console_unfit(fit);
         tam_display_state_restore(state, &reply);
     } else if (!strcmp(buf, "STOP")) {
+        console_unfit(fit);
         tam_display_state_restore(state, &reply);
         if (reply.code && session_err) *session_err = reply;
         stop_session = true;
@@ -279,6 +317,7 @@ static bool handle_client_request(int cfd, struct tam_display_state *state,
         strcpy(reply.message, "Unknown supervisor request");
     }
     access->interactive_client = false;
+    if (!reply.code && !stop_session) console_fit(fit);
     if (reply.code && (tam_display_state_recovery_required(state) ||
         reply.code == TAM_DISPLAY_INACTIVE || reply.code == TAM_DISPLAY_PERMISSION ||
         reply.code == TAM_DISPLAY_RESTORE_FAILED)) {
@@ -319,6 +358,7 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
     for (size_t i = 0; i < 8; ++i) clients[i] = -1;
     char sock_path[256] = {0};
     bool attempted = false;
+    struct console_fit fit = {0};
     if (setpgid(0, 0) < 0) {
         e.code = TAM_DISPLAY_IO; e.system_errno = errno;
         strcpy(e.message, "Cannot isolate recovery process group");
@@ -370,6 +410,11 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
     }
     struct access access = {session, &vt, control, timer, signals, hotplug, false};
     tam_display_state_set_access_check(state, check_access, &access);
+    fit = (struct console_fit){
+        .enabled = w->verify_cfb && w->mode != MODE_PREVIEW,
+        .fb = w->cfb.fb_index,
+        .drm_fd = tam_display_session_device(session)
+    };
     struct pollfd ready[] = {{control, POLLIN, 0}, {timer, POLLIN, 0}, {signals, POLLIN, 0}};
     /* UI readiness handshake makes owner liveness a precondition for the write. */
     if (!send_report(control, 1, &e)) {
@@ -408,6 +453,7 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
     } else {
         if (tam_display_state_keep(state, w->keep, &e)) goto recover;
     }
+    console_fit(&fit);
     if (w->enable_socket) {
         if (!send_report(control, 2, &e)) goto recover;
     }
@@ -439,7 +485,7 @@ static void worker(int control, struct tam_vt vt, const struct worker_args *w,
         for (size_t i = 0; i < 8; ++i) {
             if (clients[i] >= 0 && fds[6 + i].revents) {
                 int client = clients[i]; clients[i] = -1;
-                if (handle_client_request(client, state, &access, w->card, &e)) { stop = true; break; }
+                if (handle_client_request(client, state, &access, w->card, &fit, &e)) { stop = true; break; }
             }
         }
         if (stop) break;
@@ -459,6 +505,8 @@ recover:
         listen_fd = -1;
         if (sock_path[0]) unlink(sock_path);
     }
+    /* Shrink the console back before the other monitors light again. */
+    console_unfit(&fit);
     if (state && attempted) {
         enum tam_display_session_event event = tam_display_session_dispatch(session);
         if (event == TAM_DISPLAY_SESSION_LOST) {
@@ -706,6 +754,9 @@ static int run_supervised_session(const struct worker_args *w_template,
         }
     }
     w.enable_socket = true;
+    if (!json && w.verify_cfb && !tam_monitor_console_writable(w.cfb.fb_index))
+        fprintf(stderr, "tam-monitor: the console keeps its size: fitting it to the lit monitors "
+            "needs write access to /dev/fb%u (see tam-monitor console-size)\n", w.cfb.fb_index);
 
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, control) < 0 ||
         sigprocmask(SIG_BLOCK, &mask, &oldmask) < 0) {

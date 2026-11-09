@@ -297,6 +297,69 @@ static void print_human(const struct console_state *s)
     }
 }
 
+enum tam_monitor_console_set tam_monitor_console_set_area(unsigned fb, uint32_t width, uint32_t height,
+    uint32_t *before_w, uint32_t *before_h, int *syserr)
+{
+    char path[512];
+    snprintf(path, sizeof(path), "%s/fb%u", tam_monitor_dev_path(), fb);
+    *syserr = 0;
+    int fd = open(path, O_RDWR | O_CLOEXEC);
+    if (fd < 0) { *syserr = errno; return TAM_MONITOR_CONSOLE_SET_OPEN; }
+    struct fb_var_screeninfo var;
+    if (tam_monitor_fb_get_var(fd, &var) != 0) {
+        *syserr = errno;
+        close(fd);
+        return TAM_MONITOR_CONSOLE_SET_READ;
+    }
+    if (before_w) *before_w = var.xres;
+    if (before_h) *before_h = var.yres;
+    if (var.xres != width || var.yres != height) {
+        var.xres = width;
+        var.yres = height;
+        var.xoffset = var.yoffset = 0;
+        var.activate = FB_ACTIVATE_NOW | FB_ACTIVATE_ALL; /* resize every VT */
+        if (tam_monitor_fb_put_var(fd, &var) != 0) {
+            *syserr = errno;
+            close(fd);
+            return TAM_MONITOR_CONSOLE_SET_REFUSED;
+        }
+    }
+    struct fb_var_screeninfo after;
+    bool verified = tam_monitor_fb_get_var(fd, &after) == 0 && after.xres == width && after.yres == height;
+    close(fd);
+    return verified ? TAM_MONITOR_CONSOLE_SET_OK : TAM_MONITOR_CONSOLE_SET_UNVERIFIED;
+}
+
+bool tam_monitor_console_lit_area(int drm_fd, uint32_t *width, uint32_t *height)
+{
+    struct tam_display_topology *t = NULL;
+    struct tam_display_error e = {0};
+    if (tam_display_inspect_fd(drm_fd, &t, &e) != TAM_DISPLAY_OK || !t) { free(t); return false; }
+    uint32_t w = UINT32_MAX, h = UINT32_MAX;
+    for (size_t i = 0; i < t->connector_count; ++i) {
+        const struct tam_display_connector *c = &t->connectors[i];
+        if (c->connection != 1 || !c->crtc_id) continue;
+        for (size_t j = 0; j < t->crtc_count; ++j) {
+            const struct tam_display_crtc *k = &t->crtcs[j];
+            if (k->object.id != c->crtc_id || !k->mode_valid || !k->width || !k->height) continue;
+            if (k->width < w) w = k->width;
+            if (k->height < h) h = k->height;
+        }
+    }
+    free(t);
+    if (w == UINT32_MAX || h == UINT32_MAX) return false;
+    *width = w;
+    *height = h;
+    return true;
+}
+
+bool tam_monitor_console_writable(unsigned fb)
+{
+    char path[512];
+    snprintf(path, sizeof(path), "%s/fb%u", tam_monitor_dev_path(), fb);
+    return access(path, W_OK) == 0;
+}
+
 static void permission_hint(const char *verb_args)
 {
     char self[512];
@@ -355,9 +418,15 @@ int tam_monitor_console_size(unsigned fb_index, enum tam_monitor_console_target 
 
     char path[512];
     snprintf(path, sizeof(path), "%s/fb%u", tam_monitor_dev_path(), fb_index);
-    int fd = open(path, O_RDWR | O_CLOEXEC);
-    if (fd < 0) {
-        int err = errno;
+    uint32_t before_w = 0, before_h = 0;
+    int err = 0;
+    enum tam_monitor_console_set set = tam_monitor_console_set_area(fb_index, width, height,
+        &before_w, &before_h, &err);
+    switch (set) {
+    case TAM_MONITOR_CONSOLE_SET_OK:
+    case TAM_MONITOR_CONSOLE_SET_UNVERIFIED:
+        break;
+    case TAM_MONITOR_CONSOLE_SET_OPEN:
         if (err == EACCES || err == EPERM) {
             snprintf(msg, sizeof(msg), "Changing the console size needs write access to %.80s (root or the video group)", path);
             fail(json, TAM_DISPLAY_PERMISSION, err, msg);
@@ -366,33 +435,17 @@ int tam_monitor_console_size(unsigned fb_index, enum tam_monitor_console_target 
         }
         snprintf(msg, sizeof(msg), "Cannot open %.80s: %.60s", path, strerror(err));
         return fail(json, TAM_DISPLAY_IO, err, msg);
-    }
-
-    struct fb_var_screeninfo var;
-    if (tam_monitor_fb_get_var(fd, &var) != 0) {
-        int err = errno;
-        close(fd);
+    case TAM_MONITOR_CONSOLE_SET_READ:
         return fail(json, TAM_DISPLAY_IO, err, "Cannot read the console screen settings");
+    case TAM_MONITOR_CONSOLE_SET_REFUSED:
+        snprintf(msg, sizeof(msg), "The kernel refused a %ux%u console area: %s", width, height, strerror(err));
+        return fail(json, err == EINVAL ? TAM_DISPLAY_UNSUPPORTED : TAM_DISPLAY_IO, err, msg);
     }
-    bool changed = var.xres != width || var.yres != height;
-    if (changed) {
-        var.xres = width;
-        var.yres = height;
-        var.xoffset = var.yoffset = 0;
-        var.activate = FB_ACTIVATE_NOW | FB_ACTIVATE_ALL; /* resize every VT */
-        if (tam_monitor_fb_put_var(fd, &var) != 0) {
-            int err = errno;
-            close(fd);
-            snprintf(msg, sizeof(msg), "The kernel refused a %ux%u console area: %s", width, height, strerror(err));
-            return fail(json, err == EINVAL ? TAM_DISPLAY_UNSUPPORTED : TAM_DISPLAY_IO, err, msg);
-        }
-    }
-    struct fb_var_screeninfo after;
-    bool verified = tam_monitor_fb_get_var(fd, &after) == 0 && after.xres == width && after.yres == height;
-    close(fd);
+    bool changed = before_w != width || before_h != height;
+    bool verified = set == TAM_MONITOR_CONSOLE_SET_OK;
     s.visible_known = true;
-    s.width = verified ? after.xres : width;
-    s.height = verified ? after.yres : height;
+    s.width = width;
+    s.height = height;
     if (json) {
         print_json(&s, changed, verified);
         return verified ? 0 : 1;
