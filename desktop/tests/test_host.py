@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 DESKTOP = Path(__file__).resolve().parents[1]
@@ -31,6 +32,23 @@ def _manifest(root: Path, plugin_id: str = "fred.clock", entry: str = "BarWidget
 
 
 class RegistryTests(unittest.TestCase):
+    def test_bundle_version_wins_over_legacy_version_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shell = root / "share/tamlinux/shell"
+            shell.mkdir(parents=True)
+            (shell.parent / "version").write_text("0.1.0\n")
+            (root / "BUNDLE").write_text("format 1\nname tamlinux\nversion 1.2.3-dev\n")
+            self.assertEqual(session_start.shell_version(shell), "1.2.3-dev")
+            (root / "BUNDLE").write_text("format 99\nname tamlinux\nversion 9.9.9\n")
+            self.assertEqual(session_start.shell_version(shell), "0.1.0")
+
+    def test_explicit_provider_wins_and_path_precedes_legacy_profile(self):
+        with patch.object(session_start.shutil, "which", return_value="/usr/bin/quickshell") as which:
+            self.assertEqual(session_start.resolve_quickshell({"TAMLINUX_QUICKSHELL": "/chosen/quickshell"}), "/chosen/quickshell")
+            which.assert_not_called()
+            self.assertEqual(session_start.resolve_quickshell({"PATH": "/usr/bin"}), "/usr/bin/quickshell")
+
     def test_accepts_a_contained_entry(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

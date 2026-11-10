@@ -31,19 +31,19 @@ from registry import plugin_entries  # noqa: E402
 
 
 def resolve_quickshell(env: dict[str, str] | None = None) -> str:
-    """Prefer session-selected Nix Quickshell; never assume the Pacman path."""
+    """Use the session-selected provider, then PATH, with legacy fallback."""
     environ = env if env is not None else os.environ
     selected = environ.get("TAMLINUX_QUICKSHELL")
     if selected:
         return selected
-    nix_profile = Path.home() / ".nix-profile/bin/quickshell"
-    if nix_profile.is_file():
-        return str(nix_profile)
-    found = shutil.which("quickshell")
+    found = shutil.which("quickshell", path=environ.get("PATH"))
     if found:
         return found
+    nix_profile = Path(environ.get("HOME", str(Path.home()))) / ".nix-profile/bin/quickshell"
+    if nix_profile.is_file():
+        return str(nix_profile)
     raise FileNotFoundError(
-        "quickshell not found; set TAMLINUX_QUICKSHELL or install the Nix package"
+        "quickshell not found; set TAMLINUX_QUICKSHELL or install the native quickshell package"
     )
 
 
@@ -73,6 +73,16 @@ def config_home(environ: dict[str, str]) -> Path:
 
 def shell_version(shell: Path = SHELL) -> str:
     """Read this shell's package metadata (or VERSION in a source checkout)."""
+    if shell.parent.name == "tamlinux" and shell.parent.parent.name == "share":
+        try:
+            lines = (shell.parents[2] / "BUNDLE").read_text().splitlines()
+            fields = [line.split(" ", 1) for line in lines if line and not line.startswith("#")]
+            values = {key: value for key, value in fields if key in ("format", "name", "version")}
+            if (values.get("format") == "1" and values.get("name") == "tamlinux"
+                    and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,99}", values.get("version", ""))):
+                return values["version"]
+        except (OSError, ValueError):
+            pass
     packaged = shell.parent / "version"
     source = shell.parent.parent / "VERSION"
     try:

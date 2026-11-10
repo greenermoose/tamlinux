@@ -33,3 +33,8 @@ The native adapter also gains login-shell and user-manager environment
 templates. They append the product prefix during bring-up, retaining the
 old delivery's precedence until an explicit cutover transaction. This does
 not by itself enable a new shell service or change a running session.
+
+Bundled shell startup reads its own prefix's BUNDLE version before the
+legacy version file. Shell IPC and session entry points resolve helpers
+beside their own installed prefix, preserving the old-delivery fallback.
+Focused host and command tests cover the compatibility paths.

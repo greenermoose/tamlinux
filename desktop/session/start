@@ -9,6 +9,8 @@ if [ ! -f "$config" ]; then
   exit 1
 fi
 /usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?
-"${TAMLINUX_BIN:-$HOME/.local/bin}/tam-theme-init" || exit $?
-"${TAMLINUX_BIN:-$HOME/.local/bin}/tam-session-init" >/dev/null || exit $?
+commands="$bin_dir"
+[ -x "$commands/tam-theme-init" ] || commands="$HOME/.local/bin"
+"${TAMLINUX_BIN:-$commands}/tam-theme-init" || exit $?
+"${TAMLINUX_BIN:-$commands}/tam-session-init" >/dev/null || exit $?
 exec /usr/bin/uwsm start -g -1 -e -D Hyprland -- "$session_dir/Hyprland" --config "$config"
