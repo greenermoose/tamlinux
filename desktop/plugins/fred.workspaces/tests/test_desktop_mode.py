@@ -333,12 +333,13 @@ class DispatchTests(unittest.TestCase):
             patch.object(desktop_mode, "current_mode", return_value="windows"),
             patch.object(desktop_mode, "focused_monitor", return_value="DP-1"),
             patch.object(desktop_mode, "dispatch_move_window", return_value=True) as move,
-            patch.object(desktop_mode, "switch_windows", return_value=True) as switch,
+            patch.object(desktop_mode, "switch_desktop", return_value=True) as switch,
             patch.object(desktop_mode, "dispatch_focus_monitor", return_value=True) as focus,
         ):
             desktop_mode.move_window(2, False, self.MONITORS, "DP-2", "HDMI-A-1")
         move.assert_called_once_with(5, False)
-        switch.assert_called_once_with(2, self.MONITORS)
+        switch.assert_called_once_with("2", self.MONITORS, "DP-2", "HDMI-A-1", None, None,
+                                       reason="move-follow")
         focus.assert_called_once_with("DP-1")
 
     def test_silent_move_uses_right_workspace_without_switching_set(self):
@@ -686,9 +687,13 @@ class CommandLockTests(unittest.TestCase):
     def setUp(self):
         self.runtime = tempfile.TemporaryDirectory()
         self.addCleanup(self.runtime.cleanup)
-        env = patch.dict(desktop_mode.os.environ, {"XDG_RUNTIME_DIR": self.runtime.name})
+        env = patch.dict(desktop_mode.os.environ, {"XDG_RUNTIME_DIR": self.runtime.name,
+                                                  "XDG_STATE_HOME": self.runtime.name})
         env.start()
         self.addCleanup(env.stop)
+        backend = patch.object(desktop_mode, "run_named", return_value=completed(stdout="[]"))
+        backend.start()
+        self.addCleanup(backend.stop)
 
     def test_second_holder_waits_then_reports_busy(self):
         first = desktop_mode.acquire_command_lock(timeout=0.1)

@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-10 — Latest accepted desktop intent and native logger probe](2026-11-10-workspace-intent.md)
+
 - [2026-11-10 — Workspace helper timeline and initial continuity regressions](2026-11-10-workspace-timeline.md)
 
 - [2026-11-10 — Steady active monitor implementation plan](2026-11-10-steady-active-monitor-plan.md)

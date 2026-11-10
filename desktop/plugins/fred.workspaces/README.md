@@ -136,6 +136,14 @@ right_monitor="HDMI-A-1"
 > - `status` and `indicator` read the current mode without updating monitor state.
 > - Windows mode always uses every active, non-mirrored monitor. Endpoint overrides do not remove monitors from its set.
 
+In Develop 2.0.9, Windows-mode requests also retain `desktop-intent` in that
+state directory. It holds the latest accepted desired desktop and generation;
+`desktop-current` records the last completed placement snapshot. Busy
+switches return 75 with the desired request still pending, and incomplete
+switches return 1. Reconciliation uses desired intent after a partial failure.
+This work does not yet provide focus-preserving side-output placement; see
+the [active-monitor development plan](../../../docs/plans/steady-active-monitor.md).
+
 ### Split monitor sets (Windows mode)
 
 Anything that focuses a window on a hidden workspace — an app that opens on a stale workspace, a window switcher, a single-monitor Hyprland dispatch — makes Hyprland move just that monitor. The `splitSet` widget setting decides whether that is allowed to split the set. It only applies to Windows mode; Omarchy and Mac modes treat each monitor individually.

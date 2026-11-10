@@ -11,7 +11,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.8"
+  readonly property string pluginVersion: "2.0.9"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""

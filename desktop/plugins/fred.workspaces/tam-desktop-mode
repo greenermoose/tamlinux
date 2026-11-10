@@ -25,7 +25,7 @@ CONFIG_LINE_RE = re.compile(
     r"^(?:export\s+)?(TAMLINUX_DESKTOP_LEFT_MONITOR|TAMLINUX_DESKTOP_RIGHT_MONITOR|left_monitor|right_monitor|topology|topology_size|TAMLINUX_DESKTOP_TOPOLOGY|unused_monitor_timeout|TAMLINUX_DESKTOP_UNUSED_MONITOR_TIMEOUT)\s*=\s*(.*)$"
 )
 VALID_MODES = ("tamlinux", "mac", "windows")
-ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors")
+ALLOWED_STATE_FILES = ("desktop-mode", "desktop-current", "desktop-monitors", "desktop-intent")
 MAX_MONITORS = 16
 MAX_MONITOR_RECORDS = 64
 MAX_HYPRCTL_OUTPUT = 262144
@@ -35,6 +35,8 @@ DEFAULT_TOPOLOGY_SIZE = 3
 SET_COMMANDS = ("toggle", "tamlinux", "mac", "windows", "switch", "move", "move-silent", "realign", "reconcile")
 LOCK_TIMEOUT = 3.0
 BUSY_EXIT = 75
+INTENT_ATTEMPTS = 3
+INTENT_DEADLINE = 3.0
 
 # Observational correlation only; this is not the pending desktop intent.
 # CLOCK_MONOTONIC matches the journal's boot-relative monotonic clock and
@@ -230,6 +232,92 @@ def read_state_file(filename: str) -> str:
                 os.close(dir_fd)
             except OSError:
                 pass
+
+
+@contextmanager
+def intent_lock():
+    """Short state-only lock, independent of slow compositor commands."""
+    dir_fd = get_state_dir_fd()
+    try:
+        fd = os.open("desktop-intent.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC,
+                     0o600, dir_fd=dir_fd)
+    finally:
+        os.close(dir_fd)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+            raise RuntimeError("Invalid desktop intent lock")
+        deadline = time.monotonic() + 0.25
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Desktop intent state busy; request not accepted")
+                time.sleep(0.01)
+        yield
+    finally:
+        os.close(fd)
+
+
+def read_desktop_intent() -> dict | None:
+    try:
+        value = json.loads(read_state_file("desktop-intent"))
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(value, dict) or value.get("version") != 1:
+        return None
+    for key, lower, upper in (("generation", 1, 2**63 - 1), ("desktop", 1, 10)):
+        number = value.get(key)
+        if isinstance(number, bool) or not isinstance(number, int) or not lower <= number <= upper:
+            return None
+    origin = value.get("origin")
+    if not isinstance(origin, str) or (origin and not MONITOR_RE.fullmatch(origin)):
+        return None
+    if not isinstance(value.get("complete"), bool):
+        return None
+    return {key: value[key] for key in ("version", "generation", "desktop", "origin", "complete")}
+
+
+def publish_desktop_intent(desktop: int, origin: str, expected_generation: int | None = None) -> dict:
+    """Accept intent before waiting for the command lock; never queue old batches."""
+    if not 1 <= desktop <= 10 or (origin and not MONITOR_RE.fullmatch(origin)):
+        raise ValueError("Invalid desktop intent")
+    with intent_lock():
+        previous = read_desktop_intent()
+        if expected_generation is not None and (previous["generation"] if previous else 0) != expected_generation:
+            return previous  # An explicit request won the race with a follow event.
+        generation = previous["generation"] + 1 if previous else 1
+        if generation >= 2**63:
+            raise RuntimeError("Desktop intent generation exhausted")
+        intent = {"version": 1, "generation": generation, "desktop": desktop,
+                  "origin": origin, "complete": False}
+        atomic_write_state("desktop-intent", json.dumps(intent, separators=(",", ":")) + "\n")
+    timeline_event("intent-accepted", generation=generation, requested=desktop, origin=origin or None)
+    return intent
+
+
+def intent_is_current(generation: int) -> bool:
+    latest = read_desktop_intent()
+    return latest is not None and latest["generation"] == generation
+
+
+def finish_desktop_intent(intent: dict, complete: bool) -> bool:
+    # A newer request can arrive during any IPC call. Only its own result may
+    # update observed desktop-current or mark the persistent request complete.
+    with intent_lock():
+        latest = read_desktop_intent()
+        if latest is None or latest["generation"] != intent["generation"]:
+            return False
+        if latest["complete"] == complete and (not complete or
+                read_state_file("desktop-current") == str(latest["desktop"])):
+            return True
+        latest["complete"] = complete
+        atomic_write_state("desktop-intent", json.dumps(latest, separators=(",", ":")) + "\n")
+        if complete:
+            atomic_write_state("desktop-current", str(latest["desktop"]) + "\n")
+    return True
 
 
 def load_config_file() -> tuple[str, str]:
@@ -688,6 +776,8 @@ def set_mode(mode: str, monitors: list[str], topology_size: int = DEFAULT_TOPOLO
         )
         sys.exit(2)
     atomic_write_state("desktop-mode", mode + "\n")
+    with intent_lock():
+        atomic_write_state("desktop-intent", "")
     if mode == "windows":
         workspace = 1
         try:
@@ -894,13 +984,14 @@ def switch_windows(
     monitors: list[str],
     slots: dict[str, int] | None = None,
     topology_size: int | None = None,
+    intent: dict | None = None,
 ) -> bool:
     original_monitor = focused_monitor()
     if _TIMELINE is not None:
         _TIMELINE["origin"] = original_monitor or None
     if not monitors:
         switched = dispatch_focus_workspace(desktop)
-        if switched:
+        if switched and intent is None:
             atomic_write_state("desktop-current", str(desktop) + "\n")
         return switched
 
@@ -911,6 +1002,9 @@ def switch_windows(
     if original_monitor in monitors:
         steps.append(("focus-output", original_monitor))
 
+    if intent is not None and not intent_is_current(intent["generation"]):
+        timeline_event("superseded", generation=intent["generation"])
+        return False
     switched = dispatch_batch(steps)
     if not switched:
         timeline_event("placement-failed", severity="warning", result="batch-failed",
@@ -921,6 +1015,9 @@ def switch_windows(
     unmatched = [mon for mon, ws in assignments if active.get(mon) != ws]
     if unmatched:
         for mon, ws in assignments:
+            if intent is not None and not intent_is_current(intent["generation"]):
+                timeline_event("superseded", generation=intent["generation"])
+                return False
             if mon in unmatched:
                 place_workspace(ws, mon)
         active, focused = monitor_snapshot()
@@ -930,7 +1027,7 @@ def switch_windows(
     if original_monitor in monitors:
         switched = switched and focused == original_monitor
 
-    if switched:
+    if switched and intent is None:
         atomic_write_state("desktop-current", str(desktop) + "\n")
     timeline_event("placement-observed", requested=desktop, focused=focused or None,
                    outputs={mon: {"expected": ws, "observed": active.get(mon),
@@ -952,6 +1049,9 @@ def realign_monitor(
     rest of the set untouched (Windows mode only)."""
     if current_mode() != "windows" or monitor not in monitors:
         return False
+    intent = read_desktop_intent()
+    if intent:
+        desktop = intent["desktop"]
     if slots is None or topology_size is None or monitor not in slots:
         slot = monitors.index(monitor)
         size = max(1, len(monitors))
@@ -963,11 +1063,14 @@ def realign_monitor(
     except ValueError:
         return False
     original_monitor = focused_monitor()
+    if intent and not intent_is_current(intent["generation"]):
+        return False
     placed = place_workspace(workspace, monitor)
     if original_monitor and original_monitor != monitor:
         dispatch_focus_monitor(original_monitor)
     active, _ = monitor_snapshot()
-    return placed and active.get(monitor) == workspace
+    return (placed and active.get(monitor) == workspace and
+            (intent is None or intent_is_current(intent["generation"])))
 
 
 def switch_desktop(
@@ -978,13 +1081,32 @@ def switch_desktop(
     slots: dict[str, int] | None = None,
     topology_size: int | None = None,
     reason: str = "explicit",
-) -> None:
+    intent: dict | None = None,
+) -> bool:
     number = normalize_number(num_str)
     mode = current_mode()
     with timeline_action("switch", requested=number, mode=mode, reason=reason,
                          origin=None, outputs=monitors[:MAX_MONITORS]) as result:
         if mode == "windows":
-            switched = switch_windows(number, monitors, slots, topology_size)
+            intent = intent or publish_desktop_intent(number, focused_monitor())
+            deadline = time.monotonic() + INTENT_DEADLINE
+            switched = False
+            for attempt in range(INTENT_ATTEMPTS):
+                latest = read_desktop_intent()
+                if latest is None:
+                    break
+                if _TIMELINE is not None:
+                    _TIMELINE.update(generation=latest["generation"], requested=latest["desktop"])
+                switched = switch_windows(latest["desktop"], monitors, slots, topology_size, latest)
+                if finish_desktop_intent(latest, switched):
+                    break
+                timeline_event("superseded", generation=latest["generation"])
+                if time.monotonic() >= deadline:
+                    switched = False
+                    break
+                monitors, left_monitor, right_monitor, slots, topology_size, _ = resolve_topology()
+            else:
+                switched = False
         elif mode == "mac":
             switched = switch_mac(number, monitors, left_monitor, right_monitor)
         else:
@@ -994,6 +1116,7 @@ def switch_desktop(
         result["result"] = "complete" if switched else "partial"
     if not switched:
         sys.stderr.write(f"tam-desktop-mode: warning: desktop switch {number} incomplete\n")
+    return switched
 
 
 def move_window(
@@ -1029,7 +1152,8 @@ def move_window(
         return
 
     if mode == "windows" and monitors:
-        if not switch_windows(number, monitors):
+        if not switch_desktop(str(number), monitors, left_monitor, right_monitor, slots, topology_size,
+                              reason="move-follow"):
             sys.stderr.write("tam-desktop-mode: warning: destination monitor set switch incomplete\n")
         if monitor in monitors and not dispatch_focus_monitor(monitor):
             sys.stderr.write("tam-desktop-mode: warning: could not restore focused monitor\n")
@@ -1124,21 +1248,32 @@ def _reconcile() -> str:
         if desktop_is_dark():
             outcome = "deferred: dpms off"
         else:
-            curr = read_state_file("desktop-current")
+            intent = read_desktop_intent()
+            curr = str(intent["desktop"]) if intent else read_state_file("desktop-current")
             try:
                 desktop = int(curr) if curr else 1
             except ValueError:
                 desktop = 1
             if _TIMELINE is not None:
                 _TIMELINE.update(requested=desktop, outputs=monitors[:MAX_MONITORS])
+                if intent:
+                    _TIMELINE["generation"] = intent["generation"]
             # Hyprland usually restores a returning output's workspace itself.
             # Dispatching over an aligned set only risks moving it.
             active, _focused = monitor_snapshot()
             assignments = windows_assignments(desktop, monitors, slots, topology_size)
             if assignments and all(active.get(mon) == ws for mon, ws in assignments):
                 outcome = "reconciled: aligned"
+                if intent and not finish_desktop_intent(intent, True):
+                    outcome = "incomplete: superseded"
             else:
-                if not switch_windows(desktop, monitors, slots, topology_size):
+                if intent:
+                    switched = switch_windows(desktop, monitors, slots, topology_size, intent)
+                    current = finish_desktop_intent(intent, switched)
+                else:
+                    switched = switch_windows(desktop, monitors, slots, topology_size)
+                    current = True
+                if not switched or not current:
                     outcome = "incomplete: workspace placement"
     write_desktop_monitors_state(monitors, left, right, slots, topology_size, canonical_names)
     return outcome
@@ -1158,9 +1293,26 @@ def main() -> None:
         sys.stdout.write(json.dumps({"unusedMonitorTimeout": load_unused_monitor_timeout()}) + "\n")
         return
 
+    intent = None
+    follow_generation = 0
+    if cmd == "switch":
+        if len(sys.argv) < 3:
+            sys.exit(2)
+        number = normalize_number(sys.argv[2])
+        if current_mode() == "windows":
+            if len(sys.argv) > 3 and sys.argv[3] == "follow-timer":
+                latest = read_desktop_intent()
+                follow_generation = latest["generation"] if latest else 0
+            else:
+                intent = publish_desktop_intent(number, focused_monitor())
+
     if cmd in SET_COMMANDS and acquire_command_lock() is None:
-        timeline_event("busy", severity="warning", action=cmd, result="not-applied")
+        timeline_event("busy", severity="warning", action=cmd,
+                       result="pending" if intent else "not-applied",
+                       generation=intent["generation"] if intent else None)
         sys.stderr.write("tam-desktop-mode: busy: another desktop change is still running\n")
+        if intent:
+            sys.stderr.write("tam-desktop-mode: latest desktop request retained for reconciliation\n")
         sys.exit(BUSY_EXIT)
 
     monitors, left_monitor, right_monitor, slots, topology_size, _ = resolve_topology()
@@ -1175,7 +1327,25 @@ def main() -> None:
         if len(sys.argv) < 3:
             sys.exit(2)
         reason = "follow-timer" if len(sys.argv) > 3 and sys.argv[3] == "follow-timer" else "explicit"
-        switch_desktop(sys.argv[2], monitors, left_monitor, right_monitor, slots, topology_size, reason)
+        if reason == "follow-timer" and current_mode() == "windows":
+            latest = read_desktop_intent()
+            if (latest["generation"] if latest else 0) != follow_generation:
+                timeline_event("follow-deferred", reason=reason, result="superseded")
+                return
+            if latest and not latest["complete"]:
+                # The focus snapshot can show an intermediate old workspace
+                # during a wake. Repair the accepted request, not that snapshot.
+                intent = latest
+            else:
+                active, focused = monitor_snapshot()
+                workspace = active.get(focused, 0)
+                if not workspace or desktop_for_workspace(workspace, topology_size) != number:
+                    timeline_event("follow-deferred", reason=reason, result="stale-observation")
+                    return
+                intent = publish_desktop_intent(number, focused, follow_generation)
+        if not switch_desktop(str(intent["desktop"]) if intent else sys.argv[2], monitors,
+                              left_monitor, right_monitor, slots, topology_size, reason, intent):
+            sys.exit(1)
     elif cmd == "move":
         if len(sys.argv) < 3:
             sys.exit(2)

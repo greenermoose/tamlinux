@@ -1,8 +1,9 @@
 # Keep the active monitor steady during desktop changes
 
 **Status — 2026-11-10:** Fred approved the implementation plan and physical
-acceptance matrix. Develop has started: helper diagnostics and isolated
-regressions are implemented; active-output repair and native logging remain.
+acceptance matrix. Helper diagnostics, persistent latest accepted desktop
+intent and isolated regressions are implemented. Native logger probing is
+recorded; active-output repair and native logging corrections remain.
 Proposed for 0.6 reliability work; delivery candidate unassigned. The existing
 0.6.22 Test candidate stays frozen.
 
@@ -332,9 +333,90 @@ buffering and backend error attribution remain open gates.
 
 Next actions:
 
-1. Establish the native logger's precision/severity and journal/file routes
-   with an isolated error-path check; complete the helper forwarding proof.
-2. Implement persistent latest intent, active-output-first switching and
-   focus-preserving side-output repair with the remaining event regressions.
+1. Implement and review focus-preserving output-targeted workspace selection,
+   then active-output-first placement and transient layout/wake gating.
+2. Complete native monotonic emission, bounded severity, prompt file delivery
+   and connector attribution; prove the real backend and helper journal routes.
 3. Prepare the separately reviewable old-log cleanup set. Choose and Test a
    packaged candidate only after source checks and Fred's instruction.
+
+### Latest accepted desktop intent (2.0.9)
+
+The next slice adds `desktop-intent` under the existing Tamlinux state
+directory. It stores a bounded versioned record: increasing `generation`,
+desired `desktop`, originating output and `complete`. A short state-only
+lock serializes publication and completion independently of the compositor
+command lock. An explicit Windows-mode switch publishes before waiting for
+that command lock. A busy exit (75) now reports `pending` and preserves the
+request; it does not assert placement or arrange an unbounded retry loop.
+
+`desktop-current` remains the last successfully observed desktop. A partial
+switch leaves it unchanged; reconciliation and realignment use desired
+intent instead. Compare-and-set completion prevents an older in-flight
+switch from writing over a newer request. A command holder can apply up to
+three superseding generations, with a three-second budget checked between
+IPC attempts. Existing individual IPC timeouts still apply; this is not a
+hard three-second wall-clock deadline. Exhaustion or failure leaves the
+latest request pending for the next relevant event or explicit retry.
+
+A follow timer rereads the generation after acquiring the command lock.
+An intervening explicit request supersedes it; an incomplete request takes
+precedence over a transient focused-workspace observation. Following a
+deliberate window focus after completion remains supported, with a fresh
+focused-workspace check and publication compare-and-set. Non-silent window
+moves use the same switching path; independent modes retain their behavior.
+Incomplete CLI switches now return 1 as well as emitting a warning.
+
+Isolated regressions cover failure then reconnect, newer requests during a
+batch, stale completion and follow events, concurrent publication, real
+command-lock contention, bounded supersession, mode changes, invalid state
+and symlinks. These use fake compositor operations and temporary state, and
+reject direct process launches. The existing workspace tests and widget
+render pass. There are 32 isolated timeline/intent cases (19 new), plus
+69 workspace plugin cases. The broad desktop run executed 836 tests with
+14 skipped and one QML/manifest version mismatch; correcting the QML
+declaration to 2.0.9 passes all 35 affected host/metadata tests on rerun.
+
+The generation orders requests **when the helper accepts them**. A bar's
+local action queue still needs coalescing and an ingress-order contract
+before the whole latest-user-intent milestone can close. `complete` still
+describes the present outputs' IPC snapshot, not an absent side output or
+physical continuity. Set-wide placement/focus cycling and layout repair
+remain unchanged in this slice. Do not select it as a continuity fix yet.
+
+### Native logger probe
+
+The isolated [C++ probe](../../desktop/proofs/native-display-logging.cpp)
+links the installed Hyprutils logger and a named `CLoggerConnection`, the
+same connection mechanism used by Aquamarine. It never opens a DRM device
+or contacts a compositor. Error records are explicitly synthetic. Its
+payload clock samples are supplied by the probe; they are **not** evidence
+that existing compositor records contain monotonic emission time.
+
+With Hyprutils **0.14.2**, native `setTime(true)` formats local wall time as
+`HH:MM:SS.nnnnnnnnn` on both stdout and file records. Two backend records
+20 ms apart retain distinct subsecond times. That is representation
+precision, not clock-accuracy evidence. Explicit warning thresholds on both
+the parent and connection suppress the synthetic debug records. No
+equivalent production severity setting has yet been established.
+
+Routing this separate process through `systemd-cat` delivers the ordinary
+and connection error records, retaining PID, boot ID and receive-time wall
+and monotonic journal fields. The journal envelope uses priority 6 for this
+stdout stream; error severity remains in the native text. This proves the
+library-to-journal mechanism, not the running compositor's route. The
+small file remained **zero bytes while the logger was alive** after those
+emissions; its contents appeared on logger destruction. File timestamps
+then matched stdout. Prompt retained-file availability remains unsatisfied.
+Native records still need a common monotonic emission value, connector
+identity at the DRM failure site and a bounded production severity policy.
+
+Source inspection of Hyprland **0.56.2** also confirms that `hl.dsp.focus`
+selects either the monitor or workspace path: supplying both does not
+select a side workspace without focus. Workspace selection calls
+`Actions::changeWorkspace`, which changes the focus monitor. The existing
+named workspace-move action does not provide general focus-preserving
+activation. The ext-workspace activation route calls a monitor directly,
+but creation, assignment and its focus behavior need separate verification
+before choosing it or a narrow native adapter extension. No guessed Lua
+operation or focus-and-restore batch is treated as satisfying this contract.

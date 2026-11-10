@@ -4,6 +4,17 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.9 - Unreleased
+
+- Persist the latest accepted Windows-mode desktop intent before waiting for
+  the compositor command lock. Retain pending requests after contention or
+  partial placement; keep the last completed desktop separately.
+- Bound superseding switch attempts and prevent an older completion or late
+  follow timer from overwriting newer intent. Output reconciliation reads
+  desired intent, including after a failed switch.
+- Return exit status 1 on incomplete switches. Focus-preserving side-output
+  placement and physical continuity remain in development.
+
 ## 2.0.8 - Unreleased
 
 - Add bounded structured helper diagnostics for switch, workspace placement,

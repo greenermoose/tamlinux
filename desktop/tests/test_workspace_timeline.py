@@ -74,6 +74,8 @@ class WorkspaceTimelineTests(unittest.TestCase):
                     self.focus = argument
                 elif step == "focus-workspace":
                     self.active[self.focus] = argument
+        elif operation == "focus-output":
+            self.focus = payload
         elif operation not in ("dpms", "dpms-fallback"):
             raise AssertionError((operation, payload))
         return subprocess.CompletedProcess([], 0, value, "")
@@ -90,11 +92,11 @@ class WorkspaceTimelineTests(unittest.TestCase):
         self.switch(2)
         events = self.events()
         self.assertEqual([e["event"] for e in events],
-                         ["start", "placement-start", "placement-observed", "end"])
+                         ["start", "intent-accepted", "placement-start", "placement-observed", "end"])
         self.assertEqual(len({e["sequence"] for e in events}), 1)
         self.assertEqual(events[-1]["origin"], "ACTIVE")
         self.assertEqual(events[-1]["result"], "complete")
-        self.assertEqual(events[2]["outputs"]["HP"],
+        self.assertEqual(events[3]["outputs"]["HP"],
                          {"expected": 6, "observed": 6, "result": "aligned"})
         self.assertEqual(self.focus, "ACTIVE")
 
@@ -102,7 +104,7 @@ class WorkspaceTimelineTests(unittest.TestCase):
         self.during_batch = lambda: self.active.pop("HP", None)
         self.switch(2)
         self.assertEqual(self.events()[-1]["result"], "partial")
-        self.assertEqual(self.events()[2]["result"], "batch-failed")
+        self.assertEqual(self.events()[3]["result"], "batch-failed")
         self.during_batch = None
         self.active["HP"] = 99
         self.reject = True
@@ -130,7 +132,7 @@ class WorkspaceTimelineTests(unittest.TestCase):
         with patch.object(self.engine, "switch_windows", side_effect=RuntimeError("private detail")):
             with self.assertRaises(RuntimeError):
                 self.switch(2)
-        self.assertEqual([e["event"] for e in self.events()], ["start", "end"])
+        self.assertEqual([e["event"] for e in self.events()], ["start", "intent-accepted", "end"])
         self.assertEqual(self.events()[-1]["result"], "failure")
         self.assertNotIn("private detail", self.log.getvalue())
         self.assertIsNone(self.engine._TIMELINE)
@@ -159,14 +161,15 @@ class WorkspaceTimelineTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.log.getvalue(), "")
 
-    def test_busy_request_reports_not_applied_without_dispatch(self):
+    def test_busy_request_retains_pending_intent_without_dispatch(self):
         with patch.object(self.engine, "acquire_command_lock", return_value=None), \
              patch.object(self.engine.sys, "argv", ["tam-desktop-mode", "switch", "2"]):
             with self.assertRaises(SystemExit) as error:
                 self.engine.main()
         self.assertEqual(error.exception.code, 75)
-        self.assertEqual(self.events()[0]["result"], "not-applied")
-        self.assertEqual(self.calls, [])
+        self.assertEqual(self.events()[-1]["result"], "pending")
+        self.assertEqual(self.engine.read_desktop_intent()["desktop"], 2)
+        self.assertEqual(self.calls, [("monitors", None)])
 
     def test_records_fit_one_line_even_with_maximum_topology(self):
         self.active = {f"OUTPUT-{i:02}-" + "x" * 54: i + 1 for i in range(16)}
