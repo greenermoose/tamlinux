@@ -28,3 +28,8 @@ installed menu away from the checkout, and check the prefix boundary and
 generated units. The full staged product also seals successfully with
 tam-bundle. These are build checks; native login and desktop cutover remain
 separate integration steps.
+
+The native adapter also gains login-shell and user-manager environment
+templates. They append the product prefix during bring-up, retaining the
+old delivery's precedence until an explicit cutover transaction. This does
+not by itself enable a new shell service or change a running session.
