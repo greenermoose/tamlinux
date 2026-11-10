@@ -11,9 +11,37 @@ SOURCE = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("install_product", SOURCE / "desktop/install-product.py")
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
+bundle_spec = importlib.util.spec_from_file_location("install_bundle_layout", SOURCE / "desktop/install-bundle-layout.py")
+bundle_layout = importlib.util.module_from_spec(bundle_spec)
+bundle_spec.loader.exec_module(bundle_layout)
 
 
 class ProductInstall(unittest.TestCase):
+    def test_bundle_layout_renders_private_paths_and_real_vendor_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stage = Path(tmp)
+            installer.install("/usr", tmp)
+            command = stage / "usr/bin/tam-shell"
+            command.write_bytes((SOURCE / "commands/tam-shell/tam-shell").read_bytes())
+            command.chmod(0o755)
+            bundle_layout.install(stage)
+            current = stage / "usr/lib/tamlinux/current"
+            self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
+            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
+            self.assertTrue((stage / "usr/bin/hi").is_file())
+            self.assertIn('exec /usr/bin/tam hi "$@"', (stage / "usr/bin/hi").read_text())
+            unit = stage / "usr/lib/systemd/user/tamlinux-shell.service"
+            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", unit.read_text())
+            wants = unit.parent / "graphical-session.target.d/50-tamlinux-services.conf"
+            self.assertIn("Wants=tam-bt-agent.service tam-fcitx5.service", wants.read_text())
+            fonts = stage / "usr/share/fontconfig/conf.default/50-tamlinux.conf"
+            self.assertTrue(fonts.is_file() and not fonts.is_symlink())
+            self.assertFalse((stage / "usr/share/tamlinux").exists())
+            self.assertFalse((stage / "etc").exists())
+            for value in ("", "/", "/usr", "relative"):
+                with self.assertRaises(ValueError):
+                    bundle_layout.staging_root("/usr", value)
+
     def test_native_payload(self):
         with tempfile.TemporaryDirectory() as tmp:
             stage = Path(tmp)

@@ -1,0 +1,28 @@
+# Conventional workstation recipe layout
+
+- **Date**: 2026-11-10
+- **CLI Tool**: Codex CLI (`codex`) `0.167.0`
+- **Model**: `gpt-6.1-sol`
+- **Transcript**: Retained privately by the author.
+- **Authorship**: AI-assisted staging implementation and verification.
+
+> Approve 0.8 tool; continue recipes
+
+`install-bundle` stages with `PREFIX=/usr`. The command scripts get fixed
+private data paths under `/usr/lib/tamlinux/current`. The format-2 builder
+can split that tree away from real command files, manuals and vendor
+files. The existing relocatable install target remains available.
+
+The staging target copies origin-checked vendor defaults, expresses the
+two session service links as a systemd `Wants` drop-in, and materializes
+the fontconfig default as a regular file. The `hi` command invokes
+`/usr/bin/tam hi`. The hardware provider descriptor expects `asdcontrol`
+at its native `/usr/bin` path, with that third-party binary supplied by
+the rootstock. Login activation and package ownership transition are
+later integration work.
+
+`python3 -B -m unittest discover -s desktop/tests -p test_product_install.py -q`
+passed all four tests, including the staged layout, known private data
+paths, regular vendor files and rejection of invalid staging roots. This
+verification exercised temporary directories. It supplies no installed
+candidate or hardware acceptance.

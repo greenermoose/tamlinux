@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds conventional product staging for format-2 workstation recipes. [Session](docs/ai/2026-11-10-workstation-recipe-layout.md).
+
 2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) continues active-monitor development with persistent latest accepted desktop intent, stale-event regressions and an isolated native logger probe. Focus-preserving placement and native logging corrections remain open. [Session](docs/ai/2026-11-10-workspace-intent.md).
 
 2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) begins active-monitor continuity development with helper diagnostics, truthful reconciliation failures and isolated workspace event tests. [Session](docs/ai/2026-11-10-workspace-timeline.md).
