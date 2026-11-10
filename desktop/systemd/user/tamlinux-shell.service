@@ -1,0 +1,31 @@
+[Unit]
+Description=Tamlinux shell (bar, panels, and session services)
+Documentation=https://github.com/greenermoose/tamlinux
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I @PREFIX@/share/tamlinux/shell/host/session_start.py
+Environment="PATH=@PREFIX@/bin:/usr/local/bin:/usr/bin"
+Environment="QML_IMPORT_PATH=@PREFIX@/share/tamlinux/shell/modules"
+Environment="TAMLINUX_SHELL_DIR=@PREFIX@/share/tamlinux/shell"
+Environment="TAMLINUX_BIN=@PREFIX@/bin"
+Environment="TAMLINUX_QUICKSHELL=/usr/bin/quickshell"
+Environment="TAMLINUX_QUICKSHELL_IPC=/usr/bin/qs"
+Environment="TAMLINUX_PLUGINS_DIR=@PREFIX@/share/tamlinux/plugins"
+Environment="TAMLINUX_MENU_DEFAULT=@PREFIX@/share/tamlinux/menu/default.jsonc"
+Environment="TAMLINUX_BAR_LAYOUT=%h/.config/tamlinux/shell/layout.json"
+Environment="TAMLINUX_BAR_EXCLUSIVE=1" "TAMLINUX_OUTPUT=all" "TAMLINUX_HOST_ACTIONS=1"
+Environment="QS_DISABLE_FILE_WATCHER=1" "QS_NO_RELOAD_POPUP=1" "QSG_INFO=1"
+Environment="TAMLINUX_SERVICES=theme,notifications,osd,clipboard,emojis,imagepicker,reminders,menu,background,polkit,media,idle,nightlight,battery,keybindings,panels"
+Environment="TAMLINUX_PANELS=audio,bluetooth,network,wifiqr,power,speedtest,disk-speedtest"
+Environment="TAMLINUX_VERSION_NOTES=@PREFIX@/share/tamlinux/version-notes.txt"
+Environment="TAMLINUX_APP_REMOVER=tam-remove-launcher-entry"
+Environment="TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1" "QT_QPA_PLATFORM=wayland"
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

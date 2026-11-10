@@ -1,5 +1,23 @@
 # Develop a component, then package it
 
+## Build a native product tree
+
+The top-level `make` builds the six native C commands against installed
+libtam. `make install PREFIX=/usr/lib/tamlinux/current DESTDIR=/tmp/stage`
+installs all commands, the shell, plugins, assets, menus and user units
+under that prefix. It does not activate a service or write user settings.
+`make check-install` checks the shared product data and its reproducibility.
+
+Build dependencies include a C compiler, make, pkg-config, libtam with its
+display/session libraries, libcpuid, libsystemd, libmagic, and Python with
+FontTools for the owned icon font. Other fonts and runtime programs are
+native dependencies, rather than copied into the product. Version notes
+come from the packaging recipe; source identity is recorded in `BUNDLE`.
+Native adapters own system-wide integration. Product units are installed
+under `share/systemd/user` with stable paths in the selected prefix.
+
+## Try one component
+
 Use the checkout's `commands/tam-dev/tam-dev` before it is delivered as `tam-dev`.
 
 ```sh

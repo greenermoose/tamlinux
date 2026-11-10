@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds the top-level native product build and install path for bundle recipes. [Session](docs/ai/2026-11-09-native-product-install.md).
+
 2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) repairs transaction-bound upgrade recovery, serializes deployment mutations, records offline baseline identities, and adds behavioral launcher-environment tests. [Session](docs/ai/2026-11-09-transaction-recovery.md).
 
 2026-11-09: Claude Code `2.1.319` (`claude-opus-5-5`) makes the `tam-open` text-console image test independent of the image viewers installed on the host. [Session](docs/ai/2026-11-09-tam-open-tty-test.md).

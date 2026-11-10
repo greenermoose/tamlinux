@@ -1,0 +1,11 @@
+[Unit]
+Description=Tamlinux Hyprland monitor recovery watch
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=HYPRLAND_INSTANCE_SIGNATURE
+
+[Service]
+Type=simple
+ExecStart=@PREFIX@/bin/tam-hyprland-monitor-watch
+Environment="PATH=@PREFIX@/bin:/usr/local/bin:/usr/bin"
+KillMode=control-group

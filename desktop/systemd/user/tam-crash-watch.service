@@ -1,0 +1,14 @@
+[Unit]
+Description=Tamlinux process crash notifications
+After=graphical-session.target tamlinux-shell.service
+PartOf=graphical-session.target
+
+[Service]
+ExecCondition=/usr/bin/bash -c '! @PREFIX@/bin/tam-toggle-enabled crash-capture-off'
+ExecStart=@PREFIX@/bin/tam-crash-watch
+Environment="PATH=@PREFIX@/bin:/usr/local/bin:/usr/bin"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
