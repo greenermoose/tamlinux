@@ -21,6 +21,7 @@ Run, and Release) is private operating procedure, not duplicated here.
 
 | Plan | Current scope |
 | --- | --- |
+| [Steady active monitor](steady-active-monitor.md) | Approved 2026-11-10: timestamped output diagnostics, active-display continuity during side-monitor wake, and selective old-log cleanup. Develop pending. |
 | [Easy workstation upgrades](workstation-upgrade.md) | Approved 2026-10-30: released-assembly upgrades and recovery. |
 | [Input usability](input-usability.md) | Approved for 0.5 (K22–K25): modifier model, clipboard, titlebar close. |
 | [Keybinding usability](keybinding-usability.md) | Open 0.5 binding and explorer work. |

@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-10 — Steady active monitor implementation plan](2026-11-10-steady-active-monitor-plan.md)
+
 - [2026-11-09 — Native product installation](2026-11-09-native-product-install.md)
 
 - [2026-11-09 — Transaction-bound upgrade recovery](2026-11-09-transaction-recovery.md)
