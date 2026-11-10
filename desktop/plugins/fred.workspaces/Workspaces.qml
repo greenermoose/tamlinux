@@ -11,7 +11,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.7"
+  readonly property string pluginVersion: "2.0.8"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -633,7 +633,7 @@ BarWidget {
       var state = root.setState()
       if (!state.split) return
       var desktop = state.focused > 0 ? state.focused : state.setDesktop
-      if (desktop >= 1 && desktop <= 10) root.runDesktopCommand(["switch", String(desktop)])
+      if (desktop >= 1 && desktop <= 10) root.runDesktopCommand(["switch", String(desktop), "follow-timer"])
     }
   }
 
@@ -646,7 +646,7 @@ BarWidget {
       var previous = root.previousOutputs === "" ? [] : root.previousOutputs.split(",")
       var current = root.seenOutputs === "" ? [] : root.seenOutputs.split(",")
       if (!Model.reconcileOwner(previous, current, barMonitor ? barMonitor.name : "")) return
-      root.runDesktopCommand(["reconcile"])
+      root.runDesktopCommand(["reconcile", "output-change"])
     }
   }
 
@@ -862,6 +862,13 @@ BarWidget {
     id: actionProcess
     clearEnvironment: true
     environment: root.processEnv
+
+    // Forward each bounded helper record immediately through the shell's
+    // journal route. Emission timestamps stay inside the record; Qt's log
+    // envelope is receive time. Do not accumulate a whole-process buffer.
+    stderr: SplitParser {
+      onRead: data => console.log(String(data).substring(0, 4096))
+    }
 
     stdout: StdioCollector {
       waitForEnd: false

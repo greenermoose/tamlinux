@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Start active-monitor continuity diagnostics (`fred.workspaces` 2.0.8): timestamp helper switch, placement, power and reconciliation events with wall/monotonic clocks and output context; report incomplete reconciliation instead of success. Add isolated HP removal/return regressions. Active-output repair and physical acceptance remain pending.
+
 - Give `tam-monitor` its own semver (`tam-monitor --version`) and update it to 0.2.0: `tam-monitor console-size` reports and changes the kernel console area, so a larger monitor such as a 2560x1440 one beside 1080p monitors can show the text console full screen (`sudo tam-monitor console-size DP-1`), and `--all` fits every lit monitor again. 0.3.0: `keep` and targeted `blank` sessions fit the console to the lit monitors automatically and restore its size when they end.
 - Update `fred.tamversion` to 0.1.5: read version notes from `TAMLINUX_VERSION_NOTES` (falling back to the active Home Manager profile) and verify the header matches the installed version so stale notes from an earlier version are never shown.
 - Add `tam-meter`: Tamlinux's own unprivileged C energy meter (D191), replacing `fred-energy-reading` for Test candidate measurements (D170, D190); includes a live TUI monitor (`tam-meter top`) with power sparkline and busiest processes.

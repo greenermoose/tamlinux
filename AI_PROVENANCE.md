@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) begins active-monitor continuity development with helper diagnostics, truthful reconciliation failures and isolated workspace event tests. [Session](docs/ai/2026-11-10-workspace-timeline.md).
+
 2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) prepares the implementation plan for timestamped display diagnostics, active-monitor continuity and selective old-log cleanup. Fred reviewed and approved the plan before Develop; no runtime changes or deletion. [Session](docs/ai/2026-11-10-steady-active-monitor-plan.md).
 
 2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds the top-level native product build and install path for bundle recipes. [Session](docs/ai/2026-11-09-native-product-install.md).

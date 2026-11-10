@@ -4,6 +4,16 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.8 - Unreleased
+
+- Add bounded structured helper diagnostics for switch, workspace placement,
+  power requests and reconciliation, with emission wall/monotonic clocks,
+  output context, correlation sequence and explicit outcomes.
+- Forward helper stderr lines through the shell logger; distinguish follow
+  timers and output-change reconciliation from explicit commands.
+- Return an incomplete result and exit status 1 when reconciliation fails.
+  Active-output-first switching and latest desktop intent remain pending.
+
 ## 2.0.7 - Tamlinux 0.4.4-k candidate
 
 - Reconcile no longer moves an already aligned desktop set. A text-console

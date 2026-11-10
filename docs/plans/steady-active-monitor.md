@@ -1,7 +1,8 @@
 # Keep the active monitor steady during desktop changes
 
 **Status — 2026-11-10:** Fred approved the implementation plan and physical
-acceptance matrix. Develop has not started; logging and logs are unchanged.
+acceptance matrix. Develop has started: helper diagnostics and isolated
+regressions are implemented; active-output repair and native logging remain.
 Proposed for 0.6 reliability work; delivery candidate unassigned. The existing
 0.6.22 Test candidate stays frozen.
 
@@ -276,6 +277,64 @@ and the adapter's ability to repair a side output without stealing focus.
 Choose the exact candidate after those results; do not modify the frozen
 Test candidate or promise a root cause the present evidence cannot establish.
 
-Next actions: establish the diagnostic timeline and isolated workspace
-regressions during Develop, then select a candidate and schedule its physical
-Test on Fred's instruction.
+## Development handoff
+
+The first slice advances `fred.workspaces` to **2.0.8**. It adds structured
+helper records and reports failed reconciliation as `incomplete: workspace
+placement`, with exit status 1. Set-wide placement, focus cycling, layout
+repair and the existing `desktop-current` semantics are unchanged. This
+slice establishes observations; it does not claim to correct Dell blanking.
+
+Each helper record is a single JSON line prefixed `tam-desktop-mode event `:
+
+- `wall_ns`: Unix UTC nanoseconds, sampled at emission; representation does
+  not claim that the hardware clock is accurate to a nanosecond.
+- `monotonic_ns`: Linux `CLOCK_MONOTONIC` nanoseconds since boot, excluding
+  suspend, for comparison with the journal's monotonic timestamp in the same
+  boot. Wall-clock corrections cannot reverse this ordering.
+- `component`, `severity`, `pid`, `event`, `action`, `sequence`, `reason`:
+  switch/reconciliation/power start and end, placement and busy outcomes.
+  The process/monotonic sequence correlates observations only; it is **not**
+  the shared latest-intent generation required by milestone 2. Busy records
+  have no accepted sequence. Direct internal placement calls outside an
+  action context also have no sequence yet.
+- `requested`, `origin`, `outputs` or `assignments`: requested desktop or
+  power state, known originating output, affected outputs and per-output
+  observed/expected workspace. Unknown origins are null. Batch rejection
+  reports `batch-failed`; it does not assert that no commands were applied.
+
+Records flush to stderr immediately. The bar forwards lines through its
+existing shell logger using `SplitParser`, without retaining process output.
+The maximum supported topology fits the 4096-byte forwarding bound. Stdout
+remains the short command response. Passive `status` emits no diagnostic
+record and makes no compositor query. No new file sink or daemon is added.
+Power completion means the command was accepted, not that a panel visibly
+woke or the detached MSI retrain finished. Placement completion describes an
+IPC snapshot, not continuous physical scanout or input focus.
+
+Isolated tests cover successful switches, HP removal during a batch,
+failed repair on return, an already aligned returning HP, dark-session
+deferral, failure pairing, wall-clock reversal, record-size bounds, a closed
+log sink, quiet status, busy requests, power failure and CLI failure status.
+Every backend call is fake; direct process launches fail the new tests.
+The existing workspace tests and offscreen widget render also pass.
+The full desktop suite passes: 817 tests, 14 skipped; the separate workspace
+plugin suite passes all 69 tests. The initial 120-second run was interrupted;
+the successful full rerun took 209 seconds.
+
+Native source archives matching the installed Hyprland 0.56.2 and
+Aquamarine 0.15.1 were inspected. Hyprland still configures time separately
+from ordinary/stdout logging; the two Aquamarine commit errors still omit
+the connector name. No native settings or packages changed. The helper's
+offscreen render does not prove its journal forwarding under a running
+candidate. Journal/file route, native emission precision, severity filtering,
+buffering and backend error attribution remain open gates.
+
+Next actions:
+
+1. Establish the native logger's precision/severity and journal/file routes
+   with an isolated error-path check; complete the helper forwarding proof.
+2. Implement persistent latest intent, active-output-first switching and
+   focus-preserving side-output repair with the remaining event regressions.
+3. Prepare the separately reviewable old-log cleanup set. Choose and Test a
+   packaged candidate only after source checks and Fred's instruction.

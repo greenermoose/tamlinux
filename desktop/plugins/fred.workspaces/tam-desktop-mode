@@ -17,6 +17,7 @@ import stat
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 
 MONITOR_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 POSITION_RE = re.compile(r"^(-?\d{1,6})x(-?\d{1,6})$")
@@ -34,6 +35,45 @@ DEFAULT_TOPOLOGY_SIZE = 3
 SET_COMMANDS = ("toggle", "tamlinux", "mac", "windows", "switch", "move", "move-silent", "realign", "reconcile")
 LOCK_TIMEOUT = 3.0
 BUSY_EXIT = 75
+
+# Observational correlation only; this is not the pending desktop intent.
+# CLOCK_MONOTONIC matches the journal's boot-relative monotonic clock and
+# excludes suspend. Wall time is UTC Unix nanoseconds, sampled at emission.
+_TIMELINE = None
+
+
+def timeline_event(event: str, **fields) -> None:
+    record = {"component": "fred.workspaces", "severity": "info",
+              "event": event, "wall_ns": time.time_ns(),
+              "monotonic_ns": time.clock_gettime_ns(time.CLOCK_MONOTONIC),
+              "pid": os.getpid()}
+    if _TIMELINE is not None:
+        record.update(_TIMELINE)
+    record.update(fields)
+    # All fields come from bounded topology records or fixed action words;
+    # never include compositor output, exception strings or window titles.
+    line = "tam-desktop-mode event " + json.dumps(record, separators=(",", ":")) + "\n"
+    try:
+        sys.stderr.write(line)
+        sys.stderr.flush()
+    except (OSError, ValueError):
+        pass  # A closed diagnostic sink must not prevent a desktop action.
+
+
+@contextmanager
+def timeline_action(action: str, **fields):
+    global _TIMELINE
+    previous = _TIMELINE
+    _TIMELINE = {"sequence": f"{os.getpid()}-{time.monotonic_ns()}",
+                 "action": action, **fields}
+    result = {"result": "failure"}
+    timeline_event("start")
+    try:
+        yield result
+    finally:
+        timeline_event("end", severity="info" if result["result"] in
+                       ("complete", "aligned", "deferred") else "warning", **result)
+        _TIMELINE = previous
 
 
 _BACKEND = None
@@ -856,6 +896,8 @@ def switch_windows(
     topology_size: int | None = None,
 ) -> bool:
     original_monitor = focused_monitor()
+    if _TIMELINE is not None:
+        _TIMELINE["origin"] = original_monitor or None
     if not monitors:
         switched = dispatch_focus_workspace(desktop)
         if switched:
@@ -863,12 +905,16 @@ def switch_windows(
         return switched
 
     assignments = windows_assignments(desktop, monitors, slots, topology_size)
+    timeline_event("placement-start", requested=desktop,
+                   assignments=dict(assignments), origin=original_monitor or None)
     steps = placement_steps(assignments, existing_workspaces())
     if original_monitor in monitors:
         steps.append(("focus-output", original_monitor))
 
     switched = dispatch_batch(steps)
     if not switched:
+        timeline_event("placement-failed", severity="warning", result="batch-failed",
+                       outputs=monitors[:MAX_MONITORS])
         return False
 
     active, focused = monitor_snapshot()
@@ -886,6 +932,12 @@ def switch_windows(
 
     if switched:
         atomic_write_state("desktop-current", str(desktop) + "\n")
+    timeline_event("placement-observed", requested=desktop, focused=focused or None,
+                   outputs={mon: {"expected": ws, "observed": active.get(mon),
+                                  "result": "aligned" if active.get(mon) == ws else "incomplete"}
+                            for mon, ws in assignments},
+                   result="complete" if switched else "partial",
+                   severity="info" if switched else "warning")
     return switched
 
 
@@ -925,17 +977,21 @@ def switch_desktop(
     right_monitor: str,
     slots: dict[str, int] | None = None,
     topology_size: int | None = None,
+    reason: str = "explicit",
 ) -> None:
     number = normalize_number(num_str)
     mode = current_mode()
-    if mode == "windows":
-        switched = switch_windows(number, monitors, slots, topology_size)
-    elif mode == "mac":
-        switched = switch_mac(number, monitors, left_monitor, right_monitor)
-    else:
-        switched = dispatch_focus_workspace(number)
-        if switched:
-            atomic_write_state("desktop-current", str(number) + "\n")
+    with timeline_action("switch", requested=number, mode=mode, reason=reason,
+                         origin=None, outputs=monitors[:MAX_MONITORS]) as result:
+        if mode == "windows":
+            switched = switch_windows(number, monitors, slots, topology_size)
+        elif mode == "mac":
+            switched = switch_mac(number, monitors, left_monitor, right_monitor)
+        else:
+            switched = dispatch_focus_workspace(number)
+            if switched:
+                atomic_write_state("desktop-current", str(number) + "\n")
+        result["result"] = "complete" if switched else "partial"
     if not switched:
         sys.stderr.write(f"tam-desktop-mode: warning: desktop switch {number} incomplete\n")
 
@@ -1044,7 +1100,15 @@ def dpms_on(monitor: str) -> bool:
     return ok
 
 
-def reconcile() -> str:
+def reconcile(reason: str = "explicit") -> str:
+    with timeline_action("reconcile", reason=reason, origin=None) as result:
+        outcome = _reconcile()
+        result["result"] = {"reconciled": "complete", "reconciled: aligned": "aligned",
+                            "deferred: dpms off": "deferred"}.get(outcome, "partial")
+        return outcome
+
+
+def _reconcile() -> str:
     monitors, left, right, slots, topology_size, canonical_names = resolve_topology()
     canonical_info = load_canonical_topology()
     ensure_contiguous_layout(monitors, canonical_info)
@@ -1065,6 +1129,8 @@ def reconcile() -> str:
                 desktop = int(curr) if curr else 1
             except ValueError:
                 desktop = 1
+            if _TIMELINE is not None:
+                _TIMELINE.update(requested=desktop, outputs=monitors[:MAX_MONITORS])
             # Hyprland usually restores a returning output's workspace itself.
             # Dispatching over an aligned set only risks moving it.
             active, _focused = monitor_snapshot()
@@ -1072,7 +1138,8 @@ def reconcile() -> str:
             if assignments and all(active.get(mon) == ws for mon, ws in assignments):
                 outcome = "reconciled: aligned"
             else:
-                switch_windows(desktop, monitors, slots, topology_size)
+                if not switch_windows(desktop, monitors, slots, topology_size):
+                    outcome = "incomplete: workspace placement"
     write_desktop_monitors_state(monitors, left, right, slots, topology_size, canonical_names)
     return outcome
 
@@ -1092,6 +1159,7 @@ def main() -> None:
         return
 
     if cmd in SET_COMMANDS and acquire_command_lock() is None:
+        timeline_event("busy", severity="warning", action=cmd, result="not-applied")
         sys.stderr.write("tam-desktop-mode: busy: another desktop change is still running\n")
         sys.exit(BUSY_EXIT)
 
@@ -1106,7 +1174,8 @@ def main() -> None:
     elif cmd == "switch":
         if len(sys.argv) < 3:
             sys.exit(2)
-        switch_desktop(sys.argv[2], monitors, left_monitor, right_monitor, slots, topology_size)
+        reason = "follow-timer" if len(sys.argv) > 3 and sys.argv[3] == "follow-timer" else "explicit"
+        switch_desktop(sys.argv[2], monitors, left_monitor, right_monitor, slots, topology_size, reason)
     elif cmd == "move":
         if len(sys.argv) < 3:
             sys.exit(2)
@@ -1121,17 +1190,27 @@ def main() -> None:
         if not realign_monitor(sys.argv[2], normalize_number(sys.argv[3]), monitors, slots, topology_size):
             sys.stderr.write(f"tam-desktop-mode: warning: realign of {sys.argv[2]} incomplete\n")
     elif cmd == "reconcile":
-        sys.stdout.write(reconcile() + "\n")
+        reason = "output-change" if len(sys.argv) > 2 and sys.argv[2] == "output-change" else "explicit"
+        outcome = reconcile(reason)
+        sys.stdout.write(outcome + "\n")
+        if outcome.startswith("incomplete:"):
+            sys.exit(1)
     elif cmd == "dpms-off":
         if len(sys.argv) < 3 or not MONITOR_RE.fullmatch(sys.argv[2]):
             sys.exit(2)
-        if not dpms_off(sys.argv[2]):
+        with timeline_action("power", output=sys.argv[2], requested="off", reason="idle") as result:
+            ok = dpms_off(sys.argv[2])
+            result["result"] = "complete" if ok else "failure"
+        if not ok:
             sys.stderr.write(f"tam-desktop-mode: warning: dpms-off of {sys.argv[2]} failed\n")
             sys.exit(1)
     elif cmd == "dpms-on":
         if len(sys.argv) < 3 or not MONITOR_RE.fullmatch(sys.argv[2]):
             sys.exit(2)
-        if not dpms_on(sys.argv[2]):
+        with timeline_action("power", output=sys.argv[2], requested="on", reason="wake") as result:
+            ok = dpms_on(sys.argv[2])
+            result["result"] = "complete" if ok else "failure"
+        if not ok:
             sys.stderr.write(f"tam-desktop-mode: warning: dpms-on of {sys.argv[2]} failed\n")
             sys.exit(1)
     elif cmd == "monitors":
