@@ -15,8 +15,10 @@ files. The existing relocatable install target remains available.
 
 The staging target copies origin-checked vendor defaults, expresses the
 two session service links as a systemd `Wants` drop-in, and materializes
-the fontconfig default as a regular file. The `hi` command invokes
-`/usr/bin/tam hi`. The hardware provider descriptor expects `asdcontrol`
+the fontconfig default as a regular file. The bundle stages the renamed
+`tam-start` and `tam-suspend-unless-stay-awake` executables. The tam nut
+owns the console aliases `hi` and `start` and the bootstrap command
+`tam-nut`. The hardware provider descriptor expects `asdcontrol`
 at its native `/usr/bin` path, with that third-party binary supplied by
 the rootstock. Login activation and package ownership transition are
 later integration work.
