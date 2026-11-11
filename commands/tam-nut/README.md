@@ -10,3 +10,7 @@ before the desktop or Home Manager exists. It is also packaged as an ordinary
 command. It does not install an operating system or enable remote access.
 Boot media are assembled separately by `tamlinux-packages`; installed desktop
 software still goes through a recorded package assembly and `tam-deploy`.
+
+The Arch tam nut package also installs this helper in `/usr/bin`.
+Its welcome text points to the native dependency check and recorded
+deployment procedure.

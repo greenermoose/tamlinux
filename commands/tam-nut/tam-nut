@@ -5,6 +5,16 @@ set -euo pipefail
 # declared providers. Replacing PATH here discards those immutable providers.
 
 welcome() {
+  if [[ $0 == /usr/bin/tam-nut ]]; then
+    cat <<'EOF'
+Tamlinux bootstrap
+
+Run tam-nut inspect to check this computer's hardware.
+Use tam-bundle needs with the workstation bundle to check native dependencies.
+Tamlinux installation and rollback follow the reviewed tam-deploy procedure.
+EOF
+    return
+  fi
   cat <<'EOF'
 Tamlinux bootstrap
 
