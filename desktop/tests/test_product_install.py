@@ -36,6 +36,9 @@ class ProductInstall(unittest.TestCase):
                 self.assertFalse((stage / "usr/bin" / name).exists(), name)
             self.assertTrue(os.access(stage / "usr/bin/tam-start", os.X_OK))
             self.assertTrue(os.access(stage / "usr/bin/tam-suspend-unless-stay-awake", os.X_OK))
+            desktop = (stage / "usr/bin/tam-desktop").read_text()
+            self.assertIn("/usr/bin/tam-bundle session-activate", desktop)
+            self.assertIn('exec /usr/bin/tam-desktop "$@"', desktop)
             unit = stage / "usr/lib/systemd/user/tamlinux-shell.service"
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", unit.read_text())
             wants = unit.parent / "graphical-session.target.d/50-tamlinux-services.conf"

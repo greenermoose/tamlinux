@@ -70,6 +70,25 @@ def render_commands(directory: Path) -> None:
             'HERE.parent / "libexec/tam-workstation-upgrade"',
             f'Path("{CURRENT}/libexec/tam-workstation-upgrade")',
         )
+        if command.name == "tam-desktop":
+            marker = 'bin_dir="$(dirname "$(readlink -f "$0")")"'
+            if content.count(marker) != 1:
+                raise ValueError("Expected the console desktop entry before bundle activation")
+            activation = (
+                'old_bundle="$(readlink /usr/lib/tamlinux/current)"\n'
+                '/usr/bin/tam-bundle session-activate\n'
+                'new_bundle="$(readlink /usr/lib/tamlinux/current)"\n'
+                'if [ "$old_bundle" != "$new_bundle" ]; then\n'
+                '  exec /usr/bin/tam-desktop "$@"\n'
+                'fi\n'
+            )
+            content = content.replace(marker, activation + marker)
+        elif command.name in ("tam-shell", "tam-hyprland-session", "tam-session-init",
+                              "tam-crash-watch", "tam-hyprland-monitor-watch"):
+            first, separator, rest = content.partition("\n")
+            if not separator:
+                raise ValueError(f"Expected a script body for {command.name}")
+            content = first + "\n/usr/bin/tam-bundle startup-ready || exit $?\n" + rest
         if "../share/tamlinux" in content:
             raise ValueError(f"Unmapped relative product data path in {command.name}")
         if content.encode() != data:

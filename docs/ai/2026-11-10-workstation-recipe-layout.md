@@ -28,3 +28,19 @@ passed all four tests, including the staged layout, known private data
 paths, regular vendor files and rejection of invalid staging roots. This
 verification exercised temporary directories. It supplies no installed
 candidate or hardware acceptance.
+
+## Console activation integration
+
+> Approve tam nut development; continue integration
+
+The format-2 native menu is `tam-start` 0.3.0. Its interactive entry
+finishes the prepared system/settings transaction before drawing the menu
+and re-executes the selected real command when the version link changes.
+The staged `tam-desktop` entry follows the same protocol.
+
+Libtam-based native commands use the shared startup barrier. The
+`tam-monitor` repair child retains its existing recovery entry.
+Staged service launch wrappers use the lightweight system barrier.
+The native product build, menu checks, three isolated entry tests and
+four product staging tests passed using a temporary library prefix.
+This verifies source behavior. Real login and display acceptance remain.

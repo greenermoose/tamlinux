@@ -27,6 +27,10 @@ static void print_usage(FILE *f)
 
 int main(int argc, char **argv)
 {
+    if (tam_bundle_guard(NULL)) {
+        fputs("Tamlinux is switching versions or needs recovery; use tam-bundle status from the console.\n", stderr);
+        return 1;
+    }
     if (argc >= 2) {
         if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0) {
             printf("%s\n", TAM_BOOT_VERSION);

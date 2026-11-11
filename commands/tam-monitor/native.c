@@ -7,6 +7,7 @@
 #include "native-tui.h"
 #include "version.h"
 #include <errno.h>
+#include <tam.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -187,6 +188,11 @@ int main(int argc, char **argv)
 {
     if (argc >= 2 && !strcmp(argv[1], "__guard"))
         return tam_monitor_guard_entry(argc - 2, argv + 2);
+
+    if (tam_bundle_guard(NULL)) {
+        fputs("Tamlinux is switching versions or needs recovery; use tam-bundle status from the console.\n", stderr);
+        return 1;
+    }
 
     bool json = false;
     for (int i = 1; i < argc; ++i)

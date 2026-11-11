@@ -43,6 +43,7 @@ build/test_start: tests/test_start.c src/menu.c src/util.c src/screen.c src/fram
 
 check: build/start build/test_start
 	./build/test_start
+	python3 -B tests/test_bundle_activation.py
 	@START_MENU="$(CURDIR)/menu.json" START_VERSION=$$(cat VERSION) \
 		./build/start --version | grep -E '^start [0-9]+\.[0-9]+\.[0-9]+$$'
 	@START_MENU="$(CURDIR)/menu.json" ./build/start --list | head -n 3 | grep -E '^a +desktop'

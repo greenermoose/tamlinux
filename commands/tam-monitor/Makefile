@@ -11,10 +11,10 @@ SESSION_LIBS = $(shell $(PKG_CONFIG) --libs libsystemd) -lm
 ifneq ($(strip $(LIBTAM_PREFIX)),)
 DISPLAY_CFLAGS = -I$(LIBTAM_PREFIX)/include
 DISPLAY_ARCHIVE = $(LIBTAM_PREFIX)/lib/libtam-display.a
-DISPLAY_LIBS = $(LIBTAM_PREFIX)/lib/libtam-display-session.a $(DISPLAY_ARCHIVE) $(SESSION_LIBS)
+DISPLAY_LIBS = $(LIBTAM_PREFIX)/lib/libtam-display-session.a $(DISPLAY_ARCHIVE) $(LIBTAM_PREFIX)/lib/libtam.a $(SESSION_LIBS)
 else
 DISPLAY_CFLAGS = $(shell $(PKG_CONFIG) --cflags libtam-display 2>/dev/null)
-DISPLAY_LIBS = $(shell $(PKG_CONFIG) --libs libtam-display-session 2>/dev/null) -lm
+DISPLAY_LIBS = $(shell $(PKG_CONFIG) --libs libtam-display-session libtam 2>/dev/null) -lm
 DISPLAY_ARCHIVE = $(shell $(PKG_CONFIG) --variable=libdir libtam-display 2>/dev/null)/libtam-display.a
 endif
 
@@ -31,9 +31,13 @@ ifneq ($(strip $(LIBTAM_PREFIX)),)
 		{ echo 'Missing libtam-display development files under LIBTAM_PREFIX' >&2; exit 1; }
 	@PKG_CONFIG_PATH='$(LIBTAM_PREFIX)/lib/pkgconfig:$(PKG_CONFIG_PATH)' $(PKG_CONFIG) --atleast-version=$(DISPLAY_MIN_VERSION) libtam-display-session || \
 		{ echo 'Need libtam-display >= $(DISPLAY_MIN_VERSION), including its pkg-config metadata' >&2; exit 1; }
+	@PKG_CONFIG_PATH='$(LIBTAM_PREFIX)/lib/pkgconfig:$(PKG_CONFIG_PATH)' $(PKG_CONFIG) --atleast-version=0.6.0 libtam || \
+		{ echo 'Need libtam >= 0.6.0 for the bundle startup guard' >&2; exit 1; }
 else
 	@$(PKG_CONFIG) --atleast-version=$(DISPLAY_MIN_VERSION) libtam-display-session || \
 		{ echo 'Need libtam-display >= $(DISPLAY_MIN_VERSION); set PKG_CONFIG_PATH or LIBTAM_PREFIX' >&2; exit 1; }
+	@$(PKG_CONFIG) --atleast-version=0.6.0 libtam || \
+		{ echo 'Need libtam >= 0.6.0 for the bundle startup guard' >&2; exit 1; }
 endif
 
 build/.native-flags: FORCE | build
@@ -48,7 +52,7 @@ SESSION_ARCHIVE = $(dir $(DISPLAY_ARCHIVE))libtam-display-session.a
 build/%.o: %.c build/.native-flags | display-api
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DISPLAY_CFLAGS) -MMD -MP -c $< -o $@
 
-build/tam-monitor: $(NATIVE_OBJS) $(wildcard $(DISPLAY_ARCHIVE) $(SESSION_ARCHIVE)) | display-api
+build/tam-monitor: $(NATIVE_OBJS) $(wildcard $(DISPLAY_ARCHIVE) $(SESSION_ARCHIVE) $(dir $(DISPLAY_ARCHIVE))libtam.a) | display-api
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(NATIVE_OBJS) $(DISPLAY_LIBS) -o $@
 
 -include $(NATIVE_OBJS:.o=.d)

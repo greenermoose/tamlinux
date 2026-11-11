@@ -1,5 +1,11 @@
 # start
 
+In the format-2 workstation layout the real command is `tam-start`.
+Before displaying the interactive menu it completes the prepared
+system/settings switch through the rootstock's bundle tool. It re-executes
+the selected executable when the product version changes. Read-only
+queries retain their normal behavior.
+
 First text-login workstation activities menu (D215 / D224).
 
 From **0.2.0** onward, `start` is a **pure C** program linked only against
