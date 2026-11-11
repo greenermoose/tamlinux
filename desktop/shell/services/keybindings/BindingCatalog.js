@@ -2,6 +2,15 @@
 // Entries match chord, dispatcher and complete command; review when defaults change.
 var entries = [
   {
+    "mask": 65,
+    "key": "J",
+    "dispatcher": "exec",
+    "arg": "tam-launch-journal add",
+    "action": "Capture a quick note in the journal.",
+    "why": "Meta+Shift keeps capture separate from the journal's text view.",
+    "mnemonic": "Remember J for journal."
+  },
+  {
     "mask": 0,
     "key": "XF86AudioRaiseVolume",
     "dispatcher": "exec",

@@ -29,4 +29,7 @@ queue and retry cases; 69 plugin cases; 25 compositor adapter cases; 35
 host/metadata cases; the workspace widget render. Native package and Nix
 integration results are recorded by the delivery repository.
 
+The broad integration suite also exposed the journal Quick note shortcut
+missing from the binding catalog; its matching command/rationale row is added.
+
 No installed session change or Test/Run/Release promotion is included.
