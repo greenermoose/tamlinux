@@ -195,3 +195,5 @@ version 3 or later. See [`LICENSE`](LICENSE).
 
 Session prompts, tool versions, and architectural notes are in
 [`AI_PROVENANCE.md`](AI_PROVENANCE.md).
+
+[Software defect tracker](bugs/README-bugs.md): report reproducible defects beside their source.

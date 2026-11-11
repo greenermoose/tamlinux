@@ -117,3 +117,7 @@ Addressed marketplace security review on [omacom/omarchy-plugin-marketplace#6509
 - Initial release cloned from stock `omarchy.clock`.
 - In-place replacement via `omarchy.clonedFrom` manifest mapping.
 - Prototype next-event countdown badge.
+
+## 2.1.0 — Develop
+
+- Add labeled quick-note/journal actions for the selected calendar date. Storage and editing belong to the standalone journal tool; the bar and existing clock interactions are unchanged.

@@ -15,7 +15,7 @@ BarWidget {
   id: root
   moduleName: "fred.clock"
 
-  readonly property string pluginVersion: "2.0.4"
+  readonly property string pluginVersion: "2.1.0"
 
   property date displayDate: clock.date
 
@@ -69,6 +69,25 @@ BarWidget {
     exe: root.tamBin + "/tam-notification-send"
     envKeys: root.notifyEnv
     deadlineMs: 10000
+  }
+
+  Launch {
+    id: journalProc
+    exe: root.tamBin + "/tam-launch-journal"
+    envKeys: ["HOME", "TZ", "LANG", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS", "TAMLINUX_BIN", "TAM_JOURNAL_DIR"]
+    deadlineMs: 10000
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode !== 0) root.notify("Journal", "The journal terminal could not be started.")
+    }
+  }
+
+  function openJournal(dateKey, quick) {
+    var args = Model.journalArgs(dateKey, quick)
+    if (!args.length || journalProc.running) return
+    if (Quickshell.env("TAMLINUX_CLOCK_OFFLINE") === "1") return
+    journalProc.args = args
+    journalProc.launch()
+    root.close()
   }
 
   function notify(title, message) {

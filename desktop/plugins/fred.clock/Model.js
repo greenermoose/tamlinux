@@ -300,8 +300,19 @@ function helperPath(name) {
   return decodeURIComponent(url)
 }
 
+function journalArgs(date, quick) {
+  var key = String(date || "")
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return []
+  var y = Number(key.slice(0, 4)), m = Number(key.slice(5, 7)), d = Number(key.slice(8, 10))
+  var leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)
+  var days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  if (y < 1 || m < 1 || m > 12 || d < 1 || d > days[m - 1]) return []
+  return quick ? ["add", "--date", key] : ["--date", key]
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
+    journalArgs: journalArgs,
     dateKey: dateKey,
     keyForDate: keyForDate,
     normalizedWeekStart: normalizedWeekStart,

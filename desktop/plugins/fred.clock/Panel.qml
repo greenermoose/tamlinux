@@ -22,7 +22,7 @@ Panel {
   moduleName: "fred.clock"
   readonly property bool eventEditingEnabled: Quickshell.env("TAMLINUX_CLOCK_OFFLINE") !== "1"
 
-  readonly property string pluginVersion: "2.0.4"
+  readonly property string pluginVersion: "2.1.0"
 
   property var anchorItem: null
 
@@ -1155,6 +1155,25 @@ Panel {
                     foreground: root.contentForeground
                     fontFamily: root.contentFontFamily
                     onClicked: root.copyDayMarkdown()
+                  }
+                }
+              }
+
+              Flow {
+                width: parent.width
+                spacing: Style.space(8)
+                Button {
+                  text: "Quick note for this date"
+                  onClicked: {
+                    if (root.hostWidget && root.hostWidget.openJournal)
+                      root.hostWidget.openJournal(root.selectedDateKey, true)
+                  }
+                }
+                Button {
+                  text: "Open journal for this date"
+                  onClicked: {
+                    if (root.hostWidget && root.hostWidget.openJournal)
+                      root.hostWidget.openJournal(root.selectedDateKey, false)
                   }
                 }
               }

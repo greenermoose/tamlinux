@@ -231,3 +231,12 @@ Developed with the assistance of [Antigravity](https://antigravity.google) (Goog
 
 GNU General Public License v3.0 or later. See [LICENSE](LICENSE) for details.
 Upstream Omarchy MIT copyright and diff recipe documented in [UPSTREAM.md](UPSTREAM.md).
+
+## Daily journal
+
+The calendar has “Quick note for this date” and “Open journal for this date”
+text actions. Both launch Micro through `tam-launch-journal`, using the
+selected calendar day. Quick Launch and Meta+Shift+J offer today’s capture.
+The standalone `tam-journal` tool owns plain text files under `~/Journal`
+(or `TAM_JOURNAL_DIR`); no journal content is stored in clock state or feeds.
+Requires a selected assembly containing the product launcher and journal tool.

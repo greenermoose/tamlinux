@@ -9,6 +9,8 @@
   "quicklaunch.editor": {"icon":"","label":"Editor","action":"tam-launch-editor"},
   "quicklaunch.files": {"icon":"","label":"Files","action":"uwsm-app -- nautilus --new-window"},
   "quicklaunch.calculator": {"icon":"","label":"Calculator","action":"uwsm-app -- qalculate-gtk"},
+  "quicklaunch.note": {"label":"Quick note","action":"tam-launch-journal add"},
+  "quicklaunch.journal": {"label":"Today’s journal","action":"tam-launch-journal"},
   "quicklaunch.lock": {"icon":"","label":"Lock","action":"tam-system-lock"},
   "quicklaunch.suspend": {"icon":"󰒲","label":"Suspend","action":"systemctl suspend-then-hibernate"},
   "quicklaunch.logout": {"icon":"󰍃","label":"Logout","action":"tam-system-logout"},

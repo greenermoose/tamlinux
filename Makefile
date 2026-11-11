@@ -2,7 +2,7 @@
 # Third-party software, fonts and system integration belong to the adapter.
 PREFIX ?= /usr/local
 PYTHON ?= python3
-NATIVE_COMMANDS := start tam-boot tam-hardware tam-meter tam-monitor tam-open
+NATIVE_COMMANDS := start tam-boot tam-hardware tam-launch-journal tam-meter tam-monitor tam-open
 
 .PHONY: all install install-commands install-data install-bundle check-install $(NATIVE_COMMANDS)
 all: $(NATIVE_COMMANDS)

@@ -127,3 +127,6 @@ o.bind("META + SHIFT + Z", "Reset zoom", function()
 end)
 
 o.bind("META + CTRL + L", "Lock system", "tam-system-lock")
+
+-- Daily journal capture; notification and nightlight chords remain separate.
+o.bind("META + SHIFT + J", "Quick note", "tam-launch-journal add")
