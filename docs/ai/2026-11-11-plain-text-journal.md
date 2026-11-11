@@ -22,3 +22,7 @@ Five journal integration checks pass, including actual calendar buttons offscree
 
 No installation, Test, Run or Release. User data and private host evidence
 remain outside the source records.
+
+Follow-up: journal integration tests build their launcher through the production
+Makefile when starting from a clean checkout. Explicit library-prefix/link
+settings are passed as argv, and the five checks pass from that clean build.

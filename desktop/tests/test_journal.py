@@ -15,6 +15,19 @@ BIN = Path(os.environ.get('TAM_JOURNAL_LAUNCHER_TEST_BIN', ROOT/'commands/tam-la
 
 
 class JournalIntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # check-all runs desktop tests before per-command make checks. Build
+        # this one launcher when testing a fresh checkout, using the normal
+        # LIBTAM_PREFIX/pkg-config dependency contract.
+        if 'TAM_JOURNAL_LAUNCHER_TEST_BIN' not in os.environ and not BIN.is_file():
+            args=['make','-C',str(ROOT/'commands/tam-launch-journal'),'all']
+            for key in ('LIBTAM_PREFIX','LIBTAM_LIBS'):
+                if key in os.environ: args.append(key+'='+os.environ[key])
+            result=subprocess.run(args,capture_output=True,text=True,timeout=60)
+            if result.returncode:
+                raise RuntimeError('Cannot build journal launcher (libtam 0.6 required):\n'+result.stdout+result.stderr)
+
     def test_actual_calendar_buttons_route_selected_date_offscreen(self):
         with tempfile.TemporaryDirectory(prefix='journal-qml-') as temp:
             root=Path(temp); modules=root/'modules/Tam'; modules.mkdir(parents=True)
