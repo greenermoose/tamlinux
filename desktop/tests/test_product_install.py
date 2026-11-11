@@ -24,12 +24,18 @@ class ProductInstall(unittest.TestCase):
             command = stage / "usr/bin/tam-shell"
             command.write_bytes((SOURCE / "commands/tam-shell/tam-shell").read_bytes())
             command.chmod(0o755)
+            for name in ("hi", "start", "suspend-unless-stay-awake"):
+                original = stage / "usr/bin" / name
+                original.write_text("#!/bin/sh\n")
+                original.chmod(0o755)
             bundle_layout.install(stage)
             current = stage / "usr/lib/tamlinux/current"
             self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
-            self.assertTrue((stage / "usr/bin/hi").is_file())
-            self.assertIn('exec /usr/bin/tam hi "$@"', (stage / "usr/bin/hi").read_text())
+            for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session"):
+                self.assertFalse((stage / "usr/bin" / name).exists(), name)
+            self.assertTrue(os.access(stage / "usr/bin/tam-start", os.X_OK))
+            self.assertTrue(os.access(stage / "usr/bin/tam-suspend-unless-stay-awake", os.X_OK))
             unit = stage / "usr/lib/systemd/user/tamlinux-shell.service"
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", unit.read_text())
             wants = unit.parent / "graphical-session.target.d/50-tamlinux-services.conf"

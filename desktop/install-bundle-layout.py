@@ -123,13 +123,15 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     (usr / "share/systemd").rmdir()
     for unit in sorted(units.iterdir()):
         unit.write_text(unit.read_text().replace("/usr/share/tamlinux", SHARE))
-    render_commands(usr / "bin")
-    put(usr / "bin/hi", b'#!/bin/sh\nexec /usr/bin/tam hi "$@"\n', 0o755)
+    commands = usr / "bin"
+    (commands / "hi").unlink()
+    for name in ("start", "suspend-unless-stay-awake"):
+        (commands / name).rename(commands / f"tam-{name}")
+    render_commands(commands)
 
     copy_vendor_defaults(stage, source)
     native = source / "desktop/native"
     integration = native / "integration"
-    put(usr / "bin/tam-session", (integration / "session").read_bytes(), 0o755)
     browser = (native / "theme-browser-policy").read_bytes().replace(
         b"/usr/lib/tamlinux/browser_policy.py", f"{CURRENT}/lib/browser_policy.py".encode(),
     )
