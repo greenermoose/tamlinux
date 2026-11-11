@@ -278,3 +278,5 @@ Earlier assignments, with the harness and model on each side and any rework: [`d
 - [2026-10-30 — Explorer appearance and deployment test isolation](2026-10-30-explorer-appearance.md)
 - [2026-11-06 — Stop session default tests launching real Hyprland](2026-11-06-session-defaults-test-hermetic.md)
 - [2026-11-06 — Make the whole test suite pass and add check-all](2026-11-06-test-suite-passes.md)
+
+- [2026-11-11 — Plain text journal](2026-11-11-plain-text-journal.md), Codex CLI 0.167.1 / gpt-6.1-sol.
