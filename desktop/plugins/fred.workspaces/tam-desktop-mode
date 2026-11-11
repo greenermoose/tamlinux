@@ -32,7 +32,7 @@ MAX_HYPRCTL_OUTPUT = 262144
 DEFAULT_TOPOLOGY_SIZE = 3
 # Commands that move workspaces run one at a time: every bar, keybinding and
 # panel calls this helper, and interleaved batches move the wrong workspace.
-SET_COMMANDS = ("toggle", "tamlinux", "mac", "windows", "switch", "move", "move-silent", "realign", "reconcile")
+SET_COMMANDS = ("toggle", "tamlinux", "mac", "windows", "switch", "move", "move-silent", "realign", "reconcile", "apply-intent", "retry-intent")
 LOCK_TIMEOUT = 3.0
 BUSY_EXIT = 75
 INTENT_ATTEMPTS = 3
@@ -42,6 +42,7 @@ INTENT_DEADLINE = 3.0
 # CLOCK_MONOTONIC matches the journal's boot-relative monotonic clock and
 # excludes suspend. Wall time is UTC Unix nanoseconds, sampled at emission.
 _TIMELINE = None
+_IPC_DEADLINE = None
 
 
 def timeline_event(event: str, **fields) -> None:
@@ -113,9 +114,29 @@ def load_backend():
     return module
 
 
+@contextmanager
+def compositor_budget(enabled=True):
+    global _IPC_DEADLINE
+    if not enabled:
+        yield
+        return
+    previous = _IPC_DEADLINE
+    candidate = time.monotonic() + INTENT_DEADLINE
+    _IPC_DEADLINE = min(previous, candidate) if previous is not None else candidate
+    try:
+        yield
+    finally:
+        _IPC_DEADLINE = previous
+
+
 def run_named(operation: str, payload: object = None) -> subprocess.CompletedProcess:
     try:
-        return load_backend().run(operation, payload)
+        if _IPC_DEADLINE is None:
+            return load_backend().run(operation, payload)
+        remaining = _IPC_DEADLINE - time.monotonic()
+        if remaining <= 0:
+            return subprocess.CompletedProcess([], 124, "", "desktop action deadline\n")
+        return load_backend().run(operation, payload, timeout=remaining)
     except SystemExit:
         return subprocess.CompletedProcess([], 1, "", "compositor commands unavailable\n")
 
@@ -277,7 +298,22 @@ def read_desktop_intent() -> dict | None:
         return None
     if not isinstance(value.get("complete"), bool):
         return None
-    return {key: value[key] for key in ("version", "generation", "desktop", "origin", "complete")}
+    outputs = value.get("outputs", {})
+    if not isinstance(outputs, dict) or len(outputs) > MAX_MONITORS:
+        return None
+    for name, item in outputs.items():
+        if not MONITOR_RE.fullmatch(name) or not isinstance(item, dict):
+            return None
+        if set(item) != {"expected", "observed", "attempts", "deadline_ns", "result"}:
+            return None
+        for key, upper in (("expected", 160), ("observed", 2**31),
+                           ("attempts", INTENT_ATTEMPTS), ("deadline_ns", 2**63 - 1)):
+            if type(item[key]) is not int or not 0 <= item[key] <= upper:
+                return None
+        if item["result"] not in ("pending", "missing", "aligned", "expired"):
+            return None
+    value["outputs"] = outputs
+    return value
 
 
 def publish_desktop_intent(desktop: int, origin: str, expected_generation: int | None = None) -> dict:
@@ -292,7 +328,7 @@ def publish_desktop_intent(desktop: int, origin: str, expected_generation: int |
         if generation >= 2**63:
             raise RuntimeError("Desktop intent generation exhausted")
         intent = {"version": 1, "generation": generation, "desktop": desktop,
-                  "origin": origin, "complete": False}
+                  "origin": origin, "complete": False, "outputs": {}}
         atomic_write_state("desktop-intent", json.dumps(intent, separators=(",", ":")) + "\n")
     timeline_event("intent-accepted", generation=generation, requested=desktop, origin=origin or None)
     return intent
@@ -301,6 +337,17 @@ def publish_desktop_intent(desktop: int, origin: str, expected_generation: int |
 def intent_is_current(generation: int) -> bool:
     latest = read_desktop_intent()
     return latest is not None and latest["generation"] == generation
+
+
+def save_output_progress(intent: dict, outputs: dict) -> bool:
+    with intent_lock():
+        latest = read_desktop_intent()
+        if latest is None or latest["generation"] != intent["generation"]:
+            return False
+        latest["outputs"] = outputs
+        latest["complete"] = False
+        atomic_write_state("desktop-intent", json.dumps(latest, separators=(",", ":")) + "\n")
+    return True
 
 
 def finish_desktop_intent(intent: dict, complete: bool) -> bool:
@@ -985,53 +1032,86 @@ def switch_windows(
     slots: dict[str, int] | None = None,
     topology_size: int | None = None,
     intent: dict | None = None,
+    target: str | None = None,
 ) -> bool:
     original_monitor = focused_monitor()
     if _TIMELINE is not None:
         _TIMELINE["origin"] = original_monitor or None
     if not monitors:
+        if intent is not None:
+            timeline_event("placement-observed", result="partial", reason="no-outputs")
+            return False
         switched = dispatch_focus_workspace(desktop)
         if switched and intent is None:
             atomic_write_state("desktop-current", str(desktop) + "\n")
         return switched
 
-    assignments = windows_assignments(desktop, monitors, slots, topology_size)
+    # Include absent canonical outputs: a surviving set's snapshot cannot
+    # establish their completion. New connectors use the resolved slots.
+    targets = [target] if target else list(monitors)
+    if intent is not None and target is None:
+        for item in load_canonical_topology():
+            name = item["output"]
+            if name not in targets and len(targets) < MAX_MONITORS:
+                targets.append(name)
+        if slots is not None:
+            slots = dict(slots)
+            for index, item in enumerate(load_canonical_topology()):
+                slots.setdefault(item["output"], index)
+    assignments = windows_assignments(desktop, targets, slots, topology_size)
     timeline_event("placement-start", requested=desktop,
                    assignments=dict(assignments), origin=original_monitor or None)
-    # Skip aligned outputs. The native action checks the input owner when it
-    # executes; it never borrows focus from another output, even briefly.
-    # The native action creates/assigns/activates only the named workspace.
-    active, _ = monitor_snapshot()
+    active, observed_focus = monitor_snapshot()
+    if original_monitor not in active and observed_focus in active:
+        timeline_event("origin-adopted", previous=original_monitor or None, origin=observed_focus)
+        original_monitor = observed_focus
     assignments.sort(key=lambda item: item[0] != original_monitor)
-    steps = [("select-output-workspace", (ws, mon))
-             for mon, ws in assignments if active.get(mon) != ws]
-
-    if intent is not None and not intent_is_current(intent["generation"]):
+    outcomes = dict(intent.get("outputs", {})) if intent else {}
+    for mon, ws in assignments:
+        item = dict(outcomes.get(mon, {"attempts": 0, "deadline_ns": 0}))
+        now = time.monotonic_ns()
+        item.update(expected=ws, observed=active.get(mon, 0))
+        if active.get(mon) == ws:
+            item["result"] = "aligned"
+        elif mon not in active:
+            item["result"] = "missing"
+        else:
+            if not item["deadline_ns"]:
+                item["deadline_ns"] = now + int(INTENT_DEADLINE * 1e9)
+            item["result"] = "pending"
+            if item["attempts"] < INTENT_ATTEMPTS and time.monotonic_ns() < item["deadline_ns"]:
+                if intent is not None and not intent_is_current(intent["generation"]):
+                    timeline_event("superseded", generation=intent["generation"])
+                    return False
+                # Persist before IPC: a killed worker must not replenish its
+                # budget. Each output is independent of another's rejection.
+                item["attempts"] += 1
+                outcomes[mon] = item
+                if intent is not None and not save_output_progress(intent, outcomes):
+                    return False
+                dispatch_batch([("select-output-workspace", (ws, mon))])
+                active, _ = monitor_snapshot()
+                item["observed"] = active.get(mon, 0)
+                if item["observed"] == ws:
+                    item["result"] = "aligned"
+                elif mon not in active:
+                    item["result"] = "missing"
+            if (item["result"] == "pending" and
+                    (item["attempts"] >= INTENT_ATTEMPTS or time.monotonic_ns() >= item["deadline_ns"])):
+                item["result"] = "expired"
+                timeline_event("retry-expired", severity="warning", output=mon,
+                               expected=ws, observed=item["observed"], attempts=item["attempts"])
+        outcomes[mon] = item
+    if intent is not None and not save_output_progress(intent, outcomes):
         timeline_event("superseded", generation=intent["generation"])
         return False
-    switched = dispatch_batch(steps)
-    if not switched:
-        timeline_event("placement-failed", severity="warning", result="batch-failed",
-                       outputs=monitors[:MAX_MONITORS])
-        return False
-
     active, focused = monitor_snapshot()
     unmatched = [mon for mon, ws in assignments if active.get(mon) != ws]
-    if unmatched:
-        for mon, ws in assignments:
-            if intent is not None and not intent_is_current(intent["generation"]):
-                timeline_event("superseded", generation=intent["generation"])
-                return False
-            if mon in unmatched:
-                _named_ok("select-output-workspace", [ws, mon])
-        active, focused = monitor_snapshot()
-        unmatched = [mon for mon, ws in assignments if active.get(mon) != ws]
-
-    switched = len(unmatched) == 0
-    if original_monitor in monitors:
+    switched = not unmatched and bool(focused) and focused in active
+    if original_monitor in active:
         switched = switched and focused == original_monitor
 
-    if switched and intent is None:
+    if switched and intent is None and target is None:
         atomic_write_state("desktop-current", str(desktop) + "\n")
     timeline_event("placement-observed", requested=desktop, focused=focused or None,
                    outputs={mon: {"expected": ws, "observed": active.get(mon),
@@ -1066,17 +1146,8 @@ def realign_monitor(
         workspace = workspace_for_slot(desktop, slot, size)
     except ValueError:
         return False
-    original_monitor = focused_monitor()
-    if intent and not intent_is_current(intent["generation"]):
-        return False
-    active, _ = monitor_snapshot()
-    if active.get(monitor) == workspace:
-        placed = True
-    else:
-        _accepted, placed = _named_ok("select-output-workspace", [workspace, monitor])
-    active, focused = monitor_snapshot()
-    return (placed and active.get(monitor) == workspace and focused == original_monitor and
-            (intent is None or intent_is_current(intent["generation"])))
+    with compositor_budget():
+        return switch_windows(desktop, monitors, slots, topology_size, intent, target=monitor)
 
 
 def switch_desktop(
@@ -1092,7 +1163,7 @@ def switch_desktop(
     number = normalize_number(num_str)
     mode = current_mode()
     with timeline_action("switch", requested=number, mode=mode, reason=reason,
-                         origin=None, outputs=monitors[:MAX_MONITORS]) as result:
+                         origin=None, outputs=monitors[:MAX_MONITORS]) as result, compositor_budget(mode == "windows"):
         if mode == "windows":
             intent = intent or publish_desktop_intent(number, focused_monitor())
             deadline = time.monotonic() + INTENT_DEADLINE
@@ -1231,7 +1302,7 @@ def dpms_on(monitor: str) -> bool:
 
 
 def reconcile(reason: str = "explicit") -> str:
-    with timeline_action("reconcile", reason=reason, origin=None) as result:
+    with timeline_action("reconcile", reason=reason, origin=None) as result, compositor_budget(current_mode() == "windows"):
         outcome = _reconcile()
         result["result"] = {"reconciled": "complete", "reconciled: aligned": "aligned",
                             "deferred: dpms off": "deferred"}.get(outcome, "partial")
@@ -1272,10 +1343,9 @@ def _reconcile() -> str:
             # Dispatching over an aligned set only risks moving it.
             active, _focused = monitor_snapshot()
             assignments = windows_assignments(desktop, monitors, slots, topology_size)
-            if assignments and all(active.get(mon) == ws for mon, ws in assignments):
+            if (intent is None and assignments and
+                    all(active.get(mon) == ws for mon, ws in assignments)):
                 outcome = "reconciled: aligned"
-                if intent and not finish_desktop_intent(intent, True):
-                    outcome = "incomplete: superseded"
             else:
                 if intent:
                     switched = switch_windows(desktop, monitors, slots, topology_size, intent)
@@ -1285,6 +1355,8 @@ def _reconcile() -> str:
                     current = True
                 if not switched or not current:
                     outcome = "incomplete: workspace placement"
+                elif assignments and all(active.get(mon) == ws for mon, ws in assignments):
+                    outcome = "reconciled: aligned"
     write_desktop_monitors_state(monitors, left, right, slots, topology_size, canonical_names)
     return outcome
 
@@ -1305,6 +1377,18 @@ def main() -> None:
 
     intent = None
     follow_generation = 0
+    if cmd == "accept-switch":
+        if len(sys.argv) not in (3, 4):
+            sys.exit(2)
+        number = normalize_number(sys.argv[2])
+        origin = sys.argv[3] if len(sys.argv) == 4 else focused_monitor()
+        if origin and not MONITOR_RE.fullmatch(origin):
+            sys.exit(2)
+        if current_mode() == "windows":
+            publish_desktop_intent(number, origin)
+        else:
+            sys.exit(2)
+        return
     if cmd == "switch":
         if len(sys.argv) < 3:
             sys.exit(2)
@@ -1369,6 +1453,15 @@ def main() -> None:
             sys.exit(2)
         if not realign_monitor(sys.argv[2], normalize_number(sys.argv[3]), monitors, slots, topology_size):
             sys.stderr.write(f"tam-desktop-mode: warning: realign of {sys.argv[2]} incomplete\n")
+            sys.exit(1)
+    elif cmd in ("apply-intent", "retry-intent"):
+        intent = read_desktop_intent()
+        if cmd == "retry-intent" and intent and current_mode() == "windows":
+            intent = publish_desktop_intent(intent["desktop"], focused_monitor())
+        if current_mode() == "windows" and intent:
+            if not switch_desktop(str(intent["desktop"]), monitors, left_monitor, right_monitor,
+                                  slots, topology_size, "bar-ingress", intent):
+                sys.exit(1)
     elif cmd == "reconcile":
         reason = "output-change" if len(sys.argv) > 2 and sys.argv[2] == "output-change" else "explicit"
         outcome = reconcile(reason)

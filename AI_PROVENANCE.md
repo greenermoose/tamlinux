@@ -1,5 +1,13 @@
 # AI Collaboration & Provenance
 
+2026-11-11: Codex CLI `0.167.0` (`gpt-6.1-sol`) implements focus-preserving
+workspace placement and native display logging corrections, with isolated
+native verification. [Record](docs/ai/2026-11-11-steady-active-monitor.md).
+
+2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) completes shared bar ingress
+and persisted output retry accounting and prepares native package integration.
+[Record](docs/ai/2026-11-11-workspace-queue-package-gates.md).
+
 2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) — calendar and launcher journal access. [Record](docs/ai/2026-11-11-plain-text-journal.md).
 
 2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds conventional product staging for format-2 workstation recipes. [Session](docs/ai/2026-11-10-workstation-recipe-layout.md).

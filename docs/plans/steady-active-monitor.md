@@ -1,12 +1,12 @@
 # Keep the active monitor steady during desktop changes
 
-**Status — 2026-11-11:** Focus-preserving output-targeted placement and native
-logging corrections are implemented in Develop with isolated verification.
-The Aquamarine library builds and its isolated tests pass; the four modified
-Hyprland translation units pass syntax checks. Complete native package
-builds, candidate service routing and physical continuity remain unproven.
-Proposed for 0.6 reliability work; delivery candidate unassigned. The existing
-0.6.22 Test candidate stays frozen.
+**Status — 2026-11-11:** Focus-preserving placement, shared bar ingress and
+persisted per-output retry/completion gates are implemented in Develop.
+Complete Arch packages now build for Hyprland 0.56.2-4.2 and Aquamarine
+0.15.1-1.2, retaining the existing DPMS/idle/connector guards. Package
+integration is being verified; service routing and physical continuity
+remain exact-candidate Test gates. Delivery candidate unassigned; the
+existing 0.6.22 Test candidate stays frozen.
 
 ## User problem and required result
 
@@ -483,3 +483,38 @@ compositor service routing, ordinary idle overhead and the coordinated
 switch/wake timeline must still pass before physical acceptance. No native
 installation, session restart, display dispatch, old-log deletion or stage
 move occurred in this source slice.
+
+### Shared ingress and output budgets (2.0.11)
+
+All bars share an engine-wide publication/work queue. A fast helper accepts
+explicit clicks serially, using the facade's captured input output without
+compositor IPC or the worker lock. New pending clicks replace older
+unaccepted clicks. Publication proceeds while a worker is busy; applying
+work always reads persistent latest intent. Bar destruction transfers queued
+work to a surviving/new bar. Repairs, follow observations and per-output
+power requests coalesce. Saturation and exhausted retries report failure.
+Direct command callers continue to order at the short persistent state lock.
+
+Each generation stores canonical output outcomes, including absent panels.
+Present mismatches get at most three attempts and a three-second monotonic
+budget from their first attempt. Missing panels spend no attempts. A late
+return can repair its own slot without disturbing aligned outputs. Progress
+is saved before IPC; duplicate events, process death and realignment cannot
+reset it. Each placement invocation also caps compositor IPC at three
+seconds. `retry-intent` is an explicit new generation with fresh budgets.
+The bar retries busy/incomplete application at most three times, 150 ms
+apart. Expiry retains the desired desktop and reports incomplete work.
+
+A full-set completion requires every canonical output's observed assignment
+and a surviving input owner. It never asserts physical scanout. Independent
+and intentional split modes keep their existing behavior. A side failure
+does not prevent another output's progress or undo the active desktop.
+
+Verification: 57 isolated workspace cases, 69 existing plugin cases, 25
+adapter cases, 35 host/metadata cases and the widget render pass. Full native
+packages link, and the three Aquamarine fake-backend tests pass. Exact native
+archives/recipe hashes and user-package correspondence belong to the
+[delivery integration procedure](https://github.com/greenermoose/tamlinux-packages/blob/develop/docs/display-integration.md).
+No source trial is installed. The remaining physical gates are actual helper
+and compositor service journal routing, quiet idle, genuine hotplug,
+independent/split behavior and the approved Dell matrix after an exact Test.

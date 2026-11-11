@@ -6,12 +6,13 @@ import Tam.Commons
 import Tam.Ui
 import "."
 import "Model.js" as Model
+import "ActionQueue.js" as ActionQueue
 
 BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.10"
+  readonly property string pluginVersion: "2.0.11"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -343,7 +344,10 @@ BarWidget {
     return typeof mine === "number" && mine !== state.setDesktop
   }
 
+  Component.onDestruction: ActionQueue.unregister(root)
+
   Component.onCompleted: {
+    ActionQueue.register(root)
     Qt.callLater(root.trackAlignment)
     Qt.callLater(root.probeDpmsState)
     Qt.callLater(root.trackMonitorIdle)
@@ -856,7 +860,45 @@ BarWidget {
     return comp !== null && comp.focusedWorkspaceId === displayId
   }
 
-  property var pendingActions: []
+  property bool lastActionBusy: false
+  property bool lastActionIncomplete: false
+
+  function queueRejected(args) {
+    console.warn("fred.workspaces request incomplete: " + JSON.stringify(args))
+  }
+
+  function desktopIngressOrigin() {
+    var outputs = root.compositorOutputs()
+    for (var i = 0; i < outputs.length; i++) {
+      if (outputs[i] && outputs[i].focused) return String(outputs[i].name)
+    }
+    return ""
+  }
+
+  function startPublication(args) {
+    publicationProcess.command = [root.canonicalHelperPath].concat(args)
+    publicationProcess.running = true
+  }
+
+  Process {
+    id: publicationProcess
+    clearEnvironment: true
+    environment: root.processEnv
+    stderr: SplitParser {
+      onRead: data => console.log(String(data).substring(0, 4096))
+    }
+    onStarted: publicationWatchdog.restart()
+    onExited: function(exitCode, exitStatus) {
+      publicationWatchdog.stop()
+      ActionQueue.published(root, exitCode === 0 && exitStatus === 0)
+    }
+  }
+
+  Timer {
+    id: publicationWatchdog
+    interval: 1500
+    onTriggered: if (publicationProcess.running) publicationProcess.signal(9)
+  }
 
   Process {
     id: actionProcess
@@ -887,7 +929,9 @@ BarWidget {
       // whose directory was missing when it started never watches, so every
       // copy re-reads now, which also arms its watch.
       root.broadcastWorkspaces("reloadStateFiles")
-      root.runNextAction()
+      root.lastActionBusy = exitCode === 75
+      root.lastActionIncomplete = exitCode === 1
+      actionRetryTimer.restart()
     }
   }
 
@@ -908,23 +952,23 @@ BarWidget {
     monitorsFile.reload()
   }
 
+  Timer {
+    id: actionRetryTimer
+    interval: 150
+    onTriggered: root.runNextAction()
+  }
+
   function runNextAction() {
-    if (pendingActions.length === 0) return
-    var nextCmd = pendingActions.shift()
-    actionProcess.command = nextCmd
+    ActionQueue.finished(root, root.lastActionBusy, root.lastActionIncomplete)
+  }
+
+  function startQueuedAction(args) {
+    actionProcess.command = [root.canonicalHelperPath].concat(args)
     actionProcess.running = true
   }
 
   function runDesktopCommand(argsList) {
-    var cmd = [root.canonicalHelperPath].concat(argsList)
-    if (actionProcess.running) {
-      if (pendingActions.length < 5) {
-        pendingActions.push(cmd)
-      }
-    } else {
-      actionProcess.command = cmd
-      actionProcess.running = true
-    }
+    ActionQueue.submit(root, argsList, root.desktopMode === "windows")
   }
 
   function focusWorkspace(id) {

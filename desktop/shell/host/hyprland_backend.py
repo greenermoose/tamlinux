@@ -154,7 +154,7 @@ def _monitor_rule_argv(payload: object) -> list[str]:
     raise commands.CompositorCommandError("monitor-rule")
 
 
-def run(operation: str, payload: object = None) -> subprocess.CompletedProcess[str]:
+def run(operation: str, payload: object = None, *, timeout: float | None = None) -> subprocess.CompletedProcess[str]:
     if operation not in READS and operation not in MUTATIONS:
         raise commands.CompositorCommandError("operation")
     argv = argv_for(operation, payload)
@@ -165,7 +165,7 @@ def run(operation: str, payload: object = None) -> subprocess.CompletedProcess[s
         capture_output=True,
         text=True,
         env=closed_env(),
-        timeout=DEADLINES.get(operation, 2.0),
+        timeout=min(DEADLINES.get(operation, 2.0), timeout) if timeout is not None else DEADLINES.get(operation, 2.0),
         check=False,
     )
     if len(result.stdout) > commands.MONITORS_LIMIT or len(result.stderr) > commands.MONITORS_LIMIT:

@@ -4,6 +4,17 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.11 - Unreleased
+
+- Share ordered click publication across bars, coalesce newer pending clicks
+  and repairs, and keep ingress moving while a compositor worker is busy.
+  Preserve pending work through bar destruction; report queue rejection.
+- Track absent canonical outputs and per-output progress separately. Persist
+  three-attempt and three-second output budgets before IPC; cap each helper's
+  compositor work at three seconds. An explicit retry opens a fresh generation.
+- Keep active-first, focus-preserving placement and independent/split modes.
+  Native package integration and physical acceptance are separate gates.
+
 ## 2.0.10 - Unreleased
 
 - Place the originating output first and repair only mismatched outputs through

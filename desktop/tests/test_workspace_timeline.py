@@ -32,6 +32,7 @@ class WorkspaceTimelineTests(unittest.TestCase):
         }, clear=True))
         # Every backend call is intercepted, and an accidental direct process
         # launch fails the test. Never rely on inherited live-action variables.
+        self.real_run_named = self.engine.run_named
         self.stack.enter_context(patch.object(self.engine, "run_named", side_effect=self.backend))
         self.stack.enter_context(patch.object(subprocess, "run", side_effect=AssertionError("real process")))
         self.stack.enter_context(patch.object(subprocess, "Popen", side_effect=AssertionError("real process")))
@@ -114,7 +115,7 @@ class WorkspaceTimelineTests(unittest.TestCase):
         self.during_batch = lambda: self.active.pop("HP", None)
         self.switch(2)
         self.assertEqual(self.events()[-1]["result"], "partial")
-        self.assertEqual(self.events()[3]["result"], "batch-failed")
+        self.assertEqual(self.events()[3]["result"], "partial")
         self.during_batch = None
         self.active["HP"] = 99
         self.reject = True

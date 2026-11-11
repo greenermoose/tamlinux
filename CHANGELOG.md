@@ -10,7 +10,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 - Add plain text journal entry points: calendar selected-date text actions, Quick Launch, and Meta+Shift+J through a detached floating Micro terminal. No bar slot is added or moved. Requires `tam-journal` from the selected tools package.
 
-- Start active-monitor continuity diagnostics (`fred.workspaces` 2.0.8): timestamp helper switch, placement, power and reconciliation events with wall/monotonic clocks and output context; report incomplete reconciliation instead of success. Add isolated HP removal/return regressions. Active-output repair and physical acceptance remain pending.
+- Develop active-monitor continuity (`fred.workspaces` 2.0.11): place the active output first through a focus-preserving native action, share ordered bar ingress, and persist per-output completion and retry limits. Add emission-time native diagnostics and output attribution while retaining DPMS, idle and disconnect guards. Matching native packages and exact-candidate physical acceptance are required.
 
 - Give `tam-monitor` its own semver (`tam-monitor --version`) and update it to 0.2.0: `tam-monitor console-size` reports and changes the kernel console area, so a larger monitor such as a 2560x1440 one beside 1080p monitors can show the text console full screen (`sudo tam-monitor console-size DP-1`), and `--all` fits every lit monitor again. 0.3.0: `keep` and targeted `blank` sessions fit the console to the lit monitors automatically and restore its size when they end.
 - Update `fred.tamversion` to 0.1.5: read version notes from `TAMLINUX_VERSION_NOTES` (falling back to the active Home Manager profile) and verify the header matches the installed version so stale notes from an earlier version are never shown.

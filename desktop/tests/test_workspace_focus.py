@@ -12,7 +12,7 @@ class WorkspaceFocusTests(unittest.TestCase):
 
     def test_active_output_is_first_without_focus_cycle(self):
         self.switch(2)
-        batch = next(payload for op, payload in self.calls if op == "batch")
+        batch = [step for op, payload in self.calls if op == "batch" for step in payload]
         self.assertEqual(batch, [("select-output-workspace", (5, "ACTIVE")),
                                  ("select-output-workspace", (4, "SIDE")),
                                  ("select-output-workspace", (6, "HP"))])
@@ -73,9 +73,8 @@ class WorkspaceFocusTests(unittest.TestCase):
         self.switch(2)
         self.during_batch = None
         self.calls.clear()
-        self.assertEqual(self.engine.reconcile("output-change"), "reconciled")
+        self.assertEqual(self.engine.reconcile("output-change"), "incomplete: workspace placement")
         self.assertEqual(self.active, {"SIDE": 4, "HP": 6})
         self.assertEqual(self.focus, "SIDE")
-        steps = next(payload for op, payload in self.calls if op == "batch")
-        self.assertEqual(steps, [("select-output-workspace", (4, "SIDE")),
-                                 ("select-output-workspace", (6, "HP"))])
+        self.assertFalse(any(op == "batch" for op, _ in self.calls))
+        self.assertFalse(self.engine.read_desktop_intent()["complete"])

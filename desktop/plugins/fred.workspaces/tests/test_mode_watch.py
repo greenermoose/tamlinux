@@ -47,7 +47,7 @@ class ModeWatchTests(unittest.TestCase):
         action = between('id: actionProcess', 'id: actionWatchdog')
         exited = action[action.index('onExited'):]
         self.assertIn('root.broadcastWorkspaces("reloadStateFiles")', exited)
-        self.assertLess(exited.index('reloadStateFiles'), exited.index('root.runNextAction()'))
+        self.assertLess(exited.index('reloadStateFiles'), exited.index('actionRetryTimer.restart()'))
 
     def test_status_check_re_reads_the_mode_file(self):
         self.assertIn('modeFile.reload()', block(r'id: modeStatusProcess'))

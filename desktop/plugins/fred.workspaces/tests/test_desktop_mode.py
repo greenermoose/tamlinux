@@ -235,8 +235,7 @@ class DispatchTests(unittest.TestCase):
             patch.object(desktop_mode, "atomic_write_state") as write_state,
         ):
             self.assertTrue(desktop_mode.switch_windows(2, self.MONITORS))
-        steps = batch.call_args.args[0]
-        self.assertEqual(steps, [])
+        batch.assert_not_called()
         write_state.assert_called_once_with("desktop-current", "2\n")
 
     def test_aligned_observation_does_not_move_workspaces(self):
@@ -251,8 +250,7 @@ class DispatchTests(unittest.TestCase):
             patch.object(desktop_mode, "atomic_write_state"),
         ):
             self.assertTrue(desktop_mode.switch_windows(2, self.MONITORS))
-        steps = batch.call_args.args[0]
-        self.assertEqual(steps, [])
+        batch.assert_not_called()
 
     def test_place_workspace_names_the_workspace_it_moves(self):
         self.workspaces.return_value = {3: "DP-1"}
@@ -276,8 +274,7 @@ class DispatchTests(unittest.TestCase):
             patch.object(desktop_mode, "atomic_write_state"),
         ):
             self.assertTrue(desktop_mode.switch_windows(5, ["LEFT", "RIGHT"]))
-        steps = batch.call_args.args[0]
-        self.assertEqual(steps, [])
+        batch.assert_not_called()
 
     def test_failed_batch_does_not_advance_current_state(self):
         with (
@@ -286,7 +283,7 @@ class DispatchTests(unittest.TestCase):
             patch.object(
                 desktop_mode,
                 "monitor_snapshot",
-                return_value=({"DP-2": 4, "DP-1": 5, "HDMI-A-1": 6}, "DP-2"),
+                return_value=({"DP-2": 1, "DP-1": 2, "HDMI-A-1": 3}, "DP-2"),
             ),
             patch.object(desktop_mode, "atomic_write_state") as write_state,
         ):
@@ -540,8 +537,7 @@ class ResilienceTests(unittest.TestCase):
         ):
             self.assertTrue(desktop_mode.switch_windows(2, ["DP-2", "HDMI-A-1"]))
 
-        steps = batch.call_args.args[0]
-        self.assertEqual(steps, [])
+        batch.assert_not_called()
         write_state.assert_called_once_with("desktop-current", "2\n")
 
     def test_aligned_realign_leaves_focus_untouched(self):

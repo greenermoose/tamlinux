@@ -1,7 +1,7 @@
 # Native display repair prerequisites
 
 These are **uninstalled development sources**, required together with
-`fred.workspaces` 2.0.10. They do not select a candidate or authorize a native
+`fred.workspaces` 2.0.11. They do not select a candidate or authorize a native
 installation. Keep the existing DPMS, idle-inhibit and connector guards.
 
 | Source | Base | Development head |
@@ -82,16 +82,16 @@ identical file/journal payloads, priorities 3,3,3,6,4, debug filtering, line
 bounds and the 20 ms emission gap. Never mistake those errors for an incident.
 
 On 2026-11-11 the rebuilt Aquamarine library and its fake-backend attachments,
-output and commitThread tests pass. The real-window test was not run. All four
-modified Hyprland translation units pass syntax checks with matching release
-and generated headers; a complete Hyprland package has not been built/linked.
+output and commitThread tests pass. The real-window test was not run. The complete Hyprland 0.56.2-4.2 package now builds and links; its version-only
+entry runs with the staged Aquamarine library. Aquamarine 0.15.1-1.2 builds as
+a package. Frozen recipes and archive verification live in `tamlinux-packages`.
 The final synthetic proof passes its file/priority/envelope checks. Journal
 stream envelope timestamps are not exact per-line emission times: one
 observed delta was approximately −2 microseconds. Use the payload monotonic
 clock for emission ordering; never derive one from an old untimed log.
 
-Before physical acceptance, still require full native package builds and
-recipe integration, remaining bar ingress/retry gates, exact candidate Test
-authority, actual candidate service/helper journal routing, quiet idle and
+Before physical acceptance, require the paired native/user-package integration
+receipt, exact candidate Test authority, actual candidate service/helper
+journal routing, quiet idle and
 the approved Dell continuity matrix. A native installation and any necessary
 logout/login retain their individual approval and rollback requirements.

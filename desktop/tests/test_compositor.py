@@ -308,6 +308,14 @@ class BackendTests(unittest.TestCase):
         run.assert_called_once()
         self.assertEqual(run.call_args.args[0], commands.reload_argv())
 
+    def test_placement_remaining_budget_can_shorten_but_not_extend_backend_timeout(self):
+        completed = subprocess.CompletedProcess([], 0, "[]", "")
+        with patch.object(backend.subprocess, "run", return_value=completed) as run:
+            backend.run("monitors", timeout=0.25)
+            self.assertEqual(run.call_args.kwargs["timeout"], 0.25)
+            backend.run("monitors", timeout=90.0)
+            self.assertEqual(run.call_args.kwargs["timeout"], 2.0)
+
     def test_backend_rejects_unknown_operations(self):
         with self.assertRaises(commands.CompositorCommandError):
             backend.run("dispatch", ["workspace", "1"])

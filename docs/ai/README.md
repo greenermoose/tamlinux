@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-11 — Shared workspace ingress, retry budgets and package gates](2026-11-11-workspace-queue-package-gates.md)
+
 - [2026-11-11 — Focus-preserving workspace repair and native logging](2026-11-11-steady-active-monitor.md)
 
 - [2026-11-10 — Conventional workstation recipe layout](2026-11-10-workstation-recipe-layout.md)
