@@ -117,6 +117,14 @@ def dispatch_focus_workspace_argv(workspace_id: object) -> list[str]:
     return _focus_workspace_dispatch(parse_workspace(workspace_id, public=False))
 
 
+def select_output_workspace_argv(workspace_id: object, output: str) -> list[str]:
+    """Requires the native output-targeted action; never fall back to focus cycling."""
+    number = parse_workspace(workspace_id, public=False)
+    name = require_output(output)
+    return [HYPRCTL, "dispatch",
+            f'hl.dsp.workspace.select({{ workspace = "{number}", monitor = "{name}" }})']
+
+
 def focus_workspace_fallback_argv(workspace_id: object) -> list[str]:
     number = parse_workspace(workspace_id, public=False)
     return [HYPRCTL, "dispatch", "workspace", str(number)]
@@ -317,7 +325,11 @@ def batch_argv(steps: object) -> list[str]:
         if not isinstance(step, tuple) or len(step) != 2:
             raise CompositorCommandError("batch")
         kind, value = step
-        if kind == "focus-workspace":
+        if kind == "select-output-workspace":
+            if not isinstance(value, (tuple, list)) or len(value) != 2:
+                raise CompositorCommandError("batch")
+            expression = _dispatch_expression(select_output_workspace_argv(value[0], value[1]))
+        elif kind == "focus-workspace":
             expression = _dispatch_expression(dispatch_focus_workspace_argv(value))
         elif kind == "focus-output":
             expression = _dispatch_expression(focus_output_argv(value))

@@ -998,9 +998,13 @@ def switch_windows(
     assignments = windows_assignments(desktop, monitors, slots, topology_size)
     timeline_event("placement-start", requested=desktop,
                    assignments=dict(assignments), origin=original_monitor or None)
-    steps = placement_steps(assignments, existing_workspaces())
-    if original_monitor in monitors:
-        steps.append(("focus-output", original_monitor))
+    # Skip aligned outputs. The native action checks the input owner when it
+    # executes; it never borrows focus from another output, even briefly.
+    # The native action creates/assigns/activates only the named workspace.
+    active, _ = monitor_snapshot()
+    assignments.sort(key=lambda item: item[0] != original_monitor)
+    steps = [("select-output-workspace", (ws, mon))
+             for mon, ws in assignments if active.get(mon) != ws]
 
     if intent is not None and not intent_is_current(intent["generation"]):
         timeline_event("superseded", generation=intent["generation"])
@@ -1019,7 +1023,7 @@ def switch_windows(
                 timeline_event("superseded", generation=intent["generation"])
                 return False
             if mon in unmatched:
-                place_workspace(ws, mon)
+                _named_ok("select-output-workspace", [ws, mon])
         active, focused = monitor_snapshot()
         unmatched = [mon for mon, ws in assignments if active.get(mon) != ws]
 
@@ -1065,11 +1069,13 @@ def realign_monitor(
     original_monitor = focused_monitor()
     if intent and not intent_is_current(intent["generation"]):
         return False
-    placed = place_workspace(workspace, monitor)
-    if original_monitor and original_monitor != monitor:
-        dispatch_focus_monitor(original_monitor)
     active, _ = monitor_snapshot()
-    return (placed and active.get(monitor) == workspace and
+    if active.get(monitor) == workspace:
+        placed = True
+    else:
+        _accepted, placed = _named_ok("select-output-workspace", [workspace, monitor])
+    active, focused = monitor_snapshot()
+    return (placed and active.get(monitor) == workspace and focused == original_monitor and
             (intent is None or intent_is_current(intent["generation"])))
 
 
@@ -1235,8 +1241,12 @@ def reconcile(reason: str = "explicit") -> str:
 def _reconcile() -> str:
     monitors, left, right, slots, topology_size, canonical_names = resolve_topology()
     canonical_info = load_canonical_topology()
-    ensure_contiguous_layout(monitors, canonical_info)
     mode = current_mode()
+    # Preserve geometry across known panels' temporary HPD loss/return. Genuine
+    # new connectors retain the existing topology path; fixed slots survive loss.
+    known = {m["output"] for m in canonical_info}
+    if mode != "windows" or not known or any(m not in known for m in monitors):
+        ensure_contiguous_layout(monitors, canonical_info)
     outcome = "reconciled"
     if mode == "windows" and monitors:
         # A panel dropping HPD while the desktop is dark (the HP does this ~7 s

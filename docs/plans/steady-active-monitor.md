@@ -1,9 +1,10 @@
 # Keep the active monitor steady during desktop changes
 
-**Status — 2026-11-10:** Fred approved the implementation plan and physical
-acceptance matrix. Helper diagnostics, persistent latest accepted desktop
-intent and isolated regressions are implemented. Native logger probing is
-recorded; active-output repair and native logging corrections remain.
+**Status — 2026-11-11:** Focus-preserving output-targeted placement and native
+logging corrections are implemented in Develop with isolated verification.
+The Aquamarine library builds and its isolated tests pass; the four modified
+Hyprland translation units pass syntax checks. Complete native package
+builds, candidate service routing and physical continuity remain unproven.
 Proposed for 0.6 reliability work; delivery candidate unassigned. The existing
 0.6.22 Test candidate stays frozen.
 
@@ -333,12 +334,11 @@ buffering and backend error attribution remain open gates.
 
 Next actions:
 
-1. Implement and review focus-preserving output-targeted workspace selection,
-   then active-output-first placement and transient layout/wake gating.
-2. Complete native monotonic emission, bounded severity, prompt file delivery
-   and connector attribution; prove the real backend and helper journal routes.
-3. Prepare the separately reviewable old-log cleanup set. Choose and Test a
-   packaged candidate only after source checks and Fred's instruction.
+1. Finish candidate prerequisites: full Hyprland package build, native recipe
+   integration and the remaining bar ingress-order/completion gates below.
+2. Prepare the separately reviewable old-log cleanup set.
+3. Select a packaged candidate on Fred's instruction, verify its real service
+   logging route and idle behavior, then run the physical continuity matrix.
 
 ### Latest accepted desktop intent (2.0.9)
 
@@ -420,3 +420,66 @@ activation. The ext-workspace activation route calls a monitor directly,
 but creation, assignment and its focus behavior need separate verification
 before choosing it or a narrow native adapter extension. No guessed Lua
 operation or focus-and-restore batch is treated as satisfying this contract.
+
+
+### Focus-preserving placement and native logging (2.0.10)
+
+Windows-mode switch and repair now use a bounded named
+`select-output-workspace` operation. The originating output is ordered first;
+only mismatched outputs receive commands. Side repair has no focus/restore
+fallback. A rejected or unavailable native action leaves the request pending
+and reports partial completion. Known-panel removal and return no longer
+compress or restore geometry; canonical slots and the user's geometry survive
+wake churn. A new connector retains the existing topology path. Independent
+and split modes keep their existing behavior.
+
+The native action resolves an exact monitor and numeric normal workspace
+(1–160), creates or moves that named workspace, and calls the monitor's
+no-pointer/no-focus path for a side output. It refuses to move the keyboard
+owner's active workspace away. The no-focus path no longer releases held
+mouse buttons. If the origin disappears, a later reconciliation adopts the
+surviving compositor focus rather than restoring the absent output.
+
+Native source branches retain the existing DPMS, idle and connector guards:
+
+- Hyprland: `develop/plan54-output-workspace-logging`, head `3b1b3f15`.
+- Aquamarine: `develop/plan54-commit-attribution`, commit `25f5e5d`.
+
+The [native provider contract](../../desktop/native/providers/display/README.md)
+contains the source patches, retirement conditions and reproduction notes.
+These are development corrections, not selected or installed native packages.
+The helper must not be packaged for use without the matching native action.
+
+The common sink emits subsecond wall and CLOCK_MONOTONIC clocks at emission,
+component, severity and PID. Warnings/errors and selected backend transitions
+reach the journal plus promptly flushed `display.log` in the compositor
+instance directory. Existing verbose logging settings and the original
+Hyprland file remain independent. Synchronous commit messages carry output,
+CRTC, connection and frame state; terminal asynchronous worker failures carry
+output, CRTC, commit ID and errno. No scheduling/recovery guard was changed.
+
+Verification: 41 isolated workspace timeline/intent/focus cases, 69 existing
+plugin cases, 24 compositor adapter cases, 35 host/metadata cases and two
+compiled sink cases pass. The widget render passes. Aquamarine builds with
+its existing connector guard and passes attachments, output and commitThread
+(fake-backend tests; the real-window test was not run). All four modified
+Hyprland translation units pass syntax checks; the complete Hyprland package
+has not been built or linked.
+
+The final synthetic proof links the rebuilt Aquamarine library and exercises
+its real logger callback plus the exact common sink. Five payloads match
+between file and journal, with priorities 3,3,3,6,4; debug records are absent.
+The file is readable before logger destruction, records stay below 4096 bytes,
+and the 20 ms backend emission gap is preserved. Boot, PID and journal clock
+fields remain available. One journal envelope preceded its payload emission
+sample by about 2 microseconds, so envelope time is not used as an exact
+per-line emission clock. Payload monotonic clocks determine emission order.
+Flushing establishes reader visibility, not power-loss durability.
+
+This does not establish continuous physical input focus or scanout. The bar
+queue can still drop/coarsely order ingress, and per-output retry/completion
+budgets remain open as recorded above. Actual candidate helper forwarding,
+compositor service routing, ordinary idle overhead and the coordinated
+switch/wake timeline must still pass before physical acceptance. No native
+installation, session restart, display dispatch, old-log deletion or stage
+move occurred in this source slice.

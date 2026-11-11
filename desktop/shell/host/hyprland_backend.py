@@ -23,6 +23,7 @@ READS = frozenset({
     "rollinglog",
 })
 MUTATIONS = frozenset({
+    "select-output-workspace",
     "focus-workspace",
     "focus-workspace-fallback",
     "focus-output",
@@ -93,6 +94,9 @@ def argv_for(operation: str, payload: object) -> list[str]:
         return commands.rollinglog_argv()
     if operation == "reload":
         return commands.reload_argv()
+    if operation == "select-output-workspace":
+        workspace, output = _pair(payload)
+        return commands.select_output_workspace_argv(workspace, output)
     if operation == "focus-workspace":
         return commands.dispatch_focus_workspace_argv(payload)
     if operation == "focus-workspace-fallback":
@@ -179,7 +183,7 @@ def main(argv: list[str]) -> int:
             payload: object = argv[2] if len(argv) > 2 else None
             if operation in READS or operation == "reload":
                 payload = None
-        elif operation in ("dpms", "dpms-fallback", "move-window", "move-window-fallback", "move-workspace-fallback", "monitor-rule"):
+        elif operation in ("select-output-workspace", "dpms", "dpms-fallback", "move-window", "move-window-fallback", "move-workspace-fallback", "monitor-rule"):
             payload = argv[2:]
         else:
             raise commands.CompositorCommandError("operation")

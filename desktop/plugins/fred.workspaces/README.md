@@ -181,3 +181,21 @@ Developed with the assistance of [Antigravity](https://antigravity.google) (Goog
 ## License
 
 GNU General Public License v3.0 (GPL-3.0-or-later). See [LICENSE](LICENSE) for details.
+
+
+### Focus-preserving placement (Develop 2.0.10)
+
+Windows-mode placement uses the named `select-output-workspace` adapter
+operation. The originating output goes first; aligned outputs are skipped.
+Reconciliation and realignment use the same output-targeted action. They
+never focus a side panel and restore focus later. Known panels retain their
+geometry and canonical workspace slots through removal/return; genuinely new
+connectors retain the existing layout path. Other desktop modes keep their
+existing behavior.
+
+This requires the matching native `hl.dsp.workspace.select` extension. The
+helper fails visibly if it is absent; packaging must deliver the native
+correction together with this helper. See the [native source and verification
+contract](../../native/providers/display/README.md). No source checkout is
+an installation path. Physical focus and scanout continuity remain trial
+results, not conclusions from the isolated tests.

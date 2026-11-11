@@ -223,7 +223,7 @@ class DispatchTests(unittest.TestCase):
             self.assertTrue(desktop_mode.dispatch_batch(steps))
         run.assert_called_once_with("batch", steps)
 
-    def test_three_monitor_switch_places_contiguous_set_and_restores_focus(self):
+    def test_aligned_three_monitor_switch_does_not_cycle_focus(self):
         with (
             patch.object(desktop_mode, "focused_monitor", return_value="DP-1"),
             patch.object(desktop_mode, "dispatch_batch", return_value=True) as batch,
@@ -236,14 +236,10 @@ class DispatchTests(unittest.TestCase):
         ):
             self.assertTrue(desktop_mode.switch_windows(2, self.MONITORS))
         steps = batch.call_args.args[0]
-        self.assertIn(("focus-output", "DP-2"), steps)
-        self.assertIn(("focus-workspace", 4), steps)
-        self.assertIn(("focus-workspace", 6), steps)
-        self.assertFalse([step for step in steps if step[0] == "move-workspace"])
-        self.assertEqual(steps[-1], ("focus-output", "DP-1"))
+        self.assertEqual(steps, [])
         write_state.assert_called_once_with("desktop-current", "2\n")
 
-    def test_switch_moves_named_workspaces_never_the_focused_one(self):
+    def test_aligned_observation_does_not_move_workspaces(self):
         # Desktop 2: DP-2 4, DP-1 5, HDMI-A-1 6. Workspace 4 exists on the
         # wrong output, 5 is already home, 6 does not exist yet.
         self.workspaces.return_value = {4: "HDMI-A-1", 5: "DP-1"}
@@ -256,12 +252,7 @@ class DispatchTests(unittest.TestCase):
         ):
             self.assertTrue(desktop_mode.switch_windows(2, self.MONITORS))
         steps = batch.call_args.args[0]
-        self.assertEqual(steps[0], ("move-workspace-to", (4, "DP-2")))
-        self.assertEqual([step for step in steps if step[0].startswith("move-")], [("move-workspace-to", (4, "DP-2"))])
-        for monitor, workspace in (("DP-2", 4), ("DP-1", 5), ("HDMI-A-1", 6)):
-            index = steps.index(("focus-output", monitor))
-            self.assertEqual(steps[index + 1], ("focus-workspace", workspace))
-        self.assertEqual(steps[-1], ("focus-output", "DP-1"))
+        self.assertEqual(steps, [])
 
     def test_place_workspace_names_the_workspace_it_moves(self):
         self.workspaces.return_value = {3: "DP-1"}
@@ -286,8 +277,7 @@ class DispatchTests(unittest.TestCase):
         ):
             self.assertTrue(desktop_mode.switch_windows(5, ["LEFT", "RIGHT"]))
         steps = batch.call_args.args[0]
-        self.assertIn(("focus-workspace", 9), steps)
-        self.assertIn(("focus-workspace", 10), steps)
+        self.assertEqual(steps, [])
 
     def test_failed_batch_does_not_advance_current_state(self):
         with (
@@ -551,12 +541,10 @@ class ResilienceTests(unittest.TestCase):
             self.assertTrue(desktop_mode.switch_windows(2, ["DP-2", "HDMI-A-1"]))
 
         steps = batch.call_args.args[0]
-        self.assertIn(("focus-workspace", 4), steps)
-        self.assertIn(("focus-workspace", 6), steps)
-        self.assertNotIn(("focus-workspace", 5), steps)
+        self.assertEqual(steps, [])
         write_state.assert_called_once_with("desktop-current", "2\n")
 
-    def test_realign_moves_only_the_deviated_monitor(self):
+    def test_aligned_realign_leaves_focus_untouched(self):
         slots = {"DP-2": 0, "DP-1": 1, "HDMI-A-1": 2}
         with (
             patch.object(desktop_mode, "current_mode", return_value="windows"),
@@ -566,8 +554,8 @@ class ResilienceTests(unittest.TestCase):
             patch.object(desktop_mode, "monitor_snapshot", return_value=({"DP-2": 1, "DP-1": 2, "HDMI-A-1": 3}, "DP-1")),
         ):
             self.assertTrue(desktop_mode.realign_monitor("DP-2", 1, list(slots), slots, 3))
-        place.assert_called_once_with(1, "DP-2")
-        refocus.assert_called_once_with("DP-1")
+        place.assert_not_called()
+        refocus.assert_not_called()
 
     def test_realign_refuses_outside_windows_mode(self):
         with patch.object(desktop_mode, "current_mode", return_value="mac"):

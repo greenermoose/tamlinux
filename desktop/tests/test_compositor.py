@@ -184,6 +184,19 @@ class CommandTests(unittest.TestCase):
             ["/usr/bin/hyprctl", "dispatch", "focusmonitor", "DP-2"],
         )
 
+    def test_output_workspace_action_is_bounded_and_has_no_focus_fallback(self):
+        self.assertEqual(commands.select_output_workspace_argv(160, "DP-1"),
+                         ["/usr/bin/hyprctl", "dispatch",
+                          'hl.dsp.workspace.select({ workspace = "160", monitor = "DP-1" })'])
+        for workspace in (0, 161, True, "special:1", "2; exit"):
+            with self.assertRaises(commands.CompositorCommandError):
+                commands.select_output_workspace_argv(workspace, "DP-1")
+        with self.assertRaises(commands.CompositorCommandError):
+            commands.select_output_workspace_argv(5, 'DP-1";exit')
+        self.assertEqual(commands.batch_argv([("select-output-workspace", (6, "HDMI-A-1"))]),
+                         ["/usr/bin/hyprctl", "--batch",
+                          'dispatch hl.dsp.workspace.select({ workspace = "6", monitor = "HDMI-A-1" })'])
+
     def test_batch_is_built_from_named_steps(self):
         argv = commands.batch_argv([
             ("focus-output", "DP-2"),
@@ -257,6 +270,16 @@ class CommandTests(unittest.TestCase):
 
 
 class BackendTests(unittest.TestCase):
+    def test_output_targeted_action_records_without_touching_a_compositor(self):
+        with patch.dict(os.environ, {}, clear=True), patch.object(subprocess, "run") as run:
+            result = backend.run("select-output-workspace", [5, "DP-1"])
+        self.assertEqual(result.stdout, "recorded\n")
+        run.assert_not_called()
+        self.assertEqual(backend.argv_for("select-output-workspace", [5, "DP-1"]),
+                         commands.select_output_workspace_argv(5, "DP-1"))
+        with self.assertRaises(commands.CompositorCommandError):
+            backend.argv_for("select-output-workspace", [True, "DP-1"])
+
     def test_reads_run_and_mutations_record(self):
         recorded = subprocess.CompletedProcess(["/usr/bin/hyprctl"], 0, "{}\n", "")
         env = os.environ.copy()

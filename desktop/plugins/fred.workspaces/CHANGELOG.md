@@ -4,6 +4,16 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.10 - Unreleased
+
+- Place the originating output first and repair only mismatched outputs through
+  the native output-targeted workspace action. Side repair never cycles or
+  restores focus; an unavailable action reports incomplete work.
+- Preserve geometry across known-panel removal/return. Keep canonical slots
+  and independent/split modes, with existing handling for new connectors.
+- Requires the matching native action and logging correction; this source
+  version is not installed and does not establish physical continuity.
+
 ## 2.0.9 - Unreleased
 
 - Persist the latest accepted Windows-mode desktop intent before waiting for

@@ -1,0 +1,97 @@
+# Native display repair prerequisites
+
+These are **uninstalled development sources**, required together with
+`fred.workspaces` 2.0.10. They do not select a candidate or authorize a native
+installation. Keep the existing DPMS, idle-inhibit and connector guards.
+
+| Source | Base | Development head |
+| --- | --- | --- |
+| [Hyprland](https://github.com/greenermoose/Hyprland/tree/develop/plan54-output-workspace-logging) | v0.56.2-fred.3 | 3b1b3f15 |
+| [Aquamarine](https://github.com/greenermoose/aquamarine/tree/develop/plan54-commit-attribution) | v0.15.1-fred.1 | 25f5e5d |
+
+The forks are the source of truth. The adjacent source-only patches reproduce
+these changes on their carried package bases. `DisplayLog.hpp` is an exact
+copy of the tested native sink; a regression checks that the patch embeds
+that same header. Export the patches into the native package registry and
+frozen recipes during candidate preparation; do not install a checkout or
+replace the existing package pin without that procedure.
+
+## Workspace action
+
+`hl.dsp.workspace.select({workspace="5", monitor="DP-1"})` returns the usual
+native dispatcher result table. It accepts normal numeric workspace IDs
+1–160 and an exact existing output name. It creates/assigns that workspace
+before activating it. A side output uses `changeWorkspace` with no mouse
+movement and no focus change; that path also leaves held mouse buttons alone.
+Moving the focused output's currently active workspace away is rejected.
+There is no focus-and-restore fallback. Output loss is a failure, not proof
+of physical completion. Native workspace-selected events record the observed
+input-output preservation result. The exported CLogger data layout stays
+unchanged for existing native plugins.
+
+Retire this local action when upstream provides equivalent bounded,
+output-targeted activation without borrowing focus or moving the pointer.
+
+## Native logging
+
+Warnings/errors from the compositor and the actual Aquamarine callback use
+one emission sink. A small allowlist also retains connector transitions,
+output disable and modeset events. Frame, cursor, input and other debug/trace
+records do not enter this production sink. Existing verbose logging controls
+and the original Hyprland file retain their separate native behavior.
+
+Each bounded single-line payload contains wall-clock and CLOCK_MONOTONIC
+nanoseconds, component, numeric syslog severity and PID. Clock samples are
+emission-time observations, not claims of nanosecond hardware accuracy.
+The journal stream consumes `<priority>` prefixes. The same payload is
+appended to `display.log` in the compositor instance directory and flushed
+immediately. This makes it visible to readers; it is not an fsync guarantee.
+File open rejects symlinks/nonregular files, and sink failure reports to stderr.
+
+Synchronous commit records add output, CRTC, connector status, in-flight
+state and test flag at the emitting site. Terminal commit failures also
+record relevant commit properties. Asynchronous worker failures carry output,
+CRTC, commit ID and errno in both result-drain paths. `crtc=0` or an `unknown`
+output means the identity was unavailable. Unsupported async capabilities and
+cancellation remain their existing control paths, not synthetic GPU failures.
+No frame scheduling, cancellation or recovery decisions were changed.
+
+Retire the native logging changes when upstream provides equivalent
+attribution, emission clocks, filtering and prompt journal/file visibility.
+
+## Verification
+
+Run the isolated product regressions from the product root:
+
+```sh
+python3 -B -m unittest discover -s desktop/tests -p 'test_workspace_*.py' -q
+python3 -B -m unittest discover -s desktop/tests -p test_native_display_logging.py -q
+python3 -B -m unittest discover -s desktop/tests -p test_compositor.py -q
+python3 -B -m unittest discover -s desktop/plugins/fred.workspaces/tests -q
+desktop/widget-proof fred.workspaces
+```
+
+The native proof is `desktop/proofs/native-display-logging.cpp`. Build it with
+C++23, the matching Aquamarine private logger header, pixman/libdrm include
+flags, and the rebuilt `aquamarine` plus `hyprutils` libraries. It instantiates
+the actual Aquamarine logger and this exact sink, never a backend, DRM device
+or compositor. All error records are explicitly synthetic. Run with a new
+scratch file; optionally route through `systemd-cat --level-prefix=yes` under
+a distinct proof identifier. Check file visibility before logger destruction,
+identical file/journal payloads, priorities 3,3,3,6,4, debug filtering, line
+bounds and the 20 ms emission gap. Never mistake those errors for an incident.
+
+On 2026-11-11 the rebuilt Aquamarine library and its fake-backend attachments,
+output and commitThread tests pass. The real-window test was not run. All four
+modified Hyprland translation units pass syntax checks with matching release
+and generated headers; a complete Hyprland package has not been built/linked.
+The final synthetic proof passes its file/priority/envelope checks. Journal
+stream envelope timestamps are not exact per-line emission times: one
+observed delta was approximately −2 microseconds. Use the payload monotonic
+clock for emission ordering; never derive one from an old untimed log.
+
+Before physical acceptance, still require full native package builds and
+recipe integration, remaining bar ingress/retry gates, exact candidate Test
+authority, actual candidate service/helper journal routing, quiet idle and
+the approved Dell continuity matrix. A native installation and any necessary
+logout/login retain their individual approval and rollback requirements.

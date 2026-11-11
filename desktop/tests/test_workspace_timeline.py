@@ -68,12 +68,22 @@ class WorkspaceTimelineTests(unittest.TestCase):
             if self.reject:
                 return subprocess.CompletedProcess([], 1, "", "disconnected")
             for step, argument in payload:
-                if step == "focus-output":
+                if step == "select-output-workspace":
+                    workspace, monitor = argument
+                    if monitor not in self.active:
+                        return subprocess.CompletedProcess([], 1, "", "disconnected")
+                    self.active[monitor] = workspace
+                elif step == "focus-output":
                     if argument not in self.active:
                         return subprocess.CompletedProcess([], 1, "", "disconnected")
                     self.focus = argument
                 elif step == "focus-workspace":
                     self.active[self.focus] = argument
+        elif operation == "select-output-workspace":
+            workspace, monitor = payload
+            if self.reject or monitor not in self.active:
+                return subprocess.CompletedProcess([], 1, "", "disconnected")
+            self.active[monitor] = workspace
         elif operation == "focus-output":
             self.focus = payload
         elif operation not in ("dpms", "dpms-fallback"):
