@@ -45,10 +45,12 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import time
 import tempfile
+import tarfile
 import uuid
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
@@ -269,6 +271,7 @@ class Deployment:
         self.selection_file = data / "tamlinux/deployment-selection.json"
         self.system = os.environ.get("TAMLINUX_NIX_SYSTEM", os.uname().machine + "-linux")
         self._outputs = {}
+        self._bundle_deliveries = {}
 
     # Records -----------------------------------------------------------
 
@@ -432,6 +435,9 @@ class Deployment:
 
     def components(self, revision: str) -> dict[str, str]:
         """Tamlinux component revisions pinned by an assembly's lock file."""
+        bundle = self.bundle_delivery(revision)
+        if bundle is not None:
+            return dict(bundle['components'])
         lock = json.loads(self.git("tamlinux-packages", "show", f"{revision}:flake.lock"))
         pins = {}
         for node in lock["nodes"].values():
@@ -441,6 +447,170 @@ class Deployment:
         if "tamlinux" not in pins:
             raise DeploymentError(f"assembly {revision[:12]} does not pin tamlinux")
         return pins
+
+    def bundle_delivery(self, revision: str) -> dict | None:
+        cache = getattr(self, '_bundle_deliveries', {})
+        if revision in cache:
+            return cache[revision]
+        repository = self.repo('tamlinux-packages')
+        def read_field(path, limit, source_revision=revision):
+            object_name = source_revision + ':' + path
+            size = subprocess.run(['git', '-C', str(repository), 'cat-file', '-s', object_name],
+                                  text=True, capture_output=True)
+            if size.returncode:
+                return None
+            if not size.stdout.strip().isdigit() or int(size.stdout.strip()) > limit:
+                raise DeploymentError('delivery metadata exceeds its size limit')
+            return subprocess.check_output(['git', '-C', str(repository), 'show', object_name],
+                                           text=True, stderr=subprocess.PIPE).strip()
+        version = read_field('VERSION', 128)
+        text = None
+        if version and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
+            text = read_field('deliveries/tamlinux-' + version + '.json', 1024 * 1024)
+        if text is None:
+            cache[revision] = None
+            self._bundle_deliveries = cache
+            return None
+        if len(text) > 1024 * 1024:
+            raise DeploymentError('delivery record exceeds its metadata limit')
+        def unique(pairs):
+            value = {}
+            for name, item in pairs:
+                if name in value:
+                    raise DeploymentError('repeated delivery field: ' + name)
+                value[name] = item
+            return value
+        value = json.loads(text, object_pairs_hook=unique)
+        if not isinstance(value, dict):
+            raise DeploymentError('delivery record must be an object')
+        if value.get('backend') in (None, 'nix'):
+            cache[revision] = None
+            self._bundle_deliveries = cache
+            return None
+        fields = {'format', 'backend', 'version', 'recipeAssembly', 'components',
+                  'rootstock', 'minimumTool', 'artifact'}
+        if (set(value) != fields or type(value['format']) is not int or value['format'] != 1 or
+                value['backend'] != 'tam-bundle' or value['version'] != version or
+                value['rootstock'] != 'arch-systemd' or
+                not isinstance(value['recipeAssembly'], str) or
+                not re.fullmatch(r'[0-9a-f]{40}', value['recipeAssembly']) or
+                not isinstance(value['minimumTool'], str) or
+                not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', value['minimumTool'])):
+            raise DeploymentError('unsupported bundle delivery record')
+        pins = value['components']
+        if not isinstance(pins, dict) or 'tamlinux' not in pins or any(
+                not re.fullmatch(r'[a-z0-9][a-z0-9-]*', name) or
+                not isinstance(commit, str) or not re.fullmatch(r'[0-9a-f]{40}', commit)
+                for name, commit in pins.items()):
+            raise DeploymentError('invalid bundle component revisions')
+        artifact = value['artifact']
+        if (not isinstance(artifact, dict) or
+                set(artifact) != {'name', 'sha256', 'bundleHash', 'bundleId'} or
+                not all(isinstance(item, str) for item in artifact.values()) or
+                not re.fullmatch(r'[0-9a-f]{64}', artifact['sha256']) or
+                not re.fullmatch(r'sha256:[0-9a-f]{64}', artifact['bundleHash'])):
+            raise DeploymentError('invalid bundle artifact identity')
+        expected = 'tamlinux-' + version + '-' + artifact['bundleHash'][7:19]
+        if artifact['bundleId'] != expected or artifact['name'] != expected + '.tbundle':
+            raise DeploymentError('bundle name differs from its recorded identity')
+        result = subprocess.run(['git', '-C', str(self.repo('tamlinux-packages')),
+                                 'merge-base', '--is-ancestor', value['recipeAssembly'], revision],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        if result.returncode:
+            raise DeploymentError('frozen recipe is outside the delivery history')
+        if read_field('VERSION', 128, value['recipeAssembly']) != version:
+            raise DeploymentError('delivery version differs from the frozen recipe')
+        lock = read_field('recipes/workstation/tamlinux.lock', 1024 * 1024,
+                          value['recipeAssembly'])
+        if lock is None:
+            raise DeploymentError('frozen bundle recipe lock is missing')
+        lines = lock.splitlines()
+        actual = {}
+        if not lines or lines[0] != 'format 1':
+            raise DeploymentError('unsupported frozen bundle recipe lock')
+        for line in lines[1:]:
+            if not line.strip() or line.lstrip().startswith('#'):
+                continue
+            entry = line.split()
+            if len(entry) != 4 or entry[0] != 'component' or entry[1] in actual:
+                raise DeploymentError('invalid frozen bundle recipe lock')
+            actual[entry[1]] = entry[3]
+        if actual != pins:
+            raise DeploymentError('delivery components differ from the frozen recipe')
+        cache[revision] = value
+        self._bundle_deliveries = cache
+        return value
+
+    def bundle_command(self, *arguments: str) -> str:
+        return command('/usr/bin/tam-bundle', *map(str, arguments), capture=True)
+
+    def bundle_artifact(self, delivery: dict) -> Path:
+        cache = Path(os.environ.get('XDG_CACHE_HOME', self.home / '.cache'))
+        archive = cache / 'tamlinux/bundles' / (delivery['artifact']['sha256'] + '.tbundle')
+        fd = os.open(archive, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                raise DeploymentError('cached bundle must be a regular archive')
+            actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+            if actual != delivery['artifact']['sha256']:
+                raise DeploymentError('cached bundle bytes differ from the frozen delivery')
+            self.bundle_command('verify', str(archive))
+            stream.seek(0)
+            text = None
+            with tarfile.open(fileobj=stream, mode='r|*') as packed:
+                for entry in packed:
+                    if entry.name == 'capture' or entry.name.startswith('capture/'):
+                        raise DeploymentError('public delivery contains a private settings capture')
+                    if entry.name != 'BUNDLE':
+                        continue
+                    if text is not None or not entry.isfile() or entry.size > 1024 * 1024:
+                        raise DeploymentError('invalid carried bundle metadata')
+                    text = packed.extractfile(entry).read().decode('utf-8')
+            if text is None:
+                raise DeploymentError('carried bundle metadata is missing')
+            after = os.fstat(stream.fileno())
+            named = archive.stat(follow_symlinks=False)
+            identity = lambda item: (item.st_dev, item.st_ino, item.st_size, item.st_ctime_ns)
+            if identity(before) != identity(after) or identity(before) != identity(named):
+                raise DeploymentError('cached bundle changed during verification')
+        values = {}
+        sources = {}
+        for line in text.splitlines():
+            name, separator, item = line.partition(' ')
+            if not separator:
+                raise DeploymentError('invalid carried bundle record')
+            if name == 'source':
+                component, commit = item.split()
+                if component in sources:
+                    raise DeploymentError('repeated carried component')
+                sources[component] = commit
+            elif name in ('name', 'version', 'hash'):
+                if name in values:
+                    raise DeploymentError('repeated carried bundle identity')
+                values[name] = item
+        if (values != {'name': 'tamlinux', 'version': delivery['version'],
+                       'hash': delivery['artifact']['bundleHash']} or
+                sources != dict(delivery['components'], packaging=delivery['recipeAssembly'])):
+            raise DeploymentError('carried bundle differs from the selected assembly')
+        return archive
+
+    def preflight_bundle(self, revision: str, delivery: dict) -> None:
+        self.check_clean()
+        baseline = self.require_consistent()
+        text = self.bundle_command('--version')
+        found = re.fullmatch(r'tam-bundle ([0-9]+\.[0-9]+\.[0-9]+) \(record format 2\)', text)
+        if not found or int(command('/usr/bin/vercmp', found[1], delivery['minimumTool'], capture=True)) < 0:
+            raise DeploymentError('this delivery requires tam-bundle >= ' + delivery['minimumTool'])
+        archive = self.bundle_artifact(delivery)
+        self.bundle_command('needs', str(archive))
+        self._prepared_bundle_report = {
+            'backend': 'tam-bundle', 'assembly': revision, 'version': delivery['version'],
+            'recipeAssembly': delivery['recipeAssembly'], 'bundleId': delivery['artifact']['bundleId'],
+            'artifact': str(archive), 'artifactSha256': delivery['artifact']['sha256'],
+            'baselineGeneration': baseline['profileGeneration'],
+            'baselineAssembly': baseline['assembly'],
+        }
 
     def require_on(self, branch: str, revision: str, pins: dict[str, str]) -> None:
         if not self.on_branch("tamlinux-packages", revision, branch):
@@ -514,6 +684,11 @@ class Deployment:
                 'operator': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
 
     def preflight(self, revision: str | None = None) -> None:
+        if revision is not None:
+            bundle = self.bundle_delivery(revision)
+            if bundle is not None:
+                self.preflight_bundle(revision, bundle)
+                return
         self.check_clean()
         if self.transaction_file.exists():
             transaction = json.loads(self.transaction_file.read_text())
@@ -1039,6 +1214,8 @@ class Deployment:
     def install(self, revision: str, pins: dict[str, str], stage: str) -> tuple[str, str]:
         """Pin, switch and verify an assembly; on failure restore the lock
         and the previous generation. Returns (previous generation, previous pin)."""
+        if self.bundle_delivery(revision) is not None:
+            raise DeploymentError('bundle activation integration is incomplete')
         self._phase_times = {}
         self.check_requested_baseline()
         install_started = time.monotonic()
@@ -1142,6 +1319,8 @@ class Deployment:
         if attempt.exists():
             raise DeploymentError(f"review the previous first-install attempt before retrying: {attempt}")
         revision = self.resolve(ref or self.locked())
+        if self.bundle_delivery(revision) is not None:
+            raise DeploymentError('bundle activation integration is incomplete')
         pins = self.components(revision)
         self.require_on("test" if test else "main", revision, pins)
         pin_path = self.pin_path
@@ -1422,7 +1601,10 @@ def main(argv: list[str]) -> int:
         with lock:
             getattr(deployment, name)(*args, **options)
             if name == 'preflight':
-                print(json.dumps({'generation': deployment._prepared_generation,
+                if hasattr(deployment, '_prepared_bundle_report'):
+                    print(json.dumps(deployment._prepared_bundle_report))
+                else:
+                    print(json.dumps({'generation': deployment._prepared_generation,
                                   'baselineGeneration': deployment.read_state()['generation'],
                                   'conflicts': getattr(deployment, '_prepared_conflicts', [])}))
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError, DeploymentError) as exc:

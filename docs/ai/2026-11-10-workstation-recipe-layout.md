@@ -44,3 +44,19 @@ Staged service launch wrappers use the lightweight system barrier.
 The native product build, menu checks, three isolated entry tests and
 four product staging tests passed using a temporary library prefix.
 This verifies source behavior. Real login and display acceptance remain.
+
+## Bundle delivery discovery and preflight
+
+The delivery draft reads a bounded, duplicate-free record from the exact
+assembly commit. It checks the frozen recipe's ancestry, version and
+component pins, then verifies the cached archive's bytes, carried identity
+and native runtime requirements. Private settings captures are refused in
+public delivery records. Read-only preflight invokes no Nix build,
+privileged preparation or live activation.
+
+All 121 deployment tests passed, including the existing Nix activation and
+recovery fixtures. Five bundle fixtures cover source agreement, metadata
+bounds, tool minimums and exact-archive preflight. The runtime refusal case
+was also checked after that combined run. These are isolated fixture tests.
+Bundle install/init explicitly refuse while migration activation is still
+incomplete; the existing Nix path continues unchanged.
