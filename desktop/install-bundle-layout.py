@@ -124,7 +124,8 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     for unit in sorted(units.iterdir()):
         unit.write_text(unit.read_text().replace("/usr/share/tamlinux", SHARE))
     commands = usr / "bin"
-    (commands / "hi").unlink()
+    for name in ("hi", "tam-nut"):
+        (commands / name).unlink()
     for name in ("start", "suspend-unless-stay-awake"):
         (commands / name).rename(commands / f"tam-{name}")
     render_commands(commands)

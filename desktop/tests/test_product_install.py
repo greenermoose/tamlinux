@@ -24,7 +24,7 @@ class ProductInstall(unittest.TestCase):
             command = stage / "usr/bin/tam-shell"
             command.write_bytes((SOURCE / "commands/tam-shell/tam-shell").read_bytes())
             command.chmod(0o755)
-            for name in ("hi", "start", "suspend-unless-stay-awake"):
+            for name in ("hi", "start", "suspend-unless-stay-awake", "tam-nut"):
                 original = stage / "usr/bin" / name
                 original.write_text("#!/bin/sh\n")
                 original.chmod(0o755)
@@ -32,7 +32,7 @@ class ProductInstall(unittest.TestCase):
             current = stage / "usr/lib/tamlinux/current"
             self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
-            for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session"):
+            for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session", "tam-nut"):
                 self.assertFalse((stage / "usr/bin" / name).exists(), name)
             self.assertTrue(os.access(stage / "usr/bin/tam-start", os.X_OK))
             self.assertTrue(os.access(stage / "usr/bin/tam-suspend-unless-stay-awake", os.X_OK))
