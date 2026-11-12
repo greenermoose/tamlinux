@@ -29,6 +29,10 @@ queue and retry cases; 69 plugin cases; 25 compositor adapter cases; 35
 host/metadata cases; the workspace widget render. Native package and Nix
 integration results are recorded by the delivery repository.
 
+The full exact-source desktop suite passes: 872 tests, 14 skipped. The first
+archive-only runner lacked Git metadata required by existing tests; rerun
+with isolated test metadata and the catalog correction passes.
+
 The broad integration suite also exposed the journal Quick note shortcut
 missing from the binding catalog; its matching command/rationale row is added.
 

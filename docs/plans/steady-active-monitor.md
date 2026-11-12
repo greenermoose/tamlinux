@@ -3,9 +3,8 @@
 **Status — 2026-11-11:** Focus-preserving placement, shared bar ingress and
 persisted per-output retry/completion gates are implemented in Develop.
 Complete Arch packages now build for Hyprland 0.56.2-4.2 and Aquamarine
-0.15.1-1.2, retaining the existing DPMS/idle/connector guards. Package
-integration is being verified; service routing and physical continuity
-remain exact-candidate Test gates. Delivery candidate unassigned; the
+0.15.1-1.2, retaining the existing DPMS/idle/connector guards. Native/user-package integration passes against exact committed sources;
+service routing and physical continuity remain exact-candidate Test gates. Delivery candidate unassigned; the
 existing 0.6.22 Test candidate stays frozen.
 
 ## User problem and required result
@@ -511,10 +510,17 @@ and intentional split modes keep their existing behavior. A side failure
 does not prevent another output's progress or undo the active desktop.
 
 Verification: 57 isolated workspace cases, 69 existing plugin cases, 25
-adapter cases, 35 host/metadata cases and the widget render pass. Full native
+adapter cases, 35 host/metadata cases and the widget render pass. The full desktop suite
+passes 872 tests (14 skipped) from source `ea21f86`. Full native
 packages link, and the three Aquamarine fake-backend tests pass. Exact native
 archives/recipe hashes and user-package correspondence belong to the
 [delivery integration procedure](https://github.com/greenermoose/tamlinux-packages/blob/develop/docs/display-integration.md).
+The package integration uses product `ea21f86`, delivery recipe `9a309a9`,
+libtam `67cffd5` and tools `b92c4f5`, without changing frozen candidate pins.
+The shell, plugin and standalone helper packages match the selected source;
+both packaged entry points share temporary intent in a smoke test without
+compositor IPC. The exact tools sources also pass their full Arch host suite
+with private PID/mount guards.
 No source trial is installed. The remaining physical gates are actual helper
 and compositor service journal routing, quiet idle, genuine hotplug,
 independent/split behavior and the approved Dell matrix after an exact Test.
