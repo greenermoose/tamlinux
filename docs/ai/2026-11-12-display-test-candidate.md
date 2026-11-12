@@ -5,7 +5,7 @@
 - **Model:** `gpt-6.1-sol`
 - **Transcript:** Retained privately by the author.
 - **Prompt:** (private plan number redacted)
-  > For [redacted: private plan] , select an exact Test candidate and prepare the approved native installation and Dell trial.
+  > For [redacted: private plan], select an exact Test candidate and prepare the approved native installation and Dell trial.
 
 Select the committed Develop tree at `4862cb5a2737a218e44e5ba43acad3590b5452fa`
 for candidate 0.6.23, with only the candidate version and this provenance added.
