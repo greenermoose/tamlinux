@@ -1,11 +1,15 @@
 # Keep the active monitor steady during desktop changes
 
-**Status — 2026-11-11:** Focus-preserving placement, shared bar ingress and
+**Status — 2026-11-12:** Focus-preserving placement, shared bar ingress and
 persisted per-output retry/completion gates are implemented in Develop.
 Complete Arch packages now build for Hyprland 0.56.2-4.2 and Aquamarine
 0.15.1-1.2, retaining the existing DPMS/idle/connector guards. Native/user-package integration passes against exact committed sources;
-service routing and physical continuity remain exact-candidate Test gates. Delivery candidate unassigned; the
-existing 0.6.22 Test candidate stays frozen.
+service routing and physical continuity remain exact-candidate Test gates.
+Candidate **0.6.23** is prepared: product `98806d0`, assembly `c83ca13`.
+Its final native/user correspondence, ten assembly builds, 301 desktop units
+and 194 delivery tests pass. The isolated consumer and recovery validators
+pass. Test authority, native installation and session re-entry remain pending;
+the existing 0.6.22 Test installation stays unchanged.
 
 ## User problem and required result
 

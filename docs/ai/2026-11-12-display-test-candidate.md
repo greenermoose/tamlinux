@@ -19,3 +19,9 @@ archives to these user packages. Native installation and session re-entry
 remain separate approvals. Runtime logging, quiet idle and the physical
 continuity matrix remain acceptance gates. Test, Run and Release have not
 been performed by this selection.
+
+The selected source is `98806d0f9b387b13c93b2083fc5046c86262baa5`, delivered
+by prepared assembly `c83ca1380aedf6f9d2e0f8cd7aad5d16aab87429`. The ten
+assembly outputs, 301 frozen desktop units, 194 assembly tests and final
+native/user correspondence pass. Consumer/recovery validation also passes.
+This later handoff documentation does not change the selected source.
