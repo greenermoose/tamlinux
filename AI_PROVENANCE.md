@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) records the uninstalled first bundle delivery integration: durable home-link conversion and exact saved-Nix recovery. [Record](docs/ai/2026-11-11-bundle-delivery-integration.md).
+
 2026-11-11: Codex CLI `0.167.0` (`gpt-6.1-sol`) implements focus-preserving
 workspace placement and native display logging corrections, with isolated
 native verification. [Record](docs/ai/2026-11-11-steady-active-monitor.md).
