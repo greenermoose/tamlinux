@@ -52,6 +52,7 @@ import time
 import tempfile
 import tarfile
 import uuid
+import shutil
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
@@ -234,6 +235,223 @@ def find_config_repo(home: Path) -> Path:
     return matches[0]
 
 
+class HomeLinkMigration:
+    """Convert exact generation links, retaining a private resumable undo.
+
+    Call only with the desktop stopped. Home Manager must not activate
+    while converted paths are live. Replacements use same-filesystem renames.
+    """
+    def __init__(self, home: Path, directory: Path):
+        self.home, self.directory = home, directory
+        self.record = directory / 'links.json'
+
+    @staticmethod
+    def sync(path: Path) -> None:
+        fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def parent(self, relative: str) -> Path:
+        if (not LIVE_PATH_RE.fullmatch(relative) or
+                any(p in ('.', '..') for p in relative.split('/'))):
+            raise DeploymentError('invalid migration path')
+        path = self.home
+        for part in relative.split('/')[:-1]:
+            path = path / part
+            if not stat.S_ISDIR(path.lstat().st_mode):
+                raise DeploymentError('migration parent is not a real directory: ' + str(path))
+        return path
+
+    @staticmethod
+    def expected_link(path: Path, generation: Path, relative: str) -> bool:
+        if not path.is_symlink():
+            return False
+        named = os.path.normpath(os.path.join(path.parent, os.readlink(path)))
+        return named in (str(generation / 'home-files' / relative),
+                         str((generation / 'home-files').resolve() / relative))
+
+    def plan(self, generation: Path, settings: list[str], retire: list[str]) -> dict:
+        if self.record.exists():
+            raise DeploymentError('Home Manager migration already recorded')
+        entries = []
+        files = generation / 'home-files'
+        for directory, dirs, names in os.walk(files, followlinks=False):
+            dirs.sort(); names.sort()
+            for name in list(dirs) + names:
+                expected = Path(directory) / name
+                if not expected.is_symlink() and expected.is_dir():
+                    continue
+                relative = expected.relative_to(files).as_posix()
+                materialize = any(relative == p.rstrip('/') or
+                    relative.startswith(p.rstrip('/') + '/') or
+                    p.rstrip('/').startswith(relative + '/') for p in settings)
+                remove = relative in retire
+                if not materialize and not remove:
+                    continue
+                self.parent(relative)
+                path = self.home / relative
+                if not self.expected_link(path, generation, relative):
+                    raise DeploymentError('home endpoint differs from saved generation: ' + relative)
+                entries.append({'path': relative, 'link': os.readlink(path),
+                                'action': 'copy' if materialize else 'retire'})
+        return {'format': 1, 'generation': str(generation), 'entries': entries}
+
+    def create(self, plan: dict) -> None:
+        self.directory.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        temporary = Path(tempfile.mkdtemp(prefix='.links-', dir=self.directory.parent))
+        try:
+            for name in ('original', 'staged', 'returned'):
+                (temporary / name).mkdir(mode=0o700)
+            atomic_json(temporary / 'links.json', plan)
+            if os.path.lexists(self.directory):
+                raise DeploymentError('migration directory already exists')
+            os.rename(temporary, self.directory)
+            self.sync(self.directory.parent)
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+
+    def read(self) -> dict:
+        if self.directory.is_symlink() or self.record.is_symlink():
+            raise DeploymentError('linked migration state refused')
+        if self.record.stat().st_size > 4 * 1024 * 1024:
+            raise DeploymentError('migration state exceeds limit')
+        value = json.loads(self.record.read_text())
+        if value.get('format') != 1 or not isinstance(value.get('entries'), list):
+            raise DeploymentError('invalid migration record')
+        seen = set()
+        for entry in value['entries']:
+            if (not isinstance(entry, dict) or entry.get('action') not in ('copy', 'retire', 'regenerate')
+                    or not isinstance(entry.get('path'), str) or entry['path'] in seen
+                    or not isinstance(entry.get('link'), str)):
+                raise DeploymentError('invalid migration entry')
+            self.parent(entry['path'])
+            seen.add(entry['path'])
+        return value
+
+    def copy(self, source: Path, target: Path, ancestors=(), budget=None) -> None:
+        budget = budget if budget is not None else [0, 0]
+        source = source.resolve(strict=True)
+        before = source.stat()
+        identity = (before.st_dev, before.st_ino)
+        if identity in ancestors:
+            raise DeploymentError('cycle in generation settings')
+        budget[0] += 1
+        if budget[0] > 16384:
+            raise DeploymentError('too many migration files')
+        if stat.S_ISDIR(before.st_mode):
+            target.mkdir(mode=0o700)
+            for child in sorted(source.iterdir()):
+                self.copy(child, target / child.name, ancestors + (identity,), budget)
+            target.chmod((before.st_mode & 0o777) | 0o700)
+            self.sync(target)
+            after = source.stat()
+            if (before.st_mtime_ns, before.st_ctime_ns) != (after.st_mtime_ns, after.st_ctime_ns):
+                raise DeploymentError('settings directory changed during migration copy')
+        elif stat.S_ISREG(before.st_mode):
+            if before.st_size > 16 * 1024 * 1024:
+                raise DeploymentError('migration file exceeds limit')
+            budget[1] += before.st_size
+            if budget[1] > 256 * 1024 * 1024:
+                raise DeploymentError('migration contents exceed limit')
+            fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+            with os.fdopen(fd, 'rb') as incoming, target.open('xb') as outgoing:
+                opened = os.fstat(incoming.fileno())
+                if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != identity:
+                    raise DeploymentError('settings changed before migration read')
+                copied = 0
+                while block := incoming.read(1024 * 1024):
+                    copied += len(block)
+                    if copied > 16 * 1024 * 1024 or copied > before.st_size:
+                        raise DeploymentError('settings grew during migration copy')
+                    outgoing.write(block)
+                os.fchmod(outgoing.fileno(), (before.st_mode & 0o777) | 0o200)
+                outgoing.flush(); os.fsync(outgoing.fileno())
+            after = source.stat()
+            if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
+                    after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                raise DeploymentError('settings changed during migration copy')
+        else:
+            raise DeploymentError('special file in generation settings')
+
+    @staticmethod
+    def identity(path: Path) -> list[int]:
+        info = path.lstat()
+        return [info.st_dev, info.st_ino]
+
+    def apply(self, only: str | None = None) -> None:
+        value = self.read()
+        if value.get('restored'):
+            raise DeploymentError('migration was already returned to Nix')
+        if value.get('complete'):
+            return
+        for index, entry in enumerate(value['entries']):
+            if entry.get('done') or (only and entry['action'] != only):
+                continue
+            path = self.home / entry['path']
+            parent = self.parent(entry['path'])
+            original = self.directory / 'original' / str(index)
+            staged = self.directory / 'staged' / str(index)
+            if not os.path.lexists(original):
+                if not path.is_symlink() or os.readlink(path) != entry['link']:
+                    raise DeploymentError('generation link changed before conversion: ' + entry['path'])
+                if entry['action'] == 'copy' and 'identity' not in entry:
+                    # An interrupted unpublished copy belongs only to this journal.
+                    if staged.is_dir():
+                        shutil.rmtree(staged)
+                    elif os.path.lexists(staged):
+                        staged.unlink()
+                    self.copy(path, staged)
+                    self.sync(staged.parent)
+                    entry['identity'] = self.identity(staged)
+                    atomic_json(self.record, value)
+                os.rename(path, original)
+                self.sync(parent); self.sync(original.parent)
+            if not original.is_symlink() or os.readlink(original) != entry['link']:
+                raise DeploymentError('saved generation link differs from migration record')
+            if entry['action'] == 'copy':
+                if not os.path.lexists(path):
+                    if self.identity(staged) != entry['identity']:
+                        raise DeploymentError('staged migration identity changed')
+                    os.rename(staged, path)
+                    self.sync(staged.parent); self.sync(parent)
+                elif self.identity(path) != entry['identity']:
+                    raise DeploymentError('converted settings replaced during migration')
+            elif os.path.lexists(path):
+                raise DeploymentError('retired endpoint was recreated: ' + entry['path'])
+            entry['done'] = True
+            atomic_json(self.record, value)
+        value['complete'] = all(entry.get('done') for entry in value['entries'])
+        atomic_json(self.record, value)
+
+    def restore(self) -> None:
+        value = self.read()
+        for index, entry in reversed(list(enumerate(value['entries']))):
+            path = self.home / entry['path']
+            parent = self.parent(entry['path'])
+            original = self.directory / 'original' / str(index)
+            returned = self.directory / 'returned' / str(index)
+            if not os.path.lexists(original):
+                if not path.is_symlink() or os.readlink(path) != entry['link']:
+                    raise DeploymentError('original generation link is unavailable: ' + entry['path'])
+                continue
+            if not original.is_symlink() or os.readlink(original) != entry['link']:
+                raise DeploymentError('saved generation link changed')
+            if os.path.lexists(path):
+                if os.path.lexists(returned):
+                    raise DeploymentError('return would overwrite preserved bundle settings')
+                if path.is_symlink() or entry['action'] not in ('copy', 'regenerate'):
+                    raise DeploymentError('unexpected endpoint during Nix return: ' + entry['path'])
+                os.rename(path, returned)
+                self.sync(parent); self.sync(returned.parent)
+            os.rename(original, path)
+            self.sync(original.parent); self.sync(parent)
+        value['restored'] = True
+        atomic_json(self.record, value)
+
+
 class Deployment:
     def __init__(self):
         self.home = Path.home()
@@ -319,6 +537,9 @@ class Deployment:
         if not TRANSACTION_ID.fullmatch(transaction_id):
             raise DeploymentError('invalid recovery transaction ID')
         tx = json.loads(self.transaction_file.read_text())
+        if tx.get('backend') == 'tam-bundle':
+            self.return_bundle_to_nix(transaction_id)
+            return
         if (tx.get('id') != transaction_id or tx.get('host') != self.hostname
                 or tx.get('user') != getpass.getuser() or tx.get('config') != str(self.config.resolve())):
             raise DeploymentError('stale or foreign recovery transaction; nothing changed')
@@ -435,6 +656,13 @@ class Deployment:
 
     def components(self, revision: str) -> dict[str, str]:
         """Tamlinux component revisions pinned by an assembly's lock file."""
+        state = self.read_state()
+        if state.get('backend') == 'tam-bundle' and state.get('packages') == revision:
+            tx = self.bundle_transaction(state['migrationTransaction'])
+            if tx['targetAssembly'] != revision:
+                raise DeploymentError('bundle receipt differs from its recorded delivery')
+            self._bundle_deliveries[revision] = tx['delivery']
+            return dict(tx['delivery']['components'])
         bundle = self.bundle_delivery(revision)
         if bundle is not None:
             return dict(bundle['components'])
@@ -611,6 +839,406 @@ class Deployment:
             'baselineGeneration': baseline['profileGeneration'],
             'baselineAssembly': baseline['assembly'],
         }
+
+    def bundle_inputs(self, archive: Path, delivery: dict) -> tuple[list[str], list[str]]:
+        """Read only bounded carried lists after checking the exact archive bytes."""
+        metadata = {}
+        fd = os.open(archive, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or hashlib.file_digest(stream, 'sha256').hexdigest() != delivery['artifact']['sha256']:
+                raise DeploymentError('bundle changed before migration planning')
+            stream.seek(0)
+            with tarfile.open(fileobj=stream, mode='r|*') as packed:
+                for entry in packed:
+                    if entry.name not in ('SETTINGS', 'MANIFEST'):
+                        continue
+                    if entry.name in metadata or not entry.isfile() or entry.size > 16 * 1024 * 1024:
+                        raise DeploymentError('invalid carried migration list')
+                    metadata[entry.name] = packed.extractfile(entry).read().decode('utf-8')
+            after = os.fstat(stream.fileno())
+            identity = lambda info: (info.st_dev, info.st_ino, info.st_size, info.st_ctime_ns)
+            if identity(before) != identity(after) or identity(before) != identity(archive.lstat()):
+                raise DeploymentError('bundle changed during migration planning')
+        if set(metadata) != {'SETTINGS', 'MANIFEST'}:
+            raise DeploymentError('bundle is missing its settings or placement list')
+        settings, placed = [], []
+        for name, text in metadata.items():
+            lines = text.splitlines()
+            if not lines or lines[0] != ('format 1' if name == 'SETTINGS' else 'format 2'):
+                raise DeploymentError('unsupported carried migration list')
+            for line in lines[1:]:
+                if not line.strip() or line.lstrip().startswith('#'):
+                    continue
+                fields = line.split()
+                if name == 'SETTINGS':
+                    if (len(fields) != 2 or fields[0] not in ('common', 'host') or
+                            not LIVE_PATH_RE.fullmatch(fields[1].rstrip('/')) or
+                            any(p in ('.', '..') for p in fields[1].rstrip('/').split('/'))):
+                        raise DeploymentError('invalid carried settings path')
+                    settings.append(fields[1])
+                elif len(fields) != 5 or fields[0] not in ('p', 't'):
+                    raise DeploymentError('invalid carried placement')
+                elif fields[:2] == ['p', 'f']:
+                    placed.append(fields[4])
+        return settings, placed
+
+    def bundle_home_plan(self, archive: Path, delivery: dict, generation: str, outputs: dict) -> dict:
+        settings, placed = self.bundle_inputs(archive, delivery)
+        files = Path(generation) / 'home-files'
+        retire = []
+        packages = [Path(outputs[name]) for name in ('shell', 'plugins', 'commands', 'tam', 'tools')]
+        units = {Path(path).name for path in placed if path.startswith('usr/lib/systemd/user/')}
+        generated = {'.config/tamlinux/session/hyprland.lua', '.config/uwsm/env.d/10-tamlinux.sh'}
+        for directory, dirs, names in os.walk(files, followlinks=False):
+            for name in list(dirs) + names:
+                path = Path(directory) / name
+                if path.is_dir() and not path.is_symlink():
+                    continue
+                relative = path.relative_to(files).as_posix()
+                target = path.resolve(strict=True)
+                owned = any(target.is_relative_to(package) for package in packages)
+                if (owned and not any(relative == p.rstrip('/') or relative.startswith(p.rstrip('/') + '/')
+                                      for p in settings)) or (
+                        relative.startswith('.config/systemd/user/') and path.name in units) or relative in (
+                            '.config/tamlinux/version', '.config/tamlinux/cultivar',
+                            '.local/share/tamlinux/deployment-selection.json'):
+                    retire.append(relative)
+                if relative in generated:
+                    # These two files were generated by the delivery module,
+                    # rather than user configuration. Only the known forms
+                    # may be replaced by the cultivar's native defaults.
+                    text = path.read_text()
+                    if relative.endswith('hyprland.lua'):
+                        expected = f'dofile("{self.home}/.local/share/tamlinux/shell/../session/entry.lua")\n'
+                        if text != expected:
+                            raise DeploymentError('custom session bootstrap needs explicit migration: ' + relative)
+                    elif (not text.startswith('. ' + outputs['shell'] + '/share/tamlinux/session/uwsm-env\n') or
+                          any(not line.startswith(('export TAMLINUX_QUICKSHELL=', 'export TAMLINUX_QUICKSHELL_IPC=',
+                              'export TAMLINUX_STAY_AWAKE_FILE=', 'export TAMLINUX_VERSION_NOTES='))
+                              for line in text.splitlines()[1:])):
+                        raise DeploymentError('custom UWSM environment needs explicit migration')
+                    retire.append(relative)
+        # User defaults, private menu extensions and other settings retain
+        # their current contents; only the generated bootstrap is replaced.
+        migration = HomeLinkMigration(self.home, self.state_file.parent / 'unused-plan')
+        plan = migration.plan(Path(generation), settings, retire)
+        for entry in plan['entries']:
+            if entry['path'] in generated:
+                entry['action'] = 'regenerate'
+        # A local command we do not own must not silently shadow the cultivar.
+        planned = {entry['path'] for entry in plan['entries'] if entry['action'] == 'retire'}
+        for path in placed:
+            if path.startswith('usr/bin/'):
+                relative = '.local/bin/' + Path(path).name
+                if os.path.lexists(self.home / relative) and relative not in planned:
+                    raise DeploymentError('unmanaged command would shadow the bundle: ' + relative)
+        return plan
+
+    def migration(self, identifier: str) -> HomeLinkMigration:
+        if not TRANSACTION_ID.fullmatch(identifier):
+            raise DeploymentError('invalid bundle transaction ID')
+        return HomeLinkMigration(self.home, self.state_file.parent / 'home-migrations' / identifier)
+
+    def bundle_profile_expression(self, revision: str, plan: dict, baseline: str) -> str:
+        consumer = command('git', '-C', str(self.config), 'rev-parse', 'HEAD', capture=True)
+        if not re.fullmatch(r'[0-9a-f]{40}', consumer):
+            raise DeploymentError('consumer revision is not an exact commit')
+        # Extend the consumer's recorded HM evaluation. Only the product
+        # delivery and converted links leave; unrelated packages remain.
+        disabled = {entry['path']: {'enable': False} for entry in plan['entries']}
+        return ('let base = (builtins.getFlake ' + json.dumps(
+                    'git+file://' + str(self.config) + '?rev=' + consumer) + ').homeConfigurations.'
+                + json.dumps(self.home_configuration) + '; in (base.extendModules { modules = '
+                + '[ ({ lib, ... }: { '
+                + 'tamlinux.shell.enable = lib.mkForce false; '
+                + 'tamlinux.session.enable = lib.mkForce false; '
+                + 'tamlinux.tools.enable = lib.mkForce false; '
+                + 'tamlinux.developer.libraries = lib.mkForce []; '
+                + 'home.file = lib.mapAttrs (_: v: { enable = lib.mkForce v.enable; }) '
+                + '(builtins.fromJSON ' + json.dumps(json.dumps(disabled)) + '); '
+                + 'home.sessionVariables.TAMLINUX_QUICKSHELL = lib.mkForce "/usr/bin/quickshell"; '
+                + 'home.sessionVariables.TAMLINUX_QUICKSHELL_IPC = lib.mkForce "/usr/bin/qs"; '
+                + 'home.sessionVariables.TAMLINUX_VERSION_NOTES = lib.mkForce '
+                + '\"/usr/lib/tamlinux/current/share/tamlinux/version-notes.txt\"; '
+                + 'systemd.user.sessionVariables.TAMLINUX_BIN = lib.mkForce "/usr/bin"; '
+                + 'systemd.user.sessionVariables.TAMLINUX_VERSION = lib.mkForce '
+                + json.dumps(self.bundle_delivery(revision)['version']) + '; '
+                + '}) ]; }).activationPackage')
+
+    def build_bundle_profile(self, revision: str, plan: dict, baseline: str) -> str:
+        expression = self.bundle_profile_expression(revision, plan, baseline)
+        generation = command('nix', 'build', '--no-link', '--print-out-paths',
+                             '--expr', expression, capture=True)
+        if (not re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', generation)
+                or not (Path(generation) / 'activate').is_file()):
+            raise DeploymentError('bundle profile build returned no exact generation')
+        self.verify_bundle_profile(generation, plan)
+        self.activation_validators(generation)
+        return generation
+
+    def verify_bundle_profile(self, generation: str, plan: dict) -> None:
+        files = Path(generation) / 'home-files'
+        binaries = Path(generation) / 'home-path/bin'
+        if not files.is_dir() or not binaries.is_dir():
+            raise DeploymentError('bundle profile is missing its file or package tree')
+        for entry in plan['entries']:
+            if os.path.lexists(files / entry['path']):
+                raise DeploymentError('bundle profile still delivers a converted home path: ' + entry['path'])
+        # home.packages must no longer supply Tamlinux commands through a
+        # Nix profile, even after their explicit ~/.local/bin links leave.
+        for path in binaries.iterdir() if binaries.is_dir() else []:
+            if path.name in ('tam', 'hi', 'start') or path.name.startswith('tam-'):
+                raise DeploymentError('bundle profile still supplies ' + path.name)
+
+    def bundle_native_recovery(self) -> dict:
+        """The separately reviewed native rollback archive, never an installer."""
+        path = self.config / 'system/bundle-nix-recovery.json'
+        if not path.is_file() or path.is_symlink() or path.stat().st_size > 16384:
+            raise DeploymentError('record the exact native rollback archive in system/bundle-nix-recovery.json')
+        value = json.loads(path.read_text())
+        if (set(value) != {'format', 'host', 'package', 'version', 'archive', 'sha256'} or
+                type(value['format']) is not int or value['format'] != 1 or value['host'] != self.hostname or
+                value['package'] != 'tamlinux-native' or not isinstance(value['version'], str) or
+                not re.fullmatch(r'[A-Za-z0-9._+:-]+', value['version']) or
+                not isinstance(value['archive'], str) or not Path(value['archive']).is_absolute() or
+                not re.fullmatch(r'[0-9a-f]{64}', value['sha256'])):
+            raise DeploymentError('invalid native rollback identity')
+        self.verify_native_archive(value)
+        return value
+
+    def verify_native_archive(self, value: dict) -> None:
+        path = Path(value['archive'])
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or hashlib.file_digest(stream, 'sha256').hexdigest() != value['sha256']:
+                raise DeploymentError('native rollback archive differs from its recorded hash')
+            if command('/usr/bin/pacman', '-Qp', str(path), capture=True) != value['package'] + ' ' + value['version']:
+                raise DeploymentError('native rollback archive has another package identity')
+            named = path.lstat()
+            if (before.st_dev, before.st_ino, before.st_size, before.st_ctime_ns) != (
+                    named.st_dev, named.st_ino, named.st_size, named.st_ctime_ns):
+                raise DeploymentError('native rollback archive changed during verification')
+
+    def require_nix_native(self, value: dict) -> None:
+        self.verify_native_archive(value)
+        try:
+            installed = command('/usr/bin/pacman', '-Q', value['package'], capture=True)
+        except subprocess.CalledProcessError as exc:
+            raise DeploymentError('restore the recorded native package with its separate approval, then retry recovery') from exc
+        if installed != value['package'] + ' ' + value['version']:
+            raise DeploymentError('restore the recorded native package with its separate approval, then retry recovery')
+
+    def bundle_transaction(self, identifier: str) -> dict:
+        tx = json.loads(self.transaction_file.read_text())
+        if (tx.get('id') != identifier or tx.get('backend') != 'tam-bundle' or
+                tx.get('host') != self.hostname or tx.get('user') != getpass.getuser() or
+                tx.get('config') != str(self.config.resolve())):
+            raise DeploymentError('stale or foreign bundle transaction')
+        return tx
+
+    def prepare_bundle(self, revision: str, pins: dict, stage: str) -> tuple[str, str]:
+        """First Nix-to-bundle preparation reads settings names, never their bytes.
+
+        The first migration is armed only in user state. Root prepare must
+        wait for console conversion: the boot trigger must not race HM links.
+        """
+        self.check_requested_baseline()
+        if not self.host_pinned():
+            raise DeploymentError('bundle migration requires a per-host assembly pin')
+        self.preflight_bundle(revision, self.bundle_delivery(revision))
+        report = self._prepared_bundle_report
+        previous, assembly = report['baselineGeneration'], report['baselineAssembly']
+        before = self.pin_path.read_bytes()
+        recovery = self.recovery_snapshot(previous, assembly, before)
+        recovery['nativeRecovery'] = self.bundle_native_recovery()
+        if self.read_state().get('backend') == 'tam-bundle':
+            raise DeploymentError('bundle-to-bundle delivery requires the later integration gate')
+        archive = Path(report['artifact'])
+        plan = self.bundle_home_plan(archive, self.bundle_delivery(revision), previous, recovery['outputs'])
+        self.activation_validators(previous)
+        bundle_generation = self.build_bundle_profile(revision, plan, previous)
+        self.check_requested_baseline()
+        if self.generation() != previous or self.pin_path.read_bytes() != before:
+            raise DeploymentError('Nix baseline changed during bundle preparation')
+        self.transaction(phase='prepared', backend='tam-bundle', stage=stage,
+                         baselineGeneration=previous, baselineAssembly=assembly,
+                         targetAssembly=revision, targetGeneration=bundle_generation, components=pins,
+                         delivery=self.bundle_delivery(revision), recovery=recovery, homePlan=plan,
+                         targetPin=base64.b64encode((revision + '\n').encode()).decode('ascii'),
+                         targetPinSha256=hashlib.sha256((revision + '\n').encode()).hexdigest())
+        self.transaction(phase='bundle-prepared')
+        identifier = json.loads(self.transaction_file.read_text())['id']
+        print('Bundle prepared without changing Nix or home files. Console activation requires '
+              'the reviewed short activation and return helpers. Transaction: ' + identifier)
+        return previous, assembly
+
+    def bundle_privileged(self, *arguments: str) -> None:
+        command('/usr/bin/pkexec', '/usr/bin/tam-bundle', *map(str, arguments))
+
+    def bundle_system_state(self) -> dict:
+        result = subprocess.run(['/usr/bin/tam-bundle', '--root', '/', 'status'], text=True, capture_output=True)
+        if result.returncode not in (0, 4) or len(result.stdout) > 1024 * 1024:
+            raise DeploymentError('cannot identify bundle system state: ' + result.stderr)
+        value = {}
+        for line in result.stdout.splitlines():
+            key, separator, content = line.partition(': ')
+            if separator and key in ('live', 'bundle-hash', 'target-hash', 'transaction', 'state', 'from', 'to'):
+                if key in value:
+                    raise DeploymentError('ambiguous bundle system state')
+                value[key] = content
+        if not result.stdout.strip():
+            value['live'] = '-'
+        if 'live' not in value:
+            raise DeploymentError('bundle system state has no current identity')
+        return value
+
+    def bundle_current_path(self) -> Path:
+        return Path('/usr/lib/tamlinux/current')
+
+    def dormant_bundle_hash(self) -> str | None:
+        path = self.bundle_current_path()
+        if path.is_symlink() or not path.exists():
+            return None
+        metadata = path / 'BUNDLE'
+        if not path.is_dir() or metadata.stat().st_size > 1024 * 1024:
+            raise DeploymentError('unrecognized dormant slot')
+        values = {}
+        for line in metadata.read_text().splitlines():
+            name, separator, value = line.partition(' ')
+            if separator and name in ('format', 'hash'):
+                if name in values:
+                    raise DeploymentError('repeated dormant slot identity')
+                values[name] = value
+        if values.get('format') != '1' or not re.fullmatch(r'sha256:[0-9a-f]{64}', values.get('hash', '')):
+            raise DeploymentError('unrecognized dormant slot identity')
+        return values['hash']
+
+    def activate_bundle(self, identifier: str) -> None:
+        tx = self.bundle_transaction(identifier)
+        if tx['phase'] in ('complete', 'recovered'):
+            raise DeploymentError('bundle transaction is already finished')
+        if self.graphical_active():
+            raise DeploymentError('leave the desktop before bundle activation')
+        self.require_unlocked_sessions()
+        saved = tx['recovery']
+        if tx.get('bundleDetached'):
+            raise DeploymentError('bundle was detached for Nix recovery; finish recovery instead')
+        if self.generation() not in (saved['generation'], tx['targetGeneration']) or self.pin_path.read_bytes() not in (
+                base64.b64decode(saved['pin'], validate=True), base64.b64decode(tx['targetPin'], validate=True)):
+            raise DeploymentError('saved Nix generation or pin changed before bundle activation')
+        delivery = tx['delivery']
+        archive = self.bundle_artifact(delivery)
+        version = self.bundle_command('--version')
+        found = re.fullmatch(r'tam-bundle ([0-9]+\.[0-9]+\.[0-9]+) \(record format 2\)', version)
+        if not found or int(command('/usr/bin/vercmp', found[1], '0.12.0', capture=True)) < 0:
+            raise DeploymentError('bundle migration requires tam-bundle >= 0.12.0')
+        migration = self.migration(identifier)
+        if not migration.record.exists():
+            migration.create(tx['homePlan'])
+        self.transaction(phase='bundle-converting')
+        migration.apply(only='copy')
+        dormant = self.dormant_bundle_hash()
+        if dormant:
+            self.transaction(phase='bundle-archiving-dormant', dormantHash=dormant)
+            self.bundle_privileged('migrate-dormant', dormant)
+        system = self.bundle_system_state()
+        target = delivery['artifact']['bundleId']
+        if system.get('live') != target and not (
+                system.get('to') == target and system.get('state') in ('ready', 'applying', 'activating')):
+            if system.get('live') != '-' or system.get('state') not in (None, 'complete'):
+                raise DeploymentError('unrelated bundle installation or pending transaction')
+            self.transaction(phase='bundle-preparing-system')
+            self.bundle_privileged('install', str(archive), '--expect-bundle', delivery['artifact']['bundleHash'])
+            system = self.bundle_system_state()
+        if (system.get('to') != target or system.get('target-hash') != delivery['artifact']['bundleHash'] or
+                not re.fullmatch(r'[0-9a-f]{32}', system.get('transaction', ''))):
+            raise DeploymentError('prepared system identity differs from selected bundle')
+        self.transaction(phase='bundle-applying', bundleTransaction=system['transaction'])
+        self.bundle_command('prepare-settings')
+        if system.get('state') != 'complete':
+            self.bundle_privileged('apply', system['transaction'])
+        system = self.bundle_system_state()
+        if (system.get('live') != target or system.get('state') != 'complete' or
+                system.get('bundle-hash') != delivery['artifact']['bundleHash']):
+            raise DeploymentError('bundle apply is incomplete; retry this exact transaction')
+        # Retire generated session overrides before final settings application,
+        # so native defaults are written to the paths they actually use.
+        migration.apply()
+        self.verify_bundle_profile(tx['targetGeneration'], tx['homePlan'])
+        if self.generation() != tx['targetGeneration']:
+            self.activation_validators(tx['targetGeneration'])
+            command(str(Path(tx['targetGeneration']) / 'activate'))
+        if self.generation() != tx['targetGeneration']:
+            raise DeploymentError('bundle profile did not activate')
+        self.bundle_command('apply-settings')
+        self.bundle_command('session-ready')
+        self.bundle_command('--root', '/', 'check', '--full')
+        self.transaction(phase='bundle-recording')
+        atomic_bytes(self.pin_path, base64.b64decode(tx['targetPin'], validate=True))
+        state = {'backend': 'tam-bundle', 'stage': tx['stage'], 'packages': tx['targetAssembly'],
+                 'components': tx['components'], 'generation': tx['targetGeneration'],
+                 'bundleId': target, 'bundleHash': delivery['artifact']['bundleHash'],
+                 'migrationTransaction': identifier, 'previousGeneration': saved['generation'],
+                 'previousPin': saved['assembly']}
+        self.save_state(state)
+        self.record('deploy: ' + tx['stage'] + ' exact bundle ' + target,
+                    [self.pin_file()] + self.update_bom(state))
+        self.transaction(phase='complete')
+        print('Bundle activated. Nix recovery remains retained; graphical acceptance is pending.')
+
+    def return_bundle_to_nix(self, identifier: str) -> None:
+        tx = self.bundle_transaction(identifier)
+        if self.graphical_active():
+            raise DeploymentError('leave the desktop before returning to Nix')
+        self.require_unlocked_sessions()
+        saved = tx['recovery']
+        generation = saved['generation']
+        if (not re.fullmatch(r'/nix/store/[a-z0-9]{32}-home-manager-generation', generation)
+                or not (Path(generation) / 'activate').is_file() or self.generation() not in (generation, tx['targetGeneration'])
+                or saved['pinPath'] != str(self.pin_path)):
+            raise DeploymentError('exact saved Nix generation or pin is unavailable')
+        before = base64.b64decode(saved['pin'], validate=True)
+        current_pin = self.pin_path.read_bytes()
+        if current_pin != before and hashlib.sha256(current_pin).hexdigest() != tx.get('targetPinSha256'):
+            raise DeploymentError('consumer pin changed after bundle delivery')
+        self.activation_validators(generation)
+        self._outputs[saved['assembly']] = saved['outputs']
+        self.transaction(phase='bundle-returning')
+        system = {'live': '-'} if tx.get('bundleDetached') or self.dormant_bundle_hash() else self.bundle_system_state()
+        target = tx['delivery']['artifact']['bundleId']
+        if system.get('live') not in ('-', target) or system.get('to', target) not in ('-', target):
+            raise DeploymentError('unrelated bundle state; refusing Nix return')
+        if system.get('state') in ('applying', 'activating') and system.get('to') == target:
+            self.bundle_privileged('apply', system['transaction'])
+            system = self.bundle_system_state()
+        elif system.get('state') in ('staging', 'ready') and system.get('to') == target:
+            self.bundle_privileged('cancel')
+            system = self.bundle_system_state()
+        if system.get('live') == target or (system.get('to') == '-' and system.get('state') != 'complete'):
+            self.bundle_privileged('detach', tx['delivery']['artifact']['bundleHash'])
+        if not tx.get('bundleDetached') and not self.dormant_bundle_hash() and self.bundle_system_state().get('live') != '-':
+            raise DeploymentError('bundle detachment is incomplete')
+        self.transaction(bundleDetached=True)
+        migration = self.migration(identifier)
+        if migration.record.exists():
+            migration.restore()
+        self.transaction(phase='bundle-returning-native')
+        self.require_nix_native(saved['nativeRecovery'])
+        if self.bundle_current_path().is_symlink():
+            raise DeploymentError('another bundle became current during Nix return')
+        atomic_bytes(self.pin_path, before)
+        command(str(Path(generation) / 'activate'))
+        problems = self.verify(saved['components'], saved['assembly'])
+        if problems:
+            raise DeploymentError('saved Nix endpoints did not return: ' + '; '.join(problems))
+        self.verify_active(generation, saved['components'])
+        self.record('deploy: return exact saved Nix generation',
+                    [self.pin_file()] + self.update_bom(saved['state']))
+        self.save_state(saved['state'])
+        self.transaction(phase='recovered')
+        print('Exact saved Nix generation restored; bundle-era settings are retained privately.')
 
     def require_on(self, branch: str, revision: str, pins: dict[str, str]) -> None:
         if not self.on_branch("tamlinux-packages", revision, branch):
@@ -993,6 +1621,26 @@ class Deployment:
 
     def verify(self, pins: dict[str, str], revision: str | None = None) -> list[str]:
         """Differences between the installed endpoints and the assembly."""
+        selected = revision or self.locked()
+        delivery = getattr(self, '_bundle_deliveries', {}).get(selected)
+        state = self.read_state()
+        if delivery is None and state.get('backend') == 'tam-bundle' and state.get('packages') == selected:
+            tx = self.bundle_transaction(state['migrationTransaction'])
+            if tx['targetAssembly'] == selected:
+                delivery = tx['delivery']
+        if delivery is not None:
+            problems = []
+            try:
+                system = self.bundle_system_state()
+                if (system.get('live') != delivery['artifact']['bundleId'] or
+                        system.get('bundle-hash') != delivery['artifact']['bundleHash'] or
+                        system.get('state') not in (None, 'complete') or pins != delivery['components']):
+                    problems.append('live bundle differs from the exact delivery')
+                self.bundle_command('--root', '/', 'check', '--full')
+                self.bundle_command('session-ready')
+            except (OSError, ValueError, subprocess.CalledProcessError, DeploymentError) as exc:
+                problems.append('bundle verification failed: ' + str(exc))
+            return problems
         expected = self.expected_outputs(revision or self.locked())
         problems = []
         if self.installed() != pins["tamlinux"]:
@@ -1086,6 +1734,20 @@ class Deployment:
                 problems.append(f'{relative} does not match recorded generation')
         return problems
 
+    def bundle_runtime_state(self, bundle_id: str) -> dict:
+        if not self.graphical_active():
+            return {'graphical': False}
+        pid = command('systemctl', '--user', 'show', 'tamlinux-shell.service',
+                      '-p', 'MainPID', '--value', capture=True)
+        if not pid.isdigit() or int(pid) <= 0:
+            raise DeploymentError('graphical shell has no running bundle process')
+        argv = (Path('/proc') / pid / 'cmdline').read_bytes().decode().split('\0')
+        paths = [argv[i + 1] for i, arg in enumerate(argv[:-1]) if arg in ('-p', '--path')]
+        expected = '/usr/lib/tamlinux/version/' + bundle_id + '/share/tamlinux/shell'
+        if len(paths) != 1 or os.path.realpath(paths[0]) != expected:
+            raise DeploymentError('running shell does not use the selected bundle')
+        return {'graphical': True, 'pid': int(pid), 'shell': expected}
+
     def verify_active(self, generation: str, pins: dict) -> None:
         if self.generation() != generation:
             raise DeploymentError('active profile does not match expected generation')
@@ -1098,6 +1760,23 @@ class Deployment:
 
     def state_report(self) -> dict:
         locked, state = self.locked(), self.read_state()
+        if state.get('backend') == 'tam-bundle':
+            profile = self.generation()
+            pins = self.components(locked)
+            problems = self.verify(pins, locked)
+            tx = self.bundle_transaction(state['migrationTransaction'])
+            if (state.get('packages') != locked or state.get('components') != pins or
+                    state.get('generation') != profile or tx.get('phase') != 'complete'):
+                problems.append('bundle receipt, saved generation or transaction disagrees')
+            try:
+                runtime = self.bundle_runtime_state(state['bundleId'])
+            except (OSError, ValueError, subprocess.CalledProcessError, DeploymentError) as exc:
+                runtime = {}
+                problems.append('bundle runtime identity unavailable: ' + str(exc))
+            return {'backend': 'tam-bundle', 'assembly': locked, 'components': pins,
+                    'installedShell': pins['tamlinux'], 'profileGeneration': profile,
+                    'receiptGeneration': state.get('generation'), 'receipt': state,
+                    'runtime': runtime, 'transaction': tx, 'problems': problems}
         profile = self.generation()
         pins = self.components(locked)
         problems = list(self.verify(pins, locked))
@@ -1215,7 +1894,7 @@ class Deployment:
         """Pin, switch and verify an assembly; on failure restore the lock
         and the previous generation. Returns (previous generation, previous pin)."""
         if self.bundle_delivery(revision) is not None:
-            raise DeploymentError('bundle activation integration is incomplete')
+            return self.prepare_bundle(revision, pins, stage)
         self._phase_times = {}
         self.check_requested_baseline()
         install_started = time.monotonic()
@@ -1382,6 +2061,8 @@ class Deployment:
         pins = self.components(revision)
         self.require_on("test", revision, pins)
         self.install(revision, pins, "test")
+        if self.bundle_delivery(revision) is not None:
+            return
         self.status()
 
     def follow(self, ref: str, transaction_id: str | None = None, baseline_token: str | None = None) -> None:
@@ -1421,6 +2102,8 @@ class Deployment:
                     "followers only install accepted or main assemblies"
                 )
         self.install(revision, pins, "follow")
+        if self.bundle_delivery(revision) is not None:
+            return
         self.status()
 
     def run(self, ref: str | None = None, untested: bool = False) -> None:
@@ -1446,6 +2129,8 @@ class Deployment:
                 return
             # An older or newer main commit: install it; no branch moves.
             self.install(revision, pins, "run")
+            if self.bundle_delivery(revision) is not None:
+                return
             print(f"Running main commit {revision}; no promotion needed.")
             self.status()
             return
@@ -1465,6 +2150,8 @@ class Deployment:
 
         if needs_install:
             self.install(revision, pins, "run")
+            if self.bundle_delivery(revision) is not None:
+                return
         # Components first, so main of tamlinux-packages never pins a
         # component revision that is not on that component's main. An
         # untested commit moves test too, keeping main within test.
@@ -1485,6 +2172,9 @@ class Deployment:
     def back(self) -> None:
         self.require_consistent()
         state = self.read_state()
+        if state.get('backend') == 'tam-bundle':
+            self.return_bundle_to_nix(state['migrationTransaction'])
+            return
         previous, previous_pin = state.get("previousGeneration"), state.get("previousPin")
         if not previous or not previous_pin:
             raise DeploymentError("no recorded previous deployment")
@@ -1534,7 +2224,8 @@ class Deployment:
 USAGE = ("usage: tam-deploy status [--json] | preflight <assembly> [--json] | "
          "conflicts <generation> [--json] | reconcile [--digest HASH] | "
          "init [revision] [--test] | test [revision] | run [revision] [--untested] | "
-         "follow <revision> [--transaction ID --expect-baseline SHA256] | recover ID | back")
+         "follow <revision> [--transaction ID --expect-baseline SHA256] | recover ID | "
+         "activate-bundle ID | back")
 
 
 def parse(argv: list[str]) -> tuple[str, list, dict] | None:
@@ -1573,6 +2264,8 @@ def parse(argv: list[str]) -> tuple[str, list, dict] | None:
                                      'baseline_token': options['--expect-baseline']}
     if name == 'recover' and len(rest) == 1 and TRANSACTION_ID.fullmatch(rest[0]):
         return name, rest, {}
+    if name == 'activate-bundle' and len(rest) == 1 and TRANSACTION_ID.fullmatch(rest[0]):
+        return 'activate_bundle', rest, {}
     if name == "run":
         flags = [a for a in rest if a.startswith("-")]
         args = [a for a in rest if not a.startswith("-")]

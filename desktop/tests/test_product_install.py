@@ -30,6 +30,12 @@ class ProductInstall(unittest.TestCase):
                 original.chmod(0o755)
             bundle_layout.install(stage)
             current = stage / "usr/lib/tamlinux/current"
+            defaults = current / "defaults/home"
+            self.assertEqual((defaults / ".config/tamlinux/session/hyprland.lua").read_text(),
+                'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n')
+            environment = (defaults / ".config/uwsm/env.d/10-tamlinux.sh").read_text()
+            self.assertIn('export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n', environment)
+            self.assertNotIn('/nix/store', environment)
             self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
             for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session", "tam-nut"):

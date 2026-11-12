@@ -181,6 +181,16 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     bash = private / "defaults/home/.config/bash/tamlinux"
     shutil.copytree(source / "desktop/user-defaults/bash", bash)
     (bash / "env").write_text("# Tamlinux commands use the system PATH.\n")
+    home = private / "defaults/home"
+    put(home / ".config/tamlinux/session/hyprland.lua",
+        f'dofile("{SHARE}/session/entry.lua")\n'.encode())
+    put(home / ".config/uwsm/env.d/10-tamlinux.sh", (
+        f'. {SHARE}/session/uwsm-env\n'
+        'export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n'
+        'export TAMLINUX_QUICKSHELL_IPC=/usr/bin/qs\n'
+        f'export TAMLINUX_VERSION_NOTES={SHARE}/version-notes.txt\n'
+        'export TAMLINUX_STAY_AWAKE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake"\n'
+    ).encode())
 
 
 def main() -> int:
