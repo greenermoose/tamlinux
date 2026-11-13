@@ -372,6 +372,50 @@ class BundleMigration(TransactionRecovery):
             self.app.console_helpers(identifier)
         self.assertEqual(path.read_text(),'personal script\n')
 
+    def _make_ux_delivery(self):
+        product = self.root / 'product-ux'
+        shutil.copytree(self.product, product)
+        for name in ('tam', 'tam-file-select'):
+            p = product / 'placed/usr/bin' / name
+            p.chmod(0o755)
+        (product / 'BUNDLE').unlink()
+        (product / 'MANIFEST').unlink()
+        settings_lines = [
+            'format 1',
+            'common .bashrc',
+            'common .config/tamlinux/session/hyprland.lua',
+            'common .config/tamlinux/backgrounds/',
+            'common .config/tamlinux/clock/',
+            'common .config/tamlinux/defaults/',
+            'common .config/tamlinux/macros.json',
+            'common .config/tamlinux/tam-edit/',
+            'common .local/state/tamlinux/shell.toml',
+            'common .local/state/tamlinux/current/theme.name',
+            'common .local/state/tamlinux/current/background.selection',
+            'common .local/state/tamlinux/defaults/editor',
+            'common .local/state/tamlinux/settings/weather.json',
+            'common .local/state/tamlinux/settings/tides.json',
+            'common .local/state/tamlinux/toggles/',
+            'host .local/state/tamlinux/desktop-mode',
+            'host .local/state/tamlinux/toggles/hypr/',
+            'common .local/state/tamlinux/workspace-layouts/',
+        ]
+        (product / 'SETTINGS').write_text('\n'.join(settings_lines) + '\n')
+        self.raw('seal', product, '--format', '2', '--name', 'tamlinux', '--version', '9.8.8',
+                 '--source', 'tamlinux ' + self.tamlinux_new, '--source', 'packaging ' + 'a' * 40)
+        fields = dict(line.split(' ', 1) for line in (product / 'BUNDLE').read_text().splitlines()
+                      if line.split(' ', 1)[0] in ('hash', 'name', 'version'))
+        bundle_id = 'tamlinux-9.8.8-' + fields['hash'][7:19]
+        archive = self.root / 'product-ux.tbundle'; self.raw('pack', product, '-o', archive)
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        cached = Path(os.environ['XDG_CACHE_HOME']) / 'tamlinux/bundles' / (digest + '.tbundle')
+        shutil.copyfile(archive, cached)
+        return {'format': 1, 'backend': 'tam-bundle', 'version': '9.8.8',
+                'recipeAssembly': 'a' * 40, 'components': {'tamlinux': self.tamlinux_new},
+                'minimumTool': '0.13.0', 'rootstock': 'arch-systemd',
+                'artifact': {'bundleId': bundle_id, 'bundleHash': fields['hash'],
+                             'name': bundle_id + '.tbundle', 'sha256': digest}}
+
     def test_uncaptured_active_desktop_state_stops_preparation(self):
         state = self.app.home / '.local/state/tamlinux/current/theme.name'
         state.parent.mkdir(parents=True)
@@ -380,6 +424,62 @@ class BundleMigration(TransactionRecovery):
             self.prepare_bundle()
         self.privileged.assert_not_called()
         self.assertTrue((self.app.home / '.bashrc').is_symlink())
+
+    def test_portable_active_desktop_state_migrates_and_regenerates(self):
+        self.deliveries[self.packages_new] = self._make_ux_delivery()
+        desktop_root = Path(__file__).resolve().parents[3] / 'desktop'
+        engine = desktop_root / 'theme/engine.py'
+        assets = desktop_root / 'assets'
+        helper_dir = self.root / 'theme-bin'; helper_dir.mkdir()
+        for cmd in ('tam-theme-set-templates', 'tam-theme-color', 'tam-theme-colors-from-alacritty'):
+            (helper_dir / cmd).symlink_to(desktop_root.parent / 'commands' / cmd / cmd)
+        init_script = helper_dir / 'tam-theme-init'
+        init_script.write_text(f'#!/bin/sh\nexec python3 "{engine}" initialize "$@"\n')
+        init_script.chmod(0o755)
+        self.enterContext(patch.dict(os.environ, {
+            'TAMLINUX_THEME_INIT': str(init_script),
+            'TAMLINUX_ASSETS_DIR': str(assets),
+            'PATH': str(helper_dir) + ':' + os.environ['PATH'],
+        }))
+        home = self.app.home
+        state = home / '.local/state/tamlinux'
+        (state / 'theme-generations/tokyo-night.oldgen/backgrounds').mkdir(parents=True)
+        gen_bg = state / 'theme-generations/tokyo-night.oldgen/backgrounds/0-winding-road.jpg'
+        gen_bg.write_bytes(b'\xff\xd8\xff\xe0oldgen-bg')
+        (state / 'current').mkdir(parents=True)
+        (state / 'current/theme.name').write_text('tokyo-night\n')
+        (state / 'current/background').symlink_to(gen_bg)
+        (state / 'current/theme').mkdir()
+        (state / 'current/theme/colors.toml').write_text('background = "#1a1b26"\n')
+        (state / 'shell.toml').write_text('[font]\nbase-size = 13\n')
+        (state / 'defaults').mkdir(); (state / 'defaults/editor').write_text('helix\n')
+        (state / 'settings').mkdir()
+        (state / 'settings/weather.json').write_text('{"city":"Boston"}\n')
+        (state / 'settings/tides.json').write_text('{"station":"8443970"}\n')
+        (state / 'toggles/hypr').mkdir(parents=True)
+        (state / 'toggles/bar-off').write_text('1\n')
+        (state / 'toggles/hypr/touchpad-disabled-name').write_text('tp0\n')
+        (state / 'desktop-mode').write_text('auto\n')
+        (state / 'workspace-layouts').mkdir(); (state / 'workspace-layouts/1.lua').write_text('hl.workspace_rule({})\n')
+        (home / '.config/tamlinux/clock').mkdir(parents=True); (home / '.config/tamlinux/clock/local.ics').write_text('CAL\n')
+        (home / '.config/tamlinux/defaults').mkdir(parents=True); (home / '.config/tamlinux/defaults/agent').write_text('claude\n')
+        (home / '.config/tamlinux/macros.json').write_text('{}\n')
+        identifier = self.prepare_bundle()
+        self.app.activate_bundle(identifier)
+        self.assertTrue((state / 'current/background.selection').is_file())
+        sel = json.loads((state / 'current/background.selection').read_text())
+        self.assertEqual(sel, {'format': 1, 'kind': 'theme', 'theme': 'tokyo-night', 'file': '0-winding-road.jpg'})
+        self.assertTrue((state / 'current/theme/colors.toml').is_file())
+        self.assertTrue((state / 'current/background').resolve().is_file())
+        self.assertNotIn('oldgen', (state / 'current/background').resolve().as_posix())
+        self.assertEqual((state / 'shell.toml').read_text(), '[font]\nbase-size = 13\n')
+        self.assertEqual((home / '.config/tamlinux/clock/local.ics').read_text(), 'CAL\n')
+        # Broken background symlink stops migration before touching files.
+        (state / 'current/background').unlink()
+        (state / 'current/background').symlink_to(self.root / 'missing.jpg')
+        audited_paths = [line.split()[1] for line in (self.root / 'product-ux/SETTINGS').read_text().splitlines()[1:]]
+        with self.assertRaisesRegex(deploy.DeploymentError, 'dangling or unreadable'):
+            self.app.audit_bundle_settings(audited_paths)
 
 
 def load_tests(loader, tests, pattern):

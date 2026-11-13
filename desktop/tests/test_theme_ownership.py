@@ -682,4 +682,39 @@ else:
             self.assertNotIn('omarchy-'+name,menu)
         self.assertNotIn('omarchy',(ASSETS/'fastfetch.json').read_text().lower())
 
+    def test_background_selection_and_offline_sync_rebuild_derived_state(self):
+        self.call('set','tokyo-night')
+        selection = json.loads((self.current/'background.selection').read_text())
+        self.assertEqual(selection['format'], 1)
+        self.assertEqual(selection['kind'], 'theme')
+        self.assertEqual(selection['theme'], 'tokyo-night')
+        personal_dir = self.config / 'tamlinux/backgrounds/tokyo-night'
+        personal_dir.mkdir(parents=True)
+        personal_img = personal_dir / 'custom.png'
+        personal_img.write_bytes(b'\x89PNG\r\n\x1a\ncustom')
+        self.call('bg-set', personal_img)
+        selection = json.loads((self.current/'background.selection').read_text())
+        self.assertEqual(selection, {'format': 1, 'kind': 'home', 'path': str(personal_img.relative_to(self.base / 'home'))} if personal_img.is_relative_to(self.base / 'home') else {'format': 1, 'kind': 'path', 'path': str(personal_img.resolve())})
+        # Simulate restoring portable state without derived current/theme or current/background.
+        shutil.rmtree(self.current / 'theme')
+        (self.current / 'background').unlink()
+        gruvbox_bg = next(iter((ASSETS / 'themes/gruvbox/backgrounds').iterdir()))
+        (self.current / 'background.selection').write_text(json.dumps({
+            'format': 1, 'kind': 'theme', 'theme': 'gruvbox', 'file': gruvbox_bg.name
+        }) + '\n')
+        (self.current / 'theme.name').write_text('gruvbox\n')
+        self.call('initialize')
+        self.assertTrue((self.current / 'theme/colors.toml').is_file())
+        self.assertTrue((self.current / 'background').is_symlink())
+        self.assertTrue((self.current / 'background').resolve().is_file())
+        self.assertEqual((self.current / 'background').resolve().name, gruvbox_bg.name)
+        # initialize --sync rebuilds even when current/theme already exists (e.g., rollback or text-size restore).
+        shutil.rmtree(self.state / 'tamlinux/theme-generations')
+        (self.state / 'tamlinux/shell.toml').parent.mkdir(parents=True, exist_ok=True)
+        (self.state / 'tamlinux/shell.toml').write_text('[font]\nbase-size = 15\n')
+        self.call('initialize', '--sync')
+        self.assertTrue((self.current / 'theme/colors.toml').is_file())
+        payload = json.loads(subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
+        self.assertEqual(payload['style']['fontBaseSize'], 15)
+
 if __name__=='__main__': unittest.main()

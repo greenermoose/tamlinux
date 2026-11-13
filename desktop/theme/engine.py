@@ -31,6 +31,7 @@ CONFIG = Path(os.environ.get('XDG_CONFIG_HOME') or HOME / '.config')
 STATE = Path(os.environ.get('XDG_STATE_HOME') or HOME / '.local/state') / 'tamlinux'
 CACHE = Path(os.environ.get('XDG_CACHE_HOME') or HOME / '.cache') / 'tamlinux'
 CURRENT = STATE / 'current'
+BACKGROUND_SELECTION = CURRENT / 'background.selection'
 ASSETS = Path(os.environ.get('TAMLINUX_ASSETS_DIR') or Path(__file__).resolve().parents[1] / 'assets')
 IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 GTK_THEME_KEYS = tuple('/org/gnome/desktop/interface/' + key
@@ -100,6 +101,85 @@ def publish_theme_directory(stage, destination, archive=None):
         # for recovery rather than deleting a user's concurrent writes.
         if not exchanged:
             remove(temporary)
+
+
+def background_selection_data(target, theme=None):
+    """Describe an active background image cleanly without generation or store paths."""
+    resolved = Path(target).resolve()
+    active_bg = (CURRENT / 'theme/backgrounds').resolve()
+    if resolved.is_relative_to(active_bg):
+        return {'format': 1, 'kind': 'theme',
+                'theme': name(theme) if theme else selected(),
+                'file': resolved.relative_to(active_bg).as_posix()}
+    generations = (STATE / 'theme-generations').resolve()
+    if resolved.is_relative_to(generations):
+        parts = resolved.relative_to(generations).parts
+        if 'backgrounds' in parts:
+            index = parts.index('backgrounds')
+            if index >= 1 and index + 1 < len(parts):
+                gen = parts[0]
+                inferred = None if gen.startswith('retired-') else gen.split('.', 1)[0]
+                chosen = name(theme or inferred or selected())
+                return {'format': 1, 'kind': 'theme', 'theme': chosen,
+                        'file': Path(*parts[index + 1:]).as_posix()}
+    for base in (ASSETS / 'themes', CONFIG / 'tamlinux/themes'):
+        resolved_base = base.resolve()
+        if resolved.is_relative_to(resolved_base):
+            parts = resolved.relative_to(resolved_base).parts
+            if len(parts) >= 3 and parts[1] == 'backgrounds':
+                return {'format': 1, 'kind': 'theme', 'theme': name(parts[0]),
+                        'file': Path(*parts[2:]).as_posix()}
+    resolved_home = HOME.resolve()
+    if resolved.is_relative_to(resolved_home):
+        return {'format': 1, 'kind': 'home',
+                'path': resolved.relative_to(resolved_home).as_posix()}
+    return {'format': 1, 'kind': 'path', 'path': str(resolved)}
+
+
+def write_background_selection(payload):
+    atomic(BACKGROUND_SELECTION, json.dumps(payload, sort_keys=True) + '\n')
+
+
+def read_background_selection():
+    if not BACKGROUND_SELECTION.is_file() or BACKGROUND_SELECTION.is_symlink():
+        return None
+    data = json.loads(BACKGROUND_SELECTION.read_text())
+    if not isinstance(data, dict) or data.get('format') != 1:
+        raise ValueError('unsupported background selection format')
+    return data
+
+
+def resolve_background_selection(data, theme=None):
+    kind = data.get('kind')
+    if kind == 'theme':
+        sel_theme = name(data.get('theme', ''))
+        rel = Path(data.get('file', ''))
+        if rel.is_absolute() or '..' in rel.parts or not str(data.get('file', '')):
+            raise ValueError('invalid theme background relative path')
+        for root in (CURRENT / 'theme/backgrounds',
+                     CONFIG / 'tamlinux/backgrounds' / sel_theme,
+                     CONFIG / 'tamlinux/themes' / sel_theme / 'backgrounds',
+                     ASSETS / 'themes' / sel_theme / 'backgrounds'):
+            candidate = root / rel
+            if candidate.is_file() and candidate.suffix.lower() in IMAGE_SUFFIXES:
+                return candidate
+        fallback = images(CURRENT / 'theme/backgrounds',
+                          CONFIG / 'tamlinux/backgrounds' / (theme or sel_theme))
+        return fallback[0] if fallback else None
+    if kind == 'home':
+        rel = Path(data.get('path', ''))
+        if rel.is_absolute() or '..' in rel.parts or not str(data.get('path', '')):
+            raise ValueError('invalid home background relative path')
+        candidate = HOME / rel
+        if candidate.is_file() and candidate.suffix.lower() in IMAGE_SUFFIXES:
+            return candidate
+        return None
+    if kind == 'path':
+        candidate = Path(data.get('path', ''))
+        if candidate.is_absolute() and candidate.is_file() and candidate.suffix.lower() in IMAGE_SUFFIXES:
+            return candidate
+        return None
+    raise ValueError('unknown background selection kind')
 
 
 def preserve_active_background():
@@ -516,11 +596,26 @@ def set_theme(value, refresh=False, apply=True):
             previous_theme = selected()
         except (ValueError, UnicodeError):
             previous_theme = ''
+        preserved_selection = None
+        if (CURRENT / 'background').exists():
+            try:
+                preserved_selection = background_selection_data((CURRENT / 'background').resolve(), theme=previous_theme or None)
+            except (OSError, ValueError):
+                preserved_selection = read_background_selection()
+        elif BACKGROUND_SELECTION.exists():
+            try:
+                preserved_selection = read_background_selection()
+            except (OSError, ValueError):
+                preserved_selection = None
         gtk4_link = CONFIG / 'gtk-4.0/gtk.css'
         gtk4_target = str(CURRENT / 'theme/gtk4-adaptive.css')
         gtk4_was_owned = gtk4_link.is_symlink() and os.readlink(gtk4_link) == gtk4_target
         previous_gtk4 = (CURRENT / 'theme/gtk4-adaptive.css').read_bytes() if gtk4_was_owned and (CURRENT / 'theme/gtk4-adaptive.css').is_file() else None
-        paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background'] + (application_paths() if apply else [])
+        if not apply and gtk4_was_owned and not (stage / 'gtk4-adaptive.css').exists():
+            prepare_gtk4_pair(stage, theme)
+            if not (stage / 'gtk4-adaptive.css').exists() and previous_gtk4 is not None:
+                (stage / 'gtk4-adaptive.css').write_bytes(previous_gtk4)
+        paths = [CURRENT / 'theme', CURRENT / 'theme.name', CURRENT / 'background', BACKGROUND_SELECTION] + (application_paths() if apply else [])
         dconf = None
         if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE') and os.environ.get('DBUS_SESSION_BUS_ADDRESS'):
             if os.environ.get('GSETTINGS_BACKEND', 'dconf') not in ('', 'dconf'):
@@ -545,6 +640,9 @@ def set_theme(value, refresh=False, apply=True):
                     old = (CURRENT / 'background').resolve()
                     index = next((i for i,p in enumerate(choices) if p.resolve() == old), -1)
                     atomic(CURRENT / 'background', link=choices[(index + 1) % len(choices)])
+                    preserved_selection = background_selection_data((CURRENT / 'background').resolve(), theme=theme)
+            if preserved_selection is not None:
+                write_background_selection(preserved_selection)
             if apply and not os.environ.get('TAMLINUX_THEME_OFFLINE'):
                 gtk4_supported = gtk4_media_supported() if gtk4_pair else False
                 if theme in ('tamarack-dark', 'tamarack-light') and not gtk4_pair:
@@ -574,9 +672,28 @@ def set_background(value):
     path = Path(value).resolve(strict=True)
     if not path.is_file() or path.suffix.lower() not in IMAGE_SUFFIXES:
         raise ValueError('background must be an image file')
-    with transaction('background', [CURRENT / 'background']):
+    selection = background_selection_data(path)
+    with transaction('background', [CURRENT / 'background', BACKGROUND_SELECTION]):
         atomic(CURRENT / 'background', link=path)
+        write_background_selection(selection)
     run('tam-shell', '-q', 'background', 'set', path, check=False)
+
+
+def sync_state():
+    """Rebuild derived current/theme and current/background offline from portable state."""
+    theme = selected()
+    set_theme(theme, refresh=False, apply=False)
+    selection = read_background_selection()
+    if selection is not None:
+        resolved = resolve_background_selection(selection, theme=theme)
+        if resolved is not None:
+            atomic(CURRENT / 'background', link=resolved)
+            write_background_selection(background_selection_data(resolved, theme=theme))
+        elif os.path.lexists(CURRENT / 'background') and not (CURRENT / 'background').exists():
+            choices = images(CURRENT / 'theme/backgrounds', CONFIG / 'tamlinux/backgrounds' / theme)
+            if choices:
+                atomic(CURRENT / 'background', link=choices[0])
+                write_background_selection(background_selection_data(choices[0], theme=theme))
 
 def install_theme(url):
     if not url:
@@ -667,12 +784,16 @@ def main():
     mutating = action in {'initialize', 'set', 'refresh', 'bg-set', 'bg-next', 'remove', 'install', 'font-set', 'branding-about'}
     with (open(CURRENT / '.theme.lock', 'a') if mutating else contextlib.nullcontext()) as lock:
         if mutating: fcntl.flock(lock, fcntl.LOCK_EX)
-        if action == 'initialize' and not args:
-            # Initialization owns only absent fresh state. Existing selections,
-            # even dangling links, require explicit recovery/user action.
-            if not any(path.exists() or path.is_symlink() for path in (CURRENT / 'theme', CURRENT / 'theme.name')):
+        if action == 'initialize' and args in ([], ['--sync']):
+            # Initialization owns only absent fresh state, or regenerating
+            # derived directories when portable state exists without them.
+            if args == ['--sync']:
+                sync_state()
+            elif not any(path.exists() or path.is_symlink() for path in (CURRENT / 'theme', CURRENT / 'theme.name')):
                 background = CURRENT / 'background'
                 set_theme('tokyo-night', refresh=background.exists() or background.is_symlink(), apply=False)
+            elif not os.path.lexists(CURRENT / 'theme') and (CURRENT / 'theme.name').is_file():
+                sync_state()
             else:
                 active = CURRENT / 'theme'
                 if active.is_symlink() and active.is_dir():
