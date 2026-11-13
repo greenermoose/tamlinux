@@ -61,8 +61,14 @@ trap 'rm -f "$core"' EXIT
 coredumpctl dump <pid> --output="$core"
 DEBUGINFOD_URLS="https://debuginfod.archlinux.org" \
   gdb -q <executable> "$core" \
-  -batch -ex 'set debuginfod enabled on' -ex 'bt'
+  -batch -iex 'set debuginfod enabled on' -ex 'bt'
 ```
+
+Use `-iex`, not `-ex`, for the debuginfod setting. In batch mode gdb asks
+whether to enable debuginfod while it loads the executable, gets no answer and
+turns it off. A later `-ex` arrives too late, and no symbols are downloaded.
+If the output says "Debuginfod has been disabled", the symbols were not
+fetched. That does not mean the package lacks them.
 
 A core is a verbatim copy of the process's memory and can hold passwords, tokens,
 and private documents. Write it to a fresh `mktemp` path rather than a predictable
