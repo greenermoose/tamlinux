@@ -708,6 +708,7 @@ else:
         self.assertTrue((self.current / 'background').is_symlink())
         self.assertTrue((self.current / 'background').resolve().is_file())
         self.assertEqual((self.current / 'background').resolve().name, gruvbox_bg.name)
+        selection = json.loads((self.current / 'background.selection').read_text())
         # initialize --sync rebuilds even when current/theme already exists (e.g., rollback or text-size restore).
         shutil.rmtree(self.state / 'tamlinux/theme-generations')
         (self.state / 'tamlinux/shell.toml').parent.mkdir(parents=True, exist_ok=True)
@@ -716,5 +717,22 @@ else:
         self.assertTrue((self.current / 'theme/colors.toml').is_file())
         payload = json.loads(subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
         self.assertEqual(payload['style']['fontBaseSize'], 15)
+        self.assertEqual((self.current / 'background').resolve().name, gruvbox_bg.name)
+        self.assertEqual(json.loads((self.current / 'background.selection').read_text()), selection)
+
+    def test_offline_sync_restores_personal_background_without_derived_state(self):
+        self.call('set', 'tokyo-night')
+        personal_img = self.base / 'home/pictures/custom.png'
+        personal_img.parent.mkdir(parents=True)
+        personal_img.write_bytes(b'\x89PNG\r\n\x1a\ncustom')
+        self.call('bg-set', personal_img)
+        selection = json.loads((self.current / 'background.selection').read_text())
+        shutil.rmtree(self.current / 'theme')
+        (self.current / 'background').unlink()
+
+        self.call('initialize')
+
+        self.assertEqual((self.current / 'background').resolve(), personal_img)
+        self.assertEqual(json.loads((self.current / 'background.selection').read_text()), selection)
 
 if __name__=='__main__': unittest.main()

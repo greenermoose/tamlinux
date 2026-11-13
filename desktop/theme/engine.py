@@ -682,8 +682,10 @@ def set_background(value):
 def sync_state():
     """Rebuild derived current/theme and current/background offline from portable state."""
     theme = selected()
-    set_theme(theme, refresh=False, apply=False)
     selection = read_background_selection()
+    set_theme(theme, refresh=False, apply=False)
+    if selection is None:
+        selection = read_background_selection()
     if selection is not None:
         resolved = resolve_background_selection(selection, theme=theme)
         if resolved is not None:

@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) preserves the saved background selection during offline theme restoration after a focused check stops 0.6.25 preparation. [Record](docs/ai/2026-11-13-offline-background-selection.md).
+
 2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) — Bundle delivery continuation. [Record](docs/ai/2026-11-12-bundle-continuation.md).
 
 2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) selects committed display-continuity sources for uninstalled candidate 0.6.23. [Record](docs/ai/2026-11-12-display-test-candidate.md).

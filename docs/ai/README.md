@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-13 — Preserve saved backgrounds during offline theme restoration](2026-11-13-offline-background-selection.md)
+
 - [2026-11-12 — Bundle delivery continuation](2026-11-12-bundle-continuation.md)
 
 - [2026-11-12 — Display continuity candidate selection](2026-11-12-display-test-candidate.md)
