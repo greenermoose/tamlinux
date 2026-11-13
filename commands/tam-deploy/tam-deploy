@@ -1265,9 +1265,16 @@ class Deployment:
 
     def bundle_native_recovery(self) -> dict:
         """The separately reviewed native rollback archive, never an installer."""
-        path = self.config / 'system/bundle-nix-recovery.json'
+        host_path = self.config / 'hosts' / self.hostname / 'bundle-nix-recovery.json'
+        system_path = self.config / 'system/bundle-nix-recovery.json'
+        if host_path.is_symlink() or host_path.exists():
+            path = host_path
+        else:
+            path = system_path
         if not path.is_file() or path.is_symlink() or path.stat().st_size > 16384:
-            raise DeploymentError('record the exact native rollback archive in system/bundle-nix-recovery.json')
+            raise DeploymentError(
+                'record the exact native rollback archive in '
+                'hosts/<hostname>/bundle-nix-recovery.json or system/bundle-nix-recovery.json')
         value = json.loads(path.read_text())
         if (set(value) != {'format', 'host', 'package', 'version', 'archive', 'sha256'} or
                 type(value['format']) is not int or value['format'] != 1 or value['host'] != self.hostname or

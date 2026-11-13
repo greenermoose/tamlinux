@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-13 — Bundle DNS privilege boundary and host-first native recovery](2026-11-13-bundle-dns-and-host-recovery.md)
+
 - [2026-11-13 — Preserve saved backgrounds during offline theme restoration](2026-11-13-offline-background-selection.md)
 
 - [2026-11-12 — Bundle delivery continuation](2026-11-12-bundle-continuation.md)

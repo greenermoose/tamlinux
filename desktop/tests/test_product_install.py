@@ -24,6 +24,9 @@ class ProductInstall(unittest.TestCase):
             command = stage / "usr/bin/tam-shell"
             command.write_bytes((SOURCE / "commands/tam-shell/tam-shell").read_bytes())
             command.chmod(0o755)
+            dns_command = stage / "usr/bin/tam-dns"
+            dns_command.write_bytes((SOURCE / "commands/tam-dns/tam-dns").read_bytes())
+            dns_command.chmod(0o755)
             for name in ("hi", "start", "suspend-unless-stay-awake", "tam-nut"):
                 original = stage / "usr/bin" / name
                 original.write_text("#!/bin/sh\n")
@@ -50,6 +53,9 @@ class ProductInstall(unittest.TestCase):
                     self.assertNotIn(b'/nix/store/', path.read_bytes(), str(path))
             self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
+            dns_rendered = dns_command.read_text()
+            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/native/dns_recovery.py", dns_rendered)
+            self.assertIn("/usr/bin/tam-dns", dns_rendered)
             for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session", "tam-nut"):
                 self.assertFalse((stage / "usr/bin" / name).exists(), name)
             self.assertTrue(os.access(stage / "usr/bin/tam-start", os.X_OK))

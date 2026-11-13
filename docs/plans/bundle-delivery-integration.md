@@ -58,7 +58,8 @@ its existing behavior. Installation preparation additionally:
 
 1. Requires a coherent Nix baseline and a per-host assembly pin.
 2. Saves its exact generation, pin bytes, receipt and immutable package
-   outputs. Requires `system/bundle-nix-recovery.json` to identify the
+   outputs. Checks `hosts/<hostname>/bundle-nix-recovery.json` first and
+   falls back to `system/bundle-nix-recovery.json` to identify the
    separately reviewed native rollback archive by host, package, version,
    absolute archive path and SHA-256. The archive's package metadata must
    agree. This record does not install anything.

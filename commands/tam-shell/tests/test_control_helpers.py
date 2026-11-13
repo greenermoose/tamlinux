@@ -405,7 +405,7 @@ elif name == 'cp':
         if os.geteuid() == 0: self.skipTest('root cannot test unprivileged authorization')
         result = self.run_command('tam-dns', 'Google')
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('only the Nix-store copy', result.stderr)
+        self.assertIn('only the installed read-only copy', result.stderr)
         self.assertFalse(self.calls('nmcli'))
 
 

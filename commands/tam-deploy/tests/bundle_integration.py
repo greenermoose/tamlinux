@@ -460,6 +460,8 @@ class BundleMigration(TransactionRecovery):
         (state / 'toggles/bar-off').write_text('1\n')
         (state / 'toggles/hypr/touchpad-disabled-name').write_text('tp0\n')
         (state / 'desktop-mode').write_text('auto\n')
+        (state / 'desktop-current').write_text('1\n')
+        (state / 'desktop-monitors').write_text('{"mode":"auto"}\n')
         (state / 'workspace-layouts').mkdir(); (state / 'workspace-layouts/1.lua').write_text('hl.workspace_rule({})\n')
         (home / '.config/tamlinux/clock').mkdir(parents=True); (home / '.config/tamlinux/clock/local.ics').write_text('CAL\n')
         (home / '.config/tamlinux/defaults').mkdir(parents=True); (home / '.config/tamlinux/defaults/agent').write_text('claude\n')
@@ -474,12 +476,37 @@ class BundleMigration(TransactionRecovery):
         self.assertNotIn('oldgen', (state / 'current/background').resolve().as_posix())
         self.assertEqual((state / 'shell.toml').read_text(), '[font]\nbase-size = 13\n')
         self.assertEqual((home / '.config/tamlinux/clock/local.ics').read_text(), 'CAL\n')
+        self.assertEqual((state / 'desktop-current').read_text(), '1\n')
         # Broken background symlink stops migration before touching files.
         (state / 'current/background').unlink()
         (state / 'current/background').symlink_to(self.root / 'missing.jpg')
         audited_paths = [line.split()[1] for line in (self.root / 'product-ux/SETTINGS').read_text().splitlines()[1:]]
         with self.assertRaisesRegex(deploy.DeploymentError, 'dangling or unreadable'):
             self.app.audit_bundle_settings(audited_paths)
+
+    def test_bundle_native_recovery_prefers_host_record_and_falls_back_to_system(self):
+        self.assertEqual(self.app.bundle_native_recovery()['sha256'], self.native_recovery['sha256'])
+        host_archive = self.root / 'host-native.pkg.tar.zst'
+        host_archive.write_bytes(b'host-specific recovery archive')
+        host_record = {
+            'format': 1, 'host': self.app.hostname, 'package': 'tamlinux-native',
+            'version': '1.0-1', 'archive': str(host_archive),
+            'sha256': hashlib.sha256(host_archive.read_bytes()).hexdigest(),
+        }
+        host_path = self.config / 'hosts' / self.app.hostname / 'bundle-nix-recovery.json'
+        host_path.parent.mkdir(parents=True, exist_ok=True)
+        host_path.write_text(json.dumps(host_record))
+        self.assertEqual(self.app.bundle_native_recovery()['archive'], str(host_archive))
+        self.assertEqual(self.app.bundle_native_recovery()['sha256'], host_record['sha256'])
+        # Symlink at host path is rejected instead of falling back to system/.
+        target = self.root / 'linked-recovery.json'; target.write_text(json.dumps(host_record))
+        host_path.unlink(); host_path.symlink_to(target)
+        with self.assertRaisesRegex(deploy.DeploymentError, 'hosts/<hostname>/bundle-nix-recovery.json'):
+            self.app.bundle_native_recovery()
+        host_path.unlink()
+        (self.config / 'system/bundle-nix-recovery.json').unlink()
+        with self.assertRaisesRegex(deploy.DeploymentError, 'hosts/<hostname>/bundle-nix-recovery.json'):
+            self.app.bundle_native_recovery()
 
 
 def load_tests(loader, tests, pattern):

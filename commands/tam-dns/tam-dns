@@ -84,15 +84,16 @@ provider_from_arg() {
   esac
 }
 
-# The copy pkexec runs as root: this script resolved to its Nix-store file.
-# Home Manager links ~/.local/bin/tam-dns into the store, which is read-only
-# and owned by root, so nothing running as the user can change what root runs.
-# Anything else (a checkout, a copy in a temporary directory) is refused rather
-# than run as root.
+# The copy pkexec runs as root: this script resolved to its Nix-store file or
+# root-owned bundle binary at /usr/bin/tam-dns. Home Manager links
+# ~/.local/bin/tam-dns into the store, and bundle installation places a
+# read-only root-owned copy at /usr/bin/tam-dns, so nothing running as the
+# user can change what root runs. Anything else (a checkout, a copy in a
+# temporary directory) is refused rather than run as root.
 store_copy() {
   local self
   self=$(readlink -f -- "${BASH_SOURCE[0]}") || return 1
-  [[ $self == /nix/store/* && $(stat -c %u -- "$self") == 0 && ! -w $self ]] || return 1
+  [[ ($self == /nix/store/* || $self == /usr/bin/tam-dns) && $(stat -c %u -- "$self") == 0 && ! -w $self ]] || return 1
   printf '%s\n' "$self"
 }
 
@@ -102,7 +103,7 @@ require_root() {
   (( EUID == 0 )) && return
 
   if ! self=$(store_copy); then
-    echo "tam-dns: refusing to run $(readlink -f -- "${BASH_SOURCE[0]}") as root; only the Nix-store copy may." >&2
+    echo "tam-dns: refusing to run $(readlink -f -- "${BASH_SOURCE[0]}") as root; only the installed read-only copy (/nix/store/* or /usr/bin/tam-dns) may." >&2
     exit 1
   fi
 
