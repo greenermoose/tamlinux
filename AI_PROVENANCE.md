@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) — Bundle delivery continuation. [Record](docs/ai/2026-11-12-bundle-continuation.md).
+
 2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) selects committed display-continuity sources for uninstalled candidate 0.6.23. [Record](docs/ai/2026-11-12-display-test-candidate.md).
 
 2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) records the uninstalled first bundle delivery integration: durable home-link conversion and exact saved-Nix recovery. [Record](docs/ai/2026-11-11-bundle-delivery-integration.md).

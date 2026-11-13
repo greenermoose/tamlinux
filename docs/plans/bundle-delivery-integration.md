@@ -3,8 +3,52 @@
 The first Nix-to-bundle bridge is implemented in source and verified with
 isolated fixtures. It has not been installed or accepted on a workstation.
 Nix/Home Manager remains the daily delivery and recovery mechanism.
-Fresh-account `init` and subsequent bundle-to-bundle delivery still refuse;
-they require the next integration slice.
+Subsequent bundle updates, registered-account `init` without a Nix profile,
+and their undo paths now pass isolated fixtures. The source remains gated
+on complete portable desktop-state coverage before workstation migration.
+
+## Continuation checkpoint
+
+The coordinator retains the original Nix recovery identity across later
+bundle deliveries. Ordinary `back` returns one bundle and its switch-time
+settings; `return-nix ID` selects the original Nix recovery path directly.
+Fresh-account preparation records no invented generation, and undo restores
+the account's original settings or their absence before detaching the bundle.
+It still requires a registered consumer/host record. The independent
+`tam-bundle` install path remains the portable bootstrap path.
+
+The native defaults and named capture list now cover the private menu,
+Chromium extension files, native messaging registrations in each supported
+browser, Chromium flags, portal settings, autostart and additional terminals.
+Known generated registrations are validated before replacement. Custom
+generated forms and remaining Nix/development-prefix references stop with
+the affected path; settings are audited again at switch time.
+
+An additional source gate was found: theme/background selection and desktop
+preferences also live beneath `.local/state/tamlinux`. The capture engine
+excludes that directory to protect its journals and avoid capture recursion.
+Preparation now refuses an installation with these active UX files instead
+of silently omitting them. A bounded portable representation, restoration
+and interruption proofs for that UX state remain required. Do not relax the
+whole-state exclusion or follow arbitrary background symlinks to close it.
+
+The stage coordinator selects the deploy operator carried in the exact
+recorded bundle. Its archive and operator bytes are bound to preparation and
+the Test digest. Test pauses after preparing the console transaction and
+short `bundle-on.sh` / `bundle-undo.sh` helpers. It records installation only
+on resume after the exact receipt, product and user settings agree. Helper
+checksums bind their executable; foreign scripts are preserved. Each root
+operation retains its polkit authorization. Real console authorization is
+still a machine proof. Run requires bound user acceptance and energy evidence.
+The stage draft also refuses absent or stale frozen suite evidence for every
+selected component, including native tools. Recording those native tools
+results in the frozen bundle packaging workflow remains an integration gate;
+the existing Nix Package/Test route has not been changed to select bundles.
+
+Canceling a prepared update also requires `tam-bundle cancel-settings` from
+tool 0.13.0: the completed system must identify the exact retained completed
+user record, and the abandoned plan must still be ready. This restores user
+readiness without changing settings. Applying settings cannot be abandoned.
 
 ## Preparation
 
@@ -92,12 +136,12 @@ separates the real C-engine fixtures from the unactivated Nix build and from
 unperformed workstation acceptance. Private PID namespaces and private `/proc`
 remain mandatory for all process/signal tests, without a host fallback.
 
-Before a real migration, complete the generated-file/settings coverage audit
-(including menu and browser registrations), package/profile integration and
-the reviewed short console activation/return scripts. Subsequent bundle
-updates, fresh-account delivery and stage-coordinator completion remain source
-gates. Rebuild the approved tool and bootstrap from exact commits before
-selecting a candidate. No candidate number or stage word is implied here.
+Before a real migration, finish portable mutable desktop-state coverage,
+frozen native-tools suite integration and the full carried-UX audit, then
+review the concrete source and console
+helpers. Rebuild the tool, bootstrap and workstation archive from the reviewed
+exact commits. The previous recipe source pins remain frozen; no new bundle
+candidate has been selected. No candidate number or stage word is implied.
 
 The remaining machine gates include the selected sacrificial workstation,
 physical interruption, console authorization/repair, native package replacement

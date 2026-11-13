@@ -1,5 +1,7 @@
 # AI Collaboration Session Archive: `tamlinux`
 
+- [2026-11-12 — Bundle delivery continuation](2026-11-12-bundle-continuation.md)
+
 - [2026-11-12 — Display continuity candidate selection](2026-11-12-display-test-candidate.md)
 
 - [2026-11-11 — First bundle delivery integration](2026-11-11-bundle-delivery-integration.md)

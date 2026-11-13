@@ -191,6 +191,34 @@ def install(stage: Path, source: Path = SOURCE) -> None:
         f'export TAMLINUX_VERSION_NOTES={SHARE}/version-notes.txt\n'
         'export TAMLINUX_STAY_AWAKE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake"\n'
     ).encode())
+    # These are settings defaults, not browser profiles. Generated Nix
+    # registrations are retired during migration and replaced at switch time.
+    put(home / ".config/autostart/org.fcitx.Fcitx5.desktop",
+        b"[Desktop Entry]\nType=Application\nName=Fcitx 5\nHidden=true\n")
+    put(home / ".config/xdg-desktop-portal/hyprland-portals.conf",
+        b"[preferred]\ndefault=hyprland;gtk\norg.freedesktop.impl.portal.FileChooser=gtk\n")
+    put(home / ".config/tamlinux/menu/default.jsonc",
+        (source / "desktop/menu/default.jsonc").read_bytes())
+    shutil.copytree(source / "desktop/browser/extensions", home / ".config/tamlinux/chromium/extensions")
+    browsers = ("chromium", "google-chrome", "google-chrome-beta", "google-chrome-unstable",
+                "BraveSoftware/Brave-Browser", "BraveSoftware/Brave-Browser-Beta",
+                "BraveSoftware/Brave-Browser-Nightly", "microsoft-edge", "microsoft-edge-dev")
+    for browser in browsers:
+        for name, command, origin in (
+            ("copy_url", "tam-chromium-copy-url-host", "bgpiichlckmfanooecilcjemknkcpngb"),
+            ("ytdlp", "tam-chromium-ytdlp-host", "dedjgknigfeelejglamclffonmophnfl"),
+        ):
+            host = {"name": "org.tamlinux." + name, "description": "Tamlinux Chromium native messaging endpoint",
+                    "path": "/usr/bin/" + command, "type": "stdio",
+                    "allowed_origins": ["chrome-extension://" + origin + "/"]}
+            put(home / f".config/{browser}/NativeMessagingHosts/org.tamlinux.{name}.json",
+                (json.dumps(host, sort_keys=True) + "\n").encode())
+    extensions = f"{SHARE}/browser/extensions"
+    put(home / ".config/chromium-flags.conf", (
+        "--ozone-platform=wayland\n--password-store=gnome-libsecret\n"
+        "--enable-features=TouchpadOverscrollHistoryNavigation\n"
+        f"--load-extension={extensions}/copy-url,{extensions}/yt-dlp,{extensions}/whatsapp-slim\n"
+    ).encode())
 
 
 def main() -> int:

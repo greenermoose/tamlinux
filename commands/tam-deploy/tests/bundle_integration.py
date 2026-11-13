@@ -117,8 +117,8 @@ class BundleMigration(TransactionRecovery):
             'minimumTool': '0.12.0', 'rootstock': 'arch-systemd',
             'artifact': {'bundleId': self.bundle_id, 'bundleHash': fields['hash'],
                          'name': self.bundle_id + '.tbundle', 'sha256': digest}}
-        self.enterContext(patch.object(self.app, 'bundle_delivery', side_effect=lambda revision:
-            self.delivery if revision == self.packages_new else None))
+        self.deliveries = {self.packages_new: self.delivery}
+        self.enterContext(patch.object(self.app, 'bundle_delivery', side_effect=self.deliveries.get))
         self.enterContext(patch.object(self.app, 'bundle_command', side_effect=self.bundle))
         self.privileged = self.enterContext(patch.object(self.app, 'bundle_privileged', side_effect=self.bundle))
         self.enterContext(patch.object(self.app, 'dormant_bundle_hash', return_value=None))
@@ -226,6 +226,160 @@ class BundleMigration(TransactionRecovery):
         (self.stripped / 'home-path/bin/tam').write_text('stale product')
         with self.assertRaisesRegex(deploy.DeploymentError, 'still supplies tam'):
             self.app.verify_bundle_profile(str(self.stripped), {'entries': []})
+
+    def next_delivery(self, revision, version):
+        product = self.root / ('product-' + version)
+        shutil.copytree(self.product, product)
+        (product / 'BUNDLE').unlink();(product / 'MANIFEST').unlink()
+        (product / 'placed/usr/bin/tam').write_text('#!/bin/sh\necho ' + version + '\n')
+        self.raw('seal', product, '--format', '2', '--name', 'tamlinux', '--version', version,
+                 '--source', 'tamlinux ' + self.tamlinux_new, '--source', 'packaging ' + 'a' * 40)
+        fields = dict(line.split(' ', 1) for line in (product / 'BUNDLE').read_text().splitlines()
+                      if line.startswith(('hash ', 'version ')))
+        identifier = 'tamlinux-' + version + '-' + fields['hash'][7:19]
+        archive = self.root / (version + '.tbundle');self.raw('pack', product, '-o', archive)
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        shutil.copyfile(archive, Path(os.environ['XDG_CACHE_HOME']) / 'tamlinux/bundles' / (digest + '.tbundle'))
+        delivery = dict(self.delivery, version=version,
+            artifact={'bundleId': identifier, 'bundleHash': fields['hash'],
+                      'name': identifier + '.tbundle', 'sha256': digest})
+        self.deliveries[revision] = delivery
+        return delivery
+
+    def test_later_bundle_update_and_exact_back_then_nix_return(self):
+        initial = self.prepare_bundle();self.app.activate_bundle(initial)
+        revision = 'f' * 40
+        delivery = self.next_delivery(revision, '9.8.8')
+        self.app._requested_transaction = 'second-delivery'
+        (self.app.home / '.bashrc').write_text('settings before second delivery\n')
+        self.app.prepare_bundle(revision, delivery['components'], 'test')
+        self.app.activate_bundle('second-delivery')
+        self.assertEqual(self.app.locked(), revision)
+        self.assertFalse(self.app.state_report()['problems'])
+        (self.app.home / '.bashrc').write_text('settings after second delivery\n')
+        self.app.back()
+        self.assertEqual(self.app.locked(), self.packages_new)
+        self.assertEqual((self.app.home / '.bashrc').read_text(), 'settings before second delivery\n')
+        self.assertFalse(self.app.state_report()['problems'])
+        self.app.back()
+        self.assertEqual(self.app.locked(), self.packages_main)
+        self.assertEqual(self.app.generation(), str(self.old))
+
+    def test_later_update_can_return_directly_to_original_nix_generation(self):
+        initial = self.prepare_bundle();self.app.activate_bundle(initial)
+        revision = 'f' * 40;delivery = self.next_delivery(revision, '9.8.8')
+        self.app._requested_transaction = 'second-delivery'
+        self.app.prepare_bundle(revision, delivery['components'], 'test')
+        self.app.activate_bundle('second-delivery')
+        self.app.return_bundle_to_nix('second-delivery')
+        self.assertEqual(self.app.generation(), str(self.old))
+        self.assertEqual(self.app.locked(), self.packages_main)
+        self.assertTrue((self.app.home / '.bashrc').is_symlink())
+
+    def fresh_account(self):
+        # Keep only the registered consumer/host, rootstock and carried bundle.
+        self.app.profile.unlink();self.app.state_file.unlink()
+        for path in sorted((self.app.home / '.local/bin').iterdir()):path.unlink()
+        for relative in ('.bashrc', '.local/share/tamlinux/shell', '.local/share/tamlinux/shell-revision',
+                         '.config/systemd/user/tamlinux-shell.service', '.config/tamlinux/session/hyprland.lua'):
+            (self.app.home / relative).unlink()
+
+    def test_first_account_bundle_without_nix_profile_and_undo(self):
+        self.fresh_account()
+        (self.app.home / '.bashrc').write_text('account before bundle\n')
+        self.app.prepare_bundle_init(self.packages_new, self.delivery['components'], 'test')
+        identifier = json.loads(self.app.transaction_file.read_text())['id']
+        self.assertFalse(self.app.profile.exists())
+        self.app.activate_bundle(identifier)
+        self.assertFalse(self.app.state_report()['problems'])
+        (self.app.home / '.bashrc').write_text('account after bundle\n')
+        self.app.recover(identifier)
+        self.assertEqual((self.app.home / '.bashrc').read_text(), 'account before bundle\n')
+        self.assertFalse(self.app.state_file.exists())
+        self.assertEqual(self.app.bundle_system_state()['live'], '-')
+
+    def test_nix_references_added_after_prepare_refuse_before_conversion(self):
+        identifier = self.prepare_bundle()
+        self.personal.write_text('source /nix/store/old-path/setup\n')
+        with self.assertRaisesRegex(deploy.DeploymentError, 'explicit native-path migration'):
+            self.app.activate_bundle(identifier)
+        self.privileged.assert_not_called()
+        self.assertTrue((self.app.home / '.bashrc').is_symlink())
+
+    def test_canceled_prepared_update_keeps_old_session_ready_and_allows_another_update(self):
+        self.app.activate_bundle(self.prepare_bundle())
+        revision = 'f' * 40;delivery = self.next_delivery(revision, '9.8.8')
+        self.app._requested_transaction = 'second-delivery'
+        self.app.prepare_bundle(revision, delivery['components'], 'test')
+        actual = self.app.bundle_command
+        def stop(*args):
+            result = actual(*args)
+            if args == ('prepare-settings',):raise Interrupted()
+            return result
+        with patch.object(self.app, 'bundle_command', side_effect=stop):
+            with self.assertRaises(Interrupted):self.app.activate_bundle('second-delivery')
+        self.app.recover('second-delivery')
+        self.assertFalse(self.app.state_report()['problems'])
+        self.app._requested_transaction = 'third-delivery'
+        self.app.prepare_bundle(revision, delivery['components'], 'test')
+        self.app.activate_bundle('third-delivery')
+        self.assertFalse(self.app.state_report()['problems'])
+
+    def test_update_recovery_retries_after_real_system_install_and_apply(self):
+        for action in ('install', 'apply'):
+            fixture = BundleMigration();fixture.setUp()
+            try:
+                fixture.app.activate_bundle(fixture.prepare_bundle())
+                revision = 'f' * 40;delivery = fixture.next_delivery(revision, '9.8.8')
+                fixture.app._requested_transaction = 'second-delivery'
+                (fixture.app.home / '.bashrc').write_text('saved prior settings\n')
+                fixture.app.prepare_bundle(revision, delivery['components'], 'test')
+                fixture.app.activate_bundle('second-delivery')
+                actual = fixture.app.bundle_privileged
+                def stop(*args):
+                    result = actual(*args)
+                    if args[0] == action:raise Interrupted()
+                    return result
+                with patch.object(fixture.app, 'bundle_privileged', side_effect=stop):
+                    with self.assertRaises(Interrupted):fixture.app.recover('second-delivery')
+                fixture.app.recover('second-delivery')
+                self.assertFalse(fixture.app.state_report()['problems'])
+                self.assertEqual((fixture.app.home / '.bashrc').read_text(),'saved prior settings\n')
+            finally:fixture.doCleanups()
+
+    def test_first_account_undo_restores_absence_without_nix(self):
+        self.fresh_account()
+        self.app.prepare_bundle_init(self.packages_new, self.delivery['components'], 'test')
+        identifier = json.loads(self.app.transaction_file.read_text())['id']
+        self.app.activate_bundle(identifier)
+        self.assertTrue((self.app.home / '.bashrc').is_file())
+        self.app.recover(identifier)
+        self.assertFalse(os.path.lexists(self.app.home / '.bashrc'))
+        self.assertFalse(self.app.profile.exists())
+
+    def test_short_console_helpers_are_bound_checked_and_preserve_foreign_scripts(self):
+        identifier = self.prepare_bundle()
+        self.app.console_helpers(identifier)
+        for name in ('bundle-on.sh', 'bundle-undo.sh'):
+            path = self.app.home / name
+            subprocess.run(['sh', '-n', str(path)],check=True)
+            self.assertIn(identifier, path.read_text())
+            self.assertIn('/usr/bin/sha256sum', path.read_text())
+            self.assertEqual(path.stat().st_mode & 0o777, 0o700)
+        self.app.console_helpers(identifier)
+        path = self.app.home / 'bundle-undo.sh';path.write_text('personal script\n')
+        with self.assertRaisesRegex(deploy.DeploymentError,'another step'):
+            self.app.console_helpers(identifier)
+        self.assertEqual(path.read_text(),'personal script\n')
+
+    def test_uncaptured_active_desktop_state_stops_preparation(self):
+        state = self.app.home / '.local/state/tamlinux/current/theme.name'
+        state.parent.mkdir(parents=True)
+        state.write_text('personal-theme\n')
+        with self.assertRaisesRegex(deploy.DeploymentError, 'portable capture support'):
+            self.prepare_bundle()
+        self.privileged.assert_not_called()
+        self.assertTrue((self.app.home / '.bashrc').is_symlink())
 
 
 def load_tests(loader, tests, pattern):

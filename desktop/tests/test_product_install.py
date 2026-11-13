@@ -36,6 +36,18 @@ class ProductInstall(unittest.TestCase):
             environment = (defaults / ".config/uwsm/env.d/10-tamlinux.sh").read_text()
             self.assertIn('export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n', environment)
             self.assertNotIn('/nix/store', environment)
+            for browser in ('chromium', 'google-chrome', 'BraveSoftware/Brave-Browser', 'microsoft-edge-dev'):
+                import json
+                host = json.loads((defaults / f'.config/{browser}/NativeMessagingHosts/org.tamlinux.copy_url.json').read_text())
+                self.assertEqual(host['path'], '/usr/bin/tam-chromium-copy-url-host')
+                self.assertEqual(host['allowed_origins'], ['chrome-extension://bgpiichlckmfanooecilcjemknkcpngb/'])
+            self.assertTrue((defaults / '.config/tamlinux/menu/default.jsonc').is_file())
+            self.assertTrue((defaults / '.config/tamlinux/chromium/extensions/copy-url/manifest.json').is_file())
+            flags = (defaults / '.config/chromium-flags.conf').read_text()
+            self.assertIn('/usr/lib/tamlinux/current/share/tamlinux/browser/extensions/copy-url', flags)
+            for path in defaults.rglob('*'):
+                if path.is_file():
+                    self.assertNotIn(b'/nix/store/', path.read_bytes(), str(path))
             self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
             for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session", "tam-nut"):

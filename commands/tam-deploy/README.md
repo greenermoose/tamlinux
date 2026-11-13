@@ -8,6 +8,19 @@ locations; only the evidence and the branch differ. An assembly is a
 [`tamlinux-packages`](https://github.com/greenermoose/tamlinux-packages)
 revision whose lock file pins every component.
 
+The uninstalled bundle backend also supports subsequent bundle delivery and
+registered-account initialization without an existing Nix profile. See the
+[source checkpoint](../../docs/plans/bundle-delivery-integration.md) for its
+remaining desktop-state capture gate. `prepare-console <assembly>` builds
+and verifies the migration profile without arming root apply;
+`console-helpers ID` writes checksum-bound `bundle-on.sh` and
+`bundle-undo.sh` for an exact prepared transaction. `activate-bundle ID`
+finishes that transaction at a console. `recover ID` / `back` returns its
+previous product and settings; `return-nix ID` selects the originally saved
+Nix generation when one exists. Native restoration is always separately
+approved. This source requires tam-bundle 0.13.0 for prepared-update
+cancellation. It does not change the current delivery mechanism.
+
 **Per-host pins.** In a fleet configuration (`hosts/<hostname>/host.json`), a
 host can record its own assembly revision in
 `hosts/<hostname>/state/assembly`, one 40-character revision per file. The
