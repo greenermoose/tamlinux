@@ -1225,9 +1225,16 @@ class Deployment:
         # Extend the consumer's recorded HM evaluation. Only the product
         # delivery and converted links leave; unrelated packages remain.
         disabled = {entry['path']: {'enable': False} for entry in plan['entries']}
-        xdg_env_disable = (
-            'xdg.configFile."environment.d/10-home-manager.conf".enable = lib.mkForce false; '
-            if '.config/environment.d/10-home-manager.conf' in disabled else '')
+        xdg_disables = ''
+        for prefix, option in (('.config/', 'xdg.configFile'),
+                               ('.local/share/', 'xdg.dataFile'),
+                               ('.local/state/', 'xdg.stateFile')):
+            entries = {path.removeprefix(prefix): {'enable': False}
+                       for path in disabled if path.startswith(prefix)}
+            if entries:
+                xdg_disables += (
+                    f'{option} = lib.mapAttrs (_: v: {{ enable = lib.mkForce v.enable; }}) '
+                    '(builtins.fromJSON ' + json.dumps(json.dumps(entries)) + '); ')
         return ('let base = (builtins.getFlake ' + json.dumps(
                     'git+file://' + str(self.config) + '?rev=' + consumer) + ').homeConfigurations.'
                 + json.dumps(self.home_configuration) + '; in (base.extendModules { modules = '
@@ -1238,7 +1245,7 @@ class Deployment:
                 + 'tamlinux.developer.libraries = lib.mkForce []; '
                 + 'home.file = lib.mapAttrs (_: v: { enable = lib.mkForce v.enable; }) '
                 + '(builtins.fromJSON ' + json.dumps(json.dumps(disabled)) + '); '
-                + xdg_env_disable
+                + xdg_disables
                 + 'home.sessionVariables.TAMLINUX_QUICKSHELL = lib.mkForce "/usr/bin/quickshell"; '
                 + 'home.sessionVariables.TAMLINUX_QUICKSHELL_IPC = lib.mkForce "/usr/bin/qs"; '
                 + 'home.sessionVariables.TAMLINUX_VERSION_NOTES = lib.mkForce '

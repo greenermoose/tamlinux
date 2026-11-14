@@ -16,10 +16,11 @@ cleanly and restored intact on Nix return:
   excludes `retire` entries alongside `regenerate` entries when auditing
   settings before migration activation removes those symlinks.
 - **`bundle_profile_expression` (`commands/tam-deploy/tam-deploy`):** Disables
-  `xdg.configFile."environment.d/10-home-manager.conf".enable` with
-  `lib.mkForce false` when retiring `.config/environment.d/10-home-manager.conf`,
-  because setting `home.file` alone does not remove XDG config files generated
-  via `xdg.configFile`.
+  `xdg.configFile`, `xdg.dataFile`, and `xdg.stateFile` entries matching
+  converted or retired Home Manager paths under `.config/`, `.local/share/`,
+  and `.local/state/` (alongside `home.file`), so XDG-declared files such as
+  `environment.d/10-home-manager.conf` and `hypr/hypridle.conf` leave the
+  stripped Home Manager profile cleanly.
 - **`activation_validators` (`commands/tam-deploy/tam-deploy`):** Checks
   `hosts/<hostname>/activation-preflight.json` first (rejecting symlinks on
   the host registry or fallback system registry), falls back to

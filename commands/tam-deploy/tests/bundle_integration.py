@@ -558,7 +558,10 @@ class BundleMigration(TransactionRecovery):
             self.assertEqual(actions.get(relative), 'retire')
         with patch.object(deploy, 'command', return_value='0' * 40):
             expr = self.app.bundle_profile_expression(self.packages_new, tx['homePlan'], str(self.old))
-        self.assertIn('xdg.configFile."environment.d/10-home-manager.conf".enable = lib.mkForce false;', expr)
+        self.assertIn('xdg.configFile = lib.mapAttrs', expr)
+        self.assertIn('environment.d/10-home-manager.conf', expr)
+        self.assertIn('xdg.dataFile = lib.mapAttrs', expr)
+        self.assertNotIn('xdg.stateFile = ', expr)
 
         self.app.activate_bundle(identifier)
         for relative in retired_paths:
