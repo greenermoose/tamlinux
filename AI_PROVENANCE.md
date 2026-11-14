@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` updates `tam-deploy` to invoke `/usr/bin/sudo` on interactive kernel console virtual terminals and `/usr/bin/pkexec` otherwise. [Record](docs/ai/2026-11-14-tam-deploy-kernel-console-sudo.md).
+
 2026-11-14: Antigravity CLI (`agy`) `1.5.9` retires Home Manager-generated `environment.d` and `fontconfig` symlinks cleanly during `tam-deploy` bundle migration and scopes `activation_validators` per host. [Record](docs/ai/2026-11-14-tam-deploy-hm-env-fontconfig-retire.md).
 
 2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) converts tracked README files to plain text and updates their consumers. [Record](docs/ai/2026-11-13-plain-readmes.md).

@@ -1560,6 +1560,29 @@ class HomeFileConflicts(Fixture):
         self.assertEqual(user_file.read_text(), "user manpath\n")
         self.assertFalse(backup_file.exists())
 
+    def test_bundle_privileged_uses_sudo_only_on_kernel_console(self):
+        clean_env = {k: v for k, v in os.environ.items() if k not in ('DISPLAY', 'WAYLAND_DISPLAY')}
+        with patch.dict(os.environ, clean_env, clear=True), \
+             patch.object(deploy.sys.stdin, 'isatty', return_value=True), \
+             patch.object(deploy.os, 'ttyname', return_value='/dev/tty1'), \
+             patch.object(deploy, 'command') as command:
+            self.app.bundle_privileged('status')
+        command.assert_called_once_with('/usr/bin/sudo', '/usr/bin/tam-bundle', 'status')
+
+        for env_extra, isatty, tty in (
+            ({}, True, '/dev/pts/0'),
+            ({}, False, '/dev/tty1'),
+            ({'WAYLAND_DISPLAY': 'wayland-1'}, True, '/dev/tty1'),
+            ({'DISPLAY': ':0'}, True, '/dev/tty1'),
+        ):
+            with self.subTest(env_extra=env_extra, isatty=isatty, tty=tty):
+                with patch.dict(os.environ, dict(clean_env, **env_extra), clear=True), \
+                     patch.object(deploy.sys.stdin, 'isatty', return_value=isatty), \
+                     patch.object(deploy.os, 'ttyname', return_value=tty), \
+                     patch.object(deploy, 'command') as command:
+                    self.app.bundle_privileged('apply', 'tx-1')
+                command.assert_called_once_with('/usr/bin/pkexec', '/usr/bin/tam-bundle', 'apply', 'tx-1')
+
 
 class Usage(unittest.TestCase):
     def test_rejects_unknown_commands(self):

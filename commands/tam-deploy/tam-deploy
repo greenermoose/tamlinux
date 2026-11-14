@@ -472,6 +472,18 @@ class HomeLinkMigration:
         atomic_json(self.record, value)
 
 
+def _console_tty() -> bool:
+    """True only inside a kernel console virtual terminal with no display server."""
+    if os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'):
+        return False
+    if not sys.stdin.isatty():
+        return False
+    try:
+        return bool(re.fullmatch(r'/dev/tty[1-9][0-9]*', os.ttyname(0)))
+    except OSError:
+        return False
+
+
 class Deployment:
     def __init__(self):
         self.home = Path.home()
@@ -931,7 +943,7 @@ class Deployment:
             path = self.home / name
             atomic_bytes(path, body.encode())
             path.chmod(0o700)
-        print('Console: sh bundle-on.sh; undo: sh bundle-undo.sh. Each privileged operation asks through polkit.')
+        print('Console: sh bundle-on.sh; undo: sh bundle-undo.sh. Uses sudo on a kernel console, or pkexec otherwise.')
 
     def bundle_inputs(self, archive: Path, delivery: dict) -> tuple[list[str], list[str]]:
         """Read only bounded carried lists after checking the exact archive bytes."""
@@ -1443,7 +1455,8 @@ class Deployment:
         return previous, assembly
 
     def bundle_privileged(self, *arguments: str) -> None:
-        command('/usr/bin/pkexec', '/usr/bin/tam-bundle', *map(str, arguments))
+        elevator = '/usr/bin/sudo' if _console_tty() else '/usr/bin/pkexec'
+        command(elevator, '/usr/bin/tam-bundle', *map(str, arguments))
 
     def bundle_system_state(self) -> dict:
         result = subprocess.run(['/usr/bin/tam-bundle', '--root', '/', 'status'], text=True, capture_output=True)
