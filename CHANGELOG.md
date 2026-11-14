@@ -379,7 +379,7 @@ separately. Candidate entries below retain their preparation history.
 - **`tam-work` for shared checkouts** (2026-10-09). The command that lets
   several sessions, people or AI agents, work in the same Git checkouts
   without overwriting each other is now part of Tamlinux, in
-  [`commands/tam-work/`](commands/tam-work/README.md). Sessions claim the
+  [`commands/tam-work/`](commands/tam-work/README). Sessions claim the
   paths they will edit and overlapping claims are refused.
   `TAM_WORK_WORKSPACE` and `TAM_WORK_REGISTRY` override the default
   workspace (`~/Code/tamlinux`) and claim registry
@@ -682,7 +682,7 @@ Tamlinux's own.
   predecessor was the Omarchy shell. "Host" now names only the part plugins
   talk to (the host contract) and, for the workstation package, the
   distribution it is installed on and its host adapter. Earlier records say
-  "the Tamlinux host" for the shell. See [`desktop/README.md`](desktop/README.md).
+  "the Tamlinux host" for the shell. See [`desktop/README`](desktop/README).
 - **"Ported"** (2026-10-05). Code taken over from Omarchy is *ported*:
   copied with its MIT notice, adapted to Tamlinux, and maintained here.
   Headers and docs say "Ported from"; earlier records say "vendored".
@@ -719,16 +719,16 @@ Not tagged.
 ### Added
 
 - **Media keys in the Tamlinux shell** (2026-10-04). The
-  [Tamlinux shell](desktop/README.md) runs a media service that picks the
+  [Tamlinux shell](desktop/README) runs a media service that picks the
   playing MPRIS player for play, pause, stop, next, previous, and the source
   switch, and shows each action on the shell's on-screen display.
 - **Stay Awake and the idle cycle in the Tamlinux shell** (2026-10-04). The
-  [Tamlinux shell](desktop/README.md) runs an idle service with the Stay Awake
+  [Tamlinux shell](desktop/README) runs an idle service with the Stay Awake
   switch, kept in one state file that idle suspend can honour, and
   an idle cycle that starts the screensaver and then the lock. Each stage is
   off unless its timeout is set.
 - **Low-battery warning and power profiles in the Tamlinux shell**
-  (2026-10-04). The [Tamlinux shell](desktop/README.md) runs a
+  (2026-10-04). The [Tamlinux shell](desktop/README) runs a
   battery service that warns once when a draining battery reaches 10% and
   sets the power profile for battery or mains power when the source
   changes. On a machine without a battery it does nothing.
@@ -764,7 +764,7 @@ Not tagged.
   Hyprland configuration, the shell environment, the session entry and
   session units, and the login screen (theme, greeter, and autologin).
 - **Session services in the Tamlinux shell** (2026-10-04; numbered 0.1.0–0.1.8
-  on 2026-10-05). The [Tamlinux shell](desktop/README.md) runs notifications,
+  on 2026-10-05). The [Tamlinux shell](desktop/README) runs notifications,
   the on-screen display, clipboard history, the emoji and image pickers,
   reminders, the command menu, the desktop background, and the polkit agent
   as session services beside the existing bar. Screenshots use Tamlinux's own
@@ -785,7 +785,7 @@ Not tagged.
   and the desktop carries Tamlinux's own name and look. 0.4 installs the Sway
   session beside the Hyprland session, 0.5–0.9 fall back to Hyprland, and
   1.0.0 removes Hyprland. Updated [`VERSIONING.md`](VERSIONING.md), the
-  [README](README.md), and the
+  [README](README), and the
   [desktop decoupling plan](docs/plans/desktop-decoupling.md).
 
 - Set the **route and version series** in [`VERSIONING.md`](VERSIONING.md):
@@ -796,9 +796,9 @@ Not tagged.
   repeatable installation and the terminal-only profile. The workstation
   package installs on existing distributions with a Nix flake and a native
   host adapter, and on Void as native `xbps-src` packages. Updated the
-  [README](README.md), [installation framework](docs/plans/installation-framework.md),
+  [README](README), [installation framework](docs/plans/installation-framework.md),
   [desktop decoupling plan](docs/plans/desktop-decoupling.md), and
-  [plans index](docs/plans/README.md) to match.
+  [plans index](docs/plans/README) to match.
 - Set **Void Linux as the first target base**, with antiX Core as the fallback
   if Void has a showstopper. Updated the architecture, installation, and desktop
   plans directly. Btrfs is the preferred pilot filesystem; musl/glibc and native
@@ -808,10 +808,10 @@ Not tagged.
 The following entries record earlier directions that led to this target:
 
 - Recorded the decision to use **runit** for system initialization and service
-  management for the target workstation in [`README.md`](README.md),
+  management for the target workstation in [`README`](README),
   [`VERSIONING.md`](VERSIONING.md), and the
   [installation framework](docs/plans/installation-framework.md).
-- Recorded the 2026-10-03 targets in [`README.md`](README.md): hardware from
+- Recorded the 2026-10-03 targets in [`README`](README): hardware from
   circa 2006 onward (older is out of scope) on Wayland, not X11; antiX Linux
   Core with a tiling window system inspired by the Omarchy UI, with the
   compositor reopened (River is no longer the settled choice); Chrome and VS
@@ -825,7 +825,7 @@ The following entries record earlier directions that led to this target:
   Linux), the three kinds of terminal-only machine, and the package design
   points in the [installation framework](docs/plans/installation-framework.md).
 
-- Refined architectural vision and public explainer in [`README.md`](README.md):
+- Refined architectural vision and public explainer in [`README`](README):
   clarified that Arch Linux's appealing idea is continuous rolling updates,
   adopted AntiX Linux's inspiration for older hardware support and lean
   non-systemd base layer, and elevated simplifying and minimizing resource use
@@ -836,7 +836,7 @@ The following entries record earlier directions that led to this target:
 - Updated [`UPSTREAM.md`](UPSTREAM.md) and [`VERSIONING.md`](VERSIONING.md) to
   align with the AntiX base layer trajectory.
 - Updated [`docs/plans/installation-framework.md`](docs/plans/installation-framework.md)
-  and [`docs/plans/README.md`](docs/plans/README.md) to replace the exploratory
+  and [`docs/plans/README`](docs/plans/README) to replace the exploratory
   NixOS/Arch host sequence with the settled AntiX Linux Core base sequence and
   Maker Fest distribution model.
 

@@ -1,0 +1,259 @@
+WORKSPACES WITH DESKTOP MODE (fred.workspaces)
+
+Part of Fred's fred.* plugin suite for Tamlinux
+<https://github.com/greenermoose/tamlinux> (Fred's personal Linux workstation
+environment): a shell bar widget with dynamic all-monitor desktop sets,
+endpoint-based independent switching, rich window tooltips, and automatic
+display geometry detection.
+
+Workspaces with Desktop Mode <assets/screenshot.png>
+
+
+OVERVIEW
+
+fred.workspaces is the Tamlinux workspace bar widget, with a desktop mode
+switcher for multi-monitor and single-monitor workflows:
+
+  Mode: Mac Desktop Mode
+  Indicator: M
+  Description: Workspaces switch independently between the left and right
+  endpoints. Odd workspaces use the left endpoint and even workspaces use the
+  right endpoint.
+
+  Mode: Windows Desktop Mode
+  Indicator: W
+  Description: Every active monitor switches as one set. The set size
+  automatically follows the number of active displays while preserving the
+  original two-monitor behavior.
+
+  Mode: Omarchy Stock Mode
+  Indicator: O
+  Description: Traditional Omarchy presentation showing workspaces 1–5 on both
+  bars.
+
+
+FEATURES
+
+- Quick Mode Toggle: Click the mode letter (M / W / O) directly on the bar or
+  press SUPER + CTRL + M to cycle modes.
+- Five Ready-to-Use Sets: Windows mode always begins with desktop choices 1–5;
+  sets 6–10 appear when active or occupied.
+- Rich Set Tooltips: Hover over a desktop button to see windows from every
+  member workspace, labeled Left/Center/Right for three displays.
+- Dynamic Geometry Detection: Queries hyprctl monitors -j, excludes disabled
+  and mirrored outputs, and orders the remaining displays by (x, y, name).
+- Single-to-Many Monitor Support: One formula handles laptops, the original
+  two-monitor pair, three-monitor desks, and larger arrangements.
+- Optional Endpoint Overrides: TAMLINUX_DESKTOP_LEFT_MONITOR and
+  TAMLINUX_DESKTOP_RIGHT_MONITOR customize Mac-mode endpoints without
+  excluding displays from Windows mode.
+- Self-Contained Execution: Bundles the standard-library-only tam-desktop-mode
+  helper and launches it descriptor-relatively from the bar.
+
+Windows-mode mapping
+
+For desktop D, set size S, and zero-based monitor position P:
+
+    workspace = (D - 1) * S + P + 1
+
+  Active monitors: 1
+  Desktop 1: 1
+  Desktop 2: 2
+  Desktop 5: 5
+
+  Active monitors: 2
+  Desktop 1: 1, 2
+  Desktop 2: 3, 4
+  Desktop 5: 9, 10
+
+  Active monitors: 3
+  Desktop 1: 1, 2, 3
+  Desktop 2: 4, 5, 6
+  Desktop 5: 13, 14, 15
+
+
+REQUIREMENTS
+
+- Tamlinux personal workstation environment (or Arch Linux with Hyprland and
+  Quickshell)
+- Python 3 (python3, standard library only — executed with python3 -I isolated
+  mode)
+
+
+INSTALLATION
+
+The 2.x plugin is included in the pinned Tamlinux package assembly
+<https://github.com/greenermoose/tamlinux-packages>. Its installed payload is
+at ~/.config/tamlinux/plugins/fred.workspaces/; install and update it with the
+assembly through Home Manager. The standalone repository contains the frozen
+Omarchy 1.x line.
+
+Place { "id": "fred.workspaces" } in a left, center, or right list under
+layout in ~/.config/tamlinux/shell/layout.json. The document uses
+schemaVersion: 1. Widget settings are the fred.workspaces entry under entries
+in ~/.config/tamlinux/shell/settings.json, whose top-level version is 1.
+
+See plugin ownership <../README> and the deployment contract
+<https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md>.
+Home and XDG paths below use their default locations; the helpers honor the
+corresponding XDG_*_HOME overrides.
+
+
+HYPRLAND KEYBINDINGS
+
+To enable synchronized desktop switching with your keyboard shortcuts, add the
+following to ~/.config/hypr/bindings.lua (or reference the bundled script in
+hyprland.conf):
+
+    -- Desktop mode toggle
+    o.bind("SUPER + CTRL + M", "Toggle Mac/Windows desktop mode", "tam-desktop-mode toggle")
+
+    -- XKB keycodes (evdev + 8); keypad bindings ignore Num Lock.
+    local keypad_codes = {
+      [1] = 87, [2] = 88, [3] = 89, [4] = 83, [5] = 84,
+      [6] = 85, [7] = 79, [8] = 80, [9] = 81, [10] = 90,
+    }
+
+    for desktop = 1, 10 do
+      local top_row = "code:" .. tostring(desktop + 9)
+      local keypad = "code:" .. tostring(keypad_codes[desktop])
+
+      hl.unbind("SUPER + " .. top_row)
+      hl.unbind("SUPER + SHIFT + " .. top_row)
+      hl.unbind("SUPER + SHIFT + ALT + " .. top_row)
+
+      o.bind("SUPER + " .. top_row, "Switch desktop " .. desktop, "tam-desktop-mode switch " .. desktop)
+      o.bind("SUPER + SHIFT + " .. top_row, "Move window to desktop " .. desktop, "tam-desktop-mode move " .. desktop)
+      o.bind("SUPER + SHIFT + ALT + " .. top_row, "Move window silently to desktop " .. desktop, "tam-desktop-mode move-silent " .. desktop)
+
+      o.bind("SUPER + " .. keypad, "Switch desktop " .. desktop, "tam-desktop-mode switch " .. desktop)
+      o.bind("SUPER + SHIFT + " .. keypad, "Move window to desktop " .. desktop, "tam-desktop-mode move " .. desktop)
+      o.bind("SUPER + SHIFT + ALT + " .. keypad, "Move window silently to desktop " .. desktop, "tam-desktop-mode move-silent " .. desktop)
+    end
+
+    Note: If tam-desktop-mode is not in your PATH, you can symlink it into
+    ~/.local/bin/:
+    bash ln -sf ~/.config/tamlinux/plugins/fred.workspaces/tam-desktop-mode ~/.local/bin/tam-desktop-mode 
+
+
+CLI USAGE
+
+The bundled tam-desktop-mode command provides scriptable desktop management:
+
+    tam-desktop-mode status            # Print current mode (mac, windows, omarchy)
+    tam-desktop-mode preferences       # Print unused-monitor timeout preferences as JSON
+    tam-desktop-mode indicator         # Print single-letter indicator (M, W, O)
+    tam-desktop-mode toggle            # Cycle mode (omarchy -> mac -> windows)
+    tam-desktop-mode switch <NUMBER>   # Switch to desktop / workspace NUMBER
+    tam-desktop-mode move <NUMBER>     # Move active window to desktop NUMBER and follow
+    tam-desktop-mode move-silent <NUM> # Move active window without switching
+    tam-desktop-mode realign <MON> <N> # Bring one monitor back to desktop N, leaving the rest of the set
+    tam-desktop-mode monitors          # Print the ordered monitor set and endpoints
+
+
+CONFIGURATION & OVERRIDES
+
+To override the left/right endpoints used by Mac mode, create
+~/.config/tamlinux/desktop-mode.conf:
+
+    # Explicit monitor names from `hyprctl monitors`
+    left_monitor="DP-2"
+    right_monitor="HDMI-A-1"
+
+    Security & Format Notes: - Parsed strictly as a data-only configuration
+    file without shell execution (source is not used). - Values may optionally
+    be enclosed in single or double quotes. - Monitor names must be
+    alphanumeric identifiers matching ^[A-Za-z0-9._-]{1,64}$. - Inline
+    comments after values (e.g. KEY=VAL # comment) are rejected to avoid
+    parsing ambiguities. - A Home Manager symlink to a regular, user-owned
+    config file is supported. - The helper stores mode and topology in
+    $XDG_STATE_HOME/tamlinux/desktop-mode and desktop-monitors; it leaves
+    legacy Omarchy storage untouched. - status and indicator read the current
+    mode without updating monitor state. - Windows mode always uses every
+    active, non-mirrored monitor. Endpoint overrides do not remove monitors
+    from its set.
+
+In Develop 2.0.9, Windows-mode requests also retain desktop-intent in that
+state directory. It holds the latest accepted desired desktop and generation;
+desktop-current records the last completed placement snapshot. Busy switches
+return 75 with the desired request still pending, and incomplete switches
+return 1. Reconciliation uses desired intent after a partial failure. This
+work does not yet provide focus-preserving side-output placement; see the
+active-monitor development plan
+<../../../docs/plans/steady-active-monitor.md>.
+
+Split monitor sets (Windows mode)
+
+Anything that focuses a window on a hidden workspace — an app that opens on a
+stale workspace, a window switcher, a single-monitor Hyprland dispatch — makes
+Hyprland move just that monitor. The splitSet widget setting decides whether
+that is allowed to split the set. It only applies to Windows mode; Omarchy and
+Mac modes treat each monitor individually.
+
+Set splitSet to true (default) or false under entries["fred.workspaces"] in
+~/.config/tamlinux/shell/settings.json.
+
+- true: the set splits, shown per monitor. The monitor that left the set's
+  desktop shows a hollow marker on its own desktop and F (it followed a window
+  focus) as its mode letter; hover F to see where it is versus the set, click
+  F to bring just that monitor back. Monitors still on the set's desktop keep
+  the solid marker and W. Clicking any desktop, or SUPER + number (top row or
+  keypad), moves the whole set.
+- false: the set never splits — every monitor follows to the focused monitor's
+  desktop automatically.
+
+Historical 1.x upgrade note
+
+Windows mode now interprets workspace IDs using the active set size. On three
+displays, workspace 3 belongs to desktop 1 instead of desktop 2. Existing
+windows are not moved or renumbered automatically; selecting a desktop applies
+the new contiguous mapping.
+
+
+TESTS
+
+The helper's monitor discovery, mapping, dispatch verification, and
+window-move behavior use only Python's standard library:
+
+    python -m unittest discover -s tests -v
+    python -m py_compile tam-desktop-mode tests/test_desktop_mode.py
+
+
+REMOVING THE WIDGET
+
+Remove its ID from the Tamlinux layout. To omit its installed payload, set
+tamlinux.shell.plugins to the IDs to retain and activate the matching Home
+Manager configuration. Saved settings and data remain available for
+re-enabling it.
+
+
+ACKNOWLEDGMENTS
+
+Developed with the assistance of Antigravity <https://antigravity.google>
+(Google DeepMind), which contributed to the original multi-monitor modes and
+plugin architecture. The v1.3.0 monitor-set plan and implementation were
+produced with Codex CLI 0.154.0 using gpt-5.6-sol; see AI provenance
+<AI_PROVENANCE.md> and the public implementation plan
+<docs/plans/monitor-set-windows-mode.md>.
+
+
+LICENSE
+
+GNU General Public License v3.0 (GPL-3.0-or-later). See <LICENSE> for details.
+
+Focus-preserving placement (Develop 2.0.10)
+
+Windows-mode placement uses the named select-output-workspace adapter
+operation. The originating output goes first; aligned outputs are skipped.
+Reconciliation and realignment use the same output-targeted action. They never
+focus a side panel and restore focus later. Known panels retain their geometry
+and canonical workspace slots through removal/return; genuinely new connectors
+retain the existing layout path. Other desktop modes keep their existing
+behavior.
+
+This requires the matching native hl.dsp.workspace.select extension. The
+helper fails visibly if it is absent; packaging must deliver the native
+correction together with this helper. See the native source and verification
+contract <../../native/providers/display/README>. No source checkout is an
+installation path. Physical focus and scanout continuity remain trial results,
+not conclusions from the isolated tests.

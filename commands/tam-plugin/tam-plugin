@@ -213,7 +213,7 @@ BarWidget {{
   }}
 }}
 ''', encoding="utf-8")
-(plugin / "README.md").write_text(f"# {name}\n\n{description}\n\n"
+(plugin / "README").write_text(f"{name.upper()}\n\n{description}\n\n"
     "Original Tamlinux code, licensed GPL-3.0-or-later under the repository license.\n", encoding="utf-8")
 (plugin / "CHANGELOG.md").write_text(f"# Changelog\n\n## 0.1.0 - Unreleased\n\n- {description}.\n", encoding="utf-8")
 
@@ -269,7 +269,7 @@ dev_state_dir() {
 is_distribution_file() {
   local rel="$1"
   case "$rel" in
-    README.md|LICENSE|CHANGELOG.md|UPSTREAM.md|AI_PROVENANCE.md|.gitignore|.payload.*)
+    README|LICENSE|CHANGELOG.md|UPSTREAM.md|AI_PROVENANCE.md|.gitignore|.payload.*)
       return 0
       ;;
     docs/*|upstream/*|tests/*|.git/*|assets/screenshots/*)

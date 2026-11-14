@@ -1,0 +1,73 @@
+    Historical 1.x archive. These records document Omarchy-era plugin work.
+    Product plugins now live in this repository under desktop/plugins/;
+    marketplace Publish and Omarchy shell process are frozen. Private agent
+    guides (for example ai-session-stores.md) are not in this tree — do not
+    follow broken relative links as current procedure.
+
+
+AI COLLABORATION SESSION ARCHIVE: keyboard-fred-tamlinux
+
+Individual session records documenting prompts, tools, models, and key
+architectural decisions for fred.keyboard. One file per session; there is no
+monolithic sessions.md here, matching plugin-fred-tamlinux.
+
+Tool and model versions are read live (<tool> --version) at the time of
+writing, never recalled. An entry whose attribution has not been checked
+against a local transcript says so explicitly.
+
+
+SESSION RECORDS
+
+  Date: 2026-10-06
+  Topic: Tamlinux-only dependencies
+  Primary Tool: Claude Code 2.1.291
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-tamlinux-only-dependencies.md>
+
+  Date: 2026-10-03
+  Topic: Compositor facade reads
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-compositor-facade.md>
+
+  Date: 2026-10-03
+  Topic: Shell-independent 2.0.0
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shell-independent-2.0.0.md>
+
+  Date: 2026-09-19
+  Topic: Reconnaissance (Omarchy internals, binds, marketplace); no code,
+  stopped on an API quota limit
+  Primary Tool: agy (Antigravity CLI 1.2.7)
+  Model: Gemini 3.8 Flash (High)
+  Session Document: recorded within the session below
+
+  Date: 2026-09-19
+  Topic: Design, First Working Build & Pre-Release (v0.1.0)
+  Primary Tool: claude (Claude Code 2.1.278)
+  Model: Claude Opus 5 (claude-opus-5)
+  Session Document: <2026-09-19-design-build-and-pre-release.md>
+
+  Date: 2026-09-20
+  Topic: From Capture Mode to Release 1.0.0
+  Primary Tool: claude (Claude Code 2.1.278)
+  Model: Claude Opus 5 (claude-opus-5)
+  Session Document: <2026-09-20-capture-mode.md>
+
+
+RELATED
+
+- <../../AI_PROVENANCE.md> — toolchain and milestone table.
+- The fred.keyboard design plan in the private workstation config — decisions
+  with dates, and the milestone checklist the next session starts from.
+
+
+2026-09-23 UPSTREAM SURVEY FOUNDATION
+
+- Codex session record <2026-09-23-upstream-survey-foundation.md>.
+
+
+2026-09-28 PRIVATE SESSION IDS
+
+- Claude Code session record <2026-09-28-private-session-ids.md>.

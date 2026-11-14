@@ -131,7 +131,7 @@ NON_CONSUMER_PATHS = (
     "audit",
     "tests",
     "tools",
-    "README.md",
+    "README",
     "CHANGELOG.md",
     "ECOSYSTEM.md",
     "UPSTREAM.md",

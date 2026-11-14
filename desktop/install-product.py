@@ -43,7 +43,7 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
     tree("desktop/user-defaults/gnupg", "share/tamlinux/user-defaults/gnupg")
     file("desktop/user-defaults/apply", "share/tamlinux/user-defaults/apply")
     file("desktop/user-defaults/LICENSE-bash", "share/tamlinux/user-defaults/LICENSE-bash")
-    file("desktop/README.md", "share/tamlinux/README.md")
+    file("desktop/README", "share/tamlinux/README")
     file("desktop/menu/default.jsonc", "share/tamlinux/menu/default.jsonc")
     for src, name in (("desktop/session/start", "tam-hyprland-session"),
                       ("desktop/session/desktop", "tam-desktop"),

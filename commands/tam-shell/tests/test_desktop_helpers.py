@@ -371,7 +371,7 @@ elif name == 'uwsm-app':
         plugins.mkdir()
         immutable = self.temp / 'immutable-plugin'
         immutable.mkdir()
-        for name in ('Main.qml', 'file with spaces.js', 'module.mjs', 'README.md'):
+        for name in ('Main.qml', 'file with spaces.js', 'module.mjs', 'README'):
             (immutable / name).write_text('fixture')
         (plugins / 'fred.demo').symlink_to(immutable, target_is_directory=True)
         cache = self.temp / 'cache/quickshell/qmlcache'
@@ -382,7 +382,7 @@ elif name == 'uwsm-app':
             for suffix in ('.qmlc', '.jsc'):
                 entry = cache / (stem + suffix)
                 entry.write_text('compiled fixture')
-                if source.suffix != '.md':
+                if source.suffix in ('.qml', '.js', '.mjs'):
                     code_entries.append(entry)
         unrelated = cache / 'unrelated.qmlc'
         unrelated.write_text('another app')

@@ -46,7 +46,7 @@ check: build/tam-meter build/test_meter
 
 install: build/tam-meter
 	install -Dm755 build/tam-meter $(DESTDIR)$(PREFIX)/bin/tam-meter
-	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/tam-meter/README.md
+	install -Dm644 README $(DESTDIR)$(PREFIX)/share/doc/tam-meter/README
 	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-meter/LICENSE
 
 clean:

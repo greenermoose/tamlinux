@@ -1,0 +1,86 @@
+    Historical 1.x archive. These records document Omarchy-era plugin work.
+    Product plugins now live in this repository under desktop/plugins/;
+    marketplace Publish and Omarchy shell process are frozen. Private agent
+    guides (for example ai-session-stores.md) are not in this tree — do not
+    follow broken relative links as current procedure.
+
+
+AI COLLABORATION SESSION ARCHIVE: agents-fred-tamlinux
+
+Individual session records documenting prompts, tools, models, and key
+architectural decisions for fred.agents. One file per session; there is no
+monolithic sessions.md here, matching plugin-fred-tamlinux.
+
+Tool and model versions are read live (<tool> --version) at the time of
+writing, never recalled. An entry whose attribution has not been checked
+against a local transcript says so explicitly.
+
+
+SESSION RECORDS
+
+  Date: 2026-10-06
+  Topic: Codex usage reader (2.0.1)
+  Primary Tool: codex (Codex CLI 0.160.1), finished by Claude Code 2.1.292
+  Model: gpt-6.1-sol, claude-opus-5-5
+  Session Document: <2026-10-06-codex-rpc-reader.md>
+
+  Date: 2026-10-06
+  Topic: Tamlinux-only dependencies
+  Primary Tool: Claude Code 2.1.291
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-tamlinux-only-dependencies.md>
+
+  Date: 2026-10-03
+  Topic: Shell-independent 2.0.0
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shell-independent-2.0.0.md>
+
+  Date: 2026-09-20
+  Topic: Swap & rebrand through prompt-mode panel and pre-release prep
+  (0.1.0–1.0.0)
+  Primary Tool: opencode (OpenCode 1.18.31)
+  Model: Big Pickle (big-pickle)
+  Session Document: <2026-09-20-development-to-prerelease.md>
+
+  Date: 2026-09-20/21
+  Topic: Cursor live plan limits (1.1.0); Antigravity live limits assessed,
+  blocked
+  Primary Tool: opencode (OpenCode 1.18.31)
+  Model: Big Pickle (big-pickle)
+  Session Document: <2026-09-20-cursor-live-limits.md>
+
+  Date: 2026-09-21
+  Topic: Dual Cursor meters (1.1.1) + bar hover limits summary (1.1.2)
+  Primary Tool: opencode (OpenCode 1.18.31)
+  Model: Big Pickle (big-pickle)
+  Session Document: <2026-09-21-hover-limits-summary.md>
+
+  Date: 2026-09-22
+  Topic: Rename and publish v1.1.2 pre-release
+  Primary Tool: codex (Codex CLI 0.155.1)
+  Model: GPT-6 Sol (gpt-6-sol)
+  Session Document: <2026-09-22-rename-and-publish.md>
+
+  Date: 2026-09-23
+  Topic: Hover and panel screenshot capture on MSI MP161
+  Primary Tool: agy (Antigravity 1.2.9)
+  Model: Gemini 3.8 Flash High (gemini-3.8-flash-high)
+  Session Document: <2026-09-23-screenshots-hover-and-panel.md>
+
+
+RELATED
+
+- <../../AI_PROVENANCE.md> — toolchain and milestone table.
+- The fred.agents design plan in the private workstation config — decisions
+  with dates, and the milestone checklist the next session starts from.
+
+
+2026-09-23 UPSTREAM SURVEY FOUNDATION
+
+- Codex session record <2026-09-23-upstream-survey-foundation.md>.
+
+
+2026-09-28 PRIVATE SESSION IDS
+
+- Claude Code session record <2026-09-28-private-session-ids.md>.

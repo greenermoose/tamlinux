@@ -1,0 +1,109 @@
+CONSOLE PALETTE
+
+tamlinux-vt.vtrgb is the Tamlinux 16-color palette for the Linux text console
+(VT). It replaces the kernel's stock colors, where dark blue is only about
+2.2:1 against black and dark red and dark magenta are not much better. Every
+text color here is at least 4.1:1 against the background.
+
+Planned as the default from Tamlinux 0.6.19. How it is loaded at startup is
+not decided yet; until then it is source only.
+
+
+FORMAT
+
+The file is in setvtrgb(8) format: three lines (red, green, blue), each with
+16 comma-separated decimal values, one per color slot 0 to 15.
+
+- Apply to every VT (root): setvtrgb share/console/tamlinux-vt.vtrgb
+- Apply to the current VT only, without root: print ESC ] P n rrggbb for each
+  slot n (hex digit 0 to f).
+- Reset the current VT to the kernel defaults: printf '\033]R'
+
+
+COLORS
+
+Contrast is the WCAG ratio against the background, color 0.
+
+  Slot: 0
+  Name: black
+  Color: #121212
+  Contrast: 1.0:1
+
+  Slot: 1
+  Name: red
+  Color: #e06c6c
+  Contrast: 5.8:1
+
+  Slot: 2
+  Name: green
+  Color: #6cc96c
+  Contrast: 9.1:1
+
+  Slot: 3
+  Name: yellow
+  Color: #d7b04a
+  Contrast: 9.1:1
+
+  Slot: 4
+  Name: blue
+  Color: #6f9bff
+  Contrast: 7.0:1
+
+  Slot: 5
+  Name: magenta
+  Color: #c88ae0
+  Contrast: 7.3:1
+
+  Slot: 6
+  Name: cyan
+  Color: #4fc4c4
+  Contrast: 8.9:1
+
+  Slot: 7
+  Name: white
+  Color: #cccccc
+  Contrast: 11.7:1
+
+  Slot: 8
+  Name: bright black
+  Color: #767676
+  Contrast: 4.1:1
+
+  Slot: 9
+  Name: bright red
+  Color: #ff8f8f
+  Contrast: 8.5:1
+
+  Slot: 10
+  Name: bright green
+  Color: #94e894
+  Contrast: 12.7:1
+
+  Slot: 11
+  Name: bright yellow
+  Color: #ffe07a
+  Contrast: 14.4:1
+
+  Slot: 12
+  Name: bright blue
+  Color: #a3c2ff
+  Contrast: 10.5:1
+
+  Slot: 13
+  Name: bright magenta
+  Color: #e8adf7
+  Contrast: 10.5:1
+
+  Slot: 14
+  Name: bright cyan
+  Color: #8eeaea
+  Contrast: 13.5:1
+
+  Slot: 15
+  Name: bright white
+  Color: #f4f4f4
+  Contrast: 17.0:1
+
+Trade-off: colored backgrounds are lighter than the stock ones, so black text
+on them reads well but white text on them is weak. Programs that put white
+text on blue (for example mc or dialog) look washed out.

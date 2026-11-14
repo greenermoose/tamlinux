@@ -4,7 +4,7 @@
 // `layouts/*.json` so they can be shared, reviewed and contributed by others,
 // and LayoutResolver.js decides which one applies to the attached device.
 //
-// Layout shape (see layouts/README.md for the full contract):
+// Layout shape (see layouts/README for the full contract):
 //
 //   { schemaVersion, id, name, mainBlockWidth, rows: [[cell, ...], ...],
 //     firmwareLocal: [id], declaredButAbsent: [id] }

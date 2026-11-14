@@ -503,7 +503,7 @@ class ProcessTests(unittest.TestCase):
             env=env, capture_output=True, timeout=3, check=True,
         )
         self.assertIsInstance(json.loads(result.stdout), list)
-        self.assertTrue((prefix / "share/doc/tam-monitor/README.md").exists())
+        self.assertTrue((prefix / "share/doc/tam-monitor/README").exists())
 
 
 if __name__ == "__main__":

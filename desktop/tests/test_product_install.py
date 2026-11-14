@@ -86,6 +86,11 @@ class ProductInstall(unittest.TestCase):
                 self.assertTrue(os.access(root / "bin" / name, os.X_OK), name)
             self.assertTrue((root / "share/tamlinux/shell/shell.qml").is_file())
             self.assertTrue((root / "share/tamlinux/plugins/fred.clock/manifest.json").is_file())
+            self.assertEqual((root / "share/tamlinux/README").read_bytes(),
+                             (SOURCE / "desktop/README").read_bytes())
+            self.assertEqual((root / "share/tamlinux/plugins/README").read_bytes(),
+                             (SOURCE / "desktop/plugins/README").read_bytes())
+            self.assertFalse(list(root.rglob("README.md")))
             self.assertFalse((root / "share/tamlinux/assets/fonts/source.ttf").exists())
             self.assertTrue((root / "share/fonts/truetype/TamlinuxIcons.ttf").is_file())
             self.assertFalse(list(root.rglob("*.pyc")))

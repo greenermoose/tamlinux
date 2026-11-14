@@ -1,0 +1,103 @@
+DEVELOPMENT PLANS
+
+Tamlinux is an independent Linux workstation environment. The package remains
+tamlinux; its terminal command is tam. A plan describes work and acceptance,
+not an installed component.
+
+Status (2026-11-02): Product develop is KBN WB 0.6.1 (VERSION <../../VERSION>,
+CULTIVAR <../../CULTIVAR>). Gate A closed with released 0.4.8 (2026-10-22) and
+Blue Sparkler 0.5.12 released on 2026-11-01; Arch/Hyprland remains the current
+host. Candidate assemblies and deployment live in tamlinux-packages
+<https://github.com/greenermoose/tamlinux-packages>.
+
+This index lists open product plans only. Finished Gate A / 0.4.3–0.4.4 plans
+and dated evidence are in Git; see <FILING-CARD.md>. Do not treat filing-card
+entries as current guidance.
+
+Stage and branch rules for public repos are in VERSIONING.md
+<../../VERSIONING.md>. Full stage policy (who may move Test, Run, and Release)
+is private operating procedure, not duplicated here.
+
+  Plan: Steady active monitor <steady-active-monitor.md>
+  Current scope: Approved 2026-11-10: timestamped output diagnostics,
+  active-display continuity during side-monitor wake, and selective old-log
+  cleanup. Develop pending.
+
+  Plan: Easy workstation upgrades <workstation-upgrade.md>
+  Current scope: Approved 2026-10-30: released-assembly upgrades and recovery.
+
+  Plan: Input usability <input-usability.md>
+  Current scope: Approved for 0.5 (K22–K25): modifier model, clipboard,
+  titlebar close.
+
+  Plan: Keybinding usability <keybinding-usability.md>
+  Current scope: Open 0.5 binding and explorer work.
+
+  Plan: Text macros and Meta naming <text-macros-and-meta.md>
+  Current scope: Complete desktop-wide macro delivery, reserve Meta+Alt, unify
+  naming and package the trial.
+
+  Plan: Start menu <start-menu.md>
+  Current scope: Combined Quick Launch + Settings; packaged acceptance
+  pending.
+
+  Plan: Console-first startup <console-first-startup.md>
+  Current scope: Text login; optional desktop via tam-desktop.
+
+  Plan: Console welcome <console-welcome.md>
+  Current scope: Console greeting and first-run messaging.
+
+  Plan: First login activities <first-login-activities.md>
+  Current scope: First text-login orientation (hi) and activities (start)
+  (D214, D215).
+
+  Plan: Targeted text-console monitors <console-monitor-control.md>
+  Current scope: Console fb mapping and native monitor CLI/TUI.
+
+  Plan: Native input startup <native-input-startup.md>
+  Current scope: Input stack at session start.
+
+  Plan: Remove screensaver <remove-screensaver.md>
+  Current scope: Retire screensaver paths.
+
+  Plan: Theme system <theme-system.md>
+  Current scope: Retained theme ownership; Tamarack redesign in 0.5.
+
+  Plan: Fleet <fleet.md>
+  Current scope: Registered-host deploy and fleet tools.
+
+  Plan: nftables host firewall <nftables-host-firewall.md>
+  Current scope: 0.6 D204: owned nftables, SSH helpers, ufw removal after
+  cutover.
+
+  Plan: tam-hardware <tam-hardware.md>
+  Current scope: Host CPU/ISA/DMI probe for agents (D209).
+
+  Plan: tam-meter <tam-meter.md>
+  Current scope: Unprivileged C energy meter and live view (D191).
+
+  Plan: tam-boot <tam-boot.md>
+  Current scope: Startup explainer and diagnostics tool (K40, K60).
+
+  Plan: tam command <tamlinux-command.md>
+  Current scope: Workstation plan for the separate tam component.
+
+  Plan: Compositor protocol layer <compositor-protocol-layer.md>
+  Current scope: Protocol facade; Sway adapter later.
+
+  Plan: Sway integration <sway-integration.md>
+  Current scope: After dependable Hyprland baseline (0.7+).
+
+  Plan: Base operating system <base-operating-system.md>
+  Current scope: Second distro, then Void pilot.
+
+  Plan: Operating-system horizons <operating-system-horizons.md>
+  Current scope: Research only; chooses no base.
+
+  Plan: Retire hey <retire-hey.md>
+  Current scope: Remove remaining hey identifiers.
+
+Product behavior and generic defaults belong here. Exact assemblies belong in
+tamlinux-packages; personal selections belong in consumer config. New Develop
+source needs its own exact delivery selection; moving source does not
+establish runtime parity.

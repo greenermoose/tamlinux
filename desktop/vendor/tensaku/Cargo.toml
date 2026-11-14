@@ -13,7 +13,7 @@ include = [
   "Cargo.lock",
   "LICENSE*",
   "NOTICE",
-  "README.md",
+  "README",
   "assets/",
   "build.rs",
   "dev.tensaku.Tensaku.desktop"

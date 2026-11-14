@@ -538,12 +538,12 @@ class LivePaths(Fixture):
         memory = self.config / "agent/memory/session-note.md"
         memory.parent.mkdir(parents=True)
         memory.write_text("unrelated note\n")
-        (self.config / "README.md").write_text("docs change\n")
+        (self.config / "README").write_text("docs change\n")
         with patch("sys.stderr", new_callable=io.StringIO) as err:
             self.app.check_clean()
         self.assertIn("tam-deploy: ignoring unrelated uncommitted paths:", err.getvalue())
         self.assertIn("agent/memory/session-note.md", err.getvalue())
-        self.assertIn("README.md", err.getvalue())
+        self.assertIn("README", err.getvalue())
         self.assertEqual(
             self.app.preparation_identity(self.packages_main, "/nix/store/old")["consumer"],
             baseline_identity,

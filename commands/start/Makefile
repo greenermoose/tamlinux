@@ -59,14 +59,14 @@ install: build/start
 	install -Dm644 menu.json $(DESTDIR)$(PREFIX)/share/start/menu.json
 	install -Dm644 VERSION $(DESTDIR)$(PREFIX)/share/start/VERSION
 	install -Dm644 LICENSE $(DESTDIR)$(PREFIX)/share/licenses/start/LICENSE
-	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/start/README.md
+	install -Dm644 README $(DESTDIR)$(PREFIX)/share/doc/start/README
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/start
 	rm -f $(DESTDIR)$(PREFIX)/share/start/menu.json
 	rm -f $(DESTDIR)$(PREFIX)/share/start/VERSION
 	rm -f $(DESTDIR)$(PREFIX)/share/licenses/start/LICENSE
-	rm -f $(DESTDIR)$(PREFIX)/share/doc/start/README.md
+	rm -f $(DESTDIR)$(PREFIX)/share/doc/start/README
 
 clean:
 	rm -rf build

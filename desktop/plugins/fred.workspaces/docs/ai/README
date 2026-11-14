@@ -1,0 +1,160 @@
+    Historical 1.x archive. These records document Omarchy-era plugin work.
+    Product plugins now live in this repository under desktop/plugins/;
+    marketplace Publish and Omarchy shell process are frozen. Private agent
+    guides (for example ai-session-stores.md) are not in this tree — do not
+    follow broken relative links as current procedure.
+
+
+AI COLLABORATION SESSION ARCHIVE: workspaces-fred-tamlinux
+
+Individual session records documenting prompt history, tools, models, and key
+architectural decisions for workspaces-fred-tamlinux.
+
+    [!NOTE] All entries were verified against local transcript stores during
+    migration on 2026-09-20. Where a transcript could not be found locally,
+    this is noted explicitly in the session file. See
+    docs/agent-guides/ai-session-stores.md
+    <../../docs/agent-guides/ai-session-stores.md> for the store inventory and
+    verification methodology.
+
+
+SESSION RECORDS
+
+  Date: 2026-10-06
+  Topic: Wake a blanked monitor (2.0.1)
+  Primary Tool: Claude Code 2.1.292
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-wake-blanked-monitor.md>
+
+  Date: 2026-10-06
+  Topic: Tamlinux-only dependencies
+  Primary Tool: Claude Code 2.1.291
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-tamlinux-only-dependencies.md>
+
+  Date: 2026-10-03
+  Topic: Named compositor backend
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-hyprland-command-ownership.md>
+
+  Date: 2026-10-03
+  Topic: Compositor facade reads
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-compositor-facade.md>
+
+  Date: 2026-10-03
+  Topic: Shell-independent 2.0.0
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shell-independent-2.0.0.md>
+
+  Date: 2026-09-11
+  Topic: Workspace Indicator & Multi-Monitor Desktop Modes (v1.0.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-11-workspace-indicator-desktop-modes-v1.0.0.md>
+
+  Date: 2026-09-12
+  Topic: clonedFrom Integration & Upstream Provenance (v1.1.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document:
+  <2026-09-12-clonedfrom-integration-upstream-provenance-v1.1.0.md>
+
+  Date: 2026-09-12
+  Topic: Marketplace Security Hardening & Official Listing (v1.2.0, v1.2.1)
+  Primary Tool: agy + claude (audit)
+  Model: Gemini 3.8 Flash (High) + Claude Opus 5
+  Session Document: <2026-09-12-marketplace-security-hardening-v1.2.0.md>
+
+  Date: 2026-09-15
+  Topic: Dynamic All-Monitor Windows Sets (v1.3.0)
+  Primary Tool: codex (0.154.0)
+  Model: gpt-5.6-sol
+  Session Document: <2026-09-15-dynamic-all-monitor-windows-sets-v1.3.0.md>
+
+  Date: 2026-09-15
+  Topic: Center Monitor Indicator Desync & Atomic File Watch (v1.3.1)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-15-center-monitor-indicator-desync-v1.3.1.md>
+
+  Date: 2026-09-16
+  Topic: Hardware Resilience, Topology-Anchored Slots & Gap Compression
+  (v1.4.0, v1.4.1)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-16-hardware-resilience-topology-slots-v1.4.0.md>
+
+  Date: 2026-09-16
+  Topic: Split Monitor Sets: Partial State & Follow Focus (v1.4.2)
+  Primary Tool: claude (2.1.273)
+  Model: Claude Opus 5
+  Session Document: <2026-09-16-split-monitor-sets-follow-focus-v1.4.2.md>
+
+  Date: 2026-09-17
+  Topic: ECOSYSTEM.md: Patched Hyprland Dependencies (v1.4.3)
+  Primary Tool: claude (2.1.274)
+  Model: Claude Opus 5 (claude-opus-5)
+  Session Document: <2026-09-17-ecosystem-md-patched-dependencies-v1.4.3.md>
+
+  Date: 2026-09-17
+  Topic: Per-Monitor Idle Blanking of Unused Monitors (v1.5.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-17-per-monitor-idle-blanking-v1.5.0.md>
+
+  Date: 2026-09-18
+  Topic: Settled Idle Tracking, DPMS Sync & Version Footers (v1.5.1)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-18-settled-idle-tracking-dpms-sync-v1.5.1.md>
+
+  Date: 2026-09-22
+  Topic: Rename the workspace helper to tam-desktop-mode
+  Primary Tool: Cursor 3.21.16
+  Model: composer
+  Session Document: <2026-09-22-tam-desktop-mode.md>
+
+
+CORRECTIONS VS. PRIOR sessions.md
+
+  Session: Sep 15 (v1.3.0)
+  Error: No Codex transcript cited
+  Correction: Found by searching the Codex session index
+
+  Session: Sep 15 (v1.3.1)
+  Error: Cited transcript not verified
+  Correction: Content marked unverified
+
+  Session: Sep 16 (v1.4.2)
+  Error: Cited transcript not verified
+  Correction: Content marked unverified
+
+  Session: Sep 16 (v1.4.0/1.4.1)
+  Error: Several prompts missing
+  Correction: Added from the session transcript
+
+  Session: Sep 17 (v1.5.0)
+  Error: Several prompts missing
+  Correction: Added from the session transcript
+
+  Session: Sep 18 (v1.5.1)
+  Error: Three prompts missing
+  Correction: Added from the session transcript
+
+  Session: All agy sessions
+  Error: agy version presented as fact
+  Correction: Not self-reported in transcripts; noted per session
+
+
+2026-09-23 UPSTREAM SURVEY FOUNDATION
+
+- Codex session record <2026-09-23-upstream-survey-foundation.md>.
+
+
+2026-09-28 PRIVATE SESSION IDS
+
+- Claude Code session record <2026-09-28-private-session-ids.md>.

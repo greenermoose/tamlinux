@@ -10,7 +10,7 @@ Tamlinux additions are distributed under GPL-3.0-or-later; see [LICENSE](LICENSE
 
 Each named entry identifies an authored component, a documented design influence, a specific change or public report, or responsibility for a foundation used by this repository. Contributor-roster membership alone is not enough for a named entry. Wider communities are credited collectively below.
 
-**Version scope:** Hyprland and Aquamarine credits describe the temporary Tamlinux 0.x platform and its compatibility patches. Tamlinux’s [public roadmap](https://github.com/greenermoose/tamlinux/blob/main/README.md) removes Hyprland at 1.0 in favor of Sway. Remove these dependency-only entries from future acknowledgements when the stack is no longer used. Historical forks and any retained derived code keep their applicable source notices.
+**Version scope:** Hyprland and Aquamarine credits describe the temporary Tamlinux 0.x platform and its compatibility patches. Tamlinux’s [public roadmap](https://github.com/greenermoose/tamlinux/blob/main/README) removes Hyprland at 1.0 in favor of Sway. Remove these dependency-only entries from future acknowledgements when the stack is no longer used. Historical forks and any retained derived code keep their applicable source notices.
 
 ## People
 

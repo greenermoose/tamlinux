@@ -1,0 +1,33 @@
+    Historical 1.x archive. These records document Omarchy-era plugin work.
+    Product plugins now live in this repository under desktop/plugins/;
+    marketplace Publish and Omarchy shell process are frozen. Private agent
+    guides (for example ai-session-stores.md) are not in this tree — do not
+    follow broken relative links as current procedure.
+
+
+AI COLLABORATION SESSION ARCHIVE: tides-fred-tamlinux
+
+One file per session.
+
+Earlier sessions remain in <sessions.md>.
+
+
+SESSION RECORDS
+
+  Date: 2026-10-06
+  Topic: Tamlinux-only dependencies
+  Primary Tool: Claude Code 2.1.291
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-tamlinux-only-dependencies.md>
+
+  Date: 2026-10-03
+  Topic: Compositor facade reads
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-compositor-facade.md>
+
+  Date: 2026-10-03
+  Topic: Shell-independent 2.0.0
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shell-independent-2.0.0.md>

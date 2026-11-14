@@ -1,0 +1,921 @@
+AI COLLABORATION SESSION ARCHIVE: tamlinux
+
+- 2026-11-13 — Bundle DNS privilege boundary and host-first native recovery
+  <2026-11-13-bundle-dns-and-host-recovery.md>
+
+- 2026-11-13 — Preserve saved backgrounds during offline theme restoration
+  <2026-11-13-offline-background-selection.md>
+
+- 2026-11-12 — Bundle delivery continuation
+  <2026-11-12-bundle-continuation.md>
+
+- 2026-11-12 — Display continuity candidate selection
+  <2026-11-12-display-test-candidate.md>
+
+- 2026-11-11 — First bundle delivery integration
+  <2026-11-11-bundle-delivery-integration.md>
+
+- 2026-11-11 — Shared workspace ingress, retry budgets and package gates
+  <2026-11-11-workspace-queue-package-gates.md>
+
+- 2026-11-11 — Focus-preserving workspace repair and native logging
+  <2026-11-11-steady-active-monitor.md>
+
+- 2026-11-10 — Conventional workstation recipe layout
+  <2026-11-10-workstation-recipe-layout.md>
+
+- 2026-11-10 — Latest accepted desktop intent and native logger probe
+  <2026-11-10-workspace-intent.md>
+
+- 2026-11-10 — Workspace helper timeline and initial continuity regressions
+  <2026-11-10-workspace-timeline.md>
+
+- 2026-11-10 — Steady active monitor implementation plan
+  <2026-11-10-steady-active-monitor-plan.md>
+
+- 2026-11-09 — Native product installation
+  <2026-11-09-native-product-install.md>
+
+- 2026-11-09 — Transaction-bound upgrade recovery
+  <2026-11-09-transaction-recovery.md>
+
+- 2026-11-09 — tam-monitor semver, console-size and console fit during keep
+  <2026-11-09-tam-monitor-console-size.md>
+
+- 2026-11-09 — Host-independent tam-open text-console image test
+  <2026-11-09-tam-open-tty-test.md>
+
+- 2026-11-09 — Tamlinux version in the console greeting
+  <2026-11-09-console-welcome-version.md>
+
+- 2026-11-08 — Reset games and add the AI Agents menu
+  <2026-11-08-games-reset-and-ai-agents.md>
+
+- 2026-11-08 — Higher-contrast Linux console (VT) palette
+  <2026-11-08-vt-palette.md>
+
+- 2026-11-07 — fred.tamversion 0.1.5 packaged version notes and header
+  validation <2026-11-07-tamversion-version-notes.md>
+
+- 2026-11-07 — tam-deploy home-file conflict detection and .pre-<version>
+  backups <2026-11-07-tam-deploy-home-file-conflicts.md>
+
+- 2026-11-04 — Tamlinux 0.6.10 K53 tam-update AUR listing
+  <2026-11-04-0.6.10-k53-tam-update.md>
+
+- 2026-11-04 — Tamlinux 0.6.9 K25, speed, Plan 32 quickshell
+  <2026-11-04-0.6.9-k25-speed-quickshell.md>
+
+- 2026-11-04 — Tamlinux 0.6.7 workstation upgrade (K52)
+  <2026-11-04-0.6.7-workstation-upgrade.md>
+
+- 2026-11-04 — Tamlinux 0.6.6 package/test speed and fleet deploy
+  <2026-11-04-0.6.6-package-speed.md>
+
+- 2026-11-02 — Development and candidate workflow
+  <2026-11-02-candidate-workflow.md>
+
+- 2026-11-02 — Prepare Tamlinux 0.6.1 KBN WB <2026-11-02-061-preparation.md>
+
+- 2026-11-02 — First text-login entry points hi and start
+  <2026-11-02-first-login-hi-and-start.md>
+
+- 2026-11-01 — HP notebook keyboard diagram <2026-11-01-hp-keyboard-layout.md>
+
+- 2026-11-01 — Independent keyboard development application
+  <2026-11-01-keyboard-app-trial.md>
+
+- 2026-11-01 — Keyboard rendering and press/release verification
+  <2026-11-01-keyboard-render.md>
+
+- 2026-11-01 — tam-hardware host probe <2026-11-01-tam-hardware.md>
+
+- 2026-11-01 — Release 0.5.12, final Blue Sparkler
+  <2026-11-01-release-0.5.12.md>
+
+- 2026-11-01 — Plain suspend where hibernation is unavailable
+  <2026-11-01-suspend-without-hibernation.md>
+
+- 2026-11-01 — Per-host assembly pin for tam-deploy
+  <2026-11-01-per-host-assembly-pin.md>
+
+- 2026-11-01 — Keyboard panel stand-in board
+  <2026-11-01-keyboard-standin-board.md>
+
+- 2026-11-01 — Deployment state and recovery transactions
+  <2026-11-01-candidate-process.md>
+
+- 2026-11-01 — Prepare 0.5.12 <2026-11-01-0512-preparation.md>
+
+- 2026-11-01 — Tokyo Night and JetBrains Mono defaults
+  <2026-11-01-tokyo-defaults.md>
+
+- 2026-10-31 — Develop continuation integration
+  <2026-10-31-continuation-integration.md>
+
+- 2026-10-31 — Macro reliability takeover <2026-10-31-macro-reliability.md>
+
+- 2026-10-31 — Console deployment lock checks and GTK media proof
+  <2026-10-31-console-lock-safety.md>
+
+- 2026-10-31 — Btop palette contrast audit <2026-10-31-btop-contrast.md>
+
+- 2026-10-30 — Accepted workstation upgrade plan and 0.5 review
+  <2026-10-30-upgrade-plan-and-05-review.md>
+
+- 2026-10-30 — 0.5.11 Test fixes <2026-10-30-0511-test-fixes.md>
+
+- 2026-10-29 — Prepare 0.5.11 <2026-10-29-prepare-0511.md>
+
+- 2026-10-29 — Tamlinux topbar version hover tooltip
+  <2026-10-29-tamversion-hover-tooltip.md>
+
+- 2026-10-29 — Start menu development <2026-10-29-start-menu.md>
+
+- 2026-10-28 — Shell palette and visible authorization
+  <2026-10-28-shell-palette-polkit.md>
+
+- 2026-10-28 — Micro JSON5 migration and recovery
+  <2026-10-28-micro-json5-recovery.md>
+
+- 2026-10-28 — K24 clipboard repair and 0.5.7 Develop prep
+  <2026-10-28-k24-clipboard-0.5.7.md>
+
+- 2026-10-28 — Console welcome development <2026-10-28-console-welcome.md>
+
+- 2026-10-28 — system layers account and US resize chords
+  <2026-10-28-system-layers-resize.md>
+
+- 2026-10-28 — keybindings and candidate preparation
+  <2026-10-28-keybindings.md>
+
+- 2026-10-27 — monitor review corrections <2026-10-27-monitor-integration.md>
+
+- 2026-10-27 — tam-monitor implementation review and correction handoff
+  <2026-10-27-tam-monitor-review.md>
+
+- 2026-10-25 — Retained-output unplug recovery <2026-10-25-monitor-unplug.md>
+
+- 2026-10-25 — Native monitor ownership and guarded transactions
+  <2026-10-25-monitor-ownership.md>
+- 2026-10-25 — Native monitor inspection foundation
+  <2026-10-25-monitor-feasibility.md>
+
+- 2026-10-23 — Console-startup settings recovery
+  <2026-10-23-console-startup-blockers.md>
+
+- 2026-10-23 — Visible text boot and explicit desktop startup
+  <2026-10-23-console-first-startup.md>
+
+Individual session records documenting prompt history, tools, models, and key
+architectural decisions for Tamlinux. One file per session; there is no
+monolithic sessions.md here, matching plugin-fred-tamlinux.
+
+Tool and model versions are verified against local transcript stores. An entry
+whose attribution has not been checked against a local transcript says so
+explicitly.
+
+
+HISTORICAL DELEGATED WORK
+
+Delegation was retired on 2026-10-16; Fred now directs every agent himself.
+Earlier assignments, with the harness and model on each side and any rework:
+<delegations.md>.
+
+
+SESSION RECORDS
+
+  Date: 2026-10-25
+  Topic: Approved native console monitor design
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-25-console-monitor-plan.md>
+
+  Date: 2026-10-23
+  Topic: 0.5.4 metadata for tam command 0.43.2 and corpus 0.43.0
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-23-tam-0.5.4.md>
+
+  Date: 2026-10-23
+  Topic: Standalone console monitor TUI, brightness and guarded blank/wake
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-23-console-monitor-control.md>
+
+  Date: 2026-10-23
+  Topic: Prepare console-startup 0.5.2; Test separate
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-23-console-candidate-0.5.2.md>
+
+  Date: 2026-10-23
+  Topic: Console-first candidate 0.5.1
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-23-console-candidate.md>
+
+  Date: 2026-10-23
+  Topic: Retire inherited terminal theme includes
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-23-retire-terminal-theme-paths.md>
+
+  Date: 2026-10-23
+  Topic: Hold the text shell during explicit desktop use
+  Primary Tool: Codex CLI 0.164.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-23-console-terminal-guard.md>
+
+  Date: 2026-10-23
+  Topic: Fleet delivery and supported first installation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-22-fleet-first-install.md>
+
+  Date: 2026-10-22
+  Topic: Host-safe fleet and bootstrap helper
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-22-fleet.md>
+
+  Date: 2026-10-22
+  Topic: Release 0.4.8, final Incipiens cultivar
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-22-release-0.4.8.md>
+
+  Date: 2026-10-21
+  Topic: Incipiens 0.4.8 product metadata for current tam
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-21-prepare-0.4.8.md>
+
+  Date: 2026-10-21
+  Topic: Incipiens 0.4.7 candidate preparation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-21-prepare-0.4.7.md>
+
+  Date: 2026-10-21
+  Topic: Preserving HEY integration retirement
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-21-retire-hey.md>
+
+  Date: 2026-10-21
+  Topic: Incipiens 0.4.6 preparation and accepted HEY retirement plan
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-21-0.4.6-preparation.md>
+
+  Date: 2026-10-20
+  Topic: Retain the stock boot/unlock screen for 0.4
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-20-stock-unlock-screen.md>
+
+  Date: 2026-10-20
+  Topic: Retained application and editor dependencies
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-20-live-call-replacements.md>
+
+  Date: 2026-10-20
+  Topic: Incipiens 0.4.5 candidate preparation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-20-0.4.5-preparation.md>
+
+  Date: 2026-10-20
+  Topic: Scoped milestone label in the bar
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-20-tamversion-milestone-label.md>
+
+  Date: 2026-10-20
+  Topic: Single-owner input-method startup
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-20-native-input-startup.md>
+
+  Date: 2026-10-18
+  Topic: 0.4.4h Develop and package preparation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-18-0.4.4h-develop.md>
+
+  Date: 2026-10-18
+  Topic: Approved 0.4.4h candidate work plan
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-18-0.4.4h-plan.md>
+
+  Date: 2026-10-17
+  Topic: Generator-aware hibernate zram restoration
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-17-hibernate-zram-restoration.md>
+
+  Date: 2026-10-17
+  Topic: SDDM PAM keyring cleanup transaction
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6-luna
+  Session Document: Session <2026-10-17-sddm-pam-cleanup.md>
+
+  Date: 2026-10-17
+  Topic: Approved H1 plan and 0.4.4f hibernate hook
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol (initial investigation: gpt-6-luna)
+  Session Document: Session <2026-10-17-hibernate-h1.md>
+
+  Date: 2026-10-16
+  Topic: 0.4.4e boot handoff preparation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-16-boot-preparation.md>
+
+  Date: 2026-10-16
+  Topic: Complete Antigravity quota groups and distinct Argon allowance
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-16-antigravity-complete-quotas.md>
+
+  Date: 2026-10-16
+  Topic: Retire delegation; preserve historical provenance
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-16-retire-delegation.md>
+
+  Date: 2026-10-16
+  Topic: 0.4.4-c native login preparation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-16-native-login-c.md>
+
+  Date: 2026-10-16
+  Topic: Plugin scaffold and offscreen widget check
+  Primary Tool: Claude Code 2.1.301
+  Model: claude-opus-5-5
+  Session Document: Session <2026-10-16-plugin-scaffold-and-widget-proof.md>
+
+  Date: 2026-10-16
+  Topic: Plugin set derived from the plugin directories
+  Primary Tool: Claude Code 2.1.301
+  Model: claude-opus-5-5
+  Session Document: Session <2026-10-16-derived-plugin-set.md>
+
+  Date: 2026-10-16
+  Topic: Running Tamlinux version in the bar
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-16-tamversion.md>
+
+  Date: 2026-10-15
+  Topic: Login candidate retains d sleep hooks
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-15-login-slice-sleep-hook.md>
+
+  Date: 2026-10-15
+  Topic: Native SDDM greeter preparation
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-15-sddm-native-greeter.md>
+
+  Date: 2026-10-15
+  Topic: 0.4.4-a cutover development
+  Primary Tool: Codex CLI 0.163.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-15-0.4.4a-cutover.md>
+
+  Date: 2026-10-15
+  Topic: Drain zram swap before hibernating
+  Primary Tool: Claude Code 2.1.300
+  Model: claude-opus-5-5
+  Session Document: Session <2026-10-15-hibernate-swap.md>
+
+  Date: 2026-10-15
+  Topic: Native conversion and c preparation
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-15-desktop-test-c.md>
+
+  Date: 2026-10-14
+  Topic: Owned Chromium extensions and native messaging
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-14-browser-endpoints.md>
+
+  Date: 2026-10-13–14
+  Topic: Settings recovery, live source preservation and typed recording
+  clicks
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-13-0.4.3-recovery-continuation.md>
+
+  Date: 2026-10-13
+  Topic: Independent providers, fresh-session defaults and clean VM
+  preparation
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-13-0.4.3-provider-session-closure.md>
+
+  Date: 2026-10-13
+  Topic: 0.4.3 testing readiness review and prerequisite selection
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-13-0.4.3-testing-readiness.md>
+
+  Date: 2026-10-13
+  Topic: 0.4.3 owned themes, fonts, assets and branding
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-13-0.4.3-theme-closure.md>
+
+  Date: 2026-10-13
+  Topic: 0.4.3 packaged capture chain and tool/decoder verification
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-13-0.4.3-capture-closure.md>
+
+  Date: 2026-10-12
+  Topic: 0.4.3 independence gate and compiled/QML evidence
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-12-0.4.3-independence-gate.md>
+
+  Date: 2026-10-12
+  Topic: 0.4.3 display and power helper closure
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-12-0.4.3-display-power-closure.md>
+
+  Date: 2026-10-12
+  Topic: Network/power controls and paired setters
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-12-0.4.3-control-closure.md>
+
+  Date: 2026-10-12
+  Topic: 0.4.3 retained audio source and recovery
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-12-0.4.3-audio-output-closure.md>
+
+  Date: 2026-10-12
+  Topic: 0.4.3 retired integrations, agent defaults and microphone controls
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-12-openclaw-retirement.md>
+
+  Date: 2026-10-10
+  Topic: 0.4.3 menu disposition and browser launch closure
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-10-0.4.3-menu-launch-closure.md>
+
+  Date: 2026-10-10
+  Topic: Independent acceleration review, caller overlap and focused input
+  timing
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-10-acceleration-review.md>
+
+  Date: 2026-10-10
+  Topic: 0.4.3 terminal/editor package closure and prioritized implementation
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-10-terminal-editor-closure.md>
+
+  Date: 2026-10-10
+  Topic: 0.4.3 clean-host gate, migration rules and measured output gaps
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-10-0.4.3-clean-host-contract.md>
+
+  Date: 2026-10-09–10
+  Topic: 0.4.3 owned desktop helpers, notification protocol and offline plugin
+  catalog
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-09-start-0.4.3.md>
+
+  Date: 2026-10-10
+  Topic: 0.4.2-d review fixes and distinct Test candidate preparation
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-10-0.4.2d-review-fixes.md>
+
+  Date: 2026-10-09
+  Topic: 0.4.2-c plugin storage repair and package integration checks
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-09-0.4.2c-repair.md>
+
+  Date: 2026-10-09
+  Topic: Shared plugin hover and panel version footers; historical record
+  Primary Tool: agy 1.3.2
+  Model: gemini-3.8-flash-high
+  Session Document: Session <2026-10-09-plugin-hover-footers.md>
+
+  Date: 2026-10-09
+  Topic: 0.4.2-b plugin and hover repairs
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-09-0.4.2b-repair.md>
+
+  Date: 2026-10-09
+  Topic: 0.4.2-a menu candidate after packaged release transition
+  Primary Tool: Codex CLI 0.162.1
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-09-0.4.2-assembly.md>
+
+  Date: 2026-10-09
+  Topic: The Tamlinux 0.4.1 package
+  Primary Tool: Claude Code 2.1.295
+  Model: claude-opus-5-5
+  Session Document: Session <2026-10-09-0.4.1-package.md>
+
+  Date: 2026-10-09
+  Topic: tam-deploy and tam-plugin 3.0.0 deploy packaged assemblies
+  Primary Tool: Claude Code 2.1.295
+  Model: claude-opus-5-5
+  Session Document: Session <2026-10-09-tam-deploy.md>
+
+  Date: 2026-10-09
+  Topic: Lifecycle tools move into Tamlinux
+  Primary Tool: Claude Code 2.1.295
+  Model: claude-opus-5-5
+  Session Document: Session <2026-10-09-lifecycle-tools-move.md>
+
+  Date: 2026-10-09
+  Topic: tam-work moves into Tamlinux
+  Primary Tool: Claude Code 2.1.295 / agy 1.3.2
+  Model: claude-opus-5-5 / gemini-3.8-flash-high
+  Session Document: Session <2026-10-09-tam-work.md>
+
+  Date: 2026-10-09
+  Topic: 0.4.2 menu ownership and bounded reloads
+  Primary Tool: Codex CLI 0.162.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-09-0.4.2-menu.md>
+
+  Date: 2026-10-09
+  Topic: Deployment state and current plan review
+  Primary Tool: Codex CLI 0.162.0
+  Model: gpt-6.1-sol
+  Session Document: Session <2026-10-09-status-review.md>
+
+  Date: 2026-10-09
+  Topic: Plugin suite consolidation into Tamlinux
+  Primary Tool: OpenCode 1.18.35 / agy 1.2.16
+  Model: big-pickle / gemini-3.8-flash-high
+  Session Document: <2026-10-09-plugins-consolidation.md>
+
+  Date: 2026-10-09
+  Topic: Public package-delivery ownership
+  Primary Tool: Codex CLI 0.162.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-09-package-ownership.md>
+
+  Date: 2026-10-09
+  Topic: Daily compositor protocol shadow monitoring
+  Primary Tool: Codex CLI 0.162.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-09-protocol-shadow.md>
+
+  Date: 2026-10-08
+  Topic: 0.4.0 login, normal Run and tested acceptance
+  Primary Tool: Codex CLI 0.162.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-08-0.4.0-acceptance.md>
+
+  Date: 2026-10-08
+  Topic: Shared compositor protocol layer, milestone A
+  Primary Tool: Codex CLI 0.161.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-08-protocol-layer-development.md>
+
+  Date: 2026-10-08
+  Topic: Compositor protocol layer and base-plan additions
+  Primary Tool: Claude Code 2.1.294
+  Model: claude-opus-5-5
+  Session Document: <2026-10-08-compositor-protocol-layer.md>
+
+  Date: 2026-10-07
+  Topic: Independence-first replanning
+  Primary Tool: Codex CLI 0.161.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-07-independence-first-replanning.md>
+
+  Date: 2026-10-06
+  Topic: Monitor power re-read
+  Primary Tool: Claude Code 2.1.292
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-dpms-reread.md>
+
+  Date: 2026-10-06
+  Topic: 0.3.3 cutover: the daily bar
+  Primary Tool: Claude Code 2.1.292
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-0.3.3-cutover.md>
+
+  Date: 2026-10-06
+  Topic: Complete 0.3.2 readiness
+  Primary Tool: Codex CLI 0.160.1
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-06-0.3.2-completion.md>
+
+  Date: 2026-10-06
+  Topic: Independent, continuing Tamlinux identity
+  Primary Tool: Codex CLI 0.160.1
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-06-independent-continuing-project.md>
+
+  Date: 2026-10-06
+  Topic: The proof launcher addresses its own instance
+  Primary Tool: Claude Code 2.1.291
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-proof-ipc-by-pid.md>
+
+  Date: 2026-10-05
+  Topic: Bar widget ports merged; provenance for delegated work
+  Primary Tool: Claude Code 2.1.290
+  Model: claude-opus-5-5
+  Session Document: <2026-10-05-delegation-provenance.md>
+
+  Date: 2026-10-05
+  Topic: Shared theme and typography integration (Develop)
+  Primary Tool: Codex CLI 0.160.1
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-05-style-theme-integration.md>
+
+  Date: 2026-10-05
+  Topic: Omarchy's packages frozen (0.2.0)
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-05-freeze-omarchy-packages.md>
+
+  Date: 2026-10-05
+  Topic: Every accepted step is a version
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-05-version-keyed-plan.md>
+
+  Date: 2026-10-04
+  Topic: Notifications service in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-notifications-service.md>
+
+  Date: 2026-10-04
+  Topic: OSD service in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-osd-service.md>
+
+  Date: 2026-10-04
+  Topic: Clipboard service in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-clipboard-service.md>
+
+  Date: 2026-10-04
+  Topic: Reminders in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-reminders.md>
+
+  Date: 2026-10-04
+  Topic: Milestones before 0.1
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-milestones-before-0.1.md>
+
+  Date: 2026-10-04
+  Topic: Battery warning in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-battery.md>
+
+  Date: 2026-10-04
+  Topic: Stay Awake in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-idle.md>
+
+  Date: 2026-10-04
+  Topic: Media keys in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-media.md>
+
+  Date: 2026-10-04
+  Topic: Polkit agent in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-polkit.md>
+
+  Date: 2026-10-04
+  Topic: Desktop background in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-background.md>
+
+  Date: 2026-10-04
+  Topic: Command menu in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-menu.md>
+
+  Date: 2026-10-04
+  Topic: Image picker in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-image-picker.md>
+
+  Date: 2026-10-04
+  Topic: Emoji picker in the host
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-emoji-picker.md>
+
+  Date: 2026-10-04
+  Topic: Omarchy removed before Hyprland (0.3)
+  Primary Tool: Claude Code 2.1.289
+  Model: claude-opus-5-5
+  Session Document: <2026-10-04-omarchy-before-hyprland.md>
+
+  Date: 2026-10-04
+  Topic: Sway adapter, first slice
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-04-sway-adapter.md>
+
+  Date: 2026-10-03
+  Topic: Helper Hyprland commands use the named backend
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-hyprland-command-ownership.md>
+
+  Date: 2026-10-03
+  Topic: Plugin QML reads the compositor facade
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-compositor-facade.md>
+
+  Date: 2026-10-03
+  Topic: Shell-independent 2.0.0
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shell-independent-2.0.0.md>
+
+  Date: 2026-10-03
+  Topic: Shared UI closure and typed actions
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shared-ui-closure.md>
+
+  Date: 2026-10-03
+  Topic: Workstation package route and version series
+  Primary Tool: Claude Code 2.1.288
+  Model: claude-opus-5-5
+  Session Document: <2026-10-03-workstation-package-route-and-versions.md>
+
+  Date: 2026-10-03
+  Topic: Compositor contract and Hyprland adapter
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-compositor-contract.md>
+
+  Date: 2026-10-03
+  Topic: Void-first target base and repository alignment
+  Primary Tool: Codex CLI 0.160.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-03-void-first-target-base.md>
+
+  Date: 2026-10-03
+  Topic: runit for system initialization and service management
+  Primary Tool: Antigravity CLI (agy) 1.2.16
+  Model: gemini-3.8-flash-high
+  Session Document:
+  <2026-10-03-runit-system-initialization-and-service-management.md>
+
+  Date: 2026-10-03
+  Topic: Shell host contract for the other plugins
+  Primary Tool: Cursor 3.21.18
+  Model: composer
+  Session Document: <2026-10-03-shell-host-contract.md>
+
+  Date: 2026-10-03
+  Topic: Independent clock shell proof
+  Primary Tool: Cursor 3.21.18
+  Model: composer
+  Session Document: <2026-10-03-independent-clock-shell.md>
+
+  Date: 2026-10-03
+  Topic: Hardware floor, open compositor, and workstation requirements
+  Primary Tool: Claude Code 2.1.288
+  Model: claude-opus-5-5
+  Session Document:
+  <2026-10-03-hardware-floor-and-workstation-requirements.md>
+
+  Date: 2026-10-03
+  Topic: Desktop dependency inventory and agy handoff
+  Primary Tool: Codex CLI 0.160.0
+  Model: gpt-6.1-sol
+  Session Document: <2026-10-03-desktop-dependency-inventory-and-handoff.md>
+
+  Date: 2026-09-22
+  Topic: Public explainer and suite branding
+  Primary Tool: Cursor 3.21.16
+  Model: composer
+  Session Document: <2026-09-22-public-explainer.md>
+
+  Date: 2026-09-22
+  Topic: Product version 0.0.1
+  Primary Tool: Cursor 3.21.16
+  Model: composer
+  Session Document: <2026-09-22-version-0.0.1.md>
+
+  Date: 2026-09-23
+  Topic: Installation and tamlinux command plans
+  Primary Tool: Codex CLI 0.156.1
+  Model: gpt-6-sol
+  Session Document: <2026-09-23-installation-and-command-plans.md>
+
+  Date: 2026-09-28
+  Topic: AntiX base layer, Arch rolling updates, and product vision
+  Primary Tool: Antigravity CLI (agy) 1.2.12
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-28-antix-base-and-product-vision.md>
+
+
+RELATED
+
+- <../../AI_PROVENANCE.md> — toolchain and milestone table.
+
+
+2026-09-23 UPSTREAM SURVEY FOUNDATION
+
+- Codex session record <2026-09-23-upstream-survey-foundation.md>.
+
+
+2026-09-28 PRIVATE SESSION IDS
+
+- Claude Code session record <2026-09-28-private-session-ids.md>.
+
+
+2026-09-28 PROVENANCE AUDIT AND PUBLISH
+
+- Claude Code session record <2026-09-28-provenance-audit-and-publish.md>.
+
+- 2026-10-14 — Monitor geometry during workspace reconciliation
+  <2026-10-14-monitor-persistence.md>
+
+- 2026-10-14 — Desktop recovery preparation
+  <2026-10-14-desktop-recovery-kit.md>
+
+- 2026-10-14 — Desktop Test b preparation <2026-10-14-desktop-test-b.md>
+
+- 2026-10-15 — Protocol-state crash fix and native system defaults
+  <2026-10-15-protocol-crash-native-defaults.md>
+
+| 2026-10-15 | 0.4.3-d graphics environment isolation | Codex CLI 0.162.1 |
+gpt-6.1-sol | Record <2026-10-15-0.4.3d-graphics-isolation.md> |
+
+- 2026-10-16 — 0.4.4d login and panel readiness
+  <2026-10-16-0.4.4d-readiness.md>
+- 2026-10-20 — plain patch versions replace candidate letters
+  <2026-10-20-plain-patch-versions.md>
+
+- 2026-10-20 — Discord icon independence <2026-10-20-discord-icon.md>
+
+- 2026-10-28 — Keybinding explorer capture verification
+  <2026-10-28-explorer-capture-verification.md>
+- 2026-10-28 — imv preservation fixes <2026-10-28-imv-preservation.md>
+- 2026-10-28 — imv input development <2026-10-28-imv-input.md>
+- 2026-10-28 — Keybinding explorer 0.2.x UI/UX overhaul and future roadmap
+  <2026-10-28-keybinding-explorer-ui-ux.md>
+
+- 2026-10-29 — Remove the screensaver <2026-10-29-remove-screensaver.md>
+- 2026-10-29 — Tamarack and text-login orientation
+  <2026-10-29-tamarack-console.md>
+- 2026-10-30 — Editor theme contrast <2026-10-30-editor-contrast.md>
+- 2026-10-30 — Editor surface contrast <2026-10-30-editor-surface-contrast.md>
+- 2026-10-30 — Explorer appearance and deployment test isolation
+  <2026-10-30-explorer-appearance.md>
+- 2026-11-06 — Stop session default tests launching real Hyprland
+  <2026-11-06-session-defaults-test-hermetic.md>
+- 2026-11-06 — Make the whole test suite pass and add check-all
+  <2026-11-06-test-suite-passes.md>
+
+- 2026-11-11 — Plain text journal <2026-11-11-plain-text-journal.md>, Codex
+  CLI 0.167.1 / gpt-6.1-sol.
+
+Date: 2026-11-13
+Topic: Plain text README conversion
+Tool: Codex CLI 0.169.0
+Model: gpt-6.1-sol
+Record: Session <2026-11-13-plain-readmes.md>

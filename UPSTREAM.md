@@ -4,7 +4,7 @@ Tamlinux 0.x began on [Omarchy](https://github.com/omacom/omarchy). Gate A
 closed with released **0.4.8** (2026-10-22): the workstation no longer depends
 on Omarchy packages or servers. The current host is Arch Linux with Tamlinux's
 own Hyprland/Quickshell desktop (Blue Sparkler 0.5). The public
-[README.md](README.md) credits Arch rolling updates, AntiX's hardware
+[README](README) credits Arch rolling updates, AntiX's hardware
 longevity focus, Nix atomic rollbacks, and modern desktop ideas from Wayland,
 River, Hyprland, Quickshell, and Omarchy as technical inspirations. These are
 distinct kinds of influence: historical base, system building blocks, and

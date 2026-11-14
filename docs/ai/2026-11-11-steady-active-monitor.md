@@ -38,7 +38,7 @@ asynchronous worker failures retain output/CRTC/commit/errno. File records are
 bounded and promptly flushed. Existing native verbose controls remain separate.
 
 Native source and retirement conditions are in the
-[provider contract](../../desktop/native/providers/display/README.md).
+[provider contract](../../desktop/native/providers/display/README).
 Hyprland fork head is `3b1b3f15`; Aquamarine fork head is `25f5e5d`.
 Both are development feature branches, with the existing safety patches intact.
 

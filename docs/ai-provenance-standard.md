@@ -15,7 +15,7 @@ deliberately left out. It applies to this repository and every
 | :-- | :-- |
 | **Commit trailers** | A commit made with AI help carries `AI-Tool: <tool> <version>`, `AI-Model: <model-id>`, and a `Co-authored-by:` line for the assistant. |
 | **`AI_PROVENANCE.md`** | The AI tools Fred uses and what each is for, plus a table of the repository's milestones and which AI partner worked on each. |
-| **`docs/ai/`** | One record per working session, indexed in `docs/ai/README.md`. Some older repositories still keep these in a single `docs/ai/sessions.md`. |
+| **`docs/ai/`** | One record per working session, indexed in `docs/ai/README`. Some older repositories still keep these in a single `docs/ai/sessions.md`. |
 | **`docs/ai/delegations.md`** | Historical work one AI agent assigned to another: who assigned it, which harness and model did it, and whether it had to be corrected or redone. |
 | **The commits and diffs themselves** | The ground truth. Every record cites the commits it produced, so you can check its claims against the code. |
 

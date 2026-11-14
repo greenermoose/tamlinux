@@ -1,0 +1,120 @@
+    Historical 1.x archive. These records document Omarchy-era plugin work.
+    Product plugins now live in this repository under desktop/plugins/;
+    marketplace Publish and Omarchy shell process are frozen. Private agent
+    guides (for example ai-session-stores.md) are not in this tree — do not
+    follow broken relative links as current procedure.
+
+
+AI COLLABORATION SESSION ARCHIVE: clock-fred-tamlinux
+
+Individual session records documenting prompt history, tools, models, and key
+architectural decisions for clock-fred-tamlinux.
+
+    [!NOTE] All entries were verified against local transcript stores during
+    migration on 2026-09-20. Where the agy CLI version could not be confirmed
+    from transcript content, this is noted in the individual session file. See
+    docs/agent-guides/ai-session-stores.md
+    <../../docs/agent-guides/ai-session-stores.md> for the store inventory and
+    verification methodology.
+
+
+SESSION RECORDS
+
+  Date: 2026-10-06
+  Topic: Tamlinux-only dependencies
+  Primary Tool: Claude Code 2.1.291
+  Model: claude-opus-5-5
+  Session Document: <2026-10-06-tamlinux-only-dependencies.md>
+
+  Date: 2026-10-03
+  Topic: Shell-independent 2.0.0
+  Primary Tool: Cursor 3.23.12
+  Model: composer
+  Session Document: <2026-10-03-shell-independent-2.0.0.md>
+
+  Date: 2026-09-11
+  Topic: Clone Parity, clonedFrom & Countdown Badge (v0.1.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-11-clone-parity-clonedfrom-countdown-badge.md>
+
+  Date: 2026-09-12
+  Topic: Read-Only Agenda & stdlib iCal Engine (v1.0.0, v1.1.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-12-read-only-agenda-ical-engine-v1.0.0.md>
+
+  Date: 2026-09-12
+  Topic: Local Event CRUD & Reminders (v1.2.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-12-local-event-crud-reminders-v1.2.0.md>
+
+  Date: 2026-09-13
+  Topic: Marketplace Security Remediation (v1.3.0)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-13-marketplace-security-remediation-v1.3.0.md>
+
+  Date: 2026-09-14
+  Topic: Post-Suspend Clock Freeze & Multi-Monitor Resync (v1.3.1)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-14-post-suspend-clock-freeze-v1.3.1.md>
+
+  Date: 2026-09-16
+  Topic: Launch.qml Never Compiled; Closed Env Never Applied (v1.3.2)
+  Primary Tool: claude (Claude Code 2.1.273)
+  Model: Claude Opus 5 (claude-opus-5)
+  Session Document: <2026-09-16-launch-qml-never-compiled-v1.3.2.md>
+
+  Date: 2026-09-18
+  Topic: Version Footers & Running Status Display (v1.3.3)
+  Primary Tool: agy
+  Model: Gemini 3.8 Flash (High)
+  Session Document: <2026-09-18-version-footers-running-status-v1.3.3.md>
+
+
+CORRECTIONS VS. PRIOR sessions.md
+
+The following errors were found and corrected during transcript verification
+on 2026-09-20:
+
+  Session: Sep 13 (v1.3.0)
+  Error: Dated 2026-09-14
+  Correction: Transcript start: 2026-09-13T07:51:31-04:00
+
+  Session: Sep 14 (v1.3.1)
+  Error: Dated 2026-09-15
+  Correction: Transcript start: 2026-09-14T17:35:28-04:00
+
+  Session: Sep 14 (v1.3.1)
+  Error: Missing prompt: "What if we wanted fred.clock to be able to show
+  seconds ticking by?"
+  Correction: Added from transcript
+
+  Session: Sep 16 (v1.3.2)
+  Error: Prompt shown without screenshot notation
+  Correction: Transcript shows screenshot was attached
+
+  Session: Sep 18 (v1.3.3)
+  Error: 3 follow-up prompts omitted
+  Correction: Added from transcript
+
+  Session: Sep 11–12 (v0.1.0–v1.2.0)
+  Error: agy version given as 1.2.2
+  Correction: Not confirmed in transcripts; noted as unverified
+
+  Session: Sep 18 (v1.3.3)
+  Error: agy version given as 1.2.6
+  Correction: Not confirmable from transcript; noted as unverified
+
+
+2026-09-23 UPSTREAM SURVEY FOUNDATION
+
+- Codex session record <2026-09-23-upstream-survey-foundation.md>.
+
+
+2026-09-28 PRIVATE SESSION IDS
+
+- Claude Code session record <2026-09-28-private-session-ids.md>.

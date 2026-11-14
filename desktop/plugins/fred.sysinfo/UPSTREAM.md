@@ -6,7 +6,7 @@ uses PCI utilities, and follows the Omarchy/Quickshell plugin interface.
 [Omarchy](https://github.com/omacom/omarchy), the
 [Linux kernel documentation](https://docs.kernel.org/), and the
 [Quickshell project](https://quickshell.outfoxxed.me/) are starting references
-for those interfaces. The root [README.md](README.md) describes current
+for those interfaces. The root [README](README) describes current
 behavior and security choices.
 
 No direct code clone is documented here. A requested survey should check

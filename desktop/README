@@ -1,0 +1,180 @@
+TAMLINUX DESKTOP SHELL
+
+Product shell, host contract, and session services for Hyprland/Quickshell.
+Plugin payloads live under plugins/ <plugins/README>.
+
+Historical 2026-10-03 shell-proof check dumps and Omarchy-era proof narrative
+were removed from this file in the 2026-10-31 docs prune; retrieve the full
+pre-prune text with
+git show 139b060a717573fb2740c0f5e3b5deb599a6aeff:desktop/README.md (see
+<FILING-CARD.md>).
+
+
+START MENU (0.5.10)
+
+Right-click unused bar space, or press SUPER and right-click anywhere, to open
+Start near the pointer. It exposes Quick Launch and Settings in one searchable
+list. Occupied bar widgets retain their own right-click behavior. SUPER + ALT
++ right-drag resizes windows.
+
+Settings offers Color Palette, Text Size, Background and Bar Position.
+tam-menu toggle start opens the combined view; tam-menu toggle quicklaunch
+remains available. See the approved plan <../docs/plans/start-menu.md>.
+
+
+CONSOLE-FIRST STARTUP
+
+Tamlinux boots through visible text progress to a text login. The optional
+desktop starts when the signed-in user runs tam-desktop on a local foreground
+console. There is no graphical login manager. See console-first-startup.md
+<../docs/plans/console-first-startup.md>.
+
+
+NAMES
+
+The Tamlinux shell is one Quickshell configuration that draws the bar and
+panels and runs session services. Host in this directory means the plugin host
+contract in shell/host/ (registry, settings, popouts, IPC, compositor facade).
+Elsewhere, host means the distribution the workstation package is installed
+on.
+
+Ported code was copied from Omarchy (MIT, notice kept), adapted to Tamlinux,
+and is maintained here; headers say Ported from omarchy ….
+
+
+HOST CONTRACT
+
+Each output gets its own bar object from desktop/shell/host/BarApi.qml. Plugin
+source is not copied into this directory.
+
+  Call: foreground, fontFamily, position, urgent, barSize
+  Who uses it: all plugins
+  Host behavior: Top or bottom bar, horizontal, owned palette and type scale.
+
+  Call: bar.screen.name
+  Who uses it: weather, tides
+  Host behavior: The output this bar was built for.
+
+  Call: setting() / updateEntryInline
+  Who uses it: clock
+  Host behavior: Scalar writes for a registered id.
+
+  Call: moduleWidgets
+  Who uses it: workspaces
+  Host behavior: Every live instance of that id, across outputs.
+
+  Call: requestPopout / releasePopout
+  Who uses it: keyboard, monitor, sysinfo, weather, tides, clock
+  Host behavior: One open popup per output.
+
+  Call: switchPanelFrom
+  Who uses it: clock, weather, tides
+  Host behavior: Opens the next widget on that output with open/close.
+
+  Call: showTooltip / hideTooltip
+  Who uses it: sysinfo, monitor, shared buttons
+  Host behavior: Separate overlay; size follows TAMLINUX_UI_SCALE.
+
+  Call: shell.summon / hide / toggle
+  Who uses it: monitor
+  Host behavior: Registered panel on the focused output.
+
+  Call: compositor.* keyboard helpers
+  Who uses it: keyboard layout widget
+  Host behavior: From the Hyprland adapter.
+
+  Call: pickAgent()
+  Who uses it: agents
+  Host behavior: $TAMLINUX_BIN/tam-agent --pick when actions are enabled.
+
+  Call: openTerminal(program)
+  Who uses it: sysinfo, menu
+  Host behavior: Bounded program names only.
+
+  Call: notify(text)
+  Who uses it: weather
+  Host behavior: Plain notice up to 512 characters when actions are enabled.
+
+Tam.Commons and Tam.Ui supply shared types and tokens. There is no
+execDetached. Plugins import Tam.Commons and Tam.Ui from their own trees.
+
+
+COMPOSITOR CONTRACT
+
+Shell UI reads desktop/shell/host/Compositor.qml. HyprlandAdapter.qml is the
+only shell file that imports Quickshell.Hyprland or starts /usr/bin/hyprctl.
+SwayAdapter.qml loads only when TAMLINUX_COMPOSITOR=sway.
+
+Named actions (focusWorkspace, focusOutput, setDpms) record the request unless
+TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1. Protocol proof:
+
+    python3 desktop/launch-protocol-proof
+
+
+SESSION SERVICES
+
+shell/host/Services.qml loads services named in TAMLINUX_SERVICES
+(comma-separated). TAMLINUX_BAR=0 runs services without a bar.
+
+  Service: notifications
+  Role: Freedesktop notifications, DND, history
+
+  Service: osd
+  Role: Volume/brightness/status overlays
+
+  Service: clipboard
+  Role: Clipboard history picker
+
+  Service: emojis
+  Role: Emoji picker
+
+  Service: imagepicker
+  Role: Image carousel for pickers
+
+  Service: reminders
+  Role: Timed reminder cards
+
+  Service: menu
+  Role: Command menu / Start
+
+  Service: background
+  Role: Desktop background layer
+
+  Service: polkit
+  Role: Session polkit agent
+
+  Service: media
+  Role: MPRIS media keys
+
+  Service: battery
+  Role: Low-battery warning and power profiles
+
+  Service: idle
+  Role: Stay Awake / idle lock
+
+  Service: theme
+  Role: Palette apply without restarting the shell
+
+
+LAYOUT
+
+    desktop/
+      shell/shell.qml
+      shell/host/          # bar API, compositor facade, adapters
+      shell/services/      # session services
+      shell/modules/Tam/   # Commons and Ui
+      plugins/             # fred.* payloads
+      tests/
+
+
+THEME
+
+tam-shell theme reload applies validated colors to Tam.Commons. Import
+Tam.Commons as Commons (unqualified Color can mean QtQuick's type). Headless
+checks: python3 desktop/check-theme --quickshell /path/to/quickshell. Full
+Tamarack design is a separate milestone (theme-system.md
+<../docs/plans/theme-system.md>).
+
+The daily session starter is shell/host/session_start.py. It builds plugin
+entries from ~/.config/tamlinux/plugins/ and reads
+~/.config/tamlinux/shell/{layout,settings}.json.

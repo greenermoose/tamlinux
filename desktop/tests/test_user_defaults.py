@@ -141,7 +141,7 @@ class UserDefaultsTests(unittest.TestCase):
                                  "keyserver hkps://keys.mailvelope.com", "keyserver hkps://keyring.debian.org",
                                  "keyserver hkps://pgp.mit.edu", "connect-quick-timeout 4"])
         for path in BASE.rglob("*"):
-            if path.is_file() and path.name not in ("LICENSE-bash", "README.md"):  # source-only attribution
+            if path.is_file() and path.name not in ("LICENSE-bash", "README"):  # source-only attribution
                 text = path.read_text().lower()
                 for word in ("omarchy", "omacom", "/home/"):
                     self.assertNotIn(word, text, path)

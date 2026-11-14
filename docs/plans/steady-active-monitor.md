@@ -448,7 +448,7 @@ Native source branches retain the existing DPMS, idle and connector guards:
 - Hyprland: `develop/plan54-output-workspace-logging`, head `3b1b3f15`.
 - Aquamarine: `develop/plan54-commit-attribution`, commit `25f5e5d`.
 
-The [native provider contract](../../desktop/native/providers/display/README.md)
+The [native provider contract](../../desktop/native/providers/display/README)
 contains the source patches, retirement conditions and reproduction notes.
 These are development corrections, not selected or installed native packages.
 The helper must not be packaged for use without the matching native action.

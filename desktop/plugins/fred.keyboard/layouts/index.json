@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "description": "Registry of transcribed keyboard layouts maintained in this repository. Consulted before falling back to the OS-supplied XKB geometries. See README.md to contribute one.",
+  "description": "Registry of transcribed keyboard layouts maintained in this repository. Consulted before falling back to the OS-supplied XKB geometries. See README to contribute one.",
   "layouts": [
     {
       "id": "lenovo-calliope",

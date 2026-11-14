@@ -46,7 +46,7 @@ check: build/tam-boot build/test_boot
 
 install: build/tam-boot
 	install -Dm755 build/tam-boot $(DESTDIR)$(PREFIX)/bin/tam-boot
-	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/tam-boot/README.md
+	install -Dm644 README $(DESTDIR)$(PREFIX)/share/doc/tam-boot/README
 	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-boot/LICENSE
 
 clean:

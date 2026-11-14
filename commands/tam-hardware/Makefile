@@ -49,7 +49,7 @@ check: build/tam-hardware build/test_probe
 
 install: build/tam-hardware
 	install -Dm755 build/tam-hardware $(DESTDIR)$(PREFIX)/bin/tam-hardware
-	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/tam-hardware/README.md
+	install -Dm644 README $(DESTDIR)$(PREFIX)/share/doc/tam-hardware/README
 	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-hardware/LICENSE
 
 clean:

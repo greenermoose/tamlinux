@@ -57,8 +57,12 @@ class NewPlugin(unittest.TestCase):
         qml = (plugin / 'BarWidget.qml').read_text()
         self.assertEqual(re.findall(r'pluginVersion: "([^"]+)"', qml), [manifest['version']])
         self.assertIn('moduleName: "fred.example"', qml)
-        for name in ('README.md', 'CHANGELOG.md'):
+        for name in ('README', 'CHANGELOG.md'):
             self.assertTrue((plugin / name).is_file(), name)
+        self.assertFalse((plugin / 'README.md').exists())
+        self.assertEqual((plugin / 'README').read_text(),
+                         'EXAMPLE\n\nExample "quoted" label\n\n'
+                         'Original Tamlinux code, licensed GPL-3.0-or-later under the repository license.\n')
         registry = self.product / 'desktop/shell/host/registry.py'
         subprocess.run(['python3', '-I', str(registry), 'validate', str(plugin)], check=True,
                        capture_output=True)

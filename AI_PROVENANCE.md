@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) converts tracked README files to plain text and updates their consumers. [Record](docs/ai/2026-11-13-plain-readmes.md).
+
 2026-11-13: Antigravity CLI (`agy`) `1.5.8` adds read-only `/usr/bin/tam-dns` privilege-boundary support for bundles and host-first native rollback lookup in `tam-deploy`. [Record](docs/ai/2026-11-13-bundle-dns-and-host-recovery.md).
 
 2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) preserves the saved background selection during offline theme restoration after a focused check stops 0.6.25 preparation. [Record](docs/ai/2026-11-13-offline-background-selection.md).
@@ -409,7 +411,7 @@ earlier future-stage schedules without changing accepted version identifiers.
 | **Installation and command plans** | 0.0.1 planning | Codex CLI `0.156.1` (`gpt-6-sol`), with Fred's direct edits and review | Omarchy first installation profile; NixOS pilot next; approved first `tamlinux` command slice, first-use welcome, and Lynx fallback. No installer or command implementation yet. [Session record](docs/ai/2026-09-23-installation-and-command-plans.md). |
 | **AntiX base layer & product vision** | 0.0.1 refinement | Antigravity CLI (`agy`) `1.2.12`, Gemini 3.8 Flash (High) | Clarified Arch rolling update appeal, AntiX older hardware commitment, universal resource minimization, AntiX Core + River target base layer, and a then-proposed temporary-testbed graduation path (**superseded 2026-10-06**; see [current record](docs/ai/2026-10-06-independent-continuing-project.md)). [Session record](docs/ai/2026-09-28-antix-base-and-product-vision.md). |
 
-Detailed session records are indexed in [`docs/ai/README.md`](docs/ai/README.md).
+Detailed session records are indexed in [`docs/ai/README`](docs/ai/README).
 
 ## 2026-09-23 upstream survey foundation
 

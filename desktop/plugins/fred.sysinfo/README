@@ -1,0 +1,156 @@
+SYSTEM INFORMATION & HARDWARE MONITOR (fred.sysinfo)
+
+Comprehensive hardware telemetry, thermal sensors, and system information bar
+plugin for Tamlinux <https://github.com/greenermoose/tamlinux> (Fred's
+personal Linux workstation environment; Hyprland + Quickshell).
+
+Resource summary hover <assets/hover.png>
+
+System Information Panel <assets/screenshot.png>
+
+
+OVERVIEW
+
+fred.sysinfo provides a clean, responsive top-bar widget and popout panel
+displaying detailed, real-time hardware telemetry and system specifications.
+It replaces vendor-locked or static hardware widgets with a universal, dynamic
+Linux kernel probe reading directly from standard sysfs, procfs, and PCI
+interfaces.
+
+  Category: Processor (CPU)
+  Telemetry & Details Displayed: Dynamic model, cores/threads topology,
+  real-time frequency, min/max frequency limits, CPU utilization %, load
+  averages, multi-level cache hierarchy, CPU governor, and power profile
+  controls.
+
+  Category: Thermals & Power
+  Telemetry & Details Displayed: Dynamic multi-vendor thermal mapping (AMD
+  k10temp, Intel coretemp, NVMe drives, GPU junction/edge, Wi-Fi, Ethernet)
+  and GPU wattage, clock frequency, and voltage.
+
+  Category: Motherboard & Firmware
+  Telemetry & Details Displayed: System vendor, product series, motherboard
+  model, BIOS version, BIOS release date, EC firmware, chassis classification,
+  kernel release, and formatted system uptime.
+
+  Category: Memory & Storage
+  Telemetry & Details Displayed: RAM total, in-use, and available; ZRAM and
+  swap usage; active root disk drive model and root filesystem (/) capacity
+  and utilization.
+
+  Category: I/O & Bus Controllers
+  Telemetry & Details Displayed: Dynamically classified Ethernet controllers,
+  Wi-Fi adapter, GPU/VGA controller, HD audio coprocessor, and connected USB
+  peripheral devices.
+
+  Category: Actions & Controls
+  Telemetry & Details Displayed: One-click power profile switching
+  (power-saver, balanced, performance), click-to-copy for any hardware value,
+  and quick launch for terminal system monitors (btop).
+
+
+FEATURES
+
+- Universal Dynamic Probing: Pure standard-library Python engine
+  (sysinfo-probe.py) querying native Linux interfaces (/sys, /proc,
+  /usr/bin/lspci), eliminating hardcoded vendor strings.
+- Stateful CPU Sampling: A private cache holds the previous CPU counters so
+  polls spaced at least 50 ms apart can calculate usage without a second
+  sample delay.
+- Marketplace Security Hardening:
+  - Subprocesses run inside a strictly closed environment
+    (clearEnvironment: true) with whitelisted variables (PATH, HOME, LC_ALL,
+    XDG_RUNTIME_DIR, XDG_CACHE_HOME).
+  - Helper paths resolve canonically via descriptor URLs (Qt.resolvedUrl).
+  - Execution watchdog timers automatically terminate hung processes.
+  - Input collectors enforce payload caps to prevent unbounded memory
+    allocation.
+  - Safe clipboard copy invokes wl-copy without shell string interpolation
+    vulnerabilities.
+- Interactive Power Management: Toggle system power profiles directly between
+  Saver, Balanced, and Performance modes via powerprofilesctl.
+- Fresh Resource Summary: Hover over the bar icon for current CPU usage,
+  available RAM, and free root-disk space without opening the full panel.
+- System Monitor Integration: Launch btop in your configured terminal with a
+  single click from the panel footer.
+
+
+SECURITY MODEL AND CACHE
+
+The probe stores CPU counters and static hardware details under
+$XDG_RUNTIME_DIR/tamlinux/sysinfo, or $XDG_CACHE_HOME/tamlinux/sysinfo when no
+runtime directory is available. It creates the directory with mode 0700 and
+refuses caching unless it is owned by the current user and private. It never
+caches directly in shared /dev/shm or /tmp.
+
+Each write creates an unpredictable 0600 temporary file using O_EXCL and
+O_NOFOLLOW, then atomically renames it relative to an open directory
+descriptor. Reads also use O_NOFOLLOW and validate owner, file type, mode,
+size, and age on the opened descriptor. A rejected cache leaves live telemetry
+available. Cache security tests run with
+python3 -m unittest discover -s tests.
+
+
+REQUIREMENTS
+
+- Tamlinux personal workstation environment (or Arch Linux base with Hyprland
+  and Quickshell)
+- Python 3 (python3, standard library only)
+- pciutils (/usr/bin/lspci for hardware bus controller identification)
+- power-profiles-daemon (powerprofilesctl for platform power management)
+- wl-clipboard (wl-copy for click-to-copy interactions)
+
+
+INSTALLATION
+
+The 2.x plugin is included in the pinned Tamlinux package assembly
+<https://github.com/greenermoose/tamlinux-packages>. Its installed payload is
+at ~/.config/tamlinux/plugins/fred.sysinfo/; install and update it with the
+assembly through Home Manager. The standalone repository contains the frozen
+Omarchy 1.x line.
+
+Place { "id": "fred.sysinfo" } in a left, center, or right list under layout
+in ~/.config/tamlinux/shell/layout.json. The document uses schemaVersion: 1.
+Widget settings are the fred.sysinfo entry under entries in
+~/.config/tamlinux/shell/settings.json, whose top-level version is 1.
+
+See plugin ownership <../README> and the deployment contract
+<https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md>.
+Home and XDG paths below use their default locations; the helpers honor the
+corresponding XDG_*_HOME overrides.
+
+
+INTERACTING WITH THE PLUGIN
+
+- Bar Widget: Displays a chip icon (󰍛). Hovering shows a tooltip summary
+  containing your computer model, CPU temperature, and live frequency.
+- Click Bar Icon: Toggles the full hardware information panel.
+- Click Any Value: Copies the specification or metric directly to your
+  clipboard.
+- Power Buttons: Click Saver, Balanced, or Performance to switch power
+  profiles immediately.
+- Open System Monitor: Launches btop terminal monitor.
+
+
+CLI PROBE TESTING
+
+You can run the underlying telemetry engine directly from the command line:
+
+    # Formatted JSON output
+    python3 ~/.config/tamlinux/plugins/fred.sysinfo/sysinfo-probe.py | jq .
+
+    # Performance benchmark
+    python3 ~/.config/tamlinux/plugins/fred.sysinfo/sysinfo-probe.py --bench
+
+
+REMOVING THE WIDGET
+
+Remove its ID from the Tamlinux layout. To omit its installed payload, set
+tamlinux.shell.plugins to the IDs to retain and activate the matching Home
+Manager configuration. Saved settings and data remain available for
+re-enabling it.
+
+
+LICENSE
+
+GNU General Public License v3.0 or later (<LICENSE>).

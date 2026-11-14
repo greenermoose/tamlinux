@@ -1,0 +1,435 @@
+CLOCK WITH COUNTDOWN BADGE (fred.clock)
+
+Part of Fred's fred.* plugin suite for Tamlinux
+<https://github.com/greenermoose/tamlinux> (Fred's personal Linux workstation
+environment): a shell bar widget featuring upcoming event countdowns,
+multi-calendar support, in the Tamlinux shell.
+
+Clock with Countdown Badge <assets/screenshot.png>
+
+
+OVERVIEW
+
+fred.clock is the Tamlinux clock widget, with upcoming event countdown badges
+and a rich read-only interactive agenda:
+
+  Feature: Tamlinux Integration
+  Description: Uses the shell's plugin host, shared panel and hover surfaces,
+  and per-widget settings.
+
+  Feature: Countdown Badge
+  Description: Displays upcoming events starting within 60 minutes directly on
+  the bar (HH:mm • Team Sync in 12m or Team Sync now).
+
+  Feature: Multi-Calendar Sync
+  Description: Fetches read-only schedules from Google Calendar or any
+  iCalendar (.ics) secret URLs and local files with zero external
+  dependencies.
+
+  Feature: Interactive Agenda
+  Description: Selected day agenda list under the month grid with event times,
+  color strips, meeting join buttons, and empty-state handling.
+
+  Feature: Event Dots on Grid
+  Description: Up to 4 colored indicator dots on days with scheduled events
+  matching calendar feed colors.
+
+  Feature: Account Filter Chips
+  Description: Quick multi-account filtering (e.g. All, Work, Personal,
+  Projects) directly in the agenda.
+
+  Feature: 1-Click Meeting Join
+  Description: Automatically detects Google Meet, Zoom, Teams, and Webex links
+  with safe, non-blocking xdg-open launches.
+
+  Feature: Markdown Copy
+  Description: Copy the selected day's complete agenda as structured Markdown
+  (y hotkey or toolbar button).
+
+  Feature: Local Event Management
+  Description: Create, view, and delete local events directly in the agenda UI
+  or via CLI without external calendar dependencies. Stored in standard RFC
+  5545 .ics format.
+
+
+FEATURES
+
+- Next-Event Countdown: When an event is within 60 minutes (configurable via
+  badgeMinutes), the bar widget displays the event title and time remaining.
+- Rich Interactive Agenda: Selecting any day in the month grid reveals its
+  scheduled agenda cards, times, accounts, and meeting links.
+- Local Event Management: Add and delete local events with title, date,
+  time/all-day, and location directly in the UI or via CLI. Events persist in
+  ~/.config/tamlinux/clock/local.ics and instantly hot-reload reactively.
+- Privacy-First & Read-Only Feeds: Consumes remote .ics subscription URLs via
+  standard HTTP GET. No OAuth tokens, no write permissions, no risk of
+  unwanted invite dispatches.
+- Zero Daemon Dependencies: Uses Python 3 standard library only
+  (ThreadPoolExecutor, urllib, zoneinfo) for background fetching without extra
+  background daemons.
+- Robust Recurrence & Timezones: Supports standard RFC 5545 recurrence rules
+  (RRULE), exclusions (EXDATE), all-day events, and wall-clock time
+  preservation across daylight saving transitions (DST).
+- Non-Blocking Quickshell Integration: Events are cached atomically at
+  ~/.cache/tamlinux/clock/events.json (mode 0600) and watched reactively by
+  Quickshell.
+
+
+INSTALLATION
+
+The 2.x plugin is included in the pinned Tamlinux package assembly
+<https://github.com/greenermoose/tamlinux-packages>. Its installed payload is
+at ~/.config/tamlinux/plugins/fred.clock/; install and update it with the
+assembly through Home Manager. The standalone repository contains the frozen
+Omarchy 1.x line.
+
+Place { "id": "fred.clock" } in a left, center, or right list under layout in
+~/.config/tamlinux/shell/layout.json. The document uses schemaVersion: 1.
+Widget settings are the fred.clock entry under entries in
+~/.config/tamlinux/shell/settings.json, whose top-level version is 1.
+
+See plugin ownership <../README> and the deployment contract
+<https://github.com/greenermoose/tamlinux-packages/blob/main/docs/deployment.md>.
+Home and XDG paths below use their default locations; the helpers honor the
+corresponding XDG_*_HOME overrides.
+
+
+CONFIGURATION
+
+Calendar Feeds
+
+Configure your calendars in ~/.config/tamlinux/clock/calendars.json
+(permissions 0600):
+
+    [
+      {
+        "account": "Personal",
+        "name": "Personal Calendar",
+        "url": "https://calendar.google.com/calendar/ical/your-address%40gmail.com/private-xxxx/basic.ics",
+        "color": "#4285f4",
+        "enabled": true
+      },
+      {
+        "account": "Family",
+        "name": "Family Events",
+        "url": "https://calendar.google.com/calendar/ical/your-group%40group.calendar.google.com/private-yyyy/basic.ics",
+        "color": "#34a853",
+        "enabled": true
+      },
+      {
+        "account": "Local",
+        "name": "Local Events",
+        "path": "~/Documents/calendar.ics",
+        "color": "#fbbc05",
+        "enabled": false
+      }
+    ]
+
+Finding Your Google Calendar Secret URL
+
+1. In Google Calendar <https://calendar.google.com>, click the ⚙️ Settings
+  icon in the upper right.
+2. In the left sidebar under Settings for my calendars, click the calendar you
+  wish to sync.
+3. Scroll down to the Integrate calendar section.
+4. Copy the "Secret address in iCal format" URL (not the public address).
+5. Paste the copied URL into the "url" field of your calendars.json.
+
+Feed Properties
+
+  Property: account
+  Type: string
+  Description: Category label shown on event cards and used for agenda filter
+  chips (e.g. Personal, Work).
+
+  Property: name
+  Type: string
+  Description: Descriptive calendar name (e.g. Primary, Family).
+
+  Property: url
+  Type: string
+  Description: Secret .ics HTTP/HTTPS subscription URL.
+
+  Property: path
+  Type: string
+  Description: Absolute or home-relative path to a local .ics file
+  (alternative to url).
+
+  Property: color
+  Type: string
+  Description: Hex color code (e.g. "#4285f4") for grid dots and event card
+  strips.
+
+  Property: enabled
+  Type: boolean
+  Description: Set to false to temporarily skip fetching this feed without
+  removing it.
+
+Automatic Synchronization
+
+Events are pulled and cached automatically in the background—no terminal
+commands or daemon setups are required:
+
+- Instant on Save: The bar widget watches
+  ~/.config/tamlinux/clock/calendars.json. The moment you save changes to your
+  feeds, an immediate background fetch is triggered.
+- Periodic Background Sync: Automatically checks and refreshes all enabled
+  feeds every 15 minutes.
+- On Panel Open: Opening the calendar panel checks cache freshness and
+  refreshes events if older than 5 minutes.
+- Shell Startup: Fetches automatically whenever your desktop session
+  initializes.
+- Manual (Optional): If you ever want to force a refresh from the terminal:
+  python3 ~/.config/tamlinux/plugins/fred.clock/fetch-events.py
+
+Managing Local Events
+
+You can create and manage private local calendar events without external
+Google Calendar dependencies. Events are stored in standard RFC 5545 format at
+~/.config/tamlinux/clock/local.ics (permissions 0600) and automatically
+registered under the "Local" account.
+
+From the User Interface
+
+- Click the + button in the agenda header or press n / a while the panel is
+  open.
+- Enter the event title, choose all-day or specify start/end times (e.g. 14:00
+  – 15:30), optionally enter a location, and click Save Event (or press
+  Enter).
+- To delete a local event, click the trash can icon (󰆴) on any local event
+  card.
+
+From the Command Line
+
+    # Add an all-day local event
+    python3 ~/.config/tamlinux/plugins/fred.clock/manage-event.py add --date 2026-09-15 --summary "Doctor's Appointment" --all-day
+
+    # Add a timed local event with location
+    python3 ~/.config/tamlinux/plugins/fred.clock/manage-event.py add --date 2026-09-15 --start-time 14:00 --end-time 15:30 --summary "Design Review" --location "Office 3B"
+
+    # Delete a local event by UID
+    python3 ~/.config/tamlinux/plugins/fred.clock/manage-event.py delete --uid "<event-uid>"
+
+
+Bar Settings
+
+Widget settings in the fred.clock entry of
+~/.config/tamlinux/shell/settings.json:
+
+- format: Clock date/time format string (default: "ddd MMM d HH:mm").
+- formatAlt: Alternative date/time format string (default:
+  "d MMMM 'W'ww yyyy").
+- verticalFormat: Format string when the bar is vertical (default:
+  "HH\n—\nmm").
+- badgeMinutes: Maximum minutes ahead to show upcoming event countdown badges
+  (default: 60, set to 0 to disable).
+
+
+INTERACTIONS & SHORTCUTS
+
+Bar
+
+- Left Click: Open / close the calendar and agenda panel.
+- Right Click: Cycle through configured date and time formats.
+- Middle Click: Open the Tamlinux timezone switcher (tam-menu-timezone).
+
+Agenda Panel
+
+- Click Day Cell: Select that date and display its agenda.
+- n / N / a / A (or + button): Open the inline "New Local Event" creator.
+- Trash Button (󰆴): Delete a local event from its agenda card.
+- y / Y (or copy button): Copy the selected day's agenda as Markdown to
+  clipboard.
+- t / T (or hero date click): Return to today.
+- [ / ] (or chevrons / mouse wheel): Previous / next month.
+- { / }: Previous / next year.
+- w / W (or "W" heading click): Toggle week start day (Sunday vs. Monday).
+- Escape: Close the inline add event form (if open) or close the panel.
+
+
+SECURITY MODEL
+
+fred.clock runs inside the Quickshell desktop shell environment. All process
+executions, network interactions, and filesystem writes adhere to a strict
+least-privilege security model designed to resist malicious feeds, unbounded
+resource consumption, and ambient environment leakage.
+
+Supervised Process Execution
+
+Nothing in the plugin invokes ambient shells (bash), unconstrained execution
+(execDetached), or nested child processes. Every process is spawned through a
+dedicated Launch.qml supervisor with an absolute executable path, a closed
+environment constructed from a minimal allowlist (clearEnvironment: true), and
+an automated watchdog timer that sends SIGTERM followed by SIGKILL:
+
+  Process: Event Fetcher
+  Trigger: Session start, 15m timer, panel open if stale (>5m), config change
+  Executable: /usr/bin/python3 (fetch-events.py)
+  Environment Allowlist: HOME, TZ, LANG, XDG_CONFIG_HOME, XDG_CACHE_HOME
+  Deadline / Watchdog: 60s QML watchdog (SIGTERM + SIGKILL after 3s); 45s
+  self-imposed signal.alarm
+
+  Process: Event Manager
+  Trigger: Add / delete local event in UI
+  Executable: /usr/bin/python3 (manage-event.py)
+  Environment Allowlist: HOME, TZ, LANG, XDG_CONFIG_HOME, XDG_CACHE_HOME
+  Deadline / Watchdog: 20s QML watchdog
+
+  Process: Meeting URL Opener
+  Trigger: Click "Join Meeting" button in agenda
+  Executable: /usr/bin/xdg-open
+  Environment Allowlist: HOME, LANG, XDG_RUNTIME_DIR, WAYLAND_DISPLAY,
+  DISPLAY, DBUS_SESSION_BUS_ADDRESS, XDG_CURRENT_DESKTOP, XDG_SESSION_TYPE,
+  XDG_DATA_HOME, XDG_DATA_DIRS, XDG_CONFIG_HOME, XDG_CONFIG_DIRS,
+  HYPRLAND_INSTANCE_SIGNATURE
+  Deadline / Watchdog: 10s QML watchdog
+
+  Process: Clipboard Copy
+  Trigger: Press y or click agenda copy button
+  Executable: /usr/bin/wl-copy
+  Environment Allowlist: XDG_RUNTIME_DIR, WAYLAND_DISPLAY
+  Deadline / Watchdog: 10s QML watchdog (text piped directly to stdin)
+
+  Process: Desktop Notifications
+  Trigger: Event added/deleted, agenda copied, or calendar busy
+  Executable: tam-notification-send through TAMLINUX_BIN (default
+  ~/.local/bin)
+  Environment Allowlist: HOME, XDG_RUNTIME_DIR, WAYLAND_DISPLAY,
+  DBUS_SESSION_BUS_ADDRESS
+  Deadline / Watchdog: 10s QML watchdog
+
+Component-Relative Helper Resolution
+
+The bundled plugin payload is immutable in the Nix store; user configuration,
+state and cache live separately. Helper scripts (fetch-events.py,
+manage-event.py) are never resolved by guessing hard-coded paths; instead,
+they are dynamically resolved as sibling paths of the loaded QML component via
+Model.helperPath(Qt.resolvedUrl(...)).
+
+Resource Bounds and Aggregation Limits
+
+To prevent memory exhaustion, slow-drip HTTP attacks, or calendar recurrence
+bombs, fetch-events.py operates under strict resource limits and
+self-supervision:
+
+  Constant: MAX_CONFIG_BYTES
+  Value: 64 KiB
+  Rationale: dozens of feeds is already generous
+
+  Constant: MAX_FEEDS
+  Value: 32
+  Rationale: thread pool is 8; 32 keeps a run under the deadline
+
+  Constant: MAX_FEED_BYTES
+  Value: 8 MiB
+  Rationale: a busy multi-year Google calendar is 1–3 MiB
+
+  Constant: FEED_DEADLINE_S
+  Value: 20 s
+  Rationale: socket timeout stays 10 s; this bounds slow-drip bodies
+
+  Constant: MAX_LINE_BYTES
+  Value: 64 KiB
+  Rationale: RFC 5545 folds at 75 octets; 64 KiB tolerates sloppy exporters
+
+  Constant: MAX_LINES
+  Value: 200 000
+  Rationale: ~8 MiB at typical line lengths
+
+  Constant: MAX_VEVENTS_PER_FEED
+  Value: 20 000
+  Rationale:
+
+  Constant: MAX_EXDATES
+  Value: 2 000 per event
+  Rationale:
+
+  Constant: MAX_INSTANCES_PER_EVENT
+  Value: 1 000 iterations
+  Rationale: window is 31 days; daily = 31, hourly is not supported
+
+  Constant: INTERVAL / COUNT clamp
+  Value: [1, 366] / [1, 10 000]
+  Rationale:
+
+  Constant: MAX_SUMMARY / MAX_LOCATION / MAX_DESCRIPTION
+  Value: 512 / 2 048 / 4 096 chars
+  Rationale: description feeds only the agenda tooltip and meeting-URL regex
+
+  Constant: MAX_EVENTS_TOTAL
+  Value: 5 000
+  Rationale: agenda shows one day at a time
+
+  Constant: MAX_OUTPUT_BYTES
+  Value: 4 MiB
+  Rationale: FileView loads it into the shell's heap on every change
+
+  Constant: DEADLINE_S (signal.alarm)
+  Value: 45 s
+  Rationale: inside the QML 60 s watchdog
+
+  Constant: RLIMIT_CPU / RLIMIT_AS / RLIMIT_FSIZE / RLIMIT_NOFILE
+  Value: 30 s / 512 MiB / 16 MiB / 64
+  Rationale:
+
+  Constant: QML deadlines
+  Value: fetch 60 s, manage 20 s, others 10 s
+  Rationale: TERM, then KILL after 3 s
+
+Cache Directory Contract & Atomic Writes
+
+All cache and configuration file writes go through write_private_file:
+- Directory Validation: The target directory (~/.cache/tamlinux/clock or
+  ~/.config/tamlinux/clock) must be a private, self-owned directory
+  (st_uid == getuid(), mode 0700, no group/other write permissions). Parent
+  directories must not be group/other-writable unless the sticky bit is set.
+- Descriptor-Relative & No-Follow: The directory is opened once with
+  O_DIRECTORY | O_NOFOLLOW. Temporary files are created relative to this
+  directory descriptor (dir_fd) using
+  O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC with permissions 0600.
+- Atomic Replace: Files are replaced via renameat relative to the directory
+  descriptor, ensuring symlinks are never followed or clobbered. Any failure
+  unlinks the temporary file before raising an error.
+
+Refusal Behavior
+
+The plugin enforces a strict "refuse, don't repair" contract:
+- Insecure feed URLs (e.g. http:// or cross-scheme redirects to HTTP) are
+  rejected, leaving legitimate feeds operational.
+- Oversized feeds or feeds exceeding deadlines are dropped with a stderr
+  notice.
+- If the cache directory fails ownership or permission checks, the fetcher
+  exits with code 1 immediately without modifying existing files.
+- Local event mutations (manage-event.py) validate all parameters before
+  touching any file and reject invalid input with exit code 2.
+
+
+REMOVING THE WIDGET
+
+Remove its ID from the Tamlinux layout. To omit its installed payload, set
+tamlinux.shell.plugins to the IDs to retain and activate the matching Home
+Manager configuration. Saved settings and data remain available for
+re-enabling it.
+
+
+ACKNOWLEDGMENTS
+
+Developed with the assistance of Antigravity <https://antigravity.google>
+(Google DeepMind), which contributed to the multi-calendar sync architecture,
+upcoming event countdown badge, and interactive agenda panel.
+
+
+LICENSE
+
+GNU General Public License v3.0 or later. See <LICENSE> for details. Upstream
+Omarchy MIT copyright and diff recipe documented in <UPSTREAM.md>.
+
+
+DAILY JOURNAL
+
+The calendar has “Quick note for this date” and “Open journal for this date”
+text actions. Both launch Micro through tam-launch-journal, using the selected
+calendar day. Quick Launch and Meta+Shift+J offer today’s capture. The
+standalone tam-journal tool owns plain text files under ~/Journal (or
+TAM_JOURNAL_DIR); no journal content is stored in clock state or feeds.
+Requires a selected assembly containing the product launcher and journal tool.

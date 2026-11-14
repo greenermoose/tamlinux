@@ -30,7 +30,7 @@ check: build/tam-open
 
 install: build/tam-open
 	install -Dm755 build/tam-open $(DESTDIR)$(PREFIX)/bin/tam-open
-	install -Dm644 README.md $(DESTDIR)$(PREFIX)/share/doc/tam-open/README.md
+	install -Dm644 README $(DESTDIR)$(PREFIX)/share/doc/tam-open/README
 	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-open/LICENSE
 
 clean:

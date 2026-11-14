@@ -49,7 +49,7 @@ cat > "$source_dir/manifest.json" <<'EOF'
 }
 EOF
 printf 'import QtQuick\nItem { id: root }\n' > "$source_dir/Main.qml"
-printf '# Demo\n' > "$source_dir/README.md"
+printf '# Demo\n' > "$source_dir/README"
 printf 'mock-screenshot\n' > "$source_dir/assets/screenshots/shot.png"
 
 # The installed plugin: a managed copy of the same payload.
@@ -89,7 +89,7 @@ echo "legacy state passed"
 echo "=== verify against the source ==="
 rm -f "$live/installed-marker"
 "$CLI" verify fred.demo | grep -q "SUCCESS" || fail "verify rejected identical payloads"
-printf '# Changed docs\n' > "$source_dir/README.md"
+printf '# Changed docs\n' > "$source_dir/README"
 printf 'other\n' > "$source_dir/assets/screenshots/shot.png"
 "$CLI" verify fred.demo | grep -q "SUCCESS" || fail "verify counted documentation as behaviour"
 printf 'import QtQuick\nItem { id: changed }\n' > "$source_dir/Main.qml"
