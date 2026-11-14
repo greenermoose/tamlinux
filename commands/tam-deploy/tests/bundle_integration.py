@@ -508,6 +508,69 @@ class BundleMigration(TransactionRecovery):
         with self.assertRaisesRegex(deploy.DeploymentError, 'hosts/<hostname>/bundle-nix-recovery.json'):
             self.app.bundle_native_recovery()
 
+    def test_hm_generated_env_and_fontconfig_files_retire_and_restore(self):
+        product = self.root / 'product-hm-retire'
+        shutil.copytree(self.product, product)
+        (product / 'BUNDLE').unlink()
+        (product / 'MANIFEST').unlink()
+        (product / 'SETTINGS').write_text(
+            'format 1\ncommon .bashrc\ncommon .config/tamlinux/session/hyprland.lua\n'
+            'common .config/environment.d/\ncommon .config/fontconfig/\n')
+        self.raw('seal', product, '--format', '2', '--name', 'tamlinux', '--version', '9.8.9',
+                 '--source', 'tamlinux ' + self.tamlinux_new, '--source', 'packaging ' + 'a' * 40)
+        fields = dict(line.split(' ', 1) for line in (product / 'BUNDLE').read_text().splitlines()
+                      if line.split(' ', 1)[0] in ('hash', 'name', 'version'))
+        bundle_id = 'tamlinux-9.8.9-' + fields['hash'][7:19]
+        archive = self.root / 'product-hm-retire.tbundle'; self.raw('pack', product, '-o', archive)
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        cached = Path(os.environ['XDG_CACHE_HOME']) / 'tamlinux/bundles' / (digest + '.tbundle')
+        shutil.copyfile(archive, cached)
+        self.deliveries[self.packages_new] = {
+            'format': 1, 'backend': 'tam-bundle', 'version': '9.8.9',
+            'recipeAssembly': 'a' * 40, 'components': {'tamlinux': self.tamlinux_new},
+            'minimumTool': '0.13.0', 'rootstock': 'arch-systemd',
+            'artifact': {'bundleId': bundle_id, 'bundleHash': fields['hash'],
+                         'name': bundle_id + '.tbundle', 'sha256': digest},
+        }
+        nix_store_targets = self.root / 'hm-generated-targets'
+        nix_store_targets.mkdir()
+        retired_paths = (
+            '.config/environment.d/10-home-manager.conf',
+            '.config/fontconfig/conf.d/10-hm-fonts.conf',
+            '.config/fontconfig/conf.d/52-hm-default-fonts.conf',
+        )
+        for relative in retired_paths:
+            src = nix_store_targets / Path(relative).name
+            src.write_text('generated\n')
+            endpoint = self.old / 'home-files' / relative
+            endpoint.parent.mkdir(parents=True, exist_ok=True)
+            endpoint.symlink_to(src)
+            live = self.app.home / relative
+            live.parent.mkdir(parents=True, exist_ok=True)
+            live.symlink_to(endpoint)
+        user_env = self.app.home / '.config/environment.d/99-user.conf'
+        user_env.write_text('FOO=bar\n')
+
+        identifier = self.prepare_bundle()
+        tx = json.loads(self.app.transaction_file.read_text())
+        actions = {entry['path']: entry['action'] for entry in tx['homePlan']['entries']}
+        for relative in retired_paths:
+            self.assertEqual(actions.get(relative), 'retire')
+        with patch.object(deploy, 'command', return_value='0' * 40):
+            expr = self.app.bundle_profile_expression(self.packages_new, tx['homePlan'], str(self.old))
+        self.assertIn('xdg.configFile."environment.d/10-home-manager.conf".enable = lib.mkForce false;', expr)
+
+        self.app.activate_bundle(identifier)
+        for relative in retired_paths:
+            self.assertFalse(os.path.lexists(self.app.home / relative))
+        self.assertEqual(user_env.read_text(), 'FOO=bar\n')
+
+        self.app.return_bundle_to_nix(identifier)
+        for relative in retired_paths:
+            self.assertTrue((self.app.home / relative).is_symlink())
+            self.assertEqual(os.readlink(self.app.home / relative), str(self.old / 'home-files' / relative))
+        self.assertEqual(user_env.read_text(), 'FOO=bar\n')
+
 
 def load_tests(loader, tests, pattern):
     return unittest.TestSuite(BundleMigration(name) for name in BundleMigration.__dict__ if name.startswith('test_'))
