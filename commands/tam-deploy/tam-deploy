@@ -1955,11 +1955,21 @@ class Deployment:
         return result
 
     def activation_validators(self, generation: str) -> None:
-        registry = self.config / 'system/activation-preflight.json'
+        host_registry = self.config / 'hosts' / self.hostname / 'activation-preflight.json'
+        system_registry = self.config / 'system/activation-preflight.json'
+        if host_registry.is_symlink() or (not os.path.lexists(host_registry) and system_registry.is_symlink()):
+            raise DeploymentError('linked activation preflight registry refused')
+        registry = host_registry if host_registry.is_file() else system_registry
         if not registry.exists():
             return
         script = (Path(generation) / 'activate').read_text()
         for validator in json.loads(registry.read_text())['validators']:
+            hosts = validator.get('hosts')
+            if hosts is not None:
+                if not isinstance(hosts, list) or not all(isinstance(h, str) for h in hosts):
+                    raise DeploymentError('invalid registered activation validator')
+                if self.hostname not in hosts:
+                    continue
             name = validator['scriptName']
             if not re.fullmatch(r'[a-z0-9-]+\.py', name):
                 raise DeploymentError('invalid registered activation validator')

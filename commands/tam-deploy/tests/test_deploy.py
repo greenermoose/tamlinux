@@ -1285,6 +1285,31 @@ class CoherentState(Fixture):
         self.assertEqual(output.getvalue(), '')
         command.assert_called_once_with(deploy.sys.executable, helper, str(self.config / 'bindings.lua'), capture=True)
 
+    def test_activation_validators_prefer_host_registry_and_honor_hosts_filter(self):
+        (self.config / 'bindings.lua').write_text('known binding')
+        (self.config / 'system/activation-preflight.json').write_text(json.dumps({
+            'validators': [{'scriptName': 'start-menu-binding.py',
+                            'source': 'bindings.lua',
+                            'hosts': ['other-host']}]}))
+        (self.new / 'activate').write_text('#!/bin/sh\necho no validator\n')
+        with patch.object(deploy, 'command') as command:
+            self.app.activation_validators(str(self.new))
+        command.assert_not_called()
+
+        host_reg = self.config / 'hosts' / self.app.hostname / 'activation-preflight.json'
+        host_reg.parent.mkdir(parents=True, exist_ok=True)
+        host_reg.write_text(json.dumps({
+            'validators': [{'scriptName': 'start-menu-binding.py', 'source': 'bindings.lua'}]}))
+        with self.assertRaisesRegex(deploy.DeploymentError, 'registered activation validator missing'):
+            self.app.activation_validators(str(self.new))
+
+        host_reg.unlink()
+        linked_target = self.root / 'linked-preflight.json'
+        linked_target.write_text('{"validators": []}')
+        host_reg.symlink_to(linked_target)
+        with self.assertRaisesRegex(deploy.DeploymentError, 'linked activation preflight registry refused'):
+            self.app.activation_validators(str(self.new))
+
     def test_run_and_back_refuse_partial_state_before_promotion_or_activation(self):
         self.app.profile.unlink()
         self.app.profile.symlink_to(self.new)

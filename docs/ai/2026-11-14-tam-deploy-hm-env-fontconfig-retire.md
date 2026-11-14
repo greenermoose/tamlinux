@@ -20,14 +20,20 @@ cleanly and restored intact on Nix return:
   `lib.mkForce false` when retiring `.config/environment.d/10-home-manager.conf`,
   because setting `home.file` alone does not remove XDG config files generated
   via `xdg.configFile`.
-- **Regression test (`commands/tam-deploy/tests/bundle_integration.py`):**
-  `test_hm_generated_env_and_fontconfig_files_retire_and_restore` verifies that
-  all three links plan as `retire`, generate the `xdg.configFile` disable
-  override, pass `activate_bundle`, are absent under the bundle, and restore as
-  the exact original Home Manager symlinks on `return_bundle_to_nix`.
+- **`activation_validators` (`commands/tam-deploy/tam-deploy`):** Checks
+  `hosts/<hostname>/activation-preflight.json` first (rejecting symlinks on
+  the host registry or fallback system registry), falls back to
+  `system/activation-preflight.json`, and honors optional per-validator `hosts`
+  filters so host-specific checks do not fail on other hosts.
+- **Regression tests:** `test_hm_generated_env_and_fontconfig_files_retire_and_restore`
+  in `commands/tam-deploy/tests/bundle_integration.py` verifies all three
+  Home Manager links retire and restore intact;
+  `test_activation_validators_prefer_host_registry_and_honor_hosts_filter` in
+  `commands/tam-deploy/tests/test_deploy.py` covers host override, `hosts`
+  filtering, and symlink refusal.
 
 Verification: 18 real-engine `bundle_integration.py` tests passed in mandatory
-PID namespace isolation; 128 `tam-deploy` unit tests passed (`python3 -B -m
+PID namespace isolation; 129 `tam-deploy` unit tests passed (`python3 -B -m
 unittest discover -s commands/tam-deploy/tests -v`).
 
 - **Date:** 2026-11-14
