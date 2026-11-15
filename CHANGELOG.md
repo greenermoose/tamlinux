@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Fix `tam-fleet` to read the fleet registry's folder README as plain-text `README-systems` instead of `README-systems.md`, so `index`, `check` and `reconcile` work again.
+
 - Add plain text journal entry points: calendar selected-date text actions, Quick Launch, and Meta+Shift+J through a detached floating Micro terminal. No bar slot is added or moved. Requires `tam-journal` from the selected tools package.
 
 - Develop active-monitor continuity (`fred.workspaces` 2.0.11): place the active output first through a focus-preserving native action, share ordered bar ingress, and persist per-output completion and retry limits. Add emission-time native diagnostics and output attribution while retaining DPMS, idle and disconnect guards. Matching native packages and exact-candidate physical acceptance are required.

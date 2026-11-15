@@ -121,7 +121,7 @@ class Fleet:
         return "\n".join([*lines, END])
 
     def index_text(self):
-        path = self.registry / "README-systems.md"
+        path = self.registry / "README-systems"
         text = path.read_text()
         if text.count(BEGIN) != 1 or text.count(END) != 1:
             raise FleetError("fleet index needs exactly one generated block")
@@ -129,7 +129,7 @@ class Fleet:
         return before + self.table(self.records()) + after
 
     def index(self):
-        write(self.registry / "README-systems.md", self.index_text())
+        write(self.registry / "README-systems", self.index_text())
 
     def check(self, live=None):
         records = self.records()
@@ -154,7 +154,7 @@ class Fleet:
                 target = link.split("#", 1)[0]
                 if target and ":" not in target and not (self.registry / target).exists():
                     raise FleetError(f"missing linked page in {name}: {target}")
-        if (self.registry / "README-systems.md").read_text() != self.index_text():
+        if (self.registry / "README-systems").read_text() != self.index_text():
             raise FleetError("fleet index is stale; run tam-fleet index")
         if live:
             self.local(live)
@@ -296,7 +296,7 @@ class Fleet:
         self.local(name)
         self.check()
         dossier = self.registry / f"{name}.md"
-        self.clean(self.registry, [dossier.name, "README-systems.md"])
+        self.clean(self.registry, [dossier.name, "README-systems"])
         if commit:
             for repo in [self.config, self.registry]:
                 if run("git", "diff", "--cached", "--name-only", cwd=repo):
@@ -320,7 +320,7 @@ class Fleet:
             # Git cannot atomically commit two repositories. Each has one exact
             # path commit. Never push, force, or conceal a partial commit failure.
             for repo, paths in [(self.config, [str(state.relative_to(self.config))]),
-                                (self.registry, [dossier.name, "README-systems.md"])]:
+                                (self.registry, [dossier.name, "README-systems"])]:
                 run("git", "add", "--", *paths, cwd=repo)
                 run("git", "commit", "-m", f"Reconcile {name}", "--", *paths, cwd=repo)
 

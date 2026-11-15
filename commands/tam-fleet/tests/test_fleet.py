@@ -38,7 +38,7 @@ class FleetTests(unittest.TestCase):
             dest = self.config / path
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(text)
-        (self.registry / "README-systems.md").write_text(f"# Fleet\n\n{fleet.BEGIN}\n{fleet.END}\n")
+        (self.registry / "README-systems").write_text(f"# Fleet\n\n{fleet.BEGIN}\n{fleet.END}\n")
         self.fleet = fleet.Fleet(self.config, self.registry)
         for name in ["alpha", "beta"]:
             self.fleet.register(name, "tester", "test machine", "hardware.md", ["desktop-common"],
@@ -115,7 +115,7 @@ class FleetTests(unittest.TestCase):
             self.fleet.check()
         self.fleet.index()
         self.fleet.check()
-        self.assertTrue((self.registry / "README-systems.md").read_text().startswith("# Fleet\n\n"))
+        self.assertTrue((self.registry / "README-systems").read_text().startswith("# Fleet\n\n"))
 
     def test_cross_host_capture_is_refused_before_observation(self):
         with self.local("beta"), patch.object(fleet, "run") as run:
@@ -181,12 +181,12 @@ class FleetTests(unittest.TestCase):
 
     def test_failed_reconciliation_never_marks_machine_current(self):
         before = (self.registry / "alpha.md").read_bytes()
-        index = (self.registry / "README-systems.md").read_bytes()
+        index = (self.registry / "README-systems").read_bytes()
         with self.local(), patch.object(self.fleet, "check", side_effect=[None, fleet.FleetError("not installed")]):
             with self.assertRaisesRegex(fleet.FleetError, "not installed"):
                 self.fleet.reconcile("alpha")
         self.assertEqual((self.registry / "alpha.md").read_bytes(), before)
-        self.assertEqual((self.registry / "README-systems.md").read_bytes(), index)
+        self.assertEqual((self.registry / "README-systems").read_bytes(), index)
         self.assertFalse((self.config / "hosts/alpha/state/reconciliation.json").exists())
 
     def test_successful_fixture_reconciliation_commits_only_host_paths(self):
