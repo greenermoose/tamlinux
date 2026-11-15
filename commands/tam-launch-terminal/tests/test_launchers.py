@@ -108,7 +108,7 @@ else:
         sock.bind(str(self.runtime / name))
 
     def test_fresh_defaults_read_without_creating_state(self):
-        self.assertEqual(self.run_command('tam-default-editor').stdout, 'micro\n')
+        self.assertEqual(self.run_command('tam-default-editor').stdout, 'tam-edit\n')
         self.assertEqual(self.run_command('tam-default-terminal').stdout, 'foot\n')
         self.assertFalse(self.state.exists())
         self.assertFalse(self.config.exists())

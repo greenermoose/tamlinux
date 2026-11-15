@@ -151,12 +151,30 @@ class TamOpenCli(unittest.TestCase):
         self.assertIn(str(f), self.marker.read_text())
 
     def test_text_file(self):
-        make_tool(self.bindir, "micro", f'printf "%s\\n" "$@" > "{self.marker}"')
+        make_tool(self.bindir, "tam-edit", f'printf "%s\\n" "$@" > "{self.marker}"')
         f = self.tmp / "notes.txt"
         f.write_text("hello\n")
         p = self.run_cmd(str(f))
         self.assertEqual(p.returncode, 0)
         self.assertTrue(self.marker.exists())
+        self.assertIn(str(f), self.marker.read_text())
+
+    def test_micro_fallback_when_tam_edit_is_unavailable(self):
+        make_tool(self.bindir, "micro", f'printf "%s\\n" "$@" > "{self.marker}"')
+        f = self.tmp / "fallback.txt"
+        f.write_text("hello\n")
+        env = dict(self.env, PATH=str(self.bindir))
+        p = self.run_cmd(str(f), env=env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn(str(f), self.marker.read_text())
+
+    def test_tam_edit_preferred_when_both_editors_are_available(self):
+        make_tool(self.bindir, "tam-edit", f'printf "%s\\n" "$@" > "{self.marker}"')
+        make_tool(self.bindir, "micro", 'exit 99')
+        f = self.tmp / "preferred.txt"
+        f.write_text("hello\n")
+        p = self.run_cmd(str(f), env=dict(self.env, PATH=str(self.bindir)))
+        self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn(str(f), self.marker.read_text())
 
     def test_binary_fallback(self):
@@ -187,7 +205,7 @@ class TamOpenCli(unittest.TestCase):
         self.assertTrue(p.returncode == 0 or "no hex viewer" in p.stderr or "detected type" in p.stderr)
 
     def test_leading_dash_path(self):
-        make_tool(self.bindir, "micro", f'printf "%s\\n" "$@" > "{self.marker}"')
+        make_tool(self.bindir, "tam-edit", f'printf "%s\\n" "$@" > "{self.marker}"')
         f = self.tmp / "-weird.txt"
         f.write_text("hi")
         p = self.run_cmd("--", str(f))
@@ -195,7 +213,7 @@ class TamOpenCli(unittest.TestCase):
         self.assertTrue(self.marker.exists())
 
     def test_file_url(self):
-        make_tool(self.bindir, "micro", f'printf "%s\\n" "$@" > "{self.marker}"')
+        make_tool(self.bindir, "tam-edit", f'printf "%s\\n" "$@" > "{self.marker}"')
         f = self.tmp / "notes.txt"
         f.write_text("hello")
         p = self.run_cmd("file://" + str(f))
