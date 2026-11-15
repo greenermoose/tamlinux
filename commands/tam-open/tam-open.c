@@ -245,11 +245,11 @@ static int run_editor(const char *target)
 			free(copy);
 		}
 	}
-	argv[0] = "micro";
+	argv[0] = tool_exists("tam-edit") ? "tam-edit" : "micro";
 	argv[1] = (char *)target;
 	argv[2] = NULL;
-	if (!tool_exists("micro")) {
-		failf("no text editor found: install micro or set EDITOR");
+	if (!tool_exists(argv[0])) {
+		failf("no text editor found: install tam-edit/micro or set EDITOR");
 		return 127;
 	}
 	return run_foreground(argv);

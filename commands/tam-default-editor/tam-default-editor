@@ -2,7 +2,7 @@
 
 # Read or set the owned Tamlinux default editor identifier.
 #
-#   tam-default-editor [micro|nano|code|cursor|zed|sublime_text|helix|vim|emacs]
+#   tam-default-editor [tam-edit|micro|nano|code|cursor|zed|sublime_text|helix|vim|emacs]
 #
 # Derived from Omarchy 4.0.4 (historical source attribution).
 # Implementation and integration are maintained by Tamlinux.
@@ -33,6 +33,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 normalize_editor() {
   case "${1:-}" in
+    tam-edit) echo "tam-edit" ;;
     micro) echo "micro" ;;
     nano) echo "nano" ;;
     code) echo "code" ;;
@@ -47,7 +48,7 @@ normalize_editor() {
 }
 
 if (( $# > 1 )); then
-  echo "Usage: tam-default-editor [micro|nano|code|cursor|zed|sublime_text|helix|vim|emacs]" >&2
+  echo "Usage: tam-default-editor [tam-edit|micro|nano|code|cursor|zed|sublime_text|helix|vim|emacs]" >&2
   exit 1
 fi
 
@@ -59,7 +60,7 @@ if (( $# == 0 )); then
       exit 0
     fi
   fi
-  echo "micro"
+  echo "tam-edit"
   exit 0
 fi
 

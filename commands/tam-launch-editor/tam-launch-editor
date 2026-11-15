@@ -43,7 +43,7 @@ fi
 if [[ -f $default_editor ]]; then
   read -r editor <"$default_editor"
 else
-  editor="${EDITOR:-micro}"
+  editor="${EDITOR:-tam-edit}"
 fi
 
 if [[ $editor == "helix" ]] && ! tam-cmd-present helix && tam-cmd-present hx; then
@@ -54,13 +54,15 @@ editor_bin="${editor%% *}"
 if ! tam-cmd-present "$editor_bin"; then
   if [[ -n ${EDITOR:-} ]] && tam-cmd-present "${EDITOR%% *}"; then
     editor="${EDITOR%% *}"
+  elif tam-cmd-present tam-edit; then
+    editor="tam-edit"
   else
     editor="micro"
   fi
 fi
 
 case "${editor##*/}" in
-nvim | vim | nano | micro | hx | helix | fresh)
+nvim | vim | nano | micro | tam-edit | hx | helix | fresh)
   if [[ $inline == "true" ]]; then
     exec "$editor" "$@"
   else
