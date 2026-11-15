@@ -808,3 +808,5 @@ Candidate 0.6.24: [source selection](docs/ai/0.6.24-candidate-selection.md).
 Candidate 0.6.25: [source selection](docs/ai/0.6.25-candidate-selection.md).
 
 Bundle Run without Home Manager: [session](docs/ai/2026-11-15-bundle-run.md).
+
+Candidate 0.6.26: [source selection](docs/ai/0.6.26-candidate-selection.md).
