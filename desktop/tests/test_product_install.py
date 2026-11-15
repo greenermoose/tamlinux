@@ -77,6 +77,10 @@ class ProductInstall(unittest.TestCase):
             )
             fonts = stage / "usr/share/fontconfig/conf.default/50-tamlinux.conf"
             self.assertTrue(fonts.is_file() and not fonts.is_symlink())
+            self.assertIn(
+                "d /var/lib/tamlinux 0755 root root -",
+                (stage / "usr/lib/tmpfiles.d/tamlinux.conf").read_text(),
+            )
             self.assertFalse((stage / "usr/share/tamlinux").exists())
             self.assertFalse((stage / "etc").exists())
             for value in ("", "/", "/usr", "relative"):
