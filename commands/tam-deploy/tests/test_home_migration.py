@@ -113,6 +113,24 @@ class HomeLinks(unittest.TestCase):
             self.app.restore()
         self.assertEqual(endpoint.read_text(), 'unrelated new command')
 
+    def test_return_recreates_pruned_parent_directory_and_refuses_linked_parent(self):
+        self.prepare(); self.app.apply()
+        (self.home / '.local/bin/own-tool').unlink()
+        (self.home / '.local/bin').rmdir()
+        self.app.restore()
+        self.assert_original()
+
+        fixture = HomeLinks(); fixture.setUp()
+        try:
+            fixture.prepare(); fixture.app.apply()
+            (fixture.home / '.local/bin/own-tool').unlink()
+            (fixture.home / '.local/bin').rmdir()
+            (fixture.home / '.local/bin').symlink_to(fixture.source)
+            with self.assertRaisesRegex(deploy.DeploymentError, 'not a real directory'):
+                fixture.app.restore()
+        finally:
+            fixture.doCleanups()
+
     def fault_run(self, operation, point=None):
         events = []
         real_sync, real_rename, real_atomic = self.app.sync, os.rename, deploy.atomic_json

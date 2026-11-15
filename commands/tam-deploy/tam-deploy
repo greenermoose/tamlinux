@@ -273,14 +273,25 @@ class HomeLinkMigration:
         finally:
             os.close(fd)
 
-    def parent(self, relative: str) -> Path:
+    def parent(self, relative: str, create: bool = False, allow_missing: bool = False) -> Path:
         if (not LIVE_PATH_RE.fullmatch(relative) or
                 any(p in ('.', '..') for p in relative.split('/'))):
             raise DeploymentError('invalid migration path')
         path = self.home
         for part in relative.split('/')[:-1]:
             path = path / part
-            if not stat.S_ISDIR(path.lstat().st_mode):
+            try:
+                mode = path.lstat().st_mode
+            except FileNotFoundError:
+                if create:
+                    os.mkdir(path, 0o755)
+                    self.sync(path.parent)
+                    mode = path.lstat().st_mode
+                elif allow_missing:
+                    continue
+                else:
+                    raise
+            if not stat.S_ISDIR(mode):
                 raise DeploymentError('migration parent is not a real directory: ' + str(path))
         return path
 
@@ -333,7 +344,7 @@ class HomeLinkMigration:
             if temporary.exists():
                 shutil.rmtree(temporary)
 
-    def read(self) -> dict:
+    def read(self, allow_missing: bool = False) -> dict:
         if self.directory.is_symlink() or self.record.is_symlink():
             raise DeploymentError('linked migration state refused')
         if self.record.stat().st_size > 4 * 1024 * 1024:
@@ -347,7 +358,7 @@ class HomeLinkMigration:
                     or not isinstance(entry.get('path'), str) or entry['path'] in seen
                     or not isinstance(entry.get('link'), str)):
                 raise DeploymentError('invalid migration entry')
-            self.parent(entry['path'])
+            self.parent(entry['path'], allow_missing=allow_missing or bool(entry.get('done')))
             seen.add(entry['path'])
         return value
 
@@ -447,10 +458,9 @@ class HomeLinkMigration:
         atomic_json(self.record, value)
 
     def restore(self) -> None:
-        value = self.read()
+        value = self.read(allow_missing=True)
         for index, entry in reversed(list(enumerate(value['entries']))):
             path = self.home / entry['path']
-            parent = self.parent(entry['path'])
             original = self.directory / 'original' / str(index)
             returned = self.directory / 'returned' / str(index)
             if not os.path.lexists(original):
@@ -459,6 +469,7 @@ class HomeLinkMigration:
                 continue
             if not original.is_symlink() or os.readlink(original) != entry['link']:
                 raise DeploymentError('saved generation link changed')
+            parent = self.parent(entry['path'], create=True)
             if os.path.lexists(path):
                 if os.path.lexists(returned):
                     raise DeploymentError('return would overwrite preserved bundle settings')
