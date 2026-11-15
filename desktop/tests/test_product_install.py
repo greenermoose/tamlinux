@@ -66,7 +66,15 @@ class ProductInstall(unittest.TestCase):
             unit = stage / "usr/lib/systemd/user/tamlinux-shell.service"
             self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", unit.read_text())
             wants = unit.parent / "graphical-session.target.d/50-tamlinux-services.conf"
-            self.assertIn("Wants=tam-bt-agent.service tam-fcitx5.service", wants.read_text())
+            self.assertEqual(
+                wants.read_text(),
+                "[Unit]\nWants=tam-bt-agent.service tam-crash-watch.service tam-fcitx5.service tamlinux-shell.service\n",
+            )
+            timer_wants = unit.parent / "timers.target.d/50-tamlinux-services.conf"
+            self.assertEqual(
+                timer_wants.read_text(),
+                "[Unit]\nWants=tamlinux-protocol-shadow-collect.timer\n",
+            )
             fonts = stage / "usr/share/fontconfig/conf.default/50-tamlinux.conf"
             self.assertTrue(fonts.is_file() and not fonts.is_symlink())
             self.assertFalse((stage / "usr/share/tamlinux").exists())

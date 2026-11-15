@@ -95,11 +95,32 @@ def render_commands(directory: Path) -> None:
             command.write_text(content)
 
 
-def copy_vendor_defaults(stage: Path, source: Path) -> None:
+def wanted_targets(unit: Path) -> list[str]:
+    """Return targets listed under [Install] WantedBy= in a systemd user unit."""
+    targets: list[str] = []
+    in_install = False
+    for raw in unit.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_install = line == "[Install]"
+            continue
+        if in_install and line.startswith("WantedBy"):
+            key, sep, value = line.partition("=")
+            if sep and key.strip() == "WantedBy":
+                if not value.strip():
+                    targets.clear()
+                else:
+                    targets.extend(value.split())
+    return targets
+
+
+def copy_vendor_defaults(stage: Path, source: Path,
+                         wants_by_target: dict[str, set[str]]) -> None:
     base = source / "desktop/native/defaults"
     root = base / "root"
     entries = json.loads((base / "origins.json").read_text())["files"]
-    wants = []
     for name, record in sorted(entries.items()):
         relative = Path(name)
         if relative.is_absolute() or ".." in relative.parts or not name.startswith(("usr/lib/", "usr/share/")):
@@ -109,8 +130,9 @@ def copy_vendor_defaults(stage: Path, source: Path) -> None:
             target = original.resolve(strict=True)
             if str(original.readlink()) != record["link"] or not target.is_relative_to(root) or not target.is_file():
                 raise ValueError(f"Vendor link differs from its origin record: {name}")
-            if name.startswith("usr/lib/systemd/user/graphical-session.target.wants/"):
-                wants.append(relative.name)
+            if name.startswith("usr/lib/systemd/user/") and relative.parent.name.endswith(".wants"):
+                unit_target = relative.parent.name[: -len(".wants")]
+                wants_by_target.setdefault(unit_target, set()).add(relative.name)
                 continue
             if name != "usr/share/fontconfig/conf.default/50-tamlinux.conf":
                 raise ValueError(f"Vendor link needs a format-2 placement rule: {name}")
@@ -124,9 +146,6 @@ def copy_vendor_defaults(stage: Path, source: Path) -> None:
         if hashlib.sha256(data).hexdigest() != record["sha256"] or f"{mode:04o}" != record["mode"]:
             raise ValueError(f"Vendor default differs from its origin record: {name}")
         put(stage / relative, data, mode)
-    if wants:
-        dropin = stage / "usr/lib/systemd/user/graphical-session.target.d/50-tamlinux-services.conf"
-        put(dropin, ("[Unit]\nWants=" + " ".join(wants) + "\n").encode())
 
 
 def install(stage: Path, source: Path = SOURCE) -> None:
@@ -140,8 +159,11 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     units = usr / "lib/systemd/user"
     move_tree(usr / "share/systemd/user", units)
     (usr / "share/systemd").rmdir()
+    wants_by_target: dict[str, set[str]] = {}
     for unit in sorted(units.iterdir()):
         unit.write_text(unit.read_text().replace("/usr/share/tamlinux", SHARE))
+        for unit_target in wanted_targets(unit):
+            wants_by_target.setdefault(unit_target, set()).add(unit.name)
     commands = usr / "bin"
     for name in ("hi", "tam-nut"):
         (commands / name).unlink()
@@ -149,7 +171,10 @@ def install(stage: Path, source: Path = SOURCE) -> None:
         (commands / name).rename(commands / f"tam-{name}")
     render_commands(commands)
 
-    copy_vendor_defaults(stage, source)
+    copy_vendor_defaults(stage, source, wants_by_target)
+    for unit_target, unit_names in sorted(wants_by_target.items()):
+        dropin = units / f"{unit_target}.d/50-tamlinux-services.conf"
+        put(dropin, ("[Unit]\nWants=" + " ".join(sorted(unit_names)) + "\n").encode())
     native = source / "desktop/native"
     integration = native / "integration"
     browser = (native / "theme-browser-policy").read_bytes().replace(

@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` wires placed desktop systemd user unit `WantedBy=` targets (`tamlinux-shell.service`, `tam-crash-watch.service`, `tamlinux-protocol-shadow-collect.timer`) into format-2 bundle target drop-ins. [Record](docs/ai/2026-11-14-bundle-systemd-user-wants.md).
+
 2026-11-14: Antigravity CLI (`agy`) `1.5.9` updates `tam-deploy` to invoke `/usr/bin/sudo` on interactive kernel console virtual terminals and `/usr/bin/pkexec` otherwise. [Record](docs/ai/2026-11-14-tam-deploy-kernel-console-sudo.md).
 
 2026-11-14: Antigravity CLI (`agy`) `1.5.9` retires Home Manager-generated `environment.d` and `fontconfig` symlinks cleanly during `tam-deploy` bundle migration and scopes `activation_validators` per host. [Record](docs/ai/2026-11-14-tam-deploy-hm-env-fontconfig-retire.md).
