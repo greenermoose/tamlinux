@@ -2719,8 +2719,9 @@ class Deployment:
             if stages[name] in ("develop", "untracked"):
                 self.git(name, "push", "-q", "origin", f"{repos[name]}:refs/heads/test")
             self.git(name, "push", "-q", "origin", f"{repos[name]}:refs/heads/main")
+        bundle = self.bundle_delivery(revision)
         files = self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
-                                 "stage": "run", "generation": self.generation()})
+                                 "stage": "run", "generation": None if bundle else self.generation()})
         if files:
             self.record(f"deploy: run tamlinux-packages {revision[:12]}", files)
         self.save_state(dict(self.read_state(), stage="run", packages=revision, components=pins))

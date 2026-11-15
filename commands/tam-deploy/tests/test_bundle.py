@@ -134,3 +134,20 @@ class BundlePreflight(Fixture):
             with self.assertRaisesRegex(deploy.DeploymentError, 'requires tam-bundle'):
                 self.app.preflight(self.revision)
         self.assertFalse(self.app.transaction_file.exists())
+
+    def test_bundle_run_promotion_does_not_require_home_manager(self):
+        with patch.object(self.app, 'require_consistent'), \
+             patch.object(self.app, 'locked', return_value=self.revision), \
+             patch.object(self.app, 'fetch_all'), \
+             patch.object(self.app, 'stage_of', return_value='test'), \
+             patch.object(self.app, 'follows_main', return_value=True), \
+             patch.object(self.app, 'verify', return_value=[]), \
+             patch.object(self.app, 'generation', side_effect=AssertionError('Nix generation requested')), \
+             patch.object(self.app, 'git', return_value=''), \
+             patch.object(self.app, 'update_bom', return_value=[]) as bom, \
+             patch.object(self.app, 'read_state', return_value={'backend': 'tam-bundle'}), \
+             patch.object(self.app, 'save_state') as saved, \
+             patch.object(self.app, 'status'):
+            self.app.run()
+        self.assertIsNone(bom.call_args.args[0]['generation'])
+        self.assertEqual(saved.call_args.args[0]['stage'], 'run')

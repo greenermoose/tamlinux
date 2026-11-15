@@ -919,3 +919,5 @@ Topic: Plain text README conversion
 Tool: Codex CLI 0.169.0
 Model: gpt-6.1-sol
 Record: Session <2026-11-13-plain-readmes.md>
+
+- 2026-11-15 — Bundle Run without Home Manager <2026-11-15-bundle-run.md>, Codex CLI 0.169.0 / gpt-6.1-sol.
