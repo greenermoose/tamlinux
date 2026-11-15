@@ -9,23 +9,23 @@ commitment to ensuring Linux runs on older hardware, the declarative
 reproducibility and atomic rollbacks of Nix, and modern desktop ideas from
 Wayland, River, Hyprland, Quickshell, and Omarchy.
 
-  Property: Version
-  Value: See <VERSION>, the changelog <CHANGELOG.md> and Releases
+  Version
+  See <VERSION>, the changelog <CHANGELOG.md> and Releases
   <https://github.com/greenermoose/tamlinux/releases>; <VERSIONING.md>
   explains the numbers
 
-  Property: License
-  Value: GPL-3.0-or-later
+  License
+  GPL-3.0-or-later
 
-  Property: Desktop
-  Value: Hyprland + Quickshell (target: Sway + Quickshell, as one installable
+  Desktop
+  Hyprland + Quickshell (target: Sway + Quickshell, as one installable
   workstation package)
 
-  Property: Plugin suite
-  Value: In-repo desktop/plugins/ <desktop/plugins/README> (fred.* 2.x)
+  Plugin suite
+  In-repo desktop/plugins/ <desktop/plugins/README> (fred.* 2.x)
 
-  Property: Status
-  Value: Developed in public and used daily. Gate A complete (0.4.8), Blue
+  Status
+  Developed in public and used daily. Gate A complete (0.4.8), Blue
   Sparkler released (0.5.12); current develop is KBN WB 0.6
 
 
@@ -186,32 +186,32 @@ owned here, one directory per plugin under desktop/plugins/
 independent repositories are preserved as namespaced fred.<name>/ refs in this
 repository.
 
-  Plugin: fred.workspaces
-  Source: desktop/plugins/fred.workspaces/ <desktop/plugins/fred.workspaces>
+  fred.workspaces
+  <desktop/plugins/fred.workspaces>
 
-  Plugin: fred.clock
-  Source: desktop/plugins/fred.clock/ <desktop/plugins/fred.clock>
+  fred.clock
+  <desktop/plugins/fred.clock>
 
-  Plugin: fred.keyboard
-  Source: desktop/plugins/fred.keyboard/ <desktop/plugins/fred.keyboard>
+  fred.keyboard
+  <desktop/plugins/fred.keyboard>
 
-  Plugin: fred.sysinfo
-  Source: desktop/plugins/fred.sysinfo/ <desktop/plugins/fred.sysinfo>
+  fred.sysinfo
+  <desktop/plugins/fred.sysinfo>
 
-  Plugin: fred.tides
-  Source: desktop/plugins/fred.tides/ <desktop/plugins/fred.tides>
+  fred.tides
+  <desktop/plugins/fred.tides>
 
-  Plugin: fred.weather
-  Source: desktop/plugins/fred.weather/ <desktop/plugins/fred.weather>
+  fred.weather
+  <desktop/plugins/fred.weather>
 
-  Plugin: fred.monitor
-  Source: desktop/plugins/fred.monitor/ <desktop/plugins/fred.monitor>
+  fred.monitor
+  <desktop/plugins/fred.monitor>
 
-  Plugin: fred.agents
-  Source: desktop/plugins/fred.agents/ <desktop/plugins/fred.agents>
+  fred.agents
+  <desktop/plugins/fred.agents>
 
-  Plugin: fred.tamversion
-  Source: desktop/plugins/fred.tamversion/ <desktop/plugins/fred.tamversion>
+  fred.tamversion
+  <desktop/plugins/fred.tamversion>
 
 The independent greenermoose/*-fred-tamlinux plugin repositories and the
 Omarchy-era showcase site are frozen; their released 1.x versions remain for
