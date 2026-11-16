@@ -818,3 +818,5 @@ Candidate 0.6.27: [source selection](docs/ai/0.6.27-candidate-selection.md).
 2026-11-16: Codex CLI 0.169.0 (`gpt-6.1-sol`) implements canonical sleep naming, native identity integration and optional host documentation delivery. [Record](docs/ai/2026-11-16-0.6.28.md).
 
 2026-11-16: Claude Code 2.1.325 (`claude-opus-5-5`) renews fred.workspaces output retry budgets after a late output return. [Record](docs/ai/2026-11-16-fred-workspaces-reconcile-retry.md).
+
+Candidate 0.6.28: [source selection](docs/ai/0.6.28-candidate-selection.md).
