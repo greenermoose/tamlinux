@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # tam-toggle-idle — switch Stay Awake on or off. While it is on, the Tamlinux
-# host's idle service runs no idle cycle and suspend-unless-stay-awake (the
+# host's idle service runs no idle cycle and tam-suspend-unless-stay-awake (the
 # hypridle suspend) does not suspend.
 #
 #   tam-toggle-idle [toggle|stay-awake|allow-idle|status]

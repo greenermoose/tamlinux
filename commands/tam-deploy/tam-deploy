@@ -880,6 +880,23 @@ class Deployment:
             raise DeploymentError('carried bundle differs from the selected assembly')
         return archive
 
+    def documentation_selection(self, delivery: dict) -> str | None:
+        # Frozen older deliveries keep their old CLI and identity.
+        version = tuple(int(x) for x in delivery['minimumTool'].split('.'))
+        if version < (0, 14, 0):
+            return None
+        path = self.config / 'fleet/hosts' / self.hostname / 'documentation.json'
+        value = {'format': 1, 'collections': ['info', 'tldr', 'archwiki']}
+        if path.exists() or path.is_symlink():
+            if path.is_symlink() or not path.is_file() or path.stat().st_size > 4096:
+                raise DeploymentError('invalid documentation selection file')
+            value = json.loads(path.read_text())
+        collections = value.get('collections')
+        if (value.get('format') != 1 or not isinstance(collections, list) or
+                any(x not in ('info', 'tldr', 'archwiki') for x in collections) or len(set(collections)) != len(collections)):
+            raise DeploymentError('invalid documentation selection')
+        return ','.join(x for x in ('info', 'tldr', 'archwiki') if x in collections) or 'none'
+
     def preflight_bundle(self, revision: str, delivery: dict) -> None:
         self.check_clean()
         baseline = self.require_consistent()
@@ -895,6 +912,7 @@ class Deployment:
             'artifact': str(archive), 'artifactSha256': delivery['artifact']['sha256'],
             'baselineGeneration': baseline['profileGeneration'],
             'baselineAssembly': baseline['assembly'],
+            'documentation': self.documentation_selection(delivery),
         }
 
     def prepare_console(self, revision: str) -> None:
@@ -1404,6 +1422,7 @@ class Deployment:
                     'pinPath': str(self.pin_path), 'pin': base64.b64encode(before).decode('ascii')}
         self.transaction(phase='prepared', backend='tam-bundle', mode='init', stage=stage,
                          baselineGeneration=None, baselineAssembly=self.locked(), targetAssembly=revision,
+                         documentation=self.documentation_selection(delivery),
                          targetGeneration=None, components=pins, delivery=delivery, recovery=recovery,
                          homePlan={'entries': []}, targetPin=base64.b64encode((revision + '\n').encode()).decode('ascii'),
                          targetPinSha256=hashlib.sha256((revision + '\n').encode()).hexdigest())
@@ -1445,7 +1464,7 @@ class Deployment:
                 raise DeploymentError('bundle baseline changed during preparation')
             self.transaction(phase='prepared', backend='tam-bundle', mode='update', stage=stage,
                              baselineGeneration=previous, baselineAssembly=assembly,
-                             targetAssembly=revision, targetGeneration=previous, components=pins,
+                             documentation=report.get('documentation'), targetAssembly=revision, targetGeneration=previous, components=pins,
                              delivery=delivery, recovery=recovery, homePlan={'entries': []},
                              nixRecovery=prior.get('nixRecovery', prior['recovery'] if prior.get('mode', 'migration') == 'migration' else None),
                              nixMigration=prior.get('nixMigration', prior['id'] if prior.get('mode', 'migration') == 'migration' else None),
@@ -1464,7 +1483,7 @@ class Deployment:
             raise DeploymentError('Nix baseline changed during bundle preparation')
         self.transaction(phase='prepared', backend='tam-bundle', mode='migration', stage=stage,
                          baselineGeneration=previous, baselineAssembly=assembly,
-                         targetAssembly=revision, targetGeneration=bundle_generation, components=pins,
+                         documentation=report.get('documentation'), targetAssembly=revision, targetGeneration=bundle_generation, components=pins,
                          delivery=self.bundle_delivery(revision), recovery=recovery, homePlan=plan,
                          targetPin=base64.b64encode((revision + '\n').encode()).decode('ascii'),
                          targetPinSha256=hashlib.sha256((revision + '\n').encode()).hexdigest())
@@ -1562,7 +1581,8 @@ class Deployment:
             if system.get('live') != baseline or system.get('state') not in (None, 'complete'):
                 raise DeploymentError('unrelated bundle installation or pending transaction')
             self.transaction(phase='bundle-preparing-system')
-            self.bundle_privileged('install', str(archive), '--expect-bundle', delivery['artifact']['bundleHash'])
+            self.bundle_privileged('install', str(archive), '--expect-bundle', delivery['artifact']['bundleHash'],
+                                   *(['--docs', tx['documentation']] if tx.get('documentation') is not None else []))
             system = self.bundle_system_state()
         if (system.get('to') != target or system.get('target-hash') != delivery['artifact']['bundleHash'] or
                 not re.fullmatch(r'[0-9a-f]{32}', system.get('transaction', ''))):
@@ -1597,7 +1617,7 @@ class Deployment:
         state = {'backend': 'tam-bundle', 'stage': tx['stage'], 'packages': tx['targetAssembly'],
                  'components': tx['components'], 'generation': tx['targetGeneration'],
                  'bundleId': target, 'bundleHash': delivery['artifact']['bundleHash'],
-                 'migrationTransaction': identifier, 'previousGeneration': saved['generation'],
+                 'migrationTransaction': identifier, 'documentation': tx.get('documentation'), 'previousGeneration': saved['generation'],
                  'previousPin': saved['assembly']}
         self.save_state(state)
         self.record('deploy: ' + tx['stage'] + ' exact bundle ' + target,

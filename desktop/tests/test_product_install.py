@@ -27,7 +27,7 @@ class ProductInstall(unittest.TestCase):
             dns_command = stage / "usr/bin/tam-dns"
             dns_command.write_bytes((SOURCE / "commands/tam-dns/tam-dns").read_bytes())
             dns_command.chmod(0o755)
-            for name in ("hi", "start", "suspend-unless-stay-awake", "tam-nut"):
+            for name in ("hi", "start", "tam-suspend-unless-stay-awake", "tam-nut"):
                 original = stage / "usr/bin" / name
                 original.write_text("#!/bin/sh\n")
                 original.chmod(0o755)

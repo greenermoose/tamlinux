@@ -167,7 +167,7 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     commands = usr / "bin"
     for name in ("hi", "tam-nut"):
         (commands / name).unlink()
-    for name in ("start", "suspend-unless-stay-awake"):
+    for name in ("start",):
         (commands / name).rename(commands / f"tam-{name}")
     render_commands(commands)
 

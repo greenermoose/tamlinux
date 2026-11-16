@@ -52,6 +52,21 @@ class BundlePreflight(Fixture):
     def write_record(self, text):
         return self.commit('tamlinux-packages', 'deliveries/tamlinux-9.8.7.json', text)
 
+    def test_optional_documentation_selection_is_host_specific_and_versioned(self):
+        record=dict(self.record,minimumTool='0.14.0')
+        self.assertIsNone(self.app.documentation_selection(self.record))
+        self.assertEqual(self.app.documentation_selection(record),'info,tldr,archwiki')
+        path=self.config/'fleet/hosts'/self.app.hostname/'documentation.json'
+        path.parent.mkdir(parents=True)
+        for collections,wanted in [([], 'none'),(['tldr','info'], 'info,tldr'),(['archwiki'],'archwiki')]:
+            path.write_text(json.dumps({'format':1,'collections':collections}))
+            self.assertEqual(self.app.documentation_selection(record),wanted)
+        for value in ({'format':1,'collections':['info','info']}, {'format':1,'collections':['bad']}, {'format':2,'collections':[]}):
+            path.write_text(json.dumps(value))
+            with self.assertRaises(deploy.DeploymentError):self.app.documentation_selection(record)
+        path.unlink();path.symlink_to(self.root/'outside')
+        with self.assertRaises(deploy.DeploymentError):self.app.documentation_selection(record)
+
     def test_components_use_the_frozen_recipe(self):
         self.assertEqual(self.app.components(self.revision), self.record['components'])
         self.assertEqual(self.app.bundle_delivery(self.revision)['recipeAssembly'], self.recipe)

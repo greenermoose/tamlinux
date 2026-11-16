@@ -10,7 +10,7 @@ import test_desktop_helpers as installed
 NAMES = '''tam-brightness-display tam-brightness-display-ddc tam-brightness-display-apple
  tam-brightness-keyboard tam-brightness-keyboard-mute tam-hw-display
  tam-hyprland-monitor-focused tam-hyprland-monitor-focused-apple tam-system-lock
- tam-system-sleep-lock tam-system-wake suspend-unless-stay-awake
+ tam-system-sleep-lock tam-system-wake tam-suspend-unless-stay-awake
  tam-hyprland-monitor-clamshell tam-hyprland-monitor-laptop tam-hyprland-monitor-internal
  tam-hyprland-monitor-internal-mirror tam-hyprland-monitor-external-active
  tam-hw-clamshell tam-toggle tam-toggle-enabled tam-hyprland-toggle
@@ -115,21 +115,21 @@ elif name=='xdg-terminal-exec': print('foot.desktop')
 
     def test_suspend_uses_shared_marker_and_explicit_override(self):
         self.assertEqual(self.run_command('tam-toggle-idle','stay-awake').returncode,0)
-        self.assertEqual(self.run_command('suspend-unless-stay-awake').returncode,0)
+        self.assertEqual(self.run_command('tam-suspend-unless-stay-awake').returncode,0)
         self.assertFalse(self.calls('systemctl'))
         self.assertEqual(self.run_command('tam-toggle-idle','allow-idle').returncode,0)
-        self.assertEqual(self.run_command('suspend-unless-stay-awake').returncode,0)
+        self.assertEqual(self.run_command('tam-suspend-unless-stay-awake').returncode,0)
         self.assertEqual(self.calls('systemctl')[-1]['args'],['suspend-then-hibernate'])
-        self.assertEqual(self.run_command('suspend-unless-stay-awake',TEST_CAN_HIBERNATE='s "na"').returncode,0)
+        self.assertEqual(self.run_command('tam-suspend-unless-stay-awake',TEST_CAN_HIBERNATE='s "na"').returncode,0)
         self.assertEqual(self.calls('systemctl')[-1]['args'],['suspend'])
         explicit=self.temp/'explicit'; explicit.touch()
         before=len(self.calls('systemctl'))
-        self.run_command('suspend-unless-stay-awake',TAMLINUX_STAY_AWAKE_FILE=str(explicit))
+        self.run_command('tam-suspend-unless-stay-awake',TAMLINUX_STAY_AWAKE_FILE=str(explicit))
         self.assertEqual(len(self.calls('systemctl')),before)
 
     def test_invalid_stay_awake_override_matches_shell_fallback(self):
         self.run_command('tam-toggle-idle','stay-awake',TAMLINUX_STAY_AWAKE_FILE='relative')
-        self.run_command('suspend-unless-stay-awake',TAMLINUX_STAY_AWAKE_FILE='relative')
+        self.run_command('tam-suspend-unless-stay-awake',TAMLINUX_STAY_AWAKE_FILE='relative')
         self.assertFalse(self.calls('systemctl'))
         self.assertTrue((self.temp/'state/tamlinux/stay-awake').exists())
         self.assertFalse((self.home/'relative').exists())
