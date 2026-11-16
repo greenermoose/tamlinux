@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Fix `fred.workspaces` 2.0.12 output-change reconciliation: a monitor displaced after its desktop was placed, such as the HP returning from a wake HPD drop on workspace 1, gets a fresh bounded retry budget instead of reusing the spent one and staying on the wrong workspace for hours.
+
 - Fix `tam-fleet` to read the fleet registry's folder README as plain-text `README-systems` instead of `README-systems.md`, so `index`, `check` and `reconcile` work again.
 
 - Add plain text journal entry points: calendar selected-date text actions, Quick Launch, and Meta+Shift+J through a detached floating Micro terminal. No bar slot is added or moved. Requires `tam-journal` from the selected tools package.

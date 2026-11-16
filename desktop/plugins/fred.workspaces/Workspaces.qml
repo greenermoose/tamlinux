@@ -12,7 +12,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.11"
+  readonly property string pluginVersion: "2.0.12"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""

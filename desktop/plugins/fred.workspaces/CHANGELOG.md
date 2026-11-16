@@ -4,6 +4,17 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.12 - Unreleased
+
+- Give an output that was placed (or absent) when last observed, and has since
+  been displaced, a fresh three-attempt, three-second budget when a later
+  output-change reconcile or realign reapplies the current request. Before,
+  the request's spent budget made every later repair a `retry-expired` no-op,
+  so after a wake the HP could keep showing workspace 1 for hours. Pending or
+  expired placements keep their spent budget, so duplicate events still cannot
+  renew retries of a rejection; dark-output deferral and persist-before-IPC are
+  unchanged. Logs `retry-renewed`.
+
 ## 2.0.11 - Unreleased
 
 - Share ordered click publication across bars, coalesce newer pending clicks

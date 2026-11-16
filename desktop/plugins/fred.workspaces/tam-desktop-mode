@@ -1076,6 +1076,16 @@ def switch_windows(
         elif mon not in active:
             item["result"] = "missing"
         else:
+            if item.get("result") in ("aligned", "missing") and (item["attempts"] or item["deadline_ns"]):
+                # Placed (or absent) when last observed and displaced since: a
+                # new compositor event, such as the HP returning from an HPD
+                # drop hours later on another workspace. It gets a fresh bounded
+                # budget. A pending or expired placement keeps its spent one, so
+                # duplicate events cannot renew retries of a rejection.
+                timeline_event("retry-renewed", output=mon, previous=item["result"],
+                               expected=ws, observed=item["observed"])
+                item["attempts"] = 0
+                item["deadline_ns"] = 0
             if not item["deadline_ns"]:
                 item["deadline_ns"] = now + int(INTENT_DEADLINE * 1e9)
             item["result"] = "pending"

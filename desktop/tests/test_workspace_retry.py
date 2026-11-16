@@ -55,6 +55,51 @@ class WorkspaceRetryTests(unittest.TestCase):
         self.assertTrue(all(item["result"] == "expired" for item in
                             self.engine.read_desktop_intent()["outputs"].values()))
 
+    def _displace_after_deadline(self):
+        # bosgame 2026-11-16: hours after desktop 2 was placed, the HP drops HPD
+        # on wake and returns showing workspace 1; the others are moved with it.
+        with patch.object(self.engine.time, "monotonic_ns", return_value=100):
+            self.switch(2)
+        self.assertTrue(self.engine.read_desktop_intent()["complete"])
+        self.active.pop("HP")
+        with patch.object(self.engine.time, "monotonic_ns", return_value=60_000_000_000):
+            self.engine.reconcile("output-change")
+        self.assertEqual(self.engine.read_desktop_intent()["outputs"]["HP"]["result"], "missing")
+        self.active.update({"SIDE": 3, "ACTIVE": 2, "HP": 1})
+        self.calls.clear()
+
+    def test_late_drop_and_return_after_the_deadline_gets_a_fresh_budget(self):
+        self._displace_after_deadline()
+        with patch.object(self.engine.time, "monotonic_ns", return_value=120_000_000_000):
+            self.assertEqual(self.engine.reconcile("output-change"), "reconciled")
+        self.assertEqual(self.active, {"SIDE": 4, "ACTIVE": 5, "HP": 6})
+        intent = self.engine.read_desktop_intent()
+        self.assertTrue(intent["complete"])
+        self.assertTrue(all(item["result"] == "aligned" for item in intent["outputs"].values()))
+        renewed = [e for e in self.events() if e["event"] == "retry-renewed"]
+        self.assertEqual({e["output"] for e in renewed}, {"SIDE", "ACTIVE", "HP"})
+        self.assertFalse(any(e["event"] == "retry-expired" for e in self.events()))
+
+    def test_renewed_budget_is_still_bounded_and_duplicate_events_do_not_renew_it(self):
+        self._displace_after_deadline()
+        self.reject = True
+        with patch.object(self.engine.time, "monotonic_ns", return_value=120_000_000_000):
+            for _ in range(8):
+                self.engine.reconcile("output-change")
+        intent = self.engine.read_desktop_intent()
+        self.assertFalse(intent["complete"])
+        self.assertTrue(all(item["attempts"] == 3 and item["result"] == "expired"
+                            for item in intent["outputs"].values()))
+        self.assertEqual(sum(op == "batch" for op, _ in self.calls), 9)
+
+    def test_dark_desktop_still_defers_a_displaced_set(self):
+        self._displace_after_deadline()
+        self.off = True
+        with patch.object(self.engine.time, "monotonic_ns", return_value=120_000_000_000):
+            self.assertEqual(self.engine.reconcile("output-change"), "deferred: dpms off")
+        self.assertFalse(any(op == "batch" for op, _ in self.calls))
+        self.assertEqual(self.active, {"SIDE": 3, "ACTIVE": 2, "HP": 1})
+
     def test_one_rejected_side_does_not_prevent_other_side_or_active_progress(self):
         backend = self.backend
         def fail_hp(op, payload=None):
