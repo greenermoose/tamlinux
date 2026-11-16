@@ -35,7 +35,7 @@ console-helpers <ID>: write checksum-bound short console activation and undo scr
 activate-bundle <ID>: finish the exact prepared bundle at an inactive desktop.
 return-nix <ID>: return a bundle installation to its original saved Nix generation.
 
-A registered host that has hosts/<host>/state/assembly (one revision) follows
+A registered host that has fleet/hosts/<host>/state/assembly (one revision) follows
 that pin instead of the shared flake.lock; the consumer flake reads the same
 file, so hosts on different versions never rewrite a shared lock.
 """
@@ -496,12 +496,20 @@ def _console_tty() -> bool:
 
 
 class Deployment:
+    def hosts_root(self) -> Path | None:
+        fleet_hosts = self.config / "fleet" / "hosts"
+        if fleet_hosts.is_dir():
+            return fleet_hosts
+        legacy_hosts = self.config / "hosts"
+        return legacy_hosts if legacy_hosts.is_dir() else None
+
     def __init__(self):
         self.home = Path.home()
         self.config = find_config_repo(self.home)
         self.hostname = os.uname().nodename
-        host_path = self.config / "hosts" / self.hostname / "host.json"
-        if (self.config / "hosts").is_dir():
+        hosts_root = self.hosts_root()
+        host_path = hosts_root / self.hostname / "host.json" if hosts_root else None
+        if hosts_root is not None:
             if not host_path.is_file():
                 raise DeploymentError("local hostname has no registered host profile")
             host = json.loads(host_path.read_text())
@@ -527,8 +535,8 @@ class Deployment:
         self.transaction_file = state / 'tamlinux/deploy-transaction.json'
         self.profile = state / "nix/profiles/home-manager"
         self.lock = self.config / "flake.lock"
-        self.host_pin = (self.config / "hosts" / self.hostname / "state/assembly"
-                         if (self.config / "hosts").is_dir() else None)
+        self.host_pin = (hosts_root / self.hostname / "state/assembly"
+                         if hosts_root is not None else None)
         self.selection_file = data / "tamlinux/deployment-selection.json"
         self.system = os.environ.get("TAMLINUX_NIX_SYSTEM", os.uname().machine + "-linux")
         self._outputs = {}
@@ -1304,7 +1312,8 @@ class Deployment:
 
     def bundle_native_recovery(self) -> dict:
         """The separately reviewed native rollback archive, never an installer."""
-        host_path = self.config / 'hosts' / self.hostname / 'bundle-nix-recovery.json'
+        hosts_root = self.hosts_root()
+        host_path = (hosts_root or (self.config / 'fleet/hosts')) / self.hostname / 'bundle-nix-recovery.json'
         system_path = self.config / 'system/bundle-nix-recovery.json'
         if host_path.is_symlink() or host_path.exists():
             path = host_path
@@ -1313,7 +1322,7 @@ class Deployment:
         if not path.is_file() or path.is_symlink() or path.stat().st_size > 16384:
             raise DeploymentError(
                 'record the exact native rollback archive in '
-                'hosts/<hostname>/bundle-nix-recovery.json or system/bundle-nix-recovery.json')
+                'fleet/hosts/<hostname>/bundle-nix-recovery.json or system/bundle-nix-recovery.json')
         value = json.loads(path.read_text())
         if (set(value) != {'format', 'host', 'package', 'version', 'archive', 'sha256'} or
                 type(value['format']) is not int or value['format'] != 1 or value['host'] != self.hostname or
@@ -1986,7 +1995,8 @@ class Deployment:
         return result
 
     def activation_validators(self, generation: str) -> None:
-        host_registry = self.config / 'hosts' / self.hostname / 'activation-preflight.json'
+        hosts_root = self.hosts_root()
+        host_registry = (hosts_root or (self.config / 'fleet/hosts')) / self.hostname / 'activation-preflight.json'
         system_registry = self.config / 'system/activation-preflight.json'
         if host_registry.is_symlink() or (not os.path.lexists(host_registry) and system_registry.is_symlink()):
             raise DeploymentError('linked activation preflight registry refused')
@@ -2246,10 +2256,12 @@ class Deployment:
             command("git", "-C", str(self.config), "commit", "--only", "-m", message + trailers, "--", *files)
 
     def update_bom(self, entry: dict) -> list[str]:
-        relative = (f"hosts/{self.hostname}/state/bom.json" if (self.config / "hosts").is_dir()
+        hosts_root = self.hosts_root()
+        hosts_rel = hosts_root.relative_to(self.config) if hosts_root else None
+        relative = (f"{hosts_rel}/{self.hostname}/state/bom.json" if hosts_rel is not None
                     else "system/bom.json")
         bom_path = self.config / relative
-        if (self.config / "hosts").is_dir() and any(
+        if hosts_root is not None and any(
                 p.is_symlink() for p in [bom_path, *bom_path.parents]):
             raise DeploymentError("refusing a symlink BOM destination")
         if not bom_path.exists():
@@ -2544,7 +2556,8 @@ class Deployment:
         payload or an ambient home-manager executable. Login is a later step.
         """
         self.check_clean()
-        if not (self.config / "hosts" / self.hostname / "host.json").is_file():
+        hosts_root = self.hosts_root()
+        if not hosts_root or not (hosts_root / self.hostname / "host.json").is_file():
             raise DeploymentError("first installation requires a registered local host profile")
         if (os.path.lexists(self.profile) or os.path.lexists(self.shell_link)
                 or self.installed() != "not installed" or self.state_file.exists()):

@@ -91,7 +91,7 @@ class Fleet:
 
     def host(self, name):
         require_name(name)
-        directory = self.config / "hosts" / name
+        directory = self.config / "fleet" / "hosts" / name
         if directory.is_symlink():
             raise FleetError(f"host directory is a symlink: {name}")
         value = json.loads((directory / "host.json").read_text())
@@ -133,7 +133,7 @@ class Fleet:
 
     def check(self, live=None):
         records = self.records()
-        directories = {p.name for p in (self.config / "hosts").iterdir() if p.is_dir()}
+        directories = {p.name for p in (self.config / "fleet" / "hosts").iterdir() if p.is_dir()}
         if directories - records.keys():
             raise FleetError("host without registry entry: " + ", ".join(sorted(directories - records.keys())))
         for name, record in records.items():
@@ -147,7 +147,7 @@ class Fleet:
             hardware = self.config / record["hardware_profile"]
             if not hardware.is_file() or not hardware.resolve().is_relative_to(self.config.resolve()):
                 raise FleetError(f"missing local hardware page: {name}")
-            if not (self.config / "hosts" / name / "home.nix").is_file():
+            if not (self.config / "fleet" / "hosts" / name / "home.nix").is_file():
                 raise FleetError(f"missing host module: {name}")
             self.root_files(name)
             for link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", (self.registry / f"{name}.md").read_text()):
@@ -183,7 +183,7 @@ class Fleet:
     def root_files(self, name):
         require_name(name)
         result = {}
-        host_root = self.config / "hosts" / name / "system"
+        host_root = self.config / "fleet" / "hosts" / name / "system"
         manifests = [(self.config / "system", self.config / "system/MANIFEST"),
                      (host_root, host_root / "MANIFEST")]
         for capability in self.host(name)["capabilities"]:
@@ -215,7 +215,7 @@ class Fleet:
         if not USER.fullmatch(user):
             raise FleetError("invalid username")
         path = self.registry / f"{name}.md"
-        directory = self.config / "hosts" / name
+        directory = self.config / "fleet" / "hosts" / name
         if path.exists() or directory.exists():
             raise FleetError("hostname already registered; preserve its existing record")
         hardware_path = self.config / hardware
@@ -259,7 +259,7 @@ class Fleet:
 
     def capture(self, name):
         self.local(name)
-        state = self.config / "hosts" / name / "state"
+        state = self.config / "fleet" / "hosts" / name / "state"
         self.clean(self.config, [str(state.relative_to(self.config))])
         # Gather all observations before writing any of them. No privileged reads,
         # source recipe execution, public-repository writes or symlink healing.
@@ -319,10 +319,16 @@ class Fleet:
         if commit:
             # Git cannot atomically commit two repositories. Each has one exact
             # path commit. Never push, force, or conceal a partial commit failure.
-            for repo, paths in [(self.config, [str(state.relative_to(self.config))]),
-                                (self.registry, [dossier.name, "README-systems"])]:
-                run("git", "add", "--", *paths, cwd=repo)
-                run("git", "commit", "-m", f"Reconcile {name}", "--", *paths, cwd=repo)
+            if run("git", "rev-parse", "--show-toplevel", cwd=self.config) == run("git", "rev-parse", "--show-toplevel", cwd=self.registry):
+                top = Path(run("git", "rev-parse", "--show-toplevel", cwd=self.config))
+                paths = [str(state.relative_to(top)), str(dossier.relative_to(top)), str((self.registry / "README-systems").relative_to(top))]
+                run("git", "add", "--", *paths, cwd=top)
+                run("git", "commit", "-m", f"Reconcile {name}", "--", *paths, cwd=top)
+            else:
+                for repo, paths in [(self.config, [str(state.relative_to(self.config))]),
+                                    (self.registry, [dossier.name, "README-systems"])]:
+                    run("git", "add", "--", *paths, cwd=repo)
+                    run("git", "commit", "-m", f"Reconcile {name}", "--", *paths, cwd=repo)
 
     def workspace(self) -> Path:
         """Parent checkout that holds config, packages and product clones."""
@@ -450,7 +456,7 @@ class Fleet:
         archive = plan["native"]["archiveHint"]
         print(f"  ssh -t {name} 'pkttyagent & pkexec pacman -U <absolute-archive-from-{archive}>'")
         print(f"Then on {name}: tam-deploy follow {assembly}")
-        print("Then append Deployment history in systems/<host>.md")
+        print("Then append Deployment history in fleet/systems/<host>.md")
         print(f"word recorded: {word}")
         return {**plan, "generation": generation, "copied": True}
 
@@ -483,8 +489,14 @@ def main(argv=None):
         if name == "reconcile":
             child.add_argument("--commit", action="store_true")
     args = parser.parse_args(argv)
-    if not args.config or not args.registry:
-        parser.error("provide --config and --registry, or their TAMLINUX environment variables")
+    if not args.config:
+        parser.error("provide --config or TAMLINUX_CONFIG_REPO")
+    if not args.registry:
+        default_registry = Path(args.config) / "fleet" / "systems"
+        if default_registry.is_dir():
+            args.registry = str(default_registry)
+        else:
+            parser.error("provide --registry or TAMLINUX_FLEET_REGISTRY")
     try:
         fleet = Fleet(args.config, args.registry)
         if args.command == "status":

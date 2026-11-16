@@ -59,7 +59,7 @@ class FleetTests(unittest.TestCase):
         return self.original_run(*args, **kwargs)
 
     def test_register_is_explicit_and_does_not_clone_other_hosts(self):
-        root = self.config / "hosts/beta"
+        root = self.config / "fleet/hosts/beta"
         self.assertEqual(list((root / "system").iterdir()), [root / "system/MANIFEST"])
         self.assertFalse((root / "state").exists())
         self.assertNotIn("alpha", (root / "home.nix").read_text())
@@ -78,7 +78,7 @@ class FleetTests(unittest.TestCase):
     def test_rejects_unknown_capability_without_partial_registration(self):
         with self.assertRaisesRegex(fleet.FleetError, "unknown capability"):
             self.fleet.register("gamma", "tester", "test", "hardware.md", ["unreviewed"], "x86_64-linux", None)
-        self.assertFalse((self.config / "hosts/gamma").exists())
+        self.assertFalse((self.config / "fleet/hosts/gamma").exists())
 
     def test_rejects_mismatched_filename_id_and_hostname(self):
         path = self.registry / "alpha.md"
@@ -89,15 +89,15 @@ class FleetTests(unittest.TestCase):
     def test_detects_missing_active_profile(self):
         path = self.registry / "alpha.md"
         path.write_text(path.read_text().replace('status = "planned"', 'status = "active"'))
-        (self.config / "hosts/alpha").rename(self.config / "alpha-away")
+        (self.config / "fleet/hosts/alpha").rename(self.config / "alpha-away")
         with self.assertRaisesRegex(fleet.FleetError, "missing host directory"):
             self.fleet.check()
 
     def test_detects_orphan_host_and_missing_hardware(self):
-        (self.config / "hosts/orphan").mkdir()
+        (self.config / "fleet/hosts/orphan").mkdir()
         with self.assertRaisesRegex(fleet.FleetError, "without registry"):
             self.fleet.check()
-        (self.config / "hosts/orphan").rmdir()
+        (self.config / "fleet/hosts/orphan").rmdir()
         (self.config / "hardware.md").unlink()
         with self.assertRaisesRegex(fleet.FleetError, "missing local hardware"):
             self.fleet.check()
@@ -129,16 +129,16 @@ class FleetTests(unittest.TestCase):
         with patch.object(fleet, "run", side_effect=self.observed), patch.object(fleet.Path, "home", return_value=self.root):
             with self.local("alpha"):
                 self.fleet.capture("alpha")
-            alpha = {p.name: p.read_bytes() for p in (self.config / "hosts/alpha/state").iterdir()}
+            alpha = {p.name: p.read_bytes() for p in (self.config / "fleet/hosts/alpha/state").iterdir()}
             with self.local("beta"):
                 self.fleet.capture("beta")
-            self.assertEqual(alpha, {p.name: p.read_bytes() for p in (self.config / "hosts/alpha/state").iterdir()})
+            self.assertEqual(alpha, {p.name: p.read_bytes() for p in (self.config / "fleet/hosts/alpha/state").iterdir()})
         self.assertEqual((self.config / "system/MANIFEST").read_bytes(), shared)
         self.assertFalse((self.config / "system/bom.json").exists())
-        self.assertEqual(json.loads((self.config / "hosts/beta/state/bom.json").read_text())["hostname"], "beta")
+        self.assertEqual(json.loads((self.config / "fleet/hosts/beta/state/bom.json").read_text())["hostname"], "beta")
 
     def test_capture_preserves_uncommitted_state(self):
-        state = self.config / "hosts/alpha/state"
+        state = self.config / "fleet/hosts/alpha/state"
         state.mkdir()
         (state / "bom.json").write_text("user edits")
         with self.local(), self.assertRaisesRegex(fleet.FleetError, "local edits"):
@@ -146,17 +146,17 @@ class FleetTests(unittest.TestCase):
         self.assertEqual((state / "bom.json").read_text(), "user edits")
 
     def test_symlinked_state_cannot_overwrite_neighbor(self):
-        (self.config / "hosts/beta/state").mkdir()
-        (self.config / "hosts/alpha/state").symlink_to("../beta/state", target_is_directory=True)
+        (self.config / "fleet/hosts/beta/state").mkdir()
+        (self.config / "fleet/hosts/alpha/state").symlink_to("../beta/state", target_is_directory=True)
         self.commit()
         self.original_run = fleet.run
         with self.local(), patch.object(fleet, "run", side_effect=self.observed), patch.object(fleet.Path, "home", return_value=self.root):
             with self.assertRaisesRegex(fleet.FleetError, "symlink destination"):
                 self.fleet.capture("alpha")
-        self.assertEqual(list((self.config / "hosts/beta/state").iterdir()), [])
+        self.assertEqual(list((self.config / "fleet/hosts/beta/state").iterdir()), [])
 
     def test_root_union_and_capability_opt_in(self):
-        root = self.config / "hosts/alpha/system"
+        root = self.config / "fleet/hosts/alpha/system"
         (root / "etc").mkdir()
         (root / "etc/example").write_text("host only\n")
         (root / "MANIFEST").write_text("/etc/example 640\n")
@@ -169,7 +169,7 @@ class FleetTests(unittest.TestCase):
         self.assertEqual(len(self.fleet.root_files("alpha")), 1)
 
     def test_root_traversal_and_duplicate_are_refused(self):
-        root = self.config / "hosts/alpha/system"
+        root = self.config / "fleet/hosts/alpha/system"
         (root / "MANIFEST").write_text("/../etc/passwd 644\n")
         with self.assertRaisesRegex(fleet.FleetError, "invalid root target"):
             self.fleet.root_files("alpha")
@@ -187,7 +187,7 @@ class FleetTests(unittest.TestCase):
                 self.fleet.reconcile("alpha")
         self.assertEqual((self.registry / "alpha.md").read_bytes(), before)
         self.assertEqual((self.registry / "README-systems").read_bytes(), index)
-        self.assertFalse((self.config / "hosts/alpha/state/reconciliation.json").exists())
+        self.assertFalse((self.config / "fleet/hosts/alpha/state/reconciliation.json").exists())
 
     def test_successful_fixture_reconciliation_commits_only_host_paths(self):
         self.original_run = fleet.run
@@ -200,7 +200,7 @@ class FleetTests(unittest.TestCase):
         self.assertEqual(self.fleet.records()["beta"]["status"], "planned")
         self.assertIn("?? unrelated", git(self.config, "status", "--short"))
         self.assertNotIn("unrelated", git(self.config, "show", "--format=", "--name-only", "HEAD"))
-        self.assertFalse((self.config / "hosts/beta/state").exists())
+        self.assertFalse((self.config / "fleet/hosts/beta/state").exists())
 
     def test_writer_lock_refuses_concurrent_capture(self):
         with self.fleet.locked():

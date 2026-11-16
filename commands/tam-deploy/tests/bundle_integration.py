@@ -30,7 +30,7 @@ class BundleMigration(TransactionRecovery):
         super().setUp()
         self.app.transaction_file.unlink()
         self.app._requested_transaction = 'bundle-migration'
-        self.app.host_pin = self.config / 'hosts/fixture/state/assembly'
+        self.app.host_pin = self.config / 'fleet/hosts/fixture/state/assembly'
         self.app.host_pin.parent.mkdir(parents=True)
         self.app.host_pin.write_text(self.packages_main + '\n')
         self.enterContext(patch.object(self.app, 'components', side_effect=lambda rev:
@@ -501,11 +501,11 @@ class BundleMigration(TransactionRecovery):
         # Symlink at host path is rejected instead of falling back to system/.
         target = self.root / 'linked-recovery.json'; target.write_text(json.dumps(host_record))
         host_path.unlink(); host_path.symlink_to(target)
-        with self.assertRaisesRegex(deploy.DeploymentError, 'hosts/<hostname>/bundle-nix-recovery.json'):
+        with self.assertRaisesRegex(deploy.DeploymentError, 'fleet/hosts/<hostname>/bundle-nix-recovery.json'):
             self.app.bundle_native_recovery()
         host_path.unlink()
         (self.config / 'system/bundle-nix-recovery.json').unlink()
-        with self.assertRaisesRegex(deploy.DeploymentError, 'hosts/<hostname>/bundle-nix-recovery.json'):
+        with self.assertRaisesRegex(deploy.DeploymentError, 'fleet/hosts/<hostname>/bundle-nix-recovery.json'):
             self.app.bundle_native_recovery()
 
     def test_hm_generated_env_and_fontconfig_files_retire_and_restore(self):

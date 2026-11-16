@@ -190,7 +190,7 @@ class FirstInstall(Fixture):
     def setUp(self):
         super().setUp()
         self.app.revision_file.unlink()
-        host = self.config / "hosts" / self.app.hostname / "host.json"
+        host = self.config / "fleet/hosts" / self.app.hostname / "host.json"
         host.parent.mkdir(parents=True)
         host.write_text("{}")
         self.calls = []
@@ -244,7 +244,7 @@ class FirstInstall(Fixture):
             self.app.init()
 
     def test_unregistered_account_is_refused(self):
-        (self.config / "hosts" / self.app.hostname / "host.json").unlink()
+        (self.config / "fleet/hosts" / self.app.hostname / "host.json").unlink()
         with self.assertRaisesRegex(deploy.DeploymentError, "registered local host"):
             self.app.init()
 
@@ -1003,7 +1003,7 @@ class FleetProfiles(unittest.TestCase):
         self.config = Path(self.temporary.name)
         self.name = os.uname().nodename
         self.user = deploy.getpass.getuser()
-        self.directory = self.config / "hosts" / self.name
+        self.directory = self.config / "fleet/hosts" / self.name
         self.directory.mkdir(parents=True)
         (self.directory / "host.json").write_text(json.dumps({"hostname": self.name, "username": self.user}))
         self.environment = patch.dict(os.environ, {"TAMLINUX_CONFIG_REPO": str(self.config),
@@ -1028,11 +1028,11 @@ class FleetProfiles(unittest.TestCase):
         state = self.directory / "state"
         state.mkdir()
         (state / "bom.json").write_text('{"components":{}}')
-        foreign = self.config / "hosts/foreign/state"
+        foreign = self.config / "fleet/hosts/foreign/state"
         foreign.mkdir(parents=True)
         (foreign / "bom.json").write_text("untouched")
         changed = deploy.Deployment().update_bom({"stage": "fixture"})
-        self.assertEqual(changed, [f"hosts/{self.name}/state/bom.json"])
+        self.assertEqual(changed, [f"fleet/hosts/{self.name}/state/bom.json"])
         self.assertEqual((foreign / "bom.json").read_text(), "untouched")
         self.assertFalse((self.config / "system/bom.json").exists())
 
@@ -1048,7 +1048,7 @@ class FleetProfiles(unittest.TestCase):
 
 
 class HostAssemblyPin(FleetProfiles):
-    """A host that records hosts/<host>/state/assembly never rewrites the shared lock."""
+    """A host that records fleet/hosts/<host>/state/assembly never rewrites the shared lock."""
 
     def setUp(self):
         super().setUp()
@@ -1069,7 +1069,7 @@ class HostAssemblyPin(FleetProfiles):
         before = self.lock.read_bytes()
         app = deploy.Deployment()
         self.assertEqual(app.locked(), "b" * 40)
-        self.assertEqual(app.pin_file(), f"hosts/{self.name}/state/assembly")
+        self.assertEqual(app.pin_file(), f"fleet/hosts/{self.name}/state/assembly")
         with patch.object(deploy, "command") as command:
             app.pin("c" * 40)
         command.assert_not_called()

@@ -22,8 +22,8 @@ restoration is always separately approved. This source requires tam-bundle
 0.13.0 for prepared-update cancellation. It does not change the current
 delivery mechanism.
 
-Per-host pins. In a fleet configuration (hosts/<hostname>/host.json), a host
-can record its own assembly revision in hosts/<hostname>/state/assembly, one
+Per-host pins. In a fleet configuration (fleet/hosts/<hostname>/host.json), a host
+can record its own assembly revision in fleet/hosts/<hostname>/state/assembly, one
 40-character revision per file. The consumer flake reads that file for the
 host, so machines on different versions never rewrite a shared lock. When the
 file exists, tam-deploy reads, pins, restores and commits it in place of
@@ -148,7 +148,7 @@ CONFIGURATION
 
   Variable: TAMLINUX_HOME_CONFIGURATION
   Default: The registered local user@hostname; a different host's output is
-  refused. Legacy configurations without hosts/ retain the current user name.
+  refused. Legacy configurations without fleet/hosts/ retain the current user name.
 
   Variable: TAMLINUX_WORKSPACE
   Default: ~/Code/tamlinux, holding clones of tamlinux-packages and each

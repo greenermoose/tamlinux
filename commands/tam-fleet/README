@@ -5,7 +5,8 @@ Requires Python 3.11+, Git, and (for capture) Arch's pacman. No service runs
 in the background. Private values stay in the consumer's private checkouts.
 
 Set TAMLINUX_CONFIG_REPO to the Home Manager checkout and
-TAMLINUX_FLEET_REGISTRY to its companion systems directory, or pass
+TAMLINUX_FLEET_REGISTRY to its companion fleet/systems directory (defaults to
+<config>/fleet/systems when present), or pass
 --config PATH --registry PATH before the subcommand.
 
     tam-fleet register laptop --username user --role laptop \
@@ -21,7 +22,7 @@ TAMLINUX_FLEET_REGISTRY to its companion systems directory, or pass
     tam-fleet deploy slowhp 0.5.12 --dry-run
     tam-fleet deploy slowhp 0.5.12 --execute --word "deploy 0.5.12 to slowhp"
 
-Registration creates a planned dossier, hosts/<hostname>/host.json, an empty
+Registration creates a planned dossier, fleet/hosts/<hostname>/host.json, an empty
 host module and an empty root manifest. It never copies another machine's
 files. The hardware page and selected capability modules must already exist.
 The consumer flake exposes only explicit user@hostname outputs. Its activation
@@ -34,11 +35,11 @@ tam-deploy status. Source validation alone says nothing about boot, login or
 physical hardware.
 
 root-files previews the union of shared and local manifests, including
-selected hosts/<host>/system/capabilities/<capability>/MANIFEST fragments. It
+selected fleet/hosts/<host>/system/capabilities/<capability>/MANIFEST fragments. It
 refuses duplicate targets and escaping sources. It never installs files as
 root.
 
-Capture writes only hosts/<local-hostname>/state/: package lists, BOM, local
+Capture writes only fleet/hosts/<local-hostname>/state/: package lists, BOM, local
 recipe hashes and root-file hashes. It does not heal symlinks, execute package
 recipes, copy root contents, or write to a public registry. A different
 hostname or dirty destination stops it before writes. Writers share one lock;
