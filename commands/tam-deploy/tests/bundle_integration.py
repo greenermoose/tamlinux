@@ -536,7 +536,7 @@ class BundleMigration(TransactionRecovery):
             'version': '1.0-1', 'archive': str(host_archive),
             'sha256': hashlib.sha256(host_archive.read_bytes()).hexdigest(),
         }
-        host_path = self.config / 'hosts' / self.app.hostname / 'bundle-nix-recovery.json'
+        host_path = self.config / 'fleet/hosts' / self.app.hostname / 'bundle-nix-recovery.json'
         host_path.parent.mkdir(parents=True, exist_ok=True)
         host_path.write_text(json.dumps(host_record))
         self.assertEqual(self.app.bundle_native_recovery()['archive'], str(host_archive))

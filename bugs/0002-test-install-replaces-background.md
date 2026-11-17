@@ -85,10 +85,12 @@ Regression checks:
 - `commands/tam-deploy/tests/bundle_integration.py`:
   `test_install_keeps_the_shown_background_over_a_stale_selection` runs a
   bundle activation with a stale selection. It fails on the previous code and
-  passes now. The `tam-deploy` unit suites pass (133 tests). Of the 19
-  integration tests, 18 pass. The other,
+  passes now. The `tam-deploy` unit suites pass (133 tests), and all 19
+  integration tests pass. One of them,
   `test_bundle_native_recovery_prefers_host_record_and_falls_back_to_system`,
-  fails the same way without this change.
+  failed both before and after this change: it still wrote its host record
+  to the old `hosts/` path after 230e48e moved the fixture to
+  `fleet/hosts`. Fixed separately.
 
 Remaining: installed acceptance in 0.6.29.
 
