@@ -149,12 +149,13 @@ Tamlinux targets a minimal **Void Linux** base utilizing **runit** for service s
   - `fred.monitor`: Multi-display geometry, retraining, and layout management.
   - `fred.agents`: Local AI session tracking and agent state visualization.
 - **Theme System:** Deterministic **Tamarack** palette and **Atkinson Hyperlegible** typography across terminal and graphical interfaces.
+- **Terminal tools:** Tamlinux 0.7.0 starts dogfooding tam-clam as the interactive command shell, tam-last in place of foot, and tam-edit in place of Micro. Quickshell provides the graphical desktop shell.
 - **The `tam` CLI:** Unified command line tool for system orientation, installation, configuration, and offline knowledge.
 
 #### The Grafting Advantage
 
 Because the Cultivar is cleanly decoupled from the Root-stock:
-1. **Host Portability:** The Tamlinux Cultivar can be installed on an existing Arch system via a host adapter, installed on Void via native `xbps-src` packages, or deployed via Nix flakes on other distributions.
+1. **Host Portability:** Recorded tam-bundle assemblies target supported existing distributions, starting with Arch. The Void pilot plans native `xbps-src` packages.
 2. **Independent Evolution:** The user interface can be refined, updated, or re-themed without risking base OS stability.
 3. **Purity of State:** User configuration remains strictly declarative, separating machine state from package defaults.
 

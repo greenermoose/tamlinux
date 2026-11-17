@@ -822,7 +822,7 @@ The following entries record earlier directions that led to this target:
   Code must run; and a terminal-first experience. Updated
   [`VERSIONING.md`](VERSIONING.md) and the
   [installation framework](docs/plans/installation-framework.md) to match.
-- Added the [compositor field survey](upstream/2026-10-03-compositor.md) and
+- Added the [compositor field survey](https://github.com/greenermoose/tamlinux/blob/a1da101014dcdb7fd30e061ee05c6828ef677d1c/upstream/2026-10-03-compositor.md) and
   recorded its outcome: **Sway**, built by Tamlinux with Nix. River,
   river-classic, and mango are deferred; dwl and niri are rejected for now.
 - Recorded the Nix-built workstation package (on antiX Core or an existing

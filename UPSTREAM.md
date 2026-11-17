@@ -25,7 +25,5 @@ license, and attribution if a later implementation adapts source code.
 
 ## Survey records
 
-- [2026-10-03 — compositor](upstream/2026-10-03-compositor.md): a tiling
-  Wayland compositor for antiX Core and circa-2006 hardware. Outcome: Sway
-  chosen 2026-10-03, then replaced by tam-pane, Tamlinux's own compositor
-  (D263, 2026-11-17).
+Current compositor development and research live in the
+[tam-pane repository](https://github.com/greenermoose/tam-pane).

@@ -83,10 +83,16 @@ is private operating procedure, not duplicated here.
   Current scope: Workstation plan for the separate tam component.
 
   Plan: Compositor protocol layer <compositor-protocol-layer.md>
-  Current scope: Protocol facade; tam-pane adapter at 0.7 (D263).
+  Current scope: Protocol facade; tam-pane adapter for 0.7.0.
 
-  tam-pane, Tamlinux's own compositor, is planned in its own repository
-  (D263); it replaced the Sway integration plan.
+  Tamlinux 0.7.0 starts dogfooding these separately developed components.
+  tam-pane <https://github.com/greenermoose/tam-pane> is the compositor and
+  window manager, with Hyprland available for fallback.
+  tam-clam <https://github.com/greenermoose/tam-clam> is the interactive
+  command shell. Login shell and /bin/sh changes are later decisions.
+  tam-last <https://github.com/greenermoose/tam-last> takes over from foot,
+  and tam-edit <https://github.com/greenermoose/tam-edit> takes over from
+  Micro during dogfooding.
 
   Plan: Base operating system <base-operating-system.md>
   Current scope: Second distro, then Void pilot.

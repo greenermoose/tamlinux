@@ -103,8 +103,8 @@ COMPOSITOR CONTRACT
 
 Shell UI reads desktop/shell/host/Compositor.qml. HyprlandAdapter.qml is the
 only shell file that imports Quickshell.Hyprland or starts /usr/bin/hyprctl.
-It is the only adapter until tam-pane, Tamlinux's own compositor, adds one
-(D263).
+It is the only adapter until tam-pane, Tamlinux's own compositor and window
+manager, adds one for 0.7.0 dogfooding.
 
 Named actions (focusWorkspace, focusOutput, setDpms) record the request unless
 TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1. Protocol proof:

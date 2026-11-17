@@ -27,9 +27,9 @@ prepared.
   that, fixes arrive in the next minor version's candidates; a fix that
   cannot wait can still be released as the next patch of the released
   version.
-- **1.x** means Tamlinux no longer depends on [Omarchy](https://omarchy.com)
-  or Hyprland. 0.4 removes Omarchy while Hyprland keeps running; **1.0**
-  removes Hyprland.
+- **0.4** removes Omarchy while Hyprland keeps running. Tamlinux 0.7.0
+  starts tam-pane dogfooding with Hyprland available as a fallback.
+  The timing of Hyprland retirement remains open.
 
 **0.4 and 0.5 are complete.** Before this scheme, 0.4.0 to 0.4.4 were milestones of
 their own, and 0.4.4 used lettered candidates (0.4.4-a to 0.4.4-m). From
@@ -54,10 +54,10 @@ issued.
 | **0.3** | The Tamlinux shell and its rewritten plugins are the daily bar. |
 | **0.4** | A packaged desktop independent of Omarchy: it installs on clean Arch/Hyprland, owns login, boot and sleep on this workstation, and the Omarchy packages are removed (first proof gate). |
 | **0.5** | Input usability and a new look. |
-| **0.6** | A dependable Arch/Hyprland baseline, also running on a second machine. |
-| **0.7** | tam-pane, Tamlinux's own compositor, beside Hyprland; dogfooding starts. |
-| **0.8** | tam-pane as the daily driver (second proof gate). |
-| **1.0** | Hyprland removed; Tamlinux runs on tam-pane. |
+| **0.6** | A dependable Arch/Hyprland baseline, also running on a second machine, with phased dependency reduction. |
+| **0.7** | Start dogfooding tam-pane, tam-clam, tam-last and tam-edit in 0.7.0. Keep Hyprland as a fallback. |
+| **0.8** | Compositor milestone open. |
+| **1.0** | Prove the fresh-install path. |
 | **1.1** | The same package on a second distribution. |
 | **1.2** | A Void pilot with native packages. |
 | **1.3** | Repeatable installs and a terminal-only profile. |

@@ -27,7 +27,7 @@ The shell gets its compositor facts from standard Wayland protocols wherever
 a protocol exists. Compositor IPC fills only the remaining gaps. The shared
 code runs first beside the existing Hyprland backend on the daily desktop and
 changes nothing. When the two agree over a period Fred accepts, the protocol
-source becomes authoritative on Hyprland. At 0.7 tam-pane's adapter is built
+source becomes authoritative on Hyprland. For 0.7.0, tam-pane's adapter is built
 on the same layer (D263), so tam-pane starts from code already in daily use.
 
 ## Problem
@@ -37,30 +37,9 @@ compositor-neutral facade, and exactly one adapter fills it. Behind that
 boundary, each adapter is self-contained:
 
 - `HyprlandAdapter.qml`, used daily, gets everything from Hyprland IPC.
-- A Sway development adapter preferred `ext-workspace-v1` through
-  `Quickshell.WindowManager` (Step 5 in
-  [desktop decoupling](desktop-decoupling.md)), but only against fixtures.
-  It was removed on 2026-11-17 when tam-pane replaced Sway (D263); the gaps
-  below describe that protocol path, which tam-pane's adapter inherits.
-
-A review on 2026-10-08 found three gaps in that path. A standalone probe with
-Quickshell 0.3.1 on Hyprland 0.56.2 supported the first two:
-
-1. **One-time reads see no workspaces.** `publishLive()` reads
-   `WindowManager.windowsets` imperatively, once, at startup. In the probe,
-   imperative reads returned an empty list even six seconds after the
-   compositor had sent every workspace and `done`. A QML property **bound**
-   to `WindowManager.windowsets` received them all. As written, the adapter
-   would always fall back to Sway IPC.
-2. **Workspace-to-output assignment is discarded.** The adapter sets each
-   workspace's `output` to `""` on the protocol path. The protocol provides
-   it through `Windowset.projection.screens` and
-   `WindowManager.screenProjection(screen)`; the probe returned the correct
-   output for every workspace on a three-output desktop. The multi-monitor
-   modes in `fred.workspaces` need this assignment.
-3. **No updates after startup.** The adapter publishes once and has no change
-   handlers. This was expected for a slice tested against fixtures, but it is
-   not yet a working backend.
+The workspace protocol source must bind to the live QML properties, retain
+workspace-to-output assignments, and update when workspaces or outputs
+change. Multi-monitor modes in `fred.workspaces` depend on those assignments.
 
 Hyprland 0.56.2 implements `ext-workspace-v1`,
 `wlr-output-management-unstable-v1`, `wlr-output-power-management-unstable-v1`,
@@ -128,10 +107,10 @@ runs alongside 0.4.0. Milestone B is the next step after 0.4.0 is accepted.
 
 | Milestone | Work | Acceptance evidence |
 | --- | --- | --- |
-| **A. Develop** (alongside 0.4.0) | `ProtocolState.qml`; adapter refactor with no behaviour change on Hyprland; fixtures for per-output workspace groups, `canActivate` false on active workspaces, a workspace that moves between outputs, hotplug add/remove, and an empty initial list that fills later | Unit and fixture tests; isolated proof shell on Hyprland shows protocol and IPC snapshots equal; Sway fixture mode still passes |
+| **A. Develop** (alongside 0.4.0) | `ProtocolState.qml`; adapter refactor with no behaviour change on Hyprland; fixtures for per-output workspace groups, `canActivate` false on active workspaces, a workspace that moves between outputs, hotplug add/remove, and an empty initial list that fills later | Unit and fixture tests; isolated proof shell on Hyprland shows protocol and IPC snapshots equal |
 | **B. Shadow on the daily desktop** (the step after 0.4.0) | Deploy with shadow mode on; no behaviour change | A Tamlinux step accepted by Fred: no regression, and the comparison log is being written |
 | **C. Authoritative on Hyprland** | Protocol source drives workspaces; IPC fills gaps; rollback flag retained | The shadow period below is met. A Tamlinux step accepted by Fred; all eight plugins behave unchanged |
-| **D. tam-pane on the shared layer** | Build tam-pane's adapter as a gap filler from the start | Part of 0.7 (D263); real tests on tam-pane |
+| **D. tam-pane on the shared layer** | Build tam-pane's adapter as a gap filler from the start | Part of 0.7.0; real tests on tam-pane |
 
 ## Shadow period before milestone C
 
@@ -171,10 +150,6 @@ the default Hyprland path. Global focus, windows, keyboard, bindings, display
 power and special workspaces remain adapter facts. Protocol activation checks
 `canActivate`; an already-active workspace succeeds without a request.
 
-The Sway development adapter then used the shared source and a bound
-combined snapshot instead of one-time protocol reads; it was removed under
-D263. tam-pane's adapter and session integration are milestone D at 0.7.
-
 Verification:
 
 - All **398 desktop tests passed**, including actual offscreen QML fixtures
@@ -185,8 +160,6 @@ Verification:
   for **three outputs and four workspaces** on Hyprland with Quickshell 0.3.1.
   The isolated shell creates no surfaces, dispatches no actions, and exits
   within 15 seconds. It reads only through the existing adapter commands.
-- `python3 desktop/launch-clock-proof --selftest --compositor sway`: passed;
-  fixed fixture snapshots and recorded-action checks still work.
 
 No physical hotplug, suspend, desktop-mode change or daily shadow trial was
 performed by this milestone. The reactive tests use mutable fixture objects;
@@ -195,28 +168,11 @@ format, urgency and out-of-contract workspaces are not compared to IPC, which
 does not currently expose corresponding facade fields. ShellScreen exposes
 `model`, but no separate manufacturer field in the installed Quickshell API.
 
-## Decided 2026-10-08
+## Display power
 
-- **Schedule.** Milestone A runs alongside 0.4.0, because it deploys nothing.
-  Milestone B is the next step after 0.4.0 is accepted, and the menu step
-  follows it. This gives shadow mode the longest daily use before 0.7, keeps
-  it out of 0.4.0's baseline and rollback, and leaves independence work first.
-  Rejected: B before 0.4.0, which would put two changes in flight during the
-  baseline capture; B at the end of 0.6 or at 0.7, which would lose most of
-  the shadow period.
-- **Shadow period.** A minimum time plus required events, as above. A time
-  limit alone could pass without the intermittent wake and hotplug paths;
-  events alone could be met by forcing them in an afternoon. Rejected:
-  staying in shadow until 0.7. Shadow mode tests reads only, so workspace
-  activation through the protocol would then first run on Sway.
-- **Display power.** Stays on adapter IPC until 0.7.0. The development
-  workstation's display-fault mitigations depend on Hyprland's own
-  display-power handling, and the standard protocol's path inside Hyprland
-  has not been shown to be the same. At 0.7, when tam-pane needs the same
-  function, evaluate `wlopm` (packaged on Arch and Void) as one client for
-  both compositors. Rejected for now: switching to `wlopm` during the
-  independence stages; a resident helper to read display power for the
-  shadow comparison.
+Keep display power on adapter IPC through the Hyprland baseline. The current
+display-fault mitigations depend on Hyprland's IPC behavior. During 0.7.0
+integration, evaluate whether `wlopm` can serve both compositors.
 
 ## Daily shadow evidence
 

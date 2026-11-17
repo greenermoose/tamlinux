@@ -18,8 +18,7 @@ Wayland, River, Hyprland, Quickshell, and Omarchy.
   GPL-3.0-or-later
 
   Desktop
-  Hyprland + Quickshell (target: tam-pane, Tamlinux's own compositor, +
-  Quickshell, as one installable workstation package)
+  Hyprland + Quickshell (tam-pane dogfooding planned for 0.7.0)
 
   Plugin suite
   In-repo desktop/plugins/ <desktop/plugins/README> (fred.* 2.x)
@@ -82,19 +81,28 @@ done: released 0.4.8 (2026-10-22) removed Omarchy packages, and Blue Sparkler
 2. 0.6: dependable baseline (current). Fix GPU-resume and hibernation faults
   or accept mitigations, pin carried patches with upstream status, establish
   routine updates/rollback, and run a host-safe Arch install on a second
-  laptop.
-3. 0.7–1.0: tam-pane. Tamlinux's own Wayland compositor installs beside
-  Hyprland and dogfooding starts (0.7); daily use (0.8) and Hyprland's removal
-  (1.0) follow.
-4. 1.1–1.3: other distributions and a minimal base. Verify a different
+  laptop. Reduce dependencies in phases while preserving required workflows
+  and recovery.
+3. 0.7.0 begins dogfooding four Tamlinux components.
+4. 1.0: prove the fresh-install path.
+5. 1.1–1.3: other distributions and a minimal base. Verify a different
   distribution, then Void + runit + seatd + Btrfs and native xbps-src
   delivery; compare musl/glibc. antiX Core/runit is the fallback for a Void
   showstopper. Repeatable installation and terminal-only profiles follow.
 
-tam-pane is developed in its own repository while the workstation runs
-0.6 on Hyprland. The development plans <docs/plans/README>
-carry detailed acceptance. Planning changes do not bump <VERSION> or install
-components.
+The components are being developed alongside the 0.6.x baseline.
+
+- tam-pane, the Wayland compositor and window manager
+  <https://github.com/greenermoose/tam-pane>
+- tam-clam, the interactive command shell
+  <https://github.com/greenermoose/tam-clam>
+- tam-last, the terminal emulator taking over from foot for dogfooding
+  <https://github.com/greenermoose/tam-last>
+- tam-edit, the text editor taking over from Micro for dogfooding
+  <https://github.com/greenermoose/tam-edit>
+
+Hyprland remains available for recovery during dogfooding. Dates for adopting tam-pane as the daily compositor and retiring
+Hyprland remain open. See the development plans <docs/plans/README>.
 
 
 TARGETS
@@ -111,9 +119,7 @@ updated on 2026-10-06:
   it has a showstopper, try antiX Core. Btrfs is the preferred pilot
   filesystem.
 - tam-pane plus seatd. Provide a keyboard-driven tiling Wayland desktop
-  inspired by the UI Omarchy provides, in Tamlinux's own compositor (D263,
-  replacing the Sway choice of the 2026-10-03 field survey
-  <upstream/2026-10-03-compositor.md>); test its rendering paths on
+  inspired by the UI Omarchy provides, in Tamlinux's own compositor. Test its rendering paths on
   representative older graphics hardware.
 - runit for init and service supervision. The target workstation uses runit
   for PID 1 and native services, without systemd.

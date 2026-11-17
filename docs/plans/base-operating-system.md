@@ -4,7 +4,7 @@
 workstation environment aimed at the best possible user experience on any
 hardware. The workstation package remains `tamlinux`; the terminal command is `tam`
 (named 2026-10-07). Existing-distribution
-Nix delivery and native Void packaging are Tamlinux engineering work. Hardware
+bundle delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
@@ -16,7 +16,7 @@ We will try **Void Linux** as the base distribution, using **runit** for init
 and service supervision and **Btrfs** as the preferred pilot filesystem.
 If Void presents a showstopper, we will try **antiX Linux Core with runit**.
 The Arch workstation remains the working development system. First accept
-Tamlinux on Hyprland without Omarchy (0.6), then Tamlinux on tam-pane (0.7–1.0, D263),
+Tamlinux on Hyprland without Omarchy (0.6), then start tam-pane dogfooding in 0.7.0,
 then a second distribution (1.1). The Void pilot follows on secondary hardware
 (1.2). Hardware selection can proceed earlier; pilot implementation does not
 become the current desktop focus.

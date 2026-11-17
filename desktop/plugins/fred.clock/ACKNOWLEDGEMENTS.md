@@ -12,7 +12,7 @@ Omarchy component authors were checked against the public history through v4.0.4
 
 Each named entry identifies an authored component, a documented design influence, a specific change or public report, or responsibility for a foundation used by this repository. Contributor-roster membership alone is not enough for a named entry. Wider communities are credited collectively below.
 
-**Version scope:** Hyprland credits describe the temporary Tamlinux 0.x platform and its compatibility patches. Tamlinux’s [public roadmap](https://github.com/greenermoose/tamlinux/blob/main/README) removes Hyprland at 1.0 in favor of Sway. Remove these dependency-only entries from future acknowledgements when the stack is no longer used. Historical forks and any retained derived code keep their applicable source notices.
+**Version scope:** Hyprland credits describe the temporary Tamlinux 0.x platform and its compatibility patches. Tamlinux’s [public roadmap](https://github.com/greenermoose/tamlinux/blob/main/README) starts tam-pane dogfooding in 0.7.0 with Hyprland available as a fallback. Remove these dependency-only entries from future acknowledgements when the stack is no longer used. Historical forks and any retained derived code keep their applicable source notices.
 
 ## People
 
@@ -24,7 +24,7 @@ Each named entry identifies an authored component, a documented design influence
 | **Guido van Rossum (`gvanrossum`)** — Creator of Python, the interpreter and standard library used by the suite’s command and data helpers. [Work, license and copyright](#python). [Evidence](https://www.python.org/doc/essays/foreword/) | Microsoft [Public profile / project contact](https://github.com/gvanrossum); [Website](https://python.org/~guido/) |
 | **HANCORE (`HANCORE-linux`)** — Marketplace maintainer and named public reviewer. Feedback on subprocess supervision, bounded calendar input and safe cache writes shaped the clock’s hardening and shared suite patterns. [Work, license and copyright](#marketplace). [Evidence](https://github.com/omacom/omarchy-plugin-marketplace/issues/6509#issuecomment-5647408125) | No affiliation stated in the inspected public profile/credit. [Public profile / project contact](https://github.com/HANCORE-linux) |
 | **Konstantin Bulenkov (`bulenkov`)** — JetBrains Mono project lead; helped make the base typeface used by the installed Nerd Font available. [Work, license and copyright](#jetbrains-mono). [Evidence](https://www.jetbrains.com/lp/mono/) | @JetBrains [Public profile / project contact](https://github.com/bulenkov); [Website](http://bulenkov.com) |
-| **Kristian Høgsberg** — Wayland’s original author and a named copyright holder. Its client/compositor protocol enables both the current shell and the planned Sway desktop. [Work, license and copyright](#wayland). [Evidence](https://github.com/wayland-mirror/wayland/blob/main/COPYING) | Wayland project [Public profile / project contact](https://wayland.freedesktop.org/) |
+| **Kristian Høgsberg** — Wayland’s original author and a named copyright holder. Its client/compositor protocol enables both the current shell and the planned tam-pane desktop. [Work, license and copyright](#wayland). [Evidence](https://github.com/wayland-mirror/wayland/blob/main/COPYING) | Wayland project [Public profile / project contact](https://wayland.freedesktop.org/) |
 | **Lars Knoll** — Longtime Qt engineer and Qt chief maintainer at the time of the project’s 2020 technical conference. His engineering leadership helped develop the UI framework used by Quickshell and Omawrite. [Work, license and copyright](#qt). [Evidence](https://www.qt.io/development/resources/videos/foundation-for-the-future-are-we-excited-qt-virtual-tech-con-2020) | Qt project; historical role stated in the 2020 source [Public profile / project contact](https://www.qt.io/development/resources/videos/foundation-for-the-future-are-we-excited-qt-virtual-tech-con-2020) |
 | **Linus Torvalds (`torvalds`)** — Creator of Linux. Kernel drivers, /proc and /sys underpin the running workstation and hardware telemetry. [Work, license and copyright](#linux). [Evidence](https://www.kernel.org/) | Linux Foundation [Public profile / project contact](https://github.com/torvalds) |
 | **outfoxxed (`outfoxxed`)** — Lead developer of Quickshell, the Qt Quick toolkit that runs the shell, bar widgets, layer surfaces, IPC and helper processes. [Work, license and copyright](#quickshell). [Evidence](https://quickshell.org/) | No affiliation stated in the inspected public profile/credit. [Public profile / project contact](https://github.com/outfoxxed); [Website](https://outfoxxed.me); [Public email](mailto:outfoxxed@outfoxxed.me) |
@@ -49,7 +49,7 @@ The source links below are the authority for complete notices and exceptions. A 
 <a id="hyprland"></a>
 ### Hyprland
 
-- **Connection:** Temporary compositor for the Tamlinux 0.x transition and source of the compatibility fork. The public roadmap removes Hyprland at 1.0.
+- **Connection:** Temporary compositor for the Tamlinux 0.x transition and source of the compatibility fork. Hyprland remains available as a fallback during tam-pane dogfooding.
 - **License:** BSD-3-Clause. [License/source notices](https://github.com/hyprwm/Hyprland/blob/main/LICENSE).
 - **Stated copyright / limits:** Copyright (c) 2022-2026, vaxerski
 - **Source:** [Upstream project](https://github.com/hyprwm/Hyprland). [Wider contributor community](https://github.com/hyprwm/Hyprland/graphs/contributors).
@@ -121,7 +121,7 @@ The source links below are the authority for complete notices and exceptions. A 
 <a id="wayland"></a>
 ### Wayland
 
-- **Connection:** Display protocol used by the current desktop and the planned Sway desktop; a foundation independent of Hyprland.
+- **Connection:** Display protocol used by the current desktop and the planned tam-pane desktop; a foundation independent of Hyprland.
 - **License:** MIT-style license; consult individual file notices. [License/source notices](https://github.com/wayland-mirror/wayland/blob/main/COPYING).
 - **Stated copyright / limits:** Copyright © 2008-2012 Kristian Høgsberg; Copyright © 2010-2012 Intel Corporation; Copyright © 2011 Benjamin Franzke; Copyright © 2012 Collabora, Ltd.
 - **Source:** [Upstream project](https://wayland.freedesktop.org/). [Wider contributor community](https://github.com/wayland-mirror/wayland/graphs/contributors).
