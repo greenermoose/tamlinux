@@ -24,5 +24,6 @@ link its owner, even when its effects span components.
 ## Index
 
 - [0001 — Native Qt launch environment](0001-native-qt-launch-environment.md).
+- [0002 — Installing a new version replaces the chosen background](0002-test-install-replaces-background.md).
 
 Read each record for status rather than maintain duplicate status columns.
