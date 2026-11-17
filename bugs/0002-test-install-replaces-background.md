@@ -1,15 +1,14 @@
 # Bug 0002 — Installing a new version replaces the chosen background
 
-- **Status:** Confirmed.
+- **Status:** Fix available.
 - **Severity:** Medium; every upgrade replaces the background the person
   chose, and they must pick it again.
 - **Affected:** `desktop/theme/engine.py` and `commands/tam-deploy` in
   Tamlinux 0.6.27 and 0.6.28 (bundle deliveries). Earlier versions had no
   portable background selection.
-- **Fixed:** None yet. Proposed for 0.6.29.
-- **Next:** Make the live background link the authority during offline
-  restore, refresh the portable selection from it before the settings
-  capture, and add the regression checks below.
+- **Fixed:** In source on `develop`; planned for 0.6.29, not yet installed.
+- **Next:** Install 0.6.29 over a desktop with a non-default background and
+  confirm the same image after `tam-desktop`.
 
 ## Reproduce
 
@@ -61,27 +60,37 @@ Pick the background again after each install.
 
 ## Fix and verification
 
-Proposed, all in this repository:
+The live link is not always right: after a rollback, the restored selection
+is the deliberate choice. So the fix keeps the selection as the authority and
+removes the two ways it went wrong:
 
-1. `desktop/theme/engine.py`, `sync_state()`: when `current/background`
-   resolves to a supported image, keep it and write the selection that
-   `set_theme()` derived from it. Read and resolve the portable selection
-   only when the link is missing or dangling (fresh account or restored
-   portable state), which is the case 3cf8fb8 meant to cover.
-2. `resolve_background_selection()`: a `theme` selection whose file is
-   missing falls back to the first image in `current/theme/backgrounds`,
-   then to personal images, not to the alphabetically first full path.
-3. `commands/tam-deploy`, `ensure_portable_desktop_state()`: whenever the
-   live link is valid, rewrite the selection from it (atomic, only when it
-   differs), so the capture and the restore agree with the screen. Print one
-   line when an existing selection disagreed with the link.
-4. Regression tests in `desktop/tests/test_theme_ownership.py`: the stale
-   selection reproduction above keeps the live image, the missing-link
-   restore still uses the portable selection (the 0.6.25 case), and the
-   deploy refresh rewrites a disagreeing selection.
+1. `desktop/theme/engine.py`: `resolve_background_selection()` no longer
+   substitutes another image for a missing one. In `sync_state()`, a selection
+   that cannot be resolved falls back to the image that was showing, which
+   `set_theme()` records before rebuilding. Only when nothing is showing does
+   it choose, and then it takes the theme's first image before personal ones.
+2. `commands/tam-deploy`: `ensure_portable_desktop_state()` rewrites the
+   selection from the image on screen before every bundle install, so the
+   switch-time capture and the restore agree with the desktop. When the link
+   is dangling and a selection exists, the selection is left for the restore
+   to resolve.
 
-Acceptance: install 0.6.29 over a desktop with a non-default background and
-confirm the same image after `tam-desktop`.
+Regression checks:
+
+- `desktop/tests/test_theme_ownership.py`: three new tests cover a stale
+  selection (keeps the shown image), a restored valid selection (wins over the
+  shown image, the rollback case), and nothing showing (the theme's first
+  image). The two bug tests fail on the previous engine with the personal
+  image; the full file passes (48 tests).
+- `commands/tam-deploy/tests/bundle_integration.py`:
+  `test_install_keeps_the_shown_background_over_a_stale_selection` runs a
+  bundle activation with a stale selection. It fails on the previous code and
+  passes now. The `tam-deploy` unit suites pass (133 tests). Of the 19
+  integration tests, 18 pass. The other,
+  `test_bundle_native_recovery_prefers_host_record_and_falls_back_to_system`,
+  fails the same way without this change.
+
+Remaining: installed acceptance in 0.6.29.
 
 ## Resolution
 

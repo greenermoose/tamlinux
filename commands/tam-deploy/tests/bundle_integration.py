@@ -484,6 +484,49 @@ class BundleMigration(TransactionRecovery):
         with self.assertRaisesRegex(deploy.DeploymentError, 'dangling or unreadable'):
             self.app.audit_bundle_settings(audited_paths)
 
+    def test_install_keeps_the_shown_background_over_a_stale_selection(self):
+        self.deliveries[self.packages_new] = self._make_ux_delivery()
+        desktop_root = Path(__file__).resolve().parents[3] / 'desktop'
+        engine = desktop_root / 'theme/engine.py'
+        assets = desktop_root / 'assets'
+        helper_dir = self.root / 'theme-bin'; helper_dir.mkdir()
+        for cmd in ('tam-theme-set-templates', 'tam-theme-color', 'tam-theme-colors-from-alacritty'):
+            (helper_dir / cmd).symlink_to(desktop_root.parent / 'commands' / cmd / cmd)
+        init_script = helper_dir / 'tam-theme-init'
+        init_script.write_text(f'#!/bin/sh\nexec python3 "{engine}" initialize "$@"\n')
+        init_script.chmod(0o755)
+        self.enterContext(patch.dict(os.environ, {
+            'TAMLINUX_THEME_INIT': str(init_script),
+            'TAMLINUX_ASSETS_DIR': str(assets),
+            'PATH': str(helper_dir) + ':' + os.environ['PATH'],
+        }))
+        home = self.app.home
+        state = home / '.local/state/tamlinux'
+        chosen = sorted(p.name for p in (assets / 'themes/tokyo-night/backgrounds').iterdir())[-1]
+        (state / 'current/theme/backgrounds').mkdir(parents=True)
+        shutil.copyfile(assets / 'themes/tokyo-night/backgrounds' / chosen, state / 'current/theme/backgrounds' / chosen)
+        (state / 'current/theme/colors.toml').write_text('background = "#1a1b26"\n')
+        (state / 'current/theme.name').write_text('tokyo-night\n')
+        (state / 'current/background').symlink_to(state / 'current/theme/backgrounds' / chosen)
+        stale = {'format': 1, 'kind': 'theme', 'theme': 'tamarack-light', 'file': 'tamarack.png'}
+        (state / 'current/background.selection').write_text(json.dumps(stale) + '\n')
+        personal = home / '.config/tamlinux/backgrounds/tokyo-night/1-personal.jpg'
+        personal.parent.mkdir(parents=True)
+        personal.write_bytes(b'\xff\xd8\xff\xe0personal')
+
+        identifier = self.prepare_bundle()
+        self.app.activate_bundle(identifier)
+
+        self.assertEqual((state / 'current/background').resolve().name, chosen)
+        self.assertEqual(json.loads((state / 'current/background.selection').read_text()),
+                         {'format': 1, 'kind': 'theme', 'theme': 'tokyo-night', 'file': chosen})
+        # A dangling link with a saved selection leaves the restore to resolve it.
+        (state / 'current/background').unlink()
+        (state / 'current/background').symlink_to(self.root / 'missing.jpg')
+        before = (state / 'current/background.selection').read_bytes()
+        self.app.ensure_portable_desktop_state()
+        self.assertEqual((state / 'current/background.selection').read_bytes(), before)
+
     def test_bundle_native_recovery_prefers_host_record_and_falls_back_to_system(self):
         self.assertEqual(self.app.bundle_native_recovery()['sha256'], self.native_recovery['sha256'])
         host_archive = self.root / 'host-native.pkg.tar.zst'

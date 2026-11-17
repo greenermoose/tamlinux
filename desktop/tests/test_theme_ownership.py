@@ -735,4 +735,51 @@ else:
         self.assertEqual((self.current / 'background').resolve(), personal_img)
         self.assertEqual(json.loads((self.current / 'background.selection').read_text()), selection)
 
+    def personal_and_theme_backgrounds(self):
+        self.call('set', 'tokyo-night')
+        # A personal image sorts before the theme's own by full path.
+        personal = self.config / 'tamlinux/backgrounds/tokyo-night/1-personal.jpg'
+        personal.parent.mkdir(parents=True)
+        personal.write_bytes(b'\xff\xd8\xff\xe0personal')
+        names = sorted(p.name for p in (self.current / 'theme/backgrounds').iterdir())
+        return personal, names
+
+    def test_offline_sync_keeps_shown_background_over_stale_selection(self):
+        personal, names = self.personal_and_theme_backgrounds()
+        chosen = names[-1]
+        self.call('bg-set', self.current / 'theme/backgrounds' / chosen)
+        (self.current / 'background.selection').write_text(json.dumps(
+            {'format': 1, 'kind': 'theme', 'theme': 'tamarack-light', 'file': 'tamarack.png'}) + '\n')
+
+        self.call('initialize', '--sync')
+
+        self.assertEqual((self.current / 'background').resolve().name, chosen)
+        self.assertEqual(json.loads((self.current / 'background.selection').read_text()),
+                         {'format': 1, 'kind': 'theme', 'theme': 'tokyo-night', 'file': chosen})
+        self.call('initialize', '--sync')
+        self.assertEqual((self.current / 'background').resolve().name, chosen)
+
+    def test_offline_sync_honours_a_restored_selection_over_the_shown_image(self):
+        personal, names = self.personal_and_theme_backgrounds()
+        self.call('bg-set', self.current / 'theme/backgrounds' / names[-1])
+        # A rollback restores the earlier, still-valid selection.
+        (self.current / 'background.selection').write_text(json.dumps(
+            {'format': 1, 'kind': 'theme', 'theme': 'tokyo-night', 'file': names[1]}) + '\n')
+
+        self.call('initialize', '--sync')
+
+        self.assertEqual((self.current / 'background').resolve().name, names[1])
+
+    def test_offline_sync_without_a_shown_image_uses_the_theme_first(self):
+        personal, names = self.personal_and_theme_backgrounds()
+        (self.current / 'background').unlink()
+        (self.current / 'background').symlink_to(self.base / 'missing.jpg')
+        (self.current / 'background.selection').write_text(json.dumps(
+            {'format': 1, 'kind': 'theme', 'theme': 'tokyo-night', 'file': 'missing.jpg'}) + '\n')
+
+        self.call('initialize', '--sync')
+
+        self.assertEqual((self.current / 'background').resolve().name, names[0])
+        self.assertNotEqual((self.current / 'background').resolve(), personal)
+
 if __name__=='__main__': unittest.main()

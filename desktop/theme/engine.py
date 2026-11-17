@@ -163,9 +163,8 @@ def resolve_background_selection(data, theme=None):
             candidate = root / rel
             if candidate.is_file() and candidate.suffix.lower() in IMAGE_SUFFIXES:
                 return candidate
-        fallback = images(CURRENT / 'theme/backgrounds',
-                          CONFIG / 'tamlinux/backgrounds' / (theme or sel_theme))
-        return fallback[0] if fallback else None
+        # A missing image is not a choice; the caller keeps what is shown.
+        return None
     if kind == 'home':
         rel = Path(data.get('path', ''))
         if rel.is_absolute() or '..' in rel.parts or not str(data.get('path', '')):
@@ -686,16 +685,23 @@ def sync_state():
     set_theme(theme, refresh=False, apply=False)
     if selection is None:
         selection = read_background_selection()
-    if selection is not None:
-        resolved = resolve_background_selection(selection, theme=theme)
-        if resolved is not None:
-            atomic(CURRENT / 'background', link=resolved)
-            write_background_selection(background_selection_data(resolved, theme=theme))
-        elif os.path.lexists(CURRENT / 'background') and not (CURRENT / 'background').exists():
-            choices = images(CURRENT / 'theme/backgrounds', CONFIG / 'tamlinux/backgrounds' / theme)
-            if choices:
-                atomic(CURRENT / 'background', link=choices[0])
-                write_background_selection(background_selection_data(choices[0], theme=theme))
+    if selection is None:
+        return
+    resolved = resolve_background_selection(selection, theme=theme)
+    if resolved is None:
+        # The saved selection names an image that no longer exists. Before
+        # rebuilding, set_theme() recorded the image that was showing; keep
+        # it rather than substitute an unrelated one.
+        shown = read_background_selection()
+        if shown is not None and shown != selection:
+            resolved = resolve_background_selection(shown, theme=theme)
+    if resolved is None and not (CURRENT / 'background').exists():
+        # Nothing is showing: the theme's own first image, then personal ones.
+        choices = images(CURRENT / 'theme/backgrounds') or images(CONFIG / 'tamlinux/backgrounds' / theme)
+        resolved = choices[0] if choices else None
+    if resolved is not None:
+        atomic(CURRENT / 'background', link=resolved)
+        write_background_selection(background_selection_data(resolved, theme=theme))
 
 def install_theme(url):
     if not url:

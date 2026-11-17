@@ -1154,12 +1154,31 @@ class Deployment:
         raise DeploymentError('active desktop background needs portable selection: .local/state/tamlinux/current/background')
 
     def ensure_portable_desktop_state(self) -> None:
+        """Record the background on screen before the switch-time capture.
+
+        The capture and the offline restore both read the portable selection,
+        so a stale one would replace the person's choice on every install.
+        """
         selection_path = self.home / '.local/state/tamlinux/current/background.selection'
-        if os.path.lexists(selection_path):
+        try:
+            derived = self.derive_background_selection()
+        except DeploymentError:
+            if os.path.lexists(selection_path):
+                return  # The restore resolves the saved selection instead.
+            raise
+        if derived is None:
             return
-        derived = self.derive_background_selection()
-        if derived is not None:
-            atomic_json(selection_path, derived)
+        saved = None
+        if selection_path.is_file() and not selection_path.is_symlink():
+            try:
+                saved = json.loads(selection_path.read_text(encoding='utf-8'))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                saved = None
+        if saved == derived:
+            return
+        if os.path.lexists(selection_path):
+            print('tam-deploy: background selection updated to the image on screen', file=sys.stderr)
+        atomic_json(selection_path, derived)
 
     def sync_active_desktop_state(self) -> None:
         theme_name = self.home / '.local/state/tamlinux/current/theme.name'
