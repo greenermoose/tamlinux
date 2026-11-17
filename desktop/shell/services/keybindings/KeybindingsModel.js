@@ -1,7 +1,7 @@
 
 // Keybinding viewer rows for the Tamlinux shell. Pure functions over the
-// compositor facade's bindingsText (Hyprland `hyprctl binds` text, or the
-// Sway adapter's JSON array) and the command table tam-menu-keybindings
+// compositor facade's bindingsText (Hyprland `hyprctl binds` text, or an
+// adapter's JSON array) and the command table tam-menu-keybindings
 // scans from the Lua config. No I/O; Node loads this file for the tests.
 //
 // The modifier names, key renames, and the two web-app rows are ported from

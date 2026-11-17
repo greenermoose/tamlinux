@@ -83,10 +83,10 @@ is private operating procedure, not duplicated here.
   Current scope: Workstation plan for the separate tam component.
 
   Plan: Compositor protocol layer <compositor-protocol-layer.md>
-  Current scope: Protocol facade; Sway adapter later.
+  Current scope: Protocol facade; tam-pane adapter at 0.7 (D263).
 
-  Plan: Sway integration <sway-integration.md>
-  Current scope: After dependable Hyprland baseline (0.7+).
+  tam-pane, Tamlinux's own compositor, is planned in its own repository
+  (D263); it replaced the Sway integration plan.
 
   Plan: Base operating system <base-operating-system.md>
   Current scope: Second distro, then Void pilot.

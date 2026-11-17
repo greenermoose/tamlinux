@@ -3,8 +3,8 @@
 **Target architecture — not the current host.** Today's workstation runs
 Arch Linux with Tamlinux's Hyprland/Quickshell cultivar (see
 [system-layers.md](system-layers.md) and [VERSION](../VERSION)). This document
-describes the intended layered design (Void root-stock, Limine/UKI, Sway
-cultivar). Do not treat its diagrams as a description of the machine you are
+describes the intended layered design (Void root-stock, Limine/UKI,
+tam-pane cultivar). Do not treat its diagrams as a description of the machine you are
 editing now.
 
 Tamlinux is an independent workstation environment designed to deliver an exceptional, responsive, and reliable computing experience across modern and older hardware. A foundational principle of Tamlinux is **transparency and empowerment**: users should enjoy a streamlined, productive daily driver out of the box, while retaining complete clarity into how their operating system is built, why each component was chosen, and how every layer can be inspected and understood.
@@ -14,7 +14,7 @@ To make the architecture intuitive, maintainable, and decoupled, Tamlinux uses a
 ```text
 ┌────────────────────────────────────────────────────────┐
 │                      CULTIVAR                          │
-│   Tamlinux Workstation: Sway + Quickshell + Plugins    │
+│ Tamlinux Workstation: tam-pane + Quickshell + Plugins  │
 │   Themes (Tamarack) + CLI (tam) + Self-Inspection      │
 └──────────────────────────┬─────────────────────────────┘
                            │ grafted onto
@@ -135,9 +135,9 @@ Tamlinux targets a minimal **Void Linux** base utilizing **runit** for service s
 
 **Role:** The cultivated workstation environment that the user interacts with directly: window management, desktop shell, system plugins, theme tokens, productivity tools, and self-inspection facilities.
 
-#### Our Selected Choice: Sway + Quickshell + 8 Plugins + `tam` CLI
+#### Our Selected Choice: tam-pane + Quickshell + 8 Plugins + `tam` CLI
 
-- **Window Management:** **Sway** with `seatd` (transitioning from Hyprland), providing a predictable, lightweight, keyboard-centric tiling Wayland compositor.
+- **Window Management:** **tam-pane**, Tamlinux's own Wayland compositor, with `seatd` (transitioning from Hyprland, D263): dynamic tiling, tags and built-in Lua in a lightweight, keyboard-centric design.
 - **Desktop Shell:** **Quickshell**—a modern, declarative QML shell without the heavy memory footprint or CPU churn of Electron or monolithic desktop environments.
 - **Fred's Plugin Suite:** Eight specialized, sandboxed, high-performance plugins:
   - `fred.workspaces`: Fast, legible workspace management.
@@ -177,7 +177,7 @@ The integration of these four layers delivers a streamlined, fast, and resilient
 3. ROOT-STOCK ───[runit supervises base services; mounts Btrfs subvolumes]
    │
    ▼
-4. CULTIVAR ─────[Sway + Quickshell start; 8 plugins active; ready to work]
+4. CULTIVAR ─────[tam-pane + Quickshell start; 8 plugins active; ready to work]
 ```
 
 ### Key Experience Pillars
@@ -210,7 +210,7 @@ The `tam` command includes built-in inspection and explanation tools designed to
   - Explains the host base distribution, init supervisor (`runit` / `runsvdir`), package database status, and Btrfs subvolume layout.
   - Details snapshot schedules, disk utilization, and recovery points.
 - `tam explain cultivar`
-  - Explains the active compositor (Sway/Hyprland), Quickshell surfaces, loaded plugins, active theme tokens, and user configuration overrides.
+  - Explains the active compositor (tam-pane/Hyprland), Quickshell surfaces, loaded plugins, active theme tokens, and user configuration overrides.
 
 ### Semantic Offline Documentation
 

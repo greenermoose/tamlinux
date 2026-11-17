@@ -103,7 +103,8 @@ COMPOSITOR CONTRACT
 
 Shell UI reads desktop/shell/host/Compositor.qml. HyprlandAdapter.qml is the
 only shell file that imports Quickshell.Hyprland or starts /usr/bin/hyprctl.
-SwayAdapter.qml loads only when TAMLINUX_COMPOSITOR=sway.
+It is the only adapter until tam-pane, Tamlinux's own compositor, adds one
+(D263).
 
 Named actions (focusWorkspace, focusOutput, setDpms) record the request unless
 TAMLINUX_COMPOSITOR_LIVE_ACTIONS=1. Protocol proof:

@@ -33,7 +33,7 @@ framework; `libtam` remains a separate dependency.
 | :-- | :-- |
 | `tam --help` | Show available commands and where to start. |
 | `tam --version` | Read the cultivar version from installed metadata; label command version separately if it differs. |
-| `tam install ...` | Delegate to the installation contract in [the installation plan](installation-framework.md). |
+| `tam install ...` | Delegate to the bundle installation contract in [bundle delivery integration](bundle-delivery-integration.md). |
 | `tam` | Print a concise introduction and available starting points, then exit successfully. |
 | `tam show` | Explicitly open the local guide; print a readable text index when output is piped. |
 | `tam hi` | Open orientation explicitly at any time; never require it before `--help` or installation. |

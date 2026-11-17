@@ -11,7 +11,7 @@
 # through tam-notification-send. The state directory stays
 # ~/.local/state/omarchy/windows for now; plan 18 R10 decides where Tamlinux
 # state lives.
-# Hyprland-only, copied verbatim; the Sway package replaces it.
+# Hyprland-only, copied verbatim; tam-pane will need its own (D263).
 # Copyright (c) David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining

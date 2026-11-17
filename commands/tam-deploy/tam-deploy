@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Deploy a recorded Tamlinux package assembly through Home Manager.
+"""Deploy a recorded Tamlinux package assembly.
 
-Test and Run install the same package at the same locations. A deployment
-is a tamlinux-packages revision: its lock file pins every component.
+Bundles (tam-bundle) are the delivery; Nix and Home Manager remain only as
+the retiring fallback, reached through return-nix. Test and Run install the
+same package at the same locations. A deployment is a tamlinux-packages
+revision: its lock file pins every component.
 
 status:       show the pinned assembly, what is installed and the generation.
 preflight:    verify baseline, build the target and run registered read-only checks.

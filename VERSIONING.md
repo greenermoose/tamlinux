@@ -55,9 +55,9 @@ issued.
 | **0.4** | A packaged desktop independent of Omarchy: it installs on clean Arch/Hyprland, owns login, boot and sleep on this workstation, and the Omarchy packages are removed (first proof gate). |
 | **0.5** | Input usability and a new look. |
 | **0.6** | A dependable Arch/Hyprland baseline, also running on a second machine. |
-| **0.7** | A Sway session beside Hyprland. |
-| **0.8** | Sway as the daily driver (second proof gate). |
-| **1.0** | Hyprland removed; Tamlinux runs on Sway. |
+| **0.7** | tam-pane, Tamlinux's own compositor, beside Hyprland; dogfooding starts. |
+| **0.8** | tam-pane as the daily driver (second proof gate). |
+| **1.0** | Hyprland removed; Tamlinux runs on tam-pane. |
 | **1.1** | The same package on a second distribution. |
 | **1.2** | A Void pilot with native packages. |
 | **1.3** | Repeatable installs and a terminal-only profile. |
@@ -91,9 +91,9 @@ versions in its manifest.
 ## Candidates and lifecycle branches
 
 From 0.4.5, each prepared candidate has a plain `X.Y.Z` version: 0.4.5, then
-0.4.6 for the next, and so on. `VERSION`, changelog headings, Nix and native
-package recipes all write the same number, and Nix and pacman sort it correctly
-with no special spelling. Never reuse a number for a changed assembly: once an
+0.4.6 for the next, and so on. `VERSION`, changelog headings, bundle and
+native package recipes all write the same number, and tam-bundle and pacman
+sort it correctly with no special spelling. Never reuse a number for a changed assembly: once an
 assembly has been prepared under a number, fixes use the next number and
 preserve the earlier candidate's exact record. A candidate has no release tag
 or GitHub Release unless Fred releases it.
@@ -151,34 +151,25 @@ The last overlay-era workstation composite was **1.5.1**. Those git
 tags stay. They are no longer the product version. 0.0.1 is that overlay
 frozen into Tamlinux.
 
-## Tamlinux version vs Home Manager generation
+## Where the installed version lives
 
-These are two different counters. Do not set Tamlinux to `0.0.x` where `x` is
-the Home Manager generation.
-
-| | Tamlinux version | Home Manager generation |
-| :-- | :-- | :-- |
-| What it is | Declared product snapshot (portable, tagged, changelogged) | Local activation counter on one machine |
-| Source of truth | `VERSION` files | `home-manager generations` / `~/.config/tamlinux/generation` |
-| Advances when | Fred decides the product changed | Every successful `home-manager switch` |
-| Portable? | Yes — the same number on a second computer | No — a fresh machine starts at 1 |
-
-On a running workstation:
+A tam-bundle install records the version with the installed product:
 
 ```bash
-cat ~/.config/tamlinux/version           # product version of the active generation
-cat ~/.config/tamlinux/cultivar          # its cultivar name (from 0.4.5)
-echo "$TAMLINUX_VERSION"                 # the same number, as this process saw it
-cat ~/.config/tamlinux/generation        # this machine's Home Manager generation
-home-manager generations                 # full local rollback list
+cat /usr/lib/tamlinux/current/share/tamlinux/version    # e.g. 0.6.28
+cat /usr/lib/tamlinux/current/share/tamlinux/cultivar   # e.g. KBN WB
+tam-bundle status        # live and previous bundle, and their hashes
+tam-deploy status        # the recorded assembly and stage
 ```
 
-The file is the source of truth: activation writes it with every generation.
-`$TAMLINUX_VERSION` is copied from it in three places. Every new bash shell
-reads the file, the systemd user manager loads it at login (`environment.d`),
-and each activation also sets it in the running user manager, so services
-and applications started after a switch see the new number without a new
-login. A process that was already running keeps the number it started with.
+`/usr/lib/tamlinux/current` links to the live bundle's version directory, and
+the previous bundle stays installed beside it for rollback. The shell copies
+the version into `$TAMLINUX_VERSION` when it starts; a process that was already
+running keeps the number it started with.
+
+A Home Manager generation is not a Tamlinux version. Machines still carrying
+a Home Manager profile from Nix delivery keep it only until Nix is retired;
+never derive a version number from a generation counter.
 
 Gate A (released 0.4.8) removed Omarchy as a dependency. Any leftover
 `$OMARCHY_CONFIG_VERSION` or `~/.config/omarchy/version` paths on a host are

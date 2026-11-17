@@ -27,8 +27,8 @@ The shell gets its compositor facts from standard Wayland protocols wherever
 a protocol exists. Compositor IPC fills only the remaining gaps. The shared
 code runs first beside the existing Hyprland backend on the daily desktop and
 changes nothing. When the two agree over a period Fred accepts, the protocol
-source becomes authoritative on Hyprland. At 0.7 the Sway adapter is rebuilt
-on the same layer, so Sway starts from code that is already in daily use.
+source becomes authoritative on Hyprland. At 0.7 tam-pane's adapter is built
+on the same layer (D263), so tam-pane starts from code already in daily use.
 
 ## Problem
 
@@ -37,11 +37,11 @@ compositor-neutral facade, and exactly one adapter fills it. Behind that
 boundary, each adapter is self-contained:
 
 - `HyprlandAdapter.qml`, used daily, gets everything from Hyprland IPC.
-- `SwayAdapter.qml` is meant to prefer `ext-workspace-v1` through
+- A Sway development adapter preferred `ext-workspace-v1` through
   `Quickshell.WindowManager` (Step 5 in
-  [desktop decoupling](desktop-decoupling.md)). It runs only when
-  `TAMLINUX_COMPOSITOR=sway`, so its protocol path has never run against a
-  live compositor.
+  [desktop decoupling](desktop-decoupling.md)), but only against fixtures.
+  It was removed on 2026-11-17 when tam-pane replaced Sway (D263); the gaps
+  below describe that protocol path, which tam-pane's adapter inherits.
 
 A review on 2026-10-08 found three gaps in that path. A standalone probe with
 Quickshell 0.3.1 on Hyprland 0.56.2 supported the first two:
@@ -66,8 +66,8 @@ Hyprland 0.56.2 implements `ext-workspace-v1`,
 `wlr-output-management-unstable-v1`, `wlr-output-power-management-unstable-v1`,
 `ext-foreign-toplevel-list-v1`, `wlr-foreign-toplevel-management-unstable-v1`,
 `ext-idle-notify-v1`, `ext-session-lock-v1` and `ext-image-copy-capture-v1`.
-Sway 1.12 implements `ext-workspace-v1`. The protocol path can therefore run
-on the current desktop now.
+The protocol path can therefore run on the current desktop now, and it
+keeps the shell independent of any one compositor's IPC.
 
 ## Approach
 
@@ -84,7 +84,7 @@ on the current desktop now.
 | Output mode, position, scale | `wlr-output-management-unstable-v1` | none found in 0.3.1 | Live apply may use a client later; persistence stays in compositor configuration |
 | Windows per workspace | none (foreign-toplevel lists windows, not their workspace) | `ToplevelManager` lists only | Adapter IPC |
 | Keyboard layout, bindings | none | — | Adapter IPC; bindings from generated configuration |
-| Popup focus grab | Hyprland-only | `HyprlandFocusGrab` | None on Sway (already handled) |
+| Popup focus grab | Hyprland-only | `HyprlandFocusGrab` | None elsewhere (already handled) |
 
 **Shape:**
 
@@ -95,9 +95,9 @@ on the current desktop now.
    snapshot, including each workspace's output. It applies the existing
    bounds: workspace ids 1–10, validated output names, list caps. It starts no
    process.
-2. **Adapters become gap fillers.** `HyprlandAdapter.qml` and
-   `SwayAdapter.qml` each combine `ProtocolState` with only their own gaps
-   from the table. Adapter files keep their existing import boundaries.
+2. **Adapters become gap fillers.** `HyprlandAdapter.qml`, and tam-pane's
+   adapter when it arrives, each combine `ProtocolState` with only their own
+   gaps from the table. Adapter files keep their existing import boundaries.
    `Compositor.qml` and the facade fields do not change; `workspaces[].output`
    already exists.
 3. **Shadow mode** (environment flag, read-only). `HyprlandAdapter` keeps
@@ -112,14 +112,13 @@ on the current desktop now.
 ## Boundaries
 
 - Independence on Hyprland (0.4–0.6) remains the focus. This plan does not
-  start Sway integration, packaging or a Sway session.
+  start tam-pane integration, packaging or a tam-pane session.
 - No new plugin contract. The plugins keep reading the existing facade;
   `fred.workspaces` and `fred.monitor` 2.1.0 work is unaffected.
 - Closed execution is unchanged. The protocol layer runs no commands.
   Existing adapter commands keep their fixed argv, closed environment and
   deadlines.
-- Output configuration persistence stays compositor-specific, as the Sway
-  plan already sets out.
+- Output configuration persistence stays compositor-specific.
 
 ## Milestones
 
@@ -132,7 +131,7 @@ runs alongside 0.4.0. Milestone B is the next step after 0.4.0 is accepted.
 | **A. Develop** (alongside 0.4.0) | `ProtocolState.qml`; adapter refactor with no behaviour change on Hyprland; fixtures for per-output workspace groups, `canActivate` false on active workspaces, a workspace that moves between outputs, hotplug add/remove, and an empty initial list that fills later | Unit and fixture tests; isolated proof shell on Hyprland shows protocol and IPC snapshots equal; Sway fixture mode still passes |
 | **B. Shadow on the daily desktop** (the step after 0.4.0) | Deploy with shadow mode on; no behaviour change | A Tamlinux step accepted by Fred: no regression, and the comparison log is being written |
 | **C. Authoritative on Hyprland** | Protocol source drives workspaces; IPC fills gaps; rollback flag retained | The shadow period below is met. A Tamlinux step accepted by Fred; all eight plugins behave unchanged |
-| **D. Sway on the shared layer** | Rebuild `SwayAdapter.qml` as a gap filler; remove its one-time reads | Part of 0.7.0 in the [Sway plan](sway-integration.md); real IPC tests on Sway 1.12 |
+| **D. tam-pane on the shared layer** | Build tam-pane's adapter as a gap filler from the start | Part of 0.7 (D263); real tests on tam-pane |
 
 ## Shadow period before milestone C
 
@@ -172,10 +171,9 @@ the default Hyprland path. Global focus, windows, keyboard, bindings, display
 power and special workspaces remain adapter facts. Protocol activation checks
 `canActivate`; an already-active workspace succeeds without a request.
 
-The Sway development adapter uses the shared source and a bound combined
-snapshot instead of one-time protocol reads. Its fixture mode leaves the
-protocol component unloaded. Real Sway gap completion and session integration
-remain milestone D at 0.7.0.
+The Sway development adapter then used the shared source and a bound
+combined snapshot instead of one-time protocol reads; it was removed under
+D263. tam-pane's adapter and session integration are milestone D at 0.7.
 
 Verification:
 
@@ -214,7 +212,7 @@ does not currently expose corresponding facade fields. ShellScreen exposes
 - **Display power.** Stays on adapter IPC until 0.7.0. The development
   workstation's display-fault mitigations depend on Hyprland's own
   display-power handling, and the standard protocol's path inside Hyprland
-  has not been shown to be the same. At 0.7.0, when Sway needs the same
+  has not been shown to be the same. At 0.7, when tam-pane needs the same
   function, evaluate `wlopm` (packaged on Arch and Void) as one client for
   both compositors. Rejected for now: switching to `wlopm` during the
   independence stages; a resident helper to read display power for the

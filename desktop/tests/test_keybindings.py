@@ -459,7 +459,7 @@ class ModelTests(unittest.TestCase):
             "Meta Shift + MINUS                  → Zoom out\tlua\thl.dsp.zoom({ by = -1 })\n",
         )
 
-    def test_sway_bindings_are_read_from_the_json_form(self):
+    def test_adapter_bindings_are_read_from_the_json_form(self):
         self.assertEqual(
             run_model(
                 "M.records(TEXTS[0], TEXTS[1])",

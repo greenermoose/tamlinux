@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell
 
 // Compositor-neutral state for one shell. Widgets read this object.
-// Hyprland stays in HyprlandAdapter.qml. Sway stays in SwayAdapter.qml.
-// The unselected file is not loaded.
+// Each compositor's details stay in its adapter: Hyprland in
+// HyprlandAdapter.qml. tam-pane will add its own (D263).
 QtObject {
   id: facade
 
@@ -28,12 +28,12 @@ QtObject {
     return true
   }
   // A component the bar's popups instantiate to close on an outside click,
-  // or null when the compositor has no focus grab (Sway).
+  // or null when the compositor has no focus grab.
   readonly property var focusGrab: backend && backend.focusGrab ? backend.focusGrab : null
 
   readonly property string backendName: {
-    var name = String(Quickshell.env("TAMLINUX_COMPOSITOR") || "hyprland")
-    return name === "sway" ? "sway" : "hyprland"
+    // Hyprland is the only adapter until tam-pane's arrives (D263).
+    return "hyprland"
   }
 
   function outputForScreen(screen) {
@@ -100,7 +100,7 @@ QtObject {
   }
 
   function loadBackend() {
-    var file = backendName === "sway" ? "SwayAdapter.qml" : "HyprlandAdapter.qml"
+    var file = "HyprlandAdapter.qml"
     var component = Qt.createComponent(Qt.resolvedUrl(file))
     if (component.status === Component.Ready) {
       finishBackend(component)

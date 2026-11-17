@@ -10,7 +10,7 @@ adapters, fonts, assets and About/screensaver identity are implemented for
 **0.4.3**. Effective consumer wiring, native browser/boot ownership, interrupted
 migration/recovery and graphical proof remain. [Implementation and limits](0.4.3-theme-closure.md).
 **0.5** adds the chosen Tamarack visual redesign after independent 0.4.3
-acceptance. Hyprland remains the compositor; Sway integration is later.
+acceptance. Hyprland remains the compositor; tam-pane integration is later (D263).
 
 **2026-10-29 development:** Tamarack dark and light palettes generate from
 one token file, with picker swatches and contrast checks for base tokens,

@@ -191,7 +191,7 @@ def session_environment(environ: dict[str, str]) -> tuple[dict[str, str], list[s
     session = hyprland_environ(env)
     save_launch_host_environment(env, session)
     env.setdefault("QML_IMPORT_PATH", str(SHELL / "modules"))
-    # Plugin helpers (fred.workspaces, fred.monitor) and the Sway adapter load
+    # Plugin helpers (fred.workspaces, fred.monitor) load
     # the compositor backend from here; without it they fail closed.
     env.setdefault("TAMLINUX_COMPOSITOR_COMMANDS", str(HOST))
     # Always describe the shell being launched, never an inherited selection.

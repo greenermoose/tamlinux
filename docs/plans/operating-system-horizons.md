@@ -70,8 +70,8 @@ candidates.
 
 Tam 2.0 carries forward Tamlinux's outcomes: ergonomics, responsiveness,
 reliability, accessibility, hardware longevity, repairability, controllable
-updates and recovery, and a maintainable total cost. Whether runit, Sway,
-bash, Nix and today's Linux applications carry over unchanged is Fred's
+updates and recovery, and a maintainable total cost. Whether runit, tam-pane,
+bash and today's Linux applications carry over unchanged is Fred's
 decision, not an automatic reason to exclude a candidate. Tamlinux ideas on
 Redox might become a new environment rather than a rebuild of the Linux
 desktop.

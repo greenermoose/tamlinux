@@ -1,11 +1,16 @@
 # First bundle delivery and return to Home Manager
 
-The first Nix-to-bundle bridge is implemented in source and verified with
-isolated fixtures. It has not been installed or accepted on a workstation.
-Nix/Home Manager remains the daily delivery and recovery mechanism.
-Subsequent bundle updates, registered-account `init` without a Nix profile,
-and their undo paths now pass isolated fixtures. The source remains gated
-on complete portable desktop-state coverage before workstation migration.
+**Status, 2026-11-17:** tam-bundle is Tamlinux's delivery. The development
+workstation moved from Nix to bundles with 0.6.27 and installed 0.6.28 as a
+bundle update; both used this bridge. Home Manager still owns some personal
+home files there until Nix and Home Manager are retired, after fleet
+acceptance and Nix-free recovery are proved. This plan records how the bridge
+was built and the `return-nix` recovery it keeps until then.
+
+The sections below describe the bridge as it was developed: first in
+isolated fixtures, then for subsequent bundle updates, registered-account
+`init` without a Nix profile, and their undo paths, gated on portable
+desktop-state coverage before the workstation migrated.
 
 ## Continuation checkpoint
 

@@ -18,8 +18,8 @@ Wayland, River, Hyprland, Quickshell, and Omarchy.
   GPL-3.0-or-later
 
   Desktop
-  Hyprland + Quickshell (target: Sway + Quickshell, as one installable
-  workstation package)
+  Hyprland + Quickshell (target: tam-pane, Tamlinux's own compositor, +
+  Quickshell, as one installable workstation package)
 
   Plugin suite
   In-repo desktop/plugins/ <desktop/plugins/README> (fred.* 2.x)
@@ -62,7 +62,7 @@ non-volatile memory chips.
 Arch's rolling updates, AntiX's non-systemd efficiency and hardware longevity,
 and Nix's atomic package rollbacks are core technical inspirations. Wayland
 and Quickshell power the desktop. The target is a tiling window system
-inspired by the UI Omarchy provides, built on Sway and Void Linux.
+inspired by the UI Omarchy provides, built on tam-pane and Void Linux.
 
 This repository is a public explainer, not an ISO, installer, or package
 repository yet.
@@ -83,15 +83,16 @@ done: released 0.4.8 (2026-10-22) removed Omarchy packages, and Blue Sparkler
   or accept mitigations, pin carried patches with upstream status, establish
   routine updates/rollback, and run a host-safe Arch install on a second
   laptop.
-3. 0.7–1.0: Sway. Complete compositor integration beside Hyprland (0.7), prove
-  physical daily parity (0.8), then remove Hyprland (1.0).
+3. 0.7–1.0: tam-pane. Tamlinux's own Wayland compositor installs beside
+  Hyprland and dogfooding starts (0.7); daily use (0.8) and Hyprland's removal
+  (1.0) follow.
 4. 1.1–1.3: other distributions and a minimal base. Verify a different
   distribution, then Void + runit + seatd + Btrfs and native xbps-src
   delivery; compare musl/glibc. antiX Core/runit is the fallback for a Void
   showstopper. Repeatable installation and terminal-only profiles follow.
 
-Prepared Sway adapters are retained; they do not move Sway integration ahead
-of a dependable Hyprland baseline. The development plans <docs/plans/README>
+tam-pane is developed in its own repository while the workstation runs
+0.6 on Hyprland. The development plans <docs/plans/README>
 carry detailed acceptance. Planning changes do not bump <VERSION> or install
 components.
 
@@ -109,15 +110,16 @@ updated on 2026-10-06:
 - Void Linux first; antiX Core fallback. Try Void as the base distribution. If
   it has a showstopper, try antiX Core. Btrfs is the preferred pilot
   filesystem.
-- Sway plus seatd. Provide a keyboard-driven tiling Wayland desktop inspired
-  by the UI Omarchy provides. Sway remains the selected compositor after the
-  field survey <upstream/2026-10-03-compositor.md>; test its rendering paths
-  on representative older graphics hardware.
+- tam-pane plus seatd. Provide a keyboard-driven tiling Wayland desktop
+  inspired by the UI Omarchy provides, in Tamlinux's own compositor (D263,
+  replacing the Sway choice of the 2026-10-03 field survey
+  <upstream/2026-10-03-compositor.md>); test its rendering paths on
+  representative older graphics hardware.
 - runit for init and service supervision. The target workstation uses runit
   for PID 1 and native services, without systemd.
-- One workstation package, two deliveries. On existing distributions, a Nix
-  flake with a Home Manager module and a small native host adapter; on Void,
-  native xbps-src packages built from the same sources.
+- One workstation package, two deliveries. On existing distributions, a
+  recorded tam-bundle assembly; on Void, native xbps-src packages built from
+  the same sources. Nix and Home Manager are being retired.
 - Tracked packages and complete recovery. Btrfs checkpoints of the system and
   package database, paired with the boot artifacts, on the Void base.
 - musl versus glibc. Compare full workloads and compatibility requirements;

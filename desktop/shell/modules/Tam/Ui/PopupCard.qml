@@ -2,7 +2,7 @@
 // (MIT, Copyright (c) David Heinemeier Hansson; see ../../../services/LICENSE-omarchy).
 // Changes: imports Tam.Commons; the outside-click grab comes from the
 // compositor facade (bar.compositor.focusGrab) instead of a compositor
-// import here, and is absent where the compositor has none (Sway).
+// import here, and is absent where the compositor has none.
 
 import QtQuick
 import Quickshell

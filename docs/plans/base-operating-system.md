@@ -16,7 +16,7 @@ We will try **Void Linux** as the base distribution, using **runit** for init
 and service supervision and **Btrfs** as the preferred pilot filesystem.
 If Void presents a showstopper, we will try **antiX Linux Core with runit**.
 The Arch workstation remains the working development system. First accept
-Tamlinux on Hyprland without Omarchy (0.6), then Tamlinux on Sway (0.7–1.0),
+Tamlinux on Hyprland without Omarchy (0.6), then Tamlinux on tam-pane (0.7–1.0, D263),
 then a second distribution (1.1). The Void pilot follows on secondary hardware
 (1.2). Hardware selection can proceed earlier; pilot implementation does not
 become the current desktop focus.
@@ -62,10 +62,11 @@ with AI agents. Any contact with Void is written by Fred and discloses AI use;
 agents do not post in Void spaces. Count the ongoing maintenance of these
 templates in the packaging evaluation.
 
-Sway remains the selected compositor, with seatd and an independent Quickshell
-host. On Void, the workstation package is built as native `xbps-src`
-packages; on existing distributions, the same sources are delivered as a Nix
-flake with a native host adapter (decided 2026-10-03). The workstation does not
+tam-pane, Tamlinux's own compositor, is the selected compositor (D263), with
+seatd and an independent Quickshell host. On Void, the workstation package is
+built as native `xbps-src` packages; on existing distributions, the same
+sources are delivered as a recorded tam-bundle assembly (D261), replacing the
+2026-10-03 Nix flake route. The workstation does not
 need Nix on the Void base. No base migration is implied for the current
 workstation, which stays on Arch.
 [Void Wayland support](https://docs.voidlinux.org/config/graphical-session/wayland.html).
@@ -106,13 +107,13 @@ releases before the pilot; a released hook would close this gap.
 The pilot also proves the **route back to plain Void**: Tamlinux packages
 uninstall to a working stock Void system, with the user's documents intact.
 
-Prove installation, unprivileged Sway/seatd startup, required applications,
+Prove installation, unprivileged tam-pane/seatd startup, required applications,
 network/audio, graphics, sleep, native services, and offline recovery after a
 failed kernel/userspace update. Test older BIOS hardware from the circa-2006
 validation cohort and modern UEFI hardware. Measure terminal-only and graphical profiles.
 The fallback decision follows this evidence, not a first configuration error.
 
-The [installation framework](installation-framework.md) and
-[desktop decoupling plan](desktop-decoupling.md) carry the implementation order.
-Installation on existing distributions comes first, through the Nix flake and
-host adapter; native Void packaging serves the Void base.
+Bundle delivery ([bundle delivery integration](bundle-delivery-integration.md))
+and the [desktop decoupling plan](desktop-decoupling.md) carry the
+implementation order. Installation on existing distributions comes first,
+through tam-bundle; native Void packaging serves the Void base.
