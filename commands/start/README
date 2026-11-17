@@ -23,7 +23,7 @@ Requires an installed libtam (pkg-config libtam, or LIBTAM_PREFIX).
 
     make
     make check
-    make install PREFIX=$HOME/.local/dev
+    make install PREFIX=$HOME/.local
 
 
 INSTALL LAYOUT

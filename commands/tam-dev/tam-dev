@@ -104,10 +104,11 @@ def identity(repo, scopes):
 def toolchain_key(component=None):
     database = Path('/var/lib/pacman/local')
     packages = sorted(p.name for p in database.iterdir()) if database.exists() else []
-    development=Path.home()/'.local/dev'
-    roots=[development/'lib',development/'include'] if component != 'libtam' else []
+    development=Path.home()/'.local'
+    # Only libtam's installed files; ~/.local/lib also holds unrelated software.
+    patterns=['lib/libtam*','lib/pkgconfig/libtam*.pc','include/tam*.h'] if component != 'libtam' else []
     inputs = {str(p):hashlib.sha256(p.read_bytes()).hexdigest()
-              for root in roots for p in root.rglob('*') if p.is_file()}
+              for pattern in patterns for p in sorted(development.glob(pattern)) if p.is_file()}
     for name in ('cc','make','pkg-config'):
         binary=shutil.which(name)
         inputs['tool:'+name]=[binary,hashlib.sha256(Path(binary).read_bytes()).hexdigest()] if binary else None
@@ -173,7 +174,7 @@ def build(workspace, name):
             raise DevError('plugin trials need the installed packaged shell as their runtime')
         shutil.copytree(packaged,source/'desktop/shell',dirs_exist_ok=True)
     prefix = folder/'prefix'
-    development=Path.home()/'.local/dev'
+    development=Path.home()/'.local'
     make_arguments=['LIBTAM_PREFIX='+str(development)] if (development/'lib/pkgconfig/libtam.pc').is_file() and name!='libtam' else []
     if make_dir is not None:
         directory = source/make_dir
@@ -375,7 +376,7 @@ def trial(record, live=False):
         for binary in sorted(prefix.rglob('*')):
             if binary.is_dir():
                 continue
-            target = Path.home()/'.local/dev'/binary.relative_to(prefix)
+            target = Path.home()/'.local'/binary.relative_to(prefix)
             target.parent.mkdir(parents=True, exist_ok=True)
             previous=os.readlink(target) if target.is_symlink() else None
             if target.exists() and not target.is_symlink():

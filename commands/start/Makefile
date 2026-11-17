@@ -6,7 +6,7 @@ override CFLAGS += -g
 
 LIBTAM_PREFIX ?= $(shell \
 	if $(PKG_CONFIG) --exists libtam 2>/dev/null; then :; \
-	elif test -f "$(HOME)/.local/dev/lib/pkgconfig/libtam.pc"; then printf '%s' "$(HOME)/.local/dev"; fi)
+	elif test -f "$(HOME)/.local/lib/pkgconfig/libtam.pc"; then printf '%s' "$(HOME)/.local"; fi)
 
 ifneq ($(strip $(LIBTAM_PREFIX)),)
 LIBTAM_CFLAGS = -I$(LIBTAM_PREFIX)/include

@@ -4,7 +4,7 @@ PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -Wall -Wextra -Wpedantic
 override CFLAGS += -g
 LIBTAM_PREFIX ?= $(shell $(PKG_CONFIG) --atleast-version=0.4.1 libtam-display-session 2>/dev/null || \
-	{ test -f "$(HOME)/.local/dev/lib/pkgconfig/libtam-display-session.pc" && printf '%s' "$(HOME)/.local/dev"; })
+	{ test -f "$(HOME)/.local/lib/pkgconfig/libtam-display-session.pc" && printf '%s' "$(HOME)/.local"; })
 DISPLAY_MIN_VERSION = 0.4.1
 SESSION_CFLAGS = $(shell $(PKG_CONFIG) --cflags libsystemd)
 SESSION_LIBS = $(shell $(PKG_CONFIG) --libs libsystemd) -lm

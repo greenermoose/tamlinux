@@ -8,12 +8,13 @@
 #
 # The build is a git archive of one exact commit, so uncommitted files never
 # reach it; it must pass test_keybindings.py before it is installed. The
-# launcher goes in ~/.local/dev/bin, ahead of the packaged one on Hyprland's
-# PATH, and runs the explorer as its own Quickshell instance. Any earlier
-# development launcher is kept beside the record and put back on uninstall.
-# The session PATH puts ~/.local/bin first, so Meta + K reaches the launcher
-# through a personal binding that checks for it when Hyprland loads its
-# config; install and uninstall reload Hyprland so that binding follows.
+# launcher goes in ~/.local/bin, ahead of the packaged /usr/bin one on the
+# session PATH, and runs the explorer as its own Quickshell instance. Any
+# earlier file at that path is kept beside the record and put back on
+# uninstall. Meta + K reaches the launcher through a personal binding that
+# checks for it when Hyprland loads its config; install and uninstall reload
+# Hyprland so that binding follows. Uninstall before a bundle install: a
+# ~/.local/bin copy of a bundle command stops activation.
 
 set -euo pipefail
 
@@ -21,13 +22,13 @@ app=keybinding-explorer
 name=tam-menu-keybindings
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo=$(git -C "$here" rev-parse --show-toplevel)
-dev=$HOME/.local/dev
+dev=$HOME/.local
 builds=$dev/share/tamlinux/dev-trials/$app
 launcher=$dev/bin/$name
 state=${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/dev-trials
 record=$state/$app.json
 saved=$state/$app.previous
-packaged=${TAMLINUX_BIN:-$HOME/.local/bin}/$name
+packaged=${TAMLINUX_BIN:-/usr/bin}/$name
 
 die() {
   echo "dev-trial: $*" >&2
@@ -147,7 +148,7 @@ uninstall() {
   # Switch generated bindings to the selected package before deleting the
   # build they may still reference. A missing or failed package keeps the trial.
   local macros_lua=${TAMLINUX_HYPR_MACROS_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/macros.lua}
-  local packaged_macro=${TAMLINUX_BIN:-$HOME/.local/bin}/tam-macro
+  local packaged_macro=${TAMLINUX_BIN:-/usr/bin}/tam-macro
   if [[ -e $macros_lua || -L $macros_lua ]]; then
     [[ -x $packaged_macro ]] || die "packaged macro runner is unavailable; trial retained"
     "$packaged_macro" sync || die "packaged macro sync failed; trial retained"

@@ -16,7 +16,7 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 HOME = Path.home()
-DEV = HOME / ".local/dev"
+DEV = HOME / ".local"
 BUILDS = DEV / "share/tamlinux/dev-trials/keyboard"
 STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "tamlinux/dev-trials"
 RECORD = STATE / "keyboard.json"

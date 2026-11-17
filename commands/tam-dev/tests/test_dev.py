@@ -40,7 +40,7 @@ class Development(unittest.TestCase):
             dev.check(record)
             self.assertFalse(any(call.args[0]=='make' for call in invoked.call_args_list))
         dev.trial(record)
-        target=Path.home()/'.local/dev/bin/tam-demo'
+        target=Path.home()/'.local/bin/tam-demo'
         self.assertTrue(target.is_symlink())
         dev.stop('command:tam-demo');self.assertFalse(target.exists())
         self.assertEqual(self.git('log','--format=%s'), 'Initial')
@@ -49,20 +49,23 @@ class Development(unittest.TestCase):
         sibling=self.repo/'commands/tam-sibling';sibling.mkdir();(sibling/'value').write_text('dependency')
         record=dev.build(self.repo.parent,'command:tam-demo')
         self.assertEqual((Path(record['source'])/'commands/tam-sibling/value').read_text(),'dependency')
-        headers=Path.home()/'.local/dev/include';headers.mkdir(parents=True)
-        header=headers/'libtam.h';header.write_text('first interface')
-        before=dev.toolchain_key('tam');header.write_text('changed interface')
+        headers=Path.home()/'.local/include';headers.mkdir(parents=True)
+        header=headers/'tam.h';header.write_text('first interface')
+        unrelated=Path.home()/'.local/lib/python3/site.py';unrelated.parent.mkdir(parents=True);unrelated.write_text('one')
+        before=dev.toolchain_key('tam');unrelated.write_text('two')
+        self.assertEqual(before,dev.toolchain_key('tam'))
+        header.write_text('changed interface')
         self.assertNotEqual(before,dev.toolchain_key('tam'))
 
     def test_later_override_is_preserved(self):
         record=dev.build(self.repo.parent,'command:tam-demo');dev.trial(record)
-        target=Path.home()/'.local/dev/bin/tam-demo';target.unlink();target.write_text('later work')
+        target=Path.home()/'.local/bin/tam-demo';target.unlink();target.write_text('later work')
         with self.assertRaisesRegex(dev.DevError,'changed since trial'):
             dev.stop('command:tam-demo')
         self.assertEqual(target.read_text(),'later work')
 
     def test_preexisting_links_and_regular_files_are_restored(self):
-        target=Path.home()/'.local/dev/bin/tam-demo';target.parent.mkdir(parents=True)
+        target=Path.home()/'.local/bin/tam-demo';target.parent.mkdir(parents=True)
         target.symlink_to('/old/development-command')
         record=dev.build(self.repo.parent,'command:tam-demo');dev.trial(record);dev.stop('command:tam-demo')
         self.assertEqual(os.readlink(target),'/old/development-command')

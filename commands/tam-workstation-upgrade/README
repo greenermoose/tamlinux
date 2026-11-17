@@ -51,4 +51,4 @@ identity verification remain unfinished. Physical VT upgrade and recovery
 proof requires eligible released assemblies and separate operator approval.
 
     make check
-    make install PREFIX=$HOME/.local/dev
+    make install PREFIX=$HOME/.local
