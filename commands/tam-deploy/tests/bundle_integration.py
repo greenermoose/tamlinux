@@ -265,6 +265,26 @@ class BundleMigration(TransactionRecovery):
         self.assertEqual(self.app.locked(), self.packages_main)
         self.assertEqual(self.app.generation(), str(self.old))
 
+    def test_migrated_account_can_update_and_roll_back_after_profile_removal(self):
+        self.app.activate_bundle(self.prepare_bundle())
+        previous_generation = self.app.generation()
+        self.app.profile.unlink()
+        self.assertEqual(self.app.state_report()['profileGeneration'], previous_generation)
+        self.assertFalse(self.app.state_report()['problems'])
+
+        revision = 'f' * 40
+        delivery = self.next_delivery(revision, '9.8.8')
+        self.app._requested_transaction = 'second-delivery'
+        self.app.prepare_bundle(revision, delivery['components'], 'test')
+        self.app.activate_bundle('second-delivery')
+        self.assertEqual(self.app.locked(), revision)
+        self.assertFalse(self.app.state_report()['problems'])
+
+        self.app.back()
+        self.assertEqual(self.app.locked(), self.packages_new)
+        self.assertFalse(self.app.state_report()['problems'])
+        self.assertFalse(self.app.profile.is_symlink())
+
     def test_local_tam_survives_migration_bundle_update_and_rollback(self):
         local = self.app.home / '.local/bin/tam'
         local.unlink()

@@ -573,7 +573,7 @@ class Deployment:
                 fcntl.flock(stream, fcntl.LOCK_UN)
 
     def baseline_token(self) -> str:
-        value = {'assembly': self.locked(), 'generation': self.generation_or_none(),
+        value = {'assembly': self.locked(), 'generation': self.deployment_generation(),
                  'pinSha256': hashlib.sha256(self.pin_path.read_bytes()).hexdigest(),
                  'receiptSha256': hashlib.sha256(self.state_file.read_bytes()).hexdigest()}
         return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
@@ -941,7 +941,7 @@ class Deployment:
             plan = self.bundle_home_plan(Path(report['artifact']), delivery, report['baselineGeneration'], outputs)
             generation = self.build_bundle_profile(revision, plan, report['baselineGeneration'])
         self.require_consistent(verify_local_commands=False)
-        if self.generation_or_none() != report['baselineGeneration'] or self.locked() != report['baselineAssembly']:
+        if self.deployment_generation() != report['baselineGeneration'] or self.locked() != report['baselineAssembly']:
             raise DeploymentError('baseline changed during console preparation')
         print(json.dumps(dict(report, generation=generation)))
 
@@ -1477,7 +1477,7 @@ class Deployment:
             recovery = {'generation': previous, 'assembly': assembly, 'state': state,
                         'pinPath': str(self.pin_path), 'pin': base64.b64encode(before).decode('ascii'),
                         'delivery': prior['delivery']}
-            if self.generation_or_none() != previous or self.pin_path.read_bytes() != before:
+            if self.deployment_generation() != previous or self.pin_path.read_bytes() != before:
                 raise DeploymentError('bundle baseline changed during preparation')
             self.transaction(phase='prepared', backend='tam-bundle', mode='update', stage=stage,
                              baselineGeneration=previous, baselineAssembly=assembly,
@@ -1562,7 +1562,8 @@ class Deployment:
         saved = tx['recovery']
         if tx.get('bundleDetached'):
             raise DeploymentError('bundle was detached for Nix recovery; finish recovery instead')
-        if self.generation_or_none() not in (saved['generation'], tx['targetGeneration']) or self.pin_path.read_bytes() not in (
+        generation = self.deployment_generation() if tx.get('mode') == 'update' else self.generation_or_none()
+        if generation not in (saved['generation'], tx['targetGeneration']) or self.pin_path.read_bytes() not in (
                 base64.b64decode(saved['pin'], validate=True), base64.b64decode(tx['targetPin'], validate=True)):
             raise DeploymentError('saved Nix generation or pin changed before bundle activation')
         delivery = tx['delivery']
@@ -1611,13 +1612,19 @@ class Deployment:
         # so native defaults are written to the paths they actually use.
         if migration:
             migration.apply()
-        if tx['targetGeneration']:
-            self.verify_bundle_profile(tx['targetGeneration'], tx['homePlan'])
-        if self.generation_or_none() != tx['targetGeneration']:
-            self.activation_validators(tx['targetGeneration'])
-            command(str(Path(tx['targetGeneration']) / 'activate'))
-        if self.generation_or_none() != tx['targetGeneration']:
-            raise DeploymentError('bundle profile did not activate')
+        if tx.get('mode') == 'update':
+            if self.deployment_generation() != tx['targetGeneration']:
+                raise DeploymentError('bundle profile history changed during activation')
+            if tx['targetGeneration'] and os.path.lexists(self.profile):
+                self.verify_bundle_profile(tx['targetGeneration'], tx['homePlan'])
+        else:
+            if tx['targetGeneration']:
+                self.verify_bundle_profile(tx['targetGeneration'], tx['homePlan'])
+            if self.generation_or_none() != tx['targetGeneration']:
+                self.activation_validators(tx['targetGeneration'])
+                command(str(Path(tx['targetGeneration']) / 'activate'))
+            if self.generation_or_none() != tx['targetGeneration']:
+                raise DeploymentError('bundle profile did not activate')
         self.bundle_command('apply-settings')
         self.sync_active_desktop_state()
         self.bundle_command('session-ready')
@@ -1639,6 +1646,15 @@ class Deployment:
     def generation_or_none(self) -> str | None:
         return self.generation() if os.path.lexists(self.profile) else None
 
+    def deployment_generation(self) -> str | None:
+        """Keep the receipt identity after a bundle host retires its profile."""
+        generation = self.generation_or_none()
+        if generation is None:
+            state = self.read_state()
+            if state.get('backend') == 'tam-bundle':
+                return state.get('generation')
+        return generation
+
     def bundle_settings_capture(self, system_id: str) -> str:
         path = self.home / '.local/state/tamlinux/transaction'
         if path.is_symlink() or path.stat().st_size > 4096:
@@ -1659,7 +1675,7 @@ class Deployment:
             raise DeploymentError('leave the desktop before bundle recovery')
         self.require_unlocked_sessions()
         saved = tx['recovery']
-        if self.generation_or_none() != saved['generation'] or self.pin_path.read_bytes() not in (
+        if self.deployment_generation() != saved['generation'] or self.pin_path.read_bytes() not in (
                 base64.b64decode(saved['pin'], validate=True), base64.b64decode(tx['targetPin'], validate=True)):
             raise DeploymentError('bundle recovery baseline changed')
         if tx['phase'] == 'recovered':
@@ -2359,7 +2375,7 @@ class Deployment:
     def state_report(self, *, verify_local_commands: bool = True) -> dict:
         locked, state = self.locked(), self.read_state()
         if state.get('backend') == 'tam-bundle':
-            profile = self.generation_or_none()
+            profile = self.deployment_generation()
             pins = self.components(locked)
             problems = self.verify(pins, locked)
             tx = self.bundle_transaction(state['migrationTransaction'])
@@ -2427,7 +2443,7 @@ class Deployment:
             print(f"  {name}: {rev}")
         print(f"installed shell: {self.installed()}")
         print("stage: " + (state.get("stage", "unrecorded") if state.get("packages") == locked else "unrecorded"))
-        print(f"generation: {self.generation()}")
+        print(f"generation: {report['profileGeneration']}")
         print(f"receipt generation: {report['receiptGeneration']}")
         print('runtime: ' + json.dumps(report['runtime'], sort_keys=True))
         problems = report['problems']
