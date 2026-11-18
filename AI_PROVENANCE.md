@@ -844,3 +844,5 @@ Candidate 0.6.27: [source selection](work/history/0.6.27-candidate-selection.md)
 Candidate 0.6.28: [source selection](work/history/0.6.28-candidate-selection.md).
 
 Candidate 0.6.29: [source selection](docs/ai/0.6.29-candidate-selection.md).
+
+Candidate 0.6.30: [source selection](docs/ai/0.6.30-candidate-selection.md).
