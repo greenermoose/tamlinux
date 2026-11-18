@@ -4,8 +4,11 @@
 checkout. Installation, upgrade, and rollback passed in a temporary root
 with administrator and user-local software present. Read-only native
 preflight passed on an Arch workstation with a complete source stage.
-Live installation is gated until bundle migration, user settings, and
-candidate activation are integrated.
+The source stage provides `hi` and `start`, and both passed console command
+checks in an isolated root without the bundle tools. The installer checks
+destination ownership when the target has a Pacman database. Live
+installation is gated until bundle migration, user settings, and candidate
+activation are integrated.
 
 Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the complete workstation from local Git clones, then `make install` to install the staged files directly. Use the same two commands for subsequent upgrades. Keep earlier bundle deliveries usable for recovery.
 

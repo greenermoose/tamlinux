@@ -17,6 +17,22 @@ bundle_spec.loader.exec_module(bundle_layout)
 
 
 class ProductInstall(unittest.TestCase):
+    def test_source_layout_supplies_console_launchers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stage = Path(tmp)
+            installer.install("/usr", tmp)
+            commands = stage / "usr/bin"
+            for name in ("hi", "start", "tam-nut"):
+                (commands / name).write_text("#!/bin/sh\n")
+                (commands / name).chmod(0o755)
+            bundle_layout.install(stage, current=bundle_layout.SOURCE_CURRENT)
+            for name, target in (("hi", "tam hi"), ("start", "tam-start")):
+                self.assertEqual((commands / name).read_text(),
+                                 f'#!/bin/sh\nexec /usr/bin/{target} "$@"\n')
+                self.assertTrue(os.access(commands / name, os.X_OK))
+            self.assertTrue(os.access(commands / "tam-start", os.X_OK))
+            self.assertFalse((commands / "tam-nut").exists())
+
     def test_bundle_layout_renders_private_paths_and_real_vendor_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             stage = Path(tmp)

@@ -1,11 +1,15 @@
+import hashlib
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 import preflight
+from transaction import inventory, write_json
 
 
 @unittest.skipUnless(Path("/usr/bin/pacman").is_file(), "requires native Pacman")
@@ -64,6 +68,30 @@ class RuntimePreflightTests(unittest.TestCase):
         self.assertFalse((self.root / "usr/bin/start").exists())
         self.assertEqual(preflight.ownership_problems(self.root, ["usr/bin/start", "usr/bin/tam"]),
                          ["source destination /usr/bin/start is owned by Arch package tam-nut"])
+
+    def test_install_refuses_missing_package_owned_console_launchers(self):
+        installer = Path(__file__).resolve().with_name("transaction.py")
+        stage = self.root / "stage"
+        commands = stage / "payload/usr/bin"
+        commands.mkdir(parents=True)
+        for name in ("hi", "start"):
+            (commands / name).write_text("#!/bin/sh\n")
+            (commands / name).chmod(0o755)
+        manifest = stage / "manifest.json"
+        write_json(manifest, {"files": inventory(stage / "payload")})
+        digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        for name in ("hi", "start"):
+            with self.subTest(command=name):
+                path = f"usr/bin/{name}"
+                self.add_package("tam-nut", "0.14.0-1", (path,))
+                result = subprocess.run([sys.executable, "-I", "-B", installer, "install",
+                                         "--stage", stage, "--digest", digest, "--root", self.root],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"source destination /{path} is owned by Arch package tam-nut",
+                              result.stderr)
+                self.assertFalse((self.root / "usr/bin").exists())
+                shutil.rmtree(self.db / "tam-nut-0.14.0-1")
 
 
 class BuildPreflightTests(unittest.TestCase):

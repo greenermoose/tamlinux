@@ -9,7 +9,12 @@ import os
 from pathlib import Path
 import shutil
 import stat
+import sys
 import tempfile
+
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+from preflight import ownership_problems
 
 PAYLOAD_CURRENT = "usr/lib/tamlinux/source/current"
 STATE = "var/lib/tamlinux/source"
@@ -316,6 +321,10 @@ def main():
             ):
                 raise ValueError("install requires a stage and its SHA-256 manifest digest")
             system.retain(args.stage, args.digest)
+            if os.path.lexists(root / "var/lib/pacman"):
+                problems = ownership_problems(root, system.manifest(args.digest)["files"])
+                if problems:
+                    raise ValueError("\n".join(problems))
             system.start(current["current"], args.digest)
         elif args.action == "resume":
             system.complete()

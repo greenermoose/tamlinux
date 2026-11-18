@@ -92,12 +92,17 @@ def build(repos, work):
 
         private = "/" + PAYLOAD_CURRENT
         make("tam", "install", "install-tldr", *placed, link,
-             f"DATADIR={private}/share/tamlinux/knowledge", "DOCDIR=/usr/share/doc")
+             f"BUNDLE_ROOT={private}", f"DATADIR={private}/share/tamlinux/knowledge",
+             "DOCDIR=/usr/share/doc")
         make("tamlinux-tools", "install-file-select", "install-journal", *placed, link)
         make("tam-edit", "install", *placed, f"PKG_CONFIG_PATH={library}/lib/pkgconfig")
         make("tam-data", "install", *placed, link, f"TD_BUILD_ID={pins['tam-data'][:12]}")
 
         version = (product / "VERSION").read_text().strip()
+        # The pinned tam reads cultivar identity through this record format.
+        (stage / PAYLOAD_CURRENT / "BUNDLE").write_text(
+            f"format 2\nname tamlinux\nversion {version}\n"
+        )
         notes = (product / "CHANGELOG.md").read_text().split("\n## ")
         release = next((body for heading, _, body in (note.partition("\n") for note in notes[1:])
                         if heading.split(" ", 1)[0].strip("[]") == version), None)

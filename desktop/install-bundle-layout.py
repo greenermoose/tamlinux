@@ -177,10 +177,12 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
         for unit_target in wanted_targets(unit):
             wants_by_target.setdefault(unit_target, set()).add(unit.name)
     commands = usr / "bin"
-    for name in ("hi", "tam-nut"):
-        (commands / name).unlink()
-    for name in ("start",):
-        (commands / name).rename(commands / f"tam-{name}")
+    (commands / "tam-nut").unlink()
+    (commands / "start").rename(commands / "tam-start")
+    (commands / "hi").unlink()
+    if current == SOURCE_CURRENT:
+        put(commands / "hi", b'#!/bin/sh\nexec /usr/bin/tam hi "$@"\n', 0o755)
+        put(commands / "start", b'#!/bin/sh\nexec /usr/bin/tam-start "$@"\n', 0o755)
     render_commands(commands, current)
 
     copy_vendor_defaults(stage, source, wants_by_target)

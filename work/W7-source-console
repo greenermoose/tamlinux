@@ -1,0 +1,34 @@
+W7 CONSOLE COMMANDS FOR A CLEAN SOURCE INSTALL
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W6-source-preflight
+
+GUIDANCE
+
+  Fred: "We are moving from tam-bundle to make and make install to install
+  Tamlinux. Take the next step on this project."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Stage hi and start and bind tam to the staged cultivar identity.
+  - Build locked commits and install in a temporary root. An isolated
+    namespace passed hi --pipe with a shadowing user-local tam, start
+    --version and --list, cultivar reporting, and the pending-install
+    menu barrier. Neither bundle command was present.
+  - Fourteen source-install and five product layout tests passed.
+    Install refused absent Pacman-owned hi and start destinations.
+
+FAILED
+
+  The first namespace lacked Arch's /bin and /lib64 links.
+  The command checks passed after adding the links to the test root.
+
+HANDOFF
+
+  Integrate exact bundle recovery, including the Pacman-owned console
+  launchers, user settings and candidate delivery. Keep live installation
+  gated until that work is ready. The clean Arch pilot still needs a
+  physical console and desktop check.
