@@ -5,12 +5,15 @@ REPOS ?= ..
 SOURCE_BUILD ?= scratch/source-install
 SOURCE_INSTALL := desktop/source-install/main.py
 ifeq ($(origin PREFIX)$(origin DESTDIR),undefinedundefined)
-.PHONY: source preflight install
+.PHONY: source preflight source-delivery install
 source:
 	/usr/bin/python3 -I $(SOURCE_INSTALL) build --repos "$(REPOS)" --work "$(SOURCE_BUILD)"
 
 preflight:
 	/usr/bin/python3 -I -B $(SOURCE_INSTALL) preflight --repos "$(REPOS)" --work "$(SOURCE_BUILD)" $(if $(SOURCE_ROOT),--root "$(SOURCE_ROOT)")
+
+source-delivery:
+	@/usr/bin/python3 -I -B $(SOURCE_INSTALL) delivery --repos "$(REPOS)" --work "$(SOURCE_BUILD)"
 
 install:
 	/usr/bin/python3 -I $(SOURCE_INSTALL) install --repos "$(REPOS)" --work "$(SOURCE_BUILD)" $(if $(SOURCE_ROOT),--root "$(SOURCE_ROOT)")

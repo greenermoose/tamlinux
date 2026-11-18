@@ -145,6 +145,25 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(target.stat().st_mode & 0o777, 0o700)
             self.assertEqual(link.readlink(), Path("tam"))
 
+
+    def test_inspect_binds_the_archive_without_arming_detach(self):
+        bundle_id = self.move.status()["live"]
+        files = self.system.manifest(self.initial)["files"]
+        record = self.move.inspect(files, self.original, self.sha256, self.bundle_hash, bundle_id)
+        self.assertEqual(record["id"], bundle_id)
+        self.assertEqual(record["hash"], self.bundle_hash)
+        self.assertEqual(record["archive"], self.sha256)
+        self.assertEqual(record["documentation"], self.move.documentation())
+        self.assertFalse(self.system.pending.exists())
+        self.assertFalse(self.move.archive(self.sha256).exists())
+        self.assert_recovered()
+        with self.assertRaisesRegex(ValueError, "live bundle differs"):
+            self.move.inspect(files, self.original, self.sha256, self.bundle_hash, "wrong-id")
+        with self.original.open("ab") as archive:
+            archive.write(b"changed")
+        with self.assertRaisesRegex(ValueError, "archive checksum differs"):
+            self.move.inspect(files, self.original, self.sha256, self.bundle_hash, bundle_id)
+
     def test_interrupted_settings_handoff_preserves_edits_on_bundle_return(self):
         entry = self.home / ".config" / REQUIRED[0]
         prior = entry.read_text() + "-- existing override\n"

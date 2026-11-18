@@ -17,7 +17,7 @@ import tempfile
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from preflight import destination_owners, ownership_problems
+from preflight import destination_owners, ownership_problems, runtime_problems
 
 PAYLOAD_CURRENT = "usr/lib/tamlinux/source/current"
 STATE = "var/lib/tamlinux/source"
@@ -68,6 +68,21 @@ def inventory(stage):
             raise ValueError(f"path is outside the cultivar install locations: {relative}")
         entries[relative] = fingerprint(path)
     return entries
+
+
+def verified_stage(stage, digest):
+    if not re.fullmatch("[0-9a-f]{64}", digest or "") or stage.is_symlink():
+        raise ValueError("a stage and its SHA-256 manifest digest are required")
+    manifest = stage / "manifest.json"
+    if not fingerprint(manifest):
+        raise ValueError("stage manifest is missing")
+    data = manifest.read_bytes()
+    if hashlib.sha256(data).hexdigest() != digest:
+        raise ValueError("stage manifest changed")
+    receipt = json.loads(data)
+    if not receipt or not receipt.get("files") or inventory(stage / "payload") != receipt["files"]:
+        raise ValueError("stage files differ from the manifest")
+    return receipt
 
 
 def sync_dir(path):
@@ -227,11 +242,7 @@ class Installation:
 
     def retain(self, stage, digest):
         source = stage / "payload"
-        receipt = read_json(stage / "manifest.json")
-        if hashlib.sha256((stage / "manifest.json").read_bytes()).hexdigest() != digest:
-            raise ValueError("stage manifest changed")
-        if not receipt or not receipt.get("files") or inventory(source) != receipt["files"]:
-            raise ValueError("stage files differ from the manifest")
+        receipt = verified_stage(stage, digest)
         saved = self.state / digest
         if not saved.exists():
             with tempfile.TemporaryDirectory(prefix="retaining-", dir=self.state) as tmp:
@@ -242,12 +253,14 @@ class Installation:
                     copy_file(source / relative, target, mode)
                 if inventory(candidate / "payload") != receipt["files"]:
                     raise ValueError("stage changed during import")
-                write_json(candidate / "manifest.json", receipt)
+                copy_file(stage / "manifest.json", candidate / "manifest.json", 0o644)
+                if fingerprint(candidate / "manifest.json")[1] != digest:
+                    raise ValueError("stage manifest changed during import")
                 for directory, _, _ in os.walk(candidate, topdown=False):
                     sync_dir(directory)
                 candidate.rename(saved)
                 sync_dir(self.state)
-        if inventory(saved / "payload") != receipt["files"] or self.manifest(digest) != receipt:
+        if verified_stage(saved, digest) != receipt:
             raise ValueError("retained stage differs from the manifest")
 
     def check(self, before, after, resuming=False):
@@ -262,18 +275,51 @@ class Installation:
                 raise ValueError(f"unmanaged or modified destination: {target}")
 
     def start(self, old, new):
-        self.require_detached_slot()
         current = self.current()
-        external = current.get("external", [])
-        before = self.manifest(old)["files"]
-        after = self.manifest(new)["files"]
-        self.check_ownership(before.keys() | after.keys(), external)
-        self.check_runtime(self.runtime_id(old), self.runtime_id(new), False)
-        self.check(self.placed(before, external), self.placed(after, external))
+        self.check_switch(old, self.manifest(new)["files"], current.get("external", []))
         if old == new:
             return
         write_json(self.pending, {"from": old, "to": new} | self.migration_fields(current))
         self.complete()
+
+    def check_switch(self, old, after, external):
+        self.require_detached_slot()
+        before = self.manifest(old)["files"]
+        self.check_ownership(before.keys() | after.keys(), external)
+        self.check_runtime(self.runtime_id(old), None, False)
+        self.check(self.placed(before, external), self.placed(after, external))
+
+    def preview(self, args, root_info):
+        secure_directory(self.root, STATE)
+        if os.path.lexists(self.pending):
+            raise ValueError("resume or roll back the pending installation")
+        if not args.stage:
+            raise ValueError("preview requires a source stage")
+        receipt = verified_stage(args.stage, args.digest)
+        problems = runtime_problems(self.root)
+        if problems:
+            raise ValueError("runtime preflight found problems:\n  " + "\n  ".join(problems))
+        current = self.current()
+        old = current["current"]
+        bundle_args = (args.bundle_archive, args.bundle_sha256, args.bundle_hash, args.bundle_id)
+        if any(value is not None for value in bundle_args):
+            if not all(bundle_args):
+                raise ValueError("preview requires the exact recovery bundle and archive")
+            from migration import BundleMigration
+            rollback = BundleMigration(self).inspect(
+                receipt["files"], args.bundle_archive, args.bundle_sha256,
+                args.bundle_hash, args.bundle_id)
+            rollback = {"kind": "bundle", **rollback}
+        else:
+            if old is not None:
+                verified_stage(self.state / old, old)
+            self.check_switch(old, receipt["files"], current.get("external", []))
+            rollback = {"kind": "clean"} if old is None else {"kind": "source", "manifest": old}
+        if os.path.lexists(self.pending) or self.current() != current:
+            raise ValueError("the target changed during preparation; try again")
+        return {"version": receipt["version"], "components": receipt["components"],
+                "manifest": args.digest, "root": str(self.root),
+                "rootIdentity": [root_info.st_dev, root_info.st_ino], "rollback": rollback}
 
     def require_detached_slot(self):
         secure_directory(self.root, Path(BUNDLE_CURRENT).parent)
@@ -353,13 +399,14 @@ class Installation:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["install", "migrate", "status", "resume",
+    parser.add_argument("action", choices=["install", "migrate", "preview", "status", "resume",
                                            "rollback", "rollback-bundle"])
     parser.add_argument("--stage", type=Path)
     parser.add_argument("--digest")
     parser.add_argument("--bundle-archive", type=Path)
     parser.add_argument("--bundle-hash")
     parser.add_argument("--bundle-sha256")
+    parser.add_argument("--bundle-id")
     parser.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
     root = args.root.resolve(strict=True)
@@ -369,6 +416,9 @@ def main():
     if root_info.st_uid != os.geteuid() or root_info.st_mode & 0o022:
         raise ValueError("test root must be owned by you and privately writable")
     system = Installation(root)
+    if args.action == "preview":
+        print(json.dumps(system.preview(args, root_info), sort_keys=True))
+        return
     if args.action == "status":
         print(json.dumps(system.current() | {"pending": read_json(system.pending)}, sort_keys=True))
         return

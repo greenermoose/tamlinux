@@ -104,7 +104,7 @@ class BundleMigration:
             raise ValueError("session settings must stay outside system state")
         return settings
 
-    def start(self, target, archive, checksum, bundle_hash):
+    def inspect(self, after, archive, checksum, bundle_hash, bundle_id=None):
         if self.system.current()["current"] is not None:
             raise ValueError("a source installation is already active")
         if (archive is None or not re.fullmatch("[0-9a-f]{64}", checksum or "")
@@ -112,7 +112,8 @@ class BundleMigration:
             raise ValueError("migration requires the recorded archive SHA-256 and full bundle hash")
         secure_directory(self.system.root, "usr/lib/tamlinux")
         status = self.status()
-        bundle = {"id": status["live"], "hash": bundle_hash, "archive": checksum}
+        bundle = {"id": status["live"] if bundle_id is None else bundle_id,
+                  "hash": bundle_hash, "archive": checksum}
         if not self.live_matches(status, bundle):
             raise ValueError("the live bundle differs from the requested recovery bundle")
         self.command("check")
@@ -121,35 +122,43 @@ class BundleMigration:
 
         if (fingerprint(archive) or [None, None])[1] != checksum:
             raise ValueError("recovery archive checksum differs")
+        self.command("needs", archive)
+        metadata, manifest = archive_records(archive, bundle_hash)
+        if (fingerprint(archive) or [None, None])[1] != checksum:
+            raise ValueError("recovery archive changed while checking it")
+        before = legacy_files(manifest, metadata, selected, borrowed)
+        external = bootstrap_launchers(self.system.root)
+        if not set(external) <= after.keys():
+            raise ValueError("the source stage must provide both console launchers")
+        self.system.check_ownership(before.keys() | after.keys(), external)
+        self.system.check_runtime(None, None, False)
+        placed = self.system.placed(after, external)
+        self.system.check({path: before[path] for path in placed.keys() & before.keys()}, placed)
+        if f"{PAYLOAD_CURRENT}/{SESSION_HELPER}" in after:
+            settings = self.user_settings()
+            self.command("session-ready", settings=settings)
+            bundle["session"] = settings.identity
+        return bundle
+
+    def start(self, target, archive, checksum, bundle_hash):
+        after = self.system.manifest(target)["files"]
+        bundle = self.inspect(after, archive, checksum, bundle_hash)
         saved = self.archive(checksum)
         if not os.path.lexists(saved):
             copy_file(archive, saved, 0o600)
         self.verify_archive(bundle)
-        metadata, manifest = archive_records(saved, bundle_hash)
-        before = legacy_files(manifest, metadata, selected, borrowed)
         external = bootstrap_launchers(self.system.root)
-        after = self.system.manifest(target)["files"]
-        if not set(external) <= after.keys():
-            raise ValueError("the source stage must provide both console launchers")
-        self.system.check_ownership(before.keys() | after.keys(), external)
-        self.system.check_runtime(None, self.system.runtime_id(target), False)
-        placed = self.system.placed(after, external)
-        self.system.check({path: before[path] for path in placed.keys() & before.keys()}, placed)
 
-        session = None
         prefix = self.system.state / target / "payload" / PAYLOAD_CURRENT
-        if f"{PAYLOAD_CURRENT}/{SESSION_HELPER}" in after:
+        if "session" in bundle:
             settings = self.user_settings()
             with settings.locked():
                 self.command("session-ready", settings=settings)
                 settings.prepare(target, bundle_hash, prefix / "defaults/home")
-            session = settings.identity
 
         self.retain_recovery_program()
         pending = {"from": None, "to": target, "migration": "detach",
                    "bundle": bundle | {"source": target}, "external": external}
-        if session is not None:
-            pending["bundle"]["session"] = session
         write_json(self.system.pending, pending)
         self.complete(pending)
 

@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -92,6 +93,55 @@ class RuntimePreflightTests(unittest.TestCase):
                               result.stderr)
                 self.assertFalse((self.root / "usr/bin").exists())
                 shutil.rmtree(self.db / "tam-nut-0.14.0-1")
+
+    def test_preview_is_read_only_and_checks_retained_rollback(self):
+        installer = Path(__file__).resolve().with_name("transaction.py")
+        providers = set(preflight.RUNTIME_COMMANDS.values()) | set(preflight.RUNTIME_FILES.values())
+        for requirement in sorted(providers):
+            name, _, version = requirement.partition(">=")
+            if version or not any(item.startswith(name + ">=") for item in providers):
+                self.add_package(name, (version or "1") + "-1")
+        for path, mode in [(f"usr/bin/{name}", 0o755) for name in preflight.RUNTIME_COMMANDS] + [
+            (name, 0o644) for name in preflight.RUNTIME_FILES
+        ]:
+            target = self.root / path
+            if path.startswith("lib64/"):
+                (self.root / "lib64").symlink_to("usr/lib")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.touch(mode=mode)
+        stage = self.root / "stage"
+        binary = stage / "payload/usr/bin/tam-test"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("one")
+        write_json(stage / "manifest.json", {"version": "0.0.1", "components": {},
+                                             "files": inventory(stage / "payload")})
+        digest = hashlib.sha256((stage / "manifest.json").read_bytes()).hexdigest()
+        arguments = ["--stage", stage, "--digest", digest, "--root", self.root]
+
+        def call(action):
+            return subprocess.run([sys.executable, "-I", "-B", installer, action, *arguments],
+                                  capture_output=True, text=True)
+
+        result = call("preview")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["rollback"], {"kind": "clean"})
+        state = self.root / "var/lib/tamlinux/source"
+        self.assertFalse(state.exists())
+        result = call("install")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(call("preview").stdout)["rollback"],
+                         {"kind": "source", "manifest": digest})
+        pending = state / "pending.json"
+        pending.write_text("{}")
+        self.assertIn("pending installation", call("preview").stderr)
+        pending.unlink()
+        binary.chmod(0o755)
+        self.assertIn("stage files differ", call("preview").stderr)
+        binary.chmod(0o644)
+        retained = state / digest / "payload/usr/bin/tam-test"
+        retained.write_text("changed")
+        self.assertIn("stage files differ", call("preview").stderr)
+        self.assertFalse((state / "pending.json").exists())
 
 
 class BuildPreflightTests(unittest.TestCase):

@@ -1,0 +1,33 @@
+W10 SOURCE DELIVERY REHEARSAL
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W9-source-session
+
+GUIDANCE
+
+  Fred: "We are transitioning from tam-bundle to make and make install
+  to install Tamlinux. Take the next slice of this work."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Built the full cultivar with the new tam-edit 1.0.4 pin. Also proved
+    the build takes committed inputs when the component clone is dirty.
+  - Recorded a disposable delivery and verified repeated preparation
+    digests, clean and installed baselines, and stale-plan rejection.
+  - Installed into a temporary root and checked system command paths,
+    cultivar identity, and local commands, modes and symlinks.
+  - Source tests passed in a private namespace, including bundle
+    recovery. The existing stage workflow regression suite passed.
+
+FAILED
+
+  The fault-enabled bundle test was skipped. Real graphical login and
+  live source deployment are still pending.
+
+HANDOFF
+
+  Prove the clean installation and graphical login on fresh Arch on the
+  first pilot host. The rehearsal requires no live stage move.
