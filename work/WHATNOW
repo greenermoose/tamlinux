@@ -20,8 +20,9 @@ STATE
   that need tam-journal from tamlinux-tools, and tam-deploy's settings
   guard, which now refuses references to tam source generations and a
   locally built libtam instead of the retired ~/.local/dev prefix (W2).
-  The desktop no longer runs a removable-drive automounter (W3). Bundle installation
-  permits same-name commands in the user’s local bin directory (W4).
+  The desktop no longer runs a removable-drive automounter (W3).
+  Bundle installation permits same-name commands in the user's local
+  bin directory (W4).
 
   W5 adds a locked local-clone build and a temporary-root installer.
   The staged build, upgrade and rollback passed. W6 adds read-only
@@ -37,8 +38,9 @@ STATE
   W10 builds with the new tam-edit clone and binds source preparation
   to a committed delivery, host manifest and verified rollback target.
   W11 adds a clean Make install from an approved plan and a trusted
-  operator export. The isolated Make test covers repeat installation,
-  changed plans and payloads, and a package-owned destination.
+  operator export. The committed 0.6.31 delivery passed installation
+  and repeat installation in disposable Arch. The first pilot still
+  runs 0.6.28 and its live reset has yet to start.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -51,22 +53,23 @@ NEXT
   Every stage move below happens only on Fred's word: Test, Run and
   Release are his, and a version number is not an instruction.
 
-  1. Fred judges 0.6.28's stability on the three hosts. Only his
-     acceptance makes it the oldest supported recovery version.
-  2. Reset the first pilot to bare rootstock, then prove the clean
-     0.6.31 Make install and graphical login from fresh clones. Record
-     dependency friction. Review the contract before live installation
-     (docs/plans/source-install.md).
-  3. After 0.6.28 is accepted: prove a Nix-free build, install and
-     recovery, then retire Nix and Home Manager host by host, each with
-     its own approval.
-  4. docs/plans/0.6.28.md still says no candidate was prepared or
-     installed. Update its status line when Fred accepts 0.6.28.
+  1. Review the clean Make pilot contract. After Fred approves it and
+     the exact bundle detach, exit graphics and detach 0.6.28. Preview
+     and obtain approval for the Pacman batches. Reset to bare rootstock
+     in place, retaining Arch boot, networking, SSH, the account and Git.
+  2. Clone from GitHub and build 0.6.31. Obtain approval for the exact
+     host manifest before installing. Verify console and graphical
+     startup. Document dependency friction and list removals to evaluate
+     during 0.6.x and after tam-pane (docs/plans/source-install.md).
+  3. After 0.6.28 is accepted, update its plan status. Continue the
+     separate Nix and Home Manager retirement work host by host.
 
 
 WAITING FOR FRED
 
-  - His verdict on 0.6.28 at Test.
+  - Approval of the clean Make pilot contract and the 0.6.28 detach on
+    the first pilot.
+  - His verdict on 0.6.28 at Test for the separate fleet recovery anchor.
 
 
 WATCH OUT

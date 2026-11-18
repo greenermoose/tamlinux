@@ -17,6 +17,9 @@ DONE
   - Exercised Make without Git clones in an isolated Arch fixture.
     The approved plan and repeat install passed. A mismatched host,
     changed payload and package-owned destination were rejected.
+  - Built and verified all 3,285 files in the full 0.6.31 staged
+    install. The source delivery and its rehearsal evidence are on
+    develop in tamlinux-packages.
 
 FAILED
 
@@ -25,6 +28,8 @@ FAILED
 
 HANDOFF
 
-  Rehearse the full stage and record the exact source delivery. Review
-  the pilot contract before changing the target host. Record package
-  and setup effort from bare rootstock through graphical acceptance.
+  The first pilot still runs 0.6.28. Obtain approval of the clean Make
+  pilot contract and permission to detach that bundle after desktop
+  exit. Recheck and obtain approval for the package removal batches.
+  Preserve the Arch base, reset to bare rootstock, and prove 0.6.31
+  from fresh clones. Record package and setup effort during the build.
