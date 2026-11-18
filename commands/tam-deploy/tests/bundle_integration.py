@@ -306,6 +306,14 @@ class BundleMigration(TransactionRecovery):
         self.privileged.assert_not_called()
         self.assertTrue((self.app.home / '.bashrc').is_symlink())
 
+    def test_development_generation_references_refuse_before_conversion(self):
+        identifier = self.prepare_bundle()
+        self.personal.write_text('sdk = ~/.local/opt/tam/generations/0.61.2/bin\n')
+        with self.assertRaisesRegex(deploy.DeploymentError, 'explicit native-path migration'):
+            self.app.activate_bundle(identifier)
+        self.privileged.assert_not_called()
+        self.assertTrue((self.app.home / '.bashrc').is_symlink())
+
     def test_canceled_prepared_update_keeps_old_session_ready_and_allows_another_update(self):
         self.app.activate_bundle(self.prepare_bundle())
         revision = 'f' * 40;delivery = self.next_delivery(revision, '9.8.8')

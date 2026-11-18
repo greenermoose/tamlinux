@@ -1,0 +1,54 @@
+W2 RETIRE THE LAST DEVELOPMENT-PREFIX REFERENCE
+
+Date: 2026-11-17
+AI harness: opencode 2.2.5
+AI model: big-pickle
+Commits: the commit that adds this record
+
+
+GUIDANCE
+
+  Fred: "Fix ~/.local/dev everywhere. We are now using ~/.local/bin and
+  ~/.local/lib for development work. We install to /usr/bin and /usr/lib
+  for each new version of Tamlinux."
+
+
+DONE
+
+  - f30facc (2026-11-17) already moved tam-dev, the dev-trial
+    launchers and the native Makefile lookups to ~/.local. One live
+    reference remained: tam-deploy's settings guard listed the retired
+    prefix as a root that a packaged setting may not reference.
+  - That guard is now FOREIGN_MARKERS (it was NIX_MARKERS, because it also
+    covers Nix). It refuses /nix/store/, .nix-profile/, tam source
+    generations under .local/opt/tam/ and a locally built libtam at
+    .local/lib/libtam. .local/bin is deliberately not listed: bundles
+    deploy their command shims there and activate-bundle has its own
+    unmanaged-shim check.
+  - bundle_integration gained
+    test_development_generation_references_refuse_before_conversion,
+    modelled on the Nix-reference test. It checks that a settings file
+    written after preparation, naming a source generation, refuses before
+    conversion and leaves the old home link in place.
+  - Checked with python3 -B -m unittest discover -s tests -q in
+    commands/tam-deploy (133 tests OK) and with
+    python3 -B tests/bundle_integration.py, which needs its private PID
+    namespace (20 tests OK). CHANGELOG has an Unreleased entry. VERSION
+    stays 0.6.28: this is develop work for the next candidate.
+  - The only references left outside work/history are in records that
+    stay as written (work/history, the desktop build .d files and the
+    pycache copies, which are ignored).
+
+
+FAILED
+
+  - Running bundle_integration with TAM_BUNDLE_BIN set to an empty
+    string made BIN resolve to the current directory and every test
+    failed with PermissionError. Run it without that variable unless it
+    names the real tam-bundle-test binary.
+
+
+HANDOFF
+
+  - Nothing here waits on Fred. Candidate 0.6.29, on his word, carries
+    this fix with the other Unreleased items. Details in work/WHATNOW.

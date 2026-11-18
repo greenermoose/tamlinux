@@ -83,7 +83,11 @@ PORTABLE_STATE_DIRS = (
     '.local/state/tamlinux/workspace-layouts',
 )
 BACKGROUND_IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
-NIX_MARKERS = (b'/nix/store/', b'.nix-profile/', b'.local/dev/')
+# Roots that are never a packaged setting: Nix, and tam development
+# installs (source generations and a locally built libtam). ~/.local/bin
+# is not listed, because bundles deploy their command shims there.
+FOREIGN_MARKERS = (b'/nix/store/', b'.nix-profile/', b'.local/opt/tam/',
+                   b'.local/lib/libtam')
 
 
 def atomic_bytes(path: Path, payload: bytes) -> None:
@@ -1150,7 +1154,7 @@ class Deployment:
                             'file': Path(*parts[i + 3:]).as_posix()}
         if target.is_relative_to(resolved_home):
             rel = target.relative_to(resolved_home).as_posix()
-            if any(marker.decode() in rel for marker in NIX_MARKERS):
+            if any(marker.decode() in rel for marker in FOREIGN_MARKERS):
                 raise DeploymentError('settings need explicit native-path migration: ' + rel)
             return {'format': 1, 'kind': 'home', 'path': rel}
         raise DeploymentError('active desktop background needs portable selection: .local/state/tamlinux/current/background')
@@ -1274,7 +1278,7 @@ class Deployment:
                 if info.st_size > 16 * 1024 * 1024 or size > 64 * 1024 * 1024:
                     raise DeploymentError('settings audit exceeds byte limit: ' + relative)
                 contents = path.read_bytes()
-                if any(marker in contents for marker in NIX_MARKERS):
+                if any(marker in contents for marker in FOREIGN_MARKERS):
                     raise DeploymentError('settings need explicit native-path migration: ' + relative)
             else:
                 raise DeploymentError('settings path is not a file or directory: ' + relative)
