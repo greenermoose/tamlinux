@@ -3,6 +3,9 @@ CC ?= cc
 PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -Wall -Wextra -Wpedantic -std=c11
 override CFLAGS += -g
+ifeq ($(TAM_SOURCE_INSTALL),1)
+CPPFLAGS += -DTAM_SOURCE_INSTALL
+endif
 
 LIBTAM_PREFIX ?= $(shell \
 	if $(PKG_CONFIG) --exists libtam 2>/dev/null; then :; \

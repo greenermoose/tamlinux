@@ -3,12 +3,12 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-17, with W4
+Updated: 2026-11-18, with W5
 
 
 STATE
 
-  VERSION reads 0.6.28 on branch develop. The current release is 0.5.12;
+  VERSION reads 0.6.30 on branch develop. The current release is 0.5.12;
   0.6 is the dependable-baseline minor (README, the version outlook).
 
   0.6.28 is delivered as a bundle and runs at the Test stage on all three
@@ -26,6 +26,10 @@ STATE
   The desktop no longer runs a removable-drive automounter (W3). Bundle installation
   permits same-name commands in the user’s local bin directory (W4).
 
+  W5 adds a locked local-clone build and a temporary-root installer.
+  The staged build, upgrade and rollback passed. Live activation is
+  pending the work in docs/plans/source-install.md.
+
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
   GitLab repositories and a proven source install
@@ -39,10 +43,10 @@ NEXT
 
   1. Fred judges 0.6.28's stability on the three hosts. Only his
      acceptance makes it the oldest supported recovery version.
-  2. Prepare 0.6.29 when Fred asks. Its recorded contents include the
-     fixes for the lost background and the missing version notes, and
-     the Unreleased changes above. Follow the candidate workflow
-     (docs/plans/candidate-workflow.md).
+  2. Complete the source install for the next unused 0.6 candidate.
+     Integrate native preflight, bundle migration and recovery, user
+     settings and candidate delivery. Prove clean and preserving installs
+     before requesting live Test (docs/plans/source-install.md).
   3. After 0.6.28 is accepted: prove a Nix-free build, install and
      recovery, then retire Nix and Home Manager host by host, each with
      its own approval.
@@ -53,7 +57,6 @@ NEXT
 WAITING FOR FRED
 
   - His verdict on 0.6.28 at Test.
-  - The word to prepare 0.6.29.
 
 
 WATCH OUT

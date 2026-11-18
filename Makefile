@@ -1,10 +1,27 @@
-# Native product build, shared by tam-bundle recipes and distribution builds.
-# Third-party software, fonts and system integration belong to the adapter.
+# The workstation build uses local Git objects. Distribution adapters can
+# still build and stage the product independently with an explicit prefix.
+.DEFAULT_GOAL := source
+REPOS ?= ..
+SOURCE_BUILD ?= scratch/source-install
+SOURCE_INSTALL := desktop/source-install/main.py
+ifeq ($(origin PREFIX)$(origin DESTDIR),undefinedundefined)
+.PHONY: source install
+source:
+	/usr/bin/python3 -I $(SOURCE_INSTALL) build --repos "$(REPOS)" --work "$(SOURCE_BUILD)"
+
+install:
+	/usr/bin/python3 -I $(SOURCE_INSTALL) install --repos "$(REPOS)" --work "$(SOURCE_BUILD)" $(if $(SOURCE_ROOT),--root "$(SOURCE_ROOT)")
+else
+.DEFAULT_GOAL := all
+.PHONY: install
+install: install-product
+endif
+
 PREFIX ?= /usr/local
 PYTHON ?= python3
 NATIVE_COMMANDS := start tam-boot tam-hardware tam-launch-journal tam-meter tam-monitor tam-open
 
-.PHONY: all install install-commands install-data install-bundle check-install $(NATIVE_COMMANDS)
+.PHONY: all install-product install-commands install-data install-bundle check-install $(NATIVE_COMMANDS)
 all: $(NATIVE_COMMANDS)
 
 $(NATIVE_COMMANDS):
@@ -19,11 +36,11 @@ install-commands: all
 install-data:
 	$(PYTHON) -I desktop/install-product.py --prefix "$(PREFIX)" --destdir "$(DESTDIR)"
 
-install: install-commands install-data
+install-product: install-commands install-data
 
 install-bundle:
 	$(PYTHON) -I desktop/install-bundle-layout.py --check --prefix "$(PREFIX)" --destdir "$(DESTDIR)"
-	$(MAKE) install PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)"
+	$(MAKE) install-product PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)"
 	$(PYTHON) -I desktop/install-bundle-layout.py --prefix "$(PREFIX)" --destdir "$(DESTDIR)"
 
 check-install:

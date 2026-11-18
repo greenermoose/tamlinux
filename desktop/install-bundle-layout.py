@@ -12,7 +12,7 @@ import sys
 
 SOURCE = Path(__file__).resolve().parents[1]
 CURRENT = "/usr/lib/tamlinux/current"
-SHARE = f"{CURRENT}/share/tamlinux"
+SOURCE_CURRENT = "/usr/lib/tamlinux/source/current"
 
 # These expressions are used by the relocatable installation. Compile their
 # private data path into the script that will run directly from /usr/bin.
@@ -51,7 +51,8 @@ def move_tree(source: Path, dest: Path) -> None:
     source.rename(dest)
 
 
-def render_commands(directory: Path) -> None:
+def render_commands(directory: Path, current: str = CURRENT) -> None:
+    share = f"{current}/share/tamlinux"
     for command in sorted(directory.iterdir()):
         info = command.lstat()
         if not stat.S_ISREG(info.st_mode) or not info.st_mode & 0o111:
@@ -61,16 +62,16 @@ def render_commands(directory: Path) -> None:
             continue
         content = data.decode("utf-8")
         for old in DATA_PATHS:
-            content = content.replace(old, SHARE)
+            content = content.replace(old, share)
         content = content.replace(
             'self_dir.parent / "share/tamlinux/desktop/test-battery"',
-            f'Path("{SHARE}/desktop/test-battery")',
+            f'Path("{share}/desktop/test-battery")',
         )
         content = content.replace(
             'HERE.parent / "libexec/tam-workstation-upgrade"',
-            f'Path("{CURRENT}/libexec/tam-workstation-upgrade")',
+            f'Path("{current}/libexec/tam-workstation-upgrade")',
         )
-        if command.name == "tam-desktop":
+        if current == CURRENT and command.name == "tam-desktop":
             marker = 'bin_dir="$(dirname "$(readlink -f "$0")")"'
             if content.count(marker) != 1:
                 raise ValueError("Expected the console desktop entry before bundle activation")
@@ -83,12 +84,22 @@ def render_commands(directory: Path) -> None:
                 'fi\n'
             )
             content = content.replace(marker, activation + marker)
-        elif command.name in ("tam-shell", "tam-hyprland-session", "tam-session-init",
+        elif current == CURRENT and command.name in ("tam-shell", "tam-hyprland-session", "tam-session-init",
                               "tam-crash-watch", "tam-hyprland-monitor-watch"):
             first, separator, rest = content.partition("\n")
             if not separator:
                 raise ValueError(f"Expected a script body for {command.name}")
             content = first + "\n/usr/bin/tam-bundle startup-ready || exit $?\n" + rest
+        elif current == SOURCE_CURRENT and command.name in (
+            "tam-desktop", "tam-shell", "tam-hyprland-session", "tam-session-init",
+        ):
+            first, _, rest = content.partition("\n")
+            content = first + (
+                '\nif [ -e /var/lib/tamlinux/source/pending.json ]; then\n'
+                '  echo "Tamlinux installation is incomplete. Recover from the console." >&2\n'
+                '  exit 1\n'
+                'fi\n'
+            ) + rest
         if "../share/tamlinux" in content:
             raise ValueError(f"Unmapped relative product data path in {command.name}")
         if content.encode() != data:
@@ -148,11 +159,12 @@ def copy_vendor_defaults(stage: Path, source: Path,
         put(stage / relative, data, mode)
 
 
-def install(stage: Path, source: Path = SOURCE) -> None:
+def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
+    share = f"{current}/share/tamlinux"
     usr = stage / "usr"
     if not usr.is_dir() or usr.is_symlink():
         raise ValueError("Expected a staged usr directory")
-    private = stage / CURRENT.lstrip("/")
+    private = stage / current.lstrip("/")
     move_tree(usr / "share/tamlinux", private / "share/tamlinux")
     if (usr / "libexec").exists():
         move_tree(usr / "libexec", private / "libexec")
@@ -161,7 +173,7 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     (usr / "share/systemd").rmdir()
     wants_by_target: dict[str, set[str]] = {}
     for unit in sorted(units.iterdir()):
-        unit.write_text(unit.read_text().replace("/usr/share/tamlinux", SHARE))
+        unit.write_text(unit.read_text().replace("/usr/share/tamlinux", share))
         for unit_target in wanted_targets(unit):
             wants_by_target.setdefault(unit_target, set()).add(unit.name)
     commands = usr / "bin"
@@ -169,7 +181,7 @@ def install(stage: Path, source: Path = SOURCE) -> None:
         (commands / name).unlink()
     for name in ("start",):
         (commands / name).rename(commands / f"tam-{name}")
-    render_commands(commands)
+    render_commands(commands, current)
 
     copy_vendor_defaults(stage, source, wants_by_target)
     for unit_target, unit_names in sorted(wants_by_target.items()):
@@ -178,7 +190,7 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     native = source / "desktop/native"
     integration = native / "integration"
     browser = (native / "theme-browser-policy").read_bytes().replace(
-        b"/usr/lib/tamlinux/browser_policy.py", f"{CURRENT}/lib/browser_policy.py".encode(),
+        b"/usr/lib/tamlinux/browser_policy.py", f"{current}/lib/browser_policy.py".encode(),
     )
     put(usr / "bin/tam-theme-set-browser-policy", browser, 0o755)
     put(private / "lib/browser_policy.py", (native / "browser_policy.py").read_bytes())
@@ -191,7 +203,7 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     put(usr / "share/polkit-1/actions/org.tamlinux.native.policy", policy)
     for hook in sorted(integration.glob("*.hook")):
         data = hook.read_bytes().replace(
-            b"/usr/lib/tamlinux/hyprland-reload-guard", f"{CURRENT}/lib/hyprland-reload-guard".encode(),
+            b"/usr/lib/tamlinux/hyprland-reload-guard", f"{current}/lib/hyprland-reload-guard".encode(),
         )
         put(usr / "share/libalpm/hooks" / hook.name, data)
     console = private / "share/tamlinux/console/welcome.issue"
@@ -208,12 +220,12 @@ def install(stage: Path, source: Path = SOURCE) -> None:
     (bash / "env").write_text("# Tamlinux commands use the system PATH.\n")
     home = private / "defaults/home"
     put(home / ".config/tamlinux/session/hyprland.lua",
-        f'dofile("{SHARE}/session/entry.lua")\n'.encode())
+        f'dofile("{share}/session/entry.lua")\n'.encode())
     put(home / ".config/uwsm/env.d/10-tamlinux.sh", (
-        f'. {SHARE}/session/uwsm-env\n'
+        f'. {share}/session/uwsm-env\n'
         'export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n'
         'export TAMLINUX_QUICKSHELL_IPC=/usr/bin/qs\n'
-        f'export TAMLINUX_VERSION_NOTES={SHARE}/version-notes.txt\n'
+        f'export TAMLINUX_VERSION_NOTES={share}/version-notes.txt\n'
         'export TAMLINUX_STAY_AWAKE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake"\n'
     ).encode())
     # These are settings defaults, not browser profiles. Generated Nix
@@ -238,7 +250,7 @@ def install(stage: Path, source: Path = SOURCE) -> None:
                     "allowed_origins": ["chrome-extension://" + origin + "/"]}
             put(home / f".config/{browser}/NativeMessagingHosts/org.tamlinux.{name}.json",
                 (json.dumps(host, sort_keys=True) + "\n").encode())
-    extensions = f"{SHARE}/browser/extensions"
+    extensions = f"{share}/browser/extensions"
     put(home / ".config/chromium-flags.conf", (
         "--ozone-platform=wayland\n--password-store=gnome-libsecret\n"
         "--enable-features=TouchpadOverscrollHistoryNavigation\n"
@@ -251,11 +263,12 @@ def main() -> int:
     parser.add_argument("--prefix", required=True)
     parser.add_argument("--destdir", required=True)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--source", action="store_true")
     args = parser.parse_args()
     try:
         stage = staging_root(args.prefix, args.destdir)
         if not args.check:
-            install(stage)
+            install(stage, current=SOURCE_CURRENT if args.source else CURRENT)
     except (OSError, ValueError) as error:
         print(f"install-bundle-layout: {error}", file=sys.stderr)
         return 1

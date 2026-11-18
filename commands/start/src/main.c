@@ -29,6 +29,14 @@
 
 static int activate_bundle(char **argv)
 {
+#ifdef TAM_SOURCE_INSTALL
+	(void)argv;
+	if (access("/var/lib/tamlinux/source/pending.json", F_OK) == 0) {
+		fputs("Finish or recover the Tamlinux installation at the console.\n", stderr);
+		return 1;
+	}
+	return 0;
+#else
 	char executable[PATH_MAX];
 	ssize_t count = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
 	if (count < 0 || (size_t)count == sizeof(executable) - 1)
@@ -68,6 +76,7 @@ static int activate_bundle(char **argv)
 		return 1;
 	}
 	return 0;
+#endif
 }
 
 static void usage(FILE *out)

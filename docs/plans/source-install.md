@@ -1,0 +1,36 @@
+# Install and upgrade Tamlinux from local Git clones
+
+**Develop status.** The locked-source build staged 3,280 files in a test
+checkout. Installation, upgrade, and rollback passed in a temporary root
+with administrator and user-local software present. Live installation is
+gated until native preflight, bundle migration, user settings, and
+candidate activation are integrated.
+
+Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the complete workstation from local Git clones, then `make install` to install the staged files directly. Use the same two commands for subsequent upgrades. Keep earlier bundle deliveries usable for recovery.
+
+## Build and install
+
+- Run both targets from the `tamlinux` checkout. Pin `libtam`, `tam`, `tamlinux-tools`, `tam-edit`, and `tam-data` in a component lock. Resolve commits from sibling clones by default, with a clone-directory override. Build from committed snapshots without fetching, switching branches, or changing any supplied clone. Uncommitted component work can stay in those clones during a cultivar upgrade. Report missing commits and build prerequisites before staging.
+- Run the build unprivileged in private staging. Reuse component Makefiles and product staging for commands, desktop files, services, defaults, documentation, and version notes. Record the product and component commits and the modes and hashes of the staged files. Preserve explicit `PREFIX` and `DESTDIR` staging for component and distribution builds.
+- Have `make install` consume the completed stage and reject stale or altered output. Check native runtime prerequisites and destination ownership. Apply system changes through one privileged transaction with the desktop inactive. The cultivar installs under `/usr/`, with commands in `/usr/bin` and versioned runtime data under `/usr/lib/tamlinux/source/`. Apply fresh-user defaults as that user and preserve existing settings.
+- Preserve all files that administrators install under `/usr/local/` and all files users install under their own `~/.local/`, including commands, libraries, documentation, and data with the same names as cultivar files. Apply this boundary to installation, migration, upgrade, cleanup, and rollback, including through symlinked destinations. Select cultivar build inputs from the locked sources and declared native providers. Verify installed commands by their absolute system paths so local overrides can coexist. Leave command lookup under the administrator's and each user's control.
+- Record active and previous installs in root-owned state. Refuse package-owned, unmanaged, or locally modified file conflicts. Remove obsolete files only when their recorded contents match. Journal changes before applying them and support console recovery without the Git clones. Reinstalling an intact stage is a no-op.
+
+## Migration and candidate delivery
+
+- On an existing bundle installation, verify the exact live bundle and its recovery material before changing files. Stage the source build first, then use the installed `tam-bundle detach` once, bound to the verified hash. Update only the session references needed to reach the new runtime path and journal their undo. Keep package-owned bootstrap paths available during the transition. Prove recovery can remove the source installation, restore the previous bundle and recover affected settings.
+- Record the locked sources, staged manifest, installed status and rollback target in the existing candidate workflow. Promote the same staged bytes from Test to Run on a host. Each additional host builds the same locked commits and records its manifest before activation. Keep separate candidate, host and privileged-operation approvals.
+- Document clone setup, native prerequisites, installation, upgrade and recovery. Update the deployment contract before cutover. The 1.0 GitLab repository split retains its existing schedule.
+
+## Acceptance
+
+- In a temporary root, exercise clean and repeated installs, a two-version upgrade, obsolete-file removal, path conflicts, stale output, concurrent attempts, and interruption during detach and file replacement. Seed `/usr/local/` and two users' `~/.local/` trees with same-name commands, libraries, documentation, and data. Verify that contents, modes, and links survive install, migration, upgrade, and rollback. Reject any destination redirect into those trees. Verify that the cultivar builds and passes its installed checks while local copies shadow command names and component clones contain uncommitted work.
+- Prove a clean Arch installation without Nix or the legacy installer in a VM. Separately prove migration from a recorded bundle, legacy recovery, and a subsequent Make-only upgrade. Check console login, desktop start and exit, shell and plugins, version notes, and preservation of settings and locally installed software.
+
+## Workstation rollout
+
+1. **Clean-install pilot.** Prove the clean install on a fresh Arch system. A wipe and fresh Arch install are acceptable for this proof, subject to the separate disk and install approvals. Start from a minimal Arch installation, exercise the prerequisite check, and record exactly what had to be installed before `make` and `make install`. Fix the declared prerequisites if the proof finds a gap.
+2. **Upgrade pilot.** Prove the data-preserving transition from the existing bundle while the daily workstation remains available. Check recovery to the prior bundle, the subsequent Make-only upgrade, and preservation of local Tamlinux installs and component work.
+3. **Daily workstation.** Upgrade the daily workstation after both pilots pass. Use the proven preserving procedure and verify the installed cultivar, local Tamlinux installs, and developer checkouts.
+
+Record each host's exact source revisions, installed manifest, prerequisite checks, and recovery point before promotion.

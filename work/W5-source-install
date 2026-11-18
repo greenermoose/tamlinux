@@ -1,0 +1,31 @@
+W5 INSTALL FROM LOCAL GIT CLONES
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Transition from using tam-bundle to a make then make install
+  process for installing and upgrading Tamlinux from a local git clone
+  of the Tamlinux repos."
+  Fred: "Implement the plan."
+  Fred: "I approve the plan. Proceed."
+
+DONE
+
+  - Record the approved rollout and local-software preservation checks.
+  - Build from locked Git commits and stage 3,280 files in a test clone.
+  - Install, upgrade and roll back in a temporary root. Administrator
+    and user-local software survived. Seven transaction tests and four
+    existing install-layout tests passed.
+
+FAILED
+
+  - The first stage inventory missed systemd configuration locations.
+    The revised allowlist passed on the next full staged-build proof.
+
+HANDOFF
+
+  Live activation is gated. Implement native preflight, bundle migration
+  with exact recovery, the user settings handoff and candidate delivery.
