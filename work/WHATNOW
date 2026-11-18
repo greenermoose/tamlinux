@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-18, with W5
+Updated: 2026-11-18, with W6
 
 
 STATE
@@ -11,12 +11,9 @@ STATE
   VERSION reads 0.6.30 on branch develop. The current release is 0.5.12;
   0.6 is the dependable-baseline minor (README, the version outlook).
 
-  0.6.28 is delivered as a bundle and runs at the Test stage on all three
-  of Fred's hosts. Its contents and targets are in docs/plans/0.6.28.md:
-  tam 0.61.0 with corpus 0.95.0, libtam 0.7.1, tam-edit 1.0.3, tam-data
-  1.0.1 and tam-bundle 0.14.0, one canonical suspend command, and
-  optional offline documentation (Info, tldr, Arch Wiki) chosen per
-  host.
+  The daily workstation runs bundle-delivered 0.6.30 at Test, with
+  0.6.29 retained as its previous bundle. The last fleet record had
+  0.6.28 at Test on all three hosts.
 
   Since then, on develop and listed under "Unreleased" in CHANGELOG.md:
   fred.workspaces 2.0.12, a tam-fleet README fix, journal entry points
@@ -27,8 +24,9 @@ STATE
   permits same-name commands in the user’s local bin directory (W4).
 
   W5 adds a locked local-clone build and a temporary-root installer.
-  The staged build, upgrade and rollback passed. Live activation is
-  pending the work in docs/plans/source-install.md.
+  The staged build, upgrade and rollback passed. W6 adds read-only
+  native preflight. A complete stage passed prerequisite and Pacman
+  ownership checks on the daily workstation.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -44,9 +42,10 @@ NEXT
   1. Fred judges 0.6.28's stability on the three hosts. Only his
      acceptance makes it the oldest supported recovery version.
   2. Complete the source install for the next unused 0.6 candidate.
-     Integrate native preflight, bundle migration and recovery, user
-     settings and candidate delivery. Prove clean and preserving installs
-     before requesting live Test (docs/plans/source-install.md).
+     Integrate bundle migration and recovery, user settings and candidate
+     delivery. Supply hi and start on fresh Arch without tam-nut. Prove
+     clean and preserving installs before requesting live Test
+     (docs/plans/source-install.md).
   3. After 0.6.28 is accepted: prove a Nix-free build, install and
      recovery, then retire Nix and Home Manager host by host, each with
      its own approval.

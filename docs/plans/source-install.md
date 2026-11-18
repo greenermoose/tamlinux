@@ -2,8 +2,9 @@
 
 **Develop status.** The locked-source build staged 3,280 files in a test
 checkout. Installation, upgrade, and rollback passed in a temporary root
-with administrator and user-local software present. Live installation is
-gated until native preflight, bundle migration, user settings, and
+with administrator and user-local software present. Read-only native
+preflight passed on an Arch workstation with a complete source stage.
+Live installation is gated until bundle migration, user settings, and
 candidate activation are integrated.
 
 Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the complete workstation from local Git clones, then `make install` to install the staged files directly. Use the same two commands for subsequent upgrades. Keep earlier bundle deliveries usable for recovery.
@@ -11,6 +12,7 @@ Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the 
 ## Build and install
 
 - Run both targets from the `tamlinux` checkout. Pin `libtam`, `tam`, `tamlinux-tools`, `tam-edit`, and `tam-data` in a component lock. Resolve commits from sibling clones by default, with a clone-directory override. Build from committed snapshots without fetching, switching branches, or changing any supplied clone. Uncommitted component work can stay in those clones during a cultivar upgrade. Report missing commits and build prerequisites before staging.
+- Run `make preflight` before building to check the native build tools and Arch runtime providers. Repeat after `make` to compare the verified stage's destinations against the local Pacman file database. Reports identify missing prerequisites by Arch package and show each conflicting path and its owner. `SOURCE_ROOT` selects a test root for runtime and ownership checks while build probes still inspect the build host.
 - Run the build unprivileged in private staging. Reuse component Makefiles and product staging for commands, desktop files, services, defaults, documentation, and version notes. Record the product and component commits and the modes and hashes of the staged files. Preserve explicit `PREFIX` and `DESTDIR` staging for component and distribution builds.
 - Have `make install` consume the completed stage and reject stale or altered output. Check native runtime prerequisites and destination ownership. Apply system changes through one privileged transaction with the desktop inactive. The cultivar installs under `/usr/`, with commands in `/usr/bin` and versioned runtime data under `/usr/lib/tamlinux/source/`. Apply fresh-user defaults as that user and preserve existing settings.
 - Preserve all files that administrators install under `/usr/local/` and all files users install under their own `~/.local/`, including commands, libraries, documentation, and data with the same names as cultivar files. Apply this boundary to installation, migration, upgrade, cleanup, and rollback, including through symlinked destinations. Select cultivar build inputs from the locked sources and declared native providers. Verify installed commands by their absolute system paths so local overrides can coexist. Leave command lookup under the administrator's and each user's control.

@@ -3,11 +3,11 @@ import hashlib
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tarfile
 import tempfile
 
+from preflight import build_problems
 from transaction import PAYLOAD_CURRENT, inventory, write_json
 
 PRODUCT = Path(__file__).resolve().parents[2]
@@ -53,25 +53,13 @@ def snapshot(repo, revision, target):
             tree.extractall(target, filter="data")
 
 
-def require_build_tools(env):
-    commands = ("ar", "cc", "file", "git", "make", "pkg-config", "python3")
-    missing = [name for name in commands if shutil.which(name, path=env["PATH"]) is None]
-    if "pkg-config" not in missing:
-        for module in ("dbus-1", "libdrm", "libsystemd", "libcpuid", "libarchive", "ncursesw", "zlib"):
-            if subprocess.run(["pkg-config", "--exists", module], env=env).returncode:
-                missing.append(f"pkg-config:{module}")
-    if subprocess.run(["/usr/bin/python3", "-I", "-c", "import fontTools"], env=env,
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-        missing.append("python-fonttools")
-    if missing:
-        raise ValueError("missing build prerequisites: " + ", ".join(missing))
-
-
 def build(repos, work):
     if os.geteuid() == 0:
         raise ValueError("run make as your regular user")
+    problems = build_problems(BUILD_ENV)
+    if problems:
+        raise ValueError("missing build prerequisites:\n  " + "\n  ".join(problems))
     pins = revisions(repos)
-    require_build_tools(BUILD_ENV)
     work.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="build-", dir=work) as name:
         build_root = Path(name)

@@ -1,0 +1,30 @@
+W6 SOURCE INSTALL NATIVE PREFLIGHT
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W5-source-install
+
+GUIDANCE
+
+  Fred: "We are working on switching from tam-bundle to make then make
+  install to install Tamlinux. Investigate the status of this work,
+  then take the next step."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Add make preflight with native build and runtime checks and a
+    Pacman ownership check against the verified source stage.
+  - The build and preflight passed with a complete stage on the daily
+    workstation. An isolated Arch root reported missing providers.
+  - Six preflight, seven transaction and four install-layout tests passed.
+
+FAILED
+
+  Nothing.
+
+HANDOFF
+
+  Keep live installation gated. Integrate bundle migration and recovery,
+  first-login entry points, user settings and candidate delivery.
