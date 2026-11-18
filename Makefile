@@ -16,7 +16,11 @@ source-delivery:
 	@/usr/bin/python3 -I -B $(SOURCE_INSTALL) delivery --repos "$(REPOS)" --work "$(SOURCE_BUILD)"
 
 install:
+ifneq ($(strip $(SOURCE_PLAN)),)
+	/usr/bin/python3 -I -B desktop/source-install/transaction.py install --plan "$(SOURCE_PLAN)"
+else
 	/usr/bin/python3 -I $(SOURCE_INSTALL) install --repos "$(REPOS)" --work "$(SOURCE_BUILD)" $(if $(SOURCE_ROOT),--root "$(SOURCE_ROOT)")
+endif
 else
 .DEFAULT_GOAL := all
 .PHONY: install

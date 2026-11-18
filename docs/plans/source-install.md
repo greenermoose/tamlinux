@@ -30,6 +30,21 @@ Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the 
 
 ## Migration and candidate delivery
 
+For a clean source install, use the verified delivery and record the
+read-only transaction preview for the target. The approved install plan
+contains `host` (the system hostname) and `target` (the JSON object from
+`transaction.py preview`). It binds the root identity, version, Git
+revisions, and manifest digest to a clean starting point.
+
+After approval, place the plan and the stage directory (named by its
+manifest digest) side by side under a private root-owned directory. Use
+a root-owned operator export of the committed Makefile and installer
+modules and invoke `make install SOURCE_PLAN=/absolute/path/to/plan.json`
+from that export. Build and inspect the source stage as the regular user
+before the privileged install. The installer rechecks the plan, payload,
+native prerequisites, package ownership and inactive desktop. A repeat
+uses the same stage and can finish its own interrupted transaction.
+
 - On an existing bundle installation, verify the exact live bundle and its recovery material before changing files. Stage the source build first, then use the installed `tam-bundle detach` once, bound to the verified hash. Update only the session references needed to reach the new runtime path and journal their undo. Keep package-owned bootstrap paths available during the transition. Prove recovery can remove the source installation, restore the previous bundle and recover affected settings.
 - The isolated-root installer takes the stage and manifest digest with
   `migrate --bundle-archive PATH --bundle-sha256 HEX --bundle-hash sha256:HEX`.

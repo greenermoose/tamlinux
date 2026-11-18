@@ -3,12 +3,12 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-18, with W10
+Updated: 2026-11-18, with W11
 
 
 STATE
 
-  VERSION reads 0.6.30 on branch develop. The current release is 0.5.12;
+  VERSION reads 0.6.31 on branch develop. The current release is 0.5.12;
   0.6 is the dependable-baseline minor (README, the version outlook).
 
   The daily workstation runs bundle-delivered 0.6.30 at Test, with
@@ -36,6 +36,9 @@ STATE
   launch checks and bundle session recovery in isolated roots.
   W10 builds with the new tam-edit clone and binds source preparation
   to a committed delivery, host manifest and verified rollback target.
+  W11 adds a clean Make install from an approved plan and a trusted
+  operator export. The isolated Make test covers repeat installation,
+  changed plans and payloads, and a package-owned destination.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -50,9 +53,9 @@ NEXT
 
   1. Fred judges 0.6.28's stability on the three hosts. Only his
      acceptance makes it the oldest supported recovery version.
-  2. Prove clean Make installation and graphical login on fresh Arch
-     on slowhp. Follow with the preserving proof on toughbook and
-     settle the deployment contract before requesting live Test
+  2. Reset the first pilot to bare rootstock, then prove the clean
+     0.6.31 Make install and graphical login from fresh clones. Record
+     dependency friction. Review the contract before live installation
      (docs/plans/source-install.md).
   3. After 0.6.28 is accepted: prove a Nix-free build, install and
      recovery, then retire Nix and Home Manager host by host, each with

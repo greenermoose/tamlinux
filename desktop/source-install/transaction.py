@@ -407,10 +407,19 @@ def main():
     parser.add_argument("--bundle-hash")
     parser.add_argument("--bundle-sha256")
     parser.add_argument("--bundle-id")
-    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--root", type=Path)
+    parser.add_argument("--plan", type=Path)
     args = parser.parse_args()
+    if args.plan is not None:
+        if args.action != "install" or any((args.root, args.stage, args.digest, args.bundle_id,
+                                            args.bundle_archive, args.bundle_hash, args.bundle_sha256)):
+            raise ValueError("an install plan supplies the destination and stage")
+        install_plan(args.plan)
+        return
+    if args.root is None:
+        raise ValueError("an isolated root or an approved install plan is required")
     root = args.root.resolve(strict=True)
-    if root == Path("/") or not root.is_dir() or args.root.is_symlink():
+    if not root.is_dir() or args.root.is_symlink() or (root == Path("/") and args.action != "preview"):
         raise ValueError("this development installer requires an isolated test root")
     root_info = root.stat()
     if root_info.st_uid != os.geteuid() or root_info.st_mode & 0o022:
@@ -450,6 +459,86 @@ def main():
             system.start(current["current"], current["previous"])
         else:
             raise ValueError("no source installation to roll back")
+
+
+def check_console():
+    command = ["/usr/bin/loginctl", "--no-pager"]
+    sessions = subprocess.check_output([*command, "list-sessions", "--no-legend"], text=True)
+    for entry in sessions.splitlines():
+        if not entry.strip():
+            continue
+        session = entry.split()[0]
+        kind = subprocess.check_output(
+            [*command, "show-session", "-p", "Type", "--value", "--", session], text=True,
+        ).strip()
+        if kind not in {"tty", "unspecified", ""}:
+            raise ValueError("end the graphical session before installing")
+
+
+def install_plan(path):
+    # The operator imports the reviewed plan and its stage into a private
+    # directory before invoking Make. No code or payload is read as root
+    # from the regular user's checkout or build directory.
+    system_root = Path("/")
+    if not path.is_absolute() or ".." in path.parts:
+        raise ValueError("use the absolute path to the approved install plan")
+    if os.geteuid() == 0:
+        secure_directory(system_root, path.parent.relative_to(system_root))
+    else:
+        secure_directory(path.parent.parent, path.parent.name)
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+        raise ValueError("the install plan must be a privately writable regular file")
+    plan = read_json(path)
+    target = plan["target"]
+    root = Path(target["root"])
+    if not root.is_dir() or root != root.resolve(strict=True):
+        raise ValueError("the approved target must be a canonical root directory")
+    info = root.stat()
+    if (plan["host"] != os.uname().nodename or target["rootIdentity"] != [info.st_dev, info.st_ino]
+            or info.st_uid != os.geteuid() or info.st_mode & 0o022):
+        raise ValueError("the approved target host or root identity changed")
+    if root == system_root and os.geteuid() != 0:
+        raise ValueError("the running root requires root approval")
+    if target["rollback"] != {"kind": "clean"}:
+        raise ValueError("the approved operation requires a clean source install")
+    digest = target["manifest"]
+    if not re.fullmatch("[0-9a-f]{64}", digest):
+        raise ValueError("the approved manifest digest is invalid")
+    stage = path.with_name(digest)
+    secure_directory(path.parent, digest)
+    if not stage.is_dir():
+        raise ValueError("the approved stage is missing")
+    for entry in stage.rglob("*"):
+        info = entry.lstat()
+        if (not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode))
+                or info.st_uid != os.geteuid() or info.st_mode & 0o022):
+            raise ValueError(f"unsafe staged entry: {entry}")
+    receipt = verified_stage(stage, digest)
+    if any(receipt[field] != target[field] for field in ("version", "components")):
+        raise ValueError("the staged version or Git revisions differ from approval")
+    problems = runtime_problems(root)
+    if problems:
+        raise ValueError("runtime preflight found problems:\n  " + "\n  ".join(problems))
+    if root == system_root:
+        check_console()
+    system = Installation(root)
+    with system.locked():
+        if root == system_root and os.path.lexists(system.state.parent / "transaction"):
+            raise ValueError("retire the legacy bundle transaction before the clean install")
+        current = system.current()
+        pending = read_json(system.pending)
+        if current not in ({"current": None, "previous": None},
+                           {"current": digest, "previous": None}):
+            raise ValueError("the approved target already has a different source install")
+        if pending is not None:
+            if pending != {"from": None, "to": digest}:
+                raise ValueError("a different source transaction is pending")
+            system.complete()
+            return
+        system.check_switch(current["current"], receipt["files"], [])
+        system.retain(stage, digest)
+        system.start(current["current"], digest)
 
 
 if __name__ == "__main__":

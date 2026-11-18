@@ -1,0 +1,30 @@
+W11 CLEAN MAKE INSTALL PLAN
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W10-source-delivery
+
+GUIDANCE
+
+  Fred: "Implement the plan."
+
+DONE
+
+  - Added the clean install target using an approved host, root and
+    manifest. The installer consumes a stage and plan from a trusted
+    export and can finish the same interrupted transaction.
+  - Exercised Make without Git clones in an isolated Arch fixture.
+    The approved plan and repeat install passed. A mismatched host,
+    changed payload and package-owned destination were rejected.
+
+FAILED
+
+  Nothing in the focused checks. The regular test run skips the seven
+  cases requiring a private PID namespace or a fault-enabled operator.
+
+HANDOFF
+
+  Rehearse the full stage and record the exact source delivery. Review
+  the pilot contract before changing the target host. Record package
+  and setup effort from bare rootstock through graphical acceptance.

@@ -124,11 +124,41 @@ class RuntimePreflightTests(unittest.TestCase):
 
         result = call("preview")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["rollback"], {"kind": "clean"})
+        target = json.loads(result.stdout)
+        self.assertEqual(target["rollback"], {"kind": "clean"})
         state = self.root / "var/lib/tamlinux/source"
         self.assertFalse(state.exists())
-        result = call("install")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        operator = self.root / "operator"
+        operator.mkdir()
+        checkout = installer.parents[2]
+        shutil.copyfile(checkout / "Makefile", operator / "Makefile")
+        scripts = operator / "desktop/source-install"
+        scripts.mkdir(parents=True)
+        for script in ("transaction.py", "preflight.py"):
+            shutil.copyfile(installer.with_name(script), scripts / script)
+        plan_file = operator / "plan.json"
+        plan = {"host": os.uname().nodename, "target": target}
+        stage = stage.rename(operator / digest)
+        binary = stage / "payload/usr/bin/tam-test"
+
+        def make_install():
+            return subprocess.run(["/usr/bin/make", "install", f"SOURCE_PLAN={plan_file}"],
+                                  cwd=operator, capture_output=True, text=True)
+
+        write_json(plan_file, plan | {"host": ""})
+        self.assertIn("host or root identity changed", make_install().stderr)
+        write_json(plan_file, plan)
+        binary.chmod(0o755)
+        self.assertIn("stage files differ", make_install().stderr)
+        binary.chmod(0o644)
+        self.add_package("another-owner", "1-1", ("usr/bin/tam-test",))
+        self.assertIn("is owned by Arch package another-owner", make_install().stderr)
+        self.assertFalse((self.root / "usr/bin/tam-test").exists())
+        shutil.rmtree(self.db / "another-owner-1-1")
+        for _ in range(2):
+            result = make_install()
+            self.assertEqual(result.returncode, 0, result.stderr)
+        arguments[1] = stage
         self.assertEqual(json.loads(call("preview").stdout)["rollback"],
                          {"kind": "source", "manifest": digest})
         pending = state / "pending.json"
