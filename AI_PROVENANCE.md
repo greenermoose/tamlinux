@@ -842,3 +842,5 @@ Candidate 0.6.27: [source selection](work/history/0.6.27-candidate-selection.md)
 2026-11-16: Claude Code 2.1.325 (`claude-opus-5-5`) renews fred.workspaces output retry budgets after a late output return. [Record](work/history/2026-11-16-fred-workspaces-reconcile-retry.md).
 
 Candidate 0.6.28: [source selection](work/history/0.6.28-candidate-selection.md).
+
+Candidate 0.6.29: [source selection](docs/ai/0.6.29-candidate-selection.md).
