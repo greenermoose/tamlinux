@@ -84,8 +84,7 @@ PORTABLE_STATE_DIRS = (
 )
 BACKGROUND_IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 # Roots that are never a packaged setting: Nix, and tam development
-# installs (source generations and a locally built libtam). ~/.local/bin
-# is not listed, because bundles deploy their command shims there.
+# installs (source generations and a locally built libtam).
 FOREIGN_MARKERS = (b'/nix/store/', b'.nix-profile/', b'.local/opt/tam/',
                    b'.local/lib/libtam')
 
@@ -327,8 +326,11 @@ class HomeLinkMigration:
                 remove = relative in retire
                 if not materialize and not remove:
                     continue
-                self.parent(relative)
                 path = self.home / relative
+                if remove and not materialize and Path(relative).parent == Path('.local/bin'):
+                    if not self.expected_link(path, generation, relative):
+                        continue
+                self.parent(relative)
                 if not self.expected_link(path, generation, relative):
                     raise DeploymentError('home endpoint differs from saved generation: ' + relative)
                 entries.append({'path': relative, 'link': os.readlink(path),
@@ -905,7 +907,7 @@ class Deployment:
 
     def preflight_bundle(self, revision: str, delivery: dict) -> None:
         self.check_clean()
-        baseline = self.require_consistent()
+        baseline = self.require_consistent(verify_local_commands=False)
         text = self.bundle_command('--version')
         found = re.fullmatch(r'tam-bundle ([0-9]+\.[0-9]+\.[0-9]+) \(record format 2\)', text)
         if not found or int(command('/usr/bin/vercmp', found[1], delivery['minimumTool'], capture=True)) < 0:
@@ -938,7 +940,7 @@ class Deployment:
             outputs = self.expected_outputs(report['baselineAssembly'])
             plan = self.bundle_home_plan(Path(report['artifact']), delivery, report['baselineGeneration'], outputs)
             generation = self.build_bundle_profile(revision, plan, report['baselineGeneration'])
-        self.require_consistent()
+        self.require_consistent(verify_local_commands=False)
         if self.generation_or_none() != report['baselineGeneration'] or self.locked() != report['baselineAssembly']:
             raise DeploymentError('baseline changed during console preparation')
         print(json.dumps(dict(report, generation=generation)))
@@ -1103,13 +1105,6 @@ class Deployment:
         for entry in plan['entries']:
             if entry['path'] in generated:
                 entry['action'] = 'regenerate'
-        # A local command we do not own must not silently shadow the cultivar.
-        planned = {entry['path'] for entry in plan['entries'] if entry['action'] == 'retire'}
-        for path in placed:
-            if path.startswith('usr/bin/'):
-                relative = '.local/bin/' + Path(path).name
-                if os.path.lexists(self.home / relative) and relative not in planned:
-                    raise DeploymentError('unmanaged command would shadow the bundle: ' + relative)
         self.audit_bundle_settings(settings, generated | set(retire))
         return plan
 
@@ -1437,11 +1432,8 @@ class Deployment:
         system = self.bundle_system_state()
         if system.get('live') != '-' or system.get('state') not in (None, 'complete') or self.dormant_bundle_hash():
             raise DeploymentError('existing system installation requires an identified migration')
-        settings, placed = self.bundle_inputs(archive, delivery)
+        settings, _ = self.bundle_inputs(archive, delivery)
         self.audit_bundle_settings(settings)
-        for path in placed:
-            if path.startswith('usr/bin/') and os.path.lexists(self.home / '.local/bin' / Path(path).name):
-                raise DeploymentError('local command would shadow first bundle: ' + Path(path).name)
         before = self.pin_path.read_bytes()
         recovery = {'generation': None, 'assembly': self.locked(), 'state': {},
                     'pinPath': str(self.pin_path), 'pin': base64.b64encode(before).decode('ascii')}
@@ -1576,15 +1568,9 @@ class Deployment:
         delivery = tx['delivery']
         archive = self.bundle_artifact(delivery)
         self.require_bundle_tool('0.13.0')
-        settings, placed = self.bundle_inputs(archive, delivery)
+        settings, _ = self.bundle_inputs(archive, delivery)
         excluded = {entry['path'] for entry in tx['homePlan']['entries'] if entry['action'] in ('regenerate', 'retire')}
         self.audit_bundle_settings(settings, excluded)
-        retiring = {entry['path'] for entry in tx['homePlan']['entries'] if entry['action'] == 'retire'}
-        for path in placed:
-            if path.startswith('usr/bin/'):
-                relative = '.local/bin/' + Path(path).name
-                if os.path.lexists(self.home / relative) and relative not in retiring:
-                    raise DeploymentError('local command would shadow the bundle: ' + relative)
         migration = self.migration(identifier) if tx.get('mode', 'migration') == 'migration' else None
         if migration:
             if not migration.record.exists():
@@ -2226,7 +2212,8 @@ class Deployment:
                 "--apply", expression, capture=True))
         return self._outputs[revision]
 
-    def verify(self, pins: dict[str, str], revision: str | None = None) -> list[str]:
+    def verify(self, pins: dict[str, str], revision: str | None = None, *,
+               verify_local_commands: bool = True) -> list[str]:
         """Differences between the installed endpoints and the assembly."""
         selected = revision or self.locked()
         delivery = getattr(self, '_bundle_deliveries', {}).get(selected)
@@ -2254,6 +2241,8 @@ class Deployment:
             problems.append(f"shell revision {self.installed()} is not {pins['tamlinux']}")
 
         def endpoint(label: str, path: Path, target: str) -> None:
+            if not verify_local_commands and path.parent == self.bin_dir:
+                return
             if not path.exists():
                 problems.append(f"{label} is missing or its link is broken: {path}")
             elif os.path.realpath(path) != target:
@@ -2367,7 +2356,7 @@ class Deployment:
         if problems:
             raise DeploymentError('active generation verification failed: ' + '; '.join(problems))
 
-    def state_report(self) -> dict:
+    def state_report(self, *, verify_local_commands: bool = True) -> dict:
         locked, state = self.locked(), self.read_state()
         if state.get('backend') == 'tam-bundle':
             profile = self.generation_or_none()
@@ -2391,7 +2380,8 @@ class Deployment:
                     'runtime': runtime, 'transaction': tx, 'problems': problems}
         profile = self.generation()
         pins = self.components(locked)
-        problems = list(self.verify(pins, locked))
+        problems = list(self.verify(pins, locked) if verify_local_commands else
+                        self.verify(pins, locked, verify_local_commands=False))
         if not state or state.get('packages') != locked or state.get('components') != pins:
             problems.append('deployment receipt does not match lock/components')
         if state.get('generation') != profile:
@@ -2412,14 +2402,14 @@ class Deployment:
                 'profileGeneration': profile, 'receiptGeneration': state.get('generation'),
                 'receipt': state, 'runtime': runtime, 'transaction': transaction, 'problems': problems}
 
-    def require_consistent(self) -> dict:
-        report = self.state_report()
+    def require_consistent(self, *, verify_local_commands: bool = True) -> dict:
+        report = self.state_report(verify_local_commands=verify_local_commands)
         if report['problems']:
             raise DeploymentError('deployment state disagrees; reconcile before retrying:\n  ' + '\n  '.join(report['problems']))
         return report
 
     def status(self, json_output: bool = False) -> None:
-        report = self.state_report()
+        report = self.state_report(verify_local_commands=False)
         if json_output:
             print(json.dumps(report, indent=2))
             if report['problems']:

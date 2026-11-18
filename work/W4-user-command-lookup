@@ -1,0 +1,23 @@
+W4 USER COMMAND LOOKUP
+
+Date: 2026-11-17
+AI harness: Codex CLI 0.169.1
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "What each user chooses to run is that user's business."
+
+  Fred: "Implement the plan."
+
+DONE
+
+  Bundle installation verifies the system executables and preserves
+  local commands. Migration retires only the recorded managed link.
+  The integration tests exercise a local tam during first install,
+  migration, update, and bundle rollback.
+
+HANDOFF
+
+  Prepare 0.6.29 with this installer. Verify the packaged executable
+  by its installed system path.

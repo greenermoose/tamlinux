@@ -13,8 +13,8 @@
 # earlier file at that path is kept beside the record and put back on
 # uninstall. Meta + K reaches the launcher through a personal binding that
 # checks for it when Hyprland loads its config; install and uninstall reload
-# Hyprland so that binding follows. Uninstall before a bundle install: a
-# ~/.local/bin copy of a bundle command stops activation.
+# Hyprland so that binding follows. Use the packaged path to test the
+# bundle while the local trial is installed.
 
 set -euo pipefail
 

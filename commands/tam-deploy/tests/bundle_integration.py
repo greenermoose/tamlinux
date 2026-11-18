@@ -265,6 +265,24 @@ class BundleMigration(TransactionRecovery):
         self.assertEqual(self.app.locked(), self.packages_main)
         self.assertEqual(self.app.generation(), str(self.old))
 
+    def test_local_tam_survives_migration_bundle_update_and_rollback(self):
+        local = self.app.home / '.local/bin/tam'
+        local.unlink()
+        local.write_text('#!/bin/sh\necho development\n')
+        local.chmod(0o755)
+        self.app.activate_bundle(self.prepare_bundle())
+        revision = 'f' * 40
+        delivery = self.next_delivery(revision, '9.8.8')
+        self.app._requested_transaction = 'second-delivery'
+        self.app.prepare_bundle(revision, delivery['components'], 'test')
+        self.app.activate_bundle('second-delivery')
+        self.assertEqual(self.app.bundle_system_state()['live'], delivery['artifact']['bundleId'])
+        self.raw('--root', self.rootfs, 'check', '--full')
+        self.assertEqual(subprocess.check_output([local], text=True).strip(), 'development')
+        self.app.back()
+        self.assertEqual(self.app.bundle_system_state()['live'], self.bundle_id)
+        self.assertEqual(subprocess.check_output([local], text=True).strip(), 'development')
+
     def test_later_update_can_return_directly_to_original_nix_generation(self):
         initial = self.prepare_bundle();self.app.activate_bundle(initial)
         revision = 'f' * 40;delivery = self.next_delivery(revision, '9.8.8')
@@ -286,17 +304,22 @@ class BundleMigration(TransactionRecovery):
 
     def test_first_account_bundle_without_nix_profile_and_undo(self):
         self.fresh_account()
+        local = self.app.home / '.local/bin/tam'
+        local.write_text('#!/bin/sh\necho development\n')
+        local.chmod(0o755)
         (self.app.home / '.bashrc').write_text('account before bundle\n')
         self.app.prepare_bundle_init(self.packages_new, self.delivery['components'], 'test')
         identifier = json.loads(self.app.transaction_file.read_text())['id']
         self.assertFalse(self.app.profile.exists())
         self.app.activate_bundle(identifier)
         self.assertFalse(self.app.state_report()['problems'])
+        self.assertEqual(subprocess.check_output([local], text=True).strip(), 'development')
         (self.app.home / '.bashrc').write_text('account after bundle\n')
         self.app.recover(identifier)
         self.assertEqual((self.app.home / '.bashrc').read_text(), 'account before bundle\n')
         self.assertFalse(self.app.state_file.exists())
         self.assertEqual(self.app.bundle_system_state()['live'], '-')
+        self.assertEqual(subprocess.check_output([local], text=True).strip(), 'development')
 
     def test_nix_references_added_after_prepare_refuse_before_conversion(self):
         identifier = self.prepare_bundle()
