@@ -30,6 +30,7 @@ RUNTIME_COMMANDS = {
 }
 RUNTIME_FILES = {
     "usr/lib/qt6/qml/Quickshell/Wayland/qmldir": "quickshell",
+    "usr/share/icons/Adwaita/cursors/left_ptr": "adwaita-cursors",
     "usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf": "ttf-jetbrains-mono-nerd",
     "usr/lib/libhyprbars.so": "hyprland-plugin-hyprbars",
     "lib64/ld-linux-x86-64.so.2": "glibc", "usr/lib/libc.so.6": "glibc",

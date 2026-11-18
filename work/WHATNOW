@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-18, with W12
+Updated: 2026-11-18, with W13
 
 
 STATE
@@ -40,8 +40,10 @@ STATE
   W11 adds a clean Make install from an approved plan and a trusted
   operator export. W12 corrects the 0.6.31 pilot to tam 0.61.4 and corpus
   0.96.3. The corrected delivery passed clean and repeat installation in
-  an isolated Arch fixture. The first pilot has detached 0.6.28 and is
-  preparing bare rootstock.
+  an isolated Arch fixture. The first clean Arch pilot installed 0.6.31
+  and verified the installed files and desktop startup. W13 adds two
+  checks in Develop. Preflight now requires a real default cursor theme,
+  and the widget proof reads the actual Make version-notes output.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -54,28 +56,26 @@ NEXT
   Every stage move below happens only on Fred's word: Test, Run and
   Release are his, and a version number is not an instruction.
 
-  1. Finish the first pilot's reset to bare rootstock. Preview and obtain
-     separate approvals for the bootstrap and remaining package batches.
-     Retain Arch boot, networking, SSH, the account and Git.
-  2. Clone from GitHub and build 0.6.31. Obtain approval for the exact
-     host manifest before installing. Verify console and graphical
-     startup. Document dependency friction and list removals to evaluate
-     during 0.6.x and after tam-pane (docs/plans/source-install.md).
+  1. Prove the two fixes in a separately approved clean candidate.
+     Check the pointer and click the version label. Confirm desktop exit.
+  2. Document dependency friction and graphical application checks
+     for the first pilot. Evaluate removals in 0.6.x and after tam-pane
+     (docs/plans/source-install.md).
   3. After 0.6.28 is accepted, update its plan status. Continue the
      separate Nix and Home Manager retirement work host by host.
 
 
 WAITING FOR FRED
 
-  - Approval of the remaining package removals and the exact clean
-    Make install on the first pilot.
+  - Approval of the next clean candidate and visual acceptance of both
+    desktop fixes.
   - His verdict on 0.6.28 at Test for the separate fleet recovery anchor.
 
 
 WATCH OUT
 
-  - Software reaches the workstation only through a recorded
-    tamlinux-packages assembly and tam-deploy, never from a checkout.
+  - The clean Make pilot uses a recorded delivery and an approved host
+    manifest. Bundle deliveries still use tam-deploy.
   - Boot, login, disk, firmware and package-removal steps run one at a
     time, each approved by Fred, with a rollback point recorded first.
   - desktop/check-all runs the whole suite. Warn Fred before --proofs:

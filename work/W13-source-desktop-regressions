@@ -1,0 +1,34 @@
+W13 SOURCE DESKTOP REGRESSIONS
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W12
+
+GUIDANCE
+
+  Fred: "What needs to be improved so you don't keep reproducing those
+  bugs?"
+
+DONE
+
+  - Require the Adwaita pointer file and its Arch package in source
+    preflight. The test proves the Arch default theme alone is insufficient.
+  - Generate the full version-notes heading. The widget proof now reads
+    notes produced by the Make build code and checks the rendered text.
+  - Both focused regressions failed before the fixes. The source suite
+    passed with 17 tests and 7 skips. All 17 widget tests passed.
+
+FAILED
+
+  - The pilot started Hyprland and Quickshell but lacked the inherited
+    cursor theme. The bar showed its fallback because the notes file
+    omitted "version notes" from the heading.
+  - The console wrapper passed a restrictive umask to the installer.
+    The pilot needed a directory mode correction before first start.
+
+HANDOFF
+
+  Verify a corrected candidate on a clean desktop. Check the cursor on
+  the desktop and in an application and click the version label to read
+  the candidate notes. Keep the pilot's approved manifest for recovery.

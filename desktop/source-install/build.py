@@ -53,6 +53,15 @@ def snapshot(repo, revision, target):
             tree.extractall(target, filter="data")
 
 
+def render_version_notes(changelog, version):
+    notes = changelog.split("\n## ")[1:]
+    release = next((body for heading, _, body in (note.partition("\n") for note in notes)
+                    if heading.split(" ", 1)[0].strip("[]") == version), None)
+    if release is None:
+        release = notes[0].partition("\n")[2]
+    return f"Tamlinux {version} version notes\n\n{release.strip()}\n"
+
+
 def build(repos, work):
     if os.geteuid() == 0:
         raise ValueError("run make as your regular user")
@@ -103,13 +112,8 @@ def build(repos, work):
         (stage / PAYLOAD_CURRENT / "BUNDLE").write_text(
             f"format 2\nname tamlinux\nversion {version}\n"
         )
-        notes = (product / "CHANGELOG.md").read_text().split("\n## ")
-        release = next((body for heading, _, body in (note.partition("\n") for note in notes[1:])
-                        if heading.split(" ", 1)[0].strip("[]") == version), None)
-        if release is None:
-            release = notes[1].partition("\n")[2]
         (stage / PAYLOAD_CURRENT / "share/tamlinux/version-notes.txt").write_text(
-            f"Tamlinux {version}\n\n" + release.strip() + "\n"
+            render_version_notes((product / "CHANGELOG.md").read_text(), version)
         )
         receipt = {"version": version, "components": pins, "files": inventory(stage)}
         ready = build_root / "ready"

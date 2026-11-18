@@ -43,6 +43,23 @@ class RuntimePreflightTests(unittest.TestCase):
         self.release.write_text("ID=debian\n")
         self.assertIn("requires x86_64 Arch Linux", preflight.runtime_problems(self.root)[0])
 
+    def test_default_cursor_needs_a_real_theme(self):
+        index = self.root / "usr/share/icons/default/index.theme"
+        index.parent.mkdir(parents=True)
+        index.write_text("[Icon Theme]\nInherits=Adwaita\n")
+        self.add_package("default-cursors", "3-1")
+        missing_package = "missing Arch package dependency: adwaita-cursors"
+        self.assertIn(missing_package, preflight.runtime_problems(self.root))
+        self.add_package("adwaita-cursors", "51.0-1")
+        cursor = "usr/share/icons/Adwaita/cursors/left_ptr"
+        missing_file = f"missing native file /{cursor} (Arch package: adwaita-cursors)"
+        self.assertIn(missing_file, preflight.runtime_problems(self.root))
+        (self.root / cursor).parent.mkdir(parents=True)
+        (self.root / cursor).touch()
+        problems = preflight.runtime_problems(self.root)
+        self.assertNotIn(missing_package, problems)
+        self.assertNotIn(missing_file, problems)
+
     def test_native_command_cannot_be_satisfied_by_local_override(self):
         self.add_package("quickshell", "0.3.2-1", ("usr/bin/qs",))
         local = self.root / "home/user/.local/bin"

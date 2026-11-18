@@ -72,6 +72,7 @@ uses the same stage and can finish its own interrupted transaction.
 
 - In a temporary root, exercise clean and repeated installs, a two-version upgrade, obsolete-file removal, path conflicts, stale output, concurrent attempts, and interruption during detach and file replacement. Seed `/usr/local/` and two users' `~/.local/` trees with same-name commands, libraries, documentation, and data. Verify that contents, modes, and links survive install, migration, upgrade, and rollback. Reject any destination redirect into those trees. Verify that the cultivar builds and passes its installed checks while local copies shadow command names and component clones contain uncommitted work.
 - Prove a clean Arch installation without Nix or the legacy installer in a VM. Separately prove migration from a recorded bundle, legacy recovery, and a subsequent Make-only upgrade. Check console login, desktop start and exit, shell and plugins, version notes, and preservation of settings and locally installed software.
+- In the clean graphical session, check the default pointer on the desktop and in an application, then click the version label and confirm it shows the candidate's changes. Run the widget proof with notes produced by the Make build. An inherited theme or a readable notes file alone can hide a regression until first login.
 
 ## Workstation rollout
 

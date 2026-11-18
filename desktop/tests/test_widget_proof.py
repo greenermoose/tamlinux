@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -212,7 +213,16 @@ class Render(unittest.TestCase):
                 "Changes since Tamlinux 0.6.14:\n"
                 "- tam 0.49.1 (0.75.3)"
             )
-            notes.write_text(expected + "\n")
+            rendered = subprocess.check_output(
+                [sys.executable, "-B", "-c",
+                 "import sys; from build import render_version_notes; "
+                 "print(render_version_notes(sys.stdin.read(), '0.6.15'), end='')"],
+                cwd=DESKTOP / "source-install",
+                input="# Changelog\n\n## [0.6.15]\n\nChanges since Tamlinux 0.6.14:\n"
+                      "- tam 0.49.1 (0.75.3)\n",
+                text=True,
+            )
+            notes.write_text(rendered)
             result = self.run_proof(
                 "fred.tamversion",
                 "--property", "versionNotes",
