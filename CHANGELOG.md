@@ -8,6 +8,7 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- `fred.workspaces` 2.0.13: a monitor it blanked counts down to blank again after something else lights it. The shell gains `compositorRefresh` (`tam-shell tamlinux-shell compositorRefresh`) to re-read outputs after an idle daemon changes DPMS.
 - Remove `udiskie` from desktop startup. Mount and unmount removable drives manually.
 
 - Retire the last `~/.local/dev` reference in `tam-deploy`: the settings audit now refuses references to tam source generations (`~/.local/opt/tam/`) and a locally built libtam (`~/.local/lib/libtam`), instead of the deleted development prefix. A `~/.local/bin` command shim is not refused there, because bundles deploy their own shims in that directory.

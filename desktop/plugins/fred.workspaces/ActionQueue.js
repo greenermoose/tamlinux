@@ -83,10 +83,20 @@ function published(client, ok) {
   pump()
 }
 
-function finished(client, busy, incomplete) {
+function finished(client, busy, incomplete, ok) {
   if (!working || working.client !== client) return
   var request = working.request
   working = null
+  // The helper runs on the first bar, not the one that asked. Tell every bar
+  // that a DPMS change for its output completed, so the asking bar can trust
+  // it without waiting for the facade: Hyprland sends no DPMS event.
+  if (ok && (request.args[0] === "dpms-off" || request.args[0] === "dpms-on")) {
+    for (var i = 0; i < clients.length; i++) {
+      if (typeof clients[i].dpmsCommandFinished === "function") {
+        clients[i].dpmsCommandFinished(request.args[0], request.args[1])
+      }
+    }
+  }
   // Retry only the retained latest intent, never republish an older click.
   if ((busy || (incomplete && request.args[0] === "apply-intent")) && ++request.tries < 3) pending.push(request)
   else if (busy || incomplete) client.queueRejected(request.args)

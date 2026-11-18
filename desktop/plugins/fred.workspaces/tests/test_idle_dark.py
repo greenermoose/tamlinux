@@ -45,5 +45,14 @@ class IdleDarkTests(unittest.TestCase):
             self.assertIn('root.blankUnconfirmed = false', block(name))
 
 
+    def test_helper_completion_confirms_the_blank(self):
+        # Without it, a monitor lit from elsewhere before the facade's next
+        # monitor read kept its stale dark state for good (2026-11-18).
+        done = block(r'function dpmsCommandFinished\(')
+        self.assertIn('action === "dpms-off" && root.isMonitorDark && root.blankUnconfirmed', done)
+        self.assertIn('root.blankUnconfirmed = false', done)
+        self.assertIn('ActionQueue.finished(root, root.lastActionBusy, root.lastActionIncomplete, root.lastActionOk)',
+                      QML)
+
 if __name__ == '__main__':
     unittest.main()

@@ -20,6 +20,12 @@ architectural decisions for workspaces-fred-tamlinux.
 
 SESSION RECORDS
 
+  Date: 2026-11-18
+  Topic: Count down again after a monitor is lit from elsewhere (2.0.13)
+  Primary Tool: Claude Code 2.1.327
+  Model: claude-opus-5-5
+  Session Document: <2026-11-18-confirm-blank-on-helper-exit.md>
+
   Date: 2026-10-06
   Topic: Wake a blanked monitor (2.0.1)
   Primary Tool: Claude Code 2.1.292

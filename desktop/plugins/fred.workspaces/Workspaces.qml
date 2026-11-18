@@ -12,7 +12,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.12"
+  readonly property string pluginVersion: "2.0.13"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -485,6 +485,20 @@ BarWidget {
     root.runDesktopCommand(["dpms-off", String(barMonitor.name)])
   }
 
+  // The helper finished a DPMS change for this bar's output. A completed
+  // dpms-off confirms the blank: the facade only learns of it on its next
+  // monitor read, which may never come before the wake (Hyprland sends no
+  // DPMS event), and while unconfirmed every "lit" report is discarded, so a
+  // monitor lit from elsewhere kept its stale dark state and never counted
+  // down again (DP-2, 2026-11-18 06:30).
+  function dpmsCommandFinished(action, output) {
+    if (!barMonitor || String(barMonitor.name) !== String(output)) return
+    if (action === "dpms-off" && root.isMonitorDark && root.blankUnconfirmed) {
+      root.blankUnconfirmed = false
+      root.idleLog("blank confirmed by helper")
+    }
+  }
+
   function resetIdle() {
     if (useSettle.running) useSettle.stop()
     if (root.isMonitorDark) root.idleLog("dark state reset (resetIdle)")
@@ -862,6 +876,7 @@ BarWidget {
 
   property bool lastActionBusy: false
   property bool lastActionIncomplete: false
+  property bool lastActionOk: false
 
   function queueRejected(args) {
     console.warn("fred.workspaces request incomplete: " + JSON.stringify(args))
@@ -931,6 +946,7 @@ BarWidget {
       root.broadcastWorkspaces("reloadStateFiles")
       root.lastActionBusy = exitCode === 75
       root.lastActionIncomplete = exitCode === 1
+      root.lastActionOk = exitCode === 0 && exitStatus === 0
       actionRetryTimer.restart()
     }
   }
@@ -959,7 +975,7 @@ BarWidget {
   }
 
   function runNextAction() {
-    ActionQueue.finished(root, root.lastActionBusy, root.lastActionIncomplete)
+    ActionQueue.finished(root, root.lastActionBusy, root.lastActionIncomplete, root.lastActionOk)
   }
 
   function startQueuedAction(args) {

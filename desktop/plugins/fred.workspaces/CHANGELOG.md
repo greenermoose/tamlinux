@@ -4,6 +4,16 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.13 - Unreleased
+
+- Count a blank as confirmed when the helper's `dpms-off` completes, instead
+  of only when the shell next reports the monitor dark. Hyprland sends no
+  DPMS event, so on a quiet night that report never came; when the monitor
+  was lit from elsewhere, every "lit" report was discarded as stale and the
+  monitor never counted down to blank again (DP-2, 2026-11-18). The shared
+  queue now tells every bar when a DPMS change for its output completes,
+  because the helper runs on the first bar rather than the one that asked.
+
 ## 2.0.12 - Unreleased
 
 - Give an output that was placed (or absent) when last observed, and has since

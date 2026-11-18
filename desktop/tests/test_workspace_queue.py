@@ -57,6 +57,20 @@ published(b,true);
 assert.deepEqual(calls.at(-1), ['B','work',['apply-intent']]);
 ''')
 
+    def test_completed_dpms_change_reaches_the_bar_that_owns_the_output(self):
+        # The helper runs on the first bar (A); the blank was asked for by B.
+        self.run_case(r'''
+const seen = [];
+b.dpmsCommandFinished = (action, output) => seen.push(['B', action, output]);
+submit(b, ['dpms-off','DP-2'], false);
+assert.deepEqual(calls.at(-1), ['A','work',['dpms-off','DP-2']]);
+finished(a, false, false, true);
+assert.deepEqual(seen, [['B','dpms-off','DP-2']]);
+submit(b, ['dpms-off','HDMI-A-1'], false);
+finished(a, false, false, false); // failed helper: nothing confirmed
+assert.equal(seen.length, 1);
+''')
+
     def test_busy_worker_retries_three_times_without_republishing_or_infinite_loop(self):
         self.run_case(r'''
 submit(a,['switch','3'],true); published(a,true);

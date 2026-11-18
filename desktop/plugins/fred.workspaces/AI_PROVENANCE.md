@@ -106,3 +106,8 @@ Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies 
 
 Claude Code `2.1.292` (`claude-opus-5-5`) kept a monitor this bar blanked dark until the shell reports it dark, so pointer entry or focus wakes it again. A stale "lit" report from the shell had cleared the dark state. Not tagged or released.
 [Session record](docs/ai/2026-10-06-wake-blanked-monitor.md).
+
+## 2026-11-18 confirm a blank on helper exit (2.0.13)
+
+Claude Code `2.1.327` (`claude-opus-5-5`) made a completed helper `dpms-off` confirm this bar's blank, so a monitor lit from elsewhere counts down to blank again. The Tamlinux shell gained `compositorRefresh` alongside. Not tagged or released.
+[Session record](docs/ai/2026-11-18-confirm-blank-on-helper-exit.md).

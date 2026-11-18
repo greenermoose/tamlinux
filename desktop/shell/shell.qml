@@ -781,6 +781,13 @@ ShellRoot {
     function compositorSetDpms(name: string, on: string): void {
       if (proof.compositor) proof.compositor.setDpms(name, on)
     }
+    // An idle daemon changed DPMS itself; read the outputs again so widgets
+    // see which monitors are lit (fred-idle-dpms calls this after each change).
+    function compositorRefresh(): string {
+      if (!proof.compositor) return "no-compositor"
+      proof.compositor.refreshOutputs()
+      return "ok"
+    }
     function probeActions(): void { proof.probeActions() }
   }
 

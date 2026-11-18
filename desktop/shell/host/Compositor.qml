@@ -57,6 +57,12 @@ QtObject {
     if (backend) backend.setDpms(name, on)
   }
 
+  // Read the outputs again. For changes made behind the shell's back, such
+  // as hypridle's DPMS blank and wake, which no compositor event announces.
+  function refreshOutputs() {
+    if (backend && backend.rereadMonitors) backend.rereadMonitors()
+  }
+
   function focusApp(name) {
     if (backend) backend.focusApp(name)
   }
