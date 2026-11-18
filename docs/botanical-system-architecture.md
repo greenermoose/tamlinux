@@ -1,10 +1,10 @@
-# Botanical System Architecture: Pots, Nuts, Root-stocks, and Cultivars
+# Botanical System Architecture: Host, Rootstock, Bud, Scion, Cultivar, and Fruit
 
 **Target architecture — not the current host.** Today's workstation runs
-Arch Linux with Tamlinux's Hyprland/Quickshell cultivar (see
+Arch Linux with Tamlinux's Hyprland/Quickshell scion (`0.6` **KBN WB** cultivar; see
 [system-layers.md](system-layers.md) and [VERSION](../VERSION)). This document
-describes the intended layered design (Void root-stock, Limine/UKI,
-tam-pane cultivar). Do not treat its diagrams as a description of the machine you are
+describes the intended layered design (Void rootstock, Limine/UKI,
+tam-pane scion). Do not treat its diagrams as a description of the machine you are
 editing now.
 
 Tamlinux is an independent workstation environment designed to deliver an exceptional, responsive, and reliable computing experience across modern and older hardware. A foundational principle of Tamlinux is **transparency and empowerment**: users should enjoy a streamlined, productive daily driver out of the box, while retaining complete clarity into how their operating system is built, why each component was chosen, and how every layer can be inspected and understood.
@@ -13,27 +13,26 @@ To make the architecture intuitive, maintainable, and decoupled, Tamlinux uses a
 
 ```text
 ┌────────────────────────────────────────────────────────┐
-│                      CULTIVAR                          │
-│ Tamlinux Workstation: tam-pane + Quickshell + Plugins  │
+│                        FRUIT                           │
+│   Applications for you and your family                 │
+└──────────────────────────┬─────────────────────────────┘
+                           │ borne by
+┌──────────────────────────▼─────────────────────────────┐
+│                        SCION                           │
+│ Tamlinux Software: tam-pane + Quickshell + Plugins     │
 │   Themes (Tamarack) + CLI (tam) + Self-Inspection      │
+│   Versioned by Cultivar (major + minor, e.g. 0.6)      │
 └──────────────────────────┬─────────────────────────────┘
-                           │ grafted onto
+                           │ grown from Bud & grafted onto
 ┌──────────────────────────▼─────────────────────────────┐
-│                     ROOT-STOCK                         │
-│   Core System Files & Base OS: Minimal Void Linux      │
-│   runit init + XBPS package manager + Btrfs snapshots  │
+│                      ROOTSTOCK                         │
+│   Base OS: Arch Linux, Void Linux, Windows, macOS, …   │
+│   (Target: minimal Void + runit + XBPS + Btrfs)        │
 └──────────────────────────┬─────────────────────────────┘
-                           │ booted from
+                           │ installed on
 ┌──────────────────────────▼─────────────────────────────┐
-│                        NUT                             │
-│   Unified Kernel Image (UKI): Sealed .efi Binary       │
-│   Kernel + initramfs + cmdline + microcode + signature │
-└──────────────────────────┬─────────────────────────────┘
-                           │ nurtured & loaded by
-┌──────────────────────────▼─────────────────────────────┐
-│                        POT                             │
-│   Boot Loader: Limine (with GRUB pilot/fallback)       │
-│   UEFI handoff, menu selection, snapshot rollbacks     │
+│                        HOST                            │
+│   Physical Hardware: CPU, RAM, Storage, Display, Power │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -43,27 +42,29 @@ To make the architecture intuitive, maintainable, and decoupled, Tamlinux uses a
 
 In horticulture, growing a prized tree rarely involves scattering wild seeds into unconditioned soil. A master gardener uses a deliberate, tiered approach:
 
-1. **The Pot (Boot Loader):** The nursery container. It provides the initial germination environment, manages early growth, offers shelter from harsh elements, and carefully manages the transition from cold dormancy to life.
-2. **The Nut (Unified Kernel Image - UKI):** The sealed, self-contained seed. Within its protective shell, the embryo and its complete, uncorrupted nourishment are bundled together as an indivisible unit—safe from contamination, pests, or partial damage.
-3. **The Root-stock (Core System Files / Base OS):** The hardy, disease-resistant root system and trunk planted into the earth. It handles mineral uptake, physical stability, environmental stress, and foundational plumbing.
-4. **The Cultivar (Complete Tamlinux System):** The refined, cultivated variety grafted atop the root-stock. It bears the prized foliage, flowers, and fruit—the direct, productive surface that the grower delights in every day.
+1. **The Host (Physical Hardware):** The physical computer (CPU, RAM, storage, displays, and power) on which the base operating system is installed.
+2. **The Rootstock (Base Operating System):** The base operating system installed on the host—such as Arch Linux, Void Linux, Windows, or macOS. In horticulture, the rootstock is the hardy root system and lower stem that handles mineral uptake and physical stability.
+3. **The Bud (Initial Minimal Tamlinux Package):** The compact, initial Tamlinux package installed on the rootstock (currently `tam-nut`, scheduled to become `tam-bud` in 1.0.0). Like a bud inserted in bud grafting, it is used to install ("grow") the rest of the Tamlinux scion.
+4. **The Scion (Tamlinux Software):** The Tamlinux software that installs on a rootstock—its window manager, shell, commands, themes, and offline `tam` guide.
+5. **The Cultivar (Major + Minor Version):** Each major + minor version of Tamlinux (such as `0.6` **KBN WB** or `0.7`), named from tamarack tree varieties.
+6. **The Fruit (Applications):** The everyday applications borne by the scion that allow your computer to do useful things for you and your family.
 
-By decoupling the system into these four distinct layers, Tamlinux achieves:
-- **Clean separation of concerns:** Boot plumbing, kernel bundling, base OS mechanics, and user desktop experience evolve independently.
-- **Grafting flexibility:** The Cultivar can be grafted onto different Root-stocks (such as Void Linux, Arch Linux, or antiX) without rewriting the desktop shell or user workflows.
+By decoupling the system into these layers, Tamlinux achieves:
+- **Clean separation of concerns:** Physical hardware (host), base OS mechanics (rootstock), initial bootstrap (bud), and Tamlinux's own software (scion) evolve independently.
+- **Grafting flexibility:** The scion can be grafted onto different rootstocks (such as Arch Linux, Void Linux, or antiX Core) without rewriting the desktop shell or user workflows.
 - **Instant recoverability:** If a layer fails, recovery happens at that specific layer without tearing up the entire tree.
 
 ---
 
 ## 2. Layer-by-Layer Choices and Comparisons
 
-### Layer 1: The Pot (Boot Loader)
+### Layer 1: Boot Loader (Limine)
 
 **Role:** The boot loader receives control from UEFI firmware, initializes memory and screen modes, exposes boot options (default OS, alternate kernels, rollback snapshots), loads the kernel/UKI into RAM, and hands execution over to the kernel.
 
 #### Our Selected Choice: Limine
 
-Tamlinux selects **Limine** as its primary "pot" (while maintaining evaluation of GRUB for Void-native workflows).
+Tamlinux selects **Limine** as its primary boot loader (while maintaining evaluation of GRUB for Void-native workflows).
 
 **Why Limine was chosen:**
 - **Simplicity and Legibility:** Limine's configuration (`limine.conf`) is clean, declarative, and easily understood by humans and scripts alike. It avoids the fragile, multi-thousand-line shell script generators of legacy loaders.
@@ -74,7 +75,7 @@ Tamlinux selects **Limine** as its primary "pot" (while maintaining evaluation o
 
 #### How It Compares to Other Choices
 
-| Boot Loader ("Pot") | Architectural Strengths | Weaknesses & Disqualifiers | Tamlinux Assessment |
+| Boot Loader | Architectural Strengths | Weaknesses & Disqualifiers | Tamlinux Assessment |
 | :--- | :--- | :--- | :--- |
 | **Limine** (Selected) | Ultra-fast; declarative human-readable config; native UKI & Btrfs snapshot menus; minimal binary footprint. | Smaller community compared to GRUB; newer on legacy BIOS (though fully supported). | **Best-in-class primary choice.** Provides speed, transparency, and bulletproof snapshot rollbacks. |
 | **GRUB 2** | Universal hardware & filesystem support; decrypts LUKS within the loader; default in Void installer. | Massive monolithic codebase; slow startup; fragile `grub-mkconfig` generation; cryptic rescue prompt on partition changes. | **Retained as evaluation/fallback.** Useful for distributions where installer hooks are tightly coupled to GRUB. |
@@ -84,7 +85,7 @@ Tamlinux selects **Limine** as its primary "pot" (while maintaining evaluation o
 
 ---
 
-### Layer 2: The Nut (Unified Kernel Image - UKI)
+### Layer 2: Unified Kernel Image (UKI)
 
 **Role:** The UKI is a single, self-contained UEFI executable (`.efi`) that bundles the Linux kernel (`vmlinuz`), the initial RAM filesystem (`initramfs`), processor microcode updates, kernel command line arguments (`cmdline`), and OS identification metadata (`/etc/os-release`).
 
@@ -101,12 +102,12 @@ Tamlinux packages all boot kernels as Unified Kernel Images generated via standa
 
 | Approach | Atomicity | Security & Signing | Portability & Cleanliness |
 | :--- | :--- | :--- | :--- |
-| **Unified Kernel Image (Nut)** | **Complete.** Kernel, initramfs, and cmdline are a single binary. | **Single signature.** Signed with one Machine Owner Key (MOK); cmdline cannot be hijacked. | **High.** Any UEFI loader can run it directly as a standard PE binary. |
+| **Unified Kernel Image (UKI)** | **Complete.** Kernel, initramfs, and cmdline are a single binary. | **Single signature.** Signed with one Machine Owner Key (MOK); cmdline cannot be hijacked. | **High.** Any UEFI loader can run it directly as a standard PE binary. |
 | **Traditional Split Boot** | **Brittle.** Loose kernel and initramfs files can desynchronize during interrupted updates. | **Partial.** Kernel is signed; initramfs and cmdline are frequently unverified or require complex PCR policies. | **Medium.** Requires the boot loader to locate, match, and pass separate filesystem paths. |
 
 ---
 
-### Layer 3: The Root-stock (Core System Files & Base OS)
+### Layer 3: The Rootstock (Base OS)
 
 **Role:** The foundational host operating system providing hardware drivers, kernel modules, filesystem management, process supervisor (PID 1), service daemons, and package management.
 
@@ -117,12 +118,12 @@ Tamlinux targets a minimal **Void Linux** base utilizing **runit** for service s
 **Why Void + runit + Btrfs was chosen:**
 - **Service Simplicity & Speed:** `runit` replaces monolithic init systems with lightweight, predictable directory-based services (`/etc/sv`). It boots instantly, uses negligible memory, and eliminates hidden background polling loops.
 - **Package Management Precision:** Void's XBPS package manager is blazingly fast and cleanly dependency-tracked. The accompanying `xbps-src` enables reproducible source compilation into native packages.
-- **Atomic Rollback via Btrfs:** System subvolumes (`@` and `@home`) paired with Btrfs snapshot hooks allow instant rollbacks of the root-stock if an upgrade introduces an incompatibility.
+- **Atomic Rollback via Btrfs:** System subvolumes (`@` and `@home`) paired with Btrfs snapshot hooks allow instant rollbacks of the rootstock if an upgrade introduces an incompatibility.
 - **Hardware Longevity:** Low baseline resource requirements ensure hardware from 2006 remains productive while modern multi-core systems run cooler, quieter, and faster.
 
 #### How It Compares to Other Base Distributions
 
-| Distribution Base ("Root-stock") | Init & Services | Package System | Strengths | Trade-offs & Role |
+| Distribution Base ("Rootstock") | Init & Services | Package System | Strengths | Trade-offs & Role |
 | :--- | :--- | :--- | :--- | :--- |
 | **Void Linux** (Primary Target) | `runit` | XBPS / `xbps-src` | Fast, minimal, no systemd bloat, glibc and musl options, clean source packaging. | Primary pilot target for standalone Tamlinux machines. |
 | **antiX Core** (Fallback Target) | `runit` / sysvinit | APT / dpkg | Legendary older-hardware support; rock-solid Debian stable foundation. | Designated fallback if Void encounters hardware or dependency showstoppers. |
@@ -131,7 +132,7 @@ Tamlinux targets a minimal **Void Linux** base utilizing **runit** for service s
 
 ---
 
-### Layer 4: The Cultivar (Complete Tamlinux System)
+### Layer 4: The Scion (Tamlinux Software)
 
 **Role:** The cultivated workstation environment that the user interacts with directly: window management, desktop shell, system plugins, theme tokens, productivity tools, and self-inspection facilities.
 
@@ -154,7 +155,7 @@ Tamlinux targets a minimal **Void Linux** base utilizing **runit** for service s
 
 #### The Grafting Advantage
 
-Because the Cultivar is cleanly decoupled from the Root-stock:
+Because the Scion is cleanly decoupled from the Rootstock:
 1. **Host Portability:** Recorded tam-bundle assemblies target supported existing distributions, starting with Arch. The Void pilot plans native `xbps-src` packages.
 2. **Independent Evolution:** The user interface can be refined, updated, or re-themed without risking base OS stability.
 3. **Purity of State:** User configuration remains strictly declarative, separating machine state from package defaults.
@@ -169,21 +170,21 @@ The integration of these four layers delivers a streamlined, fast, and resilient
 [Power On]
    │
    ▼
-1. POT (Limine) ──[Sub-second menu; direct UKI loading; snapshot entries]
+1. BOOT LOADER (Limine) ──[Sub-second menu; direct UKI loading; snapshot entries]
    │
    ▼
-2. NUT (UKI) ────[Atomic verification; decrypts root; boots kernel + initramfs]
+2. UKI ───────────────────[Atomic verification; decrypts root; boots kernel + initramfs]
    │
    ▼
-3. ROOT-STOCK ───[runit supervises base services; mounts Btrfs subvolumes]
+3. ROOTSTOCK ─────────────[runit supervises base services; mounts Btrfs subvolumes]
    │
    ▼
-4. CULTIVAR ─────[tam-pane + Quickshell start; 8 plugins active; ready to work]
+4. SCION ─────────────────[tam-pane + Quickshell start; 8 plugins active; ready to work]
 ```
 
 ### Key Experience Pillars
 - **Zero Friction:** Boot takes seconds. No slow scripts, no bloated daemons, no unnecessary prompts.
-- **Transparent Resilience:** If an update fails, the Pot presents the previous snapshot at boot. Selecting it boots directly into a known-working state.
+- **Transparent Resilience:** If an update fails, the boot loader presents the previous snapshot at boot. Selecting it boots directly into a known-working state.
 - **Deterministic Workflows:** The user's screen layout, keyboard shortcuts, and status indicators behave identically across machines.
 
 ---
@@ -200,17 +201,17 @@ Every component in Tamlinux must be capable of answering two fundamental questio
 
 The `tam` command includes built-in inspection and explanation tools designed to operate entirely offline:
 
-- `tam explain pot`
+- `tam explain boot` (boot loader)
   - Explains the role of the boot loader.
   - Displays active EFI boot order (`efibootmgr`), ESP partition structure, and `limine.conf` contents.
   - Summarizes why Limine is selected and how it compares to GRUB, systemd-boot, and EFISTUB.
-- `tam explain nut`
+- `tam explain uki`
   - Explains Unified Kernel Images.
   - Inspects the active `.efi` binary, displaying embedded kernel versions, baked command line arguments, initramfs hooks, and cryptographic signature status.
-- `tam explain root-stock`
+- `tam explain rootstock`
   - Explains the host base distribution, init supervisor (`runit` / `runsvdir`), package database status, and Btrfs subvolume layout.
   - Details snapshot schedules, disk utilization, and recovery points.
-- `tam explain cultivar`
+- `tam explain scion`
   - Explains the active compositor (tam-pane/Hyprland), Quickshell surfaces, loaded plugins, active theme tokens, and user configuration overrides.
 
 ### Semantic Offline Documentation

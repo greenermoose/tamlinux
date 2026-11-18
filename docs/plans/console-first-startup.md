@@ -23,7 +23,7 @@ parent shell, queued input is discarded, and the console stays held through
 unknown cleanup status. This is development evidence; physical VT switching,
 locking, desktop exit/relaunch and text boot remain unproven.
 
-Review boundary: use the selected minimal root-stock and `tam-nut`; do not
+Review boundary: use the selected minimal rootstock and the initial bud package (`tam-nut`); do not
 redesign upstream boot media, firmware or the host's boot-selection chain.
 The managed text-boot path begins after selecting Tamlinux. Prove the change
 on the first workstation before trying it on the second machine.

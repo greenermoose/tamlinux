@@ -14,7 +14,7 @@ Verification: 18 fleet regression tests and 47 deployment tests pass, including
 cross-host capture, preserved dirty state, rejected symlink writes, failed
 reconciliation timestamps, root traversal and exact-path commits.
 
-The small `tam-nut` welcome/inspection helper is assembled into development
+The small `tam-nut` welcome/inspection helper (the current bud package) is assembled into development
 live media separately. It performs no disk or installation action.
 Physical second-host installation, per-device SSH setup, package delivery,
 reconciliation on both hosts and acceptance remain outside source evidence.

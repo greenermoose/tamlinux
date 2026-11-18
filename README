@@ -44,11 +44,11 @@ operating system.
 Tam can mean tamarack, total addressable market, the absolute max, or teaching
 and making. Like the tamarack's needles, Tamlinux sheds old packages to make
 room for new so the project can continually improve. Gate A is complete:
-Tamlinux no longer depends on Omarchy. The current cultivar installs on
-Arch/Hyprland; the longer aim is a package ("cultivar") grafted onto a minimal
-Void base ("root-stock"), with antiX Core as the fallback if Void has a
-showstopper. The aim is a sustainable, feature-complete workstation
-environment that runs well on a wide variety of hardware.
+Tamlinux no longer depends on Omarchy. The current scion installs on
+Arch/Hyprland; the longer aim is a scion grafted onto a minimal Void base
+("rootstock"), with antiX Core as the fallback if Void has a showstopper. The
+aim is a sustainable, feature-complete workstation environment that runs well
+on a wide variety of hardware.
 
 Simplifying and minimizing resource use not merely accommodates older
 computers: it is a virtue. Removing bloat, resident daemons, and polling loops
