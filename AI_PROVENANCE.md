@@ -1,5 +1,7 @@
 # AI Collaboration & Provenance
 
+2026-11-17: Codex CLI `0.169.1` (`gpt-6.2-sol`) documents the four fresh GitLab repositories and source installation for Tamlinux 1.0.0. [Record](docs/ai/2026-11-17-gitlab-and-source-install-plan.md).
+
 2026-11-14: OpenCode (`opencode`) `2.2.5` points `tam-fleet` at the fleet registry's plain-text `README-systems` folder README. [Record](docs/ai/2026-11-14-tam-fleet-plain-readme.md).
 
 2026-11-14: Antigravity CLI (`agy`) `1.5.9` sets `/var/lib/tamlinux` mode `0755` in `desktop/native/integration/tamlinux.conf` so non-root consumers can traverse shared bundle and recovery status directories while private subdirectories stay `0700`. [Record](docs/ai/2026-11-14-tamlinux-tmpfiles-var-lib-0755.md).
