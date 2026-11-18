@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-18, with W11
+Updated: 2026-11-18, with W12
 
 
 STATE
@@ -38,9 +38,10 @@ STATE
   W10 builds with the new tam-edit clone and binds source preparation
   to a committed delivery, host manifest and verified rollback target.
   W11 adds a clean Make install from an approved plan and a trusted
-  operator export. The committed 0.6.31 delivery passed installation
-  and repeat installation in disposable Arch. The first pilot still
-  runs 0.6.28 and its live reset has yet to start.
+  operator export. W12 corrects the 0.6.31 pilot to tam 0.61.4 and corpus
+  0.96.3. The corrected delivery passed clean and repeat installation in
+  an isolated Arch fixture. The first pilot has detached 0.6.28 and is
+  preparing bare rootstock.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -53,10 +54,9 @@ NEXT
   Every stage move below happens only on Fred's word: Test, Run and
   Release are his, and a version number is not an instruction.
 
-  1. Review the clean Make pilot contract. After Fred approves it and
-     the exact bundle detach, exit graphics and detach 0.6.28. Preview
-     and obtain approval for the Pacman batches. Reset to bare rootstock
-     in place, retaining Arch boot, networking, SSH, the account and Git.
+  1. Finish the first pilot's reset to bare rootstock. Preview and obtain
+     separate approvals for the bootstrap and remaining package batches.
+     Retain Arch boot, networking, SSH, the account and Git.
   2. Clone from GitHub and build 0.6.31. Obtain approval for the exact
      host manifest before installing. Verify console and graphical
      startup. Document dependency friction and list removals to evaluate
@@ -67,8 +67,8 @@ NEXT
 
 WAITING FOR FRED
 
-  - Approval of the clean Make pilot contract and the 0.6.28 detach on
-    the first pilot.
+  - Approval of the remaining package removals and the exact clean
+    Make install on the first pilot.
   - His verdict on 0.6.28 at Test for the separate fleet recovery anchor.
 
 

@@ -1,0 +1,34 @@
+W12 CORRECT THE 0.6.31 TAM SOURCE PIN
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W11-clean-source-install
+
+GUIDANCE
+
+  Fred: "Fix the tam issue. Tamlinux should install tam 0.61.4 with corpus
+  0.96.3. Resolve that ambiguity."
+
+  Fred approved replacing the uninstalled 0.6.31 rehearsal under the
+  same version.
+
+DONE
+
+  - Pinned the existing tam commit for command 0.61.4 and corpus 0.96.3.
+  - Verified the corrected delivery with a clean and repeat Make
+    installation of all 3,285 files in an isolated Arch fixture.
+  - The installed command reported tam 0.61.4, corpus 0.96.3, and
+    Tamlinux cultivar KBN WB 0.6.31. A local command survived.
+  - Source preparation accepted the replacement and rejected a stage
+    rebuilt from the prior pins.
+
+FAILED
+
+  The original stage resolver rejected any replacement Make delivery.
+  It now recognizes the exact approved pair of delivery commits.
+
+HANDOFF
+
+  Use the corrected 0.6.31 source delivery for the hardware pilot.
+  Finish the pilot host's rootstock preparation before live installation.
