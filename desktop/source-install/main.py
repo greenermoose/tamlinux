@@ -7,8 +7,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build import BUILD_ENV, build, revisions
-from preflight import build_problems, ownership_problems, runtime_problems
-from transaction import inventory, read_json
+from preflight import build_problems, runtime_problems
+from transaction import Installation, inventory, read_json
 
 
 def selected_stage(work, repos):
@@ -34,12 +34,16 @@ def preflight(work, repos, root):
         files = inventory(stage / "payload")
         if not files or files != receipt["files"]:
             raise ValueError("stage files differ from the manifest")
-        problems.extend(ownership_problems(root, files))
+        system = Installation(root)
+        try:
+            system.check_ownership(files, system.current().get("external", []))
+        except ValueError as error:
+            problems.extend(str(error).splitlines())
     if problems:
         raise ValueError("preflight found problems:\n  " + "\n  ".join(problems))
     print("Native build and runtime prerequisites passed.")
     if selection.exists():
-        print("No Pacman-owned destinations in the selected stage.")
+        print("Destination ownership checks passed for the selected stage.")
     else:
         print("Run make to stage the files, then repeat preflight to check destination ownership.")
 

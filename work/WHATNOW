@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-18, with W7
+Updated: 2026-11-18, with W8
 
 
 STATE
@@ -29,7 +29,9 @@ STATE
   ownership checks on the daily workstation.
   W7 supplies hi and start for a clean source installation. Both worked
   in an isolated root, tam reported the staged cultivar, and installation
-  refused absent paths owned by Pacman.
+  refused absent paths owned by Pacman. W8 proves the isolated bundle
+  migration, Make upgrade and exact bundle recovery with the retained
+  installer. It keeps the package-owned console launchers.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -45,9 +47,9 @@ NEXT
   1. Fred judges 0.6.28's stability on the three hosts. Only his
      acceptance makes it the oldest supported recovery version.
   2. Complete the source install for the next unused 0.6 candidate.
-     Integrate bundle migration and recovery, user settings and candidate
-     delivery. Handle the Pacman-owned hi and start launchers on bundle
-     hosts. Prove clean and preserving installs before requesting live Test
+     Integrate the user settings handoff and session readiness with the
+     isolated migration, then wire candidate delivery. Prove clean and
+     preserving installs before requesting live Test
      (docs/plans/source-install.md).
   3. After 0.6.28 is accepted: prove a Nix-free build, install and
      recovery, then retire Nix and Home Manager host by host, each with

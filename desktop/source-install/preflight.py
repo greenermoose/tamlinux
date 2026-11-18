@@ -114,14 +114,20 @@ def runtime_problems(root):
     return problems
 
 
-def ownership_problems(root, destinations):
-    # Listing the database also detects owned files that are absent on disk.
+def destination_owners(root, destinations):
     paths = {f"/{name}" for name in destinations}
-    problems = []
+    owners = {}
     for line in pacman_query(root, "-Ql"):
         package, separator, path = line.partition(" ")
         if not separator or not path.startswith("/"):
             raise ValueError(f"unexpected Pacman file listing: {line}")
         if path.rstrip("/") in paths:
-            problems.append(f"source destination {path} is owned by Arch package {package}")
-    return sorted(problems)
+            owners.setdefault(path.strip("/"), set()).add(package)
+    return owners
+
+
+def ownership_problems(root, destinations):
+    # Listing the database also detects owned files that are absent on disk.
+    return sorted(f"source destination /{path} is owned by Arch package {package}"
+                  for path, packages in destination_owners(root, destinations).items()
+                  for package in packages)

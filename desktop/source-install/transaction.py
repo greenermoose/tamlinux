@@ -7,17 +7,25 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
+import subprocess
 import sys
+import tarfile
 import tempfile
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from preflight import ownership_problems
+from preflight import destination_owners, ownership_problems
 
 PAYLOAD_CURRENT = "usr/lib/tamlinux/source/current"
 STATE = "var/lib/tamlinux/source"
+BUNDLE_CURRENT = "usr/lib/tamlinux/current"
+BOOTSTRAP_LAUNCHERS = {
+    "usr/bin/hi": ("tam", " hi"),
+    "usr/bin/start": ("tam-start", ""),
+}
 PLACEMENTS = (
     "usr/bin", "usr/lib/issue.d", "usr/lib/environment.d", "usr/lib/NetworkManager/conf.d",
     "usr/lib/sysctl.d", "usr/lib/systemd", "usr/lib/tmpfiles.d",
@@ -120,6 +128,19 @@ def secure_directory(root, relative, create=False):
             break
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
             raise ValueError(f"unsafe system directory: {current}")
+
+
+def bootstrap_launchers(root):
+    owners = destination_owners(root, BOOTSTRAP_LAUNCHERS)
+    secure_directory(root, "usr/bin")
+    for path, (command, arguments) in BOOTSTRAP_LAUNCHERS.items():
+        contents = (f'#!/bin/sh\nif [ -x /usr/bin/{command} ]; then\n'
+                    f'    exec /usr/bin/{command}{arguments} "$@"\nfi\n'
+                    'exec /usr/bin/tam-nut welcome\n')
+        expected = [0o755, hashlib.sha256(contents.encode()).hexdigest()]
+        if owners.get(path) != {"tam-nut"} or fingerprint(root / path) != expected:
+            raise ValueError(f"expected intact tam-nut launcher /{path}")
+    return sorted(BOOTSTRAP_LAUNCHERS)
 
 
 class Installation:
@@ -241,14 +262,39 @@ class Installation:
                 raise ValueError(f"unmanaged or modified destination: {target}")
 
     def start(self, old, new):
+        self.require_detached_slot()
+        current = self.current()
+        external = current.get("external", [])
         before = self.manifest(old)["files"]
         after = self.manifest(new)["files"]
+        self.check_ownership(before.keys() | after.keys(), external)
         self.check_runtime(self.runtime_id(old), self.runtime_id(new), False)
-        self.check(self.placed(before), self.placed(after))
+        self.check(self.placed(before, external), self.placed(after, external))
         if old == new:
             return
-        write_json(self.pending, {"from": old, "to": new})
+        write_json(self.pending, {"from": old, "to": new} | self.migration_fields(current))
         self.complete()
+
+    def require_detached_slot(self):
+        secure_directory(self.root, Path(BUNDLE_CURRENT).parent)
+        if os.path.lexists(self.root / BUNDLE_CURRENT):
+            raise ValueError("the legacy bundle is installed; use the migration operation")
+        if os.path.lexists(self.state.parent / "transaction"):
+            from migration import BundleMigration
+            if BundleMigration(self).status().get("state") != "complete":
+                raise ValueError("finish the pending legacy bundle transaction")
+
+    def check_ownership(self, files, external):
+        if external and external != bootstrap_launchers(self.root):
+            raise ValueError("unexpected external launcher record")
+        if os.path.lexists(self.root / "var/lib/pacman"):
+            problems = ownership_problems(self.root, set(files) - set(external))
+            if problems:
+                raise ValueError("\n".join(problems))
+
+    @staticmethod
+    def migration_fields(record):
+        return {name: record[name] for name in ("bundle", "external") if name in record}
 
     def runtime_id(self, identity):
         if identity and (self.state / identity / "payload" / PAYLOAD_CURRENT).is_dir():
@@ -256,23 +302,33 @@ class Installation:
         return None
 
     @staticmethod
-    def placed(files):
+    def placed(files, external=()):
         return {name: value for name, value in files.items()
-                if not name.startswith(PAYLOAD_CURRENT + "/")}
+                if name not in external and not name.startswith(PAYLOAD_CURRENT + "/")}
 
     def complete(self, reverse=False):
         pending = read_json(self.pending)
         if pending is None:
             raise ValueError("no pending source installation")
+        if "migration" in pending:
+            from migration import BundleMigration
+            BundleMigration(self).complete(pending, reverse)
+            return
+        self.require_detached_slot()
         old, new = pending["from"], pending["to"]
         if reverse:
             old, new = new, old
+        self.switch_files(old, new, pending.get("external", []))
+        self.finish({"current": new, "previous": old} | self.migration_fields(pending))
+
+    def switch_files(self, old, new, external):
         before = self.manifest(old)["files"]
         after = self.manifest(new)["files"]
         if new is not None and inventory(self.state / new / "payload") != after:
             raise ValueError("retained recovery files changed")
+        self.check_ownership(before.keys() | after.keys(), external)
         self.check_runtime(self.runtime_id(old), self.runtime_id(new), True)
-        before, after = self.placed(before), self.placed(after)
+        before, after = self.placed(before, external), self.placed(after, external)
         self.check(before, after, resuming=True)
         for relative in sorted(before.keys() | after.keys()):
             target = self.root / relative
@@ -285,7 +341,9 @@ class Installation:
                 target.unlink()
                 sync_dir(target.parent)
         self.select_runtime(self.runtime_id(new))
-        write_json(self.active, {"current": new, "previous": old})
+
+    def finish(self, active):
+        write_json(self.active, active)
         self.pending.unlink()
         sync_dir(self.state)
 
@@ -295,9 +353,13 @@ class Installation:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["install", "status", "resume", "rollback"])
+    parser.add_argument("action", choices=["install", "migrate", "status", "resume",
+                                           "rollback", "rollback-bundle"])
     parser.add_argument("--stage", type=Path)
     parser.add_argument("--digest")
+    parser.add_argument("--bundle-archive", type=Path)
+    parser.add_argument("--bundle-hash")
+    parser.add_argument("--bundle-sha256")
     parser.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
     root = args.root.resolve(strict=True)
@@ -313,24 +375,28 @@ def main():
     with system.locked():
         current = system.current()
         pending = system.pending.exists()
-        if args.action == "install":
+        if args.action in ("install", "migrate"):
             if pending:
                 raise ValueError("resume or roll back the pending installation")
-            if not args.stage or not args.digest or len(args.digest) != 64 or any(
-                char not in "0123456789abcdef" for char in args.digest
-            ):
+            if not args.stage or not re.fullmatch("[0-9a-f]{64}", args.digest or ""):
                 raise ValueError("install requires a stage and its SHA-256 manifest digest")
             system.retain(args.stage, args.digest)
-            if os.path.lexists(root / "var/lib/pacman"):
-                problems = ownership_problems(root, system.manifest(args.digest)["files"])
-                if problems:
-                    raise ValueError("\n".join(problems))
-            system.start(current["current"], args.digest)
+            if args.action == "migrate":
+                from migration import BundleMigration
+                BundleMigration(system).start(args.digest, args.bundle_archive,
+                                              args.bundle_sha256, args.bundle_hash)
+            else:
+                system.start(current["current"], args.digest)
         elif args.action == "resume":
             system.complete()
+        elif args.action == "rollback-bundle":
+            from migration import BundleMigration
+            BundleMigration(system).rollback()
         elif pending:
             system.complete(reverse=True)
         elif current["current"] is not None:
+            if current.get("bundle") and not current["previous"]:
+                raise ValueError("use rollback-bundle to restore the previous bundle")
             system.start(current["current"], current["previous"])
         else:
             raise ValueError("no source installation to roll back")
@@ -339,5 +405,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError, tarfile.TarError) as exc:
         raise SystemExit(f"Tamlinux source install: {exc}")

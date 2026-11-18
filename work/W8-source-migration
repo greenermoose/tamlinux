@@ -1,0 +1,33 @@
+W8 ISOLATED BUNDLE MIGRATION AND RECOVERY
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W7-source-console
+
+GUIDANCE
+
+  Fred: "We are moving from tam-bundle to make and make install to install
+  Tamlinux. Take the next step on this project."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Verified and journaled a format-2 detach with an exact recovery
+    archive. Preserved the Pacman-owned hi and start wrappers.
+  - Proved migration, make install upgrade and exact bundle recovery
+    using a disposable Arch root and real tam-bundle. Recovery used the
+    retained installer after the original stage and archive were removed.
+  - Retried interrupted detach, source replacement and bundle restoration.
+    Four namespace tests, fourteen source tests and five layout tests passed.
+
+FAILED
+
+  LeakSanitizer could not start inside the private PID namespace. The
+  test uses the shipped tool for normal operations and disables leak
+  detection only for the fault-injected invocations.
+
+HANDOFF
+
+  Integrate the user settings handoff, session readiness and candidate
+  delivery. Keep live activation gated until those checks are ready.

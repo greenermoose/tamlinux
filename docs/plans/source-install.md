@@ -6,9 +6,12 @@ with administrator and user-local software present. Read-only native
 preflight passed on an Arch workstation with a complete source stage.
 The source stage provides `hi` and `start`, and both passed console command
 checks in an isolated root without the bundle tools. The installer checks
-destination ownership when the target has a Pacman database. Live
-installation is gated until bundle migration, user settings, and candidate
-activation are integrated.
+destination ownership when the target has a Pacman database. An isolated
+format-2 migration now retains the exact recovery archive before detach,
+preserves the Pacman-owned console launchers, and restores the bundle and
+its documentation selection after source rollback. User settings, session
+readiness, and candidate activation are the remaining integration work
+before live installation.
 
 Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the complete workstation from local Git clones, then `make install` to install the staged files directly. Use the same two commands for subsequent upgrades. Keep earlier bundle deliveries usable for recovery.
 
@@ -24,6 +27,12 @@ Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the 
 ## Migration and candidate delivery
 
 - On an existing bundle installation, verify the exact live bundle and its recovery material before changing files. Stage the source build first, then use the installed `tam-bundle detach` once, bound to the verified hash. Update only the session references needed to reach the new runtime path and journal their undo. Keep package-owned bootstrap paths available during the transition. Prove recovery can remove the source installation, restore the previous bundle and recover affected settings.
+- The isolated-root installer takes the stage and manifest digest with
+  `migrate --bundle-archive PATH --bundle-sha256 HEX --bundle-hash sha256:HEX`.
+  The retained installer in `var/lib/tamlinux/source/recovery` can run
+  `resume` or `rollback-bundle` with the same explicit test root. After
+  an upgrade, use source rollback to return to the initial source stage
+  before restoring the bundle.
 - Record the locked sources, staged manifest, installed status and rollback target in the existing candidate workflow. Promote the same staged bytes from Test to Run on a host. Each additional host builds the same locked commits and records its manifest before activation. Keep separate candidate, host and privileged-operation approvals.
 - Document clone setup, native prerequisites, installation, upgrade and recovery. Update the deployment contract before cutover. The 1.0 GitLab repository split retains its existing schedule.
 
