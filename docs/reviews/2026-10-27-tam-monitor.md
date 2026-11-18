@@ -362,7 +362,7 @@ this report grants no live display or stage-move permission.
 ## Authorship and sources
 
 Prepared with Codex CLI 0.164.0 and detected model `gpt-6-astra`.
-See the [AI session record](../ai/2026-10-27-tam-monitor-review.md).
+See the [AI session record](../../work/history/2026-10-27-tam-monitor-review.md).
 External references were consulted on 2026-10-27. They support platform semantics;
 pinned source links and reproductions support implementation claims. Correction
 recommendations are engineering judgment. Line numbers refer to these revisions.

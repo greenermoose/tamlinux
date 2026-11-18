@@ -18,7 +18,7 @@ Approval, excerpt:
 
 ## Implementation and boundary
 
-The reviewed [plan](../plans/console-first-startup.md) preserves the selected
+The reviewed [plan](../../docs/plans/console-first-startup.md) preserves the selected
 minimal root-stock and bootstrap helper. Work begins after choosing Tamlinux
 to boot; it does not redesign firmware or upstream media. Physical proof on
 the first workstation precedes trying the second.

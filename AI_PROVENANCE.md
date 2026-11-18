@@ -1,136 +1,156 @@
-# AI Collaboration & Provenance
+# AI collaboration and provenance
 
-2026-11-17: Codex CLI `0.169.1` (`gpt-6.2-sol`) documents the four fresh GitLab repositories and source installation for Tamlinux 1.0.0. [Record](docs/ai/2026-11-17-gitlab-and-source-install-plan.md).
+This repository follows the [Tamlinux AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md).
+Work is handed from session to session in `work/`, as
+`work/README-work` describes:
 
-2026-11-14: OpenCode (`opencode`) `2.2.5` points `tam-fleet` at the fleet registry's plain-text `README-systems` folder README. [Record](docs/ai/2026-11-14-tam-fleet-plain-readme.md).
+- `work/WHATNOW` says what was just done and what comes next, in detail.
+  A new session reads it first.
+- Each work session has one plain-text record, `work/W<number>-<name>`.
+  It names the AI harness and model with the version checked at the
+  time, quotes the prompts that steered the work, lists its commits, and
+  says what failed.
+- Commits made with AI help carry `Co-authored-by:`, `AI-Tool:` and
+  `AI-Model:` trailers.
+- Transcripts are kept privately by the author.
 
-2026-11-14: Antigravity CLI (`agy`) `1.5.9` sets `/var/lib/tamlinux` mode `0755` in `desktop/native/integration/tamlinux.conf` so non-root consumers can traverse shared bundle and recovery status directories while private subdirectories stay `0700`. [Record](docs/ai/2026-11-14-tamlinux-tmpfiles-var-lib-0755.md).
+## Before 2026-11-17
 
-2026-11-14: Antigravity CLI (`agy`) `1.5.9` fixes `HomeLinkMigration.restore()` in `tam-deploy` so `return-nix` recreates real parent directories pruned after link retirement. [Record](docs/ai/2026-11-14-tam-deploy-return-pruned-parents.md).
+Until 2026-11-17 this repository kept its session records in `docs/ai/`.
+They are now in `work/history/`, unchanged apart from links rewritten to
+their new paths. The record of that period follows as it was.
 
-2026-11-14: Antigravity CLI (`agy`) `1.5.9` wires placed desktop systemd user unit `WantedBy=` targets (`tamlinux-shell.service`, `tam-crash-watch.service`, `tamlinux-protocol-shadow-collect.timer`) into format-2 bundle target drop-ins. [Record](docs/ai/2026-11-14-bundle-systemd-user-wants.md).
+2026-11-17: Codex CLI `0.169.1` (`gpt-6.2-sol`) documents the four fresh GitLab repositories and source installation for Tamlinux 1.0.0. [Record](work/history/2026-11-17-gitlab-and-source-install-plan.md).
 
-2026-11-14: Antigravity CLI (`agy`) `1.5.9` updates `tam-deploy` to invoke `/usr/bin/sudo` on interactive kernel console virtual terminals and `/usr/bin/pkexec` otherwise. [Record](docs/ai/2026-11-14-tam-deploy-kernel-console-sudo.md).
+2026-11-14: OpenCode (`opencode`) `2.2.5` points `tam-fleet` at the fleet registry's plain-text `README-systems` folder README. [Record](work/history/2026-11-14-tam-fleet-plain-readme.md).
 
-2026-11-14: Antigravity CLI (`agy`) `1.5.9` retires Home Manager-generated `environment.d` and `fontconfig` symlinks cleanly during `tam-deploy` bundle migration and scopes `activation_validators` per host. [Record](docs/ai/2026-11-14-tam-deploy-hm-env-fontconfig-retire.md).
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` sets `/var/lib/tamlinux` mode `0755` in `desktop/native/integration/tamlinux.conf` so non-root consumers can traverse shared bundle and recovery status directories while private subdirectories stay `0700`. [Record](work/history/2026-11-14-tamlinux-tmpfiles-var-lib-0755.md).
 
-2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) converts tracked README files to plain text and updates their consumers. [Record](docs/ai/2026-11-13-plain-readmes.md).
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` fixes `HomeLinkMigration.restore()` in `tam-deploy` so `return-nix` recreates real parent directories pruned after link retirement. [Record](work/history/2026-11-14-tam-deploy-return-pruned-parents.md).
 
-2026-11-13: Antigravity CLI (`agy`) `1.5.8` adds read-only `/usr/bin/tam-dns` privilege-boundary support for bundles and host-first native rollback lookup in `tam-deploy`. [Record](docs/ai/2026-11-13-bundle-dns-and-host-recovery.md).
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` wires placed desktop systemd user unit `WantedBy=` targets (`tamlinux-shell.service`, `tam-crash-watch.service`, `tamlinux-protocol-shadow-collect.timer`) into format-2 bundle target drop-ins. [Record](work/history/2026-11-14-bundle-systemd-user-wants.md).
 
-2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) preserves the saved background selection during offline theme restoration after a focused check stops 0.6.25 preparation. [Record](docs/ai/2026-11-13-offline-background-selection.md).
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` updates `tam-deploy` to invoke `/usr/bin/sudo` on interactive kernel console virtual terminals and `/usr/bin/pkexec` otherwise. [Record](work/history/2026-11-14-tam-deploy-kernel-console-sudo.md).
 
-2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) — Bundle delivery continuation. [Record](docs/ai/2026-11-12-bundle-continuation.md).
+2026-11-14: Antigravity CLI (`agy`) `1.5.9` retires Home Manager-generated `environment.d` and `fontconfig` symlinks cleanly during `tam-deploy` bundle migration and scopes `activation_validators` per host. [Record](work/history/2026-11-14-tam-deploy-hm-env-fontconfig-retire.md).
 
-2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) selects committed display-continuity sources for uninstalled candidate 0.6.23. [Record](docs/ai/2026-11-12-display-test-candidate.md).
+2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) converts tracked README files to plain text and updates their consumers. [Record](work/history/2026-11-13-plain-readmes.md).
 
-2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) records the uninstalled first bundle delivery integration: durable home-link conversion and exact saved-Nix recovery. [Record](docs/ai/2026-11-11-bundle-delivery-integration.md).
+2026-11-13: Antigravity CLI (`agy`) `1.5.8` adds read-only `/usr/bin/tam-dns` privilege-boundary support for bundles and host-first native rollback lookup in `tam-deploy`. [Record](work/history/2026-11-13-bundle-dns-and-host-recovery.md).
+
+2026-11-13: Codex CLI `0.169.0` (`gpt-6.1-sol`) preserves the saved background selection during offline theme restoration after a focused check stops 0.6.25 preparation. [Record](work/history/2026-11-13-offline-background-selection.md).
+
+2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) — Bundle delivery continuation. [Record](work/history/2026-11-12-bundle-continuation.md).
+
+2026-11-12: Codex CLI `0.167.2` (`gpt-6.1-sol`) selects committed display-continuity sources for uninstalled candidate 0.6.23. [Record](work/history/2026-11-12-display-test-candidate.md).
+
+2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) records the uninstalled first bundle delivery integration: durable home-link conversion and exact saved-Nix recovery. [Record](work/history/2026-11-11-bundle-delivery-integration.md).
 
 2026-11-11: Codex CLI `0.167.0` (`gpt-6.1-sol`) implements focus-preserving
 workspace placement and native display logging corrections, with isolated
-native verification. [Record](docs/ai/2026-11-11-steady-active-monitor.md).
+native verification. [Record](work/history/2026-11-11-steady-active-monitor.md).
 
 2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) completes shared bar ingress
 and persisted output retry accounting and prepares native package integration.
-[Record](docs/ai/2026-11-11-workspace-queue-package-gates.md).
+[Record](work/history/2026-11-11-workspace-queue-package-gates.md).
 
-2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) — calendar and launcher journal access. [Record](docs/ai/2026-11-11-plain-text-journal.md).
+2026-11-11: Codex CLI `0.167.1` (`gpt-6.1-sol`) — calendar and launcher journal access. [Record](work/history/2026-11-11-plain-text-journal.md).
 
-2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds conventional product staging for format-2 workstation recipes. [Session](docs/ai/2026-11-10-workstation-recipe-layout.md).
+2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds conventional product staging for format-2 workstation recipes. [Session](work/history/2026-11-10-workstation-recipe-layout.md).
 
-2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) continues active-monitor development with persistent latest accepted desktop intent, stale-event regressions and an isolated native logger probe. Focus-preserving placement and native logging corrections remain open. [Session](docs/ai/2026-11-10-workspace-intent.md).
+2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) continues active-monitor development with persistent latest accepted desktop intent, stale-event regressions and an isolated native logger probe. Focus-preserving placement and native logging corrections remain open. [Session](work/history/2026-11-10-workspace-intent.md).
 
-2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) begins active-monitor continuity development with helper diagnostics, truthful reconciliation failures and isolated workspace event tests. [Session](docs/ai/2026-11-10-workspace-timeline.md).
+2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) begins active-monitor continuity development with helper diagnostics, truthful reconciliation failures and isolated workspace event tests. [Session](work/history/2026-11-10-workspace-timeline.md).
 
-2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) prepares the implementation plan for timestamped display diagnostics, active-monitor continuity and selective old-log cleanup. Fred reviewed and approved the plan before Develop; no runtime changes or deletion. [Session](docs/ai/2026-11-10-steady-active-monitor-plan.md).
+2026-11-10: Codex CLI `0.167.0` (`gpt-6.1-sol`) prepares the implementation plan for timestamped display diagnostics, active-monitor continuity and selective old-log cleanup. Fred reviewed and approved the plan before Develop; no runtime changes or deletion. [Session](work/history/2026-11-10-steady-active-monitor-plan.md).
 
-2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds the top-level native product build and install path for bundle recipes. [Session](docs/ai/2026-11-09-native-product-install.md).
+2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) adds the top-level native product build and install path for bundle recipes. [Session](work/history/2026-11-09-native-product-install.md).
 
-2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) repairs transaction-bound upgrade recovery, serializes deployment mutations, records offline baseline identities, and adds behavioral launcher-environment tests. [Session](docs/ai/2026-11-09-transaction-recovery.md).
+2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) repairs transaction-bound upgrade recovery, serializes deployment mutations, records offline baseline identities, and adds behavioral launcher-environment tests. [Session](work/history/2026-11-09-transaction-recovery.md).
 
-2026-11-09: Claude Code `2.1.319` (`claude-opus-5-5`) makes the `tam-open` text-console image test independent of the image viewers installed on the host. [Session](docs/ai/2026-11-09-tam-open-tty-test.md).
+2026-11-09: Claude Code `2.1.319` (`claude-opus-5-5`) makes the `tam-open` text-console image test independent of the image viewers installed on the host. [Session](work/history/2026-11-09-tam-open-tty-test.md).
 
-2026-11-09: Claude Code `2.1.319` (`claude-opus-5-5`) puts the Tamlinux version in the console greeting ("Welcome to Tamlinux 0.6.19!") for Tamlinux 0.6.19. [Session](docs/ai/2026-11-09-console-welcome-version.md).
+2026-11-09: Claude Code `2.1.319` (`claude-opus-5-5`) puts the Tamlinux version in the console greeting ("Welcome to Tamlinux 0.6.19!") for Tamlinux 0.6.19. [Session](work/history/2026-11-09-console-welcome-version.md).
 
-2026-11-08: Codex CLI `0.167.0` (`gpt-6.1-sol`) retires the legacy start games and adds an AI Agents section, advancing start to 0.2.5. [Session](docs/ai/2026-11-08-games-reset-and-ai-agents.md).
+2026-11-08: Codex CLI `0.167.0` (`gpt-6.1-sol`) retires the legacy start games and adds an AI Agents section, advancing start to 0.2.5. [Session](work/history/2026-11-08-games-reset-and-ai-agents.md).
 
-2026-11-08: Claude Code `2.1.319` (`claude-opus-5-5`) designs a higher-contrast 16-color Linux console (VT) palette and saves it as `share/console/tamlinux-vt.vtrgb` for Tamlinux 0.6.19. [Session](docs/ai/2026-11-08-vt-palette.md).
+2026-11-08: Claude Code `2.1.319` (`claude-opus-5-5`) designs a higher-contrast 16-color Linux console (VT) palette and saves it as `share/console/tamlinux-vt.vtrgb` for Tamlinux 0.6.19. [Session](work/history/2026-11-08-vt-palette.md).
 
-2026-11-07: OpenCode (`opencode`) `2.2.5` implements Tamlinux 0.6.16 Slice 1 (D231): Neovim retirement to Micro/Nano defaults, `tam-update` repository-column guard, and unprivileged laptop sensor support in `tam-meter`. [Session](docs/ai/2026-11-07-0.6.16-slice1.md).
+2026-11-07: OpenCode (`opencode`) `2.2.5` implements Tamlinux 0.6.16 Slice 1 (D231): Neovim retirement to Micro/Nano defaults, `tam-update` repository-column guard, and unprivileged laptop sensor support in `tam-meter`. [Session](work/history/2026-11-07-0.6.16-slice1.md).
 
-2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) updates `fred.tamversion` 0.1.5 to read packaged `TAMLINUX_VERSION_NOTES` with version-header validation instead of a hard-coded string. [Session](docs/ai/2026-11-07-tamversion-version-notes.md).
+2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) updates `fred.tamversion` 0.1.5 to read packaged `TAMLINUX_VERSION_NOTES` with version-header validation instead of a hard-coded string. [Session](work/history/2026-11-07-tamversion-version-notes.md).
 
-2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) adds `tam-deploy` home-file conflict detection, `.pre-<version>` automatic backups and rollback restoration, and non-consumer cleanliness filtering. [Session](docs/ai/2026-11-07-tam-deploy-home-file-conflicts.md).
+2026-11-07: Antigravity CLI `1.5.3` (`claude-opus-5.5-high` / `gemini-4-argon-high`) adds `tam-deploy` home-file conflict detection, `.pre-<version>` automatic backups and rollback restoration, and non-consumer cleanliness filtering. [Session](work/history/2026-11-07-tam-deploy-home-file-conflicts.md).
 
-2026-11-06: Antigravity CLI `1.5.3` (`gemini-3.8-flash` / `claude-opus-5-5`) implements `tam-meter` (unprivileged energy meter, D191) and `tam-boot` (startup explainer, K60/K40), updates `start` menu catalog, and packages both native commands. [Session](docs/ai/2026-11-06-tam-meter-and-tam-boot.md).
+2026-11-06: Antigravity CLI `1.5.3` (`gemini-3.8-flash` / `claude-opus-5-5`) implements `tam-meter` (unprivileged energy meter, D191) and `tam-boot` (startup explainer, K60/K40), updates `start` menu catalog, and packages both native commands. [Session](work/history/2026-11-06-tam-meter-and-tam-boot.md).
 
-2026-11-06: Antigravity CLI `1.5.2` (`gemini-3.8-flash`) includes calculator in Quick Launch and Start menu, routes `XF86Calculator` key to `qalculate-gtk`, adds floating window rules, and records Tamlinux 0.6.15 inclusion. [Session](docs/ai/2026-11-06-calculator-quicklaunch.md).
+2026-11-06: Antigravity CLI `1.5.2` (`gemini-3.8-flash`) includes calculator in Quick Launch and Start menu, routes `XF86Calculator` key to `qalculate-gtk`, adds floating window rules, and records Tamlinux 0.6.15 inclusion. [Session](work/history/2026-11-06-calculator-quicklaunch.md).
 
-2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) makes the whole test suite pass, adds `desktop/check-all`, and commits opencode's reviewed Quickshell edits. [Session](docs/ai/2026-11-06-test-suite-passes.md).
+2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) makes the whole test suite pass, adds `desktop/check-all`, and commits opencode's reviewed Quickshell edits. [Session](work/history/2026-11-06-test-suite-passes.md).
 
-2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) stops the session default tests launching the real Hyprland binary, and repairs the failures they already had. [Session](docs/ai/2026-11-06-session-defaults-test-hermetic.md).
+2026-11-06: Claude Code `2.1.318` (`claude-opus-5-5`) stops the session default tests launching the real Hyprland binary, and repairs the failures they already had. [Session](work/history/2026-11-06-session-defaults-test-hermetic.md).
 
-2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.10 K53 — `tam-update` lists AUR updates for frozen-recipe review and never runs unattended AUR upgrades. [Session](docs/ai/2026-11-04-0.6.10-k53-tam-update.md).
+2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.10 K53 — `tam-update` lists AUR updates for frozen-recipe review and never runs unattended AUR upgrades. [Session](work/history/2026-11-04-0.6.10-k53-tam-update.md).
 
-2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.9 — K25 hyprbars close controls, Package/Test speed recovery, and Plan 32 Quickshell decoupling. [Session](docs/ai/2026-11-04-0.6.9-k25-speed-quickshell.md).
+2026-11-04: Cursor (`composer`) develops Tamlinux 0.6.9 — K25 hyprbars close controls, Package/Test speed recovery, and Plan 32 Quickshell decoupling. [Session](work/history/2026-11-04-0.6.9-k25-speed-quickshell.md).
 
-2026-11-04: Cursor (`composer`) implements `tam-workstation-upgrade` for Tamlinux 0.6.7 (K52). [Session](docs/ai/2026-11-04-0.6.7-workstation-upgrade.md).
+2026-11-04: Cursor (`composer`) implements `tam-workstation-upgrade` for Tamlinux 0.6.7 (K52). [Session](work/history/2026-11-04-0.6.7-workstation-upgrade.md).
 
-2026-11-04: Cursor (`composer`) adds `tam-fleet deploy` and `tam-deploy follow` for Tamlinux 0.6.6 fleet delivery, with deploy phase timings. [Session](docs/ai/2026-11-04-0.6.6-package-speed.md).
+2026-11-04: Cursor (`composer`) adds `tam-fleet deploy` and `tam-deploy follow` for Tamlinux 0.6.6 fleet delivery, with deploy phase timings. [Session](work/history/2026-11-04-0.6.6-package-speed.md).
 
-2026-11-04: Cursor (`composer`) rewrites `start` 0.2.0 as pure C with `libtam` and a JSON menu catalog (D224). [Session](docs/ai/2026-11-04-start-c-rewrite.md).
+2026-11-04: Cursor (`composer`) rewrites `start` 0.2.0 as pure C with `libtam` and a JSON menu catalog (D224). [Session](work/history/2026-11-04-start-c-rewrite.md).
 
-2026-11-04: Cursor (`composer`) implements Tamlinux 0.6.3 local-dev proof and nautilus launcher packaging. [Session](docs/ai/2026-11-04-0.6.3-local-dev-and-nautilus.md).
+2026-11-04: Cursor (`composer`) implements Tamlinux 0.6.3 local-dev proof and nautilus launcher packaging. [Session](work/history/2026-11-04-0.6.3-local-dev-and-nautilus.md).
 
-2026-11-02: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements the development and candidate workflow. [Session](docs/ai/2026-11-02-candidate-workflow.md).
+2026-11-02: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements the development and candidate workflow. [Session](work/history/2026-11-02-candidate-workflow.md).
 
-2026-11-02: Antigravity CLI `1.4.12` (`gemini-4-argon-medium`) prepares the Tamlinux 0.6.1 KBN WB product candidate and refines `start` interactive launches. [Session](docs/ai/2026-11-02-061-preparation.md).
+2026-11-02: Antigravity CLI `1.4.12` (`gemini-4-argon-medium`) prepares the Tamlinux 0.6.1 KBN WB product candidate and refines `start` interactive launches. [Session](work/history/2026-11-02-061-preparation.md).
 
-2026-11-02: Antigravity CLI `1.4.12` (`gemini-3.8-flash`) implements the bare console entry points `hi` and `start` for first text login before graphics (D215). [Session](docs/ai/2026-11-02-first-login-hi-and-start.md).
+2026-11-02: Antigravity CLI `1.4.12` (`gemini-3.8-flash`) implements the bare console entry points `hi` and `start` for first text login before graphics (D215). [Session](work/history/2026-11-02-first-login-hi-and-start.md).
 
-2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an HP notebook reference diagram with exact SKU matching, split arrows and media-key aliases, and updates the independent keyboard app. [Session](docs/ai/2026-11-01-hp-keyboard-layout.md).
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an HP notebook reference diagram with exact SKU matching, split arrows and media-key aliases, and updates the independent keyboard app. [Session](work/history/2026-11-01-hp-keyboard-layout.md).
 
-2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an independent keyboard development app so the widget can be tried without a desktop candidate. [Session](docs/ai/2026-11-01-keyboard-app-trial.md).
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) adds an independent keyboard development app so the widget can be tried without a desktop candidate. [Session](work/history/2026-11-01-keyboard-app-trial.md).
 
-2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) verifies the keyboard fallback offscreen, preserves keycap gutters and identifies the board actually drawn. [Session](docs/ai/2026-11-01-keyboard-render.md).
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) verifies the keyboard fallback offscreen, preserves keycap gutters and identifies the board actually drawn. [Session](work/history/2026-11-01-keyboard-render.md).
 
-2026-11-01: Fred releases **0.5.12**, the final **Blue Sparkler** cultivar. Claude Code `2.1.316` (`claude-opus-5-5`) runs the scripted release and writes its records. [Release session](docs/ai/2026-11-01-release-0.5.12.md).
+2026-11-01: Fred releases **0.5.12**, the final **Blue Sparkler** cultivar. Claude Code `2.1.316` (`claude-opus-5-5`) runs the scripted release and writes its records. [Release session](work/history/2026-11-01-release-0.5.12.md).
 
-2026-11-01: Claude Code `2.1.316` (`claude-opus-5-5`) makes idle suspend fall back to plain suspend where hibernation is unavailable. [Session](docs/ai/2026-11-01-suspend-without-hibernation.md).
+2026-11-01: Claude Code `2.1.316` (`claude-opus-5-5`) makes idle suspend fall back to plain suspend where hibernation is unavailable. [Session](work/history/2026-11-01-suspend-without-hibernation.md).
 
-2026-11-01: Claude Code `2.1.316` (`claude-opus-5-5`) lets fleet hosts follow their own assembly pin in `tam-deploy`. [Session](docs/ai/2026-11-01-per-host-assembly-pin.md).
+2026-11-01: Claude Code `2.1.316` (`claude-opus-5-5`) lets fleet hosts follow their own assembly pin in `tam-deploy`. [Session](work/history/2026-11-01-per-host-assembly-pin.md).
 
-2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements deployment state and recovery transactions. [Session](docs/ai/2026-11-01-candidate-process.md).
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-sol`) implements deployment state and recovery transactions. [Session](work/history/2026-11-01-candidate-process.md).
 
-2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) prepares the 0.5.12 product version. [Session](docs/ai/2026-11-01-0512-preparation.md).
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) prepares the 0.5.12 product version. [Session](work/history/2026-11-01-0512-preparation.md).
 
-2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) aligns fresh appearance defaults. [Session](docs/ai/2026-11-01-tokyo-defaults.md).
+2026-11-01: Codex CLI `0.166.0` (`gpt-6.1-terra`) aligns fresh appearance defaults. [Session](work/history/2026-11-01-tokyo-defaults.md).
 
-2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) reviews the Develop continuation and corrects trial evidence. [Session](docs/ai/2026-10-31-continuation-integration.md).
+2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) reviews the Develop continuation and corrects trial evidence. [Session](work/history/2026-10-31-continuation-integration.md).
 
-2026-10-31: Codex CLI `0.166.0` (`gpt-6-astra`) takes over macro reliability and key recording. [Session](docs/ai/2026-10-31-macro-reliability.md).
+2026-10-31: Codex CLI `0.166.0` (`gpt-6-astra`) takes over macro reliability and key recording. [Session](work/history/2026-10-31-macro-reliability.md).
 
-2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) improves console deployment lock checks, develops a preserving GTK adapter and fixes a macro configuration fallback. [Session](docs/ai/2026-10-31-console-lock-safety.md).
+2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) improves console deployment lock checks, develops a preserving GTK adapter and fixes a macro configuration fallback. [Session](work/history/2026-10-31-console-lock-safety.md).
 
-2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) checks generated btop palette contrast. [Session](docs/ai/2026-10-31-btop-contrast.md).
+2026-10-31: Codex CLI `0.166.0` (`gpt-6.1-terra`) checks generated btop palette contrast. [Session](work/history/2026-10-31-btop-contrast.md).
 
-2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-sol`) drafts the accepted 0.6 workstation upgrade plan and reviews 0.5 closure. [Session](docs/ai/2026-10-30-upgrade-plan-and-05-review.md).
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-sol`) drafts the accepted 0.6 workstation upgrade plan and reviews 0.5 closure. [Session](work/history/2026-10-30-upgrade-plan-and-05-review.md).
 
-2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) fixes editor theme contrast. [Session](docs/ai/2026-10-30-editor-contrast.md).
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) fixes editor theme contrast. [Session](work/history/2026-10-30-editor-contrast.md).
 
-2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) addressed 0.5.11 Test findings. [Session](docs/ai/2026-10-30-0511-test-fixes.md).
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) addressed 0.5.11 Test findings. [Session](work/history/2026-10-30-0511-test-fixes.md).
 
-2026-10-29: Codex CLI `0.166.0` (`gpt-6.1-terra`) advances the product version for the 0.5.11 candidate. [Session](docs/ai/2026-10-29-prepare-0511.md).
+2026-10-29: Codex CLI `0.166.0` (`gpt-6.1-terra`) advances the product version for the 0.5.11 candidate. [Session](work/history/2026-10-29-prepare-0511.md).
 
 2026-10-29: Antigravity CLI `1.4.10` (`gemini-3.8-flash-high`) implements the non-interactive hover tooltip for the topbar version widget (`fred.tamversion` 0.1.2) for Tamlinux 0.5.10.
-[Session](docs/ai/2026-10-29-tamversion-hover-tooltip.md).
+[Session](work/history/2026-10-29-tamversion-hover-tooltip.md).
 
 2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-sol`) implements the approved grouped Start menu, desktop appearance controls and staged binding cutover.
-[Session](docs/ai/2026-10-29-start-menu.md).
+[Session](work/history/2026-10-29-start-menu.md).
 
 2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-sol`) repairs shared QML palette
 resolution, authentication placement and deployment theme validation.
-[Session](docs/ai/2026-10-28-shell-palette-polkit.md).
+[Session](work/history/2026-10-28-shell-palette-polkit.md).
 
 This repository practices transparent AI-assisted engineering. We document the
 AI tools, models, prompts, and architectural decisions that shaped Tamlinux's
@@ -138,49 +158,49 @@ public description and development plans.
 
 ---
 
-## How to read this record
+### How to read this record
 
 This repository follows the Tamlinux [AI provenance standard](docs/ai-provenance-standard.md). In
 brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
-each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+each session record in [`work/history/`](work/history/) gives the date, tool version,
 model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
 
 Fred works directly with every AI agent. Agent-to-agent delegation was
 retired on 2026-10-16. Earlier assignment trailers and
-[`docs/ai/delegations.md`](docs/ai/delegations.md) remain historical evidence
+[`work/history/delegations.md`](work/history/delegations.md) remain historical evidence
 of who did the work and any rework; they do not define current roles.
 
 ---
 
 2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) develops the console welcome
 generator with Fred's revised tamarack design. Host login integration remains
-unfinished. [Session](docs/ai/2026-10-28-console-welcome.md).
+unfinished. [Session](work/history/2026-10-28-console-welcome.md).
 
 2026-10-23: Codex CLI `0.163.0` (`gpt-6.1-sol`) develops the Blue Sparkler
 0.5.0 fleet/first-install candidate. Text-session initialization verifies one
 recorded assembly and records the absence of a rollback generation. Login
 policy and physical acceptance remain separate.
-[Session](docs/ai/2026-10-22-fleet-first-install.md).
+[Session](work/history/2026-10-22-fleet-first-install.md).
 
-2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) assisted with keybinding changes and candidate preparation. [Session](docs/ai/2026-10-28-keybindings.md).
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) assisted with keybinding changes and candidate preparation. [Session](work/history/2026-10-28-keybindings.md).
 
-2026-10-28: Cursor `3.27.22` (`composer`) took over Codex's draft for the K32 system-layers account and US `less`/`greater` resize chords after a token limit; Lua syntax and 34 keybinding tests passed. [Session](docs/ai/2026-10-28-system-layers-resize.md).
+2026-10-28: Cursor `3.27.22` (`composer`) took over Codex's draft for the K32 system-layers account and US `less`/`greater` resize chords after a token limit; Lua syntax and 34 keybinding tests passed. [Session](work/history/2026-10-28-system-layers-resize.md).
 
-2026-10-28: Cursor `3.27.22` (`composer`) prepares Develop candidate 0.5.7: Foot/Micro K24 PuTTY clipboard migrations and version metadata; assembly pin bump follows in tamlinux-packages. [Session](docs/ai/2026-10-28-k24-clipboard-0.5.7.md).
+2026-10-28: Cursor `3.27.22` (`composer`) prepares Develop candidate 0.5.7: Foot/Micro K24 PuTTY clipboard migrations and version metadata; assembly pin bump follows in tamlinux-packages. [Session](work/history/2026-10-28-k24-clipboard-0.5.7.md).
 
 2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-sol`) prepares 0.5.8 with Micro
-JSON5 preservation and settings recovery. [Session](docs/ai/2026-10-28-micro-json5-recovery.md).
+JSON5 preservation and settings recovery. [Session](work/history/2026-10-28-micro-json5-recovery.md).
 
-## 1. Fred's Multi-Agent AI Toolchain
+### 1. Fred's Multi-Agent AI Toolchain
 
 Tamlinux 0.5.4 component metadata was prepared with Codex CLI `0.164.0`,
-model `gpt-6.1-sol`. [Session](docs/ai/2026-10-23-tam-0.5.4.md).
+model `gpt-6.1-sol`. [Session](work/history/2026-10-23-tam-0.5.4.md).
 
 Console-first startup work on 2026-10-23 uses Codex CLI `0.164.0` and
 `gpt-6.1-sol`, verified in the current runtime.
-[Session](docs/ai/2026-10-23-console-first-startup.md).
+[Session](work/history/2026-10-23-console-first-startup.md).
 
 Rather than relying on a single AI model or interface, Fred uses a specialized
 toolchain tailored to each tool's strengths. Most CLI versions below were
@@ -198,8 +218,8 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 | Tool & Interface | CLI Version | Backing Models | Primary Role in the Ecosystem |
 | :-- | :-- | :-- | :-- |
-| **0.4.1 package** | 0.4.1 Test candidate | Claude Code `2.1.295` (`claude-opus-5-5`) | The accepted 0.4.1 shell with its accepted plugin payloads and the product commands, packaged for deployment through `tamlinux-packages`; plugin digests equal the acceptance record. [Session](docs/ai/2026-10-09-0.4.1-package.md). |
-| **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](docs/ai/2026-10-03-void-first-target-base.md). |
+| **0.4.1 package** | 0.4.1 Test candidate | Claude Code `2.1.295` (`claude-opus-5-5`) | The accepted 0.4.1 shell with its accepted plugin payloads and the product commands, packaged for deployment through `tamlinux-packages`; plugin digests equal the acceptance record. [Session](work/history/2026-10-09-0.4.1-package.md). |
+| **Void-first target base** | 0.0.1 planning | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Void first, antiX Core if Void has a showstopper; runit/Sway retained, Btrfs pilot, libc and native packaging evaluation. Active documents rewritten directly. [Session record](work/history/2026-10-03-void-first-target-base.md). |
 | **Claude Code** (`claude`) | `2.1.301` (verified 2026-10-16) | Claude Opus 5.5 (`claude-opus-5-5`); earlier: Claude Opus 5 (`claude-opus-5`) | **Architecture & System Planning**: Authoring durable system specifications, multi-step runbooks, and cross-cutting policies. |
 | **Codex CLI** (`codex`) | `0.167.0` (verified 2026-11-09) | `gpt-6.1-sol`; earlier sessions: `gpt-6-astra`, `gpt-6-sol`, `gpt-5.6-sol` | **Architecture & System Planning**: Second opinion on plans and specifications alongside Claude; protocol-layer implementation and workstation migration verification. |
 | **Antigravity CLI** (`agy`) | `1.2.16` | Gemini 3.8 Flash (High) | **Coding, Refactoring & Implementation**: Primary coding partner for multi-file pair-programming, security hardening, and git release workflow. |
@@ -209,170 +229,170 @@ for the 2026-10-03 workstation-package route, and as `2.1.289` for the
 
 ---
 
-## 2. Key Architectural Milestones & AI Role
+### 2. Key Architectural Milestones & AI Role
 
 2026-11-09: Codex CLI `0.167.0` (`gpt-6.1-sol`) implements transaction-bound
 upgrade recovery and local baseline verification in `5d18090`.
-[Session](docs/ai/2026-11-09-transaction-recovery.md).
+[Session](work/history/2026-11-09-transaction-recovery.md).
 
 2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) implements foreground
 VT/seat access, owned restoration and guarded atomic preview trials.
 Fixture tests pass; installed Python behavior is preserved and physical
-feasibility remains open. [Session](docs/ai/2026-10-25-monitor-ownership.md).
+feasibility remains open. [Session](work/history/2026-10-25-monitor-ownership.md).
 
 2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) starts native monitor
 feasibility with a C inspection CLI and optional libtam display API. Routing
 analysis and fake-device checks pass; ownership, recovery and physical
-blanking remain open. [Session](docs/ai/2026-10-25-monitor-feasibility.md).
+blanking remain open. [Session](work/history/2026-10-25-monitor-feasibility.md).
 
 2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) records the Fred-approved
 native console monitor design and 0.5.5 delivery boundary. Planning only;
-[session](docs/ai/2026-10-25-console-monitor-plan.md).
+[session](work/history/2026-10-25-console-monitor-plan.md).
 
 2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) develops `tam-monitor` for
 real Linux text consoles: supported hardware brightness, guarded blank/wake
 and runtime idle controls. Physical acceptance and native output modesetting
-remain separate. [Session](docs/ai/2026-10-23-console-monitor-control.md).
+remain separate. [Session](work/history/2026-10-23-console-monitor-control.md).
 
 The same session prepares product metadata for **0.5.3** after Fred requests
 installation; package assembly and exact Test authorization are separate.
 
 2026-10-23: Prepare console-startup 0.5.2 with verified settings recovery;
 79 focused tests pass. Test remains separate.
-[Session](docs/ai/2026-10-23-console-candidate-0.5.2.md).
+[Session](work/history/2026-10-23-console-candidate-0.5.2.md).
 
 2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) supports finite settings
 checkpoints across shared and host configuration roots, with interrupted
-restoration and later-write coverage. [Session](docs/ai/2026-10-23-console-startup-blockers.md).
+restoration and later-write coverage. [Session](work/history/2026-10-23-console-startup-blockers.md).
 
 2026-10-23: prepare console-first candidate 0.5.1 with Codex CLI `0.164.0`
 (`gpt-6.1-sol`); exact builds and physical acceptance are separate.
-[Session](docs/ai/2026-10-23-console-candidate.md).
+[Session](work/history/2026-10-23-console-candidate.md).
 
 2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) adds preserving migration
 of inherited terminal theme includes to Tamlinux state, with rollback and
-later-write tests. [Session](docs/ai/2026-10-23-retire-terminal-theme-paths.md).
+later-write tests. [Session](work/history/2026-10-23-retire-terminal-theme-paths.md).
 
 2026-10-23: Codex CLI `0.164.0` (`gpt-6.1-sol`) protects the text shell
 during explicit desktop use with a foreground console guard and terminal
 input/signal tests. Physical boot and locking remain pending.
-[Session](docs/ai/2026-10-23-console-terminal-guard.md).
+[Session](work/history/2026-10-23-console-terminal-guard.md).
 
 2026-10-22: Codex CLI `0.163.0` (`gpt-6.1-sol`) develops host-scoped fleet
 registration/reconciliation, local-host deployment selection and the read-only
-bootstrap helper. [Session](docs/ai/2026-10-22-fleet.md).
+bootstrap helper. [Session](work/history/2026-10-22-fleet.md).
 
 2026-10-22: Fred releases **0.4.8**, the final **Incipiens** cultivar.
 Codex CLI `0.163.0` (`gpt-6.1-sol`) verifies and publishes the exact accepted
-Run, with notes since 0.4.1. [Release session](docs/ai/2026-10-22-release-0.4.8.md).
+Run, with notes since 0.4.1. [Release session](work/history/2026-10-22-release-0.4.8.md).
 
 2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares Incipiens 0.4.8
 metadata to deliver current tam command 0.38.1 / corpus 0.42.0, without
-product runtime changes. [Session](docs/ai/2026-10-21-prepare-0.4.8.md).
+product runtime changes. [Session](work/history/2026-10-21-prepare-0.4.8.md).
 
 2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares Incipiens 0.4.7
 metadata carrying the accepted HEY retirement. Package and installed evidence
-remain separate. [Session](docs/ai/2026-10-21-prepare-0.4.7.md).
+remain separate. [Session](work/history/2026-10-21-prepare-0.4.7.md).
 
 2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) implements the accepted
 HEY retirement with preserving launcher/MIME migration, explicit desktop-cache
 refresh, absent handler/default shortcuts and independent Zoom coverage.
 82 focused tests and 81 isolated package probes pass. Develop only.
-[Session](docs/ai/2026-10-21-retire-hey.md).
+[Session](work/history/2026-10-21-retire-hey.md).
 
 2026-10-21: Fred accepts the HEY retirement plan authored with Codex CLI
 `0.163.0` (`gpt-6.1-sol`). Remove inherited integration through preserving
 migration in a later candidate; defer email replacement research. Planning
 only; installed 0.4.6 keeps its identity.
-[Session continuation](docs/ai/2026-10-21-0.4.6-preparation.md#continuation--accepted-hey-retirement-plan).
+[Session continuation](work/history/2026-10-21-0.4.6-preparation.md#continuation--accepted-hey-retirement-plan).
 
 2026-10-21: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares Incipiens 0.4.6
 metadata around the committed application/editor/icon fixes and stock-screen
 decision. Package verification is recorded in the delivery assembly. No activation.
-[Session](docs/ai/2026-10-21-0.4.6-preparation.md).
+[Session](work/history/2026-10-21-0.4.6-preparation.md).
 
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) removes the obsolete boot-theme
 picker menu after the developer chooses to retain stock Plymouth `bgrt` for
 0.4. The compatibility plan and consumer expectations follow that choice;
 25 focused tests pass. No activation or boot change.
-[Session](docs/ai/2026-10-20-stock-unlock-screen.md).
+[Session](work/history/2026-10-20-stock-unlock-screen.md).
 
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) supplies owned HEY/Zoom
 handlers, preserving desktop-entry migration and inherited editor-default
 correction. Isolated source/package checks pass; no activation.
-[Session](docs/ai/2026-10-20-live-call-replacements.md).
+[Session](work/history/2026-10-20-live-call-replacements.md).
 
 2026-10-18: Codex CLI `0.163.0` (`gpt-6.1-sol`) writes the approved 0.4.4h work plan:
 hibernate restoration, bounded GPU-recovery notice integration, the completed
 tam knowledge-system update and exact package/recovery acceptance. The developer
 approved the second-review revision with traceable checks and explicit execution
-adherence; no implementation or activation. [Session](docs/ai/2026-10-18-0.4.4h-plan.md).
+adherence; no implementation or activation. [Session](work/history/2026-10-18-0.4.4h-plan.md).
 
 2026-10-17: Codex CLI `0.163.0` (`gpt-6.1-sol`) corrects hibernate zram
 restoration to use defined systemd swap units, with bounded activation and
 verified priorities before clearing retry state. Source checks pass; packaged
-physical proof remains pending. [Session](docs/ai/2026-10-17-hibernate-zram-restoration.md).
+physical proof remains pending. [Session](work/history/2026-10-17-hibernate-zram-restoration.md).
 
 2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares 0.4.4-d
 with bounded session shutdown, the native watchdog, SysRq recovery keys and
-router-only panel IPC. [Session](docs/ai/2026-10-16-0.4.4d-readiness.md).
+router-only panel IPC. [Session](work/history/2026-10-16-0.4.4d-readiness.md).
 
 2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) restores complete Antigravity
 quota reporting, including the separate Argon weekly allowance, in `fred.agents`
-2.0.5. [Session](docs/ai/2026-10-16-antigravity-complete-quotas.md).
+2.0.5. [Session](work/history/2026-10-16-antigravity-complete-quotas.md).
 
 2026-10-16: Claude Code `2.1.301` (`claude-opus-5-5`) adds `tam-plugin new`
 and the offscreen `desktop/widget-proof` check.
-[Session](docs/ai/2026-10-16-plugin-scaffold-and-widget-proof.md).
+[Session](work/history/2026-10-16-plugin-scaffold-and-widget-proof.md).
 
 2026-10-16: Claude Code `2.1.301` (`claude-opus-5-5`) derives the plugin set
 from the plugin directories in `tam-plugin`, the live and proof checks, and
 the tests, so a new plugin needs no list edits.
-[Session](docs/ai/2026-10-16-derived-plugin-set.md).
+[Session](work/history/2026-10-16-derived-plugin-set.md).
 
 2026-10-16: Codex CLI `0.163.0` (`gpt-6.1-sol`) adds the running Tamlinux
 version to the bar and prepares the next small candidate.
-[Session](docs/ai/2026-10-16-tamversion.md).
+[Session](work/history/2026-10-16-tamversion.md).
 
 2026-10-15: Codex CLI `0.163.0` (`gpt-6.1-sol`) retains the d sleep-hook set
 for the login-only candidate, preserving the developed zram hook and its tests
-for a later sleep/resume letter. [Session](docs/ai/2026-10-15-login-slice-sleep-hook.md).
+for a later sleep/resume letter. [Session](work/history/2026-10-15-login-slice-sleep-hook.md).
 
 2026-10-14: Codex CLI `0.162.1` (`gpt-6.1-sol`) packages owned Chromium
 extensions and bounded native messaging hosts, with browser settings recovery
-and real clipboard/download verification. [Session](docs/ai/2026-10-14-browser-endpoints.md).
+and real clipboard/download verification. [Session](work/history/2026-10-14-browser-endpoints.md).
 
 2026-10-13–14: Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented finite settings
 checkpoints with live-linked source and later-write recovery, extended retained
 flag/device migration and repaired recording-indicator actions. Actual QML
 press/argv and isolated GTK regressions cover the new behavior.
-[Session](docs/ai/2026-10-13-0.4.3-recovery-continuation.md).
+[Session](work/history/2026-10-13-0.4.3-recovery-continuation.md).
 
 2026-10-13: Codex CLI `0.162.1` (`gpt-6.1-sol`) reviewed 0.4.3 readiness,
 selected independent provider/fresh-login assembly integration as the next
 work and reconciled stale public milestone deferrals. Existing immutable
 outputs still pass 68 isolated probes; complete clean-host readiness remains
-false. Planning/provenance only. [Session](docs/ai/2026-10-13-0.4.3-testing-readiness.md).
+false. Planning/provenance only. [Session](work/history/2026-10-13-0.4.3-testing-readiness.md).
 
 2026-10-10: Codex CLI `0.162.1` (`gpt-6.1-sol`) specifies the 0.4.3 finite
 independence gate, migration/recovery and fixed-parity rules, and records
 delivery's initial clean-host contract/output audit. Seventeen audit tests pass;
 complete runtime proof remains pending.
-[Session record](docs/ai/2026-10-10-0.4.3-clean-host-contract.md).
+[Session record](work/history/2026-10-10-0.4.3-clean-host-contract.md).
 
 2026-10-10: Codex CLI `0.162.1` (`gpt-6.1-sol`) restores release history and
 plugin usage documentation, fixes exact assembly verification and rollback
 return identity, and prepares the distinct 0.4.2-d candidate.
-[Session record](docs/ai/2026-10-10-0.4.2d-review-fixes.md).
+[Session record](work/history/2026-10-10-0.4.2d-review-fixes.md).
 
 2026-10-09: current plan and shadow Test state reviewed, followed by a
 `fred.monitor` 2.0.3 runtime-permission regression repair and Fred's 0.4.1
 acceptance, with Codex CLI
-`0.162.0`, model `gpt-6.1-sol`; see the [session record](docs/ai/2026-10-09-status-review.md).
+`0.162.0`, model `gpt-6.1-sol`; see the [session record](work/history/2026-10-09-status-review.md).
 
 2026-10-09: public package-delivery ownership was aligned with the four-repository
 split using Codex CLI `0.162.0`, model `gpt-6.1-sol`; see the
-[session record](docs/ai/2026-10-09-package-ownership.md).
+[session record](work/history/2026-10-09-package-ownership.md).
 
 Rows retain the decisions and proposed schedules at the time of each session.
 The 2026-10-07 replanning row and [current versioning](VERSIONING.md) supersede
@@ -380,91 +400,91 @@ earlier future-stage schedules without changing accepted version identifiers.
 
 | Milestone | Version | Primary AI Partner | Key Decisions & Achievements |
 | :-- | :-- | :-- | :-- |
-| **Direct agent workflow** | Documentation only, 2026-10-16 | Codex CLI `0.163.0` (`gpt-6.1-sol`) | Fred retired agent-to-agent delegation. Current work uses ordinary provenance; old assignment records remain historical. [Session](docs/ai/2026-10-16-retire-delegation.md) |
-| **Plugin storage repair** | 0.4.2-c candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Restored accepted storage contracts, namespace boundaries and helper/widget integration checks; consolidated candidate and lifecycle docs. [Session](docs/ai/2026-10-09-0.4.2c-repair.md). |
-| **Plugin and hover repairs** | 0.4.2-b candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Corrected displayed monitor version, footer-only hovers and product links; added parser/version regressions and backfilled the original session record. [Session](docs/ai/2026-10-09-0.4.2b-repair.md). |
-| **Menu candidate after the package transition** | 0.4.2-a Develop | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Rechecked the retained implementation after the release merge: nine menu tests, 18 service checks and all 196 consumer rows pass. Updated the changelog and package-based candidate plan; physical Test remains pending. [Session](docs/ai/2026-10-09-0.4.2-assembly.md). |
-| **Packaged deployment tools** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`) | `tam-deploy` replaces `tam-shell-deploy`: Test pins and verifies a `tamlinux-packages` assembly, Run fast-forwards `main` without rebuilding; `tam-plugin` 3.0.0 reads sources from `desktop/plugins` and leaves Test and Run to `tam-deploy`. 20 tests plus the lifecycle suite, passing in the Nix build. [Session](docs/ai/2026-10-09-tam-deploy.md). |
-| **Lifecycle tools in Tamlinux** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`) | `tam-shell-deploy` and `tam-plugin` become components under `commands/`; Home Manager configuration name and configuration checkout made configurable; 14 and seams tests pass. [Session](docs/ai/2026-10-09-lifecycle-tools-move.md). |
-| **`tam-work` in Tamlinux** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`); agy `1.3.2` (`gemini-3.8-flash-high`, delegate T31) | The shared-checkout claim command becomes the product component `commands/tam-work/` with configurable workspace and registry; 38 tests; inherited test-isolation fault fixed. [Session](docs/ai/2026-10-09-tam-work.md). |
-| **Bounded owned menus** | 0.4.2 Develop | Codex CLI `0.162.0` (`gpt-6.1-sol`) | Product defaults/entry point, bounded JSONC and file reads, retained valid source/model on reload failure, and isolated service proof. [Session](docs/ai/2026-10-09-0.4.2-menu.md). |
-| **Daily compositor protocol shadow monitoring** | 0.4.1 daily shadow Test | Codex CLI `0.162.0` (`gpt-6.1-sol`) | Bounded read-only comparisons and minute heartbeats; durable journal archive, source identity and conservative time/event summary. 409 desktop and 494 configuration tests passed; isolated equality on three outputs/four workspaces. Daily Test deployed, agreeing records archived and 161 daily checks passed; accepted version remains 0.4.0. [Session record](docs/ai/2026-10-09-protocol-shadow.md). |
-| **Non-theme settings/state ownership** | 0.4.0 accepted | Codex CLI `0.161.0` (implementation), `0.162.0` (login/Run verification and acceptance record), `gpt-6.1-sol` | Matching storage consumers and one key/bar helper; data-preserving migration/rollback. Exact eight normal Run digests verified, physical login and 494 configuration tests passed. Fred explicitly accepted the tested desktop; version/status metadata updated. [Session record](docs/ai/2026-10-08-0.4.0-acceptance.md). |
-| **Independence-first replanning** | 0.3.3 unchanged; reviewed planning | Codex CLI `0.161.0` (`gpt-6.1-sol`) | Settings/state and menus 0.4, theme/fonts/branding 0.5, package/system ownership and boot-dependent removal 0.6. Independent Hyprland acceptance before Sway integration/package 0.7 and physical daily proof 0.8. No implementation or deployment. [Session record](docs/ai/2026-10-07-independence-first-replanning.md). |
-| **Shared compositor protocol layer, milestone A** | 0.3.3 unchanged; Develop | Codex CLI `0.161.0` (`gpt-6.1-sol`) | Bound protocol state and shared adapter composition; 398 desktop tests and Sway fixture proof passed. Isolated Hyprland proof matched three outputs and four workspaces. No deployment. [Session record](docs/ai/2026-10-08-protocol-layer-development.md). |
-| **Cutover** | 0.3.3 | Claude Code `2.1.292` (`claude-opus-5-5`) | The Tamlinux shell becomes the daily bar on all three screens; rollback covers live-linked files as well as the generation; the bar's exclusive zone fixed at the switch. [Session record](docs/ai/2026-10-06-0.3.3-cutover.md). |
-| **Daily-bar readiness** | 0.3.2 | Codex CLI `0.160.1` (`gpt-6.1-sol`), continuing Claude's committed work | Multi-screen routes and controls, conversion and failed-plugin proof checks, immutable shell/plugin deployments, and recoverable local lifecycle transitions. [Session record](docs/ai/2026-10-06-0.3.2-completion.md). |
-| **Every accepted step is a version** | 0.1.22 | Claude Code `2.1.289` (`claude-opus-5-5`) | Recorded Fred's scheme: the minor version is a stage and the patch a step, so every accepted step raises the version. Steps since 0.0.2 numbered 0.1.0–0.1.22 in acceptance order; stages re-planned (0.2 every key binding on owned commands, 0.3 bar, 0.4 compositor contract, 0.5 look, 0.6 removal, 0.7 package, 0.8 Sway daily). Session: [`docs/ai/2026-10-05-version-keyed-plan.md`](docs/ai/2026-10-05-version-keyed-plan.md). |
-| **Notifications service in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The host gained session services (`TAMLINUX_SERVICES`) and a bar-less mode (`TAMLINUX_BAR=0`). The notification service is vendored with its MIT notice and owns `org.freedesktop.Notifications`; focus-on-click uses a new `focusApp` facade operation on both adapters. [Session record](docs/ai/2026-10-04-notifications-service.md) |
-| **OSD service in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The on-screen display (volume, brightness, and status overlays) is vendored into the host as a second session service with its MIT notice. It runs beside the notifications in services-only mode. [Session record](docs/ai/2026-10-04-osd-service.md) |
-| **Clipboard service in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | Clipboard history, its two `wl-paste` watchers, and the full-screen picker are vendored into the host as a third session service with the MIT notice. The paste and open helpers ship beside the service, so the host calls nothing outside its own tree. [Session record](docs/ai/2026-10-04-clipboard-service.md) |
-| **Emoji picker in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The emoji picker, its search, its emoji list, and its insert helper are vendored into the host as a fourth session service with the MIT notice. [Session record](docs/ai/2026-10-04-emoji-picker.md) |
-| **Image picker in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The full-screen image carousel, its row model, and its list helper are vendored into the host as a fifth session service with the MIT notice. Answer and done files are now written by argument rather than as shell text. [Session record](docs/ai/2026-10-04-image-picker.md) |
-| **Reminders in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The reminder card, its minutes model, and its timer helper are vendored into the host as a sixth session service with the MIT notice. The helper sends notifications over D-Bus as typed values and reads minutes as decimal. [Session record](docs/ai/2026-10-04-reminders.md) |
-| **Command menu in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The command menu, its model, and the application library behind its Apps list are vendored into the host as a seventh session service with the MIT notice. Menu files are named by environment, actions run in their own scope, and select/input answers are written by argument. [Session record](docs/ai/2026-10-04-menu.md) |
-| **Desktop background in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The desktop background, its slanted reveal, and its output-move remap are vendored into the host as an eighth session service with the MIT notice. The service now watches its link, so any command that repoints it changes the background, and the desktop double-clicks open the host menu's background and theme routes. [Session record](docs/ai/2026-10-04-background.md) |
-| **Polkit agent in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The polkit authentication agent and its model are vendored into the host as a ninth session service with the MIT notice. The lid check reads `/proc` itself, the agent registers at a Tamlinux object path, and a read-only IPC target reports whether it is registered. [Session record](docs/ai/2026-10-04-polkit.md) |
-| **Media keys in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The MPRIS media service and its model are vendored into the host as a tenth session service with the MIT notice. Each media-key action shows its card on the host OSD, which the host injects in place of a shell summon. [Session record](docs/ai/2026-10-04-media.md) |
-| **Stay Awake in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The idle service and its model are vendored into the host as an eleventh session service with the MIT notice. The Stay Awake file is named by the environment and written by argument, each idle stage is off unless its timeout is set, and screensaver windows are counted from Wayland toplevels in place of compositor events. [Session record](docs/ai/2026-10-04-idle.md) |
-| **Battery warning in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The battery service and its model are vendored into the host as a twelfth session service with the MIT notice. It warns once when a draining battery reaches 10% and sets the power profile when the power source changes, through owned commands; a read-only IPC target reports its state. Without a battery it runs nothing. [Session record](docs/ai/2026-10-04-battery.md) |
-| **Milestones before 0.1** | 0.0.1 planning | Claude Code `2.1.289` (`claude-opus-5-5`) | Named 0.0.2 (Tamlinux owns the foundation) and 0.0.3 (session services in the Tamlinux host, only the bar left) before 0.1; before 0.1 a patch number marks a milestone. Documentation only. [Session record](docs/ai/2026-10-04-milestones-before-0.1.md) |
-| **Omarchy removed before Hyprland** | 0.0.1 planning | Claude Code `2.1.289` (`claude-opus-5-5`) | Recorded Fred's change of order: 0.3 now means Omarchy is gone while Hyprland stays (functions replaced; packages, package mirror and kernel removed; Tamlinux's own name and look), 0.4–0.9 fall back to Hyprland, and 1.0.0 removes Hyprland. Fred chose Arch's stock kernel after a comparison. Documentation only. [Session record](docs/ai/2026-10-04-omarchy-before-hyprland.md). |
-| **Sway adapter, first slice** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The shell Sway adapter prefers ext-workspace workspaces, then i3 IPC, and reads bindings from a generated fragment. It loads only when selected. The Hyprland proof stays the default. No `swaymsg` process is started. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-04-sway-adapter.md). |
-| **Helper Hyprland commands use the named backend** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Workspace and monitor helpers call named compositor operations. Reads run. Mutations record unless the live flag is set. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-hyprland-command-ownership.md). |
-| **Plugin QML reads the compositor facade** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Weather, tides, sysinfo, keyboard, monitor DPMS, and workspaces QML read `bar.compositor`. Output snapshots include a bounded description. `tam-desktop-mode` and the monitor layout helpers still call Hyprland. The daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-compositor-facade.md). |
-| **Shared UI closure and typed actions** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The proof host now has the border, style, and control types the plugins bind, plus typed actions that record a request and do not start a process. `bar.run` stays refused. A fixture proves the types. The eight plugins are not rewritten, and the daily bar is unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-shared-ui-closure.md). |
-| **Workstation package route and version series** | 0.0.1 planning | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's route: the workstation package installs on existing distributions first (Nix flake + host adapter), Fred's Arch workstation reaches 1.0.0 when Omarchy and Hyprland are removed, then a second distribution and the Void base (native `xbps-src`). Set the 0.0.x–1.3 version series and renumbered the desktop milestones. Documentation only. [Session record](docs/ai/2026-10-03-workstation-package-route-and-versions.md). |
-| **Compositor contract and Hyprland adapter** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Shell UI in `desktop/` reads a compositor facade. The Hyprland adapter is the only new file that imports Hyprland or starts hyprctl. Focus and DPMS stay record-only in the proof. The seven plugins are unchanged. Not a Test promotion. [Session record](docs/ai/2026-10-03-compositor-contract.md). |
-| **runit for init and service management** | 0.0.1 planning | Antigravity CLI (`agy`) `1.2.16` (`gemini-3.8-flash-high`) | Recorded Fred's decision to use runit for system initialization (PID 1) and service supervision on the target workstation, aligning with antiX Linux Core's default runit base. Documentation only. [Session record](docs/ai/2026-10-03-runit-system-initialization-and-service-management.md). |
-| **Shell host contract** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | The clock host now covers the other plugins' bar and shell calls: per-output popouts, settings, manifests, tooltips, panel focus, and IPC. A fixture widget proves the contract. The other seven plugins are not loaded. Not a Test promotion. [Session record](docs/ai/2026-10-03-shell-host-contract.md). |
-| **Independent clock shell** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | Separate Quickshell host loads pinned `fred.clock` through owned modules and isolated fixture data. Automated checks passed; manual hover and output checks remain. Not a Test promotion. [Session record](docs/ai/2026-10-03-independent-clock-shell.md). |
-| **Hardware floor and workstation requirements** | 0.0.1 planning; local draft | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's circa-2006 hardware floor (Wayland, not X11), antiX Core with an Omarchy-inspired tiling window system and the compositor reopened, and the Chrome, VS Code, and terminal-first requirements; then ran Fred's compositor field survey and recorded his decisions: Sway, a Nix-built workstation package on antiX Core or existing Linux, and terminal-only machines. Documentation only. [Session record](docs/ai/2026-10-03-hardware-floor-and-workstation-requirements.md). |
-| **Desktop dependency inventory and handoff** | 0.0.1 planning; approved 2026-10-03 | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Classified desktop dependencies; ordered the shell/compositor/session/pilot work and specified the independent clock proof. No desktop implementation or migration. [Session record](docs/ai/2026-10-03-desktop-dependency-inventory-and-handoff.md). |
-| **Public explainer (first version)** | first description | Cursor `3.21.16` (`composer`) | Public one-liner, etymology, values, plugin-suite links, GPL-3.0-or-later. Not an installable image. [Session record](docs/ai/2026-09-22-public-explainer.md). |
-| **Product version 0.0.1** | 0.0.1 | Cursor `3.21.16` (`composer`) | First Tamlinux version. 0.x is Omarchy-based; 1.x is independent. Home Manager generation is recorded separately. [Session record](docs/ai/2026-09-22-version-0.0.1.md). |
-| **Installation and command plans** | 0.0.1 planning | Codex CLI `0.156.1` (`gpt-6-sol`), with Fred's direct edits and review | Omarchy first installation profile; NixOS pilot next; approved first `tamlinux` command slice, first-use welcome, and Lynx fallback. No installer or command implementation yet. [Session record](docs/ai/2026-09-23-installation-and-command-plans.md). |
-| **AntiX base layer & product vision** | 0.0.1 refinement | Antigravity CLI (`agy`) `1.2.12`, Gemini 3.8 Flash (High) | Clarified Arch rolling update appeal, AntiX older hardware commitment, universal resource minimization, AntiX Core + River target base layer, and a then-proposed temporary-testbed graduation path (**superseded 2026-10-06**; see [current record](docs/ai/2026-10-06-independent-continuing-project.md)). [Session record](docs/ai/2026-09-28-antix-base-and-product-vision.md). |
+| **Direct agent workflow** | Documentation only, 2026-10-16 | Codex CLI `0.163.0` (`gpt-6.1-sol`) | Fred retired agent-to-agent delegation. Current work uses ordinary provenance; old assignment records remain historical. [Session](work/history/2026-10-16-retire-delegation.md) |
+| **Plugin storage repair** | 0.4.2-c candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Restored accepted storage contracts, namespace boundaries and helper/widget integration checks; consolidated candidate and lifecycle docs. [Session](work/history/2026-10-09-0.4.2c-repair.md). |
+| **Plugin and hover repairs** | 0.4.2-b candidate | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Corrected displayed monitor version, footer-only hovers and product links; added parser/version regressions and backfilled the original session record. [Session](work/history/2026-10-09-0.4.2b-repair.md). |
+| **Menu candidate after the package transition** | 0.4.2-a Develop | Codex CLI `0.162.1` (`gpt-6.1-sol`) | Rechecked the retained implementation after the release merge: nine menu tests, 18 service checks and all 196 consumer rows pass. Updated the changelog and package-based candidate plan; physical Test remains pending. [Session](work/history/2026-10-09-0.4.2-assembly.md). |
+| **Packaged deployment tools** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`) | `tam-deploy` replaces `tam-shell-deploy`: Test pins and verifies a `tamlinux-packages` assembly, Run fast-forwards `main` without rebuilding; `tam-plugin` 3.0.0 reads sources from `desktop/plugins` and leaves Test and Run to `tam-deploy`. 20 tests plus the lifecycle suite, passing in the Nix build. [Session](work/history/2026-10-09-tam-deploy.md). |
+| **Lifecycle tools in Tamlinux** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`) | `tam-shell-deploy` and `tam-plugin` become components under `commands/`; Home Manager configuration name and configuration checkout made configurable; 14 and seams tests pass. [Session](work/history/2026-10-09-lifecycle-tools-move.md). |
+| **`tam-work` in Tamlinux** | Development (no version change) | Claude Code `2.1.295` (`claude-opus-5-5`); agy `1.3.2` (`gemini-3.8-flash-high`, delegate T31) | The shared-checkout claim command becomes the product component `commands/tam-work/` with configurable workspace and registry; 38 tests; inherited test-isolation fault fixed. [Session](work/history/2026-10-09-tam-work.md). |
+| **Bounded owned menus** | 0.4.2 Develop | Codex CLI `0.162.0` (`gpt-6.1-sol`) | Product defaults/entry point, bounded JSONC and file reads, retained valid source/model on reload failure, and isolated service proof. [Session](work/history/2026-10-09-0.4.2-menu.md). |
+| **Daily compositor protocol shadow monitoring** | 0.4.1 daily shadow Test | Codex CLI `0.162.0` (`gpt-6.1-sol`) | Bounded read-only comparisons and minute heartbeats; durable journal archive, source identity and conservative time/event summary. 409 desktop and 494 configuration tests passed; isolated equality on three outputs/four workspaces. Daily Test deployed, agreeing records archived and 161 daily checks passed; accepted version remains 0.4.0. [Session record](work/history/2026-10-09-protocol-shadow.md). |
+| **Non-theme settings/state ownership** | 0.4.0 accepted | Codex CLI `0.161.0` (implementation), `0.162.0` (login/Run verification and acceptance record), `gpt-6.1-sol` | Matching storage consumers and one key/bar helper; data-preserving migration/rollback. Exact eight normal Run digests verified, physical login and 494 configuration tests passed. Fred explicitly accepted the tested desktop; version/status metadata updated. [Session record](work/history/2026-10-08-0.4.0-acceptance.md). |
+| **Independence-first replanning** | 0.3.3 unchanged; reviewed planning | Codex CLI `0.161.0` (`gpt-6.1-sol`) | Settings/state and menus 0.4, theme/fonts/branding 0.5, package/system ownership and boot-dependent removal 0.6. Independent Hyprland acceptance before Sway integration/package 0.7 and physical daily proof 0.8. No implementation or deployment. [Session record](work/history/2026-10-07-independence-first-replanning.md). |
+| **Shared compositor protocol layer, milestone A** | 0.3.3 unchanged; Develop | Codex CLI `0.161.0` (`gpt-6.1-sol`) | Bound protocol state and shared adapter composition; 398 desktop tests and Sway fixture proof passed. Isolated Hyprland proof matched three outputs and four workspaces. No deployment. [Session record](work/history/2026-10-08-protocol-layer-development.md). |
+| **Cutover** | 0.3.3 | Claude Code `2.1.292` (`claude-opus-5-5`) | The Tamlinux shell becomes the daily bar on all three screens; rollback covers live-linked files as well as the generation; the bar's exclusive zone fixed at the switch. [Session record](work/history/2026-10-06-0.3.3-cutover.md). |
+| **Daily-bar readiness** | 0.3.2 | Codex CLI `0.160.1` (`gpt-6.1-sol`), continuing Claude's committed work | Multi-screen routes and controls, conversion and failed-plugin proof checks, immutable shell/plugin deployments, and recoverable local lifecycle transitions. [Session record](work/history/2026-10-06-0.3.2-completion.md). |
+| **Every accepted step is a version** | 0.1.22 | Claude Code `2.1.289` (`claude-opus-5-5`) | Recorded Fred's scheme: the minor version is a stage and the patch a step, so every accepted step raises the version. Steps since 0.0.2 numbered 0.1.0–0.1.22 in acceptance order; stages re-planned (0.2 every key binding on owned commands, 0.3 bar, 0.4 compositor contract, 0.5 look, 0.6 removal, 0.7 package, 0.8 Sway daily). Session: [`work/history/2026-10-05-version-keyed-plan.md`](work/history/2026-10-05-version-keyed-plan.md). |
+| **Notifications service in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The host gained session services (`TAMLINUX_SERVICES`) and a bar-less mode (`TAMLINUX_BAR=0`). The notification service is vendored with its MIT notice and owns `org.freedesktop.Notifications`; focus-on-click uses a new `focusApp` facade operation on both adapters. [Session record](work/history/2026-10-04-notifications-service.md) |
+| **OSD service in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The on-screen display (volume, brightness, and status overlays) is vendored into the host as a second session service with its MIT notice. It runs beside the notifications in services-only mode. [Session record](work/history/2026-10-04-osd-service.md) |
+| **Clipboard service in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | Clipboard history, its two `wl-paste` watchers, and the full-screen picker are vendored into the host as a third session service with the MIT notice. The paste and open helpers ship beside the service, so the host calls nothing outside its own tree. [Session record](work/history/2026-10-04-clipboard-service.md) |
+| **Emoji picker in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The emoji picker, its search, its emoji list, and its insert helper are vendored into the host as a fourth session service with the MIT notice. [Session record](work/history/2026-10-04-emoji-picker.md) |
+| **Image picker in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The full-screen image carousel, its row model, and its list helper are vendored into the host as a fifth session service with the MIT notice. Answer and done files are now written by argument rather than as shell text. [Session record](work/history/2026-10-04-image-picker.md) |
+| **Reminders in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The reminder card, its minutes model, and its timer helper are vendored into the host as a sixth session service with the MIT notice. The helper sends notifications over D-Bus as typed values and reads minutes as decimal. [Session record](work/history/2026-10-04-reminders.md) |
+| **Command menu in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The command menu, its model, and the application library behind its Apps list are vendored into the host as a seventh session service with the MIT notice. Menu files are named by environment, actions run in their own scope, and select/input answers are written by argument. [Session record](work/history/2026-10-04-menu.md) |
+| **Desktop background in the host** | 0.0.1 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The desktop background, its slanted reveal, and its output-move remap are vendored into the host as an eighth session service with the MIT notice. The service now watches its link, so any command that repoints it changes the background, and the desktop double-clicks open the host menu's background and theme routes. [Session record](work/history/2026-10-04-background.md) |
+| **Polkit agent in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The polkit authentication agent and its model are vendored into the host as a ninth session service with the MIT notice. The lid check reads `/proc` itself, the agent registers at a Tamlinux object path, and a read-only IPC target reports whether it is registered. [Session record](work/history/2026-10-04-polkit.md) |
+| **Media keys in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The MPRIS media service and its model are vendored into the host as a tenth session service with the MIT notice. Each media-key action shows its card on the host OSD, which the host injects in place of a shell summon. [Session record](work/history/2026-10-04-media.md) |
+| **Stay Awake in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The idle service and its model are vendored into the host as an eleventh session service with the MIT notice. The Stay Awake file is named by the environment and written by argument, each idle stage is off unless its timeout is set, and screensaver windows are counted from Wayland toplevels in place of compositor events. [Session record](work/history/2026-10-04-idle.md) |
+| **Battery warning in the host** | 0.0.2 Test candidate | Claude Code `2.1.289` (`claude-opus-5-5`) | The battery service and its model are vendored into the host as a twelfth session service with the MIT notice. It warns once when a draining battery reaches 10% and sets the power profile when the power source changes, through owned commands; a read-only IPC target reports its state. Without a battery it runs nothing. [Session record](work/history/2026-10-04-battery.md) |
+| **Milestones before 0.1** | 0.0.1 planning | Claude Code `2.1.289` (`claude-opus-5-5`) | Named 0.0.2 (Tamlinux owns the foundation) and 0.0.3 (session services in the Tamlinux host, only the bar left) before 0.1; before 0.1 a patch number marks a milestone. Documentation only. [Session record](work/history/2026-10-04-milestones-before-0.1.md) |
+| **Omarchy removed before Hyprland** | 0.0.1 planning | Claude Code `2.1.289` (`claude-opus-5-5`) | Recorded Fred's change of order: 0.3 now means Omarchy is gone while Hyprland stays (functions replaced; packages, package mirror and kernel removed; Tamlinux's own name and look), 0.4–0.9 fall back to Hyprland, and 1.0.0 removes Hyprland. Fred chose Arch's stock kernel after a comparison. Documentation only. [Session record](work/history/2026-10-04-omarchy-before-hyprland.md). |
+| **Sway adapter, first slice** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The shell Sway adapter prefers ext-workspace workspaces, then i3 IPC, and reads bindings from a generated fragment. It loads only when selected. The Hyprland proof stays the default. No `swaymsg` process is started. The daily bar is unchanged. Not a Test promotion. [Session record](work/history/2026-10-04-sway-adapter.md). |
+| **Helper Hyprland commands use the named backend** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Workspace and monitor helpers call named compositor operations. Reads run. Mutations record unless the live flag is set. The daily bar is unchanged. Not a Test promotion. [Session record](work/history/2026-10-03-hyprland-command-ownership.md). |
+| **Plugin QML reads the compositor facade** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Weather, tides, sysinfo, keyboard, monitor DPMS, and workspaces QML read `bar.compositor`. Output snapshots include a bounded description. `tam-desktop-mode` and the monitor layout helpers still call Hyprland. The daily bar is unchanged. Not a Test promotion. [Session record](work/history/2026-10-03-compositor-facade.md). |
+| **Shared UI closure and typed actions** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | The proof host now has the border, style, and control types the plugins bind, plus typed actions that record a request and do not start a process. `bar.run` stays refused. A fixture proves the types. The eight plugins are not rewritten, and the daily bar is unchanged. Not a Test promotion. [Session record](work/history/2026-10-03-shared-ui-closure.md). |
+| **Workstation package route and version series** | 0.0.1 planning | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's route: the workstation package installs on existing distributions first (Nix flake + host adapter), Fred's Arch workstation reaches 1.0.0 when Omarchy and Hyprland are removed, then a second distribution and the Void base (native `xbps-src`). Set the 0.0.x–1.3 version series and renumbered the desktop milestones. Documentation only. [Session record](work/history/2026-10-03-workstation-package-route-and-versions.md). |
+| **Compositor contract and Hyprland adapter** | 0.0.1 Develop candidate | Cursor `3.23.12` (`composer`) | Shell UI in `desktop/` reads a compositor facade. The Hyprland adapter is the only new file that imports Hyprland or starts hyprctl. Focus and DPMS stay record-only in the proof. The seven plugins are unchanged. Not a Test promotion. [Session record](work/history/2026-10-03-compositor-contract.md). |
+| **runit for init and service management** | 0.0.1 planning | Antigravity CLI (`agy`) `1.2.16` (`gemini-3.8-flash-high`) | Recorded Fred's decision to use runit for system initialization (PID 1) and service supervision on the target workstation, aligning with antiX Linux Core's default runit base. Documentation only. [Session record](work/history/2026-10-03-runit-system-initialization-and-service-management.md). |
+| **Shell host contract** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | The clock host now covers the other plugins' bar and shell calls: per-output popouts, settings, manifests, tooltips, panel focus, and IPC. A fixture widget proves the contract. The other seven plugins are not loaded. Not a Test promotion. [Session record](work/history/2026-10-03-shell-host-contract.md). |
+| **Independent clock shell** | 0.0.1 Develop candidate | Cursor `3.21.18` (`composer`) | Separate Quickshell host loads pinned `fred.clock` through owned modules and isolated fixture data. Automated checks passed; manual hover and output checks remain. Not a Test promotion. [Session record](work/history/2026-10-03-independent-clock-shell.md). |
+| **Hardware floor and workstation requirements** | 0.0.1 planning; local draft | Claude Code `2.1.288` (`claude-opus-5-5`) | Recorded Fred's circa-2006 hardware floor (Wayland, not X11), antiX Core with an Omarchy-inspired tiling window system and the compositor reopened, and the Chrome, VS Code, and terminal-first requirements; then ran Fred's compositor field survey and recorded his decisions: Sway, a Nix-built workstation package on antiX Core or existing Linux, and terminal-only machines. Documentation only. [Session record](work/history/2026-10-03-hardware-floor-and-workstation-requirements.md). |
+| **Desktop dependency inventory and handoff** | 0.0.1 planning; approved 2026-10-03 | Codex CLI `0.160.0` (`gpt-6.1-sol`) | Classified desktop dependencies; ordered the shell/compositor/session/pilot work and specified the independent clock proof. No desktop implementation or migration. [Session record](work/history/2026-10-03-desktop-dependency-inventory-and-handoff.md). |
+| **Public explainer (first version)** | first description | Cursor `3.21.16` (`composer`) | Public one-liner, etymology, values, plugin-suite links, GPL-3.0-or-later. Not an installable image. [Session record](work/history/2026-09-22-public-explainer.md). |
+| **Product version 0.0.1** | 0.0.1 | Cursor `3.21.16` (`composer`) | First Tamlinux version. 0.x is Omarchy-based; 1.x is independent. Home Manager generation is recorded separately. [Session record](work/history/2026-09-22-version-0.0.1.md). |
+| **Installation and command plans** | 0.0.1 planning | Codex CLI `0.156.1` (`gpt-6-sol`), with Fred's direct edits and review | Omarchy first installation profile; NixOS pilot next; approved first `tamlinux` command slice, first-use welcome, and Lynx fallback. No installer or command implementation yet. [Session record](work/history/2026-09-23-installation-and-command-plans.md). |
+| **AntiX base layer & product vision** | 0.0.1 refinement | Antigravity CLI (`agy`) `1.2.12`, Gemini 3.8 Flash (High) | Clarified Arch rolling update appeal, AntiX older hardware commitment, universal resource minimization, AntiX Core + River target base layer, and a then-proposed temporary-testbed graduation path (**superseded 2026-10-06**; see [current record](work/history/2026-10-06-independent-continuing-project.md)). [Session record](work/history/2026-09-28-antix-base-and-product-vision.md). |
 
-Detailed session records are indexed in [`docs/ai/README`](docs/ai/README).
+Detailed session records are indexed in [`work/history/README`](work/history/README).
 
-## 2026-09-23 upstream survey foundation
+### 2026-09-23 upstream survey foundation
 
 Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
 and dated survey directory for this repository. This was documentation only;
 no field survey or runtime change was made.
-[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+[Session record](work/history/2026-09-23-upstream-survey-foundation.md).
 
-## 2026-09-28 private session IDs
+### 2026-09-28 private session IDs
 
 Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
-[Session record](docs/ai/2026-09-28-private-session-ids.md).
+[Session record](work/history/2026-09-28-private-session-ids.md).
 
-## 2026-09-28 provenance audit and publish
+### 2026-09-28 provenance audit and publish
 
 Claude Code `2.1.284` (`claude-sonnet-5-5`) audited every public repository's
 AI records against the public provenance standard, redacted one private
 repository name from a quoted prompt, and published the pending Antigravity
 session record. Documentation only.
-[Session record](docs/ai/2026-09-28-provenance-audit-and-publish.md).
+[Session record](work/history/2026-09-28-provenance-audit-and-publish.md).
 
-## 2026-10-03 shell-independent plugins
+### 2026-10-03 shell-independent plugins
 
 Cursor `3.23.12` (`composer`) taught the proof host to load the eight
 `fred.*` 2.0.0 checkouts and to start typed actions only when that flag is
 set. The daily shell was not replaced. Product version stays 0.0.1.
-[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+[Session record](work/history/2026-10-03-shell-independent-2.0.0.md).
 
-### Style and fonts — 0.2.1 accepted, 2026-10-05
+#### Style and fonts — 0.2.1 accepted, 2026-10-05
 
 Codex CLI `0.160.1` (`gpt-6.1-sol`) added palette reloads and responsive
 type sizing to the shared shell tokens, reviewed delegated helpers and
 completed font-provider routing. Fred tested all four Style controls and
 accepted 0.2.1. Automated and live installation checks pass.
-[Session record](docs/ai/2026-10-05-style-theme-integration.md).
+[Session record](work/history/2026-10-05-style-theme-integration.md).
 
-### Keybinding viewer, night light, audio, Bluetooth, network and power — 0.2.2 to 0.2.6 accepted, 2026-10-05
+#### Keybinding viewer, night light, audio, Bluetooth, network and power — 0.2.2 to 0.2.6 accepted, 2026-10-05
 
 Claude Code `2.1.290` (`claude-opus-5-5`) wrote the shell's keybinding
 service and model, the configuration-reload re-read, and the fixtures; Fred
@@ -477,137 +497,137 @@ control additions, reviewed and merged; Fred accepted 0.2.4. Claude wired
 the network and Wi-Fi QR panels; Fred accepted 0.2.5. Claude wired the power
 and speed-test panels, added the host's summon route, and, at Fred's choice,
 let the power panel open without a battery; Fred accepted 0.2.6.
-[Session record](docs/ai/2026-10-05-keybinding-viewer.md).
+[Session record](work/history/2026-10-05-keybinding-viewer.md).
 
-### Proof IPC by PID — 2026-10-06
+#### Proof IPC by PID — 2026-10-06
 
 Claude Code `2.1.291` (`claude-opus-5-5`) made `launch-clock-proof` send IPC to the instance it spawned (`quickshell ipc --pid`), because the session's own Tamlinux shell shares the config directory and was receiving the selftest's calls.
-[Session record](docs/ai/2026-10-06-proof-ipc-by-pid.md).
+[Session record](work/history/2026-10-06-proof-ipc-by-pid.md).
 
-### Plugins on Tamlinux only — 0.3.0 accepted, 2026-10-06
+#### Plugins on Tamlinux only — 0.3.0 accepted, 2026-10-06
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies from the eight plugins' 2.0.0 candidates and fixed the proof launcher Fred tested them in; Fred accepted 0.3.0.
-[Session record](docs/ai/2026-10-06-proof-ipc-by-pid.md).
+[Session record](work/history/2026-10-06-proof-ipc-by-pid.md).
 
-### The Tamlinux bar's own widgets — 0.3.1 accepted, 2026-10-06
+#### The Tamlinux bar's own widgets — 0.3.1 accepted, 2026-10-06
 
 Claude Code `2.1.291` (`claude-opus-5-5`) gave the Tamlinux shell a layout-driven bar with its own menu, indicators, keyboard layout, tray, and panel icons, and fixed the tooltip placement Fred's test found; Fred accepted 0.3.1. agy and opencode wrote test suites for it from Claude's briefs.
-[Session record](docs/ai/2026-10-06-tamlinux-bar-widgets.md).
+[Session record](work/history/2026-10-06-tamlinux-bar-widgets.md).
 
-## 2026-10-06 independent, continuing project
+### 2026-10-06 independent, continuing project
 
 Codex CLI `0.160.1` (`gpt-6.1-sol`) reconciled public identity, versioning,
 and engineering-plan scope around Fred's independent continuing Tamlinux
 direction. Earlier temporary-project and final-1.x assumptions are superseded.
-Documentation only. [Session record](docs/ai/2026-10-06-independent-continuing-project.md).
+Documentation only. [Session record](work/history/2026-10-06-independent-continuing-project.md).
 
-## 2026-10-06 monitor power re-read
+### 2026-10-06 monitor power re-read
 
 Claude Code `2.1.292` (`claude-opus-5-5`) made the Hyprland adapter read
 the monitors again on focus changes, output hotplug, and its own DPMS
 changes. A monitor blanked by `fred.workspaces` was still reported lit and
 could not be woken by pointer entry.
-[Session record](docs/ai/2026-10-06-dpms-reread.md).
+[Session record](work/history/2026-10-06-dpms-reread.md).
 
-## 2026-10-09 plugin suite consolidation
+### 2026-10-09 plugin suite consolidation
 
 OpenCode 1.18.35 (big-pickle) and Antigravity CLI (agy) 1.2.16
 (gemini-3.8-flash-high) consolidated the eight independent fred.* plugin
 repositories into desktop/plugins/ in the Tamlinux product repository,
 preserving git history, branch lines, and namespaced tags. The standalone
 repositories are frozen as historical Omarchy 1.x reference.
-[Session record](docs/ai/2026-10-09-plugins-consolidation.md).
+[Session record](work/history/2026-10-09-plugins-consolidation.md).
 
-## 2026-10-09 shared plugin hover and panel footers
+### 2026-10-09 shared plugin hover and panel footers
 
 Antigravity CLI `agy 1.3.2` (`gemini-3.8-flash-high`) implemented shared
 hover rendering, panel footers and patch bumps in `907d46b`, on Fred's direct
 instruction. The record was backfilled from the original transcript; defects
 found during Test are tracked in the 0.4.2-b repair.
-[Original session record](docs/ai/2026-10-09-plugin-hover-footers.md).
+[Original session record](work/history/2026-10-09-plugin-hover-footers.md).
 
-## 0.4.3 independent installation development — 2026-10-09–10
+### 0.4.3 independent installation development — 2026-10-09–10
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) recorded the reviewed clean-host package
 boundary and transferred ten required desktop helpers into maintained product
 source. Notification endpoints now use owned names together; plugin discovery
 uses the shipped product catalog without inherited network/cache lookups.
 Development tests and package-build evidence do not establish clean-host or
-physical desktop acceptance. [Session](docs/ai/2026-10-09-start-0.4.3.md).
+physical desktop acceptance. [Session](work/history/2026-10-09-start-0.4.3.md).
 
-## 0.4.3 terminal/editor closure — 2026-10-10
+### 0.4.3 terminal/editor closure — 2026-10-10
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented nine terminal/editor launch
 and default helpers with package dependency closure. Nineteen installed-chain
 regressions, the Nix build/integration and fourteen isolated output probes pass.
 Command closure precedes session/native defaults and clean-host proof; no
-installed candidate changed. [Session](docs/ai/2026-10-10-terminal-editor-closure.md).
+installed candidate changed. [Session](work/history/2026-10-10-terminal-editor-closure.md).
 
-## 0.4.3 independent acceleration review — 2026-10-10
+### 0.4.3 independent acceleration review — 2026-10-10
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) independently checked menu caller overlap,
 input counts, prototype limitations and native ownership. Prioritized capability
 dispositions and compact built-output reporting; planned focused input usability
 as 0.4.4 after independent 0.4.3 acceptance. The 108 → 27 shortcut was rejected;
 no features were deleted or software deployed.
-[Session](docs/ai/2026-10-10-acceleration-review.md).
+[Session](work/history/2026-10-10-acceleration-review.md).
 
-## 0.4.3 menu disposition and browser launch closure — 2026-10-10
+### 0.4.3 menu disposition and browser launch closure — 2026-10-10
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented eight browser/focus interfaces,
 retained menu/keybinding workflow dispositions and compact package-output evidence.
 Sixteen installed launch regressions, 21 auditor regressions, Nix build/integration
 and 19 actual-output probes pass. Independent desktop acceptance remains pending.
-[Session](docs/ai/2026-10-10-0.4.3-menu-launch-closure.md).
+[Session](work/history/2026-10-10-0.4.3-menu-launch-closure.md).
 
-## 0.4.3 OpenClaw retirement — 2026-10-12
+### 0.4.3 OpenClaw retirement — 2026-10-12
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) removed the OpenClaw menu choice and agent
 launch route on the owner's explicit instruction. Fifteen installed-helper
 tests and five menu-parser tests pass; the retirement regression rejects the
 previous launcher. Current handoffs now prioritize retained agent defaults and
 controls. No candidate was built or activated.
-[Session](docs/ai/2026-10-12-openclaw-retirement.md).
+[Session](work/history/2026-10-12-openclaw-retirement.md).
 
-## 0.4.3 retained agent defaults and microphone controls — 2026-10-12
+### 0.4.3 retained agent defaults and microphone controls — 2026-10-12
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) transferred default-agent selection, retired
 Hermes integration and packaged the first microphone control operation. Twenty-five
 installed-helper regressions, five menu-parser checks, Nix builds/integration and
 24 final actual-output probes pass. The five-output audit reports 98 unresolved
 lexical names / 52 inherited locations; clean-host acceptance remains pending.
-[Session follow-through](docs/ai/2026-10-12-openclaw-retirement.md).
+[Session follow-through](work/history/2026-10-12-openclaw-retirement.md).
 
 2026-10-12: retained audio source/delivery and recovery interfaces were implemented
 with Codex CLI `0.162.1`, model `gpt-6.1-sol`; see the
-[session record](docs/ai/2026-10-12-0.4.3-audio-output-closure.md).
+[session record](work/history/2026-10-12-0.4.3-audio-output-closure.md).
 
 2026-10-12: network/power controls and paired settings preservation were implemented
 with Codex CLI `0.162.1`, model `gpt-6.1-sol`; see the
-[session record](docs/ai/2026-10-12-0.4.3-control-closure.md).
+[session record](work/history/2026-10-12-0.4.3-control-closure.md).
 
 2026-10-12: display/brightness and lock/screensaver/suspend/wake closure verified
 in Develop with Codex CLI `0.162.1`, model `gpt-6.1-sol`; see the
-[session record](docs/ai/2026-10-12-0.4.3-display-power-closure.md).
+[session record](work/history/2026-10-12-0.4.3-display-power-closure.md).
 
 2026-10-12: independence plan reconciliation and tuple-bound gate/compiled-QML
 verification were developed with Codex CLI `0.162.1`, model `gpt-6.1-sol`.
 50 audit/gate/collector tests pass; clean-host acceptance remains blocked.
-[Session](docs/ai/2026-10-12-0.4.3-independence-gate.md).
+[Session](work/history/2026-10-12-0.4.3-independence-gate.md).
 
 2026-10-13: the retained capture chain, paired recording status, delivered
 tools/OCR data and isolated decoder fixtures were developed with Codex CLI
 `0.162.1`, model `gpt-6.1-sol`.
-[Session](docs/ai/2026-10-13-0.4.3-capture-closure.md).
+[Session](work/history/2026-10-13-0.4.3-capture-closure.md).
 
 2026-10-13: owned theme/font/assets/branding source and tool closure was developed
 with Codex CLI `0.162.1`, model `gpt-6.1-sol`. Native/session and clean-host
-acceptance remain pending. [Session](docs/ai/2026-10-13-0.4.3-theme-closure.md).
+acceptance remain pending. [Session](work/history/2026-10-13-0.4.3-theme-closure.md).
 
 2026-10-13: Codex CLI `0.162.1` (`gpt-6.1-sol`) implemented independent
 provider builds and fresh-session defaults, verified paired outputs and prepared
 a signed isolated clean Arch VM. Complete testing readiness remains pending.
-[Session](docs/ai/2026-10-13-0.4.3-provider-session-closure.md).
+[Session](work/history/2026-10-13-0.4.3-provider-session-closure.md).
 
 The same session aligns unstarted future milestones: focused input at 0.5.0,
 Tamarack in later 0.5.x, dependable Arch/Hyprland and the second laptop at 0.6.
@@ -617,208 +637,208 @@ migration and an independently built native integration package were developed
 and checked in the isolated Arch VM. Full readiness and boot handoff remain
 pending; the same session record describes the exact limits.
 
-## Saved monitor geometry — 2026-10-14
+### Saved monitor geometry — 2026-10-14
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) corrected the workspace layout reader and
 removed invented physical geometry from connector-only topology.
-[Session](docs/ai/2026-10-14-monitor-persistence.md).
+[Session](work/history/2026-10-14-monitor-persistence.md).
 
 Desktop recovery and 0.4.3-a preparation: Codex CLI 0.162.1, `gpt-6.1-sol`.
-See [session record](docs/ai/2026-10-14-desktop-recovery-kit.md).
+See [session record](work/history/2026-10-14-desktop-recovery-kit.md).
 
-## Desktop Test b preparation
+### Desktop Test b preparation
 
 Reviewed peer patches, approved background removal and exact inactive kit preparation.
-[Session record](docs/ai/2026-10-14-desktop-test-b.md).
+[Session record](work/history/2026-10-14-desktop-test-b.md).
 
-## Protocol-state crash fix and native system defaults — 2026-10-15
+### Protocol-state crash fix and native system defaults — 2026-10-15
 
 Claude Code `2.1.300` (`claude-opus-5-5`) replaced the protocol-state binding
 that crashed the shell during display hotplug and added the native system
-defaults. [Session record](docs/ai/2026-10-15-protocol-crash-native-defaults.md).
+defaults. [Session record](work/history/2026-10-15-protocol-crash-native-defaults.md).
 
-## Desktop Test c native defaults
+### Desktop Test c native defaults
 
 Codex CLI `0.162.1` (`gpt-6.1-sol`) reviewed Claude’s protocol/native defaults,
 completed preserving native conversion and fresh MIME selection, and prepared
-the next inactive assembly. [Session](docs/ai/2026-10-15-desktop-test-c.md).
+the next inactive assembly. [Session](work/history/2026-10-15-desktop-test-c.md).
 
-## Hibernate-time zram drain — 2026-10-15
+### Hibernate-time zram drain — 2026-10-15
 
 Claude Code `2.1.300` (`claude-opus-5-5`) added the `tamlinux-hibernate-swap`
 sleep hook, which turns zram swap off just before hibernating so the image
 fits in RAM. It has tests; no hibernation has run with it yet.
-[Session](docs/ai/2026-10-15-hibernate-swap.md).
+[Session](work/history/2026-10-15-hibernate-swap.md).
 
-## 0.4.3-d graphics environment isolation
+### 0.4.3-d graphics environment isolation
 
 Codex CLI 0.162.1 / gpt-6.1-sol implemented the accepted launch isolation.
-[Session record](docs/ai/2026-10-15-0.4.3d-graphics-isolation.md).
+[Session record](work/history/2026-10-15-0.4.3d-graphics-isolation.md).
 
-## 0.4.4-a cutover development
+### 0.4.4-a cutover development
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) integrates the tested d corrections before
-starting cutover development. [Session](docs/ai/2026-10-15-0.4.4a-cutover.md).
+starting cutover development. [Session](work/history/2026-10-15-0.4.4a-cutover.md).
 
-## Native SDDM greeter preparation
+### Native SDDM greeter preparation
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) implemented and checked the visible
 session selector and native vendor packaging for 0.4.4-a.
-[Session](docs/ai/2026-10-15-sddm-native-greeter.md).
+[Session](work/history/2026-10-15-sddm-native-greeter.md).
 
-## Native login c — 2026-10-16
+### Native login c — 2026-10-16
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the c native launcher names and
-execution tests. [Session record](docs/ai/2026-10-16-native-login-c.md).
+execution tests. [Session record](work/history/2026-10-16-native-login-c.md).
 
-## Developer title — 2026-10-16
+### Developer title — 2026-10-16
 
 Claude Code `2.1.301` (`claude-opus-5-5`) changed Fred Horch's title in
 `ACKNOWLEDGEMENTS.md` to "Tamlinux developer" at his request (`3bc614a`).
 The session is recorded in the `tam` repository:
-[session record](https://github.com/greenermoose/tam/blob/develop/docs/ai/2026-10-16-tam-corpus-workflow-decisions.md).
+[session record](https://github.com/greenermoose/tam/blob/develop/work/history/2026-10-16-tam-corpus-workflow-decisions.md).
 
-## 0.4.4e boot handoff preparation — 2026-10-16
+### 0.4.4e boot handoff preparation — 2026-10-16
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the next product identity and
 boot-provider/recovery contract while retaining d’s runtime implementation.
-[Session](docs/ai/2026-10-16-boot-preparation.md).
+[Session](work/history/2026-10-16-boot-preparation.md).
 
-### 2026-10-17 — 0.4.4f hibernate hook preparation
+#### 2026-10-17 — 0.4.4f hibernate hook preparation
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`; initial investigation `gpt-6-luna`)
 implemented Fred’s edited and approved H1 plan, integrated `tam-hibernate-swap`
 as a native default and made failed zram restoration retryable.
-[Session](docs/ai/2026-10-17-hibernate-h1.md).
+[Session](work/history/2026-10-17-hibernate-h1.md).
 
-### 2026-10-17 — 0.4.4g SDDM PAM keyring cleanup
+#### 2026-10-17 — 0.4.4g SDDM PAM keyring cleanup
 
 Codex CLI `0.163.0` (`gpt-6-luna`) adds a packaged, checkpointed transaction
 that removes only the three GNOME keyring PAM hooks and preserves both files'
 other bytes and metadata. Nine transaction fixtures and ten native staging
 checks pass; the assembly build and fresh-login proof remain pending.
-[Session](docs/ai/2026-10-17-sddm-pam-cleanup.md).
+[Session](work/history/2026-10-17-sddm-pam-cleanup.md).
 
-### 2026-10-18 — 0.4.4h Develop and package preparation
+#### 2026-10-18 — 0.4.4h Develop and package preparation
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) prepares the h candidate's corrected
 hibernate integration, bounded recovery-notice handoff, and package inputs for
 `tam` 0.30.0 / corpus 0.31.0. Installation, physical acceptance and stage
 promotion remain pending separate instruction.
-[Session](docs/ai/2026-10-18-0.4.4h-develop.md).
+[Session](work/history/2026-10-18-0.4.4h-develop.md).
 
-- 2026-10-18: [0.4.4i Tam version selection and Test](docs/ai/2026-10-18-0.4.4i.md), Codex CLI 0.163.0, `gpt-6.1-sol`.
+- 2026-10-18: [0.4.4i Tam version selection and Test](work/history/2026-10-18-0.4.4i.md), Codex CLI 0.163.0, `gpt-6.1-sol`.
 
-- 2026-10-19: [0.4.4j source identity](docs/ai/2026-10-19-0.4.4j.md), Claude Code 2.1.303, `claude-opus-5-5`.
+- 2026-10-19: [0.4.4j source identity](work/history/2026-10-19-0.4.4j.md), Claude Code 2.1.303, `claude-opus-5-5`.
 
-- 2026-10-19: [0.4.4k workspace reconcile, bar settings and live paths](docs/ai/2026-10-19-0.4.4k.md), Claude Code 2.1.303, `claude-opus-5-5`.
+- 2026-10-19: [0.4.4k workspace reconcile, bar settings and live paths](work/history/2026-10-19-0.4.4k.md), Claude Code 2.1.303, `claude-opus-5-5`.
 
-- 2026-10-19: [Operating-system horizons plan](docs/ai/2026-10-19-operating-system-horizons.md), Claude Code 2.1.304, `claude-opus-5-5`.
+- 2026-10-19: [Operating-system horizons plan](work/history/2026-10-19-operating-system-horizons.md), Claude Code 2.1.304, `claude-opus-5-5`.
 
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) implements Fred-approved
 single-owner input-method startup for Develop, preserving consumer precedence.
-[Session](docs/ai/2026-10-20-native-input-startup.md).
+[Session](work/history/2026-10-20-native-input-startup.md).
 
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) adds the requested,
 series-scoped milestone label and prepares the display-only m source.
-[Session](docs/ai/2026-10-20-tamversion-milestone-label.md).
+[Session](work/history/2026-10-20-tamversion-milestone-label.md).
 
 2026-10-20: Claude Code `2.1.305` (`claude-sonnet-5-5`) replaces candidate letters with plain patch versions in the versioning policy.
-[Session](docs/ai/2026-10-20-plain-patch-versions.md).
+[Session](work/history/2026-10-20-plain-patch-versions.md).
 
-## Incipiens 0.4.5 candidate preparation — 2026-10-20
+### Incipiens 0.4.5 candidate preparation — 2026-10-20
 
 Codex CLI `0.163.0` (`gpt-6.1-sol`) prepared the candidate under Fred’s direction.
-[Session](docs/ai/2026-10-20-0.4.5-preparation.md). No activation or promotion.
+[Session](work/history/2026-10-20-0.4.5-preparation.md). No activation or promotion.
 
 2026-10-20: Codex CLI `0.163.0` (`gpt-6.1-sol`) preserves the Discord
 launcher icon through the owned package and explicit preserving migration.
-[Session](docs/ai/2026-10-20-discord-icon.md).
+[Session](work/history/2026-10-20-discord-icon.md).
 
 2026-10-25: Codex CLI `0.164.0` (`gpt-6.1-sol`) implements validated recovery
 of surviving captured console outputs after retained-output disconnect/removal.
 Physical recovery and deployment remain separate gates.
-[Session](docs/ai/2026-10-25-monitor-unplug.md).
+[Session](work/history/2026-10-25-monitor-unplug.md).
 
 2026-10-26: Google Antigravity (`Gemini 3.8 Flash`) completes console framebuffer mapping,
 full C tam-monitor CLI/TUI migration (keep --shell, individual wake, targeted blank, UI parity
 without ncurses), and resource measurements vs Python baseline.
-[Session](docs/ai/2026-10-26-tam-monitor-c-migration.md).
+[Session](work/history/2026-10-26-tam-monitor-c-migration.md).
 
 2026-10-27: Codex CLI `0.164.0` (`gpt-6-astra`) reviews the committed C monitor
 implementation and files eight findings with a reproduction harness, authoritative
 references and correction acceptance criteria. No product correction or deployment.
-[Session](docs/ai/2026-10-27-tam-monitor-review.md).
+[Session](work/history/2026-10-27-tam-monitor-review.md).
 
-2026-10-27: Codex CLI `0.164.0` (`gpt-6.1-terra`) worked on monitor review corrections. [Session](docs/ai/2026-10-27-monitor-integration.md).
+2026-10-27: Codex CLI `0.164.0` (`gpt-6.1-terra`) worked on monitor review corrections. [Session](work/history/2026-10-27-monitor-integration.md).
 
-2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) corrected imv configuration preservation. [Session](docs/ai/2026-10-28-imv-preservation.md).
-Earlier imv development: [session](docs/ai/2026-10-28-imv-input.md).
+2026-10-28: Codex CLI `0.165.0` (`gpt-6.1-terra`) corrected imv configuration preservation. [Session](work/history/2026-10-28-imv-preservation.md).
+Earlier imv development: [session](work/history/2026-10-28-imv-input.md).
 
-2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) worked on screensaver removal. [Session](docs/ai/2026-10-29-remove-screensaver.md).
+2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) worked on screensaver removal. [Session](work/history/2026-10-29-remove-screensaver.md).
 
-2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) began Tamarack and console orientation. [Session](docs/ai/2026-10-29-tamarack-console.md).
+2026-10-29: Codex CLI `0.165.0` (`gpt-6.1-terra`) began Tamarack and console orientation. [Session](work/history/2026-10-29-tamarack-console.md).
 
-2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) corrected editor surface contrast. [Session](docs/ai/2026-10-30-editor-surface-contrast.md).
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) corrected editor surface contrast. [Session](work/history/2026-10-30-editor-surface-contrast.md).
 
-2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) corrected Explorer appearance, improved deployment and theme recovery, developed Micro theme coverage and prototyped GTK palette generation. [Session](docs/ai/2026-10-30-explorer-appearance.md).
+2026-10-30: Codex CLI `0.166.0` (`gpt-6.1-terra`) corrected Explorer appearance, improved deployment and theme recovery, developed Micro theme coverage and prototyped GTK palette generation. [Session](work/history/2026-10-30-explorer-appearance.md).
 
-Candidate 0.6.2: [source selection](docs/ai/0.6.2-candidate-selection.md).
+Candidate 0.6.2: [source selection](work/history/0.6.2-candidate-selection.md).
 
-Candidate 0.6.3: [source selection](docs/ai/0.6.3-candidate-selection.md).
+Candidate 0.6.3: [source selection](work/history/0.6.3-candidate-selection.md).
 
-Candidate 0.6.4: [source selection](docs/ai/0.6.4-candidate-selection.md).
+Candidate 0.6.4: [source selection](work/history/0.6.4-candidate-selection.md).
 
-Candidate 0.6.5: [source selection](docs/ai/0.6.5-candidate-selection.md).
+Candidate 0.6.5: [source selection](work/history/0.6.5-candidate-selection.md).
 
-Candidate 0.6.6: [source selection](docs/ai/0.6.6-candidate-selection.md).
+Candidate 0.6.6: [source selection](work/history/0.6.6-candidate-selection.md).
 
-Candidate 0.6.7: [source selection](docs/ai/0.6.7-candidate-selection.md).
+Candidate 0.6.7: [source selection](work/history/0.6.7-candidate-selection.md).
 
-Candidate 0.6.8: [source selection](docs/ai/0.6.8-candidate-selection.md).
+Candidate 0.6.8: [source selection](work/history/0.6.8-candidate-selection.md).
 
-Candidate 0.6.9: [source selection](docs/ai/0.6.9-candidate-selection.md).
+Candidate 0.6.9: [source selection](work/history/0.6.9-candidate-selection.md).
 
-Candidate 0.6.10: [source selection](docs/ai/0.6.10-candidate-selection.md).
+Candidate 0.6.10: [source selection](work/history/0.6.10-candidate-selection.md).
 
-Candidate 0.6.11: [source selection](docs/ai/0.6.11-candidate-selection.md).
+Candidate 0.6.11: [source selection](work/history/0.6.11-candidate-selection.md).
 
-Candidate 0.6.12: [source selection](docs/ai/0.6.12-candidate-selection.md).
+Candidate 0.6.12: [source selection](work/history/0.6.12-candidate-selection.md).
 
-Candidate 0.6.13: [source selection](docs/ai/0.6.13-candidate-selection.md).
+Candidate 0.6.13: [source selection](work/history/0.6.13-candidate-selection.md).
 
-Candidate 0.6.14: [source selection](docs/ai/0.6.14-candidate-selection.md).
+Candidate 0.6.14: [source selection](work/history/0.6.14-candidate-selection.md).
 
-Candidate 0.6.15: [source selection](docs/ai/0.6.15-candidate-selection.md).
+Candidate 0.6.15: [source selection](work/history/0.6.15-candidate-selection.md).
 
-Candidate 0.6.16: [source selection](docs/ai/0.6.16-candidate-selection.md).
+Candidate 0.6.16: [source selection](work/history/0.6.16-candidate-selection.md).
 
-Candidate 0.6.17: [source selection](docs/ai/0.6.17-candidate-selection.md).
+Candidate 0.6.17: [source selection](work/history/0.6.17-candidate-selection.md).
 
-Candidate 0.6.18: [source selection](docs/ai/0.6.18-candidate-selection.md).
+Candidate 0.6.18: [source selection](work/history/0.6.18-candidate-selection.md).
 
-Candidate 0.6.19: [source selection](docs/ai/0.6.19-candidate-selection.md).
+Candidate 0.6.19: [source selection](work/history/0.6.19-candidate-selection.md).
 
-Candidate 0.6.20: [source selection](docs/ai/0.6.20-candidate-selection.md).
+Candidate 0.6.20: [source selection](work/history/0.6.20-candidate-selection.md).
 
-Candidate 0.6.21: [source selection](docs/ai/0.6.21-candidate-selection.md).
+Candidate 0.6.21: [source selection](work/history/0.6.21-candidate-selection.md).
 
-Candidate 0.6.22: [source selection](docs/ai/0.6.22-candidate-selection.md).
+Candidate 0.6.22: [source selection](work/history/0.6.22-candidate-selection.md).
 
-Candidate 0.6.24: [source selection](docs/ai/0.6.24-candidate-selection.md).
+Candidate 0.6.24: [source selection](work/history/0.6.24-candidate-selection.md).
 
-Candidate 0.6.25: [source selection](docs/ai/0.6.25-candidate-selection.md).
+Candidate 0.6.25: [source selection](work/history/0.6.25-candidate-selection.md).
 
-Bundle Run without Home Manager: [session](docs/ai/2026-11-15-bundle-run.md).
+Bundle Run without Home Manager: [session](work/history/2026-11-15-bundle-run.md).
 
-Candidate 0.6.26: [source selection](docs/ai/0.6.26-candidate-selection.md).
+Candidate 0.6.26: [source selection](work/history/0.6.26-candidate-selection.md).
 
-2026-11-15: Codex CLI 0.169.0 (`gpt-6.1-sol`) corrects editor integration fixtures and checks preference/fallback behavior. [Record](docs/ai/2026-11-15-editor-checks.md).
+2026-11-15: Codex CLI 0.169.0 (`gpt-6.1-sol`) corrects editor integration fixtures and checks preference/fallback behavior. [Record](work/history/2026-11-15-editor-checks.md).
 
-Candidate 0.6.27: [source selection](docs/ai/0.6.27-candidate-selection.md).
+Candidate 0.6.27: [source selection](work/history/0.6.27-candidate-selection.md).
 
-2026-11-16: Codex CLI 0.169.0 (`gpt-6.1-sol`) implements canonical sleep naming, native identity integration and optional host documentation delivery. [Record](docs/ai/2026-11-16-0.6.28.md).
+2026-11-16: Codex CLI 0.169.0 (`gpt-6.1-sol`) implements canonical sleep naming, native identity integration and optional host documentation delivery. [Record](work/history/2026-11-16-0.6.28.md).
 
-2026-11-16: Claude Code 2.1.325 (`claude-opus-5-5`) renews fred.workspaces output retry budgets after a late output return. [Record](docs/ai/2026-11-16-fred-workspaces-reconcile-retry.md).
+2026-11-16: Claude Code 2.1.325 (`claude-opus-5-5`) renews fred.workspaces output retry budgets after a late output return. [Record](work/history/2026-11-16-fred-workspaces-reconcile-retry.md).
 
-Candidate 0.6.28: [source selection](docs/ai/0.6.28-candidate-selection.md).
+Candidate 0.6.28: [source selection](work/history/0.6.28-candidate-selection.md).

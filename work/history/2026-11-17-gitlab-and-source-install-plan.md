@@ -3,7 +3,7 @@
 - **CLI Tool**: Codex CLI (`codex`) `0.169.1`
 - **Model**: `gpt-6.2-sol`
 - **Authorship**: AI-assisted documentation directed by Fred.
-- **Commit**: The documentation commit introducing this record and the [1.0.0 plan](../plans/1.0.0-gitlab-and-source-install.md).
+- **Commit**: The documentation commit introducing this record and the [1.0.0 plan](../../docs/plans/1.0.0-gitlab-and-source-install.md).
 - **Transcript**: Retained privately by the author.
 
 ## Prompts

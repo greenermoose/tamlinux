@@ -23,7 +23,7 @@ limitation. No compositor dispatch, activation, native install, session
 restart, candidate change or log deletion was performed.
 
 Verification and limits are recorded in the
-[development handoff](../plans/steady-active-monitor.md#latest-accepted-desktop-intent-209).
+[development handoff](../../docs/plans/steady-active-monitor.md#latest-accepted-desktop-intent-209).
 
 - 32 isolated workspace timeline/intent tests pass (19 new intent cases).
 - 69 existing workspace plugin tests pass.

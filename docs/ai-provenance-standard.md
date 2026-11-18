@@ -6,8 +6,9 @@ anyone can see how Fred works with AI and trace a piece of code back to the
 tools, models, and human decisions behind it.
 
 This page explains where that record lives, how to read it, and what is
-deliberately left out. It applies to this repository and every
-`*-fred-tamlinux` repository.
+deliberately left out. It applies to this repository, to the Tamlinux
+components (libtam, tam, tam-clam, tam-data, tam-edit, tam-last, tam-pane
+and tamlinux-tools), and to every `*-fred-tamlinux` repository.
 
 ## Where to look
 
@@ -15,8 +16,10 @@ deliberately left out. It applies to this repository and every
 | :-- | :-- |
 | **Commit trailers** | A commit made with AI help carries `AI-Tool: <tool> <version>`, `AI-Model: <model-id>`, and a `Co-authored-by:` line for the assistant. |
 | **`AI_PROVENANCE.md`** | The AI tools Fred uses and what each is for, plus a table of the repository's milestones and which AI partner worked on each. |
-| **`docs/ai/`** | One record per working session, indexed in `docs/ai/README`. Some older repositories still keep these in a single `docs/ai/sessions.md`. |
-| **`docs/ai/delegations.md`** | Historical work one AI agent assigned to another: who assigned it, which harness and model did it, and whether it had to be corrected or redone. |
+| **`work/WHATNOW`** | What was just done in the repository and what comes next, in detail. Every session revises it; a new session reads it first. |
+| **`work/W<number>-<name>`** | One plain-text record per working session, numbered in order. `work/README-work` gives the format and the procedure. |
+| **`work/history/`** | The session records kept in `docs/ai/` until 2026-11-17, moved unchanged apart from links. Some older repositories kept them in a single `sessions.md`. |
+| **`work/history/delegations.md`** | Historical work one AI agent assigned to another: who assigned it, which harness and model did it, and whether it had to be corrected or redone. |
 | **The commits and diffs themselves** | The ground truth. Every record cites the commits it produced, so you can check its claims against the code. |
 
 Each session record gives:
@@ -24,19 +27,22 @@ Each session record gives:
 - the date and topic;
 - the AI tool and its exact version, checked with `<tool> --version` at the
   time of the session;
-- the model, by name and by the ID the tool logged, e.g. Claude Opus 5
-  (`claude-opus-5`);
+- the model, by the ID the tool logged, e.g. `claude-opus-5-5`;
 - Fred's guiding prompts, quoted verbatim;
-- the commits made, the key decisions, and how the work was verified;
-- a transcript status line (see below).
+- what was done and how it was checked, what failed, and the commits;
+- a brief handoff, with the detail in `work/WHATNOW`.
+
+Records in `work/history/` also carry a transcript status line (see below);
+`work/` records leave it out, because every transcript is retained.
 
 ## Tracing a line of code
 
 1. Run `git blame <file>` to find the commit that introduced the line.
 2. Run `git show -s --format='%h %ad %s%n%(trailers)' <commit>` to see its date
    and AI trailers.
-3. Find the `docs/ai/` record for that date or commit. It shows the prompt that
-   led to the change and the decisions behind it.
+3. Find the `work/` record (or, before 2026-11-17, the `work/history/`
+   record) for that date or commit. It shows the prompt that led to the
+   change and the decisions behind it.
 
 ## Work one AI assigned to another
 
@@ -59,7 +65,7 @@ historical evidence only; they are not a current workflow.
 - **An orchestrator commit that corrects or redoes delegated work** carries
   `AI-Reworks: <commit> (<what was redone>)`. Corrections caused by an error
   in the brief, rather than in the delegate's work, say so.
-- **`docs/ai/delegations.md`** lists every delegated task that landed in the
+- **`work/history/delegations.md`** lists every delegated task that landed in the
   repository: who assigned it, who did it, the delegate's commit and its merged
   copy, and the outcome (merged unchanged, corrected, partly redone, or
   discarded), with the rework commits. Tasks delegated before these trailers

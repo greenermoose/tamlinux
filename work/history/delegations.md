@@ -5,7 +5,7 @@ Work that one AI agent (the **orchestrator**) assigned to another (the
 in its own branch and makes one commit, labelled with its own harness and
 model; the orchestrator reviews it, merges it unchanged with
 `git cherry-pick`, and puts any corrections in its own commits. How to read
-the trailers is in the [provenance standard](../ai-provenance-standard.md#work-one-ai-assigned-to-another).
+the trailers is in the [provenance standard](../../docs/ai-provenance-standard.md#work-one-ai-assigned-to-another).
 Task briefs and review notes are retained privately by the author.
 
 **Outcome** is one of: *merged unchanged*; *corrected* (a later commit fixes

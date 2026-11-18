@@ -17,7 +17,7 @@
 
 ## Work and verification
 
-The [report](../reviews/2026-10-27-tam-monitor.md) records exact revisions, eight
+The [report](../../docs/reviews/2026-10-27-tam-monitor.md) records exact revisions, eight
 findings, limitations, recommendations and regression acceptance criteria. Its
 diagnostic harness uses existing link-time hardware fixtures and temporary
 extensions. Linux kernel/man-page and GCC documentation support platform claims;

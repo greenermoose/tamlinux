@@ -63,7 +63,7 @@ or layer-shell surface.
 ## Completion handoff
 
 Fred requested: “Write this up as a plan and handoff that another agent can complete.”
-The [completion plan](../plans/text-macros-and-meta.md) specifies remaining
+The [completion plan](../../docs/plans/text-macros-and-meta.md) specifies remaining
 surface/timing compatibility, prefix migration, Meta naming, package lifecycle
 and acceptance. It marks earlier Meta+Alt default assignments superseded and
 keeps physical evidence separate from unverified application classes. This

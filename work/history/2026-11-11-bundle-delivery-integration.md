@@ -4,7 +4,7 @@ The source checkpoint implements Home Manager link conversion, an exact
 bundle preparation/console activation draft and return to the saved Nix
 generation. It is uninstalled and not workstation acceptance. The concrete
 protocol and remaining gates are in the
-[implementation checkpoint](../plans/bundle-delivery-integration.md).
+[implementation checkpoint](../../docs/plans/bundle-delivery-integration.md).
 
 - **Date**: 2026-11-11
 - **CLI Tool**: Codex CLI (`codex`) `0.167.1`
@@ -64,7 +64,7 @@ protocol and remaining gates are in the
 Fresh-account bundle init, subsequent bundle updates, complete settings and
 Nix-reference coverage, short console helpers and stage integration remain.
 The tool's full migration suite is recorded separately in the
-[tam-bundle source record](https://github.com/greenermoose/tamlinux-tools/blob/develop/docs/ai/2026-11-11-bundle-migration.md).
+[tam-bundle source record](https://github.com/greenermoose/tamlinux-tools/blob/develop/work/history/2026-11-11-bundle-migration.md).
 No native package, installed tool pin, user generation, candidate, branch
 stage or release was changed by these checks. Real-machine migration remains
 behind its approvals and acceptance proofs.

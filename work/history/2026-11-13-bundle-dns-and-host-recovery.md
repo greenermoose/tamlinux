@@ -12,7 +12,7 @@ lookup ahead of workstation bundle rebuilding:
   `bundle_native_recovery()` checks `hosts/<hostname>/bundle-nix-recovery.json`
   first (rejecting symlinks and oversized files without silently falling back)
   before falling back to `system/bundle-nix-recovery.json`, as documented in
-  [the bundle delivery integration plan](../plans/bundle-delivery-integration.md).
+  [the bundle delivery integration plan](../../docs/plans/bundle-delivery-integration.md).
 - **Regression tests:** `bundle_integration.py` covers host-first / system
   fallback native recovery lookup and verifies that derived state files
   (`desktop-current`, `desktop-monitors`) do not block portable UX migration.

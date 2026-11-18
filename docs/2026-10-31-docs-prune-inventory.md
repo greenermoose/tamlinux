@@ -3,7 +3,7 @@
 - **Status:** Executed in working tree; stamp for archived paths is
   `139b060a717573fb2740c0f5e3b5deb599a6aeff` (HEAD before deletes). Filing cards:
   [`plans/FILING-CARD.md`](plans/FILING-CARD.md),
-  [`ai/FILING-CARD.md`](ai/FILING-CARD.md),
+  [`ai/FILING-CARD.md`](../work/history/FILING-CARD.md),
   [`../desktop/FILING-CARD.md`](../desktop/FILING-CARD.md).
 - **Scope:** Public product repo `tamlinux` entry docs, closed Gate A plans,
   desktop README proof dump, closed AI logistics.

@@ -137,7 +137,7 @@ outputs. Console recovery:
 
 ## Verification and limits
 
-The [implementation record](../ai/2026-11-11-bundle-delivery-integration.md)
+The [implementation record](../../work/history/2026-11-11-bundle-delivery-integration.md)
 separates the real C-engine fixtures from the unactivated Nix build and from
 unperformed workstation acceptance. Private PID namespaces and private `/proc`
 remain mandatory for all process/signal tests, without a host fallback.

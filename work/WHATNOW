@@ -1,0 +1,67 @@
+WHATNOW
+
+What tamlinux is doing now and what comes next. Read this first; revise
+it at the end of every session (work/README-work).
+
+Updated: 2026-11-17, with W1
+
+
+STATE
+
+  VERSION reads 0.6.28 on branch develop. The current release is 0.5.12;
+  0.6 is the dependable-baseline minor (README, the version outlook).
+
+  0.6.28 is delivered as a bundle and runs at the Test stage on all three
+  of Fred's hosts. Its contents and targets are in docs/plans/0.6.28.md:
+  tam 0.61.0 with corpus 0.95.0, libtam 0.7.1, tam-edit 1.0.3, tam-data
+  1.0.1 and tam-bundle 0.14.0, one canonical suspend command, and
+  optional offline documentation (Info, tldr, Arch Wiki) chosen per
+  host.
+
+  Since then, on develop and listed under "Unreleased" in CHANGELOG.md:
+  fred.workspaces 2.0.12, a tam-fleet README fix, and journal entry
+  points that need tam-journal from tamlinux-tools.
+
+  Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
+  place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
+  GitLab repositories and a proven source install
+  (docs/plans/1.0.0-gitlab-and-source-install.md).
+
+
+NEXT
+
+  Every stage move below happens only on Fred's word: Test, Run and
+  Release are his, and a version number is not an instruction.
+
+  1. Fred judges 0.6.28's stability on the three hosts. Only his
+     acceptance makes it the oldest supported recovery version.
+  2. Prepare 0.6.29 when Fred asks. Its recorded contents include the
+     fixes for the lost background and the missing version notes, and
+     the Unreleased changes above. Follow the candidate workflow
+     (docs/plans/candidate-workflow.md).
+  3. After 0.6.28 is accepted: prove a Nix-free build, install and
+     recovery, then retire Nix and Home Manager host by host, each with
+     its own approval.
+  4. docs/plans/0.6.28.md still says no candidate was prepared or
+     installed. Update its status line when Fred accepts 0.6.28.
+
+
+WAITING FOR FRED
+
+  - His verdict on 0.6.28 at Test.
+  - The word to prepare 0.6.29.
+
+
+WATCH OUT
+
+  - Software reaches the workstation only through a recorded
+    tamlinux-packages assembly and tam-deploy, never from a checkout.
+  - Boot, login, disk, firmware and package-removal steps run one at a
+    time, each approved by Fred, with a rollback point recorded first.
+  - desktop/check-all runs the whole suite. Warn Fred before --proofs:
+    proofs start real programs that may crash.
+  - Agents push only develop and feature branches; test, main, tags and
+    releases move on Fred's words.
+  - The fred.* plugins under desktop/plugins/ keep their own docs/ai/
+    folders: they are archives of the frozen standalone plugin
+    repositories, not this repository's records.

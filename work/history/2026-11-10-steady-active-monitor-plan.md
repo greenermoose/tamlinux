@@ -4,7 +4,7 @@
 - **Model**: `gpt-6.1-sol`
 - **Authorship**: AI-assisted planning directed and reviewed by Fred.
 - **Commit**: The documentation commit introducing this record and the
-  [approved plan](../plans/steady-active-monitor.md).
+  [approved plan](../../docs/plans/steady-active-monitor.md).
 - **Transcript**: Retained privately by the author.
 - **Prompts**:
   > Prepare the public implementation plan for review before Develop. Cover timestamped, output-specific display diagnostics; keeping the active Dell uninterrupted while side monitors wake; and removing Tamlinux 0.4.x-and-earlier logs after preserving evidence needed for active faults. Use the two recorded incidents as the starting evidence.

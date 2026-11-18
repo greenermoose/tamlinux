@@ -56,7 +56,7 @@ The relevant source trail is:
 | `139b060a717573fb2740c0f5e3b5deb599a6aeff` | Carries the triggering window into the runner; cleans partially installed bindings during rollback. |
 | `b933299a59e52d06e59b1881e9ac82279f9a2a74` | Records the successful physical trial. |
 
-The [session record](../ai/2026-10-31-macro-reliability.md) records 20 macro,
+The [session record](../../work/history/2026-10-31-macro-reliability.md) records 20 macro,
 49 explorer and five session-default tests passing. An invisible Wayland
 editor saved Backspace through the real backend into temporary configuration.
 During physical observation, Backspace was released 656 ms before the

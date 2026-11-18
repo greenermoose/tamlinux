@@ -14,4 +14,4 @@ Acceptance requires cold, unchanged, interrupted and single-component preparatio
 
 Implementation owners: product development trials and deployment in this repository; source collection, package boundaries and candidate freezing in tamlinux-packages; consumer-specific authorization and records in the operator integration.
 
-Implementation verification and its limits are recorded in [the development record](../ai/2026-11-02-candidate-workflow.md). The next candidate still requires an explicit packaging request and digest-bound Test approval.
+Implementation verification and its limits are recorded in [the development record](../../work/history/2026-11-02-candidate-workflow.md). The next candidate still requires an explicit packaging request and digest-bound Test approval.

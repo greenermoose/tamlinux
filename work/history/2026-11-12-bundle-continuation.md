@@ -16,7 +16,7 @@ theme, background and desktop preferences under the protected state directory,
 plus the final whole-UX audit and frozen native-tools suite integration in
 the stage draft. Source review, exact-source bootstrap/bundle
 rebuilds and real-machine acceptance remain separate. The concrete protocol is
-in [the integration checkpoint](../plans/bundle-delivery-integration.md).
+in [the integration checkpoint](../../docs/plans/bundle-delivery-integration.md).
 
 - **Date:** 2026-11-12
 - **CLI Tool:** Codex CLI (`codex`) `0.167.2`

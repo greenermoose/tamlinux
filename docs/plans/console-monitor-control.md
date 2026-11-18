@@ -26,7 +26,7 @@ power savings only after measurement.
 The accepted 2026-10-23 implementation is a Python/curses TUI with connector
 information, supported brightness, whole-console blank/wake and runtime idle
 controls. It explicitly leaves individual power unavailable. Preserve that
-history in the [development record](../ai/2026-10-23-console-monitor-control.md);
+history in the [development record](../../work/history/2026-10-23-console-monitor-control.md);
 this plan replaces its deferred native-backend scope and old next actions.
 
 ## Implementation direction
@@ -276,7 +276,7 @@ tests. Seven native CLI tests and the existing 25 monitor tests pass. Builds
 through pkg-config and explicit prefix work; header/archive/flag changes
 trigger rebuilds. The prototype retains symbols/debug information and its
 only ELF runtime dependency is libc. Core/display install targets avoid the
-portal dependency. [Development record](../ai/2026-10-25-monitor-feasibility.md).
+portal dependency. [Development record](../../work/history/2026-10-25-monitor-feasibility.md).
 
 This completes the inspection foundation only. It does not establish DRM/VT
 ownership, retained framebuffer/blob references, restoration, kernel atomic
@@ -311,7 +311,7 @@ times 80.328 ms and 1.035 ms respectively. This startup-only result does not
 establish live combined proportional memory, cold startup or physical behavior.
 Safe retained-output hotplug fallback, sustained mode, multi-GPU compensation,
 actual kernel fallback, resource acceptance and physical fbcon/standby proof
-remain open. [Development record](../ai/2026-10-25-monitor-ownership.md).
+remain open. [Development record](../../work/history/2026-10-25-monitor-ownership.md).
 
 Acquisition review found an important logind constraint in the
 [systemd controller implementation](https://github.com/systemd/systemd/blob/v262/src/login/logind-session.c#L1493)
@@ -340,7 +340,7 @@ validation races, failed restoration and no remaining output. Nine native CLI
 checks, eighteen recovery process checks, kernel-event parser checks and all
 25 existing Python monitor tests pass. The command requires matching 0.3.0
 development metadata; its install target and installed Python implementation
-are unchanged. [Development record](../ai/2026-10-25-monitor-unplug.md).
+are unchanged. [Development record](../../work/history/2026-10-25-monitor-unplug.md).
 
 This establishes software behavior only. Actual console framebuffer mapping,
 physical fbcon/standby/unplug recovery, session handoff, multi-GPU compensation,
@@ -394,4 +394,4 @@ Test verification:
 - All ASan/UBSan `libtam` test suites passing.
 
 Development stage only: physical multi-monitor hardware trial and package deployment remain open for separate authorized Fred Test stage.
-[Development record](../ai/2026-10-26-tam-monitor-c-migration.md).
+[Development record](../../work/history/2026-10-26-tam-monitor-c-migration.md).

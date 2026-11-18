@@ -35,4 +35,4 @@ Verification:
 
 This slice does not establish native journal/file timestamps, physical
 continuity or shared latest intent. See the
-[development handoff](../plans/steady-active-monitor.md#development-handoff).
+[development handoff](../../docs/plans/steady-active-monitor.md#development-handoff).
