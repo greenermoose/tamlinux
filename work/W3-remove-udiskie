@@ -1,0 +1,30 @@
+W3 REMOVE UDISKIE FROM DESKTOP STARTUP
+
+Date: 2026-11-17
+AI harness: Codex CLI 0.169.1
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Find the root cause of the udiskie error and fix for Tamlinux
+  0.6.29."
+
+  Fred: "On second thought, remove udiskie. I don't want it for Tamlinux
+  0.6.29. Remove it from Tamlinux. We'll mount and unmount USB sticks,
+  etc. manually."
+
+DONE
+
+  - Removed the udiskie command from packaged Hyprland startup.
+  - The session Lua test reproduced the launch before the change. All
+    six session-default tests passed after removal.
+
+FAILED
+
+  - Startup on a system without udiskie produced a command-not-found
+    notification. The bundle transition had dropped its provider.
+
+HANDOFF
+
+  - Select this revision when preparing 0.6.29. At Test, log in and
+    confirm the session starts without the udiskie notification.

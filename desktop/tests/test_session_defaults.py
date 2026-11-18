@@ -108,6 +108,7 @@ class SessionDefaults(unittest.TestCase):
         self.assertIn('BIND\tPRINT=tam-capture-screenshot', text)
         self.assertIn('ENV\tTAMLINUX_SESSION=1', text)
         self.assertIn('EXEC\tuwsm finalize', text)
+        self.assertNotRegex(text, r'(?m)^EXEC\t[^\n]*\budiskie\b')
         self.assertNotIn('OMARCHY_', text)
         self.assertNotIn('/usr/share/omarchy', text)
 

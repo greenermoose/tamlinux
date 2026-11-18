@@ -4,5 +4,4 @@ hl.on("hyprland.start", function()
 
   hl.exec_cmd("tam-powerprofiles-set autodetect")
   hl.exec_cmd("systemctl --user start tamlinux-monitor-watch.service")
-  hl.exec_cmd(o.launch("udiskie --automount --no-notify --no-tray"))
 end)

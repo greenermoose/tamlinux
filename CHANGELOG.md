@@ -8,6 +8,8 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 
 ## Unreleased
 
+- Remove `udiskie` from desktop startup. Mount and unmount removable drives manually.
+
 - Retire the last `~/.local/dev` reference in `tam-deploy`: the settings audit now refuses references to tam source generations (`~/.local/opt/tam/`) and a locally built libtam (`~/.local/lib/libtam`), instead of the deleted development prefix. A `~/.local/bin` command shim is not refused there, because bundles deploy their own shims in that directory.
 
 - Fix `fred.workspaces` 2.0.12 output-change reconciliation: a monitor displaced after its desktop was placed, such as the HP returning from a wake HPD drop on workspace 1, gets a fresh bounded retry budget instead of reusing the spent one and staying on the wrong workspace for hours.
