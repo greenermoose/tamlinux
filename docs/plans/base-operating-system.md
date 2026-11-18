@@ -114,6 +114,6 @@ validation cohort and modern UEFI hardware. Measure terminal-only and graphical 
 The fallback decision follows this evidence, not a first configuration error.
 
 Bundle delivery ([bundle delivery integration](bundle-delivery-integration.md))
-and the [desktop decoupling plan](desktop-decoupling.md) carry the
+and the [desktop decoupling plan](https://github.com/greenermoose/tamlinux/blob/139b060a717573fb2740c0f5e3b5deb599a6aeff/docs/plans/desktop-decoupling.md) carry the
 implementation order. Installation on existing distributions comes first,
 through tam-bundle; native Void packaging serves the Void base.

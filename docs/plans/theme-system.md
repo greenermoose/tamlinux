@@ -8,7 +8,7 @@ Tamarack work below remains available; it does not set the current goal.
 **Status — reviewed 2026-10-13:** retained theme generation, pickers, application
 adapters, fonts, assets and About/screensaver identity are implemented for
 **0.4.3**. Effective consumer wiring, native browser/boot ownership, interrupted
-migration/recovery and graphical proof remain. [Implementation and limits](0.4.3-theme-closure.md).
+migration/recovery and graphical proof remain. [Implementation and limits](https://github.com/greenermoose/tamlinux/blob/139b060a717573fb2740c0f5e3b5deb599a6aeff/docs/plans/0.4.3-theme-closure.md).
 **0.5** adds the chosen Tamarack visual redesign after independent 0.4.3
 acceptance. Hyprland remains the compositor; tam-pane integration is later (D263).
 
@@ -97,6 +97,6 @@ artifacts as well as deployment generations. Resource/energy claims need a
 reproducible measured workload and stated uncertainty. Public page styling
 follows acceptance and the publication workflow.
 
-See [desktop decoupling](desktop-decoupling.md) and
+See [desktop decoupling](https://github.com/greenermoose/tamlinux/blob/139b060a717573fb2740c0f5e3b5deb599a6aeff/docs/plans/desktop-decoupling.md) and
 [versioning](../../VERSIONING.md) for stage gates. This document delivers a
 plan; it does not install fonts, apply a theme or advance the product version.
