@@ -1,0 +1,31 @@
+W9 SOURCE INSTALL SETTINGS AND SESSION READINESS
+
+Date: 2026-11-18
+AI harness: Codex CLI 0.170.0
+AI model: gpt-6.2-sol
+Continues: W8-source-migration
+
+GUIDANCE
+
+  Fred: "We are transitioning away from tam-bundle toward make and make
+  install to install Tamlinux. Do the next slice of work for this project."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Added first-launch defaults and a user-manager reload before UWSM.
+  - Journaled the narrow runtime-reference handoff and its undo. Restored
+    the exact bundle and verified its user transaction was session-ready.
+  - Isolated tests covered a clean Make install, upgrade, an interrupted
+    settings write, reload failure, and preserving edits on rollback.
+
+FAILED
+
+  The local tam-edit clone lacks the locked commit. The Make install
+  tests use disposable locked fixtures. A full source build and real
+  graphical launch remain unverified in this slice.
+
+HANDOFF
+
+  Wire candidate delivery around the exact staged manifest and rollback
+  record. The source installer still requires an isolated root.

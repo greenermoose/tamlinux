@@ -100,6 +100,19 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
                 '  exit 1\n'
                 'fi\n'
             ) + rest
+        if current == SOURCE_CURRENT and command.name == "tam-hyprland-session":
+            wait = '/usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?'
+            config = 'config="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/session/hyprland.lua"'
+            if content.count(wait) != 1 or content.count(config) != 1:
+                raise ValueError("Expected the installed session launch sequence")
+            content = content.replace(wait + "\n", "").replace(
+                config, wait + '\n/usr/bin/python3 -I -B "$session_dir/session_settings.py" || exit $?\n'
+                + config)
+            for helper in ("tam-theme-init", "tam-session-init"):
+                content = content.replace('"${TAMLINUX_BIN:-$commands}/' + helper + '"',
+                                          '"/usr/bin/' + helper + '"')
+            content = content.replace('commands="$bin_dir"\n'
+                                      '[ -x "$commands/tam-theme-init" ] || commands="$HOME/.local/bin"\n', "")
         if "../share/tamlinux" in content:
             raise ValueError(f"Unmapped relative product data path in {command.name}")
         if content.encode() != data:
@@ -184,6 +197,11 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
         put(commands / "hi", b'#!/bin/sh\nexec /usr/bin/tam hi "$@"\n', 0o755)
         put(commands / "start", b'#!/bin/sh\nexec /usr/bin/tam-start "$@"\n', 0o755)
     render_commands(commands, current)
+    if current == SOURCE_CURRENT:
+        session = private / "share/tamlinux/session"
+        for module in ("source-install/session_settings.py", "migration/engine.py"):
+            origin = source / "desktop" / module
+            put(session / origin.name, origin.read_bytes())
 
     copy_vendor_defaults(stage, source, wants_by_target)
     for unit_target, unit_names in sorted(wants_by_target.items()):

@@ -9,9 +9,11 @@ checks in an isolated root without the bundle tools. The installer checks
 destination ownership when the target has a Pacman database. An isolated
 format-2 migration now retains the exact recovery archive before detach,
 preserves the Pacman-owned console launchers, and restores the bundle and
-its documentation selection after source rollback. User settings, session
-readiness, and candidate activation are the remaining integration work
-before live installation.
+its documentation selection after source rollback. The source desktop
+launcher prepares fresh user defaults and checks settings before UWSM.
+Isolated migration rewrites the required bundle references and recovers
+the prior settings and a launch-ready bundle. Candidate delivery and
+graphical proof on fresh Arch remain before live installation.
 
 Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the complete workstation from local Git clones, then `make install` to install the staged files directly. Use the same two commands for subsequent upgrades. Keep earlier bundle deliveries usable for recovery.
 
@@ -32,7 +34,15 @@ Target the next unused 0.6.x candidate on Arch/systemd. Run `make` to build the 
   The retained installer in `var/lib/tamlinux/source/recovery` can run
   `resume` or `rollback-bundle` with the same explicit test root. After
   an upgrade, use source rollback to return to the initial source stage
-  before restoring the bundle.
+  before restoring the bundle. Run migration and recovery with the same
+  isolated-root owner, home, and XDG roots. The handoff journals changes
+  to the Hyprland entry, UWSM environment and Chromium extension flags.
+  Rollback keeps later edits in the private `tamlinux/source-session`
+  state directory, then binds the user settings to the restored bundle's
+  transaction.
+- The source launcher checks for an unfinished install, prepares fresh
+  defaults as the logged-in user, and reloads the user manager before
+  starting UWSM. Retry the launch from the text console if the reload fails.
 - Record the locked sources, staged manifest, installed status and rollback target in the existing candidate workflow. Promote the same staged bytes from Test to Run on a host. Each additional host builds the same locked commits and records its manifest before activation. Keep separate candidate, host and privileged-operation approvals.
 - Document clone setup, native prerequisites, installation, upgrade and recovery. Update the deployment contract before cutover. The 1.0 GitLab repository split retains its existing schedule.
 

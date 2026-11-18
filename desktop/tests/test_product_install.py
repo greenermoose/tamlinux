@@ -32,6 +32,14 @@ class ProductInstall(unittest.TestCase):
                 self.assertTrue(os.access(commands / name, os.X_OK))
             self.assertTrue(os.access(commands / "tam-start", os.X_OK))
             self.assertFalse((commands / "tam-nut").exists())
+            runtime = stage / bundle_layout.SOURCE_CURRENT.lstrip("/")
+            for module in ("session_settings.py", "engine.py"):
+                self.assertTrue((runtime / "share/tamlinux/session" / module).is_file())
+            launch = (commands / "tam-hyprland-session").read_text()
+            self.assertLess(launch.index("wait-stopped.py"), launch.index("session_settings.py"))
+            self.assertLess(launch.index("session_settings.py"), launch.index("exec /usr/bin/uwsm"))
+            self.assertIn('"/usr/bin/tam-session-init"', launch)
+            subprocess.run(["/usr/bin/sh", "-n", commands / "tam-hyprland-session"], check=True)
 
     def test_bundle_layout_renders_private_paths_and_real_vendor_files(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from build import PRODUCT, revisions
+from test_session_settings import local_make_install, source_fixture
+from session_settings import REQUIRED, SessionSettings
 import migration
 from migration import BundleMigration
 from transaction import Installation, inventory, write_json
@@ -33,7 +34,9 @@ class MigrationTests(unittest.TestCase):
         self.system = Installation(self.root)
         self.move = BundleMigration(self.system)
         profile = self.root / "usr/share/tamlinux/rootstock"
-        self.put(profile / "profile", "format 1\nallow usr/bin\nallow usr/share/doc\n")
+        self.put(profile / "profile", "format 1\nallow usr/bin\nallow usr/share/doc\n"
+                 "user-step user-units-reload required usr/share/tamlinux/rootstock/reload\n")
+        self.put(profile / "reload", "#!/bin/sh\nexit 0\n", 0o755)
         self.put(profile / "id", "arch-systemd\n")
         self.db = self.root / "var/lib/pacman/local"
         self.put(self.db / "ALPM_DB_VERSION", "9\n")
@@ -43,11 +46,24 @@ class MigrationTests(unittest.TestCase):
                      f'#!/bin/sh\nif [ -x /usr/bin/{command} ]; then\n'
                      f'    exec /usr/bin/{command}{arg} "$@"\nfi\n'
                      'exec /usr/bin/tam-nut welcome\n', 0o755)
+        self.home = self.base / "home"
+        self.home.mkdir()
+        environment = patch.dict(os.environ, {"HOME": str(self.home),
+                                               "XDG_CONFIG_HOME": str(self.home / ".config"),
+                                               "XDG_STATE_HOME": str(self.home / ".local/state")})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.bundle_tree = self.base / "bundle"
         self.put(self.bundle_tree / "tree/version", "legacy")
         self.put(self.bundle_tree / "placed/usr/bin/tam", "legacy", 0o755)
         self.put(self.bundle_tree / "placed/usr/share/doc/tldr/legacy", "legacy tldr")
         self.put(self.bundle_tree / "placed/usr/share/doc/info/legacy", "legacy info")
+        self.put(self.bundle_tree / "SETTINGS", "format 1\n" + "".join(
+            f"common .config/{relative}\n" for relative in REQUIRED))
+        for relative, leaf in zip(REQUIRED, ("entry.lua", "uwsm-env"), strict=True):
+            path = f".config/{relative}"
+            content = f"/usr/lib/tamlinux/current/share/tamlinux/session/{leaf}\n"
+            self.put(self.bundle_tree / "tree/defaults/home" / path, content)
         self.bundle("seal", self.bundle_tree, "--format", "2", "--name", "tamlinux",
                     "--version", "legacy", "--target", "arch x86_64 baseline x86-64-v2",
                     "--optional-doc", "info", "--optional-doc", "tldr")
@@ -58,7 +74,10 @@ class MigrationTests(unittest.TestCase):
         self.bundle("pack", self.bundle_tree, "-o", self.original)
         self.sha256 = hashlib.sha256(self.original.read_bytes()).hexdigest()
         self.bundle("install", self.original, "--docs", "tldr")
+        self.bundle("prepare-settings")
         self.bundle("apply")
+        self.bundle("apply-settings")
+        self.bundle("session-ready")
         self.initial = self.make_stage("first")
         self.local = []
         for name in ("usr/local/bin/tam", "home/alice/.local/bin/tam", "home/bob/.local/bin/tam"):
@@ -77,9 +96,9 @@ class MigrationTests(unittest.TestCase):
         for name in ("hi", "start", "tam", "tam-start"):
             self.put(stage / "payload/usr/bin" / name, version, 0o755)
         self.put(stage / "payload/usr/lib/tamlinux/source/current/share/tamlinux/version", version)
+        source_fixture(stage)
         manifest = stage / "manifest.json"
-        write_json(manifest, {"version": version, "files": inventory(stage / "payload"),
-                              "components": revisions(PRODUCT.parent)})
+        write_json(manifest, {"version": version, "files": inventory(stage / "payload")})
         digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
         with self.system.locked():
             self.system.retain(stage, digest)
@@ -96,6 +115,7 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue((self.root / "usr/share/doc/tldr/legacy").exists())
         self.assertFalse((self.root / "usr/share/doc/info/legacy").exists())
         self.assertFalse(self.system.pending.exists())
+        self.bundle("session-ready")
 
     def test_migrate_upgrade_and_recover(self):
         launchers = [self.root / "usr/bin" / name for name in ("hi", "start")]
@@ -103,21 +123,17 @@ class MigrationTests(unittest.TestCase):
         self.migrate()
         self.assertEqual((self.root / "usr/bin/tam").read_text(), "first")
         self.assertFalse((self.root / "usr/lib/tamlinux/current").exists())
-        second = self.make_stage("second")
-        build = self.base / "build"
-        (build / "stages").mkdir(parents=True)
-        receipt = build / "stages" / second
-        (self.base / "second").rename(receipt)
-        (build / "build").symlink_to(receipt)
-        subprocess.run(["/usr/bin/make", "install", f"SOURCE_ROOT={self.root}",
-                        f"SOURCE_BUILD={build}"], cwd=PRODUCT, check=True,
-                       stdout=subprocess.PIPE)
+        entry = self.home / ".config" / REQUIRED[0]
+        migrated = entry.read_bytes()
+        self.make_stage("second")
+        second = local_make_install(self.base / "clones", self.root, self.base / "second")
+        self.assertEqual(entry.read_bytes(), migrated)
         with self.system.locked():
             self.assertEqual((self.root / "usr/bin/tam").read_text(), "second")
             self.system.start(second, self.initial)
         self.original.unlink()
         shutil.rmtree(self.base / "first")
-        shutil.rmtree(build)
+        shutil.rmtree(self.base / "clones")
         subprocess.run(["/usr/bin/python3", "-I", "-B", self.system.state / "recovery/transaction.py",
                         "rollback-bundle", "--root", self.root], cwd=self.base, check=True)
         self.assert_recovered()
@@ -128,6 +144,48 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(target.read_text(), "local")
             self.assertEqual(target.stat().st_mode & 0o777, 0o700)
             self.assertEqual(link.readlink(), Path("tam"))
+
+    def test_interrupted_settings_handoff_preserves_edits_on_bundle_return(self):
+        entry = self.home / ".config" / REQUIRED[0]
+        prior = entry.read_text() + "-- existing override\n"
+        self.put(entry, prior, 0o640)
+        from session_settings import atomic
+
+        def interrupt(path, value):
+            atomic(path, value)
+            if path == entry:
+                raise OSError("interrupted settings write")
+
+        with patch("session_settings.atomic", side_effect=interrupt):
+            with self.assertRaisesRegex(OSError, "interrupted settings write"):
+                self.migrate()
+        self.assertTrue(self.system.pending.exists())
+        with self.system.locked():
+            self.system.complete()
+        self.assertEqual(entry.read_text(), prior.replace("/tamlinux/current/", "/tamlinux/source/current/"))
+        self.assertEqual(entry.stat().st_mode & 0o777, 0o640)
+        with patch("session_settings.reload_units") as reload_units:
+            SessionSettings().ready(self.system.runtime / "defaults/home",
+                                    self.system.active, self.system.pending)
+        reload_units.assert_called_once()
+        with entry.open("a") as stream:
+            stream.write("-- later edit\n")
+        with self.system.locked():
+            self.move.rollback()
+        self.assert_recovered()
+        self.assertEqual(entry.read_text(), prior)
+        self.assertEqual(entry.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(len(list(SessionSettings().state.glob("preserved-*"))), 1)
+
+    def test_unrecognized_dependency_blocks_detach(self):
+        path = self.home / ".config" / REQUIRED[0]
+        before = path.read_text() + "/usr/lib/tamlinux/current/unsupported\n"
+        self.put(path, before)
+        with self.assertRaisesRegex(ValueError, "unrecognized runtime reference"):
+            self.migrate()
+        self.assertEqual(path.read_text(), before)
+        self.assertFalse(self.system.pending.exists())
+        self.bundle("session-ready")
 
     def test_reject_mismatched_inputs_and_unmanaged_collisions(self):
         with self.system.locked():

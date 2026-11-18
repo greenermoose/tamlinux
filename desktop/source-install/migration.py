@@ -3,13 +3,15 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tarfile
 import tempfile
 
-from transaction import (bootstrap_launchers, copy_file, fingerprint, inventory,
+from transaction import (PAYLOAD_CURRENT, bootstrap_launchers, copy_file, fingerprint, inventory,
                          read_json, secure_directory, sync_dir, write_json)
 
 BUNDLE_TOOL = "/usr/bin/tam-bundle"
+SESSION_HELPER = "share/tamlinux/session/session_settings.py"
 DOCS = {"info": "info", "tldr": "tldr", "archwiki": "arch-wiki"}
 
 
@@ -47,10 +49,12 @@ class BundleMigration:
     def __init__(self, installation):
         self.system = installation
 
-    def command(self, *args, codes=(0,)):
+    def command(self, *args, codes=(0,), settings=None):
         command = [BUNDLE_TOOL, "--root", str(self.system.root), *map(str, args)]
-        result = subprocess.run(command, env={"PATH": "/usr/bin", "LC_ALL": "C"},
-                                text=True, stdout=subprocess.PIPE)
+        env = {"PATH": "/usr/bin", "LC_ALL": "C"}
+        if settings:
+            env["HOME"] = str(settings.home)
+        result = subprocess.run(command, env=env, text=True, stdout=subprocess.PIPE)
         if result.returncode not in codes:
             raise subprocess.CalledProcessError(result.returncode, command)
         return result.stdout
@@ -90,6 +94,16 @@ class BundleMigration:
         return (status["live"] == bundle["id"] and status.get("bundle-hash") == bundle["hash"]
                 and status.get("state", "complete") == "complete")
 
+    def user_settings(self):
+        # In recovery the original checkout may be gone.
+        sys.path.append(str(Path(__file__).resolve().parents[1] / "migration"))
+        from session_settings import SessionSettings
+        settings = SessionSettings()
+        if any(path.is_relative_to(self.system.state.parent) for path in
+               (settings.home, settings.config, settings.state)):
+            raise ValueError("session settings must stay outside system state")
+        return settings
+
     def start(self, target, archive, checksum, bundle_hash):
         if self.system.current()["current"] is not None:
             raise ValueError("a source installation is already active")
@@ -122,26 +136,40 @@ class BundleMigration:
         placed = self.system.placed(after, external)
         self.system.check({path: before[path] for path in placed.keys() & before.keys()}, placed)
 
+        session = None
+        prefix = self.system.state / target / "payload" / PAYLOAD_CURRENT
+        if f"{PAYLOAD_CURRENT}/{SESSION_HELPER}" in after:
+            settings = self.user_settings()
+            with settings.locked():
+                self.command("session-ready", settings=settings)
+                settings.prepare(target, bundle_hash, prefix / "defaults/home")
+            session = settings.identity
+
         self.retain_recovery_program()
         pending = {"from": None, "to": target, "migration": "detach",
                    "bundle": bundle | {"source": target}, "external": external}
+        if session is not None:
+            pending["bundle"]["session"] = session
         write_json(self.system.pending, pending)
         self.complete(pending)
 
     def retain_recovery_program(self):
-        # Publish the three cooperating modules together before arming detach.
+        # Publish the cooperating modules together before arming detach.
         source = Path(__file__).resolve().parent
         destination = self.system.state / "recovery"
         secure_directory(self.system.root, destination.relative_to(self.system.root))
-        modules = ("transaction.py", "preflight.py", "migration.py")
+        modules = ("transaction.py", "preflight.py", "migration.py", "session_settings.py", "engine.py")
+        origins = {name: source / name for name in modules}
+        if not origins["engine.py"].exists():
+            origins["engine.py"] = source.parent / "migration/engine.py"
         if destination.exists():
             if any((fingerprint(destination / name) or [None, None])[1] !=
-                   fingerprint(source / name)[1] for name in modules):
+                   fingerprint(origins[name])[1] for name in modules):
                 raise ValueError("retained recovery program differs from this installer")
             return
         with tempfile.TemporaryDirectory(prefix="recovery-", dir=self.system.state) as temporary:
             for name in modules:
-                copy_file(source / name, Path(temporary) / name, 0o600)
+                copy_file(origins[name], Path(temporary) / name, 0o600)
             Path(temporary).rename(destination)
             sync_dir(self.system.state)
 
@@ -193,6 +221,17 @@ class BundleMigration:
 
     def complete(self, pending, reverse=False):
         bundle = pending["bundle"]
+        if "session" not in bundle:
+            self.complete_system(pending, reverse, None)
+            return
+        settings = self.user_settings()
+        if settings.identity != bundle["session"]:
+            raise ValueError("resume this migration as the original user with the same XDG roots")
+        with settings.locked():
+            self.complete_system(pending, reverse, settings)
+
+    def complete_system(self, pending, reverse, settings):
+        bundle = pending["bundle"]
         target = bundle["source"]
         external = pending["external"]
         phase = pending["migration"]
@@ -202,6 +241,8 @@ class BundleMigration:
         if phase == "detach":
             if inventory(self.system.state / target / "payload") != files:
                 raise ValueError("retained stage changed before detach")
+            if settings and not reverse:
+                settings.verify_prepared(target, bundle["hash"])
             self.detach(bundle)
             phase = "remove" if reverse else "install"
             pending = self.advance(pending, phase)
@@ -211,6 +252,8 @@ class BundleMigration:
         if phase == "install":
             self.system.require_detached_slot()
             self.system.switch_files(None, target, external)
+            if settings:
+                settings.apply(target, bundle["hash"])
             self.system.finish({"current": target, "previous": None,
                                 "bundle": bundle, "external": external})
             return
@@ -221,8 +264,34 @@ class BundleMigration:
             phase = "restore"
         if phase != "restore":
             raise ValueError("unknown source migration phase")
+        if settings:
+            settings.rollback(target, bundle["hash"])
         self.restore(bundle)
+        if settings:
+            if not self.bundle_session_ready(settings):
+                # Rebind exact restored settings to the new bundle system ID.
+                capture = pending.get("restoredCapture")
+                if capture is None:
+                    output = self.command("capture", settings=settings)
+                    match = re.search(r"^private settings capture: ([A-Za-z0-9@_.-]+)(?: \(incomplete\))?$",
+                                      output, re.MULTILINE)
+                    if not match:
+                        raise ValueError("bundle settings capture has no recovery identity")
+                    capture = match[1]
+                    write_json(self.system.pending, pending | {"restoredCapture": capture})
+                self.command("prepare-settings", capture, settings=settings)
+                self.command("apply-settings", settings=settings)
+                self.command("session-ready", settings=settings)
         self.system.finish({"current": None, "previous": None})
+
+    def bundle_session_ready(self, settings):
+        try:
+            self.command("session-ready", settings=settings)
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 4:
+                raise
+            return False
+        return True
 
     def rollback(self):
         pending = read_json(self.system.pending)
