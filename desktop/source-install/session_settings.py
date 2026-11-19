@@ -242,9 +242,17 @@ class SessionSettings:
 def rebind_bundle_settings(root=Path("/")):
     bundle_tool = "/usr/bin/tam-bundle"
     env = {"PATH": "/usr/bin", "LC_ALL": "C", "HOME": os.environ["HOME"]}
-    for key in ("XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"):
+    for key in ("XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME",
+                "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"):
         if key in os.environ:
             env[key] = os.environ[key]
+    if "XDG_RUNTIME_DIR" not in env:
+        runtime_dir = Path(f"/run/user/{os.getuid()}")
+        try:
+            if runtime_dir.is_dir() and runtime_dir.stat().st_uid == os.getuid():
+                env["XDG_RUNTIME_DIR"] = str(runtime_dir)
+        except OSError:
+            pass
     check = subprocess.run([bundle_tool, "--root", str(root), "session-ready"],
                            env=env, text=True, capture_output=True)
     if check.returncode == 0:

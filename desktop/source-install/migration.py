@@ -53,6 +53,10 @@ class BundleMigration:
     def command(self, *args, codes=(0,), settings=None):
         command = [BUNDLE_TOOL, "--root", str(self.system.root), *map(str, args)]
         env = {"PATH": "/usr/bin", "LC_ALL": "C"}
+        for key in ("PKEXEC_UID", "SUDO_UID"):
+            value = os.environ.get(key)
+            if value and value.isdigit():
+                env[key] = value
         if settings:
             env["HOME"] = str(settings.home)
         result = subprocess.run(command, env=env, text=True, stdout=subprocess.PIPE)

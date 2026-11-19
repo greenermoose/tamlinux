@@ -142,3 +142,31 @@ class SourceSessionTests(unittest.TestCase):
                 run_cli(["rollback", "--digest", digest, "--bundle-hash", bhash])
                 self.assertEqual(hypr.read_text(), hypr_before)
                 self.assertEqual(envf.read_text(), envf_before)
+
+    def test_bundle_command_forwards_invoking_uid_and_rebind_forwards_runtime_dir(self):
+        from migration import BundleMigration
+        from session_settings import rebind_bundle_settings
+        seen = []
+
+        def fake_run(cmd, env=None, **kwargs):
+            seen.append((list(cmd), dict(env or {})))
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            root.mkdir()
+            move = BundleMigration(Installation(root))
+            with patch.dict(os.environ, {"SUDO_UID": "1000", "PKEXEC_UID": "not-a-uid"}, clear=True), \
+                    patch("migration.subprocess.run", side_effect=fake_run):
+                move.command("status")
+            self.assertEqual(seen[-1][1].get("SUDO_UID"), "1000")
+            self.assertNotIn("PKEXEC_UID", seen[-1][1])
+
+            with patch.dict(os.environ, {
+                "HOME": temp,
+                "XDG_RUNTIME_DIR": "/run/user/1000",
+                "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+            }, clear=True), patch("session_settings.subprocess.run", side_effect=fake_run):
+                rebind_bundle_settings(root)
+            self.assertEqual(seen[-1][1].get("XDG_RUNTIME_DIR"), "/run/user/1000")
+            self.assertEqual(seen[-1][1].get("DBUS_SESSION_BUS_ADDRESS"), "unix:path=/run/user/1000/bus")

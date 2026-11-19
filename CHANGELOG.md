@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.34]
+
+Changes since Tamlinux 0.6.33:
+- Fix live bundle rollback (`migration.py`): forward numeric `PKEXEC_UID` and `SUDO_UID` to `tam-bundle` so restored bundle transactions record the invoking user's UID instead of `0`, and forward `XDG_RUNTIME_DIR` / `DBUS_SESSION_BUS_ADDRESS` in `session_settings.py rebind-bundle`.
+- Drop the `python-fonttools` build dependency by storing the renamed `TamlinuxIcons.ttf` directly under `desktop/assets/fonts/`.
+- Update `tam` to 0.65.3 (corpus 0.100.6) with interactive shell lesson sandboxes, goal checkboxes, and refreshed corpus indexes.
+
 ## [0.6.33]
 
 Changes since Tamlinux 0.6.32:

@@ -57,11 +57,9 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
 
     # Only the product icon font is bundled. Distribution fonts are native
     # dependencies, rather than copied out of a second package manager.
-    font = root / "share/fonts/truetype/TamlinuxIcons.ttf"
-    font.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run([sys.executable, str(source / "desktop/theme/rename-font.py"),
-                    str(source / "desktop/assets/fonts/source.ttf"), str(font)], check=True)
+    file("desktop/assets/fonts/TamlinuxIcons.ttf", "share/fonts/truetype/TamlinuxIcons.ttf")
     (data / "assets/fonts/source.ttf").unlink()
+    (data / "assets/fonts/TamlinuxIcons.ttf").unlink()
     file("desktop/assets/LICENSE-omarchy", "share/tamlinux/assets/fonts/LICENSE")
     for path in (data / "assets/themes").rglob("vscode.json"):
         path.unlink()

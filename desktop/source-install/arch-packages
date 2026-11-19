@@ -13,7 +13,6 @@ git
 make
 pkgconf
 python
-python-fonttools
 dbus
 libdrm
 systemd-libs

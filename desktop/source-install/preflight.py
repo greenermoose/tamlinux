@@ -81,11 +81,6 @@ def build_problems(env):
             input=f"#include <{header}>\n", text=True, env=env, capture_output=True,
         ).returncode:
             problems.append(f"header {header} (Arch package: {package})")
-    if tools["python3"] and subprocess.run(
-        [tools["python3"], "-I", "-B", "-c", "from fontTools.ttLib import TTFont"],
-        env=env, capture_output=True,
-    ).returncode:
-        problems.append("fontTools.ttLib (Arch package: python-fonttools)")
     return problems
 
 

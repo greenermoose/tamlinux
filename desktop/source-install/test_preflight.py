@@ -228,11 +228,11 @@ class BuildPreflightTests(unittest.TestCase):
         required = (
             set(preflight.BUILD_COMMANDS.values())
             | {pkg for _, _, pkg in preflight.BUILD_HEADERS}
-            | {"python-fonttools"}
             | {spec.split(">=", 1)[0] for spec in preflight.RUNTIME_COMMANDS.values()}
             | {spec.split(">=", 1)[0] for spec in preflight.RUNTIME_FILES.values()}
         ) - {"hyprland-plugin-hyprbars"}
         self.assertTrue(required <= declared, f"missing from arch-packages: {sorted(required - declared)}")
+        self.assertNotIn("python-fonttools", declared)
         self.assertIn("adwaita-cursors", declared)
         self.assertIn("foot", declared)
         self.assertIn("xdg-terminal-exec", declared)
