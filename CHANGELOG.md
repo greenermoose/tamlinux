@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.32]
+
+Changes since Tamlinux 0.6.31:
+- Fix source installer permissions when invoked under a restrictive umask (`077`): force `022` umask and explicit `0755` modes on newly created system and runtime directories.
+- Require `adwaita-cursors`, `foot`, and `xdg-terminal-exec` in source preflight and declare all Arch build and runtime prerequisites in `desktop/source-install/arch-packages`.
+- Fail closed in `make` when `CHANGELOG.md` has no matching `## [<version>]` section, and emit the full `Tamlinux <version> version notes` heading read by `fred.tamversion`.
+- Add `make verify` to check installed file readability, cursor theme chain, version notes, terminal resolution, and runtime prerequisites as the regular user before graphical login.
+- Wire live bundle-to-source and source-to-source upgrades into `install_plan()` with privilege-separated user settings handoff (`session_settings.py prepare`/`apply`/`rollback`/`rebind-bundle`).
+
 ## Unreleased
 
 - `fred.workspaces` 2.0.13: a monitor it blanked counts down to blank again after something else lights it. The shell gains `compositorRefresh` (`tam-shell tamlinux-shell compositorRefresh`) to re-read outputs after an idle daemon changes DPMS.

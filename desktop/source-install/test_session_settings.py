@@ -111,3 +111,34 @@ class SourceSessionTests(unittest.TestCase):
                 write_json(system.pending, {"test": True})
                 with self.assertRaisesRegex(ValueError, "installation is incomplete"):
                     settings.ready(defaults, system.active, system.pending)
+
+    def test_cli_prepare_apply_rollback_round_trip(self):
+        from session_settings import run_cli
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            home = base / "home"
+            config = home / ".config"
+            state = home / ".local/state"
+            (config / "tamlinux/session").mkdir(parents=True)
+            (config / "uwsm/env.d").mkdir(parents=True)
+            hypr = config / "tamlinux/session/hyprland.lua"
+            envf = config / "uwsm/env.d/10-tamlinux.sh"
+            hypr_before = 'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n'
+            envf_before = '. /usr/lib/tamlinux/current/share/tamlinux/session/uwsm-env\n'
+            hypr.write_text(hypr_before)
+            envf.write_text(envf_before)
+            defaults = base / "defaults"
+            (defaults / ".config").mkdir(parents=True)
+            digest = "a" * 64
+            bhash = "sha256:" + "b" * 64
+            env = {"HOME": str(home), "XDG_CONFIG_HOME": str(config), "XDG_STATE_HOME": str(state)}
+            with patch.dict(os.environ, env, clear=True):
+                run_cli(["prepare", "--digest", digest, "--bundle-hash", bhash,
+                         "--defaults", str(defaults), "--skip-bundle-check"])
+                self.assertEqual(hypr.read_text(), hypr_before)
+                run_cli(["apply", "--digest", digest, "--bundle-hash", bhash])
+                self.assertIn("/usr/lib/tamlinux/source/current/", hypr.read_text())
+                self.assertIn("/usr/lib/tamlinux/source/current/", envf.read_text())
+                run_cli(["rollback", "--digest", digest, "--bundle-hash", bhash])
+                self.assertEqual(hypr.read_text(), hypr_before)
+                self.assertEqual(envf.read_text(), envf_before)

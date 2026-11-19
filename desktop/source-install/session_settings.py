@@ -239,13 +239,74 @@ class SessionSettings:
                 save(receipt_path, {"current": digest})
 
 
-if __name__ == "__main__":
+def rebind_bundle_settings(root=Path("/")):
+    bundle_tool = "/usr/bin/tam-bundle"
+    env = {"PATH": "/usr/bin", "LC_ALL": "C", "HOME": os.environ["HOME"]}
+    for key in ("XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"):
+        if key in os.environ:
+            env[key] = os.environ[key]
+    check = subprocess.run([bundle_tool, "--root", str(root), "session-ready"],
+                           env=env, text=True, capture_output=True)
+    if check.returncode == 0:
+        return
+    if check.returncode != 4:
+        raise subprocess.CalledProcessError(check.returncode, check.args, check.stdout, check.stderr)
+    output = subprocess.check_output([bundle_tool, "--root", str(root), "capture"],
+                                     env=env, text=True)
+    match = re.search(r"^private settings capture: ([A-Za-z0-9@_.-]+)(?: \(incomplete\))?$",
+                      output, re.MULTILINE)
+    if not match:
+        raise ValueError("bundle settings capture has no recovery identity")
+    capture = match[1]
+    subprocess.run([bundle_tool, "--root", str(root), "prepare-settings", capture], env=env, check=True)
+    subprocess.run([bundle_tool, "--root", str(root), "apply-settings"], env=env, check=True)
+    subprocess.run([bundle_tool, "--root", str(root), "session-ready"], env=env, check=True)
+
+
+def run_cli(argv=None):
+    import argparse
     if os.geteuid() == 0:
         sys.exit("Tamlinux session settings must run as your regular user")
-    try:
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:
         program = Path(__file__).resolve()
         SessionSettings().ready(program.parents[3] / "defaults/home",
                                 Path("/var/lib/tamlinux/source/active.json"),
                                 Path("/var/lib/tamlinux/source/pending.json"))
+        return
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="action", required=True)
+    prep = sub.add_parser("prepare")
+    prep.add_argument("--digest", required=True)
+    prep.add_argument("--bundle-hash", required=True)
+    prep.add_argument("--defaults", type=Path, required=True)
+    prep.add_argument("--root", type=Path, default=Path("/"))
+    prep.add_argument("--skip-bundle-check", action="store_true")
+    ap = sub.add_parser("apply")
+    ap.add_argument("--digest", required=True)
+    ap.add_argument("--bundle-hash", required=True)
+    rb = sub.add_parser("rollback")
+    rb.add_argument("--digest", required=True)
+    rb.add_argument("--bundle-hash", required=True)
+    rebind = sub.add_parser("rebind-bundle")
+    rebind.add_argument("--root", type=Path, default=Path("/"))
+    args = parser.parse_args(argv)
+    settings = SessionSettings()
+    with settings.locked():
+        if args.action == "prepare":
+            if not args.skip_bundle_check:
+                subprocess.run(["/usr/bin/tam-bundle", "--root", str(args.root), "session-ready"], check=True)
+            settings.prepare(args.digest, args.bundle_hash, args.defaults)
+        elif args.action == "apply":
+            settings.apply(args.digest, args.bundle_hash)
+        elif args.action == "rollback":
+            settings.rollback(args.digest, args.bundle_hash)
+        elif args.action == "rebind-bundle":
+            rebind_bundle_settings(args.root)
+
+
+if __name__ == "__main__":
+    try:
+        run_cli()
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         sys.exit(f"Tamlinux source session: {error}")

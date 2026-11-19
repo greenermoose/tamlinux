@@ -27,6 +27,7 @@ RUNTIME_COMMANDS = {
     "Hyprland": "hyprland>=0.56", "start-hyprland": "hyprland",
     "quickshell": "quickshell>=0.3", "qs": "quickshell", "uwsm": "uwsm", "jq": "jq",
     "nft": "nftables", "mandb": "man-db", "systemctl": "systemd",
+    "foot": "foot", "xdg-terminal-exec": "xdg-terminal-exec",
 }
 RUNTIME_FILES = {
     "usr/lib/qt6/qml/Quickshell/Wayland/qmldir": "quickshell",
@@ -39,6 +40,24 @@ RUNTIME_FILES = {
     "usr/lib/libsystemd.so.0": "systemd-libs", "usr/lib/libz.so.1": "zlib",
     "usr/lib/libncursesw.so.6": "ncurses",
 }
+ARCH_PACKAGES = Path(__file__).resolve().with_name("arch-packages")
+
+
+def declared_packages(path=ARCH_PACKAGES):
+    packages = []
+    for raw in path.read_text().splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            packages.append(line)
+    return packages
+
+
+def missing_pacman_packages(root, path=ARCH_PACKAGES):
+    if not path.is_file():
+        return []
+    specs = declared_packages(path)
+    missing = pacman_query(root, "-T", "--", *specs, missing=specs)
+    return [spec.split(">=", 1)[0].split("=", 1)[0] for spec in missing]
 
 
 def build_problems(env):

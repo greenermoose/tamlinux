@@ -178,6 +178,32 @@ class RuntimePreflightTests(unittest.TestCase):
         arguments[1] = stage
         self.assertEqual(json.loads(call("preview").stdout)["rollback"],
                          {"kind": "source", "manifest": digest})
+        # Also verify in-place source-to-source upgrade via SOURCE_PLAN.
+        stage2 = self.root / "stage2"
+        binary2 = stage2 / "payload/usr/bin/tam-test"
+        binary2.parent.mkdir(parents=True)
+        binary2.write_text("two")
+        write_json(stage2 / "manifest.json", {"version": "0.0.2", "components": {},
+                                              "files": inventory(stage2 / "payload")})
+        digest2 = hashlib.sha256((stage2 / "manifest.json").read_bytes()).hexdigest()
+        res2 = subprocess.run([sys.executable, "-I", "-B", installer, "preview",
+                               "--stage", stage2, "--digest", digest2, "--root", self.root],
+                              capture_output=True, text=True)
+        self.assertEqual(res2.returncode, 0, res2.stderr)
+        target2 = json.loads(res2.stdout)
+        self.assertEqual(target2["rollback"], {"kind": "source", "manifest": digest})
+        stage2 = stage2.rename(operator / digest2)
+        plan2 = operator / "plan2.json"
+        write_json(plan2, {"host": os.uname().nodename, "target": target2})
+        res_up = subprocess.run(["/usr/bin/make", "install", f"SOURCE_PLAN={plan2}"],
+                                cwd=operator, capture_output=True, text=True)
+        self.assertEqual(res_up.returncode, 0, res_up.stderr)
+        self.assertEqual((self.root / "usr/bin/tam-test").read_text(), "two")
+        # Roll back to first stage before remaining checks.
+        res_rb = subprocess.run([sys.executable, "-I", "-B", installer, "rollback", "--root", self.root],
+                                capture_output=True, text=True)
+        self.assertEqual(res_rb.returncode, 0, res_rb.stderr)
+        self.assertEqual((self.root / "usr/bin/tam-test").read_text(), "one")
         pending = state / "pending.json"
         pending.write_text("{}")
         self.assertIn("pending installation", call("preview").stderr)
@@ -196,3 +222,28 @@ class BuildPreflightTests(unittest.TestCase):
         problems = preflight.build_problems({"PATH": "/nonexistent"})
         self.assertIn("cc (Arch package: gcc)", problems)
         self.assertIn("pkg-config (Arch package: pkgconf)", problems)
+
+    def test_arch_packages_covers_build_and_runtime_providers(self):
+        declared = {spec.split(">=", 1)[0].split("=", 1)[0] for spec in preflight.declared_packages()}
+        required = (
+            set(preflight.BUILD_COMMANDS.values())
+            | {pkg for _, _, pkg in preflight.BUILD_HEADERS}
+            | {"python-fonttools"}
+            | {spec.split(">=", 1)[0] for spec in preflight.RUNTIME_COMMANDS.values()}
+            | {spec.split(">=", 1)[0] for spec in preflight.RUNTIME_FILES.values()}
+        ) - {"hyprland-plugin-hyprbars"}
+        self.assertTrue(required <= declared, f"missing from arch-packages: {sorted(required - declared)}")
+        self.assertIn("adwaita-cursors", declared)
+        self.assertIn("foot", declared)
+        self.assertIn("xdg-terminal-exec", declared)
+
+    def test_render_version_notes_fails_closed_when_section_missing(self):
+        import build
+        changelog = "# Changelog\n\n## Unreleased\n\n- stale item\n"
+        with self.assertRaisesRegex(ValueError, "no '## \\[0.6.32\\]' section"):
+            build.render_version_notes(changelog, "0.6.32")
+        notes = build.render_version_notes(
+            "# Changelog\n\n## [0.6.32]\n\n- real fix\n\n## Unreleased\n\n- stale\n",
+            "0.6.32",
+        )
+        self.assertTrue(notes.startswith("Tamlinux 0.6.32 version notes\n\n- real fix\n"))

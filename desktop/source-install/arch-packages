@@ -1,0 +1,41 @@
+# Declared Arch Linux prerequisites for Tamlinux source builds and runtime.
+# Each non-comment line is a Pacman package specification accepted by `pacman -T`
+# and `pacman -S --needed`.
+#
+# AUR-only runtime plugin (installed separately as a local archive):
+#   hyprland-plugin-hyprbars
+
+# Build tools and development libraries
+binutils
+gcc
+file
+git
+make
+pkgconf
+python
+python-fonttools
+dbus
+libdrm
+systemd-libs
+libcpuid
+libarchive
+ncurses
+zlib
+
+# Core runtime and desktop session
+bash
+coreutils
+glibc
+systemd
+nftables
+jq
+man-db
+hyprland>=0.56
+quickshell>=0.3
+uwsm
+
+# Desktop defaults (pointer, fonts, terminal)
+adwaita-cursors
+ttf-jetbrains-mono-nerd
+foot
+xdg-terminal-exec

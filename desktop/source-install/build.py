@@ -58,8 +58,11 @@ def render_version_notes(changelog, version):
     release = next((body for heading, _, body in (note.partition("\n") for note in notes)
                     if heading.split(" ", 1)[0].strip("[]") == version), None)
     if release is None:
-        release = notes[0].partition("\n")[2]
-    return f"Tamlinux {version} version notes\n\n{release.strip()}\n"
+        raise ValueError(f"CHANGELOG.md has no '## [{version}]' section")
+    body = release.strip()
+    if not body:
+        raise ValueError(f"CHANGELOG.md section '## [{version}]' is empty")
+    return f"Tamlinux {version} version notes\n\n{body}\n"
 
 
 def build(repos, work):

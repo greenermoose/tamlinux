@@ -46,8 +46,9 @@ def legacy_files(manifest, metadata, selected, borrowed):
 
 
 class BundleMigration:
-    def __init__(self, installation):
+    def __init__(self, installation, manage_session=True):
         self.system = installation
+        self.manage_session = manage_session
 
     def command(self, *args, codes=(0,), settings=None):
         command = [BUNDLE_TOOL, "--root", str(self.system.root), *map(str, args)]
@@ -134,7 +135,7 @@ class BundleMigration:
         self.system.check_runtime(None, None, False)
         placed = self.system.placed(after, external)
         self.system.check({path: before[path] for path in placed.keys() & before.keys()}, placed)
-        if f"{PAYLOAD_CURRENT}/{SESSION_HELPER}" in after:
+        if self.manage_session and f"{PAYLOAD_CURRENT}/{SESSION_HELPER}" in after:
             settings = self.user_settings()
             self.command("session-ready", settings=settings)
             bundle["session"] = settings.identity
@@ -150,7 +151,7 @@ class BundleMigration:
         external = bootstrap_launchers(self.system.root)
 
         prefix = self.system.state / target / "payload" / PAYLOAD_CURRENT
-        if "session" in bundle:
+        if self.manage_session and "session" in bundle:
             settings = self.user_settings()
             with settings.locked():
                 self.command("session-ready", settings=settings)
@@ -230,7 +231,7 @@ class BundleMigration:
 
     def complete(self, pending, reverse=False):
         bundle = pending["bundle"]
-        if "session" not in bundle:
+        if not self.manage_session or "session" not in bundle:
             self.complete_system(pending, reverse, None)
             return
         settings = self.user_settings()

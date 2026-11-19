@@ -1,5 +1,7 @@
 import hashlib
+import os
 from pathlib import Path
+import stat
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -118,6 +120,27 @@ class TransactionTests(unittest.TestCase):
     def test_lock_rejects_second_transaction(self):
         with self.system.locked(), self.assertRaises(BlockingIOError), self.system.locked():
             self.fail("second holder entered")
+
+    def test_install_under_restrictive_umask_keeps_world_readable_dirs(self):
+        entry = PAYLOAD_CURRENT + "/share/tamlinux/version"
+        old_umask = os.umask(0o077)
+        try:
+            with self.system.locked():
+                first = self.retain("first", {"usr/bin/tam": "first", entry: "0.6.32"})
+                self.system.start(None, first)
+        finally:
+            os.umask(old_umask)
+        for path in (
+            self.root / "usr",
+            self.root / "usr/bin",
+            self.root / "usr/lib/tamlinux/source/versions",
+            self.root / "usr/lib/tamlinux/source/versions" / first,
+            self.root / "usr/lib/tamlinux/source/versions" / first / "share/tamlinux",
+            self.root / "var/lib/tamlinux/source",
+            self.root / "var/lib/tamlinux/source" / first,
+        ):
+            mode = stat.S_IMODE(path.stat().st_mode)
+            self.assertEqual(mode, 0o755, f"{path} had mode {oct(mode)}")
 
 
 if __name__ == "__main__":
