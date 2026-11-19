@@ -47,6 +47,16 @@ class BuildCacheTests(unittest.TestCase):
             self.assertTrue(p2.is_dir())
             self.assertTrue(p3.is_dir())
 
+            # Sibling names sharing a prefix ('tam', 'tam-edit', 'tam-data') never prune each other.
+            edit_p, edit_hit = build.ensure_cached(cache_root, "tam-edit", "ekey", make_builder("edit"))
+            data_p, data_hit = build.ensure_cached(cache_root, "tam-data", "dkey", make_builder("data"))
+            self.assertFalse(edit_hit)
+            self.assertFalse(data_hit)
+            _, tam_hit = build.ensure_cached(cache_root, "tam", "key3", make_builder("v3"))
+            self.assertTrue(tam_hit)
+            self.assertTrue(edit_p.is_dir())
+            self.assertTrue(data_p.is_dir())
+
     def test_clone_tree_merges_and_rejects_collisions(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

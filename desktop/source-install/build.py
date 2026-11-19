@@ -73,11 +73,10 @@ def cache_key(*parts):
     return hashlib.sha256("\0".join(parts).encode()).hexdigest()[:16]
 
 
-def prune_cache(cache_root, component, keep=CACHE_KEEP):
-    prefix = f"{component}-"
+def prune_cache(comp_dir, keep=CACHE_KEEP):
     entries = []
-    for entry in cache_root.iterdir():
-        if entry.name.startswith(prefix) and entry.is_dir() and not entry.is_symlink():
+    for entry in comp_dir.iterdir():
+        if not entry.name.startswith(".") and entry.is_dir() and not entry.is_symlink():
             entries.append((entry.stat().st_mtime_ns, entry))
     entries.sort(key=lambda item: item[0], reverse=True)
     for _, stale in entries[keep:]:
@@ -85,13 +84,14 @@ def prune_cache(cache_root, component, keep=CACHE_KEEP):
 
 
 def ensure_cached(cache_root, component, key, builder):
-    cache_root.mkdir(parents=True, exist_ok=True)
-    target = cache_root / f"{component}-{key}"
+    comp_dir = cache_root / component
+    comp_dir.mkdir(parents=True, exist_ok=True)
+    target = comp_dir / key
     if target.is_dir() and not target.is_symlink():
         os.utime(target, None)
-        prune_cache(cache_root, component)
+        prune_cache(comp_dir)
         return target, True
-    tmp_dir = Path(tempfile.mkdtemp(prefix=f".tmp-{component}-", dir=cache_root))
+    tmp_dir = Path(tempfile.mkdtemp(prefix=".tmp-", dir=comp_dir))
     try:
         output = builder(tmp_dir, target)
         try:
@@ -103,7 +103,7 @@ def ensure_cached(cache_root, component, key, builder):
         if tmp_dir.exists():
             shutil.rmtree(tmp_dir, ignore_errors=True)
     os.utime(target, None)
-    prune_cache(cache_root, component)
+    prune_cache(comp_dir)
     return target, False
 
 
