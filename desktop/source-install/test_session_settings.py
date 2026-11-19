@@ -4,17 +4,15 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 from build import COMPONENTS, PRODUCT
-from migration import SESSION_HELPER
+from session_settings import REQUIRED, SessionSettings
 from transaction import Installation, PAYLOAD_CURRENT, inventory, write_json
 
-sys.path.append(str(PRODUCT / "desktop/migration"))
-from session_settings import REQUIRED, SessionSettings
+SESSION_HELPER = "share/tamlinux/session/session_settings.py"
 
 
 def source_fixture(stage):
@@ -31,7 +29,6 @@ def source_fixture(stage):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
     shutil.copytree(PRODUCT / "desktop/user-defaults", runtime / "share/tamlinux/user-defaults")
-    # Use regular staged files with safe modes, as the product install does.
     for path in runtime.rglob("*"):
         if path.is_file():
             path.chmod(0o644)
@@ -44,7 +41,7 @@ def local_make_install(base, root, stage):
     rules = checkout / "desktop/source-install"
     rules.mkdir(parents=True)
     shutil.copyfile(PRODUCT / "Makefile", checkout / "Makefile")
-    for file in ("main.py", "build.py", "transaction.py", "preflight.py", "migration.py"):
+    for file in ("main.py", "build.py", "transaction.py", "preflight.py"):
         shutil.copyfile(PRODUCT / "desktop/source-install" / file, rules / file)
 
     def commit(directory):
@@ -111,62 +108,3 @@ class SourceSessionTests(unittest.TestCase):
                 write_json(system.pending, {"test": True})
                 with self.assertRaisesRegex(ValueError, "installation is incomplete"):
                     settings.ready(defaults, system.active, system.pending)
-
-    def test_cli_prepare_apply_rollback_round_trip(self):
-        from session_settings import run_cli
-        with tempfile.TemporaryDirectory() as temp:
-            base = Path(temp)
-            home = base / "home"
-            config = home / ".config"
-            state = home / ".local/state"
-            (config / "tamlinux/session").mkdir(parents=True)
-            (config / "uwsm/env.d").mkdir(parents=True)
-            hypr = config / "tamlinux/session/hyprland.lua"
-            envf = config / "uwsm/env.d/10-tamlinux.sh"
-            hypr_before = 'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n'
-            envf_before = '. /usr/lib/tamlinux/current/share/tamlinux/session/uwsm-env\n'
-            hypr.write_text(hypr_before)
-            envf.write_text(envf_before)
-            defaults = base / "defaults"
-            (defaults / ".config").mkdir(parents=True)
-            digest = "a" * 64
-            bhash = "sha256:" + "b" * 64
-            env = {"HOME": str(home), "XDG_CONFIG_HOME": str(config), "XDG_STATE_HOME": str(state)}
-            with patch.dict(os.environ, env, clear=True):
-                run_cli(["prepare", "--digest", digest, "--bundle-hash", bhash,
-                         "--defaults", str(defaults), "--skip-bundle-check"])
-                self.assertEqual(hypr.read_text(), hypr_before)
-                run_cli(["apply", "--digest", digest, "--bundle-hash", bhash])
-                self.assertIn("/usr/lib/tamlinux/source/current/", hypr.read_text())
-                self.assertIn("/usr/lib/tamlinux/source/current/", envf.read_text())
-                run_cli(["rollback", "--digest", digest, "--bundle-hash", bhash])
-                self.assertEqual(hypr.read_text(), hypr_before)
-                self.assertEqual(envf.read_text(), envf_before)
-
-    def test_bundle_command_forwards_invoking_uid_and_rebind_forwards_runtime_dir(self):
-        from migration import BundleMigration
-        from session_settings import rebind_bundle_settings
-        seen = []
-
-        def fake_run(cmd, env=None, **kwargs):
-            seen.append((list(cmd), dict(env or {})))
-            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp) / "root"
-            root.mkdir()
-            move = BundleMigration(Installation(root))
-            with patch.dict(os.environ, {"SUDO_UID": "1000", "PKEXEC_UID": "not-a-uid"}, clear=True), \
-                    patch("migration.subprocess.run", side_effect=fake_run):
-                move.command("status")
-            self.assertEqual(seen[-1][1].get("SUDO_UID"), "1000")
-            self.assertNotIn("PKEXEC_UID", seen[-1][1])
-
-            with patch.dict(os.environ, {
-                "HOME": temp,
-                "XDG_RUNTIME_DIR": "/run/user/1000",
-                "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
-            }, clear=True), patch("session_settings.subprocess.run", side_effect=fake_run):
-                rebind_bundle_settings(root)
-            self.assertEqual(seen[-1][1].get("XDG_RUNTIME_DIR"), "/run/user/1000")
-            self.assertEqual(seen[-1][1].get("DBUS_SESSION_BUS_ADDRESS"), "unix:path=/run/user/1000/bus")

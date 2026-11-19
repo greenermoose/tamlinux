@@ -17,66 +17,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#ifndef TAM_BUNDLE_TOOL
-#define TAM_BUNDLE_TOOL "/usr/bin/tam-bundle"
-#endif
-#ifndef TAM_BUNDLE_CURRENT
-#define TAM_BUNDLE_CURRENT "/usr/lib/tamlinux/current"
-#endif
-#ifndef TAM_START_EXECUTABLE
-#define TAM_START_EXECUTABLE "/usr/bin/tam-start"
-#endif
-
-static int activate_bundle(char **argv)
+static int check_install_ready(void)
 {
-#ifdef TAM_SOURCE_INSTALL
-	(void)argv;
-	if (access("/var/lib/tamlinux/source/pending.json", F_OK) == 0) {
-		fputs("Finish or recover the Tamlinux installation at the console.\n", stderr);
+	if (tam_install_pending(NULL)) {
+		fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
 		return 1;
 	}
 	return 0;
-#else
-	char executable[PATH_MAX];
-	ssize_t count = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
-	if (count < 0 || (size_t)count == sizeof(executable) - 1)
-		return 1;
-	executable[count] = '\0';
-	const char *name = strrchr(executable, '/');
-	if (!name || strcmp(name + 1, "tam-start") != 0)
-		return 0;
-
-	char before[PATH_MAX], after[PATH_MAX];
-	ssize_t old_length = readlink(TAM_BUNDLE_CURRENT, before, sizeof(before));
-	if (old_length < 0 || (size_t)old_length == sizeof(before))
-		return 1;
-	pid_t child = fork();
-	if (child < 0)
-		return 1;
-	if (child == 0) {
-		execl(TAM_BUNDLE_TOOL, TAM_BUNDLE_TOOL, "session-activate", (char *)NULL);
-		perror("tam-start: session activation");
-		_exit(127);
-	}
-	int status;
-	while (waitpid(child, &status, 0) < 0) {
-		if (errno != EINTR)
-			return 1;
-	}
-	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		fputs("Tamlinux needs recovery before the menu can start. The console remains available.\n", stderr);
-		return 1;
-	}
-	ssize_t new_length = readlink(TAM_BUNDLE_CURRENT, after, sizeof(after));
-	if (new_length < 0 || (size_t)new_length == sizeof(after))
-		return 1;
-	if (old_length != new_length || memcmp(before, after, (size_t)old_length)) {
-		execv(TAM_START_EXECUTABLE, argv);
-		perror("tam-start: re-execute the selected version");
-		return 1;
-	}
-	return 0;
-#endif
 }
 
 static void usage(FILE *out)
@@ -388,12 +335,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (!do_list && !do_check && activate_bundle(argv) != 0)
+	if (check_install_ready() != 0)
 		return 1;
-	if (tam_bundle_guard(NULL)) {
-		fputs("Tamlinux is switching versions or needs recovery; use tam-bundle status from the console.\n", stderr);
-		return 1;
-	}
 
 	memset(&menu, 0, sizeof(menu));
 	if (load_menu(&menu) != 0)

@@ -33,15 +33,14 @@ class ProductInstall(unittest.TestCase):
             self.assertTrue(os.access(commands / "tam-start", os.X_OK))
             self.assertFalse((commands / "tam-nut").exists())
             runtime = stage / bundle_layout.SOURCE_CURRENT.lstrip("/")
-            for module in ("session_settings.py", "engine.py"):
-                self.assertTrue((runtime / "share/tamlinux/session" / module).is_file())
+            self.assertTrue((runtime / "share/tamlinux/session/session_settings.py").is_file())
             launch = (commands / "tam-hyprland-session").read_text()
             self.assertLess(launch.index("wait-stopped.py"), launch.index("session_settings.py"))
             self.assertLess(launch.index("session_settings.py"), launch.index("exec /usr/bin/uwsm"))
             self.assertIn('"/usr/bin/tam-session-init"', launch)
             subprocess.run(["/usr/bin/sh", "-n", commands / "tam-hyprland-session"], check=True)
 
-    def test_bundle_layout_renders_private_paths_and_real_vendor_files(self):
+    def test_source_layout_renders_private_paths_and_real_vendor_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             stage = Path(tmp)
             installer.install("/usr", tmp)
@@ -56,10 +55,10 @@ class ProductInstall(unittest.TestCase):
                 original.write_text("#!/bin/sh\n")
                 original.chmod(0o755)
             bundle_layout.install(stage)
-            current = stage / "usr/lib/tamlinux/current"
+            current = stage / "usr/lib/tamlinux/source/current"
             defaults = current / "defaults/home"
             self.assertEqual((defaults / ".config/tamlinux/session/hyprland.lua").read_text(),
-                'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n')
+                'dofile("/usr/lib/tamlinux/source/current/share/tamlinux/session/entry.lua")\n')
             environment = (defaults / ".config/uwsm/env.d/10-tamlinux.sh").read_text()
             self.assertIn('export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n', environment)
             self.assertNotIn('/nix/store', environment)
@@ -71,24 +70,24 @@ class ProductInstall(unittest.TestCase):
             self.assertTrue((defaults / '.config/tamlinux/menu/default.jsonc').is_file())
             self.assertTrue((defaults / '.config/tamlinux/chromium/extensions/copy-url/manifest.json').is_file())
             flags = (defaults / '.config/chromium-flags.conf').read_text()
-            self.assertIn('/usr/lib/tamlinux/current/share/tamlinux/browser/extensions/copy-url', flags)
+            self.assertIn('/usr/lib/tamlinux/source/current/share/tamlinux/browser/extensions/copy-url', flags)
             for path in defaults.rglob('*'):
                 if path.is_file():
                     self.assertNotIn(b'/nix/store/', path.read_bytes(), str(path))
             self.assertTrue((current / "share/tamlinux/shell/shell.qml").is_file())
-            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", command.read_text())
+            self.assertIn("/usr/lib/tamlinux/source/current/share/tamlinux/shell", command.read_text())
             dns_rendered = dns_command.read_text()
-            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/native/dns_recovery.py", dns_rendered)
+            self.assertIn("/usr/lib/tamlinux/source/current/share/tamlinux/native/dns_recovery.py", dns_rendered)
             self.assertIn("/usr/bin/tam-dns", dns_rendered)
-            for name in ("hi", "start", "suspend-unless-stay-awake", "tam-session", "tam-nut"):
+            for name in ("suspend-unless-stay-awake", "tam-session", "tam-nut"):
                 self.assertFalse((stage / "usr/bin" / name).exists(), name)
             self.assertTrue(os.access(stage / "usr/bin/tam-start", os.X_OK))
             self.assertTrue(os.access(stage / "usr/bin/tam-suspend-unless-stay-awake", os.X_OK))
             desktop = (stage / "usr/bin/tam-desktop").read_text()
-            self.assertIn("/usr/bin/tam-bundle session-activate", desktop)
-            self.assertIn('exec /usr/bin/tam-desktop "$@"', desktop)
+            self.assertIn("/var/lib/tamlinux/source/pending.json", desktop)
+            self.assertNotIn("tam-bundle", desktop)
             unit = stage / "usr/lib/systemd/user/tamlinux-shell.service"
-            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/shell", unit.read_text())
+            self.assertIn("/usr/lib/tamlinux/source/current/share/tamlinux/shell", unit.read_text())
             wants = unit.parent / "graphical-session.target.d/50-tamlinux-services.conf"
             self.assertEqual(
                 wants.read_text(),

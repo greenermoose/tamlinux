@@ -706,7 +706,7 @@ case "${1:-}" in
     cmd_dev "$@"
     ;;
   test|run)
-    fail "'$1' moved to tam-deploy: plugins are tested and run as part of the Tamlinux package"
+    fail "'$1' is handled at the Tamlinux release level: plugins are tested and run as part of a Tamlinux cultivar"
     ;;
   restore)
     shift

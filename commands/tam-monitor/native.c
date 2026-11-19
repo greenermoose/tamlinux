@@ -189,8 +189,8 @@ int main(int argc, char **argv)
     if (argc >= 2 && !strcmp(argv[1], "__guard"))
         return tam_monitor_guard_entry(argc - 2, argv + 2);
 
-    if (tam_bundle_guard(NULL)) {
-        fputs("Tamlinux is switching versions or needs recovery; use tam-bundle status from the console.\n", stderr);
+    if (tam_install_pending(NULL)) {
+        fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
         return 1;
     }
 

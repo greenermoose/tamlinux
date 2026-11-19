@@ -484,6 +484,9 @@ int tam_meter_read_boot_id(const tam_meter_sensors_t *s, char *out_boot_id, size
 int tam_meter_read_tamlinux_version(char *out_version, size_t max_len)
 {
     if (!out_version || max_len == 0) return -1;
+    if (tam_cultivar_read_version(NULL, out_version, max_len) == 0) {
+        return 0;
+    }
     const char *home = getenv("HOME");
     if (home) {
         char *user_path = tam_path_join(home, ".config/tamlinux/version");
@@ -498,7 +501,7 @@ int tam_meter_read_tamlinux_version(char *out_version, size_t max_len)
     if (read_single_line("/etc/tamlinux/version", out_version, max_len)) {
         return 0;
     }
-    safe_strcpy(out_version, "0.6.15", max_len);
+    safe_strcpy(out_version, "unknown", max_len);
     return 0;
 }
 

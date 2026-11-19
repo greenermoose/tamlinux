@@ -51,7 +51,7 @@ def move_tree(source: Path, dest: Path) -> None:
     source.rename(dest)
 
 
-def render_commands(directory: Path, current: str = CURRENT) -> None:
+def render_commands(directory: Path, current: str = SOURCE_CURRENT) -> None:
     share = f"{current}/share/tamlinux"
     for command in sorted(directory.iterdir()):
         info = command.lstat()
@@ -67,40 +67,17 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
             'self_dir.parent / "share/tamlinux/desktop/test-battery"',
             f'Path("{share}/desktop/test-battery")',
         )
-        content = content.replace(
-            'HERE.parent / "libexec/tam-workstation-upgrade"',
-            f'Path("{current}/libexec/tam-workstation-upgrade")',
-        )
-        if current == CURRENT and command.name == "tam-desktop":
-            marker = 'bin_dir="$(dirname "$(readlink -f "$0")")"'
-            if content.count(marker) != 1:
-                raise ValueError("Expected the console desktop entry before bundle activation")
-            activation = (
-                'old_bundle="$(readlink /usr/lib/tamlinux/current)"\n'
-                '/usr/bin/tam-bundle session-activate\n'
-                'new_bundle="$(readlink /usr/lib/tamlinux/current)"\n'
-                'if [ "$old_bundle" != "$new_bundle" ]; then\n'
-                '  exec /usr/bin/tam-desktop "$@"\n'
-                'fi\n'
-            )
-            content = content.replace(marker, activation + marker)
-        elif current == CURRENT and command.name in ("tam-shell", "tam-hyprland-session", "tam-session-init",
-                              "tam-crash-watch", "tam-hyprland-monitor-watch"):
-            first, separator, rest = content.partition("\n")
-            if not separator:
-                raise ValueError(f"Expected a script body for {command.name}")
-            content = first + "\n/usr/bin/tam-bundle startup-ready || exit $?\n" + rest
-        elif current == SOURCE_CURRENT and command.name in (
+        if command.name in (
             "tam-desktop", "tam-shell", "tam-hyprland-session", "tam-session-init",
         ):
             first, _, rest = content.partition("\n")
             content = first + (
-                '\nif [ -e /var/lib/tamlinux/source/pending.json ]; then\n'
+                '\nif [ -e /var/lib/tamlinux/source/pending.json ] || [ -e /var/lib/tamlinux/pending.json ]; then\n'
                 '  echo "Tamlinux installation is incomplete. Recover from the console." >&2\n'
                 '  exit 1\n'
                 'fi\n'
             ) + rest
-        if current == SOURCE_CURRENT and command.name == "tam-hyprland-session":
+        if command.name == "tam-hyprland-session":
             wait = '/usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?'
             config = 'config="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/session/hyprland.lua"'
             if content.count(wait) != 1 or content.count(config) != 1:
@@ -172,7 +149,7 @@ def copy_vendor_defaults(stage: Path, source: Path,
         put(stage / relative, data, mode)
 
 
-def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
+def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -> None:
     share = f"{current}/share/tamlinux"
     usr = stage / "usr"
     if not usr.is_dir() or usr.is_symlink():
@@ -193,15 +170,12 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
     (commands / "tam-nut").unlink()
     (commands / "start").rename(commands / "tam-start")
     (commands / "hi").unlink()
-    if current == SOURCE_CURRENT:
-        put(commands / "hi", b'#!/bin/sh\nexec /usr/bin/tam hi "$@"\n', 0o755)
-        put(commands / "start", b'#!/bin/sh\nexec /usr/bin/tam-start "$@"\n', 0o755)
+    put(commands / "hi", b'#!/bin/sh\nexec /usr/bin/tam hi "$@"\n', 0o755)
+    put(commands / "start", b'#!/bin/sh\nexec /usr/bin/tam-start "$@"\n', 0o755)
     render_commands(commands, current)
-    if current == SOURCE_CURRENT:
-        session = private / "share/tamlinux/session"
-        for module in ("source-install/session_settings.py", "migration/engine.py"):
-            origin = source / "desktop" / module
-            put(session / origin.name, origin.read_bytes())
+    session = private / "share/tamlinux/session"
+    origin = source / "desktop/source-install/session_settings.py"
+    put(session / origin.name, origin.read_bytes())
 
     copy_vendor_defaults(stage, source, wants_by_target)
     for unit_target, unit_names in sorted(wants_by_target.items()):
@@ -288,7 +262,7 @@ def main() -> int:
     try:
         stage = staging_root(args.prefix, args.destdir)
         if not args.check:
-            install(stage, current=SOURCE_CURRENT if args.source else CURRENT)
+            install(stage, current=SOURCE_CURRENT)
     except (OSError, ValueError) as error:
         print(f"install-bundle-layout: {error}", file=sys.stderr)
         return 1

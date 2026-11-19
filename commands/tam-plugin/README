@@ -14,8 +14,8 @@ the plugin manifests, so a new plugin needs no entry here. tam-plugin help
 lists every command.
 
 dev is not a deployment. Plugins are tested and run as part of the Tamlinux
-package with tam-deploy <../tam-deploy/README>; the test and run commands of
-tam-plugin 2.x were removed in 3.0.0.
+cultivar source build; the test and run commands of tam-plugin 2.x were
+removed in 3.0.0.
 
 
 INSTALL
@@ -47,8 +47,8 @@ STATUS
 
 Moved here from a private workstation configuration on 2026-10-09. Version
 3.0.0 reads plugin sources from this repository and leaves Test and Run to
-tam-deploy. The Omarchy-era 1.x tool stays in the frozen plugin-fred-tamlinux
-repository.
+the Tamlinux cultivar lifecycle. The Omarchy-era 1.x tool stays in the frozen
+plugin-fred-tamlinux repository.
 
 Since 3.1.0 (Tamlinux 0.4.4) the catalog is every manifest naming the Tamlinux
 repository, read from the packaged plugin root (TAMLINUX_PLUGIN_CATALOG, set

@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
             date = 1;
         } else return 2;
     }
-    if (tam_bundle_guard(NULL)) return 1;
+    if (tam_install_pending(NULL)) return 1;
     const char *bin = getenv("TAMLINUX_BIN"), *home = getenv("HOME");
     char *fallback = home ? program(home, ".local/bin") : NULL;
     if (!bin || !*bin) bin = fallback;

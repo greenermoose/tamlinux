@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.35]
+
+Changes since Tamlinux 0.6.34:
+- Add a per-component build cache (`scratch/source-install/cache/`) to `desktop/source-install/build.py`: unchanged components (`libtam`, `tam`, `tamlinux-tools`, `tam-edit`, `tam-data`, `tamlinux`) skip `git archive` and `make` and assemble via Btrfs CoW `FICLONE` reflinks, retaining the last 2 revisions per component.
+- Retire all `tam-bundle`, `tam-deploy`, `tam-migrate-desktop`, `tam-workstation-upgrade`, and `desktop/migration/` code and bundle-migration paths now that all hosts run source installs (`0.6.34+`).
+- Fix `tam-meter` version detection: read the active cultivar version via `libtam` 0.8.0's `tam_cultivar_read_version()` instead of falling back to hardcoded `"0.6.15"`.
+- Update native C commands (`start`, `tam-boot`, `tam-hardware`, `tam-launch-journal`, `tam-meter`, `tam-monitor`) to `libtam` 0.8.0's `tam_install_pending()`, and update `tam` to 0.66.0 (`tam where` checks cultivar paths and active manifests directly) and `tamlinux-tools` (retiring `tam-bundle`).
+
 ## [0.6.34]
 
 Changes since Tamlinux 0.6.33:

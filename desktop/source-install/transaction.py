@@ -26,7 +26,6 @@ from preflight import destination_owners, ownership_problems, runtime_problems
 
 PAYLOAD_CURRENT = "usr/lib/tamlinux/source/current"
 STATE = "var/lib/tamlinux/source"
-BUNDLE_CURRENT = "usr/lib/tamlinux/current"
 BOOTSTRAP_LAUNCHERS = {
     "usr/bin/hi": ("tam", " hi"),
     "usr/bin/start": ("tam-start", ""),
@@ -380,7 +379,6 @@ class Installation:
         self.complete()
 
     def check_switch(self, old, after, external):
-        self.require_detached_slot()
         before = self.manifest(old)["files"]
         self.check_ownership(before.keys() | after.keys(), external)
         self.check_runtime(self.runtime_id(old), None, False)
@@ -398,35 +396,15 @@ class Installation:
             raise ValueError("runtime preflight found problems:\n  " + "\n  ".join(problems))
         current = self.current()
         old = current["current"]
-        bundle_args = (args.bundle_archive, args.bundle_sha256, args.bundle_hash, args.bundle_id)
-        if any(value is not None for value in bundle_args):
-            if not all(bundle_args):
-                raise ValueError("preview requires the exact recovery bundle and archive")
-            from migration import BundleMigration
-            manage_session = not (self.root == Path("/") and os.geteuid() == 0)
-            rollback = BundleMigration(self, manage_session=manage_session).inspect(
-                receipt["files"], args.bundle_archive, args.bundle_sha256,
-                args.bundle_hash, args.bundle_id)
-            rollback = {"kind": "bundle", **rollback}
-        else:
-            if old is not None:
-                verified_stage(self.state / old, old)
-            self.check_switch(old, receipt["files"], current.get("external", []))
-            rollback = {"kind": "clean"} if old is None else {"kind": "source", "manifest": old}
+        if old is not None:
+            verified_stage(self.state / old, old)
+        self.check_switch(old, receipt["files"], current.get("external", []))
+        rollback = {"kind": "clean"} if old is None else {"kind": "source", "manifest": old}
         if os.path.lexists(self.pending) or self.current() != current:
             raise ValueError("the target changed during preparation; try again")
         return {"version": receipt["version"], "components": receipt["components"],
                 "manifest": args.digest, "root": str(self.root),
                 "rootIdentity": [root_info.st_dev, root_info.st_ino], "rollback": rollback}
-
-    def require_detached_slot(self):
-        secure_directory(self.root, Path(BUNDLE_CURRENT).parent)
-        if os.path.lexists(self.root / BUNDLE_CURRENT):
-            raise ValueError("the legacy bundle is installed; use the migration operation")
-        if os.path.lexists(self.state.parent / "transaction"):
-            from migration import BundleMigration
-            if BundleMigration(self).status().get("state") != "complete":
-                raise ValueError("finish the pending legacy bundle transaction")
 
     def check_ownership(self, files, external):
         if external and external != bootstrap_launchers(self.root):
@@ -438,7 +416,7 @@ class Installation:
 
     @staticmethod
     def migration_fields(record):
-        return {name: record[name] for name in ("bundle", "external") if name in record}
+        return {name: record[name] for name in ("external",) if name in record}
 
     def runtime_id(self, identity):
         if identity and (self.state / identity / "payload" / PAYLOAD_CURRENT).is_dir():
@@ -454,12 +432,6 @@ class Installation:
         pending = read_json(self.pending)
         if pending is None:
             raise ValueError("no pending source installation")
-        if "migration" in pending:
-            from migration import BundleMigration
-            manage_session = not (self.root == Path("/") and os.geteuid() == 0)
-            BundleMigration(self, manage_session=manage_session).complete(pending, reverse)
-            return
-        self.require_detached_slot()
         old, new = pending["from"], pending["to"]
         if reverse:
             old, new = new, old
@@ -507,21 +479,15 @@ class Installation:
 def main():
     os.umask(0o022)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["install", "migrate", "preview", "status", "resume",
-                                           "rollback", "rollback-bundle"])
+    parser.add_argument("action", choices=["install", "preview", "status", "resume", "rollback"])
     parser.add_argument("--stage", type=Path)
     parser.add_argument("--digest")
-    parser.add_argument("--bundle-archive", type=Path)
-    parser.add_argument("--bundle-hash")
-    parser.add_argument("--bundle-sha256")
-    parser.add_argument("--bundle-id")
     parser.add_argument("--root", type=Path)
     parser.add_argument("--plan", type=Path)
     parser.add_argument("--live-recovery", action="store_true")
     args = parser.parse_args()
     if args.plan is not None:
-        if args.action != "install" or any((args.root, args.stage, args.digest, args.bundle_id,
-                                            args.bundle_archive, args.bundle_hash, args.bundle_sha256)):
+        if args.action != "install" or any((args.root, args.stage, args.digest)):
             raise ValueError("an install plan supplies the destination and stage")
         install_plan(args.plan)
         return
@@ -529,7 +495,7 @@ def main():
         raise ValueError("an isolated root or an approved install plan is required")
     root = args.root.resolve(strict=True)
     live_recovery = (root == Path("/") and args.live_recovery
-                     and args.action in ("resume", "rollback", "rollback-bundle"))
+                     and args.action in ("resume", "rollback"))
     if not root.is_dir() or args.root.is_symlink() or (
         root == Path("/") and args.action != "preview" and not live_recovery
     ):
@@ -551,28 +517,18 @@ def main():
     with system.locked():
         current = system.current()
         pending = system.pending.exists()
-        if args.action in ("install", "migrate"):
+        if args.action == "install":
             if pending:
                 raise ValueError("resume or roll back the pending installation")
             if not args.stage or not re.fullmatch("[0-9a-f]{64}", args.digest or ""):
                 raise ValueError("install requires a stage and its SHA-256 manifest digest")
             system.retain(args.stage, args.digest)
-            if args.action == "migrate":
-                from migration import BundleMigration
-                BundleMigration(system).start(args.digest, args.bundle_archive,
-                                              args.bundle_sha256, args.bundle_hash)
-            else:
-                system.start(current["current"], args.digest)
+            system.start(current["current"], args.digest)
         elif args.action == "resume":
             system.complete()
-        elif args.action == "rollback-bundle":
-            from migration import BundleMigration
-            BundleMigration(system, manage_session=not live_recovery).rollback()
         elif pending:
             system.complete(reverse=True)
         elif current["current"] is not None:
-            if current.get("bundle") and not current["previous"]:
-                raise ValueError("use rollback-bundle to restore the previous bundle")
             system.start(current["current"], current["previous"])
         else:
             raise ValueError("no source installation to roll back")
@@ -620,7 +576,7 @@ def install_plan(path):
         raise ValueError("the running root requires root approval")
     rollback = target["rollback"]
     kind = rollback.get("kind") if isinstance(rollback, dict) else None
-    if kind not in ("clean", "source", "bundle"):
+    if kind not in ("clean", "source"):
         raise ValueError("unsupported rollback mode in approved install plan")
     digest = target["manifest"]
     if not re.fullmatch("[0-9a-f]{64}", digest):
@@ -647,8 +603,6 @@ def install_plan(path):
         current = system.current()
         pending = read_json(system.pending)
         if kind == "clean":
-            if root == system_root and os.path.lexists(system.state.parent / "transaction"):
-                raise ValueError("retire the legacy bundle transaction before the clean install")
             if current not in ({"current": None, "previous": None},
                                {"current": digest, "previous": None}):
                 raise ValueError("the approved target already has a different source install")
@@ -660,14 +614,14 @@ def install_plan(path):
             system.check_switch(current["current"], receipt["files"], [])
             system.retain(stage, digest)
             system.start(current["current"], digest)
-        elif kind == "source":
+        else:
             old = rollback.get("manifest")
             if not re.fullmatch("[0-9a-f]{64}", old or ""):
                 raise ValueError("the approved previous manifest digest is invalid")
             if current["current"] not in (old, digest):
                 raise ValueError("the approved target source install changed")
             if pending is not None:
-                if pending.get("from") != old or pending.get("to") != digest or "migration" in pending:
+                if pending.get("from") != old or pending.get("to") != digest:
                     raise ValueError("a different source transaction is pending")
                 system.complete()
                 return
@@ -676,32 +630,6 @@ def install_plan(path):
             system.check_switch(old, receipt["files"], current.get("external", []))
             system.retain(stage, digest)
             system.start(old, digest)
-        else:
-            archive_sha = rollback.get("archive")
-            bundle_hash = rollback.get("hash")
-            if (not re.fullmatch("[0-9a-f]{64}", archive_sha or "")
-                    or not re.fullmatch("sha256:[0-9a-f]{64}", bundle_hash or "")):
-                raise ValueError("the approved bundle rollback metadata is invalid")
-            archive = path.with_name(f"bundle-{archive_sha}.tbundle")
-            archive_info = archive.lstat()
-            if (not stat.S_ISREG(archive_info.st_mode)
-                    or archive_info.st_uid != os.geteuid() or archive_info.st_mode & 0o022):
-                raise ValueError("the approved recovery bundle archive must be a privately writable regular file")
-            if pending is not None:
-                if pending.get("to") != digest or "migration" not in pending:
-                    raise ValueError("a different source transaction is pending")
-                system.complete()
-                return
-            if current["current"] == digest:
-                return
-            if current["current"] is not None:
-                raise ValueError("the approved target already has a source install")
-            from migration import BundleMigration
-            manage_session = not (root == system_root and os.geteuid() == 0)
-            system.retain(stage, digest)
-            BundleMigration(system, manage_session=manage_session).start(
-                digest, archive, archive_sha, bundle_hash
-            )
 
 
 if __name__ == "__main__":

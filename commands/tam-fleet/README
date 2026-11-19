@@ -30,9 +30,9 @@ must check the hostname before writes; this tool never activates Home Manager.
 
 check validates identity, capabilities, hardware/local links, root sources and
 index freshness. check --live HOST additionally checks the running hostname,
-account, installed host metadata, root-file contents/modes and
-tam-deploy status. Source validation alone says nothing about boot, login or
-physical hardware.
+account, installed host metadata, root-file contents/modes and the active
+Tamlinux source installation record. Source validation alone says nothing about
+boot, login or physical hardware.
 
 root-files previews the union of shared and local manifests, including
 selected fleet/hosts/<host>/system/capabilities/<capability>/MANIFEST fragments. It

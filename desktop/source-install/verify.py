@@ -32,17 +32,21 @@ def cursor_problems(root):
 
 def notes_problems(root):
     runtime = root / PAYLOAD_CURRENT
+    version_file = runtime / "VERSION"
     bundle_file = runtime / "BUNDLE"
     notes_file = runtime / "share/tamlinux/version-notes.txt"
-    if not bundle_file.is_file() or not os.access(bundle_file, os.R_OK):
-        return [f"missing or unreadable runtime identity: {bundle_file}"]
     version = None
-    for line in bundle_file.read_text().splitlines():
-        if line.startswith("version "):
-            version = line.split(" ", 1)[1].strip()
-            break
+    if version_file.is_file() and os.access(version_file, os.R_OK):
+        version = version_file.read_text().strip() or None
+    elif bundle_file.is_file() and os.access(bundle_file, os.R_OK):
+        for line in bundle_file.read_text().splitlines():
+            if line.startswith("version "):
+                version = line.split(" ", 1)[1].strip()
+                break
+    else:
+        return [f"missing or unreadable runtime identity: {version_file}"]
     if not version:
-        return [f"missing version in {bundle_file}"]
+        return [f"missing version in {version_file if version_file.exists() else bundle_file}"]
     if not notes_file.is_file() or not os.access(notes_file, os.R_OK):
         return [f"missing or unreadable version notes: {notes_file}"]
     lines = notes_file.read_text().splitlines()
@@ -113,22 +117,18 @@ def permission_problems(system):
     return problems
 
 
-def migrated_session_problems(system):
-    active = system.current()
-    if not active.get("bundle") or system.root != Path("/"):
+def session_problems(system):
+    if system.root != Path("/"):
         return []
     config = Path(os.environ.get("XDG_CONFIG_HOME") or Path(os.environ["HOME"]) / ".config")
     problems = []
     for rel in ("tamlinux/session/hyprland.lua", "uwsm/env.d/10-tamlinux.sh"):
         target = config / rel
         if not target.is_file() or not os.access(target, os.R_OK):
-            problems.append(f"missing migrated session setting: {target}")
             continue
         text = target.read_text()
-        if "/usr/lib/tamlinux/current/" in text or "/nix/store/" in text:
-            problems.append(f"session setting still references legacy runtime: {target}")
-        if "/usr/lib/tamlinux/source/current/" not in text:
-            problems.append(f"session setting missing source runtime path: {target}")
+        if "/nix/store/" in text:
+            problems.append(f"session setting still references retired runtime: {target}")
     return problems
 
 
@@ -142,7 +142,7 @@ def verify_root(root, check_runtime=True):
     problems.extend(browser_problems(root))
     if check_runtime:
         problems.extend(runtime_problems(root))
-    problems.extend(migrated_session_problems(system))
+    problems.extend(session_problems(system))
     return problems
 
 

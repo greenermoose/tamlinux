@@ -16,10 +16,9 @@ processes rather than inferring ownership from an inherited logo or filename.
 
 ## Establish the effective installation
 
-- On a source-installed host, inspect the active manifest under
-  `/var/lib/tamlinux/source/` and use `make verify` as the normal user from
-  the product checkout. On a bundle host, use `tam-deploy status` or
-  `tam-bundle status` for the selected bundle.
+- Inspect the active installation manifest under `/var/lib/tamlinux/source/`
+  (or `/var/lib/tamlinux/`) and run `make verify` as the normal user from
+  the product checkout.
 - Read `systemctl --user status tamlinux-shell.service` and its unit definition
   to identify the actual executable, package revision and resource paths.
 - For a health report, inspect the relevant journal, compositor configuration

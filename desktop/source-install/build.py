@@ -1,17 +1,21 @@
-"""Stage a workstation from committed, local Git objects."""
+"""Stage a workstation from committed, local Git objects with per-component caching."""
 import hashlib
 import os
 from pathlib import Path
 import re
+import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
 
 from preflight import build_problems
-from transaction import PAYLOAD_CURRENT, inventory, write_json
+from transaction import PAYLOAD_CURRENT, _clone_or_copy, inventory, write_json
 
 PRODUCT = Path(__file__).resolve().parents[2]
 COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data")
+CACHE_SCHEMA = "v1"
+CACHE_KEEP = 2
 BUILD_ENV = {
     "PATH": "/usr/bin:/bin",
     "LC_ALL": "C.UTF-8",
@@ -65,6 +69,72 @@ def render_version_notes(changelog, version):
     return f"Tamlinux {version} version notes\n\n{body}\n"
 
 
+def cache_key(*parts):
+    return hashlib.sha256("\0".join(parts).encode()).hexdigest()[:16]
+
+
+def prune_cache(cache_root, component, keep=CACHE_KEEP):
+    prefix = f"{component}-"
+    entries = []
+    for entry in cache_root.iterdir():
+        if entry.name.startswith(prefix) and entry.is_dir() and not entry.is_symlink():
+            entries.append((entry.stat().st_mtime_ns, entry))
+    entries.sort(key=lambda item: item[0], reverse=True)
+    for _, stale in entries[keep:]:
+        shutil.rmtree(stale, ignore_errors=True)
+
+
+def ensure_cached(cache_root, component, key, builder):
+    cache_root.mkdir(parents=True, exist_ok=True)
+    target = cache_root / f"{component}-{key}"
+    if target.is_dir() and not target.is_symlink():
+        os.utime(target, None)
+        prune_cache(cache_root, component)
+        return target, True
+    tmp_dir = Path(tempfile.mkdtemp(prefix=f".tmp-{component}-", dir=cache_root))
+    try:
+        output = builder(tmp_dir, target)
+        try:
+            output.rename(target)
+        except OSError:
+            if not target.is_dir():
+                raise
+    finally:
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+    os.utime(target, None)
+    prune_cache(cache_root, component)
+    return target, False
+
+
+def clone_tree(source, destination):
+    for root, dirs, files in os.walk(source):
+        rel_root = Path(root).relative_to(source)
+        target_dir = destination / rel_root
+        target_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
+        for name in dirs:
+            d = target_dir / name
+            d.mkdir(mode=0o755, exist_ok=True)
+            os.chmod(d, 0o755)
+        for name in files:
+            src_file = Path(root) / name
+            dst_file = target_dir / name
+            if dst_file.exists() or dst_file.is_symlink():
+                raise ValueError(f"component staging collision at {rel_root / name}")
+            info = src_file.lstat()
+            if not stat.S_ISREG(info.st_mode):
+                raise ValueError(f"unexpected non-regular file in cache: {src_file}")
+            mode = stat.S_IMODE(info.st_mode)
+            fd = os.open(dst_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            try:
+                with src_file.open("rb") as incoming, os.fdopen(fd, "wb") as outgoing:
+                    _clone_or_copy(incoming, outgoing)
+                    os.fchmod(outgoing.fileno(), mode)
+            except BaseException:
+                dst_file.unlink(missing_ok=True)
+                raise
+
+
 def build(repos, work):
     if os.geteuid() == 0:
         raise ValueError("run make as your regular user")
@@ -72,54 +142,122 @@ def build(repos, work):
     if problems:
         raise ValueError("missing build prerequisites:\n  " + "\n  ".join(problems))
     pins = revisions(repos)
+    arch = os.uname().machine
     work.mkdir(parents=True, exist_ok=True)
+    cache_root = work / "cache"
+    cache_root.mkdir(exist_ok=True)
+    jobs = f"-j{os.cpu_count() or 2}"
+    hits = []
+    built = []
+
+    def record(name, hit):
+        (hits if hit else built).append(name)
+
+    def make_env(build_root, library=None):
+        home = build_root / "home"
+        home.mkdir(exist_ok=True)
+        env = BUILD_ENV | {
+            "HOME": str(home),
+            "GIT_CEILING_DIRECTORIES": str(build_root),
+        }
+        if library is not None:
+            env["PKG_CONFIG_PATH"] = str(library / "lib/pkgconfig")
+        return env
+
+    def run_make(src_dir, env, *args):
+        subprocess.run(["/usr/bin/make", "-C", src_dir, jobs, *args], env=env, check=True)
+
+    # 1. Build or reuse libtam (prefix pinned to its final cache directory so pkg-config paths stay valid).
+    libtam_key = cache_key(CACHE_SCHEMA, "libtam", pins["libtam"], arch)
+
+    def build_libtam(tmp_dir, target):
+        src_dir = tmp_dir / "src"
+        dest_root = tmp_dir / "dest"
+        snapshot(repos / "libtam", pins["libtam"], src_dir)
+        run_make(src_dir, make_env(tmp_dir), "install", "install-display", "install-session",
+                 f"PREFIX={target}", f"DESTDIR={dest_root}")
+        return dest_root / str(target).lstrip("/")
+
+    library, hit = ensure_cached(cache_root, "libtam", libtam_key, build_libtam)
+    record("libtam", hit)
+
+    link = f"LIBTAM_PREFIX={library}"
+    private = "/" + PAYLOAD_CURRENT
+    component_trees = []
+
+    # 2. Build or reuse tamlinux product + layout + identity/notes.
+    tamlinux_key = cache_key(CACHE_SCHEMA, "tamlinux", pins["tamlinux"], libtam_key, arch, PAYLOAD_CURRENT)
+
+    def build_tamlinux(tmp_dir, _target):
+        src_dir = tmp_dir / "src"
+        dest = tmp_dir / "dest"
+        dest.mkdir()
+        snapshot(PRODUCT, pins["tamlinux"], src_dir)
+        env = make_env(tmp_dir, library)
+        run_make(src_dir, env, "install-product", "PREFIX=/usr", f"DESTDIR={dest}",
+                 link, "TAM_SOURCE_INSTALL=1")
+        subprocess.run(["/usr/bin/python3", "-I", src_dir / "desktop/install-bundle-layout.py",
+                        "--source", "--prefix", "/usr", "--destdir", dest], env=env, check=True)
+        version = (src_dir / "VERSION").read_text().strip()
+        (dest / PAYLOAD_CURRENT / "VERSION").write_text(f"{version}\n")
+        (dest / PAYLOAD_CURRENT / "BUNDLE").write_text(
+            f"format 2\nname tamlinux\nversion {version}\n"
+        )
+        (dest / PAYLOAD_CURRENT / "share/tamlinux/version-notes.txt").write_text(
+            render_version_notes((src_dir / "CHANGELOG.md").read_text(), version)
+        )
+        return dest
+
+    tamlinux_tree, hit = ensure_cached(cache_root, "tamlinux", tamlinux_key, build_tamlinux)
+    record("tamlinux", hit)
+    component_trees.append(tamlinux_tree)
+
+    # 3. Build or reuse sibling components into their own cached DESTDIRs.
+    sibling_specs = (
+        ("tam", lambda src, dest, env: run_make(
+            src, env, "install", "install-tldr", "PREFIX=/usr", f"DESTDIR={dest}", link,
+            f"BUNDLE_ROOT={private}", f"CULTIVAR_ROOT={private}",
+            f"DATADIR={private}/share/tamlinux/knowledge", "DOCDIR=/usr/share/doc",
+        )),
+        ("tamlinux-tools", lambda src, dest, env: run_make(
+            src, env, "install-file-select", "install-journal", "PREFIX=/usr", f"DESTDIR={dest}", link,
+        )),
+        ("tam-edit", lambda src, dest, env: run_make(
+            src, env, "install", "PREFIX=/usr", f"DESTDIR={dest}",
+            f"PKG_CONFIG_PATH={library}/lib/pkgconfig",
+        )),
+        ("tam-data", lambda src, dest, env: run_make(
+            src, env, "install", "PREFIX=/usr", f"DESTDIR={dest}", link,
+            f"TD_BUILD_ID={pins['tam-data'][:12]}",
+        )),
+    )
+
+    for comp, runner in sibling_specs:
+        comp_key = cache_key(CACHE_SCHEMA, comp, pins[comp], libtam_key, arch, PAYLOAD_CURRENT)
+
+        def build_sibling(tmp_dir, _target, _comp=comp, _runner=runner):
+            src_dir = tmp_dir / "src"
+            dest = tmp_dir / "dest"
+            dest.mkdir()
+            snapshot(repos / _comp, pins[_comp], src_dir)
+            _runner(src_dir, dest, make_env(tmp_dir, library))
+            return dest
+
+        comp_tree, hit = ensure_cached(cache_root, comp, comp_key, build_sibling)
+        record(comp, hit)
+        component_trees.append(comp_tree)
+
+    hit_text = ", ".join(hits) if hits else "none"
+    built_text = ", ".join(built) if built else "none"
+    print(f"Build cache: hit [{hit_text}]; built [{built_text}]", flush=True)
+
+    version = (tamlinux_tree / PAYLOAD_CURRENT / "VERSION").read_text().strip()
     with tempfile.TemporaryDirectory(prefix="build-", dir=work) as name:
         build_root = Path(name)
         stage = build_root / "payload"
         stage.mkdir()
-        home = build_root / "home"
-        home.mkdir()
-        library = build_root / "libtam-built"
-        env = BUILD_ENV | {
-            "HOME": str(home),
-            "GIT_CEILING_DIRECTORIES": str(build_root),
-            "PKG_CONFIG_PATH": str(library / "lib/pkgconfig"),
-        }
-
-        jobs = f"-j{os.cpu_count() or 2}"
-
-        def make(component, *args):
-            subprocess.run(["/usr/bin/make", "-C", build_root / component, jobs, *args],
-                           env=env, check=True)
-
-        for component, revision in pins.items():
-            snapshot(PRODUCT if component == "tamlinux" else repos / component,
-                     revision, build_root / component)
-
-        make("libtam", "install", "install-display", "install-session", f"PREFIX={library}")
-        link = f"LIBTAM_PREFIX={library}"
-        placed = ("PREFIX=/usr", f"DESTDIR={stage}")
-        make("tamlinux", "install-product", *placed, link, "TAM_SOURCE_INSTALL=1")
-        product = build_root / "tamlinux"
-        subprocess.run(["/usr/bin/python3", "-I", product / "desktop/install-bundle-layout.py",
-                        "--source", "--prefix", "/usr", "--destdir", stage], env=env, check=True)
-
-        private = "/" + PAYLOAD_CURRENT
-        make("tam", "install", "install-tldr", *placed, link,
-             f"BUNDLE_ROOT={private}", f"DATADIR={private}/share/tamlinux/knowledge",
-             "DOCDIR=/usr/share/doc")
-        make("tamlinux-tools", "install-file-select", "install-journal", *placed, link)
-        make("tam-edit", "install", *placed, f"PKG_CONFIG_PATH={library}/lib/pkgconfig")
-        make("tam-data", "install", *placed, link, f"TD_BUILD_ID={pins['tam-data'][:12]}")
-
-        version = (product / "VERSION").read_text().strip()
-        # The pinned tam reads cultivar identity through this record format.
-        (stage / PAYLOAD_CURRENT / "BUNDLE").write_text(
-            f"format 2\nname tamlinux\nversion {version}\n"
-        )
-        (stage / PAYLOAD_CURRENT / "share/tamlinux/version-notes.txt").write_text(
-            render_version_notes((product / "CHANGELOG.md").read_text(), version)
-        )
+        for tree in component_trees:
+            clone_tree(tree, stage)
         receipt = {"version": version, "components": pins, "files": inventory(stage)}
         ready = build_root / "ready"
         ready.mkdir()
@@ -134,7 +272,7 @@ def build(repos, work):
                 raise ValueError("an existing stage differs from its manifest")
         else:
             ready.rename(destination)
-        link = build_root / "selected"
-        link.symlink_to(destination.relative_to(work))
-        link.replace(work / "build")
+        link_path = build_root / "selected"
+        link_path.symlink_to(destination.relative_to(work))
+        link_path.replace(work / "build")
         print(f"Staged Tamlinux {version} in {destination}")

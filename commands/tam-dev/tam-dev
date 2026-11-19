@@ -71,7 +71,7 @@ def select(workspace, name):
             # closures retain the product snapshot rather than testing a partial tree.
             makefile=(repo/'commands'/command/'Makefile').read_text()
             check_body=makefile.split('check:',1)[1].split('\n\n',1)[0].strip() if 'check:' in makefile else ''
-            isolated=command in ('tam-dev','tam-deploy') or (check_body.startswith('bash -n ') and '\n' not in check_body)
+            isolated=command == 'tam-dev' or (check_body.startswith('bash -n ') and '\n' not in check_body)
             return repo, ['commands/'+command, 'LICENSE'] if isolated else ['.'], 'commands/'+command
     raise DevError('unknown component; see --help')
 
