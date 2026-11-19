@@ -113,6 +113,10 @@ def atomic_json(path: Path, value: dict) -> None:
     atomic_bytes(path, (json.dumps(value, indent=2) + '\n').encode())
 
 
+# Standalone locked dependencies retain their independent source branches
+# rather than participating in the Tamlinux develop/test/main promotion trail.
+LOCKED_DEPENDENCIES = frozenset(("tam-edit", "tam-data"))
+
 # Consumer files the running session writes through Home Manager's live
 # (out-of-store) links, such as the shell's settings.json. Their content is
 # not part of a generation, so a change there does not make a deployment
@@ -1838,10 +1842,14 @@ class Deployment:
         self.transaction(phase='recovered')
         print('Exact saved Nix generation restored; bundle-era settings are retained privately.')
 
+    @staticmethod
+    def stage_pins(pins: dict[str, str]) -> dict[str, str]:
+        return {name: rev for name, rev in pins.items() if name not in LOCKED_DEPENDENCIES}
+
     def require_on(self, branch: str, revision: str, pins: dict[str, str]) -> None:
         if not self.on_branch("tamlinux-packages", revision, branch):
             raise DeploymentError(f"tamlinux-packages {revision[:12]} is not on {branch}")
-        for name, rev in pins.items():
+        for name, rev in self.stage_pins(pins).items():
             self.git(name, "fetch", "-q", "origin")
             if not self.on_branch(name, rev, branch):
                 raise DeploymentError(f"{name} {rev[:12]} pinned by the assembly is not on {branch}")
@@ -2492,7 +2500,7 @@ class Deployment:
         print('deploy phase: ' + str(current.get('phase')), flush=True)
 
     def fetch_all(self, pins: dict[str, str]) -> None:
-        for name in ["tamlinux-packages", *sorted(pins)]:
+        for name in ["tamlinux-packages", *sorted(self.stage_pins(pins))]:
             self.git(name, "fetch", "-q", "origin")
 
     def stage_of(self, name: str, revision: str) -> str:
@@ -2740,8 +2748,9 @@ class Deployment:
             except subprocess.CalledProcessError:
                 raise DeploymentError(f"no tamlinux-packages commit matches {ref}") from None
         pins = self.components(revision)
-        self.fetch_all(pins)
-        repos = {"tamlinux-packages": revision, **pins}
+        promoted_pins = self.stage_pins(pins)
+        self.fetch_all(promoted_pins)
+        repos = {"tamlinux-packages": revision, **promoted_pins}
         stages = {name: self.stage_of(name, rev) for name, rev in repos.items()}
         needs_install = revision != installed or bool(self.verify(pins, revision))
 
@@ -2777,18 +2786,21 @@ class Deployment:
         # Components first, so main of tamlinux-packages never pins a
         # component revision that is not on that component's main. An
         # untested commit moves test too, keeping main within test.
-        for name in [*sorted(pins), "tamlinux-packages"]:
+        for name in [*sorted(promoted_pins), "tamlinux-packages"]:
             if stages[name] == "main":
                 continue
             if stages[name] in ("develop", "untracked"):
                 self.git(name, "push", "-q", "origin", f"{repos[name]}:refs/heads/test")
             self.git(name, "push", "-q", "origin", f"{repos[name]}:refs/heads/main")
         bundle = self.bundle_delivery(revision)
-        files = self.update_bom({"packages": revision, "tamlinux": pins["tamlinux"],
-                                 "stage": "run", "generation": None if bundle else self.generation()})
+        updated_state = dict(self.read_state(), stage="run", packages=revision, components=pins)
+        bom_entry = (updated_state if bundle is not None else
+                     {"packages": revision, "tamlinux": pins["tamlinux"],
+                      "stage": "run", "generation": self.generation()})
+        files = self.update_bom(bom_entry)
         if files:
             self.record(f"deploy: run tamlinux-packages {revision[:12]}", files)
-        self.save_state(dict(self.read_state(), stage="run", packages=revision, components=pins))
+        self.save_state(updated_state)
         print(f"Promoted tamlinux-packages {revision[:12]} to main.")
         self.status()
 

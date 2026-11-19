@@ -1583,6 +1583,58 @@ class HomeFileConflicts(Fixture):
                     self.app.bundle_privileged('apply', 'tx-1')
                 command.assert_called_once_with('/usr/bin/pkexec', '/usr/bin/tam-bundle', 'apply', 'tx-1')
 
+    def test_run_skips_locked_dependencies_and_preserves_bundle_bom(self):
+        pins = {
+            "tamlinux": self.tamlinux_new,
+            "tam-edit": "6" * 40,
+            "tam-data": "c" * 40,
+        }
+        state = {
+            "backend": "tam-bundle",
+            "stage": "test",
+            "packages": self.packages_new,
+            "components": pins,
+            "generation": str(self.new),
+            "bundleId": "tamlinux-0.6.30-46803cf33974",
+            "bundleHash": "sha256:" + "4" * 64,
+            "migrationTransaction": "tx-locked-deps",
+        }
+        self.app.save_state(state)
+        self.write_lock(self.packages_new, {"tamlinux": self.tamlinux_new})
+        bom = self.app.config / "system/bom.json"
+        bom.parent.mkdir(parents=True, exist_ok=True)
+        bom.write_text(json.dumps({"components": {"tamlinux": dict(state)}}, indent=2) + "\n")
+        git(self.app.workspace / "tamlinux", "push", "-q", "origin", f"{self.tamlinux_new}:refs/heads/test")
+        git(self.app.workspace / "tamlinux-packages", "push", "-q", "origin", f"{self.packages_new}:refs/heads/test")
+
+        delivery = {
+            "backend": "tam-bundle",
+            "components": pins,
+            "artifact": {"bundleId": state["bundleId"], "bundleHash": state["bundleHash"]},
+        }
+        with patch.object(self.app, "require_consistent"), \
+             patch.object(self.app, "components", return_value=pins), \
+             patch.object(self.app, "bundle_delivery", return_value=delivery), \
+             patch.object(self.app, "verify", return_value=[]), \
+             patch.object(self.app, "record"), \
+             patch.object(self.app, "status"):
+            self.app.run()
+
+        self.assertEqual(
+            git(self.app.workspace / "tamlinux", "ls-remote", "origin", "refs/heads/main").split()[0],
+            self.tamlinux_new,
+        )
+        self.assertEqual(
+            git(self.app.workspace / "tamlinux-packages", "ls-remote", "origin", "refs/heads/main").split()[0],
+            self.packages_new,
+        )
+        bom_entry = json.loads(bom.read_text())["components"]["tamlinux"]
+        self.assertEqual(bom_entry["stage"], "run")
+        self.assertEqual(bom_entry["backend"], "tam-bundle")
+        self.assertEqual(bom_entry["bundleId"], state["bundleId"])
+        self.assertEqual(bom_entry["migrationTransaction"], "tx-locked-deps")
+        self.assertEqual(bom_entry["components"], pins)
+
 
 class Usage(unittest.TestCase):
     def test_rejects_unknown_commands(self):
