@@ -209,6 +209,7 @@ def mkdir_public(path, stop_at):
 
 
 def secure_directory(root, relative, create=False, *, sync=True):
+    expected_uid = 0 if (root == Path("/") and not create) else os.geteuid()
     current = root
     for part in Path(relative).parts:
         if part in ("/", ".."):
@@ -225,7 +226,7 @@ def secure_directory(root, relative, create=False, *, sync=True):
             if create:
                 raise
             break
-        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != expected_uid or info.st_mode & 0o022:
             raise ValueError(f"unsafe system directory: {current}")
 
 
@@ -505,7 +506,8 @@ def main():
             raise ValueError("live recovery requires root approval")
         check_console()
     root_info = root.stat()
-    if root_info.st_uid != os.geteuid() or root_info.st_mode & 0o022:
+    expected_root_uid = 0 if (root == Path("/") and args.action == "preview") else os.geteuid()
+    if root_info.st_uid != expected_root_uid or root_info.st_mode & 0o022:
         raise ValueError("test root must be owned by you and privately writable")
     system = Installation(root)
     if args.action == "preview":
