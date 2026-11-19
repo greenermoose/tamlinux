@@ -44,6 +44,17 @@ STATE
   and verified the installed files and desktop startup. W13 adds two
   checks in Develop. Preflight now requires a real default cursor theme,
   and the widget proof reads the actual Make version-notes output.
+  0.6.32 fixes the remaining clean-pilot regressions in Develop: forces
+  022 umask and 0755 directories in transaction.py, declares build and
+  runtime Arch prerequisites in desktop/source-install/arch-packages
+  (including adwaita-cursors, foot, and xdg-terminal-exec), fails closed
+  when CHANGELOG.md lacks a matching version section, adds make verify
+  as the regular user before desktop launch, and wires live bundle and
+  source upgrades into install_plan() with privilege-separated user
+  settings handoff in session_settings.py. The clean Arch pilot installed
+  0.6.32 from a fresh rootstock baseline and passed make verify, console
+  checks, default pointer, 0.6.32 version notes in the bar, Meta+Enter
+  launching Foot, and Chromium.
 
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
@@ -56,19 +67,24 @@ NEXT
   Every stage move below happens only on Fred's word: Test, Run and
   Release are his, and a version number is not an instruction.
 
-  1. Prove the two fixes in a separately approved clean candidate.
-     Check the pointer and click the version label. Confirm desktop exit.
-  2. Document dependency friction and graphical application checks
-     for the first pilot. Evaluate removals in 0.6.x and after tam-pane
-     (docs/plans/source-install.md).
+  1. Prepare 0.6.33 on Fred's word:
+     - Replace per-file fsync/sync_dir in desktop/source-install/transaction.py
+       with syncfs per phase plus clear progress output (0.6.32 took ~15 min
+       on spinning disk due to ~13,000 individual flushes).
+     - Add chromium to desktop/source-install/arch-packages and verify
+       default browser availability in preflight/verify.
+     - Update components.lock to pin tam 0.64.1 (corpus 0.100.2).
+  2. Prove the clean Arch pilot on 0.6.33, then prove the data-preserving
+     in-place 0.6.28 bundle-to-source upgrade and rollback on the upgrade
+     pilot before upgrading the daily workstation (0.6.30 bundle).
   3. After 0.6.28 is accepted, update its plan status. Continue the
      separate Nix and Home Manager retirement work host by host.
 
 
 WAITING FOR FRED
 
-  - Approval of the next clean candidate and visual acceptance of both
-    desktop fixes.
+  - Approval to prepare and test Tamlinux 0.6.33 on the clean Arch pilot.
+  - Approval to run the data-preserving bundle-to-source upgrade pilot.
   - His verdict on 0.6.28 at Test for the separate fleet recovery anchor.
 
 
