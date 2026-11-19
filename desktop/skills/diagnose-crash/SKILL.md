@@ -14,6 +14,9 @@ description: >
 Work from evidence. The goal is an honest account of what happened, not a
 plausible-sounding story.
 
+Start at the user’s request. Identify the selected installation and the
+crashing executable before attributing the crash to a package or component.
+
 ## Establish the facts
 
 `coredumpctl info <pid>` is the starting point. Beyond the backtrace, note the
@@ -61,7 +64,7 @@ trap 'rm -f "$core"' EXIT
 coredumpctl dump <pid> --output="$core"
 DEBUGINFOD_URLS="https://debuginfod.archlinux.org" \
   gdb -q <executable> "$core" \
-  -batch -iex 'set debuginfod enabled on' -ex 'bt'
+  -batch -iex 'set debuginfod enabled on' -ex 'thread apply all bt'
 ```
 
 Use `-iex`, not `-ex`, for the debuginfod setting. In batch mode gdb asks
