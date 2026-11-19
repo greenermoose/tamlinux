@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.33]
+
+Changes since Tamlinux 0.6.32:
+- Speed up source installation and rollback in `desktop/source-install/transaction.py`: replace per-file `fsync()`/`sync_dir()` with one `syncfs()` barrier per phase, use Btrfs CoW `FICLONE` reflinks when available, remove redundant per-file hashing during runtime activation, and print clear phase progress (`Retaining stage...`, `Placing files...`, `Activating runtime...`).
+- Parallelize component builds in `desktop/source-install/build.py` across all available CPU cores (`os.cpu_count()`).
+- Add `chromium` to `desktop/source-install/arch-packages` and verify `/usr/bin/chromium` availability in `make preflight` and `make verify`.
+- Update `tam` to 0.64.1 (corpus 0.100.2), embedding `tam-start` via `tam:start` with keypress pause before resuming the pager.
+
 ## [0.6.32]
 
 Changes since Tamlinux 0.6.31:

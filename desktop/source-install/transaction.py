@@ -2,6 +2,8 @@
 """Install a verified source stage and retain the exact previous payload."""
 import argparse
 from contextlib import contextmanager
+import ctypes
+import errno
 import fcntl
 import hashlib
 import json
@@ -14,6 +16,9 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+
+_FICLONE = 0x40049409
+_SYNCFS = None
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -85,6 +90,41 @@ def verified_stage(stage, digest):
     return receipt
 
 
+def progress(message):
+    print(message, flush=True)
+
+
+def _load_syncfs():
+    global _SYNCFS
+    if _SYNCFS is None:
+        try:
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
+            func = libc.syncfs
+            func.argtypes = [ctypes.c_int]
+            func.restype = ctypes.c_int
+            _SYNCFS = func
+        except (OSError, AttributeError):
+            _SYNCFS = False
+    return _SYNCFS or None
+
+
+def sync_fs(path):
+    syncfs = _load_syncfs()
+    if syncfs is None:
+        os.sync()
+        return
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        if syncfs(fd) != 0:
+            err = ctypes.get_errno()
+            if err == errno.ENOSYS:
+                os.sync()
+                return
+            raise OSError(err, os.strerror(err), str(path))
+    finally:
+        os.close(fd)
+
+
 def sync_dir(path):
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
     try:
@@ -93,7 +133,31 @@ def sync_dir(path):
         os.close(fd)
 
 
-def write_file(path, mode, writer):
+def _clone_or_copy(src_stream, dst_stream):
+    try:
+        fcntl.ioctl(dst_stream.fileno(), _FICLONE, src_stream.fileno())
+        return
+    except OSError:
+        pass
+    shutil.copyfileobj(src_stream, dst_stream)
+
+
+def write_file(path, mode, writer, *, sync=True, direct=False):
+    if direct:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                writer(stream)
+                os.fchmod(stream.fileno(), mode)
+                stream.flush()
+                if sync:
+                    os.fsync(stream.fileno())
+        except BaseException:
+            path.unlink(missing_ok=True)
+            raise
+        if sync:
+            sync_dir(path.parent)
+        return
     fd, name = tempfile.mkstemp(prefix=".tamlinux-", dir=path.parent)
     temporary = Path(name)
     try:
@@ -101,9 +165,11 @@ def write_file(path, mode, writer):
             writer(stream)
             os.fchmod(stream.fileno(), mode)
             stream.flush()
-            os.fsync(stream.fileno())
+            if sync:
+                os.fsync(stream.fileno())
         temporary.replace(path)
-        sync_dir(path.parent)
+        if sync:
+            sync_dir(path.parent)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -121,9 +187,15 @@ def read_json(path):
         return None
 
 
-def copy_file(origin, target, mode):
+def copy_file(origin, target, mode, *, sync=True, direct=False):
     with origin.open("rb") as incoming:
-        write_file(target, mode, lambda stream: shutil.copyfileobj(incoming, stream))
+        write_file(
+            target,
+            mode,
+            lambda stream: _clone_or_copy(incoming, stream),
+            sync=sync,
+            direct=direct,
+        )
 
 
 def mkdir_public(path, stop_at):
@@ -137,7 +209,7 @@ def mkdir_public(path, stop_at):
         os.chmod(directory, 0o755)
 
 
-def secure_directory(root, relative, create=False):
+def secure_directory(root, relative, create=False, *, sync=True):
     current = root
     for part in Path(relative).parts:
         if part in ("/", ".."):
@@ -146,7 +218,8 @@ def secure_directory(root, relative, create=False):
         if create and not current.exists() and not current.is_symlink():
             current.mkdir(mode=0o755)
             os.chmod(current, 0o755)
-            sync_dir(current.parent)
+            if sync:
+                sync_dir(current.parent)
         try:
             info = current.lstat()
         except FileNotFoundError:
@@ -220,22 +293,27 @@ class Installation:
         secure_directory(self.root, versions.relative_to(self.root), create=True)
         generation = versions / identity
         if not generation.exists():
+            runtime_files = {
+                name.removeprefix(PAYLOAD_CURRENT + "/"): value[0]
+                for name, value in self.manifest(identity)["files"].items()
+                if name.startswith(PAYLOAD_CURRENT + "/")
+            }
+            progress(f"Activating runtime ({len(runtime_files)} files)...")
             with tempfile.TemporaryDirectory(prefix=".incoming-", dir=versions) as tmp:
                 tmp_path = Path(tmp)
                 tree = tmp_path / "tree"
                 mkdir_public(tree, tmp_path)
-                for path in sorted(source.rglob("*")):
-                    if path.is_dir():
-                        continue
-                    target = tree / path.relative_to(source)
+                for relative, mode in sorted(runtime_files.items()):
+                    target = tree / relative
                     mkdir_public(target.parent, tmp_path)
-                    copy_file(path, target, fingerprint(path)[0])
+                    copy_file(source / relative, target, mode, sync=False, direct=True)
                 self.verify_runtime(identity, tree)
-                for directory, _, _ in os.walk(tree, topdown=False):
-                    sync_dir(directory)
+                sync_fs(tree)
                 tree.rename(generation)
                 sync_dir(versions)
-        self.verify_runtime(identity, generation)
+        else:
+            progress("Activating runtime (reusing verified generation)...")
+            self.verify_runtime(identity, generation)
         with tempfile.TemporaryDirectory(prefix=".switch-", dir=self.runtime.parent) as tmp:
             link = Path(tmp) / "current"
             link.symlink_to(f"versions/{identity}")
@@ -259,6 +337,7 @@ class Installation:
         receipt = verified_stage(stage, digest)
         saved = self.state / digest
         if not saved.exists():
+            progress(f"Retaining stage ({len(receipt['files'])} files)...")
             with tempfile.TemporaryDirectory(prefix="retaining-", dir=self.state) as tmp:
                 tmp_path = Path(tmp)
                 candidate = tmp_path / digest
@@ -266,18 +345,20 @@ class Installation:
                 for relative, (mode, _) in receipt["files"].items():
                     target = candidate / "payload" / relative
                     mkdir_public(target.parent, tmp_path)
-                    copy_file(source / relative, target, mode)
+                    copy_file(source / relative, target, mode, sync=False, direct=True)
                 if inventory(candidate / "payload") != receipt["files"]:
                     raise ValueError("stage changed during import")
-                copy_file(stage / "manifest.json", candidate / "manifest.json", 0o644)
+                copy_file(stage / "manifest.json", candidate / "manifest.json", 0o644,
+                          sync=False, direct=True)
                 if fingerprint(candidate / "manifest.json")[1] != digest:
                     raise ValueError("stage manifest changed during import")
-                for directory, _, _ in os.walk(candidate, topdown=False):
-                    sync_dir(directory)
+                sync_fs(candidate)
                 candidate.rename(saved)
                 sync_dir(self.state)
-        if verified_stage(saved, digest) != receipt:
-            raise ValueError("retained stage differs from the manifest")
+        else:
+            progress("Retaining stage (reusing verified stage)...")
+            if verified_stage(saved, digest) != receipt:
+                raise ValueError("retained stage differs from the manifest")
 
     def check(self, before, after, resuming=False):
         for relative in sorted(before.keys() | after.keys()):
@@ -394,16 +475,24 @@ class Installation:
         self.check_runtime(self.runtime_id(old), self.runtime_id(new), True)
         before, after = self.placed(before, external), self.placed(after, external)
         self.check(before, after, resuming=True)
+        if new is not None:
+            progress(f"Placing files ({len(after)} files)...")
+        else:
+            progress(f"Removing files ({len(before)} files)...")
+        changed = False
         for relative in sorted(before.keys() | after.keys()):
             target = self.root / relative
             if fingerprint(target) == after.get(relative):
                 continue
             if relative in after:
-                secure_directory(self.root, Path(relative).parent, create=True)
-                copy_file(self.state / new / "payload" / relative, target, after[relative][0])
+                secure_directory(self.root, Path(relative).parent, create=True, sync=False)
+                copy_file(self.state / new / "payload" / relative, target, after[relative][0], sync=False)
             else:
                 target.unlink()
-                sync_dir(target.parent)
+            changed = True
+        if changed:
+            sync_target = self.root / "usr"
+            sync_fs(sync_target if sync_target.is_dir() else self.root)
         self.select_runtime(self.runtime_id(new))
 
     def finish(self, active):

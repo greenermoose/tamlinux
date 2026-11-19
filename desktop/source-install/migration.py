@@ -8,7 +8,7 @@ import tarfile
 import tempfile
 
 from transaction import (PAYLOAD_CURRENT, bootstrap_launchers, copy_file, fingerprint, inventory,
-                         read_json, secure_directory, sync_dir, write_json)
+                         progress, read_json, secure_directory, sync_dir, write_json)
 
 BUNDLE_TOOL = "/usr/bin/tam-bundle"
 SESSION_HELPER = "share/tamlinux/session/session_settings.py"
@@ -200,6 +200,7 @@ class BundleMigration:
                 (status.get("from") == bundle["id"] and status.get("to") == "-"
                  and status["live"] in (bundle["id"], "-"))):
             raise ValueError("unexpected bundle transaction during detach")
+        progress(f"Detaching legacy bundle {bundle['id']}...")
         self.command("detach", bundle["hash"])
         self.system.require_detached_slot()
 
@@ -214,6 +215,7 @@ class BundleMigration:
                   or phase != "staging" and status.get("target-hash") != bundle["hash"]):
                 raise ValueError("unexpected bundle transaction during recovery")
             if phase in ("complete", "staging"):
+                progress(f"Restoring legacy bundle {bundle['id']}...")
                 selected = bundle["documentation"][0]
                 docs = ",".join(name for bit, name in enumerate(DOCS) if selected & (1 << bit))
                 self.command("restore", self.archive(bundle["archive"]), "--expect-bundle",

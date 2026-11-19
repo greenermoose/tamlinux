@@ -1,11 +1,14 @@
 import hashlib
+import io
 import os
 from pathlib import Path
 import stat
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import transaction
 from transaction import Installation, PAYLOAD_CURRENT, inventory, write_json
 
 
@@ -141,6 +144,28 @@ class TransactionTests(unittest.TestCase):
         ):
             mode = stat.S_IMODE(path.stat().st_mode)
             self.assertEqual(mode, 0o755, f"{path} had mode {oct(mode)}")
+
+    def test_bulk_install_uses_syncfs_per_phase_and_emits_progress(self):
+        files = {
+            f"usr/bin/tool-{i}": f"tool-{i}" for i in range(20)
+        } | {
+            f"{PAYLOAD_CURRENT}/share/tamlinux/file-{i}": f"data-{i}" for i in range(20)
+        }
+        output = io.StringIO()
+        with patch("transaction.sync_fs", wraps=transaction.sync_fs) as mock_syncfs, \
+                patch("transaction.os.fsync", wraps=os.fsync) as mock_fsync, \
+                redirect_stdout(output):
+            with self.system.locked():
+                first = self.retain("bulk", files)
+                self.system.start(None, first)
+        # Bulk phases call sync_fs once per phase (retain, switch_files, select_runtime)
+        # so os.fsync stays O(1) (journal + top-level dirs only) instead of scaling with 40 files.
+        self.assertGreaterEqual(mock_syncfs.call_count, 3)
+        self.assertLess(mock_fsync.call_count, 25)
+        text = output.getvalue()
+        self.assertIn("Retaining stage (40 files)...", text)
+        self.assertIn("Placing files (20 files)...", text)
+        self.assertIn("Activating runtime (20 files)...", text)
 
 
 if __name__ == "__main__":

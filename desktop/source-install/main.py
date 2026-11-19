@@ -71,7 +71,7 @@ try:
         problems = verify_root(root)
         if problems:
             raise ValueError("post-install verification failed:\n  " + "\n  ".join(problems))
-        print("Tamlinux source verification passed (permissions, cursor, version notes, terminal, prerequisites).")
+        print("Tamlinux source verification passed (permissions, cursor, version notes, terminal, browser, prerequisites).")
     elif args.action == "delivery":
         _, _, receipt = selected_stage(args.work.resolve(), args.repos.resolve())
         print(json.dumps({"format": 1, "backend": "source-install", "rootstock": "arch-systemd",

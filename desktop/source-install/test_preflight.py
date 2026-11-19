@@ -236,6 +236,8 @@ class BuildPreflightTests(unittest.TestCase):
         self.assertIn("adwaita-cursors", declared)
         self.assertIn("foot", declared)
         self.assertIn("xdg-terminal-exec", declared)
+        self.assertIn("chromium", declared)
+        self.assertIn("chromium", preflight.RUNTIME_COMMANDS)
 
     def test_render_version_notes_fails_closed_when_section_missing(self):
         import build

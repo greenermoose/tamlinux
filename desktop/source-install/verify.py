@@ -77,6 +77,13 @@ def terminal_problems(root):
     return []
 
 
+def browser_problems(root):
+    path = root / "usr/bin/chromium"
+    if not (path.is_file() and os.access(path, os.X_OK)):
+        return [f"default browser command not executable: /{path.relative_to(root)}"]
+    return []
+
+
 def permission_problems(system):
     problems = []
     if system.pending.exists():
@@ -132,6 +139,7 @@ def verify_root(root, check_runtime=True):
     problems.extend(cursor_problems(root))
     problems.extend(notes_problems(root))
     problems.extend(terminal_problems(root))
+    problems.extend(browser_problems(root))
     if check_runtime:
         problems.extend(runtime_problems(root))
     problems.extend(migrated_session_problems(system))
@@ -149,7 +157,7 @@ def main(argv=None):
     problems = verify_root(root, check_runtime=not args.skip_runtime)
     if problems:
         raise ValueError("post-install verification failed:\n  " + "\n  ".join(problems))
-    print("Tamlinux source verification passed (permissions, cursor, version notes, terminal, prerequisites).")
+    print("Tamlinux source verification passed (permissions, cursor, version notes, terminal, browser, prerequisites).")
 
 
 if __name__ == "__main__":

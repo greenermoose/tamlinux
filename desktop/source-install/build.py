@@ -86,8 +86,10 @@ def build(repos, work):
             "PKG_CONFIG_PATH": str(library / "lib/pkgconfig"),
         }
 
+        jobs = f"-j{os.cpu_count() or 2}"
+
         def make(component, *args):
-            subprocess.run(["/usr/bin/make", "-C", build_root / component, "-j2", *args],
+            subprocess.run(["/usr/bin/make", "-C", build_root / component, jobs, *args],
                            env=env, check=True)
 
         for component, revision in pins.items():

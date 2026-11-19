@@ -34,8 +34,9 @@ hyprland>=0.56
 quickshell>=0.3
 uwsm
 
-# Desktop defaults (pointer, fonts, terminal)
+# Desktop defaults (pointer, fonts, terminal, browser)
 adwaita-cursors
 ttf-jetbrains-mono-nerd
 foot
 xdg-terminal-exec
+chromium

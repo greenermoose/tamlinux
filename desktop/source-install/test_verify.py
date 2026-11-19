@@ -35,12 +35,13 @@ class VerifyTests(unittest.TestCase):
         with self.system.locked():
             self.system.retain(stage, digest)
             self.system.start(None, digest)
-        # Seed cursor theme and terminal executables
+        # Seed cursor theme, terminal, and browser executables
         for rel, content, mode in (
             ("usr/share/icons/default/index.theme", "[Icon Theme]\nInherits=Adwaita\n", 0o644),
             ("usr/share/icons/Adwaita/cursors/left_ptr", "cursor", 0o644),
             ("usr/bin/foot", "#!/bin/sh\n", 0o755),
             ("usr/bin/xdg-terminal-exec", "#!/bin/sh\n", 0o755),
+            ("usr/bin/chromium", "#!/bin/sh\n", 0o755),
         ):
             p = self.root / rel
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -65,6 +66,11 @@ class VerifyTests(unittest.TestCase):
         (self.root / "usr/bin/foot").unlink()
         problems = verify_root(self.root, check_runtime=False)
         self.assertTrue(any("foot" in p for p in problems), problems)
+
+    def test_verify_catches_missing_browser(self):
+        (self.root / "usr/bin/chromium").unlink()
+        problems = verify_root(self.root, check_runtime=False)
+        self.assertTrue(any("chromium" in p for p in problems), problems)
 
     def test_verify_catches_unreadable_installed_file(self):
         tam = self.root / "usr/bin/tam"
