@@ -222,6 +222,9 @@ class NativeCLI(unittest.TestCase):
                         break
                     data += part
             result, status = os.waitpid(pid, os.WNOHANG)
+            while result == 0 and time.monotonic() < deadline:
+                time.sleep(0.01)
+                result, status = os.waitpid(pid, os.WNOHANG)
             self.assertEqual(result, pid, data)
             self.assertEqual(os.waitstatus_to_exitcode(status), 1)
             self.assertIn(b'"ok":false', data)
