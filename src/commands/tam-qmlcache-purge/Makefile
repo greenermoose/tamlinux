@@ -7,4 +7,4 @@ check:
 
 install:
 	install -Dm755 tam-qmlcache-purge $(DESTDIR)$(PREFIX)/bin/tam-qmlcache-purge
-	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-qmlcache-purge/LICENSE
+	install -Dm644 ../../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-qmlcache-purge/LICENSE

@@ -7,4 +7,4 @@ check:
 
 install:
 	install -Dm755 tam-restart-shell $(DESTDIR)$(PREFIX)/bin/tam-restart-shell
-	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-restart-shell/LICENSE
+	install -Dm644 ../../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-restart-shell/LICENSE

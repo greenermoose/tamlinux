@@ -41,7 +41,8 @@ class Gtk4Adapter(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.dict(os.environ, env, clear=True))
         for name, value in (('HOME', self.home), ('CONFIG', self.config), ('STATE', self.state),
-                            ('CURRENT', self.current), ('CACHE', self.root / 'cache/tamlinux'),
+                            ('CURRENT', self.current), ('BACKGROUND_SELECTION', self.current / 'background.selection'),
+                            ('CACHE', self.root / 'cache/tamlinux'),
                             ('ASSETS', ROOT / 'desktop/assets')):
             self.stack.enter_context(patch.object(engine, name, value))
         self.stack.enter_context(patch.object(engine, 'gtk4_media_supported', return_value=True))

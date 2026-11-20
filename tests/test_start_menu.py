@@ -89,10 +89,10 @@ class NativeTests(unittest.TestCase):
     def test_start_layout_navigation_appearance_and_bar_input(self):
         with tempfile.TemporaryDirectory(prefix='start-menu-') as directory:
             root = Path(directory)
-            archive = subprocess.check_output(['git','archive','HEAD','desktop/shell'],cwd=DESKTOP.parents[1])
+            archive = subprocess.check_output(['git','archive','HEAD','src/desktop/shell'],cwd=DESKTOP.parents[1])
             with tarfile.open(fileobj=io.BytesIO(archive)) as tree:
                 tree.extractall(root,filter='data')
-            shell=root/'desktop/shell'
+            shell=root/'src/desktop/shell'
             shutil.copytree(MENU,shell/'services/menu',dirs_exist_ok=True)
             for name in ['BarApi.qml','BarWindow.qml','BarLayout.qml','Compositor.qml','HyprlandAdapter.qml']:
                 shutil.copy2(DESKTOP/'shell/host'/name,shell/'host'/name)

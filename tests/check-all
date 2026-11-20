@@ -20,6 +20,8 @@ real screens.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -27,6 +29,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 
@@ -80,7 +83,7 @@ def run_unit(unit, env, limit=UNIT_LIMIT_SECONDS):
     try:
         done = subprocess.run(argv, cwd=directory, env=env, stdin=subprocess.DEVNULL,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                              text=True, errors="replace", timeout=limit)
+                              start_new_session=True, text=True, errors="replace", timeout=limit)
         code, output = done.returncode, done.stdout
     except subprocess.TimeoutExpired as expired:
         partial = expired.stdout or ""
@@ -161,11 +164,111 @@ def summarize(report, stream=sys.stdout):
     print("PASSED" if report["passed"] else "NOT PASSED", file=stream)
 
 
+def usable_libtam_prefix(prefix):
+    root = Path(prefix)
+    return (root / "include/tam.h").is_file() and (root / "lib/pkgconfig/libtam-display.pc").is_file()
+
+
+def prepare_libtam(repo, clone, parent, env):
+    """Ensure C command checks have usable libtam headers and pkg-config metadata."""
+    if env.get("LIBTAM_PREFIX") and usable_libtam_prefix(env["LIBTAM_PREFIX"]):
+        return Path(env["LIBTAM_PREFIX"])
+    probe = subprocess.run(["pkg-config", "--variable=prefix", "libtam-display"],
+                           env=env, capture_output=True, text=True)
+    if probe.returncode == 0 and probe.stdout.strip() and usable_libtam_prefix(probe.stdout.strip()):
+        return None
+    lock = clone / "components.lock"
+    if not lock.is_file():
+        return None
+    revision = None
+    for line in lock.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[0] == "libtam":
+            revision = parts[1]
+            break
+    if not revision:
+        return None
+    arch = os.uname().machine
+    cache_key = hashlib.sha256("\0".join(("v2", "libtam", revision, arch)).encode()).hexdigest()[:16]
+    cached = repo / "scratch/source-install/cache/libtam" / cache_key
+    if usable_libtam_prefix(cached):
+        return cached
+    libtam_repo = repo.parent / "libtam"
+    if not (libtam_repo / ".git").exists():
+        return None
+    src = Path(parent) / "libtam-src"
+    prefix = Path(parent) / "libtam"
+    src.mkdir()
+    with tempfile.TemporaryFile() as archive:
+        subprocess.run(["git", "-C", str(libtam_repo), "archive", revision],
+                       stdout=archive, check=True)
+        archive.seek(0)
+        with tarfile.open(fileobj=archive) as tree:
+            tree.extractall(src, filter="data")
+    jobs = f"-j{os.cpu_count() or 2}"
+    subprocess.run(["make", "-C", str(src), jobs, "install", "install-display", "install-session",
+                    f"PREFIX={prefix}"], env=env, stdout=subprocess.DEVNULL, check=True)
+    return prefix if usable_libtam_prefix(prefix) else None
+
+
+PRIORITY_UNITS = {
+    ("desktop", "test_journal"): 0,
+    ("desktop", "test_theme_ownership"): 1,
+    ("command", "tam-theme-set"): 2,
+    ("command", "tam-shell"): 3,
+    ("check", "check-theme"): 4,
+    ("check", "check-panels"): 5,
+}
+
+
+def run_units(units, env, jobs):
+    """Run units in parallel, ordering command tam-launch-journal after desktop test_journal."""
+    total = len(units)
+    results = [None] * total
+    if jobs <= 1 or total <= 1:
+        for idx, unit in enumerate(units):
+            result = run_unit(unit, env)
+            results[idx] = result
+            if result["result"] != 0:
+                print(f"[{idx + 1}/{total}] FAILED {unit[0]} {unit[1]}", flush=True)
+        return results
+
+    has_journal_desktop = any(u[0] == "desktop" and u[1] == "test_journal" for u in units)
+    deferred = []
+    ready = []
+    for idx, unit in enumerate(units):
+        if has_journal_desktop and unit[0] == "command" and unit[1] == "tam-launch-journal":
+            deferred.append((idx, unit))
+        else:
+            ready.append((idx, unit))
+    ready.sort(key=lambda item: (PRIORITY_UNITS.get((item[1][0], item[1][1]), 100), item[0]))
+
+    workers = max(1, min(jobs, total))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        pending = {pool.submit(run_unit, unit, env): (idx, unit) for idx, unit in ready}
+        while pending:
+            done_set, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done_set:
+                idx, unit = pending.pop(future)
+                result = future.result()
+                results[idx] = result
+                if result["result"] != 0:
+                    print(f"[{idx + 1}/{total}] FAILED {unit[0]} {unit[1]}", flush=True)
+                if unit[0] == "desktop" and unit[1] == "test_journal" and deferred:
+                    for d_idx, d_unit in deferred:
+                        pending[pool.submit(run_unit, d_unit, env)] = (d_idx, d_unit)
+                    deferred.clear()
+    return results
+
+
 def main(argv=None):
+    os.umask(0o022)
     parser = argparse.ArgumentParser(description="Run the whole tamlinux test suite from a clean clone.")
     parser.add_argument("--rev", default="HEAD", help="revision to test (default: HEAD)")
     parser.add_argument("--proofs", action="store_true", help="also enable the opt-in proofs")
     parser.add_argument("--report", type=Path, help="write the results to this JSON file")
+    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count() or 1,
+                        help="parallel worker count (default: CPU count)")
     args = parser.parse_args(argv)
     repo = Path(__file__).resolve().parents[1]
     started, epoch = time.monotonic(), time.time()
@@ -177,13 +280,18 @@ def main(argv=None):
             return 2
         env = clean_environment(os.environ, args.proofs)
         env.pop("PWD", None)
+        env["TAM_CHECK_ALL"] = "1"
+        try:
+            libtam = prepare_libtam(repo, clone, parent, env)
+        except (OSError, subprocess.CalledProcessError) as error:
+            print(f"check-all: cannot prepare libtam: {error}", file=sys.stderr)
+            return 2
+        if libtam is not None:
+            env["LIBTAM_PREFIX"] = str(libtam)
+            existing = env.get("PKG_CONFIG_PATH", "")
+            env["PKG_CONFIG_PATH"] = f"{libtam / 'lib/pkgconfig'}:{existing}" if existing else str(libtam / "lib/pkgconfig")
         units = discover_units(clone)
-        results = []
-        for number, unit in enumerate(units, 1):
-            result = run_unit(unit, env)
-            results.append(result)
-            if result["result"] != 0:
-                print(f"[{number}/{len(units)}] FAILED {unit[0]} {unit[1]}", flush=True)
+        results = run_units(units, env, max(1, args.jobs))
     ours, elsewhere = core_dumps_since(epoch, own_cgroup())
     report = {"revision": revision, "proofs": args.proofs, "units": results,
               "seconds": time.monotonic() - started, "coreDumps": ours,

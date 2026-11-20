@@ -68,7 +68,7 @@ class NewPlugin(unittest.TestCase):
                        capture_output=True)
 
     def test_generated_widget_renders_offscreen(self):
-        proof = PRODUCT / 'desktop/widget-proof'
+        proof = PRODUCT.parent / 'tests/widget-proof'
         probe = subprocess.run([str(proof), '--help'], capture_output=True, text=True)
         self.assertEqual(probe.returncode, 0, probe.stderr)
         result = self.run_cli('new', 'fred.example', '--description', 'Example label')

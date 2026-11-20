@@ -101,7 +101,7 @@ class QmlSourceTests(unittest.TestCase):
             root = Path(directory)
             # Freeze unrelated shell dependencies at the committed revision;
             # only the owned menu candidate is overlaid into this isolated proof.
-            archive = subprocess.check_output(["git", "archive", "HEAD", "desktop/shell"], cwd=DESKTOP.parents[1])
+            archive = subprocess.check_output(["git", "archive", "HEAD", "src/desktop/shell"], cwd=DESKTOP.parents[1])
             with tarfile.open(fileobj=io.BytesIO(archive)) as tree:
                 tree.extractall(root, filter="data")
             shell = root / "src/desktop/shell"

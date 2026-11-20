@@ -10,8 +10,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE = ROOT/'desktop/theme/engine.py'
-ADAPTER = ROOT/'commands/tam-theme-set-gnome/tam-theme-set-gnome'
+ENGINE = ROOT/'src/desktop/theme/engine.py'
+ADAPTER = ROOT/'src/commands/tam-theme-set-gnome/tam-theme-set-gnome'
 
 
 def worker():

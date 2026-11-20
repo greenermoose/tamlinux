@@ -7,4 +7,4 @@ check:
 
 install:
 	install -Dm755 tam-theme-payload $(DESTDIR)$(PREFIX)/bin/tam-theme-payload
-	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-theme-payload/LICENSE
+	install -Dm644 ../../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-theme-payload/LICENSE

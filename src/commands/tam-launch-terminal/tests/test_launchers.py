@@ -88,7 +88,8 @@ else:
 
     def run_command(self, name, *args, **env):
         return subprocess.run([str(self.prefix / 'bin' / name), *args], cwd=self.home,
-                              env=self.env | env, text=True, capture_output=True, timeout=10)
+                              env=self.env | env, stdin=subprocess.DEVNULL,
+                              start_new_session=True, text=True, capture_output=True, timeout=10)
 
     def calls(self, name):
         if not self.log.exists():

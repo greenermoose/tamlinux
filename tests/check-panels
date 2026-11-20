@@ -28,7 +28,12 @@ fi
 qs=${quickshell%/*}/qs
 [[ -x $qs ]] || qs=$(command -v qs || true)
 # Wayland socket paths are limited to 108 bytes, so keep the runtime short.
-runtime=$(mktemp -d "/run/user/$(id -u)/tqp.XXXX")
+runtime_base="/run/user/$(id -u)"
+if [[ -d "$runtime_base" && -w "$runtime_base" ]]; then
+  runtime=$(mktemp -d "$runtime_base/tqp.XXXX")
+else
+  runtime=$(mktemp -d "/tmp/tqp.XXXX")
+fi
 trap 'kill "${sway_pid:-}" 2>/dev/null; rm -rf "$work" "$runtime"' EXIT
 
 cp -r "$desktop/shell" "$work/shell"

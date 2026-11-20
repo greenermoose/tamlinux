@@ -23,7 +23,7 @@ ASSETS = ROOT / 'src/desktop/assets'
 
 class ThemeHealth(unittest.TestCase):
     def test_ipc_health_rejects_the_shadowed_qml_palette(self):
-        valid = runpy.run_path(str(ROOT / 'src/desktop/check-live'))['valid_theme_state']
+        valid = runpy.run_path(str(ROOT / 'tests/check-live'))['valid_theme_state']
         palette = {'foreground': '#a9b1d6', 'background': '#1a1b26',
                    'accent': '#7aa2f7', 'muted': '#414868'}
         self.assertTrue(valid(json.dumps(palette)))
@@ -45,7 +45,7 @@ class ThemeOwnership(unittest.TestCase):
                         TAMLINUX_THEME_OFFLINE='1', DBUS_SESSION_BUS_ADDRESS='', GSETTINGS_BACKEND='',
                         PATH=str(self.bin)+':'+os.environ['PATH'])
         for name in ('tam-theme-set-templates', 'tam-theme-color', 'tam-theme-colors-from-alacritty'):
-            (self.bin / name).symlink_to(ROOT/'commands'/name/name)
+            (self.bin / name).symlink_to(ROOT/'src/commands'/name/name)
         self.stub('tam-shell', 'exit 0')
         self.stub('tam-launch-about', 'exit 0')
         self.stub('tam-launch-editor', 'exit 0')
@@ -74,7 +74,7 @@ class ThemeOwnership(unittest.TestCase):
                 self.assertEqual((self.current/'theme.name').read_text().strip(),theme.name)
                 self.assertTrue((self.current/'theme').is_dir())
                 self.assertFalse((self.current/'theme').is_symlink())
-                self.assertIn('"palette"', subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')],env=self.env,text=True))
+                self.assertIn('"palette"', subprocess.check_output([str(ROOT/'src/commands/tam-theme-payload/tam-theme-payload')],env=self.env,text=True))
                 self.assertNotIn('{{',(self.current/'theme/shell.toml').read_text())
         self.call('set','Tokyo Night')
         self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
@@ -82,7 +82,7 @@ class ThemeOwnership(unittest.TestCase):
     def test_tamarack_variants_generate_and_switch_from_shared_tokens(self):
         for name, background, surface in (('tamarack-dark', '#0f1410', '#18201a'), ('tamarack-light', '#dfd8c7', '#d2c9b6'), ('tamarack-dark', '#0f1410', '#18201a')):
             self.call('set', name)
-            output = subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True)
+            output = subprocess.check_output([str(ROOT/'src/commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True)
             payload = json.loads(output)
             palette = payload['palette']
             self.assertEqual(payload['style']['fontFamily'], 'Atkinson Hyperlegible')
@@ -111,7 +111,7 @@ class ThemeOwnership(unittest.TestCase):
         for variant in ('tamarack-dark', 'tamarack-light'):
             self.call('set', variant)
             theme = self.current/'theme'
-            payload = json.loads(subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
+            payload = json.loads(subprocess.check_output([str(ROOT/'src/commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
             surfaces = payload['surfaces']
             gtk4 = (theme/'gtk4.css').read_text()
             gtk3 = (theme/'gtk3.css').read_text()
@@ -663,7 +663,7 @@ else:
         self.assertEqual(self.call('current').stdout,'Tokyo Night\n')
 
     def test_font_package_install_refuses_inherited_or_failed_resolution(self):
-        command=ROOT/'commands/tam-pkg-add/tam-pkg-add'
+        command=ROOT/'src/commands/tam-pkg-add/tam-pkg-add'
         for output in ('omarchy some-font', 'extra omarchy-settings', 'extra linux-omarchy'):
             self.stub('pacman', 'if [[ $1 == -Q ]]; then exit 1; fi; printf "%s\\n" '+__import__('shlex').quote(output))
             self.stub('pkexec', 'touch "'+str(self.base/'privileged')+'"; exit 99')
@@ -676,7 +676,7 @@ else:
         self.assertFalse((self.base/'privileged').exists())
 
     def test_asset_default_menu_has_owned_names_and_fonts(self):
-        menu=(ROOT/'desktop/menu/default.jsonc').read_text()
+        menu=(ROOT/'src/desktop/menu/default.jsonc').read_text()
         self.assertIn('"iconFont":"Tamlinux Icons"',menu)
         for name in ('theme-install','theme-bg-install','branding-about','launch-about'):
             self.assertNotIn('omarchy-'+name,menu)
@@ -715,7 +715,7 @@ else:
         (self.state / 'tamlinux/shell.toml').write_text('[font]\nbase-size = 15\n')
         self.call('initialize', '--sync')
         self.assertTrue((self.current / 'theme/colors.toml').is_file())
-        payload = json.loads(subprocess.check_output([str(ROOT/'commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
+        payload = json.loads(subprocess.check_output([str(ROOT/'src/commands/tam-theme-payload/tam-theme-payload')], env=self.env, text=True))
         self.assertEqual(payload['style']['fontBaseSize'], 15)
         self.assertEqual((self.current / 'background').resolve().name, gruvbox_bg.name)
         self.assertEqual(json.loads((self.current / 'background.selection').read_text()), selection)

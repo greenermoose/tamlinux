@@ -18,6 +18,6 @@ check: all
 	./build/tam-launch-journal invalid; test $$? -eq 2
 install: all
 	install -Dm755 build/tam-launch-journal $(DESTDIR)$(PREFIX)/bin/tam-launch-journal
-	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-launch-journal/LICENSE
+	install -Dm644 ../../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-launch-journal/LICENSE
 clean:
 	rm -f build/tam-launch-journal

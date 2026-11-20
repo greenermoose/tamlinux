@@ -24,7 +24,7 @@ class ConsoleWelcomeTest(unittest.TestCase):
         self.assertIn("Welcome to Tamlinux!", generic)
         self.assertIn("Welcome to Tamlinux 0.6.19!", welcome.render(version="0.6.19"))
         self.assertTrue(selected.isascii())
-        self.assertIn("type hi for help or tam-desktop", selected)
+        self.assertIn("After login, type hi then press Return (or Enter).", selected)
         with self.assertRaises(ValueError):
             welcome.render("Blue Sparkler", None)
 

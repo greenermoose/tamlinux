@@ -97,10 +97,10 @@ if "$CLI" verify fred.demo >/dev/null 2>&1; then fail "verify missed a behaviour
 "$CLI" diff fred.demo | grep -q "changed" || fail "diff did not show the source change"
 echo "verify passed"
 
-echo "=== test and run moved to tam-deploy ==="
+echo "=== test and run handled at cultivar release level ==="
 for moved in test run; do
   if out="$("$CLI" "$moved" fred.demo 2>&1)"; then fail "$moved still runs"; fi
-  grep -q "tam-deploy" <<<"$out" || fail "$moved does not point to tam-deploy"
+  grep -q "Tamlinux release level" <<<"$out" || fail "$moved does not point to Tamlinux release level"
 done
 echo "moved commands passed"
 

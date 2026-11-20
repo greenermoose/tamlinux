@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Check real QML theme bindings and reloads with no desktop windows."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 
-DESKTOP = Path(__file__).resolve().parent
+TESTS = Path(__file__).resolve().parent
+DESKTOP = TESTS.parent / "src/desktop"
 
 ADAPTER = '''#!/usr/bin/env python3
 import json, os, sys, time
@@ -48,7 +50,7 @@ def check(fixture, marker, mode="success", scale="1", quickshell=None):
         runtime.mkdir(mode=0o700)
         config = base / "config"
         config.mkdir()
-        source = (DESKTOP / "fixtures" / fixture / "shell.qml").read_text()
+        source = (TESTS / "fixtures" / fixture / "shell.qml").read_text()
         if fixture == "theme-service":
             # Quickshell scans relative imports only inside its config root.
             source = source.replace('"../../shell/services/theme"', '"theme"')
@@ -94,7 +96,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quickshell", help="Quickshell executable paired with the candidate")
     args = parser.parse_args()
+    tasks = []
     for scale in ("1", "1.25"):
-        check("theme", "TAMLINUX_THEME_PROOF", scale=scale, quickshell=args.quickshell)
+        tasks.append(("theme", "TAMLINUX_THEME_PROOF", "success", scale))
         for mode in ("success", "early-output", "failed-output", "malformed", "timeout"):
-            check("theme-service", "TAMLINUX_THEME_SERVICE_PROOF", mode, scale, quickshell=args.quickshell)
+            tasks.append(("theme-service", "TAMLINUX_THEME_SERVICE_PROOF", mode, scale))
+    workers = min(len(tasks), max(1, os.cpu_count() or 1))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(check, fixture, marker, mode, scale, args.quickshell)
+                   for fixture, marker, mode, scale in tasks]
+        for future in futures:
+            future.result()

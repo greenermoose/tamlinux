@@ -78,7 +78,7 @@ check: check-native check-preview check-events
 install: build/tam-monitor
 	install -Dm755 build/tam-monitor $(DESTDIR)$(PREFIX)/bin/tam-monitor
 	install -Dm644 README $(DESTDIR)$(PREFIX)/share/doc/tam-monitor/README
-	install -Dm644 ../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-monitor/LICENSE
+	install -Dm644 ../../../LICENSE $(DESTDIR)$(PREFIX)/share/licenses/tam-monitor/LICENSE
 
 clean:
 	rm -rf build
