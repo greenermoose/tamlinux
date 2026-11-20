@@ -278,16 +278,44 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.assertEqual(self.calls_made(), ["systemctl start dev-zram0.swap"])
         self.assertEqual(self.swaps.read_text().count("/dev/zram0"), 1)
 
+    def install_fast_timeout(self, expected_min, expected_max, actual_seconds="1"):
+        """Wrap real /usr/bin/timeout: verify the hook's budget, then bound test wait."""
+        real_timeout = "/usr/bin/timeout"
+        seen = self.tmp / "timeout-seen"
+        wrapper = self.bin / "timeout"
+        wrapper.write_text(textwrap.dedent(f"""\
+            #!/bin/bash
+            opts=()
+            while [[ $# -gt 0 && $1 == -* ]]; do
+                opts+=("$1")
+                shift
+            done
+            budget="$1"
+            shift
+            printf '%s\\n' "$budget" >> "{seen}"
+            if (( budget < {expected_min} || budget > {expected_max} )); then
+                echo "unexpected timeout budget: $budget" >&2
+                exit 99
+            fi
+            exec "{real_timeout}" "${{opts[@]}}" "{actual_seconds}" "$@"
+        """))
+        wrapper.chmod(0o755)
+        return seen
+
     def test_real_timeout_bounds_generator_restore_and_retains_retry_state(self):
         self.standard_swaps()
         managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
         self.hook("pre", "hibernate", **managed)
+        seen = self.install_fast_timeout(25, 30)
         started = time.monotonic()
         self.hook("post", "hibernate", SYSTEMD_START_HANGS="1", **managed)
-        self.assertGreaterEqual(time.monotonic() - started, 29)
-        self.assertLess(time.monotonic() - started, 40)
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed, 0.9)
+        self.assertLess(elapsed, 10)
+        self.assertTrue(seen.exists() and seen.read_text().strip())
         self.assertTrue(self.state().exists())
         self.assertNotIn("/dev/zram0", self.swaps.read_text())
+        (self.bin / "timeout").unlink()
         self.hook("post", "hibernate", **managed)
         self.assertFalse(self.state().exists())
 
@@ -302,14 +330,17 @@ class HibernateSwapHookTests(unittest.TestCase):
 
     def test_real_timeout_stops_drain_and_keeps_zram_on(self):
         self.standard_swaps()
+        seen = self.install_fast_timeout(55, 60)
         started = time.monotonic()
         self.hook("pre", "hibernate", SWAPOFF_HANGS="1")
         elapsed = time.monotonic() - started
-        self.assertGreaterEqual(elapsed, 59)
-        self.assertLess(elapsed, 75)
+        self.assertGreaterEqual(elapsed, 0.9)
+        self.assertLess(elapsed, 10)
+        self.assertTrue(seen.exists() and seen.read_text().strip())
         self.assertIn("stopped draining /dev/zram0", self.logged())
         self.assertIn("with 7.0 GiB still in it", self.logged())
         self.assertIn("/dev/zram0", self.swaps.read_text())
+        (self.bin / "timeout").unlink()
         self.hook("post", "hibernate")
         self.assertEqual(self.calls_made(), ["swapoff /dev/zram0"])
         self.assertFalse(self.state().exists())

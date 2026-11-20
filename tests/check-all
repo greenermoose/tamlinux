@@ -213,12 +213,72 @@ def prepare_libtam(repo, clone, parent, env):
 
 PRIORITY_UNITS = {
     ("desktop", "test_journal"): 0,
-    ("desktop", "test_theme_ownership"): 1,
-    ("command", "tam-theme-set"): 2,
+    ("command", "tam-monitor"): 1,
+    ("desktop", "test_theme_ownership"): 2,
     ("command", "tam-shell"): 3,
-    ("check", "check-theme"): 4,
-    ("check", "check-panels"): 5,
+    ("command", "tam-theme-set"): 4,
+    ("desktop", "test_panel_models"): 5,
+    ("check", "check-theme"): 6,
+    ("check", "check-panels"): 7,
 }
+
+SHARDED_UNITS = {
+    ("desktop", "test_theme_ownership"): 4,
+}
+
+
+def run_sharded_unittest(unit, env, shards, limit=UNIT_LIMIT_SECONDS):
+    """Run a large unittest file across parallel shard processes as one report unit."""
+    kind, name, directory, _ = unit
+    started = time.monotonic()
+    list_code = (
+        "import sys, unittest; "
+        "sys.path.insert(0, 'tests'); "
+        f"s = unittest.defaultTestLoader.loadTestsFromName({name!r}); "
+        "def walk(x):\n"
+        "  for i in x:\n"
+        "    if isinstance(i, unittest.TestSuite): yield from walk(i)\n"
+        "    else: yield i.id()\n"
+        "print('\\n'.join(walk(s)))"
+    )
+    listed = subprocess.run([sys.executable, "-B", "-c", list_code], cwd=directory, env=env,
+                            stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                            start_new_session=True, timeout=30)
+    if listed.returncode != 0:
+        return run_unit(unit, env, limit=limit)
+    test_ids = [line.strip() for line in listed.stdout.splitlines() if line.strip()]
+    if len(test_ids) < shards:
+        return run_unit(unit, env, limit=limit)
+    buckets = [test_ids[i::shards] for i in range(shards)]
+    shard_env = dict(env)
+    shard_env["PYTHONPATH"] = f"{directory / 'tests'}:{shard_env['PYTHONPATH']}" if shard_env.get("PYTHONPATH") else str(directory / "tests")
+    outputs = []
+    code = 0
+    with ThreadPoolExecutor(max_workers=shards) as pool:
+        futs = [
+            pool.submit(subprocess.run, [sys.executable, "-B", "-m", "unittest", "-v", *bucket],
+                        cwd=directory, env=shard_env, stdin=subprocess.DEVNULL,
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        start_new_session=True, text=True, errors="replace", timeout=limit)
+            for bucket in buckets if bucket
+        ]
+        for fut in futs:
+            try:
+                done = fut.result()
+                outputs.append(done.stdout)
+                if done.returncode != 0 and code == 0:
+                    code = done.returncode
+            except subprocess.TimeoutExpired as expired:
+                partial = expired.stdout or ""
+                if isinstance(partial, bytes):
+                    partial = partial.decode(errors="replace")
+                outputs.append(partial + f"\nstopped after {limit} seconds\n")
+                code = "timeout"
+    combined = "\n".join(outputs)
+    return {"kind": kind, "name": name, "result": code,
+            "seconds": round(time.monotonic() - started, 1),
+            "skips": parse_skips(combined),
+            "tail": combined.splitlines()[-TAIL_LINES:] if code != 0 else []}
 
 
 def run_units(units, env, jobs):
@@ -233,6 +293,12 @@ def run_units(units, env, jobs):
                 print(f"[{idx + 1}/{total}] FAILED {unit[0]} {unit[1]}", flush=True)
         return results
 
+    def dispatch(unit):
+        shards = SHARDED_UNITS.get((unit[0], unit[1]))
+        if shards and jobs >= 4:
+            return run_sharded_unittest(unit, env, min(shards, jobs))
+        return run_unit(unit, env)
+
     has_journal_desktop = any(u[0] == "desktop" and u[1] == "test_journal" for u in units)
     deferred = []
     ready = []
@@ -245,7 +311,7 @@ def run_units(units, env, jobs):
 
     workers = max(1, min(jobs, total))
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        pending = {pool.submit(run_unit, unit, env): (idx, unit) for idx, unit in ready}
+        pending = {pool.submit(dispatch, unit): (idx, unit) for idx, unit in ready}
         while pending:
             done_set, _ = wait(pending, return_when=FIRST_COMPLETED)
             for future in done_set:
@@ -256,7 +322,7 @@ def run_units(units, env, jobs):
                     print(f"[{idx + 1}/{total}] FAILED {unit[0]} {unit[1]}", flush=True)
                 if unit[0] == "desktop" and unit[1] == "test_journal" and deferred:
                     for d_idx, d_unit in deferred:
-                        pending[pool.submit(run_unit, d_unit, env)] = (d_idx, d_unit)
+                        pending[pool.submit(dispatch, d_unit)] = (d_idx, d_unit)
                     deferred.clear()
     return results
 
