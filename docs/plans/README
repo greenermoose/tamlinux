@@ -4,7 +4,7 @@ Tamlinux is an independent Linux workstation environment. The package remains
 tamlinux; its terminal command is tam. A plan describes work and acceptance,
 not an installed component.
 
-Status (2026-11-02): Product develop is KBN WB 0.6.1 (VERSION <../../VERSION>,
+Status (2026-11-02): Product dev is KBN WB 0.6.1 (VERSION <../../VERSION>,
 CULTIVAR <../../CULTIVAR>). Gate A closed with released 0.4.8 (2026-10-22) and
 Blue Sparkler 0.5.12 released on 2026-11-01; Arch/Hyprland remains the current
 host. Candidate assemblies and deployment live in tamlinux-packages

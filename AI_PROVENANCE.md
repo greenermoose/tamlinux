@@ -696,7 +696,7 @@ execution tests. [Session record](work/history/2026-10-16-native-login-c.md).
 Claude Code `2.1.301` (`claude-opus-5-5`) changed Fred Horch's title in
 `ACKNOWLEDGEMENTS.md` to "Tamlinux developer" at his request (`3bc614a`).
 The session is recorded in the `tam` repository:
-[session record](https://github.com/greenermoose/tam/blob/develop/work/history/2026-10-16-tam-corpus-workflow-decisions.md).
+[session record](https://github.com/greenermoose/tam/blob/dev/work/history/2026-10-16-tam-corpus-workflow-decisions.md).
 
 ### 0.4.4e boot handoff preparation — 2026-10-16
 

@@ -1,6 +1,6 @@
 [Unit]
 Description=Tamlinux speaker tuning filter-chain
-Documentation=https://github.com/greenermoose/tamlinux/tree/develop/desktop/audio
+Documentation=https://github.com/greenermoose/tamlinux/tree/dev/desktop/audio
 # WirePlumber does the linking, so starting before it is up risks the output being
 # linked before the speaker device has been discovered.
 After=pipewire.service wireplumber.service

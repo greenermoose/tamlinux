@@ -13,7 +13,7 @@ component ships with current Tamlinux assemblies (0.5.x pins; see
 `tamlinux-packages` deliveries). Milestones beyond the first slice (corpus
 search, content depth, read-only self-inspection, grounded `ask`) remain in
 the component's
-[development plan](https://github.com/greenermoose/tam/blob/develop/docs/plans/development.md).
+[development plan](https://github.com/greenermoose/tam/blob/dev/docs/plans/development.md).
 Gate A / Omarchy removal is complete and does not block this work.
 
 ## Purpose

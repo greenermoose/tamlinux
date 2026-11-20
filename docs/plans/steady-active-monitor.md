@@ -518,7 +518,7 @@ adapter cases, 35 host/metadata cases and the widget render pass. The full deskt
 passes 872 tests (14 skipped) from source `ea21f86`. Full native
 packages link, and the three Aquamarine fake-backend tests pass. Exact native
 archives/recipe hashes and user-package correspondence belong to the
-[delivery integration procedure](https://github.com/greenermoose/tamlinux-packages/blob/develop/docs/display-integration.md).
+[delivery integration procedure](https://github.com/greenermoose/tamlinux-packages/blob/dev/docs/display-integration.md).
 The package integration uses product `ea21f86`, delivery recipe `9a309a9`,
 libtam `67cffd5` and tools `b92c4f5`, without changing frozen candidate pins.
 The shell, plugin and standalone helper packages match the selected source;

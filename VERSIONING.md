@@ -108,8 +108,8 @@ historical records, and 0.4.5 and every later number sort after them.
 
 | Branch | Meaning | Promotion |
 | --- | --- | --- |
-| feature branches | Experiments and work not ready for integration | Merge into develop when ready |
-| `develop` | Work toward the next version; it may be broken | Selected on Fred's Test instruction |
+| feature branches | Experiments and work not ready for integration | Merge into dev when ready |
+| `dev` | Work toward the next version; it may be broken | Selected on Fred's Test instruction |
 | `test` | The exact candidate Fred is testing | Promoted on Fred's Run instruction |
 | `main` | Code Fred runs; the default branch | Tagged only on Fred's Release or Ship instruction |
 
@@ -117,10 +117,10 @@ This model applies to `tamlinux`, `tamlinux-packages`, `tam`, `libtam` and
 `tamlinux-tools`. Promotion is fast-forward only and moves the same selected
 commits, without a merge commit. Fixes found in Test go back through Develop
 and Test; they are not implicit Run acceptance. Keep unfinished work on feature
-branches so the develop candidate can be promoted whole. The one exception
+branches so the dev candidate can be promoted whole. The one exception
 is a fix to a released version that cannot wait for the next minor version:
 on Fred's word it is prepared on a short branch from `main`, goes through
-Test and Run, and `main` is then merged into `develop` once.
+Test and Run, and `main` is then merged into `dev` once.
 
 A Test selects an exact committed assembly in `tamlinux-packages`; its lock
 file pins the product, components and dependencies. Test and Run install the

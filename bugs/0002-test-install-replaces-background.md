@@ -6,7 +6,7 @@
 - **Affected:** `desktop/theme/engine.py` and `commands/tam-deploy` in
   Tamlinux 0.6.27 and 0.6.28 (bundle deliveries). Earlier versions had no
   portable background selection.
-- **Fixed:** In source on `develop`; planned for 0.6.29, not yet installed.
+- **Fixed:** In source on `dev`; planned for 0.6.29, not yet installed.
 - **Next:** Install 0.6.29 over a desktop with a non-default background and
   confirm the same image after `tam-desktop`.
 

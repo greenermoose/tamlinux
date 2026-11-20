@@ -3,19 +3,22 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-18, after 0.6.32 clean pilot pass
+Updated: 2026-11-20, with W14
 
 
 STATE
 
-  VERSION reads 0.6.32 on branch develop. The current release is 0.5.12;
+  VERSION reads 0.6.32 on branch dev. The current release is 0.5.12;
   0.6 is the dependable-baseline minor (README, the version outlook).
 
   The daily workstation runs bundle-delivered 0.6.30 at Test, with
   0.6.29 retained as its previous bundle. The last fleet record had
   0.6.28 at Test on all three hosts.
 
-  Since then, on develop and listed under "Unreleased" in CHANGELOG.md:
+  The working branch was renamed from develop to dev on 2026-11-20
+  under D272; no version or source pin changed (W14).
+
+  Since then, on dev and listed under "Unreleased" in CHANGELOG.md:
   fred.workspaces 2.0.12, a tam-fleet README fix, journal entry points
   that need tam-journal from tamlinux-tools, and tam-deploy's settings
   guard, which now refuses references to tam source generations and a
@@ -96,7 +99,7 @@ WATCH OUT
     time, each approved by Fred, with a rollback point recorded first.
   - desktop/check-all runs the whole suite. Warn Fred before --proofs:
     proofs start real programs that may crash.
-  - Agents push only develop and feature branches; test, main, tags and
+  - Agents push only dev and feature branches; test, main, tags and
     releases move on Fred's words.
   - The fred.* plugins under desktop/plugins/ keep their own docs/ai/
     folders: they are archives of the frozen standalone plugin

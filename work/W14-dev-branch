@@ -1,0 +1,38 @@
+W14 DEV BRANCH
+
+Date: 2026-11-20
+AI harness: opencode 2.2.5
+AI model: big-pickle
+Commits: the branch-rename commit
+
+
+GUIDANCE
+
+  Fred: "Plan approved. Proceed"
+
+  D272 renames the working branch from develop to dev in every Tamlinux
+  repository. Fred accepted leaving the archived fred.<id>/develop/2.0.0
+  refs and the external develop/plan54-* fork branches untouched.
+
+
+DONE
+
+  - Renamed develop to dev locally and on GitHub; origin/dev holds the
+    same commit. No version or source pin changed.
+  - VERSIONING.md, README, plan status lines, the bug register, the
+    speaker-tuning service URL, the fred.monitor README URL and an
+    AI_PROVENANCE.md link now say dev.
+  - The stamped fred.<id>/develop/2.0.0 history and the Plan 54 fork
+    branches were deliberately left alone.
+  - work/WHATNOW and this record.
+
+
+FAILED
+
+  - Nothing.
+
+
+HANDOFF
+
+  - No new product work was requested; work/WHATNOW carries the state.
+  - The repository-by-repository rename continues elsewhere.

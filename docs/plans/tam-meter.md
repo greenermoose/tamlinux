@@ -1,6 +1,6 @@
 # tam-meter
 
-Status: implemented on `develop` (awaiting packaged assembly delivery).
+Status: implemented on `dev` (awaiting packaged assembly delivery).
 Command name is `tam-meter`. Implements the unprivileged energy meter decided
 in D191 beside C + `libtam` (D160), replacing the stopgap `fred-energy-reading`
 for D170/D190 candidate test records.

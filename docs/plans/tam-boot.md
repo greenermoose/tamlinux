@@ -1,6 +1,6 @@
 # tam-boot
 
-Status: implemented on `develop` (awaiting packaged assembly delivery).
+Status: implemented on `dev` (awaiting packaged assembly delivery).
 Command name is `tam-boot`. Startup explainer and diagnostics tool satisfying
 0.6 checklist items K60 and K40.
 

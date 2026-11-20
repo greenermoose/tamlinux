@@ -1,6 +1,6 @@
 # tam-hardware
 
-Status: implemented on `develop` (awaiting packaged assembly delivery).
+Status: implemented on `dev` (awaiting packaged assembly delivery).
 Command name is `tam-hardware` (no abbreviation). Implements the product
 probe from D209 beside C + `libtam` (D160).
 
