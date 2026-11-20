@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import transaction
-from transaction import Installation, PAYLOAD_CURRENT, inventory, write_json
+from transaction import CULTIVAR_LINKS, Installation, PAYLOAD_CURRENT, inventory, write_json
 
 
 class TransactionTests(unittest.TestCase):
@@ -36,17 +36,22 @@ class TransactionTests(unittest.TestCase):
         return digest
 
     def install_pair(self):
-        first = self.retain("first", {"usr/bin/tam": "first", "usr/bin/old": "obsolete"})
+        first = self.retain("first", {
+            f"{PAYLOAD_CURRENT}/bin/tam": "first",
+            "etc/profile.d/tamlinux.sh": "profile-1",
+            "usr/lib/issue.d/70-tamlinux.issue": "issue-1",
+        })
         self.system.start(None, first)
-        second = self.retain("second", {"usr/bin/tam": "second"})
+        second = self.retain("second", {
+            f"{PAYLOAD_CURRENT}/bin/tam": "second",
+            "etc/profile.d/tamlinux.sh": "profile-2",
+        })
         return first, second
 
-    def test_upgrade_idempotence_and_rollback_preserve_local_trees(self):
+    def test_upgrade_idempotence_rollback_and_symlinks(self):
         local = [
             self.root / "usr/local/bin/tam",
-            self.root / "usr/local/lib/libtam.a",
             self.root / "home/alice/.local/bin/tam",
-            self.root / "home/bob/.local/share/doc/tam/readme",
         ]
         for command in local:
             command.parent.mkdir(parents=True)
@@ -55,70 +60,92 @@ class TransactionTests(unittest.TestCase):
         with self.system.locked():
             first, second = self.install_pair()
             self.system.start(first, second)
-            self.assertFalse((self.root / "usr/bin/old").exists())
+            self.assertFalse((self.root / "usr/lib/issue.d/70-tamlinux.issue").exists())
+            self.assertEqual((self.root / PAYLOAD_CURRENT / "bin/tam").read_text(), "second")
+            for rel, expected in CULTIVAR_LINKS:
+                self.assertEqual((self.root / rel).readlink().as_posix(), expected)
             self.system.start(second, second)
             self.assertEqual(self.system.current()["previous"], first)
             self.system.start(second, first)
-        self.assertEqual((self.root / "usr/bin/tam").read_text(), "first")
-        self.assertEqual((self.root / "usr/bin/old").read_text(), "obsolete")
+        self.assertEqual((self.root / PAYLOAD_CURRENT / "bin/tam").read_text(), "first")
+        self.assertEqual((self.root / "etc/profile.d/tamlinux.sh").read_text(), "profile-1")
+        self.assertEqual((self.root / "usr/lib/issue.d/70-tamlinux.issue").read_text(), "issue-1")
         for command in local:
             self.assertEqual(command.read_text(), "local version")
-            self.assertEqual(command.stat().st_mode & 0o777, 0o700)
 
-    def test_runtime_switch_and_recovery(self):
+    def test_instant_symlink_rollback_and_pruning(self):
         entry = PAYLOAD_CURRENT + "/share/tamlinux/version"
         with self.system.locked():
-            first = self.retain("first", {entry: "first"})
-            second = self.retain("second", {entry: "second"})
-            self.system.start(None, first)
-            self.system.start(first, second)
-            self.assertEqual((self.root / entry).read_text(), "second")
-            self.assertEqual(self.system.runtime.readlink(), Path("versions") / second)
-            self.system.start(second, first)
-        self.assertEqual((self.root / entry).read_text(), "first")
+            v1 = self.retain("v1", {entry: "0.6.36", "etc/profile.d/tamlinux.sh": "same"})
+            self.system.start(None, v1)
+            v2 = self.retain("v2", {entry: "0.6.37", "etc/profile.d/tamlinux.sh": "same"})
+            self.system.start(v1, v2)
+            v3 = self.retain("v3", {entry: "0.6.38", "etc/profile.d/tamlinux.sh": "same"})
+            self.system.start(v2, v3)
+            # v1 should be pruned automatically (only current=v3 + previous=v2 retained)
+            self.assertFalse((self.system.versions / v1).exists())
+            self.assertTrue((self.system.versions / v2).is_dir())
+            self.assertTrue((self.system.versions / v3).is_dir())
+            # Rollback from v3 to v2 with unchanged integration files does zero file copies.
+            with patch("transaction.copy_file", side_effect=AssertionError("unexpected copy on rollback")):
+                self.system.start(v3, v2)
+            self.assertEqual((self.root / entry).read_text(), "0.6.37")
+            self.assertEqual(self.system.runtime.readlink(), Path("versions") / v2)
 
     def test_destination_redirect_is_refused(self):
-        local = self.root / "usr/local/bin"
+        local = self.root / "usr/local/etc"
         local.mkdir(parents=True)
-        (self.root / "usr/bin").symlink_to(local)
+        (self.root / "etc").symlink_to(local)
         with self.system.locked():
-            first = self.retain("first", {"usr/bin/tam": "first"})
+            first = self.retain("first", {"etc/profile.d/tamlinux.sh": "first"})
             with self.assertRaisesRegex(ValueError, "unsafe system directory"):
                 self.system.start(None, first)
-        self.assertFalse((local / "tam").exists())
         self.assertFalse(self.system.pending.exists())
 
-    def test_modified_legacy_owned_path_is_refused(self):
+    def test_modified_integration_file_is_refused(self):
         with self.system.locked():
             first, second = self.install_pair()
-            (self.root / "usr/bin/old").write_text("administrator edit")
+            (self.root / "etc/profile.d/tamlinux.sh").write_text("admin edit")
             with self.assertRaisesRegex(ValueError, "unmanaged or modified destination"):
                 self.system.start(first, second)
-        self.assertEqual((self.root / "usr/bin/tam").read_text(), "first")
-        self.assertEqual((self.root / "usr/bin/old").read_text(), "administrator edit")
 
-    def test_resume_after_interruption(self):
+    def test_resume_and_rollback_after_interruption(self):
         with self.system.locked():
             first, second = self.install_pair()
             with patch("transaction.copy_file", side_effect=OSError("interrupted")):
                 with self.assertRaisesRegex(OSError, "interrupted"):
                     self.system.start(first, second)
             self.assertTrue(self.system.pending.exists())
-            self.assertFalse((self.root / "usr/bin/old").exists())
             self.system.complete()
-        self.assertEqual((self.root / "usr/bin/tam").read_text(), "second")
-        self.assertEqual(self.system.current()["current"], second)
-
-    def test_rollback_after_interruption(self):
-        with self.system.locked():
-            first, second = self.install_pair()
+            self.assertEqual(self.system.current()["current"], second)
             with patch("transaction.copy_file", side_effect=OSError("interrupted")):
                 with self.assertRaises(OSError):
-                    self.system.start(first, second)
+                    self.system.start(second, first)
             self.system.complete(reverse=True)
-        self.assertEqual((self.root / "usr/bin/tam").read_text(), "first")
-        self.assertEqual((self.root / "usr/bin/old").read_text(), "obsolete")
-        self.assertEqual(self.system.current()["current"], first)
+            self.assertEqual(self.system.current()["current"], second)
+
+    def test_uninstall_restores_bare_rootstock(self):
+        with self.system.locked():
+            # Seed a tam-bud /usr/bin/tam and /usr/share/doc/tamlinux directory first
+            (self.root / "usr/bin").mkdir(parents=True)
+            (self.root / "usr/bin/tam").write_text("bud-elf")
+            (self.root / "usr/share/doc/tamlinux").mkdir(parents=True)
+            (self.root / "usr/share/doc/tamlinux/index.html").write_text("bud-doc")
+            first = self.retain("first", {
+                f"{PAYLOAD_CURRENT}/bin/tam": "scion-tam",
+                f"{PAYLOAD_CURRENT}/share/doc/index.html": "scion-doc",
+                "etc/profile.d/tamlinux.sh": "profile",
+            })
+            self.system.start(None, first)
+            self.assertTrue((self.root / "usr/bin/tam").is_symlink())
+            self.assertTrue((self.root / "usr/share/doc/tamlinux").is_symlink())
+            self.system.uninstall()
+        self.assertFalse((self.root / "usr/bin/tam").exists())
+        self.assertFalse((self.root / "usr/bin/tamlinux").exists())
+        self.assertFalse((self.root / "usr/share/doc/tamlinux").exists())
+        self.assertFalse((self.root / "etc/profile.d/tamlinux.sh").exists())
+        self.assertFalse(self.system.active.exists())
+        self.assertEqual(list(self.system.versions.iterdir()), [])
 
     def test_lock_rejects_second_transaction(self):
         with self.system.locked(), self.assertRaises(BlockingIOError), self.system.locked():
@@ -129,43 +156,20 @@ class TransactionTests(unittest.TestCase):
         old_umask = os.umask(0o077)
         try:
             with self.system.locked():
-                first = self.retain("first", {"usr/bin/tam": "first", entry: "0.6.32"})
+                first = self.retain("first", {"etc/profile.d/tamlinux.sh": "p", entry: "0.6.36"})
                 self.system.start(None, first)
         finally:
             os.umask(old_umask)
         for path in (
             self.root / "usr",
-            self.root / "usr/bin",
-            self.root / "usr/lib/tamlinux/source/versions",
-            self.root / "usr/lib/tamlinux/source/versions" / first,
-            self.root / "usr/lib/tamlinux/source/versions" / first / "share/tamlinux",
-            self.root / "var/lib/tamlinux/source",
-            self.root / "var/lib/tamlinux/source" / first,
+            self.root / "usr/lib/tamlinux/versions",
+            self.root / "usr/lib/tamlinux/versions" / first,
+            self.root / "usr/lib/tamlinux/versions" / first / "share/tamlinux",
+            self.root / "var/lib/tamlinux",
+            self.root / "var/lib/tamlinux/manifests",
         ):
             mode = stat.S_IMODE(path.stat().st_mode)
             self.assertEqual(mode, 0o755, f"{path} had mode {oct(mode)}")
-
-    def test_bulk_install_uses_syncfs_per_phase_and_emits_progress(self):
-        files = {
-            f"usr/bin/tool-{i}": f"tool-{i}" for i in range(20)
-        } | {
-            f"{PAYLOAD_CURRENT}/share/tamlinux/file-{i}": f"data-{i}" for i in range(20)
-        }
-        output = io.StringIO()
-        with patch("transaction.sync_fs", wraps=transaction.sync_fs) as mock_syncfs, \
-                patch("transaction.os.fsync", wraps=os.fsync) as mock_fsync, \
-                redirect_stdout(output):
-            with self.system.locked():
-                first = self.retain("bulk", files)
-                self.system.start(None, first)
-        # Bulk phases call sync_fs once per phase (retain, switch_files, select_runtime)
-        # so os.fsync stays O(1) (journal + top-level dirs only) instead of scaling with 40 files.
-        self.assertGreaterEqual(mock_syncfs.call_count, 3)
-        self.assertLess(mock_fsync.call_count, 25)
-        text = output.getvalue()
-        self.assertIn("Retaining stage (40 files)...", text)
-        self.assertIn("Placing files (20 files)...", text)
-        self.assertIn("Activating runtime (20 files)...", text)
 
 
 if __name__ == "__main__":

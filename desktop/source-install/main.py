@@ -32,7 +32,7 @@ def preflight(work, repos, root):
         files = receipt["files"]
         system = Installation(root)
         try:
-            system.check_ownership(files, system.current().get("external", []))
+            system.check_ownership(files)
         except ValueError as error:
             problems.extend(str(error).splitlines())
     if problems:

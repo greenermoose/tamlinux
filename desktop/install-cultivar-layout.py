@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Arrange a completed private DESTDIR for the format-2 workstation recipe."""
+"""Arrange a staged cultivar DESTDIR into the unified /usr/lib/tamlinux layout."""
 from __future__ import annotations
 
 import argparse
@@ -12,10 +12,10 @@ import sys
 
 SOURCE = Path(__file__).resolve().parents[1]
 CURRENT = "/usr/lib/tamlinux/current"
-SOURCE_CURRENT = "/usr/lib/tamlinux/source/current"
+BIN_LINK = "/usr/bin/tamlinux"
+BROWSER_POLICY_EXEC = "/usr/lib/tamlinux/browser-policy-exec"
 
-# These expressions are used by the relocatable installation. Compile their
-# private data path into the script that will run directly from /usr/bin.
+# Expressions used by relocatable command scripts; compile to the active cultivar path.
 DATA_PATHS = (
     '$(dirname "$(readlink -f "$0")")/../share/tamlinux',
     '$(dirname "$(readlink -f -- "$0")")/../share/tamlinux',
@@ -26,11 +26,40 @@ DATA_PATHS = (
     '$root/share/tamlinux',
 )
 
+PROFILE_SCRIPT = """# Tamlinux cultivar commands and shared data (preserves ~/.local/bin precedence).
+if [ -d /usr/bin/tamlinux ]; then
+  case ":${PATH:-}:" in
+    *:/usr/bin/tamlinux:*) ;;
+    *) PATH="${PATH:+$PATH:}/usr/bin/tamlinux" ;;
+  esac
+  export PATH
+fi
+if [ -d /usr/lib/tamlinux/current/share ]; then
+  case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
+    *:/usr/lib/tamlinux/current/share:*) ;;
+    *) XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:/usr/lib/tamlinux/current/share" ;;
+  esac
+  export XDG_DATA_DIRS
+fi
+if [ -d /usr/lib/tamlinux/current/share/man ]; then
+  case ":${MANPATH:-}:" in
+    *:/usr/lib/tamlinux/current/share/man:*) ;;
+    *) MANPATH="${MANPATH:+$MANPATH:}/usr/lib/tamlinux/current/share/man:" ;;
+  esac
+  export MANPATH
+fi
+"""
+
+ENVIRONMENT_D_CONF = """# Expose Tamlinux cultivar commands and shared data to systemd user sessions.
+PATH=${PATH}:/usr/bin/tamlinux
+XDG_DATA_DIRS=${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:/usr/lib/tamlinux/current/share
+"""
+
 
 def staging_root(prefix: str, destdir: str) -> Path:
     stage = Path(destdir)
-    if prefix != "/usr" or not destdir or not stage.is_absolute() or stage.resolve() == Path("/"):
-        raise ValueError("install-bundle requires PREFIX=/usr and an absolute staging DESTDIR")
+    if prefix != CURRENT or not destdir or not stage.is_absolute() or stage.resolve() == Path("/"):
+        raise ValueError(f"install-cultivar-layout requires PREFIX={CURRENT} and an absolute staging DESTDIR")
     stage = stage.resolve()
     if stage.is_relative_to(Path("/usr")) or stage.is_relative_to(Path("/etc")):
         raise ValueError("DESTDIR must be a staging directory outside the system installation")
@@ -51,12 +80,12 @@ def move_tree(source: Path, dest: Path) -> None:
     source.rename(dest)
 
 
-def render_commands(directory: Path, current: str = SOURCE_CURRENT) -> None:
+def render_commands(directory: Path, current: str = CURRENT) -> None:
     share = f"{current}/share/tamlinux"
     for command in sorted(directory.iterdir()):
         info = command.lstat()
         if not stat.S_ISREG(info.st_mode) or not info.st_mode & 0o111:
-            raise ValueError(f"Expected a real executable in usr/bin: {command.name}")
+            raise ValueError(f"Expected a real executable in cultivar bin: {command.name}")
         data = command.read_bytes()
         if not data.startswith(b"#!"):
             continue
@@ -72,7 +101,7 @@ def render_commands(directory: Path, current: str = SOURCE_CURRENT) -> None:
         ):
             first, _, rest = content.partition("\n")
             content = first + (
-                '\nif [ -e /var/lib/tamlinux/source/pending.json ] || [ -e /var/lib/tamlinux/pending.json ]; then\n'
+                '\nif [ -e /var/lib/tamlinux/pending.json ] || [ -e /var/lib/tamlinux/source/pending.json ]; then\n'
                 '  echo "Tamlinux installation is incomplete. Recover from the console." >&2\n'
                 '  exit 1\n'
                 'fi\n'
@@ -87,7 +116,7 @@ def render_commands(directory: Path, current: str = SOURCE_CURRENT) -> None:
                 + config)
             for helper in ("tam-theme-init", "tam-session-init"):
                 content = content.replace('"${TAMLINUX_BIN:-$commands}/' + helper + '"',
-                                          '"/usr/bin/' + helper + '"')
+                                          f'"{BIN_LINK}/{helper}"')
             content = content.replace('commands="$bin_dir"\n'
                                       '[ -x "$commands/tam-theme-init" ] || commands="$HOME/.local/bin"\n', "")
         if "../share/tamlinux" in content:
@@ -136,7 +165,7 @@ def copy_vendor_defaults(stage: Path, source: Path,
                 wants_by_target.setdefault(unit_target, set()).add(relative.name)
                 continue
             if name != "usr/share/fontconfig/conf.default/50-tamlinux.conf":
-                raise ValueError(f"Vendor link needs a format-2 placement rule: {name}")
+                raise ValueError(f"Vendor link needs a placement rule: {name}")
             put(stage / relative, target.read_bytes())
             continue
         info = original.lstat()
@@ -149,30 +178,42 @@ def copy_vendor_defaults(stage: Path, source: Path,
         put(stage / relative, data, mode)
 
 
-def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -> None:
+def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
     share = f"{current}/share/tamlinux"
-    usr = stage / "usr"
-    if not usr.is_dir() or usr.is_symlink():
-        raise ValueError("Expected a staged usr directory")
     private = stage / current.lstrip("/")
-    move_tree(usr / "share/tamlinux", private / "share/tamlinux")
-    if (usr / "libexec").exists():
-        move_tree(usr / "libexec", private / "libexec")
+    if not private.is_dir() or private.is_symlink():
+        raise ValueError(f"Expected a staged cultivar directory at {private}")
+
+    usr = stage / "usr"
+    # Move rootstock-required drop-ins out of the cultivar tree into integration locations.
     units = usr / "lib/systemd/user"
-    move_tree(usr / "share/systemd/user", units)
-    (usr / "share/systemd").rmdir()
+    move_tree(private / "share/systemd/user", units)
+    (private / "share/systemd").rmdir()
     wants_by_target: dict[str, set[str]] = {}
     for unit in sorted(units.iterdir()):
-        unit.write_text(unit.read_text().replace("/usr/share/tamlinux", share))
         for unit_target in wanted_targets(unit):
             wants_by_target.setdefault(unit_target, set()).add(unit.name)
-    commands = usr / "bin"
-    (commands / "tam-nut").unlink()
-    (commands / "start").rename(commands / "tam-start")
-    (commands / "hi").unlink()
+
+    font_src = private / "share/fonts/truetype/TamlinuxIcons.ttf"
+    if font_src.is_file():
+        put(usr / "share/fonts/tamlinux/TamlinuxIcons.ttf", font_src.read_bytes(), 0o644)
+        font_src.unlink()
+        try:
+            font_src.parent.rmdir()
+            font_src.parent.parent.rmdir()
+        except OSError:
+            pass
+
+    commands = private / "bin"
+    if (commands / "tam-nut").exists():
+        (commands / "tam-nut").unlink()
+    if (commands / "hi").exists():
+        (commands / "hi").unlink()
     put(commands / "hi", b'#!/bin/sh\nexec /usr/bin/tam hi "$@"\n', 0o755)
-    put(commands / "start", b'#!/bin/sh\nexec /usr/bin/tam-start "$@"\n', 0o755)
+    if (commands / "start").exists() and not (commands / "tam-start").exists():
+        put(commands / "tam-start", f'#!/bin/sh\nexec {current}/bin/start "$@"\n'.encode(), 0o755)
     render_commands(commands, current)
+
     session = private / "share/tamlinux/session"
     origin = source / "desktop/source-install/session_settings.py"
     put(session / origin.name, origin.read_bytes())
@@ -181,17 +222,27 @@ def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -
     for unit_target, unit_names in sorted(wants_by_target.items()):
         dropin = units / f"{unit_target}.d/50-tamlinux-services.conf"
         put(dropin, ("[Unit]\nWants=" + " ".join(sorted(unit_names)) + "\n").encode())
+
+    # PATH / XDG_DATA_DIRS / MANPATH integration drop-ins.
+    put(stage / "etc/profile.d/tamlinux.sh", PROFILE_SCRIPT.encode(), 0o644)
+    put(usr / "lib/environment.d/10-tamlinux-path.conf", ENVIRONMENT_D_CONF.encode(), 0o644)
+
     native = source / "desktop/native"
     integration = native / "integration"
     browser = (native / "theme-browser-policy").read_bytes().replace(
         b"/usr/lib/tamlinux/browser_policy.py", f"{current}/lib/browser_policy.py".encode(),
     )
-    put(usr / "bin/tam-theme-set-browser-policy", browser, 0o755)
+    put(stage / BROWSER_POLICY_EXEC.lstrip("/"), browser, 0o755)
+    put(commands / "tam-theme-set-browser-policy",
+        f'#!/bin/sh\nexec {BROWSER_POLICY_EXEC} "$@"\n'.encode(), 0o755)
     put(private / "lib/browser_policy.py", (native / "browser_policy.py").read_bytes())
+
     guard = source / "commands/tam-hyprland-reload-guard/tam-hyprland-reload-guard"
     put(private / "lib/hyprland-reload-guard", guard.read_bytes(), 0o755)
     put(usr / "lib/tmpfiles.d/tamlinux.conf", (integration / "tamlinux.conf").read_bytes())
     policy = (integration / "org.tamlinux.native.policy").read_bytes().replace(
+        b"/usr/bin/tam-theme-set-browser-policy", BROWSER_POLICY_EXEC.encode(),
+    ).replace(
         b"/usr/lib/tamlinux/asdcontrol", b"/usr/bin/asdcontrol",
     )
     put(usr / "share/polkit-1/actions/org.tamlinux.native.policy", policy)
@@ -200,18 +251,19 @@ def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -
             b"/usr/lib/tamlinux/hyprland-reload-guard", f"{current}/lib/hyprland-reload-guard".encode(),
         )
         put(usr / "share/libalpm/hooks" / hook.name, data)
+
     console = private / "share/tamlinux/console/welcome.issue"
     put(usr / "lib/issue.d/70-tamlinux.issue", console.read_bytes())
+
     providers = private / "share/tamlinux/provider-tools.json"
     values = json.loads(providers.read_text())
     values["asdcontrol"] = "/usr/bin/asdcontrol"
     providers.write_text(json.dumps(values, sort_keys=True) + "\n")
 
-    # Only the shipped common defaults go here. Personal and host settings
-    # enter a workstation capture through the separate settings workflow.
+    # Shipped common user defaults.
     bash = private / "defaults/home/.config/bash/tamlinux"
     shutil.copytree(source / "desktop/user-defaults/bash", bash)
-    (bash / "env").write_text("# Tamlinux commands use the system PATH.\n")
+    (bash / "env").write_text("# Tamlinux commands use /etc/profile.d/tamlinux.sh.\n")
     home = private / "defaults/home"
     put(home / ".config/tamlinux/session/hyprland.lua",
         f'dofile("{share}/session/entry.lua")\n'.encode())
@@ -222,8 +274,6 @@ def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -
         f'export TAMLINUX_VERSION_NOTES={share}/version-notes.txt\n'
         'export TAMLINUX_STAY_AWAKE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/tamlinux/stay-awake"\n'
     ).encode())
-    # These are settings defaults, not browser profiles. Generated Nix
-    # registrations are retired during migration and replaced at switch time.
     put(home / ".config/autostart/org.fcitx.Fcitx5.desktop",
         b"[Desktop Entry]\nType=Application\nName=Fcitx 5\nHidden=true\n")
     put(home / ".config/xdg-desktop-portal/hyprland-portals.conf",
@@ -234,15 +284,15 @@ def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -
     browsers = ("chromium", "google-chrome", "google-chrome-beta", "google-chrome-unstable",
                 "BraveSoftware/Brave-Browser", "BraveSoftware/Brave-Browser-Beta",
                 "BraveSoftware/Brave-Browser-Nightly", "microsoft-edge", "microsoft-edge-dev")
-    for browser in browsers:
-        for name, command, origin in (
+    for browser_name in browsers:
+        for name, command, origin_id in (
             ("copy_url", "tam-chromium-copy-url-host", "bgpiichlckmfanooecilcjemknkcpngb"),
             ("ytdlp", "tam-chromium-ytdlp-host", "dedjgknigfeelejglamclffonmophnfl"),
         ):
             host = {"name": "org.tamlinux." + name, "description": "Tamlinux Chromium native messaging endpoint",
-                    "path": "/usr/bin/" + command, "type": "stdio",
-                    "allowed_origins": ["chrome-extension://" + origin + "/"]}
-            put(home / f".config/{browser}/NativeMessagingHosts/org.tamlinux.{name}.json",
+                    "path": f"{BIN_LINK}/{command}", "type": "stdio",
+                    "allowed_origins": ["chrome-extension://" + origin_id + "/"]}
+            put(home / f".config/{browser_name}/NativeMessagingHosts/org.tamlinux.{name}.json",
                 (json.dumps(host, sort_keys=True) + "\n").encode())
     extensions = f"{share}/browser/extensions"
     put(home / ".config/chromium-flags.conf", (
@@ -254,17 +304,16 @@ def install(stage: Path, source: Path = SOURCE, current: str = SOURCE_CURRENT) -
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--prefix", required=True)
+    parser.add_argument("--prefix", default=CURRENT)
     parser.add_argument("--destdir", required=True)
     parser.add_argument("--check", action="store_true")
-    parser.add_argument("--source", action="store_true")
     args = parser.parse_args()
     try:
         stage = staging_root(args.prefix, args.destdir)
         if not args.check:
-            install(stage, current=SOURCE_CURRENT)
+            install(stage, current=args.prefix)
     except (OSError, ValueError) as error:
-        print(f"install-bundle-layout: {error}", file=sys.stderr)
+        print(f"install-cultivar-layout: {error}", file=sys.stderr)
         return 1
     return 0
 

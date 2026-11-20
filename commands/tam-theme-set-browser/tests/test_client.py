@@ -22,7 +22,7 @@ class BrowserClient(unittest.TestCase):
             script = bin_dir/name; script.write_text('#!/bin/sh\n'+body+'\n'); script.chmod(0o755)
         (root/'refresh.py').write_text('import os\nfrom pathlib import Path\nPath(os.environ["REFRESH_LOG"]).write_text("refreshed")\n')
         source = SOURCE.read_text()
-        assignment = 'adapter=/usr/bin/tam-theme-set-browser-policy'
+        assignment = 'adapter=/usr/lib/tamlinux/browser-policy-exec'
         self.assertEqual(source.count(assignment), 1)
         self.client = root/'client'
         self.client.write_text(source.replace(assignment, 'adapter='+shlex.quote(str(self.policy))))

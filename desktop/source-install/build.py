@@ -14,7 +14,7 @@ from transaction import PAYLOAD_CURRENT, _clone_or_copy, inventory, write_json
 
 PRODUCT = Path(__file__).resolve().parents[2]
 COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data")
-CACHE_SCHEMA = "v1"
+CACHE_SCHEMA = "v2"
 CACHE_KEEP = 2
 BUILD_ENV = {
     "PATH": "/usr/bin:/bin",
@@ -194,15 +194,12 @@ def build(repos, work):
         dest.mkdir()
         snapshot(PRODUCT, pins["tamlinux"], src_dir)
         env = make_env(tmp_dir, library)
-        run_make(src_dir, env, "install-product", "PREFIX=/usr", f"DESTDIR={dest}",
+        run_make(src_dir, env, "install-product", f"PREFIX={private}", f"DESTDIR={dest}",
                  link, "TAM_SOURCE_INSTALL=1")
-        subprocess.run(["/usr/bin/python3", "-I", src_dir / "desktop/install-bundle-layout.py",
-                        "--source", "--prefix", "/usr", "--destdir", dest], env=env, check=True)
+        subprocess.run(["/usr/bin/python3", "-I", src_dir / "desktop/install-cultivar-layout.py",
+                        "--prefix", private, "--destdir", dest], env=env, check=True)
         version = (src_dir / "VERSION").read_text().strip()
         (dest / PAYLOAD_CURRENT / "VERSION").write_text(f"{version}\n")
-        (dest / PAYLOAD_CURRENT / "BUNDLE").write_text(
-            f"format 2\nname tamlinux\nversion {version}\n"
-        )
         (dest / PAYLOAD_CURRENT / "share/tamlinux/version-notes.txt").write_text(
             render_version_notes((src_dir / "CHANGELOG.md").read_text(), version)
         )
@@ -213,21 +210,30 @@ def build(repos, work):
     component_trees.append(tamlinux_tree)
 
     # 3. Build or reuse sibling components into their own cached DESTDIRs.
+    def install_tam_edit(src, dest, env):
+        run_make(src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}",
+                 f"PKG_CONFIG_PATH={library}/lib/pkgconfig")
+        desktop_src = dest / PAYLOAD_CURRENT / "share/applications/tam-edit.desktop"
+        if desktop_src.is_file():
+            desktop_dst = dest / "usr/share/applications/tamlinux/tam-edit.desktop"
+            desktop_dst.parent.mkdir(parents=True, exist_ok=True)
+            content = desktop_src.read_text().replace("Exec=tam-edit", "Exec=/usr/bin/tamlinux/tam-edit")
+            desktop_dst.write_text(content)
+            desktop_dst.chmod(0o644)
+            desktop_src.unlink()
+
     sibling_specs = (
         ("tam", lambda src, dest, env: run_make(
-            src, env, "install", "install-tldr", "PREFIX=/usr", f"DESTDIR={dest}", link,
+            src, env, "install", "install-tldr", f"PREFIX={private}", f"DESTDIR={dest}", link,
             f"BUNDLE_ROOT={private}", f"CULTIVAR_ROOT={private}",
-            f"DATADIR={private}/share/tamlinux/knowledge", "DOCDIR=/usr/share/doc",
+            f"DATADIR={private}/share/tamlinux/knowledge", f"DOCDIR={private}/share/doc",
         )),
         ("tamlinux-tools", lambda src, dest, env: run_make(
-            src, env, "install-file-select", "install-journal", "PREFIX=/usr", f"DESTDIR={dest}", link,
+            src, env, "install-file-select", "install-journal", f"PREFIX={private}", f"DESTDIR={dest}", link,
         )),
-        ("tam-edit", lambda src, dest, env: run_make(
-            src, env, "install", "PREFIX=/usr", f"DESTDIR={dest}",
-            f"PKG_CONFIG_PATH={library}/lib/pkgconfig",
-        )),
+        ("tam-edit", install_tam_edit),
         ("tam-data", lambda src, dest, env: run_make(
-            src, env, "install", "PREFIX=/usr", f"DESTDIR={dest}", link,
+            src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
             f"TD_BUILD_ID={pins['tam-data'][:12]}",
         )),
     )

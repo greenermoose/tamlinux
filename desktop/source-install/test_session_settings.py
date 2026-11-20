@@ -22,8 +22,8 @@ def source_fixture(stage):
     shutil.copyfile(PRODUCT / "desktop/source-install/session_settings.py", session)
     defaults = runtime / "defaults/home/.config"
     for relative, text in zip(REQUIRED, (
-        'dofile("/usr/lib/tamlinux/source/current/share/tamlinux/session/entry.lua")\n',
-        '. /usr/lib/tamlinux/source/current/share/tamlinux/session/uwsm-env\n',
+        'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n',
+        '. /usr/lib/tamlinux/current/share/tamlinux/session/uwsm-env\n',
     ), strict=True):
         path = defaults / relative
         path.parent.mkdir(parents=True, exist_ok=True)

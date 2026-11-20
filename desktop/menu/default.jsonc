@@ -154,7 +154,7 @@
   "setup.config.hyprland": {"icon":"","label":"Hyprland","action":"tam-launch-config-editor \"${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/local.lua\""},
   "setup.config.hyprsunset": {"icon":"","label":"Hyprsunset","action":"tam-launch-config-editor ~/.config/hypr/hyprsunset.conf && tam-restart-hyprsunset"},
   "setup.config.xcompose": {"icon":"󰞅","label":"XCompose","action":"tam-launch-config-editor ~/.XCompose && tam-restart-xcompose"},
-  "setup.direct-boot": {"icon":"","label":"Direct Boot","when":"[[ -x /usr/bin/tam-setup-direct-boot ]]","action":"tam-launch-floating-terminal-with-presentation /usr/bin/tam-setup-direct-boot"},
+  "setup.direct-boot": {"icon":"","label":"Direct Boot","when":"[[ -x /usr/bin/tamlinux/tam-setup-direct-boot ]]","action":"tam-launch-floating-terminal-with-presentation /usr/bin/tamlinux/tam-setup-direct-boot"},
   "install.package": {"icon":"󰣇","label":"Package","action":"xdg-terminal-exec --app-id=org.tamlinux.terminal tam-pkg-install"},
   "install.aur": {"icon":"󰣇","label":"AUR","action":"xdg-terminal-exec --app-id=org.tamlinux.terminal tam-pkg-aur-install"},
   "install.webapp": {"icon":"","label":"Web App","action":"tam-launch-floating-terminal-with-presentation tam-webapp-install"},

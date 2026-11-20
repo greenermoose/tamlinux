@@ -18,10 +18,10 @@ class VerifyTests(unittest.TestCase):
         # Seed minimal installed source stage
         stage = self.scratch / "stage"
         files = {
-            "usr/bin/tam": ("#!/bin/sh\n", 0o755),
-            f"{PAYLOAD_CURRENT}/BUNDLE": ("format 2\nname tamlinux\nversion 0.6.32\n", 0o644),
+            f"{PAYLOAD_CURRENT}/bin/tam": ("#!/bin/sh\n", 0o755),
+            f"{PAYLOAD_CURRENT}/VERSION": ("0.6.36\n", 0o644),
             f"{PAYLOAD_CURRENT}/share/tamlinux/version-notes.txt": (
-                "Tamlinux 0.6.32 version notes\n\n- fix\n", 0o644
+                "Tamlinux 0.6.36 version notes\n\n- fix\n", 0o644
             ),
         }
         for rel, (content, mode) in files.items():
@@ -58,7 +58,7 @@ class VerifyTests(unittest.TestCase):
 
     def test_verify_catches_bad_version_notes_header(self):
         notes = self.root / PAYLOAD_CURRENT / "share/tamlinux/version-notes.txt"
-        notes.write_text("Tamlinux 0.6.32\n\n- missing words\n")
+        notes.write_text("Tamlinux 0.6.36\n\n- missing words\n")
         problems = verify_root(self.root, check_runtime=False)
         self.assertTrue(any("version notes header" in p for p in problems), problems)
 
@@ -73,7 +73,7 @@ class VerifyTests(unittest.TestCase):
         self.assertTrue(any("chromium" in p for p in problems), problems)
 
     def test_verify_catches_unreadable_installed_file(self):
-        tam = self.root / "usr/bin/tam"
+        tam = self.root / PAYLOAD_CURRENT / "bin/tam"
         tam.chmod(0o000)
         self.addCleanup(tam.chmod, 0o755)
         problems = verify_root(self.root, check_runtime=False)

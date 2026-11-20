@@ -93,7 +93,7 @@ provider_from_arg() {
 store_copy() {
   local self
   self=$(readlink -f -- "${BASH_SOURCE[0]}") || return 1
-  [[ ($self == /nix/store/* || $self == /usr/bin/tam-dns) && $(stat -c %u -- "$self") == 0 && ! -w $self ]] || return 1
+  [[ ($self == /usr/lib/tamlinux/versions/*/bin/tam-dns || $self == /usr/bin/tam-dns) && $(stat -c %u -- "$self") == 0 && ! -w $self ]] || return 1
   printf '%s\n' "$self"
 }
 
@@ -103,7 +103,7 @@ require_root() {
   (( EUID == 0 )) && return
 
   if ! self=$(store_copy); then
-    echo "tam-dns: refusing to run $(readlink -f -- "${BASH_SOURCE[0]}") as root; only the installed read-only copy (/nix/store/* or /usr/bin/tam-dns) may." >&2
+    echo "tam-dns: refusing to run $(readlink -f -- "${BASH_SOURCE[0]}") as root; only the installed read-only copy may." >&2
     exit 1
   fi
 

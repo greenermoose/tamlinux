@@ -1,5 +1,5 @@
 #!/usr/bin/python3 -I
-"""Install a verified source stage and retain the exact previous payload."""
+"""Install a verified cultivar stage into /usr/lib/tamlinux/versions/<digest>."""
 import argparse
 from contextlib import contextmanager
 import ctypes
@@ -22,20 +22,32 @@ _SYNCFS = None
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from preflight import destination_owners, ownership_problems, runtime_problems
+from preflight import ownership_problems, runtime_problems
 
-PAYLOAD_CURRENT = "usr/lib/tamlinux/source/current"
-STATE = "var/lib/tamlinux/source"
-BOOTSTRAP_LAUNCHERS = {
-    "usr/bin/hi": ("tam", " hi"),
-    "usr/bin/start": ("tam-start", ""),
-}
+PAYLOAD_CURRENT = "usr/lib/tamlinux/current"
+STATE = "var/lib/tamlinux"
+LEGACY_STATE = "var/lib/tamlinux/source"
+LEGACY_CURRENT = "usr/lib/tamlinux/source/current"
+
+CULTIVAR_LINKS = (
+    ("usr/bin/tam", "/usr/lib/tamlinux/current/bin/tam"),
+    ("usr/bin/tamlinux", "/usr/lib/tamlinux/current/bin"),
+    ("usr/share/doc/tamlinux", "/usr/lib/tamlinux/current/share/doc"),
+)
+
 PLACEMENTS = (
-    "usr/bin", "usr/lib/issue.d", "usr/lib/environment.d", "usr/lib/NetworkManager/conf.d",
-    "usr/lib/sysctl.d", "usr/lib/systemd", "usr/lib/tmpfiles.d",
-    "usr/share/applications", "usr/share/bash-completion/completions", "usr/share/doc",
-    "usr/share/fontconfig", "usr/share/icons/hicolor", "usr/share/libalpm/hooks",
-    "usr/share/licenses", "usr/share/man", "usr/share/polkit-1/actions", "usr/share/start",
+    "etc/profile.d",
+    "usr/lib/issue.d",
+    "usr/lib/environment.d",
+    "usr/lib/NetworkManager/conf.d",
+    "usr/lib/sysctl.d",
+    "usr/lib/systemd",
+    "usr/lib/tmpfiles.d",
+    "usr/share/applications/tamlinux",
+    "usr/share/fontconfig",
+    "usr/share/fonts/tamlinux",
+    "usr/share/libalpm/hooks",
+    "usr/share/polkit-1/actions",
     PAYLOAD_CURRENT,
 )
 
@@ -44,7 +56,7 @@ def allowed(relative):
     if Path(relative).is_absolute() or ".." in Path(relative).parts:
         return False
     return (
-        relative == "usr/share/fonts/truetype/TamlinuxIcons.ttf"
+        relative == "usr/lib/tamlinux/browser-policy-exec"
         or any(relative.startswith(base + "/") for base in PLACEMENTS)
     )
 
@@ -230,17 +242,15 @@ def secure_directory(root, relative, create=False, *, sync=True):
             raise ValueError(f"unsafe system directory: {current}")
 
 
-def bootstrap_launchers(root):
-    owners = destination_owners(root, BOOTSTRAP_LAUNCHERS)
-    secure_directory(root, "usr/bin")
-    for path, (command, arguments) in BOOTSTRAP_LAUNCHERS.items():
-        contents = (f'#!/bin/sh\nif [ -x /usr/bin/{command} ]; then\n'
-                    f'    exec /usr/bin/{command}{arguments} "$@"\nfi\n'
-                    'exec /usr/bin/tam-nut welcome\n')
-        expected = [0o755, hashlib.sha256(contents.encode()).hexdigest()]
-        if owners.get(path) != {"tam-nut"} or fingerprint(root / path) != expected:
-            raise ValueError(f"expected intact tam-nut launcher /{path}")
-    return sorted(BOOTSTRAP_LAUNCHERS)
+def atomic_symlink(path, target):
+    if path.is_symlink() and path.readlink().as_posix() == target:
+        return False
+    with tempfile.TemporaryDirectory(prefix=".link-", dir=path.parent) as tmp:
+        link = Path(tmp) / path.name
+        link.symlink_to(target)
+        link.replace(path)
+    sync_dir(path.parent)
+    return True
 
 
 class Installation:
@@ -249,7 +259,63 @@ class Installation:
         self.state = root / STATE
         self.active = self.state / "active.json"
         self.pending = self.state / "pending.json"
+        self.manifests = self.state / "manifests"
+        self.integration = self.state / "integration"
         self.runtime = self.root / PAYLOAD_CURRENT
+        self.versions = self.runtime.parent / "versions"
+        self.legacy_state = root / LEGACY_STATE
+
+    def legacy_active(self):
+        return read_json(self.legacy_state / "active.json")
+
+    def legacy_manifest(self, identity):
+        if not identity:
+            return {"files": {}}
+        return read_json(self.legacy_state / identity / "manifest.json") or {"files": {}}
+
+    def manifest_path(self, identity):
+        return self.manifests / f"{identity}.json"
+
+    def manifest(self, identity):
+        if identity is None:
+            return {"files": {}}
+        return read_json(self.manifest_path(identity)) or {"files": {}}
+
+    @staticmethod
+    def cultivar_files(files):
+        prefix = PAYLOAD_CURRENT + "/"
+        return {name.removeprefix(prefix): value for name, value in files.items() if name.startswith(prefix)}
+
+    @staticmethod
+    def placed(files):
+        prefix = PAYLOAD_CURRENT + "/"
+        return {name: value for name, value in files.items() if not name.startswith(prefix)}
+
+    def verify_version(self, identity, directory):
+        secure_directory(self.root, directory.relative_to(self.root))
+        expected = self.cultivar_files(self.manifest(identity)["files"])
+        actual = {
+            path.relative_to(directory).as_posix(): fingerprint(path)
+            for path in sorted(directory.rglob("*"))
+            if not stat.S_ISDIR(path.lstat().st_mode)
+        }
+        if actual != expected:
+            raise ValueError(f"cultivar tree differs from its recorded files: {directory}")
+
+    def verify_retained(self, identity):
+        mpath = self.manifest_path(identity)
+        if not fingerprint(mpath) or hashlib.sha256(mpath.read_bytes()).hexdigest() != identity:
+            raise ValueError(f"retained manifest missing or modified: {mpath}")
+        receipt = self.manifest(identity)
+        cfiles = self.cultivar_files(receipt["files"])
+        if cfiles:
+            self.verify_version(identity, self.versions / identity)
+        ifiles = self.placed(receipt["files"])
+        idir = self.integration / identity
+        for relative, expected in ifiles.items():
+            if fingerprint(idir / relative) != expected:
+                raise ValueError(f"retained integration file differs: {idir / relative}")
+        return receipt
 
     def check_runtime(self, old, new, resuming):
         secure_directory(self.root, self.runtime.parent.relative_to(self.root))
@@ -263,62 +329,39 @@ class Installation:
             raise ValueError(f"unexpected runtime link: {self.runtime}")
         if target:
             identity = target.split("/")[1]
-            self.verify_runtime(identity, self.runtime.parent / target)
+            self.verify_version(identity, self.runtime.parent / target)
 
-    def verify_runtime(self, identity, directory):
-        secure_directory(self.root, directory.relative_to(self.root))
-        expected = {
-            name.removeprefix(PAYLOAD_CURRENT + "/"): value
-            for name, value in self.manifest(identity)["files"].items()
-            if name.startswith(PAYLOAD_CURRENT + "/")
-        }
-        actual = {
-            path.relative_to(directory).as_posix(): fingerprint(path)
-            for path in sorted(directory.rglob("*"))
-            if not stat.S_ISDIR(path.lstat().st_mode)
-        }
-        if actual != expected:
-            raise ValueError(f"runtime differs from its recorded files: {directory}")
+    def ensure_cultivar_links(self, present):
+        if not present:
+            for rel, target in CULTIVAR_LINKS:
+                path = self.root / rel
+                if path.is_symlink() and path.readlink().as_posix() == target:
+                    path.unlink()
+                    sync_dir(path.parent)
+            return
+        for rel, target in CULTIVAR_LINKS:
+            path = self.root / rel
+            secure_directory(self.root, Path(rel).parent, create=True)
+            if rel == "usr/share/doc/tamlinux" and path.is_dir() and not path.is_symlink():
+                # Replace initial tam-bud doc directory with the unified scion symlink.
+                shutil.rmtree(path)
+                sync_dir(path.parent)
+            atomic_symlink(path, target)
 
     def select_runtime(self, identity):
         if identity is None:
+            self.ensure_cultivar_links(False)
             if self.runtime.is_symlink():
                 self.runtime.unlink()
                 sync_dir(self.runtime.parent)
             return
-        source = self.state / identity / "payload" / PAYLOAD_CURRENT
-        if not source.is_dir():
-            return
-        versions = self.runtime.parent / "versions"
-        secure_directory(self.root, versions.relative_to(self.root), create=True)
-        generation = versions / identity
-        if not generation.exists():
-            runtime_files = {
-                name.removeprefix(PAYLOAD_CURRENT + "/"): value[0]
-                for name, value in self.manifest(identity)["files"].items()
-                if name.startswith(PAYLOAD_CURRENT + "/")
-            }
-            progress(f"Activating runtime ({len(runtime_files)} files)...")
-            with tempfile.TemporaryDirectory(prefix=".incoming-", dir=versions) as tmp:
-                tmp_path = Path(tmp)
-                tree = tmp_path / "tree"
-                mkdir_public(tree, tmp_path)
-                for relative, mode in sorted(runtime_files.items()):
-                    target = tree / relative
-                    mkdir_public(target.parent, tmp_path)
-                    copy_file(source / relative, target, mode, sync=False, direct=True)
-                self.verify_runtime(identity, tree)
-                sync_fs(tree)
-                tree.rename(generation)
-                sync_dir(versions)
-        else:
-            progress("Activating runtime (reusing verified generation)...")
-            self.verify_runtime(identity, generation)
-        with tempfile.TemporaryDirectory(prefix=".switch-", dir=self.runtime.parent) as tmp:
-            link = Path(tmp) / "current"
-            link.symlink_to(f"versions/{identity}")
-            link.replace(self.runtime)
-            sync_dir(self.runtime.parent)
+        cfiles = self.cultivar_files(self.manifest(identity)["files"])
+        if cfiles:
+            generation = self.versions / identity
+            if not generation.is_dir():
+                raise ValueError(f"cultivar generation is missing: {generation}")
+            atomic_symlink(self.runtime, f"versions/{identity}")
+            self.ensure_cultivar_links(True)
 
     @contextmanager
     def locked(self):
@@ -327,63 +370,105 @@ class Installation:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             yield
 
-    def manifest(self, identity):
-        if identity is None:
-            return {"files": {}}
-        return read_json(self.state / identity / "manifest.json")
-
     def retain(self, stage, digest):
         source = stage / "payload"
         receipt = verified_stage(stage, digest)
-        saved = self.state / digest
-        if not saved.exists():
-            progress(f"Retaining stage ({len(receipt['files'])} files)...")
-            with tempfile.TemporaryDirectory(prefix="retaining-", dir=self.state) as tmp:
+        secure_directory(self.root, self.manifests.relative_to(self.root), create=True)
+        secure_directory(self.root, self.integration.relative_to(self.root), create=True)
+
+        cfiles = self.cultivar_files(receipt["files"])
+        ifiles = self.placed(receipt["files"])
+        mpath = self.manifest_path(digest)
+        generation = self.versions / digest
+        idir = self.integration / digest
+
+        already_retained = (
+            mpath.is_file()
+            and (not cfiles or generation.is_dir())
+            and (not ifiles or idir.is_dir())
+        )
+        if already_retained:
+            progress("Retaining stage (reusing verified generation)...")
+            if self.verify_retained(digest) != receipt:
+                raise ValueError("retained stage differs from the manifest")
+            return
+
+        progress(f"Importing cultivar ({len(cfiles)} cultivar, {len(ifiles)} integration files)...")
+        if cfiles and not generation.is_dir():
+            secure_directory(self.root, self.versions.relative_to(self.root), create=True)
+            with tempfile.TemporaryDirectory(prefix=".incoming-", dir=self.versions) as tmp:
                 tmp_path = Path(tmp)
-                candidate = tmp_path / digest
-                mkdir_public(candidate, tmp_path)
-                for relative, (mode, _) in receipt["files"].items():
-                    target = candidate / "payload" / relative
+                tree = tmp_path / "tree"
+                mkdir_public(tree, tmp_path)
+                csrc = source / PAYLOAD_CURRENT
+                for relative, (mode, _) in sorted(cfiles.items()):
+                    target = tree / relative
+                    mkdir_public(target.parent, tmp_path)
+                    copy_file(csrc / relative, target, mode, sync=False, direct=True)
+                actual = {
+                    p.relative_to(tree).as_posix(): fingerprint(p)
+                    for p in sorted(tree.rglob("*"))
+                    if not stat.S_ISDIR(p.lstat().st_mode)
+                }
+                if actual != cfiles:
+                    raise ValueError("cultivar files changed during import")
+                sync_fs(tree)
+                tree.rename(generation)
+                sync_dir(self.versions)
+
+        if ifiles and not idir.is_dir():
+            with tempfile.TemporaryDirectory(prefix=".int-", dir=self.integration) as tmp:
+                tmp_path = Path(tmp)
+                tree = tmp_path / "tree"
+                mkdir_public(tree, tmp_path)
+                for relative, (mode, _) in sorted(ifiles.items()):
+                    target = tree / relative
                     mkdir_public(target.parent, tmp_path)
                     copy_file(source / relative, target, mode, sync=False, direct=True)
-                if inventory(candidate / "payload") != receipt["files"]:
-                    raise ValueError("stage changed during import")
-                copy_file(stage / "manifest.json", candidate / "manifest.json", 0o644,
-                          sync=False, direct=True)
-                if fingerprint(candidate / "manifest.json")[1] != digest:
-                    raise ValueError("stage manifest changed during import")
-                sync_fs(candidate)
-                candidate.rename(saved)
-                sync_dir(self.state)
-        else:
-            progress("Retaining stage (reusing verified stage)...")
-            if verified_stage(saved, digest) != receipt:
-                raise ValueError("retained stage differs from the manifest")
+                sync_fs(tree)
+                tree.rename(idir)
+                sync_dir(self.integration)
 
-    def check(self, before, after, resuming=False):
+        copy_file(stage / "manifest.json", mpath, 0o644, sync=True)
+        if hashlib.sha256(mpath.read_bytes()).hexdigest() != digest:
+            raise ValueError("stage manifest changed during import")
+
+    def check(self, before, after, resuming=False, legacy_owned=frozenset()):
         for relative in sorted(before.keys() | after.keys()):
             if not allowed(relative) or ".." in Path(relative).parts:
                 raise ValueError(f"invalid destination: {relative}")
             secure_directory(self.root, Path(relative).parent)
             target = self.root / relative
             found = fingerprint(target)
-            alternatives = (before.get(relative), after.get(relative)) if resuming else (before.get(relative),)
+            alternatives = [before.get(relative)]
+            if resuming:
+                alternatives.append(after.get(relative))
+            if relative in legacy_owned:
+                continue
             if found not in alternatives:
                 raise ValueError(f"unmanaged or modified destination: {target}")
 
-    def start(self, old, new):
-        current = self.current()
-        self.check_switch(old, self.manifest(new)["files"], current.get("external", []))
-        if old == new:
-            return
-        write_json(self.pending, {"from": old, "to": new} | self.migration_fields(current))
-        self.complete()
+    def check_ownership(self, files):
+        if os.path.lexists(self.root / "var/lib/pacman"):
+            prefix = PAYLOAD_CURRENT + "/"
+            placed_paths = {name for name in files if not name.startswith(prefix)} | {rel for rel, _ in CULTIVAR_LINKS}
+            problems = ownership_problems(self.root, placed_paths)
+            if problems:
+                raise ValueError("\n".join(problems))
 
-    def check_switch(self, old, after, external):
+    def check_switch(self, old, after, legacy_from=None):
         before = self.manifest(old)["files"]
-        self.check_ownership(before.keys() | after.keys(), external)
+        self.check_ownership(before.keys() | after.keys())
         self.check_runtime(self.runtime_id(old), None, False)
-        self.check(self.placed(before, external), self.placed(after, external))
+        legacy_owned = set()
+        if legacy_from:
+            legacy_owned = set(self.legacy_manifest(legacy_from)["files"])
+        self.check(self.placed(before), self.placed(after), legacy_owned=legacy_owned)
+
+    def runtime_id(self, identity):
+        if identity and self.cultivar_files(self.manifest(identity)["files"]):
+            return identity
+        return None
 
     def preview(self, args, root_info):
         secure_directory(self.root, STATE)
@@ -397,80 +482,126 @@ class Installation:
             raise ValueError("runtime preflight found problems:\n  " + "\n  ".join(problems))
         current = self.current()
         old = current["current"]
+        legacy_from = None
         if old is not None:
-            verified_stage(self.state / old, old)
-        self.check_switch(old, receipt["files"], current.get("external", []))
-        rollback = {"kind": "clean"} if old is None else {"kind": "source", "manifest": old}
+            self.verify_retained(old)
+            rollback = {"kind": "source", "manifest": old}
+        else:
+            legacy = self.legacy_active()
+            if legacy and legacy.get("current"):
+                legacy_from = legacy["current"]
+                rollback = {"kind": "legacy-source", "manifest": legacy_from}
+            else:
+                rollback = {"kind": "clean"}
+        self.check_switch(old, receipt["files"], legacy_from=legacy_from)
         if os.path.lexists(self.pending) or self.current() != current:
             raise ValueError("the target changed during preparation; try again")
         return {"version": receipt["version"], "components": receipt["components"],
                 "manifest": args.digest, "root": str(self.root),
                 "rootIdentity": [root_info.st_dev, root_info.st_ino], "rollback": rollback}
 
-    def check_ownership(self, files, external):
-        if external and external != bootstrap_launchers(self.root):
-            raise ValueError("unexpected external launcher record")
-        if os.path.lexists(self.root / "var/lib/pacman"):
-            problems = ownership_problems(self.root, set(files) - set(external))
-            if problems:
-                raise ValueError("\n".join(problems))
-
-    @staticmethod
-    def migration_fields(record):
-        return {name: record[name] for name in ("external",) if name in record}
-
-    def runtime_id(self, identity):
-        if identity and (self.state / identity / "payload" / PAYLOAD_CURRENT).is_dir():
-            return identity
-        return None
-
-    @staticmethod
-    def placed(files, external=()):
-        return {name: value for name, value in files.items()
-                if name not in external and not name.startswith(PAYLOAD_CURRENT + "/")}
+    def start(self, old, new, legacy_from=None):
+        self.check_switch(old, self.manifest(new)["files"], legacy_from=legacy_from)
+        if old == new and not legacy_from:
+            return
+        record = {"from": old, "to": new}
+        if legacy_from:
+            record["legacy_from"] = legacy_from
+        write_json(self.pending, record)
+        self.complete()
 
     def complete(self, reverse=False):
         pending = read_json(self.pending)
         if pending is None:
             raise ValueError("no pending source installation")
         old, new = pending["from"], pending["to"]
+        legacy_from = pending.get("legacy_from")
         if reverse:
             old, new = new, old
-        self.switch_files(old, new, pending.get("external", []))
-        self.finish({"current": new, "previous": old} | self.migration_fields(pending))
+            legacy_from = None
+        self.switch_files(old, new, legacy_from=legacy_from)
+        self.finish({"current": new, "previous": old})
 
-    def switch_files(self, old, new, external):
-        before = self.manifest(old)["files"]
-        after = self.manifest(new)["files"]
-        if new is not None and inventory(self.state / new / "payload") != after:
-            raise ValueError("retained recovery files changed")
-        self.check_ownership(before.keys() | after.keys(), external)
-        self.check_runtime(self.runtime_id(old), self.runtime_id(new), True)
-        before, after = self.placed(before, external), self.placed(after, external)
-        self.check(before, after, resuming=True)
+    def _cleanup_legacy_files(self, legacy_from, new_placed):
+        legacy = self.legacy_active() or {}
+        external = set(legacy.get("external", []))
+        old_files = self.legacy_manifest(legacy_from)["files"]
+        removed = 0
+        for relative in sorted(old_files):
+            if relative.startswith(LEGACY_CURRENT + "/") or relative in external or relative in new_placed:
+                continue
+            target = self.root / relative
+            if target.is_file() or target.is_symlink():
+                target.unlink()
+                removed += 1
+        legacy_link = self.root / LEGACY_CURRENT
+        if legacy_link.is_symlink():
+            legacy_link.unlink()
+            sync_dir(legacy_link.parent)
+        if removed:
+            progress(f"Cleaned {removed} retired 0.6.35 scattered files.")
+
+    def switch_files(self, old, new, legacy_from=None):
+        before_all = self.manifest(old)["files"]
+        after_all = self.manifest(new)["files"]
         if new is not None:
-            progress(f"Placing files ({len(after)} files)...")
-        else:
-            progress(f"Removing files ({len(before)} files)...")
+            self.verify_retained(new)
+        self.check_ownership(before_all.keys() | after_all.keys())
+        self.check_runtime(self.runtime_id(old), self.runtime_id(new), True)
+        before, after = self.placed(before_all), self.placed(after_all)
+        legacy_owned = set(self.legacy_manifest(legacy_from)["files"]) if legacy_from else frozenset()
+        self.check(before, after, resuming=True, legacy_owned=legacy_owned)
+
+        if legacy_from:
+            self._cleanup_legacy_files(legacy_from, after)
+
         changed = False
+        updated = 0
         for relative in sorted(before.keys() | after.keys()):
             target = self.root / relative
-            if fingerprint(target) == after.get(relative):
+            if target.exists() and not target.is_symlink() and fingerprint(target) == after.get(relative):
                 continue
             if relative in after:
                 secure_directory(self.root, Path(relative).parent, create=True, sync=False)
-                copy_file(self.state / new / "payload" / relative, target, after[relative][0], sync=False)
-            else:
+                copy_file(self.integration / new / relative, target, after[relative][0], sync=False)
+                updated += 1
+            elif target.exists() or target.is_symlink():
                 target.unlink()
+                updated += 1
             changed = True
         if changed:
+            progress(f"Updated {updated} integration files.")
             sync_target = self.root / "usr"
             sync_fs(sync_target if sync_target.is_dir() else self.root)
         self.select_runtime(self.runtime_id(new))
 
+    def prune(self, active):
+        keep = {active.get("current"), active.get("previous")} - {None}
+        if self.versions.is_dir():
+            for entry in self.versions.iterdir():
+                if not entry.name.startswith(".") and entry.name not in keep and entry.is_dir():
+                    shutil.rmtree(entry)
+        if self.integration.is_dir():
+            for entry in self.integration.iterdir():
+                if not entry.name.startswith(".") and entry.name not in keep and entry.is_dir():
+                    shutil.rmtree(entry)
+        if self.manifests.is_dir():
+            for entry in self.manifests.glob("*.json"):
+                if entry.stem not in keep:
+                    entry.unlink()
+
     def finish(self, active):
         write_json(self.active, active)
         self.pending.unlink()
+        sync_dir(self.state)
+        self.prune(active)
+
+    def uninstall(self):
+        current = self.current()
+        if current["current"] is not None:
+            self.start(current["current"], None)
+        self.prune({"current": None, "previous": None})
+        self.active.unlink(missing_ok=True)
         sync_dir(self.state)
 
     def current(self):
@@ -480,7 +611,7 @@ class Installation:
 def main():
     os.umask(0o022)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["install", "preview", "status", "resume", "rollback"])
+    parser.add_argument("action", choices=["install", "preview", "status", "resume", "rollback", "uninstall"])
     parser.add_argument("--stage", type=Path)
     parser.add_argument("--digest")
     parser.add_argument("--root", type=Path)
@@ -496,7 +627,7 @@ def main():
         raise ValueError("an isolated root or an approved install plan is required")
     root = args.root.resolve(strict=True)
     live_recovery = (root == Path("/") and args.live_recovery
-                     and args.action in ("resume", "rollback"))
+                     and args.action in ("resume", "rollback", "uninstall"))
     if not root.is_dir() or args.root.is_symlink() or (
         root == Path("/") and args.action != "preview" and not live_recovery
     ):
@@ -524,10 +655,16 @@ def main():
                 raise ValueError("resume or roll back the pending installation")
             if not args.stage or not re.fullmatch("[0-9a-f]{64}", args.digest or ""):
                 raise ValueError("install requires a stage and its SHA-256 manifest digest")
+            legacy = system.legacy_active() if current["current"] is None else None
+            legacy_from = legacy.get("current") if legacy else None
             system.retain(args.stage, args.digest)
-            system.start(current["current"], args.digest)
+            system.start(current["current"], args.digest, legacy_from=legacy_from)
         elif args.action == "resume":
             system.complete()
+        elif args.action == "uninstall":
+            if pending:
+                raise ValueError("resume or roll back the pending installation before uninstalling")
+            system.uninstall()
         elif pending:
             system.complete(reverse=True)
         elif current["current"] is not None:
@@ -552,9 +689,6 @@ def check_console():
 
 def install_plan(path):
     os.umask(0o022)
-    # The operator imports the reviewed plan and its stage into a private
-    # directory before invoking Make. No code or payload is read as root
-    # from the regular user's checkout or build directory.
     system_root = Path("/")
     if not path.is_absolute() or ".." in path.parts:
         raise ValueError("use the absolute path to the approved install plan")
@@ -578,7 +712,7 @@ def install_plan(path):
         raise ValueError("the running root requires root approval")
     rollback = target["rollback"]
     kind = rollback.get("kind") if isinstance(rollback, dict) else None
-    if kind not in ("clean", "source"):
+    if kind not in ("clean", "source", "legacy-source"):
         raise ValueError("unsupported rollback mode in approved install plan")
     digest = target["manifest"]
     if not re.fullmatch("[0-9a-f]{64}", digest):
@@ -613,9 +747,28 @@ def install_plan(path):
                     raise ValueError("a different source transaction is pending")
                 system.complete()
                 return
-            system.check_switch(current["current"], receipt["files"], [])
+            system.check_switch(current["current"], receipt["files"])
             system.retain(stage, digest)
             system.start(current["current"], digest)
+        elif kind == "legacy-source":
+            old_legacy = rollback.get("manifest")
+            if not re.fullmatch("[0-9a-f]{64}", old_legacy or ""):
+                raise ValueError("the approved legacy manifest digest is invalid")
+            if current["current"] == digest:
+                return
+            if current["current"] is not None:
+                raise ValueError("the approved target already has a unified cultivar install")
+            legacy = system.legacy_active()
+            if not legacy or legacy.get("current") != old_legacy:
+                raise ValueError("the approved legacy source install changed")
+            if pending is not None:
+                if pending.get("to") != digest:
+                    raise ValueError("a different source transaction is pending")
+                system.complete()
+                return
+            system.check_switch(None, receipt["files"], legacy_from=old_legacy)
+            system.retain(stage, digest)
+            system.start(None, digest, legacy_from=old_legacy)
         else:
             old = rollback.get("manifest")
             if not re.fullmatch("[0-9a-f]{64}", old or ""):
@@ -629,7 +782,7 @@ def install_plan(path):
                 return
             if current["current"] == digest:
                 return
-            system.check_switch(old, receipt["files"], current.get("external", []))
+            system.check_switch(old, receipt["files"])
             system.retain(stage, digest)
             system.start(old, digest)
 

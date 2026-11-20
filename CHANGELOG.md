@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.36]
+
+Changes since Tamlinux 0.6.35:
+- Unify the Tamlinux cultivar tree under `/usr/lib/tamlinux/versions/<digest>/` with 4 atomic symlinks (`/usr/lib/tamlinux/current`, `/usr/bin/tam`, `/usr/bin/tamlinux`, `/usr/share/doc/tamlinux`) and ~35 rootstock integration drop-ins (`/etc/profile.d/tamlinux.sh`, `/usr/lib/environment.d/10-tamlinux-path.conf`, `/usr/share/fonts/tamlinux/TamlinuxIcons.ttf`, `/usr/share/applications/tamlinux/tam-edit.desktop`, systemd user units, and polkit/alpm/tmpfiles/issue drop-ins).
+- Eliminate the duplicate 142 MB copy in `/var/lib/tamlinux/`: store only tiny JSON manifests and integration drop-ins under `/var/lib/tamlinux/`, giving `< 10 ms` atomic symlink-swap rollbacks, automatic pruning (retaining `current` + `previous`), one-time `0.6.35` → `0.6.36` scattered-file cleanup, and clean `uninstall`.
+- Retire `commands/tam-nut/` in favor of the non-pacman `tam-bud` bootstrap (`/usr/bin/tam` + `/usr/share/doc/tamlinux/`) and update `tam` to 0.67.0 (`tam run`, `tam grow`, `tam rollback`, `tam uninstall`, and `/usr/share/doc/tamlinux` bud doc fallback).
+
 ## [0.6.35]
 
 Changes since Tamlinux 0.6.34:

@@ -10,7 +10,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 from preflight import runtime_problems
-from transaction import Installation, PAYLOAD_CURRENT, read_json
+from transaction import CULTIVAR_LINKS, Installation, PAYLOAD_CURRENT, read_json
 
 
 def cursor_problems(root):
@@ -96,17 +96,18 @@ def permission_problems(system):
     digest = active.get("current")
     if not digest:
         return [f"no active source installation recorded in {system.active}"]
-    manifest_path = system.state / digest / "manifest.json"
+    manifest_path = system.manifest_path(digest)
     if not manifest_path.is_file() or not os.access(manifest_path, os.R_OK):
         return [f"active manifest is unreadable by current user: {manifest_path}"]
     receipt = read_json(manifest_path)
-    external = set(active.get("external", []))
     runtime = system.root / PAYLOAD_CURRENT
     if not runtime.is_dir() or not os.access(runtime, os.R_OK | os.X_OK):
         problems.append(f"active runtime is not readable/traversable: {runtime}")
+    for rel, expected_target in CULTIVAR_LINKS:
+        link = system.root / rel
+        if not link.is_symlink() or link.readlink().as_posix() != expected_target:
+            problems.append(f"cultivar symlink missing or unexpected: {link}")
     for relative, (mode, _) in sorted(receipt.get("files", {}).items()):
-        if relative in external:
-            continue
         target = system.root / relative
         needed = os.R_OK | (os.X_OK if mode & 0o111 else 0)
         if not target.is_file() or not os.access(target, needed):

@@ -87,29 +87,26 @@ class RuntimePreflightTests(unittest.TestCase):
         self.assertEqual(preflight.ownership_problems(self.root, ["usr/bin/start", "usr/bin/tam"]),
                          ["source destination /usr/bin/start is owned by Arch package tam-nut"])
 
-    def test_install_refuses_missing_package_owned_console_launchers(self):
+    def test_install_refuses_package_owned_cultivar_links(self):
         installer = Path(__file__).resolve().with_name("transaction.py")
         stage = self.root / "stage"
-        commands = stage / "payload/usr/bin"
-        commands.mkdir(parents=True)
-        for name in ("hi", "start"):
-            (commands / name).write_text("#!/bin/sh\n")
-            (commands / name).chmod(0o755)
+        profile = stage / "payload/etc/profile.d/tamlinux.sh"
+        profile.parent.mkdir(parents=True)
+        profile.write_text("# profile\n")
+        profile.chmod(0o644)
         manifest = stage / "manifest.json"
         write_json(manifest, {"files": inventory(stage / "payload")})
         digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
-        for name in ("hi", "start"):
-            with self.subTest(command=name):
-                path = f"usr/bin/{name}"
-                self.add_package("tam-nut", "0.14.0-1", (path,))
+        for path in ("usr/bin/tam", "usr/share/doc/tamlinux"):
+            with self.subTest(path=path):
+                self.add_package("conflict-pkg", "1.0-1", (path,))
                 result = subprocess.run([sys.executable, "-I", "-B", installer, "install",
                                          "--stage", stage, "--digest", digest, "--root", self.root],
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 1)
-                self.assertIn(f"source destination /{path} is owned by Arch package tam-nut",
+                self.assertIn(f"source destination /{path} is owned by Arch package conflict-pkg",
                               result.stderr)
-                self.assertFalse((self.root / "usr/bin").exists())
-                shutil.rmtree(self.db / "tam-nut-0.14.0-1")
+                shutil.rmtree(self.db / "conflict-pkg-1.0-1")
 
     def test_preview_is_read_only_and_checks_retained_rollback(self):
         installer = Path(__file__).resolve().with_name("transaction.py")
@@ -127,7 +124,7 @@ class RuntimePreflightTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.touch(mode=mode)
         stage = self.root / "stage"
-        binary = stage / "payload/usr/bin/tam-test"
+        binary = stage / "payload/etc/profile.d/tamlinux.sh"
         binary.parent.mkdir(parents=True)
         binary.write_text("one")
         write_json(stage / "manifest.json", {"version": "0.0.1", "components": {},
@@ -143,7 +140,7 @@ class RuntimePreflightTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         target = json.loads(result.stdout)
         self.assertEqual(target["rollback"], {"kind": "clean"})
-        state = self.root / "var/lib/tamlinux/source"
+        state = self.root / "var/lib/tamlinux"
         self.assertFalse(state.exists())
         operator = self.root / "operator"
         operator.mkdir()
@@ -156,7 +153,7 @@ class RuntimePreflightTests(unittest.TestCase):
         plan_file = operator / "plan.json"
         plan = {"host": os.uname().nodename, "target": target}
         stage = stage.rename(operator / digest)
-        binary = stage / "payload/usr/bin/tam-test"
+        binary = stage / "payload/etc/profile.d/tamlinux.sh"
 
         def make_install():
             return subprocess.run(["/usr/bin/make", "install", f"SOURCE_PLAN={plan_file}"],
@@ -168,9 +165,9 @@ class RuntimePreflightTests(unittest.TestCase):
         binary.chmod(0o755)
         self.assertIn("stage files differ", make_install().stderr)
         binary.chmod(0o644)
-        self.add_package("another-owner", "1-1", ("usr/bin/tam-test",))
+        self.add_package("another-owner", "1-1", ("etc/profile.d/tamlinux.sh",))
         self.assertIn("is owned by Arch package another-owner", make_install().stderr)
-        self.assertFalse((self.root / "usr/bin/tam-test").exists())
+        self.assertFalse((self.root / "etc/profile.d/tamlinux.sh").exists())
         shutil.rmtree(self.db / "another-owner-1-1")
         for _ in range(2):
             result = make_install()
@@ -180,7 +177,7 @@ class RuntimePreflightTests(unittest.TestCase):
                          {"kind": "source", "manifest": digest})
         # Also verify in-place source-to-source upgrade via SOURCE_PLAN.
         stage2 = self.root / "stage2"
-        binary2 = stage2 / "payload/usr/bin/tam-test"
+        binary2 = stage2 / "payload/etc/profile.d/tamlinux.sh"
         binary2.parent.mkdir(parents=True)
         binary2.write_text("two")
         write_json(stage2 / "manifest.json", {"version": "0.0.2", "components": {},
@@ -198,12 +195,12 @@ class RuntimePreflightTests(unittest.TestCase):
         res_up = subprocess.run(["/usr/bin/make", "install", f"SOURCE_PLAN={plan2}"],
                                 cwd=operator, capture_output=True, text=True)
         self.assertEqual(res_up.returncode, 0, res_up.stderr)
-        self.assertEqual((self.root / "usr/bin/tam-test").read_text(), "two")
+        self.assertEqual((self.root / "etc/profile.d/tamlinux.sh").read_text(), "two")
         # Roll back to first stage before remaining checks.
         res_rb = subprocess.run([sys.executable, "-I", "-B", installer, "rollback", "--root", self.root],
                                 capture_output=True, text=True)
         self.assertEqual(res_rb.returncode, 0, res_rb.stderr)
-        self.assertEqual((self.root / "usr/bin/tam-test").read_text(), "one")
+        self.assertEqual((self.root / "etc/profile.d/tamlinux.sh").read_text(), "one")
         pending = state / "pending.json"
         pending.write_text("{}")
         self.assertIn("pending installation", call("preview").stderr)
@@ -211,9 +208,9 @@ class RuntimePreflightTests(unittest.TestCase):
         binary.chmod(0o755)
         self.assertIn("stage files differ", call("preview").stderr)
         binary.chmod(0o644)
-        retained = state / digest / "payload/usr/bin/tam-test"
+        retained = state / "integration" / digest / "etc/profile.d/tamlinux.sh"
         retained.write_text("changed")
-        self.assertIn("stage files differ", call("preview").stderr)
+        self.assertIn("retained integration file differs", call("preview").stderr)
         self.assertFalse((state / "pending.json").exists())
 
 

@@ -12,7 +12,7 @@ if [[ -f $theme_file ]]; then
   color=$(python3 -c 'import sys; from pathlib import Path; rgb=[int(x.strip()) for x in Path(sys.argv[1]).read_text().strip().split(",")]; assert len(rgb)==3 and all(0<=x<=255 for x in rgb); print("#"+"".join(f"{x:02x}" for x in rgb))' "$theme_file")
 fi
 [[ $color =~ ^#[0-9a-f]{6}$ ]] || exit 1
-adapter=/usr/bin/tam-theme-set-browser-policy
+adapter=/usr/lib/tamlinux/browser-policy-exec
 if [[ ! -x $adapter ]]; then
   echo "Required native browser policy adapter is unavailable: $adapter" >&2
   exit 1
