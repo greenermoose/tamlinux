@@ -13,14 +13,14 @@ Tamlinux to adopting a project's code or design without deliberate review.
 
 Current target: **Void Linux with runit and Btrfs**. If Void presents a
 showstopper, try **antiX Linux Core with runit**. See the
-[base operating system plan](docs/plans/base-operating-system.md). Historical
+[base operating system plan](plans/P3-base-operating-system.md). Historical
 surveys describe the target in scope when they were conducted.
 
 For a Fred-requested survey that spans the distribution, start here and in
 the relevant component repos' `UPSTREAM.md` files. Compare current upstream,
 forks, and independent projects; save dated evidence in
 [upstream/](upstream/) and link it here. Chosen product work belongs in a
-reviewed plan under [docs/plans/](docs/plans/). Record exact code ancestry,
+reviewed plan under [plans/](plans/). Record exact code ancestry,
 license, and attribution if a later implementation adapts source code.
 
 ## Survey records

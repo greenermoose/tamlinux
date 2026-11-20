@@ -21,7 +21,10 @@ Wayland, River, Hyprland, Quickshell, and Omarchy.
   Hyprland + Quickshell (tam-pane dogfooding planned for 0.7.0)
 
   Plugin suite
-  In-repo desktop/plugins/ <desktop/plugins/README> (fred.* 2.x)
+  In-repo src/desktop/plugins/ <src/desktop/plugins/README> (fred.* 2.x)
+
+  Standard
+  Follows the tam-idol 0.2.1 standard.
 
   Status
   Developed in public and used daily. Gate A complete (0.4.8), Blue
@@ -102,7 +105,7 @@ The components are being developed alongside the 0.6.x baseline.
   <https://github.com/greenermoose/tam-edit>
 
 Hyprland remains available for recovery during dogfooding. Dates for adopting tam-pane as the daily compositor and retiring
-Hyprland remain open. See the development plans <docs/plans/README>.
+Hyprland remain open. See the development plans <plans/README-plans>.
 
 
 TARGETS
@@ -188,45 +191,68 @@ VALUES
 DESKTOP SHELL
 
 Tamlinux's desktop is Hyprland and Quickshell. The fred.* plugin suite is
-owned here, one directory per plugin under desktop/plugins/
-<desktop/plugins/README>, hosted by the shell in desktop/shell/
-<desktop/README>. History, releases, and development branches from the earlier
-independent repositories are preserved as namespaced fred.<name>/ refs in this
-repository.
+owned here, one directory per plugin under src/desktop/plugins/
+<src/desktop/plugins/README>, hosted by the shell in src/desktop/shell/
+<src/desktop/README>. History, releases, and development branches from the
+earlier independent repositories are preserved as namespaced fred.<name>/
+refs in this repository.
 
   fred.workspaces
-  <desktop/plugins/fred.workspaces>
+  <src/desktop/plugins/fred.workspaces>
 
   fred.clock
-  <desktop/plugins/fred.clock>
+  <src/desktop/plugins/fred.clock>
 
   fred.keyboard
-  <desktop/plugins/fred.keyboard>
+  <src/desktop/plugins/fred.keyboard>
 
   fred.sysinfo
-  <desktop/plugins/fred.sysinfo>
+  <src/desktop/plugins/fred.sysinfo>
 
   fred.tides
-  <desktop/plugins/fred.tides>
+  <src/desktop/plugins/fred.tides>
 
   fred.weather
-  <desktop/plugins/fred.weather>
+  <src/desktop/plugins/fred.weather>
 
   fred.monitor
-  <desktop/plugins/fred.monitor>
+  <src/desktop/plugins/fred.monitor>
 
   fred.agents
-  <desktop/plugins/fred.agents>
+  <src/desktop/plugins/fred.agents>
 
   fred.tamversion
-  <desktop/plugins/fred.tamversion>
+  <src/desktop/plugins/fred.tamversion>
 
 The independent greenermoose/*-fred-tamlinux plugin repositories and the
 Omarchy-era showcase site are frozen; their released 1.x versions remain for
-reference. Product plugins and tam-plugin <commands/tam-plugin/README> live in
-this repository. Carried third-party patches are recorded in
+reference. Product plugins and tam-plugin <src/commands/tam-plugin/README>
+live in this repository. Carried third-party patches are recorded in
 ecosystem-fred-tamlinux
 <https://github.com/greenermoose/ecosystem-fred-tamlinux>.
+
+
+WHERE THINGS ARE
+
+  src/commands/     product CLI commands (native C and scripts)
+  src/desktop/      Quickshell shell, fred.* plugins, assets, session,
+                    theme, and locked source-install machinery
+  src/share/        shared console and firewall templates
+  tests/            unit tests, fixtures, proofs, and check-all runner
+  arch/             architecture and development documents
+  bugs/             defect records (B1, B2, ...)
+  ideas/            ideas from other projects
+  plans/            product development plans (P1, P2, ...)
+  reviews/          implementation reviews (R1, ...)
+  work/             WHATNOW, W<n> session records, ai-blame-standard.md,
+                    and history/
+  upstream/         upstream survey notes
+  Makefile          source install, product install, test, and clean
+  ROADMAP.md        version milestones
+  UPSTREAM.md       carried third-party code and origins
+  AI-BLAME.md       how AI work is recorded here
+  COPYRIGHT         copyright and license notices
+  LICENSE           GNU General Public License, version 3
 
 
 LICENSE
@@ -235,10 +261,10 @@ Tamlinux and its plugins are developed under the GNU General Public License
 version 3 or later. See <LICENSE>.
 
 
-AI COLLABORATION
+AI BLAME
 
 Session prompts, tool versions, and architectural notes are in
-<AI_PROVENANCE.md>.
+<AI-BLAME.md> and <work/WHATNOW>.
 
-Software defect tracker <bugs/README-bugs.md>: report reproducible defects
+Software defect tracker <bugs/README-bugs>: report reproducible defects
 beside their source.

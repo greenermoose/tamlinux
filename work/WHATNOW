@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-20, with W15
+Updated: 2026-11-20, with W16
 
 
 STATE
@@ -20,6 +20,14 @@ STATE
   folders were retired the same day under D278: the root records now sit
   in work/history/, each of the eight fred.* plugins has its own
   work/history/, and every link was repointed (W15).
+
+  W16 reorganized tamlinux into the tam-idol 0.2.1 standard layout
+  (src/, tests/, arch/, bugs/, ideas/, plans/, reviews/, work/), moved
+  the public standard to work/ai-blame-standard.md, renamed all
+  AI_PROVENANCE.md files (root and 8 plugins) to AI-BLAME.md, added
+  ROADMAP.md and all six standard README-<folder> files, and updated
+  Makefile, install-product.py, install-cultivar-layout.py,
+  source-install, and tests/. tools/idol-check ../tamlinux passes.
 
   Since then, on dev and listed under "Unreleased" in CHANGELOG.md:
   fred.workspaces 2.0.12, a tam-fleet README fix, journal entry points
@@ -65,7 +73,7 @@ STATE
   Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
   place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
   GitLab repositories and a proven source install
-  (docs/plans/1.0.0-gitlab-and-source-install.md).
+  (plans/P2-1.0.0-gitlab-and-source-install.md).
 
 
 NEXT
@@ -74,11 +82,12 @@ NEXT
   Release are his, and a version number is not an instruction.
 
   1. Prepare 0.6.33 on Fred's word:
-     - Replace per-file fsync/sync_dir in desktop/source-install/transaction.py
-       with syncfs per phase plus clear progress output (0.6.32 took ~15 min
-       on spinning disk due to ~13,000 individual flushes).
-     - Add chromium to desktop/source-install/arch-packages and verify
-       default browser availability in preflight/verify.
+     - Replace per-file fsync/sync_dir in
+       src/desktop/source-install/transaction.py with syncfs per phase
+       plus clear progress output (0.6.32 took ~15 min on spinning disk
+       due to ~13,000 individual flushes).
+     - Add chromium to src/desktop/source-install/arch-packages and
+       verify default browser availability in preflight/verify.
      - Update components.lock to pin tam 0.64.1 (corpus 0.100.2).
   2. Prove the clean Arch pilot on 0.6.33, then prove the data-preserving
      in-place 0.6.28 bundle-to-source upgrade and rollback on the upgrade
@@ -100,11 +109,11 @@ WATCH OUT
     manifest. Bundle deliveries still use tam-deploy.
   - Boot, login, disk, firmware and package-removal steps run one at a
     time, each approved by Fred, with a rollback point recorded first.
-  - desktop/check-all runs the whole suite. Warn Fred before --proofs:
+  - tests/check-all runs the whole suite. Warn Fred before --proofs:
     proofs start real programs that may crash.
   - Agents push only dev and feature branches; test, main, tags and
     releases move on Fred's words.
-  - The fred.* plugins under desktop/plugins/ keep their own
+  - The fred.* plugins under src/desktop/plugins/ keep their own
     work/history/ folders: archives of the frozen standalone plugin
     repositories, not this repository's records.
   - Development builds use ~/.local/bin and ~/.local/lib; releases

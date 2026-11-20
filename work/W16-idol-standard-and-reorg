@@ -1,0 +1,61 @@
+W16 TAM-IDOL 0.2.1 REORGANIZATION AND BLAME EVERYWHERE
+
+Date: 2026-11-20
+AI harness: agy 1.5.13
+AI model: Gemini 4 Neon (Medium)
+Commits: the commit that adds this record
+
+
+GUIDANCE
+
+  Fred: "/plan Complete the remaining items in tam-idol/work/WHATNOW,
+  'Blame everywhere' (item 2) and the tamlinux survey/reorganization
+  plan (item 3). Then bring tamlinux up to version 0.2.0 of the idol
+  standard."
+  Fred: "2 move it to tamlinux/work/ai-blame-standard.md. ... 3 yes,
+  rename all to AI-BLAME.md ... 4 yes, migrate plans from docs/plans/
+  to plans/. If you think FILING-CARD.md best fits in work/history/
+  sure, move it there."
+  Fred: "Approved. Proceed."
+
+
+DONE
+
+  - Reorganized tamlinux into the tam-idol 0.2.1 standard layout:
+    moved commands/, desktop/ (product code), and share/ into src/;
+    moved desktop/tests/, fixtures/, proofs/, and check-* scripts into
+    tests/; moved docs/ architecture files into arch/, 31 plans into
+    plans/P1..P31-<name>.md, docs/reviews/2026-10-27-tam-monitor.md
+    into reviews/R1-tam-monitor.md (with its reproducer in
+    reviews/R1-tam-monitor/reproduce.py), and filing cards plus the
+    2026-10-31 prune inventory into work/history/; retired docs/.
+  - Renamed AI_PROVENANCE.md (root and all 8 fred.* plugins) to
+    AI-BLAME.md and moved docs/ai-provenance-standard.md to
+    work/ai-blame-standard.md ("Blame everywhere").
+  - Renamed bugs/0001-* and bugs/0002-* to B1-* and B2-*; removed
+    legacy bugs/README-bugs.md and bugs/_template.md.
+  - Added ROADMAP.md and all six standard README-<folder> files with
+    tamlinux's notes under IN THIS REPOSITORY; added WHERE THINGS ARE
+    and the tam-idol 0.2.1 line to README.
+  - Updated Makefile (including test and clean targets),
+    src/desktop/install-product.py, install-cultivar-layout.py,
+    src/desktop/source-install/, and tests/ paths. Installed runtime
+    paths (/usr/lib/tamlinux/current/share/tamlinux/...) are unchanged.
+  - Verified: tam-idol/tools/idol-check ../tamlinux exits 0;
+    source-install unit tests pass (28/28); make check-install passes
+    (5/5); tests/test_check_all.py, test_journal.py, test_start_menu.py
+    and the updated desktop test suite pass (pre-existing
+    test_console_welcome.py string drift, retired recovery.py in
+    test_native_conversion.py, and sandbox sway/tmp checks unchanged).
+
+
+FAILED
+
+  - Nothing.
+
+
+HANDOFF
+
+  - tamlinux now follows the tam-idol 0.2.1 standard on branch dev.
+  - Continue NEXT in work/WHATNOW for 0.6.33 preparation on Fred's word
+    (note source-install paths are now under src/desktop/source-install).

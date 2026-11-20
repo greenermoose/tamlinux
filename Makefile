@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := source
 REPOS ?= ..
 SOURCE_BUILD ?= scratch/source-install
-SOURCE_INSTALL := desktop/source-install/main.py
+SOURCE_INSTALL := src/desktop/source-install/main.py
 ifeq ($(origin PREFIX)$(origin DESTDIR),undefinedundefined)
 .PHONY: source preflight source-delivery install verify
 source:
@@ -20,7 +20,7 @@ source-delivery:
 
 install:
 ifneq ($(strip $(SOURCE_PLAN)),)
-	/usr/bin/python3 -I -B desktop/source-install/transaction.py install --plan "$(SOURCE_PLAN)"
+	/usr/bin/python3 -I -B src/desktop/source-install/transaction.py install --plan "$(SOURCE_PLAN)"
 else
 	/usr/bin/python3 -I $(SOURCE_INSTALL) install --repos "$(REPOS)" --work "$(SOURCE_BUILD)" $(if $(SOURCE_ROOT),--root "$(SOURCE_ROOT)")
 endif
@@ -34,22 +34,31 @@ PREFIX ?= /usr/local
 PYTHON ?= python3
 NATIVE_COMMANDS := start tam-boot tam-hardware tam-launch-journal tam-meter tam-monitor tam-open
 
-.PHONY: all install-product install-commands install-data check-install $(NATIVE_COMMANDS)
+.PHONY: all test clean install-product install-commands install-data check-install $(NATIVE_COMMANDS)
 all: $(NATIVE_COMMANDS)
 
 $(NATIVE_COMMANDS):
-	$(MAKE) -C commands/$@ all PREFIX=$(PREFIX)
+	$(MAKE) -C src/commands/$@ all PREFIX=$(PREFIX)
+
+clean:
+	@set -e; for cmd in $(NATIVE_COMMANDS); do \
+		$(MAKE) -C src/commands/$$cmd clean; \
+	done
 
 install-commands: all
-	@set -e; for dir in commands/*; do \
+	@set -e; for dir in src/commands/*; do \
 		test -f "$$dir/Makefile" || continue; \
 		$(MAKE) -C "$$dir" install PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)"; \
 	done
 
 install-data:
-	$(PYTHON) -I desktop/install-product.py --prefix "$(PREFIX)" --destdir "$(DESTDIR)"
+	$(PYTHON) -I src/desktop/install-product.py --prefix "$(PREFIX)" --destdir "$(DESTDIR)"
 
 install-product: install-commands install-data
 
 check-install:
-	$(PYTHON) -B -m unittest discover -s desktop/tests -p test_product_install.py -v
+	$(PYTHON) -B -m unittest discover -s tests -p test_product_install.py -v
+
+test: check-install
+	$(PYTHON) -B -m unittest discover -s src/desktop/source-install -p 'test_*.py' -v
+	./tests/check-all

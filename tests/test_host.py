@@ -1,0 +1,497 @@
+"""Registry, settings, and clock-adapter checks for the shell proof."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+from pathlib import Path
+
+DESKTOP = (Path(__file__).resolve().parents[1] / "src/desktop")
+sys.path.insert(0, str(DESKTOP / "shell" / "host"))
+
+import registry  # noqa: E402
+import session_start  # noqa: E402
+import settings_store  # noqa: E402
+
+
+def _manifest(root: Path, plugin_id: str = "fred.clock", entry: str = "BarWidget.qml") -> None:
+    (root / "BarWidget.qml").write_text("import QtQuick\nItem {}\n", encoding="utf-8")
+    (root / "manifest.json").write_text(json.dumps({
+        "schemaVersion": 1,
+        "id": plugin_id,
+        "kinds": ["bar-widget"],
+        "entryPoints": {"barWidget": entry},
+    }), encoding="utf-8")
+
+
+class RegistryTests(unittest.TestCase):
+    def test_bundle_version_wins_over_legacy_version_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shell = root / "share/tamlinux/shell"
+            shell.mkdir(parents=True)
+            (shell.parent / "version").write_text("0.1.0\n")
+            (root / "BUNDLE").write_text("format 1\nname tamlinux\nversion 1.2.3-dev\n")
+            self.assertEqual(session_start.shell_version(shell), "1.2.3-dev")
+            (root / "BUNDLE").write_text("format 99\nname tamlinux\nversion 9.9.9\n")
+            self.assertEqual(session_start.shell_version(shell), "0.1.0")
+
+    def test_explicit_provider_wins_and_path_precedes_legacy_profile(self):
+        with patch.object(session_start.shutil, "which", return_value="/usr/bin/quickshell") as which:
+            self.assertEqual(session_start.resolve_quickshell({"TAMLINUX_QUICKSHELL": "/chosen/quickshell"}), "/chosen/quickshell")
+            which.assert_not_called()
+            self.assertEqual(session_start.resolve_quickshell({"PATH": "/usr/bin"}), "/usr/bin/quickshell")
+
+    def test_accepts_a_contained_entry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _manifest(root)
+            record = registry.validate_directory(root)
+            self.assertEqual(record["id"], "fred.clock")
+            self.assertTrue(record["entry"].endswith("BarWidget.qml"))
+
+    def test_rejects_duplicate_ids(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _manifest(root)
+            seen = set()
+            registry.validate_directory(root, seen)
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directory(root, seen)
+
+    def test_accepts_two_plugins_and_rejects_a_repeated_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            first = base / "clock"
+            second = base / "fixture"
+            first.mkdir()
+            second.mkdir()
+            _manifest(first, "fred.clock")
+            _manifest(second, "tamlinux.fixture")
+            records = registry.validate_directories([first, second])
+            self.assertEqual([item["id"] for item in records], ["fred.clock", "tamlinux.fixture"])
+            again = base / "again"
+            again.mkdir()
+            _manifest(again, "fred.clock")
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directories([first, again])
+
+    def test_rejects_malformed_manifest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "manifest.json").write_text("{", encoding="utf-8")
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directory(root)
+
+    def test_rejects_missing_entry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _manifest(root, entry="Missing.qml")
+            (root / "BarWidget.qml").unlink()
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directory(root)
+
+    def test_rejects_parent_escape_and_symlink(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _manifest(root, entry="../outside.qml")
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directory(root)
+            target = root / "real.qml"
+            target.write_text("Item {}\n", encoding="utf-8")
+            link = root / "linked.qml"
+            link.symlink_to(target)
+            _manifest(root, entry="linked.qml")
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directory(root)
+            outside_file = root / "secret"
+            outside_file.write_text("x", encoding="utf-8")
+            escaped = root / "sub"
+            escaped.mkdir()
+            (escaped / "jump").symlink_to(outside_file)
+            _manifest(root, entry="sub/jump")
+            with self.assertRaises(registry.RegistryError):
+                registry.validate_directory(root)
+
+
+class RegistryCommandTests(unittest.TestCase):
+    """registry.py as a command: validate one plugin, map a plugins directory."""
+
+    SCRIPT = DESKTOP / "shell" / "host" / "registry.py"
+
+    def run_registry(self, *args):
+        import subprocess
+        return subprocess.run([sys.executable, "-I", str(self.SCRIPT), *args],
+                              capture_output=True, text=True, timeout=20)
+
+    def test_validate_prints_the_record_or_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "fred.clock"
+            root.mkdir()
+            _manifest(root)
+            done = self.run_registry("validate", str(root))
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(json.loads(done.stdout)["id"], "fred.clock")
+            (root / "BarWidget.qml").unlink()
+            done = self.run_registry("validate", str(root))
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("entry point does not exist", done.stderr)
+            self.assertEqual(done.stdout, "")
+
+    def test_entries_leave_a_bad_plugin_off_and_say_so(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            for name in ("fred.clock", "fred.weather", "fred.broken", "fred.misnamed"):
+                (base / name).mkdir()
+            _manifest(base / "fred.clock", "fred.clock")
+            _manifest(base / "fred.weather", "fred.weather")
+            _manifest(base / "fred.broken", "fred.broken", entry="Missing.qml")
+            _manifest(base / "fred.misnamed", "fred.other")
+            (base / ".fred.clock.test.1").mkdir()
+            (base / "README").write_text("not a plugin\n", encoding="utf-8")
+            done = self.run_registry("entries", str(base))
+            self.assertEqual(done.returncode, 0, done.stderr)
+            entries = json.loads(done.stdout)
+            self.assertEqual(sorted(entries), ["fred.clock", "fred.weather"])
+            self.assertTrue(entries["fred.clock"].endswith("/fred.clock/BarWidget.qml"))
+            self.assertIn("left off the bar: fred.broken: entry point does not exist", done.stderr)
+            self.assertIn("left off the bar: fred.misnamed: manifest id 'fred.other'", done.stderr)
+
+    def test_entries_follow_a_linked_plugin_directory(self):
+        # Home Manager links each deployed plugin directory into the store.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            store = base / "store-fred.clock"
+            store.mkdir()
+            _manifest(store, "fred.clock")
+            plugins = base / "plugins"
+            plugins.mkdir()
+            (plugins / "fred.clock").symlink_to(store)
+            entries, problems = registry.plugin_entries(plugins)
+            self.assertEqual(problems, [])
+            self.assertEqual(entries, {"fred.clock": str((store / "BarWidget.qml").resolve())})
+
+    def test_usage_and_missing_directory(self):
+        self.assertEqual(self.run_registry().returncode, 2)
+        done = self.run_registry("entries", "/nonexistent/plugins")
+        self.assertEqual(done.returncode, 0)
+        self.assertEqual(json.loads(done.stdout), {})
+        self.assertIn("not a directory", done.stderr)
+
+
+class SessionStartTests(unittest.TestCase):
+    """The session unit's start script: plugin map, layout path, backend path."""
+
+    def test_version_follows_resolved_package_and_overrides_stale_environment(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shell = root / "share/tamlinux/shell"
+            shell.mkdir(parents=True)
+            (shell.parent / "version").write_text("0.4.4-a\n")
+            notes = shell.parent / "version-notes.txt"
+            notes.write_text("Tamlinux 0.4.4-a version notes\n")
+            (shell.parent.parent / "VERSION").write_text("9.9.9\n")
+            self.assertEqual(session_start.shell_version(shell), "0.4.4-a")
+            self.assertEqual(session_start.shell_version_notes(shell), str(notes))
+            with patch.object(session_start, "shell_version", return_value="0.4.4-a"), \
+                 patch.object(session_start, "shell_version_notes", return_value=str(notes)):
+                env, _ = session_start.session_environment({
+                    "HOME": str(root), "TAMLINUX_BAR": "0", "TAMLINUX_VERSION": "stale",
+                    "TAMLINUX_VERSION_NOTES": "/stale/notes.txt"})
+            self.assertEqual(env["TAMLINUX_VERSION"], "0.4.4-a")
+            self.assertEqual(env["TAMLINUX_VERSION_NOTES"], str(notes))
+
+    def test_compositor_version_is_bounded_and_fails_closed(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        self.assertEqual(session_start.compositor_version({}), "")
+        with patch.object(session_start.subprocess, "run", return_value=SimpleNamespace(stdout='{"version":"0.56.2"}')) as run:
+            self.assertEqual(session_start.compositor_version({"HYPRLAND_INSTANCE_SIGNATURE": "test"}), "0.56.2")
+            self.assertEqual(run.call_args.kwargs["timeout"], 2)
+        with patch.object(session_start.subprocess, "run", return_value=SimpleNamespace(stdout='{"version":"bad value"}')):
+            self.assertEqual(session_start.compositor_version({"HYPRLAND_INSTANCE_SIGNATURE": "test"}), "")
+        with patch.object(session_start.subprocess, "run", side_effect=subprocess.TimeoutExpired("hyprctl", 2)):
+            self.assertEqual(session_start.compositor_version({"HYPRLAND_INSTANCE_SIGNATURE": "test"}), "")
+
+    def test_source_version_and_missing_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shell = root / "src/desktop/shell"
+            shell.mkdir(parents=True)
+            self.assertEqual(session_start.shell_version(shell), "unknown")
+            (root / "VERSION").write_text("0.4.4-a\n")
+            self.assertEqual(session_start.shell_version(shell), "0.4.4-a")
+
+    def test_services_only_adds_nothing_but_the_import_and_backend_paths(self):
+        env, notes = session_start.session_environment({"HOME": "/home/u", "TAMLINUX_BAR": "0"})
+        self.assertEqual(notes, [])
+        self.assertEqual(env["QML_IMPORT_PATH"], str(DESKTOP / "shell" / "modules"))
+        self.assertEqual(env["TAMLINUX_COMPOSITOR_COMMANDS"], str(DESKTOP / "shell" / "host"))
+        self.assertNotIn("TAMLINUX_PLUGIN_ENTRIES", env)
+        self.assertNotIn("TAMLINUX_BAR_LAYOUT", env)
+
+    def test_selected_immutable_provider_receives_resolved_shell_and_environment(self):
+        from unittest.mock import patch
+        chosen = "/nix/store/selected-provider/bin/quickshell"
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": chosen, "TAMLINUX_BAR": "0", "HOME": directory,
+                                     "XDG_CONFIG_HOME": directory + "/config", "OMARCHY_PATH": "/prior-owner",
+                                     "OMARCHY_CUSTOM": "prior-user-setting"}), \
+             patch.object(session_start.os, "execve") as execute:
+            session_start.main()
+        executable, argv, env = execute.call_args.args
+        self.assertEqual(executable, chosen)
+        self.assertEqual(argv, [chosen, "-p", str(session_start.SHELL)])
+        self.assertEqual(env["TAMLINUX_QUICKSHELL"], chosen)
+        self.assertFalse(any(key.startswith("OMARCHY_") for key in env))
+
+    def test_relative_provider_is_rejected_without_execution(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"TAMLINUX_QUICKSHELL": "qs", "TAMLINUX_BAR": "0"}), \
+             patch.object(session_start.os, "execve") as execute, \
+             patch.object(session_start, "initialize_defaults") as initialize:
+            self.assertEqual(session_start.main(), 2)
+        execute.assert_not_called()
+        initialize.assert_not_called()
+
+    def test_missing_quickshell_fails_clearly_without_execution(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as home, \
+             patch.dict(os.environ, {"HOME": home, "TAMLINUX_BAR": "0"}, clear=True), \
+             patch.object(session_start.shutil, "which", return_value=None), \
+             patch.object(session_start.os, "execve") as execute, \
+             patch.object(session_start, "initialize_defaults") as initialize:
+            with self.assertRaises(FileNotFoundError):
+                session_start.resolve_quickshell({"HOME": home})
+            self.assertEqual(session_start.main(), 3)
+        execute.assert_not_called()
+        initialize.assert_not_called()
+
+    def test_bar_maps_the_deployed_plugins_and_names_the_layout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / "config"
+            plugins = config / "tamlinux" / "plugins"
+            (plugins / "fred.clock").mkdir(parents=True)
+            (plugins / "fred.broken").mkdir()
+            _manifest(plugins / "fred.clock", "fred.clock")
+            _manifest(plugins / "fred.broken", "fred.broken", entry="Missing.qml")
+            env, notes = session_start.session_environment(
+                {"HOME": "/home/u", "XDG_CONFIG_HOME": str(config)})
+            self.assertEqual(env["TAMLINUX_BAR_LAYOUT"], str(config / "tamlinux" / "shell" / "layout.json"))
+            entries = json.loads(env["TAMLINUX_PLUGIN_ENTRIES"])
+            self.assertEqual(list(entries), ["fred.clock"])
+            self.assertIn("left off the bar: fred.broken: entry point does not exist: Missing.qml", notes)
+            self.assertIn("plugins: fred.clock", notes)
+            backend = Path(env["TAMLINUX_COMPOSITOR_COMMANDS"])
+            self.assertTrue((backend / "hyprland_backend.py").is_file())
+            self.assertTrue((backend / "compositor_commands.py").is_file())
+
+    def test_the_environment_wins(self):
+        env, notes = session_start.session_environment({
+            "HOME": "/home/u", "QML_IMPORT_PATH": "/x", "TAMLINUX_BAR_LAYOUT": "/l.json",
+            "TAMLINUX_PLUGIN_ENTRIES": "{}", "TAMLINUX_COMPOSITOR_COMMANDS": "/c"})
+        self.assertEqual((env["QML_IMPORT_PATH"], env["TAMLINUX_BAR_LAYOUT"], env["TAMLINUX_PLUGIN_ENTRIES"],
+                          env["TAMLINUX_COMPOSITOR_COMMANDS"]),
+                         ("/x", "/l.json", "{}", "/c"))
+        self.assertEqual(notes, [])
+
+    def test_no_plugins_directory_is_not_fatal(self):
+        env, notes = session_start.session_environment(
+            {"HOME": "/nonexistent-home", "TAMLINUX_PLUGINS_DIR": "/nonexistent/plugins"})
+        self.assertEqual(json.loads(env["TAMLINUX_PLUGIN_ENTRIES"]), {})
+        self.assertIn("plugins: none", notes)
+
+
+class SettingsTests(unittest.TestCase):
+    def test_round_trip_and_rejection(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "settings"
+            directory.mkdir()
+            os.chmod(directory, 0o700)
+            path = settings_store.write_settings(directory, {
+                "version": 1,
+                "entries": {"fred.clock": {"id": "fred.clock", "format": "HH:mm", "badgeMinutes": 60}},
+            }, {"fred.clock"})
+            mode = stat.S_IMODE(path.stat().st_mode)
+            self.assertEqual(mode, 0o600)
+            loaded = settings_store.read_settings(path, {"fred.clock"})
+            self.assertEqual(loaded["entries"]["fred.clock"]["format"], "HH:mm")
+            with self.assertRaises(settings_store.SettingsError):
+                settings_store.write_settings(directory, {
+                    "version": 1,
+                    "entries": {"other": {"id": "other"}},
+                }, {"fred.clock"})
+            with self.assertRaises(settings_store.SettingsError):
+                settings_store.validate_document({
+                    "version": 1,
+                    "entries": {"fred.clock": {"id": "fred.clock", "format": {"bad": True}}},
+                }, {"fred.clock"})
+
+    def test_allows_each_registered_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "settings"
+            directory.mkdir()
+            os.chmod(directory, 0o700)
+            allowed = {"fred.clock", "tamlinux.fixture"}
+            path = settings_store.write_settings(directory, {
+                "version": 1,
+                "entries": {
+                    "fred.clock": {"id": "fred.clock", "format": "HH:mm"},
+                    "tamlinux.fixture": {"id": "tamlinux.fixture", "marker": "step2"},
+                },
+            }, allowed)
+            loaded = settings_store.read_settings(path, allowed)
+            self.assertEqual(loaded["entries"]["tamlinux.fixture"]["marker"], "step2")
+            with self.assertRaises(settings_store.SettingsError):
+                settings_store.validate_document({
+                    "version": 1,
+                    "entries": {"omarchy.osd": {"id": "omarchy.osd"}},
+                }, allowed)
+
+    def test_refuses_a_shared_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "open"
+            directory.mkdir()
+            os.chmod(directory, 0o755)
+            with self.assertRaises(settings_store.SettingsError):
+                settings_store.write_settings(directory, {
+                    "version": 1,
+                    "entries": {"fred.clock": {"id": "fred.clock"}},
+                }, {"fred.clock"})
+
+
+class FixtureTests(unittest.TestCase):
+    def test_fixture_has_no_ipc_handler(self):
+        text = (DESKTOP.parents[1] / "tests/fixtures" / "panel" / "BarWidget.qml").read_text(encoding="utf-8")
+        self.assertIn('moduleName: "tamlinux.fixture"', text)
+        self.assertNotIn("manageIpc", text)
+        self.assertNotIn("IpcHandler", text)
+        shell = (DESKTOP / "shell" / "shell.qml").read_text(encoding="utf-8")
+        self.assertEqual(shell.count('target: "tamlinux-shell"'), 1)
+        self.assertNotIn('target: "tamlinux.fixture"', shell)
+
+
+class BarWindowTests(unittest.TestCase):
+    def test_tooltip_parser_handles_footer_only_and_body_text(self):
+        cases = [
+            ("", {"body": "", "footer": ""}),
+            ("fred.clock v2.0.2", {"body": "", "footer": "fred.clock v2.0.2"}),
+            ("5m remaining\n\nfred.clock v2.0.2", {"body": "5m remaining", "footer": "fred.clock v2.0.2"}),
+            ("Status\nFact\nfred.monitor v2.0.4", {"body": "Status\nFact", "footer": "fred.monitor v2.0.4"}),
+            ("Status\r\n\r\nfred.clock v2.0.2\r\n", {"body": "Status", "footer": "fred.clock v2.0.2"}),
+            ("\nfred.weather v2.0.2\n \n", {"body": "", "footer": "fred.weather v2.0.2"}),
+            ("ordinary help\n", {"body": "ordinary help\n", "footer": ""}),
+            ("fred.clock v2.0.2\nmore help", {"body": "fred.clock v2.0.2\nmore help", "footer": ""}),
+        ]
+        script = """
+const parser = require(process.argv[1]);
+const cases = JSON.parse(process.argv[2]);
+process.stdout.write(JSON.stringify(cases.map(([raw]) => parser.parse(raw))));
+"""
+        result = subprocess.run(["node", "-e", script,
+                                 str(DESKTOP / "shell/host/TooltipParser.js"), json.dumps(cases)],
+                                capture_output=True, text=True, timeout=10, check=True)
+        self.assertEqual(json.loads(result.stdout), [expected for _, expected in cases])
+        text = (DESKTOP / "shell/host/BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn('import "TooltipParser.js" as TooltipParser', text)
+        self.assertIn("parsedTooltip: TooltipParser.parse(win.tooltipText)", text)
+
+    def test_every_bar_rereads_settings_after_a_write(self):
+        # One bar's write (a clock format cycled on the Dell) reached only that
+        # bar until the shell restarted (0.4.4j K12 finding).
+        text = (DESKTOP / "shell/host/BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn("function onSettingsDocChanged()", text)
+        self.assertIn("win.settingsFor(items[i], items[i] === api.widget)", text)
+        adopt = text[text.index("function adopt(item, isClock)"):]
+        self.assertIn("settingsFor(item, isClock)", adopt[:adopt.index("api.registerWidget(item)")])
+        fixture = (DESKTOP.parents[1] / "tests/fixtures/panel/BarWidget.qml").read_text(encoding="utf-8")
+        self.assertIn('publish("marker=" + settings.marker)', fixture)
+        proof = (DESKTOP.parents[1] / "tests/launch-clock-proof").read_text(encoding="utf-8")
+        self.assertIn("fixture setting did not reach every bar", proof)
+
+    def test_daily_bar_reserves_its_own_height(self):
+        # ExclusionMode.Normal reserves only an explicit exclusiveZone (0 by
+        # default); Auto reserves the bar's height.
+        text = (DESKTOP / "shell" / "host" / "BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn('=== "1" ? ExclusionMode.Auto : ExclusionMode.Ignore', text)
+        self.assertNotIn("ExclusionMode.Normal", text)
+
+    def test_tooltip_overlay_structure_and_version_footer(self):
+        text = (DESKTOP / "shell" / "host" / "BarWindow.qml").read_text(encoding="utf-8")
+        self.assertIn("parsedTooltip", text)
+        self.assertIn("tipLabel", text)
+        self.assertIn("tipFooterLabel", text)
+        self.assertIn("Style.font.caption", text)
+        self.assertIn("opacity: 0.45", text)
+        self.assertIn("horizontalAlignment: Text.AlignHCenter", text)
+
+
+class PluginMetadataTests(unittest.TestCase):
+    def test_all_qml_version_declarations_match_the_manifest(self):
+        plugins = sorted((DESKTOP / "plugins").glob("fred.*"))
+        self.assertIn("fred.clock", [plugin.name for plugin in plugins])
+        for plugin in plugins:
+            manifest = json.loads((plugin / "manifest.json").read_text())
+            declarations = []
+            for qml in plugin.rglob("*.qml"):
+                versions = re.findall(r'property\s+string\s+pluginVersion\s*:\s*"([^\"]+)"',
+                                      qml.read_text(encoding="utf-8"))
+                declarations.extend((qml.relative_to(plugin), version) for version in versions)
+            with self.subTest(plugin=plugin.name):
+                self.assertTrue(declarations, "plugin must expose its running version")
+            for qml, version in declarations:
+                with self.subTest(plugin=plugin.name, qml=str(qml)):
+                    self.assertEqual(version, manifest["version"])
+
+    def test_plugin_manifest_urls_point_to_the_product_repository(self):
+        for path in sorted((DESKTOP / "plugins").glob("fred.*/manifest.json")):
+            manifest = json.loads(path.read_text())
+            with self.subTest(plugin=manifest["id"]):
+                self.assertEqual(manifest["repository"], "https://github.com/greenermoose/tamlinux.git")
+                self.assertEqual(manifest["homepage"], "https://github.com/greenermoose/tamlinux")
+
+
+class FreshSessionDefaults(unittest.TestCase):
+    def test_empty_home_receives_all_plugins_and_mutable_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = {'HOME': directory, 'XDG_CONFIG_HOME': directory + '/config'}
+            session_start.initialize_defaults(env)
+            root = Path(directory) / 'config/tamlinux/shell'
+            layout = json.loads((root / 'layout.json').read_text())
+            ids = {entry['id'] for section in layout['layout'].values() for entry in section}
+            self.assertEqual({name for name in ids if name.startswith('fred.')},
+                             {plugin.name for plugin in (DESKTOP / 'plugins').glob('fred.*')})
+            center = [entry['id'] for entry in layout['layout']['center']]
+            clock = center.index('fred.clock')
+            self.assertEqual(center[clock - 2:clock], ['tamlinux.indicators', 'fred.tamversion'])
+            self.assertEqual(layout['centerAnchor'], 'fred.clock')
+            self.assertEqual(json.loads((root / 'settings.json').read_text()), {'version': 1, 'entries': {}})
+            self.assertEqual(list(root.glob('.tamlinux-default-*')), [])
+
+    def test_relative_layout_is_rejected_before_any_default_is_published(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(ValueError):
+                session_start.initialize_defaults({'HOME': directory, 'TAMLINUX_BAR_LAYOUT': 'relative.json'})
+            self.assertFalse((Path(directory) / '.config').exists())
+
+    def test_existing_data_and_dangling_links_are_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / '.config/tamlinux/shell'
+            root.mkdir(parents=True)
+            (root / 'settings.json').write_text('personal bytes')
+            (root / 'layout.json').symlink_to('unavailable-user-file')
+            session_start.initialize_defaults({'HOME': directory})
+            self.assertEqual((root / 'settings.json').read_text(), 'personal bytes')
+            self.assertEqual(os.readlink(root / 'layout.json'), 'unavailable-user-file')
+
+
+if __name__ == "__main__":
+    unittest.main()
