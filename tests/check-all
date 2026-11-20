@@ -232,14 +232,14 @@ def run_sharded_unittest(unit, env, shards, limit=UNIT_LIMIT_SECONDS):
     kind, name, directory, _ = unit
     started = time.monotonic()
     list_code = (
-        "import sys, unittest; "
-        "sys.path.insert(0, 'tests'); "
-        f"s = unittest.defaultTestLoader.loadTestsFromName({name!r}); "
+        "import sys, unittest\n"
+        "sys.path.insert(0, 'tests')\n"
+        f"s = unittest.defaultTestLoader.loadTestsFromName({name!r})\n"
         "def walk(x):\n"
         "  for i in x:\n"
         "    if isinstance(i, unittest.TestSuite): yield from walk(i)\n"
         "    else: yield i.id()\n"
-        "print('\\n'.join(walk(s)))"
+        "print('\\n'.join(walk(s)))\n"
     )
     listed = subprocess.run([sys.executable, "-B", "-c", list_code], cwd=directory, env=env,
                             stdin=subprocess.DEVNULL, capture_output=True, text=True,
