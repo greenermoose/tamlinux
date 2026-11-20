@@ -101,7 +101,7 @@ if __name__ == "__main__":
         tasks.append(("theme", "TAMLINUX_THEME_PROOF", "success", scale))
         for mode in ("success", "early-output", "failed-output", "malformed", "timeout"):
             tasks.append(("theme-service", "TAMLINUX_THEME_SERVICE_PROOF", mode, scale))
-    workers = min(len(tasks), max(1, os.cpu_count() or 1))
+    workers = min(4, len(tasks), max(1, os.cpu_count() or 1))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(check, fixture, marker, mode, scale, args.quickshell)
                    for fixture, marker, mode, scale in tasks]

@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
 import time
 
 UNIT_LIMIT_SECONDS = 300
@@ -226,6 +227,13 @@ SHARDED_UNITS = {
     ("desktop", "test_theme_ownership"): 4,
 }
 
+COMPOSITOR_UNITS = frozenset({
+    ("check", "check-panels"),
+    ("check", "check-theme"),
+    ("desktop", "test_start_menu"),
+    ("desktop", "test_menu_jsonc"),
+})
+
 
 def run_sharded_unittest(unit, env, shards, limit=UNIT_LIMIT_SECONDS):
     """Run a large unittest file across parallel shard processes as one report unit."""
@@ -293,10 +301,16 @@ def run_units(units, env, jobs):
                 print(f"[{idx + 1}/{total}] FAILED {unit[0]} {unit[1]}", flush=True)
         return results
 
+    compositor_gate = threading.Semaphore(1)
+
     def dispatch(unit):
-        shards = SHARDED_UNITS.get((unit[0], unit[1]))
+        key = (unit[0], unit[1])
+        shards = SHARDED_UNITS.get(key)
         if shards and jobs >= 4:
             return run_sharded_unittest(unit, env, min(shards, jobs))
+        if key in COMPOSITOR_UNITS:
+            with compositor_gate:
+                return run_unit(unit, env)
         return run_unit(unit, env)
 
     has_journal_desktop = any(u[0] == "desktop" and u[1] == "test_journal" for u in units)
