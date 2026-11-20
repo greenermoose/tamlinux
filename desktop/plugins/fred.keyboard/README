@@ -207,7 +207,7 @@ Tests run with Node and need nothing else:
     for t in tests/*.test.js; do node "$t"; done
 
 AI-assisted engineering is disclosed in <AI_PROVENANCE.md> and the per-session
-records under docs/ai/.
+records under work/history/.
 
 
 LICENSE

@@ -8,7 +8,9 @@ next. It holds:
   W<n>-<name>    one record per work session: what was asked, what got
                  done, what failed.
   history/       the session records kept in docs/ai/ until
-                 2026-11-17, unchanged and read-only.
+                 2026-11-17, unchanged and read-only. Each fred.* plugin
+                 keeps its own work/history/ for the records of its
+                 frozen standalone repository.
 
 An AI agent starting work in this repository should be able to read
 WHATNOW and carry on without asking Fred to repeat himself.

@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-20, with W14
+Updated: 2026-11-20, with W15
 
 
 STATE
@@ -16,7 +16,10 @@ STATE
   0.6.28 at Test on all three hosts.
 
   The working branch was renamed from develop to dev on 2026-11-20
-  under D272; no version or source pin changed (W14).
+  under D272; no version or source pin changed (W14). All live docs/ai/
+  folders were retired the same day under D278: the root records now sit
+  in work/history/, each of the eight fred.* plugins has its own
+  work/history/, and every link was repointed (W15).
 
   Since then, on dev and listed under "Unreleased" in CHANGELOG.md:
   fred.workspaces 2.0.12, a tam-fleet README fix, journal entry points
@@ -101,8 +104,8 @@ WATCH OUT
     proofs start real programs that may crash.
   - Agents push only dev and feature branches; test, main, tags and
     releases move on Fred's words.
-  - The fred.* plugins under desktop/plugins/ keep their own docs/ai/
-    folders: they are archives of the frozen standalone plugin
+  - The fred.* plugins under desktop/plugins/ keep their own
+    work/history/ folders: archives of the frozen standalone plugin
     repositories, not this repository's records.
   - Development builds use ~/.local/bin and ~/.local/lib; releases
     install to /usr/bin and /usr/lib. Verify release commands by their

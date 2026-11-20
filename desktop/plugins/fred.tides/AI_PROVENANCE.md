@@ -8,7 +8,7 @@ This repository practices transparent AI-assisted engineering. We document the A
 
 This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
 brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
-each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+each session record in [`work/history/`](work/history/) gives the date, tool version,
 model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
@@ -39,7 +39,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Legibility Font Refinement (Unslashed Zero)** | `v1.0.3` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Restored panel-wide font to system default (`root.bar ? root.bar.fontFamily : Style.font.family`) to respect user desktop themes; scoped numeric font (`Liberation Sans`) specifically to numeric displays (card times, heights, curve timestamps) for tabular fixed-width digits with clean, unslashed/undotted open zeros, eliminating confusion between 10 and 18 at small font sizes. |
 | **Marketplace notification security fix** | `v1.0.4` | Codex CLI (`codex 0.155.1`, `gpt-6-sol`) implementation; Cursor `3.21.16` (`composer`) release | Replaced shell-built right-click notification command with a bounded literal argv call through a closed-environment process and watchdog; released after Fred's live test. |
 
-The 2026-09-22 security work is recorded in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+The 2026-09-22 security work is recorded in [`work/history/sessions.md`](work/history/sessions.md).
 
 ## 2026-09-22 Tamlinux branding
 
@@ -50,29 +50,29 @@ Cursor `3.21.16` (`composer`) replaced the current-facing `for Omarchy Linux` ta
 Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
 and dated survey directory for this repository. This was documentation only;
 no field survey or runtime change was made.
-[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+[Session record](work/history/2026-09-23-upstream-survey-foundation.md).
 
 ## 2026-09-28 private session IDs
 
 Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
-[Session record](docs/ai/2026-09-28-private-session-ids.md).
+[Session record](work/history/2026-09-28-private-session-ids.md).
 
 ## 2026-10-03 shell-independent 2.0.0
 
 Cursor `3.23.12` (`composer`) rewrote `fred.tides` to 2.0.0 on
 `develop/2.0.0`. The widget no longer calls `bar.run`. Not tagged or
 released.
-[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+[Session record](work/history/2026-10-03-shell-independent-2.0.0.md).
 
 ## 2026-10-03 compositor facade reads
 
 Cursor `3.23.12` (`composer`) pointed fred.tides 2.0.0 QML at the Tamlinux
 compositor facade. Both IPC targets pass the facade's focused output and output list into the store. `TidesPanelWindow` takes keyboard focus only on the focused output. Not tagged or released.
-[Session record](docs/ai/2026-10-03-compositor-facade.md).
+[Session record](work/history/2026-10-03-compositor-facade.md).
 
 ## 2026-10-06 Tamlinux-only dependencies
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Notifications run `tam-notification-send` by absolute path from `TAMLINUX_BIN`, falling back to `~/.local/bin`. `OMARCHY_PATH` is no longer read or copied into the closed environment. The panel layer is `tamlinux-tides-panel`. Not tagged or released.
-[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+[Session record](work/history/2026-10-06-tamlinux-only-dependencies.md).

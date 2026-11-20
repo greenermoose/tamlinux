@@ -6,7 +6,7 @@
 - **Transcript**: Retained privately by the author. It was not cited in the
   prior `sessions.md`; it was found by searching the Codex session index for
   "Support dynamic monitor sets".
-- **Public Plan**: [`docs/plans/monitor-set-windows-mode.md`](../plans/monitor-set-windows-mode.md)
+- **Public Plan**: [`docs/plans/monitor-set-windows-mode.md`](../../docs/plans/monitor-set-windows-mode.md)
 - **Session start**: 2026-09-15T12:37:12Z (from the transcript)
 - **Commits**: `10e91a2` (2026-09-15 14:38), `84e2ba9` (2026-09-15 14:39 — provenance docs)
 

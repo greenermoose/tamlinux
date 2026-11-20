@@ -8,7 +8,7 @@ This repository practices transparent AI-assisted engineering. We document the A
 
 This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
 brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
-each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+each session record in [`work/history/`](work/history/) gives the date, tool version,
 model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
@@ -39,7 +39,7 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Fresh Resource Hover & MSI Screenshots** | `v1.1.2` pre-release | Codex CLI (`codex 0.155.1`, `gpt-5.6-sol`) | Replaced the stale temperature/frequency hover with freshly probed CPU usage, available RAM, and free disk space; verified kernel hwmon temperature sources; captured updated hover and panel screenshots on the MSI display. |
 | **Marketplace cache security fix** | `v1.1.2` | Codex CLI (`codex 0.155.1`, `gpt-6-sol`) implementation; Cursor `3.21.16` (`composer`) release | Removed shared scratch cache paths, added private runtime storage with descriptor-relative no-follow atomic writes and checked reads, and added cache attack tests; released after Fred's live test. |
 
-Detailed session logs and prompts are documented in [`docs/ai/sessions.md`](docs/ai/sessions.md).
+Detailed session logs and prompts are documented in [`work/history/sessions.md`](work/history/sessions.md).
 
 ## 2026-09-22 Tamlinux branding
 
@@ -50,29 +50,29 @@ Cursor `3.21.16` (`composer`) replaced current-facing `Omarchy Linux` platform w
 Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
 and dated survey directory for this repository. This was documentation only;
 no field survey or runtime change was made.
-[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+[Session record](work/history/2026-09-23-upstream-survey-foundation.md).
 
 ## 2026-09-28 private session IDs
 
 Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
-[Session record](docs/ai/2026-09-28-private-session-ids.md).
+[Session record](work/history/2026-09-28-private-session-ids.md).
 
 ## 2026-10-03 shell-independent 2.0.0
 
 Cursor `3.23.12` (`composer`) rewrote `fred.sysinfo` to 2.0.0 on
 `develop/2.0.0`. Opening the monitor is a host terminal action. Not tagged
 or released.
-[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+[Session record](work/history/2026-10-03-shell-independent-2.0.0.md).
 
 ## 2026-10-03 compositor facade reads
 
 Cursor `3.23.12` (`composer`) pointed fred.sysinfo 2.0.0 QML at the Tamlinux
 compositor facade. IPC uses the facade's focused output name. `SysinfoPanel` takes keyboard focus only when that output is the panel's screen. Not tagged or released.
-[Session record](docs/ai/2026-10-03-compositor-facade.md).
+[Session record](work/history/2026-10-03-compositor-facade.md).
 
 ## 2026-10-06 Tamlinux-only dependencies
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. The panel layer is `tamlinux-sysinfo-panel`. Not tagged or released.
-[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+[Session record](work/history/2026-10-06-tamlinux-only-dependencies.md).

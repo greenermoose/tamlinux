@@ -8,7 +8,7 @@ This repository practices transparent AI-assisted engineering. We document the A
 
 This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
 brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
-each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+each session record in [`work/history/`](work/history/) gives the date, tool version,
 model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
@@ -47,15 +47,15 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Settled Idle Tracking, DPMS Sync & Version Footers** | `v1.5.1` | Antigravity CLI `1.2.6` (Gemini 3.8 Flash (High)) | Fixed idle blanking to act on settled state (400 ms debounce), adopted true DPMS state on bar init, and added version footer on hover across all workspace and mode buttons. |
 | **State Directory and Read-Only Command Audit** | `v1.5.2` | Codex CLI `0.155.1` (`gpt-6-sol`) | Preserved the mode of Omarchy's shared state directory, made status and indicator avoid state writes, and added a symlinked config regression test. |
 
-Detailed session logs and prompts are documented in [`docs/ai/README`](docs/ai/README). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).
+Detailed session logs and prompts are documented in [`work/history/README`](work/history/README). The public v1.3.0 design and acceptance contract are in [`docs/plans/monitor-set-windows-mode.md`](docs/plans/monitor-set-windows-mode.md).
 
 ## 2026-09-22 repository rename
 
-Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `workspaces-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `workspaces-fred-tamlinux`. [Session record](work/history/2026-09-22-github-repository-rename.md).
 
 ## 2026-09-22 helper rename
 
-Cursor `3.21.16` (`composer`) renamed `omarchy-desktop-mode` to `tam-desktop-mode` so the published tree matches the deployed Tamlinux command names. [Session record](docs/ai/2026-09-22-tam-desktop-mode.md).
+Cursor `3.21.16` (`composer`) renamed `omarchy-desktop-mode` to `tam-desktop-mode` so the published tree matches the deployed Tamlinux command names. [Session record](work/history/2026-09-22-tam-desktop-mode.md).
 
 ## 2026-09-22 Tamlinux branding
 
@@ -63,51 +63,51 @@ Cursor `3.21.16` (`composer`) replaced the current-facing `Fred's Omarchy worksp
 
 ## 2026-09-23 workspaces audit fixes
 
-Codex CLI `0.155.1` (`gpt-6-sol`) implemented and deployed the v1.5.2 audit fixes. [Session record](docs/ai/2026-09-23-workspaces-audit.md).
+Codex CLI `0.155.1` (`gpt-6-sol`) implemented and deployed the v1.5.2 audit fixes. [Session record](work/history/2026-09-23-workspaces-audit.md).
 
 ## 2026-09-23 upstream survey foundation
 
 Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
 and dated survey directory for this repository. This was documentation only;
 no field survey or runtime change was made.
-[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+[Session record](work/history/2026-09-23-upstream-survey-foundation.md).
 
 ## 2026-09-28 private session IDs
 
 Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
-[Session record](docs/ai/2026-09-28-private-session-ids.md).
+[Session record](work/history/2026-09-28-private-session-ids.md).
 
 ## 2026-10-03 shell-independent 2.0.0
 
 Cursor `3.23.12` (`composer`) rewrote `fred.workspaces` to 2.0.0 on
 `develop/2.0.0`. The Omarchy workspaces IPC handler is gone. Hyprland reads
 stay. Not tagged or released.
-[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+[Session record](work/history/2026-10-03-shell-independent-2.0.0.md).
 
 ## 2026-10-03 named compositor backend
 
 Cursor `3.23.12` (`composer`) pointed `tam-desktop-mode` on `develop/2.0.0` at the Tamlinux compositor backend. The helper no longer builds Hyprland command text. Not tagged or released.
-[Session record](docs/ai/2026-10-03-hyprland-command-ownership.md).
+[Session record](work/history/2026-10-03-hyprland-command-ownership.md).
 
 ## 2026-10-03 compositor facade reads
 
 Cursor `3.23.12` (`composer`) pointed fred.workspaces 2.0.0 QML at the Tamlinux
 compositor facade. QML reads outputs, workspaces, focus, and `dpmsOn` from the facade and reacts to `revision`. `tam-desktop-mode` still dispatches through Hyprland. Not tagged or released.
-[Session record](docs/ai/2026-10-03-compositor-facade.md).
+[Session record](work/history/2026-10-03-compositor-facade.md).
 
 ## 2026-10-06 Tamlinux-only dependencies
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. No code change. `tam-desktop-mode` keeps reading the four `OMARCHY_DESKTOP_*` configuration keys and session variables for compatibility, and the test allows exactly those. Not tagged or released.
-[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+[Session record](work/history/2026-10-06-tamlinux-only-dependencies.md).
 
 ## 2026-10-06 wake a blanked monitor (2.0.1)
 
 Claude Code `2.1.292` (`claude-opus-5-5`) kept a monitor this bar blanked dark until the shell reports it dark, so pointer entry or focus wakes it again. A stale "lit" report from the shell had cleared the dark state. Not tagged or released.
-[Session record](docs/ai/2026-10-06-wake-blanked-monitor.md).
+[Session record](work/history/2026-10-06-wake-blanked-monitor.md).
 
 ## 2026-11-18 confirm a blank on helper exit (2.0.13)
 
 Claude Code `2.1.327` (`claude-opus-5-5`) made a completed helper `dpms-off` confirm this bar's blank, so a monitor lit from elsewhere counts down to blank again. The Tamlinux shell gained `compositorRefresh` alongside. Not tagged or released.
-[Session record](docs/ai/2026-11-18-confirm-blank-on-helper-exit.md).
+[Session record](work/history/2026-11-18-confirm-blank-on-helper-exit.md).

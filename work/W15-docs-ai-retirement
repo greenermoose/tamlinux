@@ -1,0 +1,46 @@
+W15 DOCS/AI RETIREMENT
+
+Date: 2026-11-20
+AI harness: opencode 2.2.5
+AI model: big-pickle
+Commit: the docs/ai retirement commit
+
+
+GUIDANCE
+
+  Fred: "all docs/ai files should be rewritten into work/ files. i don't
+  want there to be a docs/ai/ folder any more -- I'm looking in work/
+  to see work history"
+
+  D278 retires docs/ai/ in every live repository; this is the tamlinux
+  part. Claude's 2026-11-17 inbox message set out the shape.
+
+
+DONE
+
+  - Moved the three root docs/ai records into the existing work/history/
+    and created a work/history/ under each of the eight fred.* plugins,
+    moving 92 records into them with git mv. No live docs/ai folder
+    remains; frozen scratch copies were left alone.
+  - Repointed the root AI_PROVENANCE candidate links, every plugin
+    AI_PROVENANCE ledger, the fred.keyboard README and work/WHATNOW.
+    The two plugin README links to ../../AI_PROVENANCE.md still resolve
+    at their new depth; the fred.workspaces plan link was corrected.
+  - The fred.agents provenance pointed at a 2026-10-16 record pruned in
+    the 2026-10-31 docs prune. Replaced the dead link with the
+    FILING-CARD's git-show retrieval command.
+  - Documented the plugin histories in work/README-work and wrote this
+    record; revised WHATNOW.
+
+
+FAILED
+
+  - Nothing. A link scan found no newly broken relative links; the 118
+    remaining broken links were already broken at HEAD (pruned records
+    and guide paths from the standalone plugin era).
+
+
+HANDOFF
+
+  - Product versions and candidate pins are unchanged. No Test, Run or
+    Release action; this is the docs/ai retirement under D278 only.

@@ -8,7 +8,7 @@ This repository practices transparent AI-assisted engineering. We document the A
 
 This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
 brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
-each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+each session record in [`work/history/`](work/history/) gives the date, tool version,
 model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
@@ -41,11 +41,11 @@ Rather than relying on a single AI model or interface, Fred uses a specialized t
 | **Latent compile failure & closed-env fix** | `v1.3.2` | Claude Code (Claude Opus 5) | `Launch.qml` had never compiled (`Process` has no default property for `Timer` children) and the env allowlist never applied (`Quickshell` singleton out of scope in `Model.js`); both masked by Qt's mtime-only qmlcache on Nix-store files. Timers moved to object-valued properties; `pickEnv` takes a lookup function. |
 | **Version Footers & Visual Status** | `v1.3.3` | Antigravity CLI (`agy 1.2.6`, `Gemini 3.8 Flash (High)`) | Embedded running version in bar hover tooltip (`BarWidget.qml`) and as a centered, styled footer at the bottom of the open agenda popup panel (`Panel.qml`). |
 
-Detailed session logs and prompts are documented in [`docs/ai/README`](docs/ai/README).
+Detailed session logs and prompts are documented in [`work/history/README`](work/history/README).
 
 ## 2026-09-22 repository rename
 
-Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `clock-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `clock-fred-tamlinux`. [Session record](work/history/2026-09-22-github-repository-rename.md).
 
 ## 2026-09-22 Tamlinux branding
 
@@ -56,14 +56,14 @@ Cursor `3.21.16` (`composer`) replaced the current-facing `Fred's Omarchy clock`
 Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
 and dated survey directory for this repository. This was documentation only;
 no field survey or runtime change was made.
-[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+[Session record](work/history/2026-09-23-upstream-survey-foundation.md).
 
 ## 2026-09-28 private session IDs
 
 Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
-[Session record](docs/ai/2026-09-28-private-session-ids.md).
+[Session record](work/history/2026-09-28-private-session-ids.md).
 
 ## 2026-10-03 shell-independent 2.0.0
 
@@ -71,9 +71,9 @@ Cursor `3.23.12` (`composer`) rewrote `fred.clock` to 2.0.0 on
 `develop/2.0.0`. The widget imports Tamlinux shell types. Offline proofs
 refuse fetch and event edits; the daily profile keeps the calendar helpers.
 Not tagged or released.
-[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+[Session record](work/history/2026-10-03-shell-independent-2.0.0.md).
 
 ## 2026-10-06 Tamlinux-only dependencies
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. Notifications run `tam-notification-send` by absolute path from `TAMLINUX_BIN`, falling back to `~/.local/bin`. `OMARCHY_PATH` is no longer read or copied into the closed environment. Not tagged or released.
-[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+[Session record](work/history/2026-10-06-tamlinux-only-dependencies.md).

@@ -10,7 +10,7 @@ AI tools, models, prompts, and architectural decisions that shaped
 
 This repository follows the Tamlinux [AI provenance standard](https://github.com/greenermoose/tamlinux/blob/main/docs/ai-provenance-standard.md). In
 brief: commits made with AI help carry `AI-Tool` and `AI-Model` trailers, and
-each session record in [`docs/ai/`](docs/ai/) gives the date, tool version,
+each session record in [`work/history/`](work/history/) gives the date, tool version,
 model, Fred's guiding prompts verbatim, the commits, and the decisions. Session
 transcripts are retained privately by the author, so the records carry no
 session IDs or local transcript paths.
@@ -71,7 +71,7 @@ the tools that touched this repository.
 
 ## 2026-09-22 repository rename
 
-Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `keyboard-fred-tamlinux`. [Session record](docs/ai/2026-09-22-github-repository-rename.md).
+Codex CLI `0.155.1` (`gpt-6-sol`) updated canonical GitHub links for `keyboard-fred-tamlinux`. [Session record](work/history/2026-09-22-github-repository-rename.md).
 
 ## 2026-09-22 Tamlinux branding
 
@@ -82,28 +82,28 @@ Cursor `3.21.16` (`composer`) replaced current-facing `Fred's Omarchy keyboard` 
 Codex CLI `0.156.1` (`gpt-6-sol`) established the root upstream reference
 and dated survey directory for this repository. This was documentation only;
 no field survey or runtime change was made.
-[Session record](docs/ai/2026-09-23-upstream-survey-foundation.md).
+[Session record](work/history/2026-09-23-upstream-survey-foundation.md).
 
 ## 2026-09-28 private session IDs
 
 Claude Code `2.1.283` (`claude-opus-5-5`) removed session IDs and local
 transcript paths from this repository's AI records and linked the public
 provenance standard. Documentation only.
-[Session record](docs/ai/2026-09-28-private-session-ids.md).
+[Session record](work/history/2026-09-28-private-session-ids.md).
 
 ## 2026-10-03 shell-independent 2.0.0
 
 Cursor `3.23.12` (`composer`) rewrote `fred.keyboard` to 2.0.0 on
 `develop/2.0.0`. Hyprland reads stay in the plugin. Not tagged or released.
-[Session record](docs/ai/2026-10-03-shell-independent-2.0.0.md).
+[Session record](work/history/2026-10-03-shell-independent-2.0.0.md).
 
 ## 2026-10-03 compositor facade reads
 
 Cursor `3.23.12` (`composer`) pointed fred.keyboard 2.0.0 QML at the Tamlinux
 compositor facade. The panel no longer starts `hyprctl`. It parses `bindingsText` with `Bindings.parseBinds` and copies `activeKeymap` when the facade revision changes. Not tagged or released.
-[Session record](docs/ai/2026-10-03-compositor-facade.md).
+[Session record](work/history/2026-10-03-compositor-facade.md).
 
 ## 2026-10-06 Tamlinux-only dependencies
 
 Claude Code `2.1.291` (`claude-opus-5-5`) removed the last Omarchy dependencies on `develop/2.0.0` and added a test that keeps them out. The closed environment's `PATH` is `/usr/bin`; Omarchy's command directory is gone. Nothing the plugin runs needed it. Not tagged or released.
-[Session record](docs/ai/2026-10-06-tamlinux-only-dependencies.md).
+[Session record](work/history/2026-10-06-tamlinux-only-dependencies.md).
