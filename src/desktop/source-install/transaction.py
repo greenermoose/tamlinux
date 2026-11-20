@@ -26,8 +26,6 @@ from preflight import ownership_problems, runtime_problems
 
 PAYLOAD_CURRENT = "usr/lib/tamlinux/current"
 STATE = "var/lib/tamlinux"
-LEGACY_STATE = "var/lib/tamlinux/source"
-LEGACY_CURRENT = "usr/lib/tamlinux/source/current"
 
 CULTIVAR_LINKS = (
     ("usr/bin/tam", "/usr/lib/tamlinux/current/bin/tam"),
@@ -263,15 +261,6 @@ class Installation:
         self.integration = self.state / "integration"
         self.runtime = self.root / PAYLOAD_CURRENT
         self.versions = self.runtime.parent / "versions"
-        self.legacy_state = root / LEGACY_STATE
-
-    def legacy_active(self):
-        return read_json(self.legacy_state / "active.json")
-
-    def legacy_manifest(self, identity):
-        if not identity:
-            return {"files": {}}
-        return read_json(self.legacy_state / identity / "manifest.json") or {"files": {}}
 
     def manifest_path(self, identity):
         return self.manifests / f"{identity}.json"
@@ -433,7 +422,7 @@ class Installation:
         if hashlib.sha256(mpath.read_bytes()).hexdigest() != digest:
             raise ValueError("stage manifest changed during import")
 
-    def check(self, before, after, resuming=False, legacy_owned=frozenset()):
+    def check(self, before, after, resuming=False):
         for relative in sorted(before.keys() | after.keys()):
             if not allowed(relative) or ".." in Path(relative).parts:
                 raise ValueError(f"invalid destination: {relative}")
@@ -443,8 +432,6 @@ class Installation:
             alternatives = [before.get(relative)]
             if resuming:
                 alternatives.append(after.get(relative))
-            if relative in legacy_owned:
-                continue
             if found not in alternatives:
                 raise ValueError(f"unmanaged or modified destination: {target}")
 
@@ -456,14 +443,11 @@ class Installation:
             if problems:
                 raise ValueError("\n".join(problems))
 
-    def check_switch(self, old, after, legacy_from=None):
+    def check_switch(self, old, after):
         before = self.manifest(old)["files"]
         self.check_ownership(before.keys() | after.keys())
         self.check_runtime(self.runtime_id(old), None, False)
-        legacy_owned = set()
-        if legacy_from:
-            legacy_owned = set(self.legacy_manifest(legacy_from)["files"])
-        self.check(self.placed(before), self.placed(after), legacy_owned=legacy_owned)
+        self.check(self.placed(before), self.placed(after))
 
     def runtime_id(self, identity):
         if identity and self.cultivar_files(self.manifest(identity)["files"]):
@@ -482,32 +466,23 @@ class Installation:
             raise ValueError("runtime preflight found problems:\n  " + "\n  ".join(problems))
         current = self.current()
         old = current["current"]
-        legacy_from = None
         if old is not None:
             self.verify_retained(old)
             rollback = {"kind": "source", "manifest": old}
         else:
-            legacy = self.legacy_active()
-            if legacy and legacy.get("current"):
-                legacy_from = legacy["current"]
-                rollback = {"kind": "legacy-source", "manifest": legacy_from}
-            else:
-                rollback = {"kind": "clean"}
-        self.check_switch(old, receipt["files"], legacy_from=legacy_from)
+            rollback = {"kind": "clean"}
+        self.check_switch(old, receipt["files"])
         if os.path.lexists(self.pending) or self.current() != current:
             raise ValueError("the target changed during preparation; try again")
         return {"version": receipt["version"], "components": receipt["components"],
                 "manifest": args.digest, "root": str(self.root),
                 "rootIdentity": [root_info.st_dev, root_info.st_ino], "rollback": rollback}
 
-    def start(self, old, new, legacy_from=None):
-        self.check_switch(old, self.manifest(new)["files"], legacy_from=legacy_from)
-        if old == new and not legacy_from:
+    def start(self, old, new):
+        self.check_switch(old, self.manifest(new)["files"])
+        if old == new:
             return
-        record = {"from": old, "to": new}
-        if legacy_from:
-            record["legacy_from"] = legacy_from
-        write_json(self.pending, record)
+        write_json(self.pending, {"from": old, "to": new})
         self.complete()
 
     def complete(self, reverse=False):
@@ -515,33 +490,12 @@ class Installation:
         if pending is None:
             raise ValueError("no pending source installation")
         old, new = pending["from"], pending["to"]
-        legacy_from = pending.get("legacy_from")
         if reverse:
             old, new = new, old
-            legacy_from = None
-        self.switch_files(old, new, legacy_from=legacy_from)
+        self.switch_files(old, new)
         self.finish({"current": new, "previous": old})
 
-    def _cleanup_legacy_files(self, legacy_from, new_placed):
-        legacy = self.legacy_active() or {}
-        external = set(legacy.get("external", []))
-        old_files = self.legacy_manifest(legacy_from)["files"]
-        removed = 0
-        for relative in sorted(old_files):
-            if relative.startswith(LEGACY_CURRENT + "/") or relative in external or relative in new_placed:
-                continue
-            target = self.root / relative
-            if target.is_file() or target.is_symlink():
-                target.unlink()
-                removed += 1
-        legacy_link = self.root / LEGACY_CURRENT
-        if legacy_link.is_symlink():
-            legacy_link.unlink()
-            sync_dir(legacy_link.parent)
-        if removed:
-            progress(f"Cleaned {removed} retired 0.6.35 scattered files.")
-
-    def switch_files(self, old, new, legacy_from=None):
+    def switch_files(self, old, new):
         before_all = self.manifest(old)["files"]
         after_all = self.manifest(new)["files"]
         if new is not None:
@@ -549,11 +503,7 @@ class Installation:
         self.check_ownership(before_all.keys() | after_all.keys())
         self.check_runtime(self.runtime_id(old), self.runtime_id(new), True)
         before, after = self.placed(before_all), self.placed(after_all)
-        legacy_owned = set(self.legacy_manifest(legacy_from)["files"]) if legacy_from else frozenset()
-        self.check(before, after, resuming=True, legacy_owned=legacy_owned)
-
-        if legacy_from:
-            self._cleanup_legacy_files(legacy_from, after)
+        self.check(before, after, resuming=True)
 
         changed = False
         updated = 0
@@ -655,10 +605,8 @@ def main():
                 raise ValueError("resume or roll back the pending installation")
             if not args.stage or not re.fullmatch("[0-9a-f]{64}", args.digest or ""):
                 raise ValueError("install requires a stage and its SHA-256 manifest digest")
-            legacy = system.legacy_active() if current["current"] is None else None
-            legacy_from = legacy.get("current") if legacy else None
             system.retain(args.stage, args.digest)
-            system.start(current["current"], args.digest, legacy_from=legacy_from)
+            system.start(current["current"], args.digest)
         elif args.action == "resume":
             system.complete()
         elif args.action == "uninstall":
@@ -712,7 +660,7 @@ def install_plan(path):
         raise ValueError("the running root requires root approval")
     rollback = target["rollback"]
     kind = rollback.get("kind") if isinstance(rollback, dict) else None
-    if kind not in ("clean", "source", "legacy-source"):
+    if kind not in ("clean", "source"):
         raise ValueError("unsupported rollback mode in approved install plan")
     digest = target["manifest"]
     if not re.fullmatch("[0-9a-f]{64}", digest):
@@ -750,25 +698,6 @@ def install_plan(path):
             system.check_switch(current["current"], receipt["files"])
             system.retain(stage, digest)
             system.start(current["current"], digest)
-        elif kind == "legacy-source":
-            old_legacy = rollback.get("manifest")
-            if not re.fullmatch("[0-9a-f]{64}", old_legacy or ""):
-                raise ValueError("the approved legacy manifest digest is invalid")
-            if current["current"] == digest:
-                return
-            if current["current"] is not None:
-                raise ValueError("the approved target already has a unified cultivar install")
-            legacy = system.legacy_active()
-            if not legacy or legacy.get("current") != old_legacy:
-                raise ValueError("the approved legacy source install changed")
-            if pending is not None:
-                if pending.get("to") != digest:
-                    raise ValueError("a different source transaction is pending")
-                system.complete()
-                return
-            system.check_switch(None, receipt["files"], legacy_from=old_legacy)
-            system.retain(stage, digest)
-            system.start(None, digest, legacy_from=old_legacy)
         else:
             old = rollback.get("manifest")
             if not re.fullmatch("[0-9a-f]{64}", old or ""):

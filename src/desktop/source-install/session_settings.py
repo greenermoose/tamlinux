@@ -14,18 +14,9 @@ import tempfile
 
 LIMIT = 1024 * 1024
 LEGACY = b"/usr/lib/tamlinux/source/current/"
-CURRENT = b"/usr/lib/tamlinux/current/"
-SESSION_FILES = {
-    "tamlinux/session/hyprland.lua": ("session/entry.lua",),
-    "uwsm/env.d/10-tamlinux.sh": ("session/uwsm-env", "version-notes.txt"),
-    "chromium-flags.conf": ("browser/extensions/copy-url", "browser/extensions/yt-dlp",
-                            "browser/extensions/whatsapp-slim"),
-}
-REQUIRED = tuple(SESSION_FILES)[:2]
-BROWSERS = (
-    "chromium", "google-chrome", "google-chrome-beta", "google-chrome-unstable",
-    "BraveSoftware/Brave-Browser", "BraveSoftware/Brave-Browser-Beta",
-    "BraveSoftware/Brave-Browser-Nightly", "microsoft-edge", "microsoft-edge-dev",
+REQUIRED = (
+    "tamlinux/session/hyprland.lua",
+    "uwsm/env.d/10-tamlinux.sh",
 )
 
 
@@ -197,26 +188,6 @@ class SessionSettings:
                 finally:
                     os.close(directory)
 
-    def _migrate_legacy_paths(self):
-        """One-time 0.6.35 -> 0.6.36 user config path cutover."""
-        candidates = [self.config / rel for rel in SESSION_FILES]
-        for browser in BROWSERS:
-            for name in ("copy_url", "ytdlp"):
-                candidates.append(self.config / browser / "NativeMessagingHosts" / f"org.tamlinux.{name}.json")
-        for target in candidates:
-            try:
-                value = snapshot(target)
-            except ValueError:
-                continue
-            if value["kind"] != "file":
-                continue
-            data = base64.b64decode(value["bytes"])
-            updated = data.replace(LEGACY, CURRENT).replace(
-                b'"/usr/bin/tam-chromium-', b'"/usr/bin/tamlinux/tam-chromium-'
-            )
-            if updated != data:
-                atomic(target, file_state(updated, value["mode"]))
-
     def ready(self, defaults, active, pending):
         with self.locked():
             if os.path.lexists(pending):
@@ -241,7 +212,6 @@ class SessionSettings:
                     safe(relative)
                 subprocess.run(["/usr/bin/python3", "-I", share / "user-defaults/apply"],
                                check=True, stdout=subprocess.DEVNULL)
-            self._migrate_legacy_paths()
             for relative in REQUIRED:
                 target = self.config / relative
                 value = snapshot(target)

@@ -16,9 +16,8 @@ processes rather than inferring ownership from an inherited logo or filename.
 
 ## Establish the effective installation
 
-- Inspect the active installation manifest under `/var/lib/tamlinux/source/`
-  (or `/var/lib/tamlinux/`) and run `make verify` as the normal user from
-  the product checkout.
+- Inspect the active installation manifest under `/var/lib/tamlinux/`
+  and run `make verify` as the normal user from the product checkout.
 - Read `systemctl --user status tamlinux-shell.service` and its unit definition
   to identify the actual executable, package revision and resource paths.
 - For a health report, inspect the relevant journal, compositor configuration
@@ -37,10 +36,9 @@ and obtain the user’s approval for a login or boot change.
 
 ## Configuration ownership
 
-The source-installed runtime lives under `/usr/lib/tamlinux/source/current/`.
-The recorded bundle runtime lives under `/usr/lib/tamlinux/current/` on hosts
-still using bundles. Resolve the actual service and launch paths before
-editing. Personal Hyprland overrides belong under
+The source-installed runtime lives under `/usr/lib/tamlinux/current/`
+(symlinked to `/usr/lib/tamlinux/versions/<manifest>/`). Resolve the actual
+service and launch paths before editing. Personal Hyprland overrides belong under
 `$XDG_CONFIG_HOME/tamlinux/hypr/` (normally `~/.config/tamlinux/hypr/`).
 
 Shell layout and settings live under `$XDG_CONFIG_HOME/tamlinux/shell/`.

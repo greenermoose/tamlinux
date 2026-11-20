@@ -101,7 +101,7 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
         ):
             first, _, rest = content.partition("\n")
             content = first + (
-                '\nif [ -e /var/lib/tamlinux/pending.json ] || [ -e /var/lib/tamlinux/source/pending.json ]; then\n'
+                '\nif [ -e /var/lib/tamlinux/pending.json ]; then\n'
                 '  echo "Tamlinux installation is incomplete. Recover from the console." >&2\n'
                 '  exit 1\n'
                 'fi\n'

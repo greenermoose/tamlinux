@@ -2,7 +2,7 @@
 # tam-plugin lifecycle seams: dev on/off safety, restore, legacy test state,
 # payload verify against the Tamlinux source, and the moved test/run commands.
 # Self-contained: it uses the product's own plugin registry and a temporary
-# home, and fails if anything would run Home Manager.
+# home.
 
 set -euo pipefail
 
@@ -30,7 +30,6 @@ BASH_PATH="$(command -v bash)"  # no /usr/bin/env in a build sandbox
 for tool in tam-qmlcache-purge tam-restart-shell; do
   printf '#!%s\nexit 0\n' "$BASH_PATH" > "$HOME/bin/$tool"
 done
-printf '#!%s\necho "home-manager must not run" >&2\nexit 1\n' "$BASH_PATH" > "$HOME/bin/home-manager"
 chmod +x "$HOME/bin/"*
 export PATH="$HOME/bin:$PATH"
 

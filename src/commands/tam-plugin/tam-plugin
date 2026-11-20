@@ -17,8 +17,8 @@ PUBLISHED_ROOT="${FRED_PUBLISHED_ROOT:-${HOME}/Code/tamlinux}"
 
 SHELL_DIR="${TAMLINUX_SHELL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tamlinux/shell}"
 REGISTRY="${TAMLINUX_REGISTRY:-$SHELL_DIR/host/registry.py}"
-# Plugin source is desktop/plugins in a Tamlinux product checkout. Installed
-# plugins come from the deployed package (see tam-deploy).
+# Plugin source is src/desktop/plugins in a Tamlinux product checkout. Installed
+# plugins come from the active Tamlinux cultivar.
 SOURCE_REPO="${TAMLINUX_SOURCE_REPO:-${PUBLISHED_ROOT}/tamlinux}"
 PLUGINS_SRC="${SOURCE_REPO}/desktop/plugins"
 
@@ -122,7 +122,7 @@ Subcommands:
   diff <id>         [Developer] Diff the installed plugin against its Tamlinux source
   verify <id>       [Developer] Compare installed and source payload digests for behavior-bearing drift
   dev <id> on|off   [Developer] Point the running plugin at its Tamlinux source for fast iteration
-                    (not a deployment; Test and Run use tam-deploy)
+                    (not a deployment; Test and Run happen at the Tamlinux cultivar level)
   restore <id>      [Developer] Restore managed plugin state from active override or stale recovery
   new <id>          [Developer] Create a bar-widget plugin in the Tamlinux checkout and place it
                     in the default layout (end of the right section unless told otherwise)
