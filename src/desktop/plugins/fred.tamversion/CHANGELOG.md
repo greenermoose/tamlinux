@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.6 - Unreleased
+
+- Word-wrap version notes at 72 characters so long bullets fit cleanly on normal monitors.
+- Remove retired Home Manager generation line and Nix profile fallback; read fallback notes from `/usr/lib/tamlinux/current/share/tamlinux/version-notes.txt`.
+
 ## 0.1.5 - Unreleased
 
 - Read version notes from `TAMLINUX_VERSION_NOTES` (falling back to the active

@@ -8,6 +8,7 @@ import stat
 import subprocess
 import tarfile
 import tempfile
+import textwrap
 
 from preflight import build_problems
 from transaction import PAYLOAD_CURRENT, _clone_or_copy, inventory, write_json
@@ -57,6 +58,21 @@ def snapshot(repo, revision, target):
             tree.extractall(target, filter="data")
 
 
+def wrap_version_notes(body, width=72):
+    wrapped = []
+    for raw_line in body.splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            wrapped.append("")
+        elif line.startswith("- "):
+            wrapped.append(textwrap.fill(line, width=width, subsequent_indent="  ",
+                                         break_long_words=False, break_on_hyphens=False))
+        else:
+            wrapped.append(textwrap.fill(line, width=width,
+                                         break_long_words=False, break_on_hyphens=False))
+    return "\n".join(wrapped)
+
+
 def render_version_notes(changelog, version):
     notes = changelog.split("\n## ")[1:]
     release = next((body for heading, _, body in (note.partition("\n") for note in notes)
@@ -66,7 +82,7 @@ def render_version_notes(changelog, version):
     body = release.strip()
     if not body:
         raise ValueError(f"CHANGELOG.md section '## [{version}]' is empty")
-    return f"Tamlinux {version} version notes\n\n{body}\n"
+    return f"Tamlinux {version} version notes\n\n{wrap_version_notes(body)}\n"
 
 
 def cache_key(*parts):
@@ -225,7 +241,7 @@ def build(repos, work):
     sibling_specs = (
         ("tam", lambda src, dest, env: run_make(
             src, env, "install", "install-tldr", f"PREFIX={private}", f"DESTDIR={dest}", link,
-            f"BUNDLE_ROOT={private}", f"CULTIVAR_ROOT={private}",
+            f"CULTIVAR_ROOT={private}",
             f"DATADIR={private}/share/tamlinux/knowledge", f"DOCDIR={private}/share/doc",
         )),
         ("tamlinux-tools", lambda src, dest, env: run_make(

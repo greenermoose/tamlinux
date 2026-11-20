@@ -6,7 +6,7 @@ import Tam.Ui
 BarWidget {
   id: root
   moduleName: "fred.tamversion"
-  readonly property string pluginVersion: "0.1.5"
+  readonly property string pluginVersion: "0.1.6"
 
   readonly property string installedVersion: Quickshell.env("TAMLINUX_VERSION") || "unknown"
   // A completed milestone can have a shorter label without changing package
@@ -20,16 +20,12 @@ BarWidget {
   readonly property string displayText: "Tamlinux " + displayVersion
 
   readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "") + "/.config")
-  readonly property string stateDir: Quickshell.env("XDG_STATE_HOME") || ((Quickshell.env("HOME") || "/home/fred") + "/.local/state")
   readonly property string versionNotesPath: Quickshell.env("TAMLINUX_VERSION_NOTES")
-    || (stateDir + "/nix/profiles/home-manager/home-path/share/tamlinux/version-notes.txt")
+    || "/usr/lib/tamlinux/current/share/tamlinux/version-notes.txt"
   property string rawVersionNotes: ""
 
   readonly property bool hasCultivarEnv: !!Quickshell.env("TAMLINUX_CULTIVAR")
   property string cultivarName: hasCultivarEnv ? Quickshell.env("TAMLINUX_CULTIVAR") : ""
-
-  readonly property bool hasGenerationEnv: !!Quickshell.env("TAMLINUX_GENERATION")
-  property string generationNumber: hasGenerationEnv ? Quickshell.env("TAMLINUX_GENERATION") : ""
 
   readonly property bool hasKernelEnv: !!Quickshell.env("TAMLINUX_KERNEL_RELEASE")
   property string kernelRelease: hasKernelEnv ? Quickshell.env("TAMLINUX_KERNEL_RELEASE") : ""
@@ -67,17 +63,6 @@ BarWidget {
   }
 
   FileView {
-    id: generationFile
-    path: root.configDir + "/tamlinux/generation"
-    printErrors: false
-    watchChanges: true
-    blockLoading: true
-    onLoaded: if (!root.hasGenerationEnv) root.generationNumber = text().trim()
-    onLoadFailed: if (!root.hasGenerationEnv) root.generationNumber = ""
-    onFileChanged: reload()
-  }
-
-  FileView {
     id: osreleaseWatcher
     path: "/proc/sys/kernel/osrelease"
     printErrors: false
@@ -104,9 +89,6 @@ BarWidget {
     var title = root.cultivarName !== ""
       ? ("Tamlinux cultivar " + root.cultivarName + " " + root.displayVersion)
       : root.displayText
-    var genLine = root.generationNumber !== ""
-      ? ("Home Manager Generation " + root.generationNumber)
-      : "Home Manager generation unavailable"
     var kernelPart = root.kernelRelease !== ""
       ? ("Linux " + (root.kernelRelease.indexOf("-") !== -1 ? root.kernelRelease.split("-")[0] : root.kernelRelease))
       : ""
@@ -114,10 +96,37 @@ BarWidget {
     if (kernelPart !== "") hostParts.push(kernelPart)
     if (root.compositorName !== "") hostParts.push(root.compositorName + (root.compositorVersion !== "" ? " " + root.compositorVersion : ""))
     var hostLine = hostParts.join(" · ")
-    return [title, genLine, hostLine, "", "fred.tamversion v" + root.pluginVersion].join("\n")
+    return [title, hostLine, "", "fred.tamversion v" + root.pluginVersion].join("\n")
   }
 
   readonly property string tooltipText: formatHover()
+
+  function wrapLine(line, width) {
+    var trimmed = line.replace(/\s+$/, "")
+    if (trimmed.length <= width) return trimmed
+    var indentMatch = trimmed.match(/^(\s*-\s+|\s+)/)
+    var indent = indentMatch ? (indentMatch[1].indexOf("-") !== -1 ? "  " : indentMatch[1]) : ""
+    var words = trimmed.split(/\s+/)
+    var lines = []
+    var current = words[0]
+    for (var i = 1; i < words.length; i++) {
+      if (current.length + 1 + words[i].length <= width) {
+        current += " " + words[i]
+      } else {
+        lines.push(current)
+        current = indent + words[i]
+      }
+    }
+    lines.push(current)
+    return lines.join("\n")
+  }
+
+  function wrapNotes(text, width) {
+    var lines = text.split(/\r?\n/)
+    var out = []
+    for (var i = 0; i < lines.length; i++) out.push(wrapLine(lines[i], width))
+    return out.join("\n")
+  }
 
   function formatVersionNotes() {
     var fallback = "Tamlinux " + root.displayVersion + " version notes\n\nNo version notes recorded for this version."
@@ -129,7 +138,7 @@ BarWidget {
     if (firstLine.indexOf(displayHeader) !== 0 && firstLine.indexOf(installedHeader) !== 0) {
       return fallback
     }
-    return raw
+    return wrapNotes(raw, 72)
   }
 
   readonly property string versionNotes: formatVersionNotes()

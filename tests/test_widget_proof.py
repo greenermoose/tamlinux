@@ -112,17 +112,15 @@ class Render(unittest.TestCase):
 
     def test_tooltip_text_with_metadata(self):
         expected = (
-            "Tamlinux cultivar Blue Sparkler 0.5.10\n"
-            "Home Manager Generation 12\n"
+            "Tamlinux cultivar KBN WB 0.6.37\n"
             "Arch Linux · Linux 7.2.11 · Hyprland 0.56.2\n\n"
-            "fred.tamversion v0.1.5"
+            "fred.tamversion v0.1.6"
         )
         result = self.run_proof(
             "fred.tamversion",
             "--property", "tooltipText",
-            "--env", "TAMLINUX_VERSION=0.5.10",
-            "--env", "TAMLINUX_CULTIVAR=Blue Sparkler",
-            "--env", "TAMLINUX_GENERATION=12",
+            "--env", "TAMLINUX_VERSION=0.6.37",
+            "--env", "TAMLINUX_CULTIVAR=KBN WB",
             "--env", "TAMLINUX_KERNEL_RELEASE=7.2.11-arch1-1.1",
             "--env", "TAMLINUX_OS_NAME=Arch Linux",
             "--env", "TAMLINUX_COMPOSITOR=Hyprland",
@@ -138,36 +136,17 @@ class Render(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="version-metadata-") as temp:
             config = Path(temp) / "tamlinux"
             config.mkdir()
-            (config / "cultivar").write_text("Blue Sparkler\n")
-            (config / "generation").write_text("42\n")
+            (config / "cultivar").write_text("KBN WB\n")
             expected = (
-                "Tamlinux cultivar Blue Sparkler 0.5.11\n"
-                "Home Manager Generation 42\n"
+                "Tamlinux cultivar KBN WB 0.6.37\n"
                 "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
-                "fred.tamversion v0.1.5"
+                "fred.tamversion v0.1.6"
             )
             result = self.run_proof(
                 "fred.tamversion", "--property", "tooltipText",
                 "--env", "XDG_CONFIG_HOME=" + temp,
-                "--env", "TAMLINUX_VERSION=0.5.11",
-                "--env", "TAMLINUX_CULTIVAR=", "--env", "TAMLINUX_GENERATION=",
-                "--env", "TAMLINUX_KERNEL_RELEASE=7.2.11-test",
-                "--env", "TAMLINUX_OS_NAME=Arch Linux",
-                "--env", "TAMLINUX_COMPOSITOR=Hyprland", "--expect", expected,
-            )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_tooltip_handles_missing_generation(self):
-        with tempfile.TemporaryDirectory(prefix="version-missing-") as temp:
-            expected = (
-                "Tamlinux 0.5.10\nHome Manager generation unavailable\n"
-                "Arch Linux · Linux 7.2.11 · Hyprland\n\nfred.tamversion v0.1.5"
-            )
-            result = self.run_proof(
-                "fred.tamversion", "--property", "tooltipText",
-                "--env", "XDG_CONFIG_HOME=" + temp,
-                "--env", "TAMLINUX_VERSION=0.5.10",
-                "--env", "TAMLINUX_CULTIVAR=", "--env", "TAMLINUX_GENERATION=",
+                "--env", "TAMLINUX_VERSION=0.6.37",
+                "--env", "TAMLINUX_CULTIVAR=",
                 "--env", "TAMLINUX_KERNEL_RELEASE=7.2.11-test",
                 "--env", "TAMLINUX_OS_NAME=Arch Linux",
                 "--env", "TAMLINUX_COMPOSITOR=Hyprland", "--expect", expected,
@@ -180,21 +159,19 @@ class Render(unittest.TestCase):
             (plugin / "manifest.json").write_text(json.dumps({
                 "id": "fred.tamversion", "entryPoints": {"barWidget": "BarWidget.qml"}}))
             source = (DESKTOP / "plugins/fred.tamversion").as_uri()
-            settings = json.dumps({"milestoneVersion": "0.5.10"})
+            settings = json.dumps({"milestoneVersion": "0.6.37"})
             (plugin / "BarWidget.qml").write_text(
                 f'import "{source}" as Version\nVersion.BarWidget {{ settings: ({settings}) }}\n')
             expected = (
-                "Tamlinux cultivar Blue Sparkler 0.5.10\n"
-                "Home Manager Generation 12\n"
+                "Tamlinux cultivar KBN WB 0.6.37\n"
                 "Arch Linux · Linux 7.2.11 · Hyprland\n\n"
-                "fred.tamversion v0.1.5"
+                "fred.tamversion v0.1.6"
             )
             result = self.run_proof(
                 str(plugin),
                 "--property", "tooltipText",
-                "--env", "TAMLINUX_VERSION=0.5.10-a",
-                "--env", "TAMLINUX_CULTIVAR=Blue Sparkler",
-                "--env", "TAMLINUX_GENERATION=12",
+                "--env", "TAMLINUX_VERSION=0.6.37-a",
+                "--env", "TAMLINUX_CULTIVAR=KBN WB",
                 "--env", "TAMLINUX_KERNEL_RELEASE=7.2.11-arch1-1.1",
                 "--env", "TAMLINUX_OS_NAME=Arch Linux",
                 "--env", "TAMLINUX_COMPOSITOR=Hyprland",
@@ -205,40 +182,53 @@ class Render(unittest.TestCase):
             self.assertTrue(report["ok"])
             self.assertEqual(report["text"], expected)
 
-    def test_version_notes_reads_matching_file_and_rejects_stale_or_missing_notes(self):
+    def test_version_notes_wraps_long_lines_and_rejects_stale_or_missing_notes(self):
         with tempfile.TemporaryDirectory(prefix="version-notes-") as temp:
             notes = Path(temp) / "version-notes.txt"
-            expected = (
-                "Tamlinux 0.6.15 version notes\n\n"
-                "Changes since Tamlinux 0.6.14:\n"
-                "- tam 0.49.1 (0.75.3)"
+            long_bullet = (
+                "- Update `tam` to 0.67.7 (corpus 0.104.1): clickable web URLs and "
+                "HTML entity decoding in manual pages plus refreshed curated pages."
             )
             rendered = subprocess.check_output(
                 [sys.executable, "-B", "-c",
                  "import sys; from build import render_version_notes; "
-                 "print(render_version_notes(sys.stdin.read(), '0.6.15'), end='')"],
+                 "print(render_version_notes(sys.stdin.read(), '0.6.37'), end='')"],
                 cwd=DESKTOP / "source-install",
-                input="# Changelog\n\n## [0.6.15]\n\nChanges since Tamlinux 0.6.14:\n"
-                      "- tam 0.49.1 (0.75.3)\n",
+                input=f"# Changelog\n\n## [0.6.37]\n\nChanges since Tamlinux 0.6.36:\n{long_bullet}\n",
                 text=True,
             )
+            for line in rendered.splitlines():
+                self.assertLessEqual(len(line), 72, line)
             notes.write_text(rendered)
             result = self.run_proof(
                 "fred.tamversion",
                 "--property", "versionNotes",
-                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", "TAMLINUX_VERSION=0.6.37",
                 "--env", f"TAMLINUX_VERSION_NOTES={notes}",
-                "--expect", expected,
+                "--expect", rendered.strip(),
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-            # Stale notes for 0.6.14 must never be shown when 0.6.15 is installed.
-            notes.write_text("Tamlinux 0.6.14 version notes\n\n- Stale notes from 0.6.14\n")
-            fallback = "Tamlinux 0.6.15 version notes\n\nNo version notes recorded for this version."
+            # Unwrapped raw file is also wrapped in the widget so long lines stay readable.
+            notes.write_text(f"Tamlinux 0.6.37 version notes\n\n{long_bullet}\n")
             result = self.run_proof(
                 "fred.tamversion",
                 "--property", "versionNotes",
-                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", "TAMLINUX_VERSION=0.6.37",
+                "--env", f"TAMLINUX_VERSION_NOTES={notes}",
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            shown = json.loads(result.stdout)["text"]
+            for line in shown.splitlines():
+                self.assertLessEqual(len(line), 72, line)
+
+            # Stale notes for 0.6.36 must never be shown when 0.6.37 is installed.
+            notes.write_text("Tamlinux 0.6.36 version notes\n\n- Stale notes from 0.6.36\n")
+            fallback = "Tamlinux 0.6.37 version notes\n\nNo version notes recorded for this version."
+            result = self.run_proof(
+                "fred.tamversion",
+                "--property", "versionNotes",
+                "--env", "TAMLINUX_VERSION=0.6.37",
                 "--env", f"TAMLINUX_VERSION_NOTES={notes}",
                 "--expect", fallback,
             )
@@ -248,25 +238,9 @@ class Render(unittest.TestCase):
             result = self.run_proof(
                 "fred.tamversion",
                 "--property", "versionNotes",
-                "--env", "TAMLINUX_VERSION=0.6.15",
+                "--env", "TAMLINUX_VERSION=0.6.37",
                 "--env", f"TAMLINUX_VERSION_NOTES={Path(temp) / 'absent.txt'}",
                 "--expect", fallback,
-            )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_version_notes_falls_back_to_home_manager_profile_path(self):
-        with tempfile.TemporaryDirectory(prefix="version-notes-hm-") as temp:
-            hm_notes = Path(temp) / "nix/profiles/home-manager/home-path/share/tamlinux/version-notes.txt"
-            hm_notes.parent.mkdir(parents=True)
-            expected = "Tamlinux 0.6.15 version notes\n\n- opencode 2.2.5"
-            hm_notes.write_text(expected + "\n")
-            result = self.run_proof(
-                "fred.tamversion",
-                "--property", "versionNotes",
-                "--env", "TAMLINUX_VERSION=0.6.15",
-                "--env", "TAMLINUX_VERSION_NOTES=",
-                "--env", f"XDG_STATE_HOME={temp}",
-                "--expect", expected,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 

@@ -242,7 +242,9 @@ class BuildPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no '## \\[0.6.32\\]' section"):
             build.render_version_notes(changelog, "0.6.32")
         notes = build.render_version_notes(
-            "# Changelog\n\n## [0.6.32]\n\n- real fix\n\n## Unreleased\n\n- stale\n",
-            "0.6.32",
+            "# Changelog\n\n## [0.6.37]\n\n- real fix with a long bullet description that exceeds seventy-two columns so it wraps cleanly on normal monitors\n\n## Unreleased\n\n- stale\n",
+            "0.6.37",
         )
-        self.assertTrue(notes.startswith("Tamlinux 0.6.32 version notes\n\n- real fix\n"))
+        self.assertTrue(notes.startswith("Tamlinux 0.6.37 version notes\n\n- real fix"))
+        for line in notes.splitlines():
+            self.assertLessEqual(len(line), 72, line)
