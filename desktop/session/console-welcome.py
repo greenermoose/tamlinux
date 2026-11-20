@@ -24,7 +24,7 @@ def render(cultivar=None, version=None):
         + "     Build:     \\S{BUILD_ID}\n"
         + "     Kernel:    \\r\n"
         + "     Console:   \\l\n\n"
-        + "     After login, type hi for help or tam-desktop for the graphical desktop.\n\n"
+        + "     After login, type hi then press Return (or Enter).\n\n"
     )
 
 
