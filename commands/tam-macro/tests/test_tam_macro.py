@@ -138,6 +138,22 @@ class TamMacroTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("/home/example/.local/bin/tam-macro run t", self.hypr_file.read_text())
 
+    def test_generated_binding_preserves_symlinked_entry_path(self):
+        self.macros_file.write_text(json.dumps([{"key": "T", "text": "test"}]))
+        version_bin = Path(self.temp_dir.name) / "versions" / "abc123" / "bin"
+        version_bin.mkdir(parents=True)
+        real_cmd = version_bin / "tam-macro"
+        real_cmd.symlink_to(CMD)
+        stable_bin = Path(self.temp_dir.name) / "tamlinux"
+        stable_bin.symlink_to(version_bin)
+        stable_cmd = stable_bin / "tam-macro"
+        env = {k: v for k, v in self.env.items() if k != "TAMLINUX_MACRO_ENTRY"}
+        result = subprocess.run([str(stable_cmd), "sync"], capture_output=True, text=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        content = self.hypr_file.read_text()
+        self.assertIn(f"{stable_cmd} run t", content)
+        self.assertNotIn("versions/abc123", content)
+
     def test_sync_maps_punctuation_to_xkb_keysyms(self):
         self.macros_file.write_text(json.dumps([
             {"key": "/", "description": "Exit command", "text": "/exit"},
