@@ -24,7 +24,9 @@ set -u
 
 swaps="${TAMLINUX_SWAPS_PATH:-/proc/swaps}"
 state="${TAMLINUX_RUN_PATH:-/run}/tamlinux-hibernate-swap"
+sys_block="${TAMLINUX_SYS_BLOCK_PATH:-/sys/block}"
 readonly drain_limit_s=60
+readonly settle_limit_s=10
 readonly restore_limit_s=30
 readonly tag=tamlinux-hibernate-swap
 
@@ -33,8 +35,43 @@ log() { logger -t "$tag" -- "$*"; }
 # /proc/swaps columns: Filename Type Size Used Priority; sizes in KiB.
 zram_swaps() { awk 'NR > 1 && $1 ~ /^\/dev\/zram/ { print $1, $4, $5 }' "$swaps"; }
 disk_swap_kib() { awk 'NR > 1 && $1 !~ /^\/dev\/zram/ { size += $3; used += $4 } END { print size + 0, used + 0 }' "$swaps"; }
+swap_present() { awk -v dev="$1" 'NR > 1 && $1 == dev { found = 1 } END { exit !found }' "$swaps"; }
 used_kib() { awk -v dev="$1" 'NR > 1 && $1 == dev { print $4; found = 1 } END { exit !found }' "$swaps"; }
 gib() { awk -v kib="$1" 'BEGIN { printf "%.1f GiB", kib / 1048576 }'; }
+
+swap_unit_fragment() {
+  local unit=$1 deadline=$2 left
+  left=$((deadline - SECONDS))
+  ((left > 0)) || return 1
+  timeout --kill-after=2 "$left" systemctl show --property=FragmentPath --value "$unit"
+}
+
+settle_teardown() {
+  local dev=$1 name unit setup_unit deadline fragment load_state left
+  [[ $dev =~ ^/dev/zram[0-9]+$ ]] || return 0
+  name=${dev#/dev/}
+  unit="dev-${name}.swap"
+  setup_unit="systemd-zram-setup@${name}.service"
+  deadline=$((SECONDS + settle_limit_s))
+  if ! fragment=$(swap_unit_fragment "$unit" "$deadline"); then
+    log "could not query $unit before hibernate; continuing anyway"
+    return 0
+  fi
+  [[ -n $fragment ]] || return 0
+  left=$((deadline - SECONDS))
+  if ((left <= 0)) || ! load_state=$(timeout --kill-after=2 "$left" systemctl show --property=LoadState --value "$setup_unit"); then
+    log "could not query $setup_unit before hibernate; continuing anyway"
+    return 0
+  fi
+  [[ $load_state == loaded ]] || return 0
+  # Wait for zram-generator's BindsTo= ExecStop (--reset-device) to finish
+  # before hibernation freezes userspace; otherwise DefaultTimeoutStopSec can
+  # kill it at thaw and leave initstate=1, wedging subsequent setup with EBUSY.
+  left=$((deadline - SECONDS))
+  if ((left <= 0)) || ! timeout --kill-after=2 "$left" systemctl stop "$unit" "$setup_unit" < /dev/null; then
+    log "could not finish stopping $setup_unit for $dev before hibernate; continuing anyway"
+  fi
+}
 
 drain() {
   # A state file means another copy of this hook already drained for this
@@ -73,6 +110,7 @@ drain() {
     if timeout --kill-after=5 "$left" swapoff "$dev" < /dev/null; then
       read -r size disk_used < <(disk_swap_kib)
       log "drained $(gib "$used") from $dev in $((SECONDS - dev_start)) s; disk swap now holds $(gib "$disk_used")"
+      settle_teardown "$dev"
     else
       log "stopped draining $dev after $((SECONDS - dev_start)) s with $(gib "$(used_kib "$dev" || echo 0)") still in it; hibernating anyway"
     fi
@@ -88,13 +126,53 @@ restored() {
   ' "$swaps"
 }
 
-restore_device() {
-  local dev=$1 prio=$2 deadline=$3 unit fragment left args
-  [[ $dev =~ ^/dev/zram[0-9]+$ ]] || return 1
-  unit="dev-${dev#/dev/}.swap"
+unit_idle() {
+  local unit=$1 deadline=$2 left out k v active="" job="" pid=""
   left=$((deadline - SECONDS))
   ((left > 0)) || return 1
-  fragment=$(timeout --kill-after=2 "$left" systemctl show --property=FragmentPath --value "$unit") || return 1
+  out=$(timeout --kill-after=2 "$left" systemctl show \
+    --property=ActiveState --property=Job --property=ControlPID "$unit") || return 1
+  while IFS='=' read -r k v; do
+    case $k in
+      ActiveState) active=$v ;;
+      Job) job=$v ;;
+      ControlPID) pid=$v ;;
+    esac
+  done <<< "$out"
+  [[ $active == inactive || $active == failed ]] || return 1
+  [[ -z $job || $job == 0 ]] || return 1
+  [[ -z $pid || $pid == 0 ]] || return 1
+  return 0
+}
+
+reset_stuck_zram() {
+  local dev=$1 unit=$2 setup_unit=$3 deadline=$4 name initstate_path left
+  name=${dev#/dev/}
+  initstate_path="$sys_block/$name/initstate"
+  # Never reset an active swap device, an uninitialized device, or one with an
+  # in-flight systemd job.
+  swap_present "$dev" && return 1
+  [[ -r $initstate_path && $(<"$initstate_path") == 1 ]] || return 1
+  unit_idle "$unit" "$deadline" || return 1
+  unit_idle "$setup_unit" "$deadline" || return 1
+  left=$((deadline - SECONDS))
+  ((left > 0)) || return 1
+  timeout --kill-after=2 "$left" zramctl --reset "$dev" < /dev/null || return 1
+  [[ -r $initstate_path && $(<"$initstate_path") == 0 ]] || return 1
+  left=$((deadline - SECONDS))
+  ((left > 0)) || return 1
+  timeout --kill-after=2 "$left" systemctl reset-failed "$unit" "$setup_unit" < /dev/null 2>/dev/null || true
+  log "reset stuck $dev before retrying $unit"
+  return 0
+}
+
+restore_device() {
+  local dev=$1 prio=$2 deadline=$3 name unit setup_unit fragment left args
+  [[ $dev =~ ^/dev/zram[0-9]+$ ]] || return 1
+  name=${dev#/dev/}
+  unit="dev-${name}.swap"
+  setup_unit="systemd-zram-setup@${name}.service"
+  fragment=$(swap_unit_fragment "$unit" "$deadline") || return 1
   if [[ -n $fragment ]]; then
     # swapoff makes zram-generator's BindsTo= setup unit stop and reset the
     # device. Raw swapon races that teardown and may find no swap header.
@@ -102,7 +180,15 @@ restore_device() {
     # waits for the manager's job, including a pending setup stop, to settle.
     left=$((deadline - SECONDS))
     ((left > 0)) || return 1
-    timeout --kill-after=2 "$left" systemctl start "$unit" || return 1
+    if ! timeout --kill-after=2 "$left" systemctl start "$unit" < /dev/null; then
+      # If an earlier stop/reset was interrupted (for example, killed on a stop
+      # timeout across hibernation), zram-generator fails with EBUSY while
+      # initstate=1. Safely reset an idle, inactive device and retry once.
+      reset_stuck_zram "$dev" "$unit" "$setup_unit" "$deadline" || return 1
+      left=$((deadline - SECONDS))
+      ((left > 0)) || return 1
+      timeout --kill-after=2 "$left" systemctl start "$unit" < /dev/null || return 1
+    fi
   elif ! restored "$dev" "$prio"; then
     # An unmanaged device keeps its header; preserve the raw restore path.
     # zram-generator enables zram swap with discard; restore it the same way.

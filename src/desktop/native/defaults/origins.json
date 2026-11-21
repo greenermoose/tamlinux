@@ -37,7 +37,7 @@
     "usr/lib/systemd/system-sleep/tam-hibernate-swap": {
       "mode": "0755",
       "origin": "Tamlinux hibernate-time zram drain; developed in this repository",
-      "sha256": "506039885bfadaf3dd836b31a6715b29574ddfc1194a845e1b0714fd151be04e"
+      "sha256": "9b61ef0df5cbeab7fd6095acbd60ba2be26696d693ca2813781ac3136eba26fe"
     },
     "usr/lib/systemd/system-sleep/tamlinux-unmount-fuse": {
       "derivedFrom": "/usr/lib/systemd/system-sleep/unmount-fuse",

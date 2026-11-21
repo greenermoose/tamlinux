@@ -38,21 +38,85 @@ FAKES = {
     "systemctl": """
         if [[ $1 == show ]]; then
             [[ ${SYSTEMD_SHOW_FAILS:-0} == 1 ]] && exit 1
-            printf '%s' "${SYSTEMD_FRAGMENT:-}"
-            exit 0
+            if [[ $* == *--property=FragmentPath* ]]; then
+                printf '%s' "${SYSTEMD_FRAGMENT:-}"
+                exit 0
+            fi
+            if [[ $* == *--property=LoadState* ]]; then
+                [[ ${SYSTEMD_SETUP_SHOW_FAILS:-0} == 1 ]] && exit 1
+                printf '%s' "${SYSTEMD_SETUP_LOAD_STATE:-loaded}"
+                exit 0
+            fi
+            if [[ $* == *--property=ActiveState* ]]; then
+                [[ ${SYSTEMD_STATE_SHOW_FAILS:-0} == 1 ]] && exit 1
+                unit="${!#}"
+                if [[ $unit == systemd-zram-setup@* ]]; then
+                    printf 'ActiveState=%s\\nJob=%s\\nControlPID=%s\\n' \
+                        "${SYSTEMD_SETUP_ACTIVE_STATE:-failed}" \
+                        "${SYSTEMD_SETUP_JOB:-}" \
+                        "${SYSTEMD_SETUP_CONTROL_PID:-0}"
+                else
+                    printf 'ActiveState=%s\\nJob=%s\\nControlPID=%s\\n' \
+                        "${SYSTEMD_SWAP_ACTIVE_STATE:-inactive}" \
+                        "${SYSTEMD_SWAP_JOB:-}" \
+                        "${SYSTEMD_SWAP_CONTROL_PID:-0}"
+                fi
+                exit 0
+            fi
+            exit 1
         fi
         echo "systemctl $*" >> "$CALLS"
-        [[ $1 == start ]] || exit 1
-        [[ ${SYSTEMD_START_FAILS:-0} == 1 ]] && exit 1
-        [[ ${SYSTEMD_START_HANGS:-0} == 1 ]] && sleep 180
-        [[ ${SYSTEMD_START_NO_SWAP:-0} == 1 ]] && exit 0
-        # Model the manager waiting for generator teardown and formatting a
-        # fresh header before enabling the generated swap unit.
-        rm -f "$TAMLINUX_RUN_PATH/header-reset"
-        dev=${2#dev-}; dev=/dev/${dev%.swap}
-        awk -v dev="$dev" '$1 != dev' "$TAMLINUX_SWAPS_PATH" > "$TAMLINUX_SWAPS_PATH.new"
-        mv "$TAMLINUX_SWAPS_PATH.new" "$TAMLINUX_SWAPS_PATH"
-        printf '%s partition 29630864 0 %s\\n' "$dev" "${SYSTEMD_PRIORITY:-100}" >> "$TAMLINUX_SWAPS_PATH"
+        case $1 in
+            stop)
+                [[ ${SYSTEMD_STOP_FAILS:-0} == 1 ]] && exit 1
+                [[ ${SYSTEMD_STOP_HANGS:-0} == 1 ]] && sleep 180
+                for arg in "${@:2}"; do
+                    if [[ $arg == dev-zram*.swap ]]; then
+                        name=${arg#dev-}; name=${name%.swap}
+                        mkdir -p "$TAMLINUX_SYS_BLOCK_PATH/$name"
+                        printf '0\\n' > "$TAMLINUX_SYS_BLOCK_PATH/$name/initstate"
+                    fi
+                done
+                exit 0
+                ;;
+            reset-failed)
+                [[ ${SYSTEMD_RESET_FAILED_FAILS:-0} == 1 ]] && exit 1
+                exit 0
+                ;;
+            start)
+                [[ ${SYSTEMD_START_FAILS:-0} == 1 ]] && exit 1
+                [[ ${SYSTEMD_START_HANGS:-0} == 1 ]] && sleep 180
+                dev=${2#dev-}; name=${dev%.swap}; dev=/dev/$name
+                initstate_file="$TAMLINUX_SYS_BLOCK_PATH/$name/initstate"
+                # Model zram-generator failing with EBUSY when initstate=1 on an inactive device.
+                if ! awk -v dev="$dev" 'NR > 1 && $1 == dev { f = 1 } END { exit !f }' "$TAMLINUX_SWAPS_PATH"; then
+                    if [[ -r $initstate_file && $(<"$initstate_file") == 1 ]]; then
+                        exit 1
+                    fi
+                fi
+                [[ ${SYSTEMD_START_NO_SWAP:-0} == 1 ]] && exit 0
+                # Model the manager waiting for generator teardown and formatting a
+                # fresh header before enabling the generated swap unit.
+                rm -f "$TAMLINUX_RUN_PATH/header-reset"
+                mkdir -p "$TAMLINUX_SYS_BLOCK_PATH/$name"
+                printf '1\\n' > "$initstate_file"
+                awk -v dev="$dev" '$1 != dev' "$TAMLINUX_SWAPS_PATH" > "$TAMLINUX_SWAPS_PATH.new"
+                mv "$TAMLINUX_SWAPS_PATH.new" "$TAMLINUX_SWAPS_PATH"
+                printf '%s partition 29630864 0 %s\\n' "$dev" "${SYSTEMD_PRIORITY:-100}" >> "$TAMLINUX_SWAPS_PATH"
+                ;;
+            *)
+                exit 1
+                ;;
+        esac
+    """,
+    "zramctl": """
+        echo "zramctl $*" >> "$CALLS"
+        [[ ${ZRAMCTL_FAILS:-0} == 1 ]] && exit 1
+        [[ $1 == --reset ]] || exit 1
+        name=${2#/dev/}
+        mkdir -p "$TAMLINUX_SYS_BLOCK_PATH/$name"
+        printf '0\\n' > "$TAMLINUX_SYS_BLOCK_PATH/$name/initstate"
+        exit 0
     """,
     "logger": """
         shift 2; [[ $1 == -- ]] && shift
@@ -75,8 +139,19 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.swaps = self.tmp / "swaps"
         self.run_dir = self.tmp / "run"
         self.run_dir.mkdir()
+        self.sys_block = self.tmp / "sys_block"
+        self.sys_block.mkdir()
         self.calls = self.tmp / "calls"
         self.log = self.tmp / "log"
+
+    def set_initstate(self, name="zram0", value="1"):
+        dev_dir = self.sys_block / name
+        dev_dir.mkdir(parents=True, exist_ok=True)
+        (dev_dir / "initstate").write_text(f"{value}\n")
+
+    def initstate(self, name="zram0"):
+        path = self.sys_block / name / "initstate"
+        return path.read_text().strip() if path.exists() else None
 
     def write_swaps(self, *rows):
         self.swaps.write_text(HEADER + "".join(f"{name}\t{kind}\t{size}\t{used}\t{prio}\n" for name, kind, size, used, prio in rows))
@@ -86,6 +161,7 @@ class HibernateSwapHookTests(unittest.TestCase):
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "TAMLINUX_SWAPS_PATH": str(self.swaps),
             "TAMLINUX_RUN_PATH": str(self.run_dir),
+            "TAMLINUX_SYS_BLOCK_PATH": str(self.sys_block),
             "CALLS": str(self.calls),
             "LOG": str(self.log),
             **extra,
@@ -225,18 +301,25 @@ class HibernateSwapHookTests(unittest.TestCase):
         for action in ("post", "suspend-after-failed-hibernate"):
             with self.subTest(action=action):
                 self.standard_swaps()
+                self.set_initstate("zram0", "1")
                 self.calls.unlink(missing_ok=True)
                 managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
                 self.hook("pre", "hibernate", **managed)
                 self.assertTrue((self.run_dir / "header-reset").exists())
+                self.assertEqual(self.initstate("zram0"), "0")
                 if action == "post":
                     self.hook("post", "hibernate", **managed)
                 else:
                     self.hook("pre", "suspend-then-hibernate", action=action, **managed)
-                self.assertEqual(self.calls_made(), ["swapoff /dev/zram0", "systemctl start dev-zram0.swap"])
+                self.assertEqual(self.calls_made(), [
+                    "swapoff /dev/zram0",
+                    "systemctl stop dev-zram0.swap systemd-zram-setup@zram0.service",
+                    "systemctl start dev-zram0.swap",
+                ])
                 self.assertFalse(self.state().exists())
                 self.assertIn("/dev/zram0", self.swaps.read_text())
                 self.assertFalse((self.run_dir / "header-reset").exists())
+                self.assertEqual(self.initstate("zram0"), "1")
 
     def test_generator_start_failure_keeps_state_for_retry(self):
         self.standard_swaps()
@@ -268,7 +351,95 @@ class HibernateSwapHookTests(unittest.TestCase):
         self.hook("pre", "hibernate", **managed)
         self.hook("post", "hibernate", SYSTEMD_SHOW_FAILS="1", **managed)
         self.assertTrue(self.state().exists())
+        self.assertEqual(self.calls_made(), [
+            "swapoff /dev/zram0",
+            "systemctl stop dev-zram0.swap systemd-zram-setup@zram0.service",
+        ])
+
+    def test_pre_drain_skips_stop_when_swapoff_fails(self):
+        self.standard_swaps()
+        self.set_initstate("zram0", "1")
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("pre", "hibernate", SWAPOFF_FAILS="1", **managed)
         self.assertEqual(self.calls_made(), ["swapoff /dev/zram0"])
+        self.assertEqual(self.initstate("zram0"), "1")
+
+    def test_pre_drain_stop_failure_or_timeout_logs_and_continues(self):
+        self.standard_swaps()
+        self.set_initstate("zram0", "1")
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("pre", "hibernate", SYSTEMD_STOP_FAILS="1", **managed)
+        self.assertIn("could not finish stopping systemd-zram-setup@zram0.service", self.logged())
+        self.assertEqual(self.initstate("zram0"), "1")
+
+        self.standard_swaps()
+        self.state().unlink(missing_ok=True)
+        self.log.unlink(missing_ok=True)
+        seen = self.install_fast_timeout(5, 60)
+        started = time.monotonic()
+        self.hook("pre", "hibernate", SYSTEMD_STOP_HANGS="1", **managed)
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed, 0.9)
+        self.assertLess(elapsed, 10)
+        self.assertIn("10", seen.read_text().splitlines())
+        self.assertIn("could not finish stopping systemd-zram-setup@zram0.service", self.logged())
+
+    def test_post_resets_stuck_initialized_device_and_retries_start(self):
+        # Simulate an interrupted pre-hibernate reset: swap off, initstate=1, setup unit failed.
+        self.write_swaps(("/swap/swapfile", "file", 28 * GIB, 0, 0))
+        self.set_initstate("zram0", "1")
+        self.state().write_text("/dev/zram0 100\n")
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("post", "hibernate", **managed)
+        self.assertEqual(self.calls_made(), [
+            "systemctl start dev-zram0.swap",
+            "zramctl --reset /dev/zram0",
+            "systemctl reset-failed dev-zram0.swap systemd-zram-setup@zram0.service",
+            "systemctl start dev-zram0.swap",
+        ])
+        self.assertIn("reset stuck /dev/zram0 before retrying dev-zram0.swap", self.logged())
+        self.assertIn("turned /dev/zram0 back on at priority 100", self.logged())
+        self.assertFalse(self.state().exists())
+        self.assertIn("/dev/zram0", self.swaps.read_text())
+
+    def test_post_never_resets_when_swap_active_or_uninitialized_or_unit_busy(self):
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        cases = [
+            ("swap_active", True, "1", {"SYSTEMD_START_FAILS": "1"}),
+            ("initstate_zero", False, "0", {"SYSTEMD_START_FAILS": "1"}),
+            ("setup_deactivating", False, "1", {"SYSTEMD_SETUP_ACTIVE_STATE": "deactivating"}),
+            ("setup_activating", False, "1", {"SYSTEMD_SETUP_ACTIVE_STATE": "activating"}),
+            ("setup_has_job", False, "1", {"SYSTEMD_SETUP_JOB": "42"}),
+            ("setup_has_control_pid", False, "1", {"SYSTEMD_SETUP_CONTROL_PID": "999"}),
+            ("swap_deactivating", False, "1", {"SYSTEMD_SWAP_ACTIVE_STATE": "deactivating"}),
+            ("state_query_fails", False, "1", {"SYSTEMD_STATE_SHOW_FAILS": "1"}),
+        ]
+        for label, active_swap, init_val, extra in cases:
+            with self.subTest(case=label):
+                self.calls.unlink(missing_ok=True)
+                self.log.unlink(missing_ok=True)
+                if active_swap:
+                    self.standard_swaps(zram_used=0)
+                else:
+                    self.write_swaps(("/swap/swapfile", "file", 28 * GIB, 0, 0))
+                self.set_initstate("zram0", init_val)
+                self.state().write_text("/dev/zram0 100\n")
+                self.hook("post", "hibernate", **managed, **extra)
+                self.assertEqual(self.calls_made(), ["systemctl start dev-zram0.swap"])
+                self.assertTrue(self.state().exists())
+
+    def test_post_retains_state_if_zramctl_reset_fails(self):
+        self.write_swaps(("/swap/swapfile", "file", 28 * GIB, 0, 0))
+        self.set_initstate("zram0", "1")
+        self.state().write_text("/dev/zram0 100\n")
+        managed = {"SYSTEMD_FRAGMENT": "/run/systemd/generator/dev-zram0.swap"}
+        self.hook("post", "hibernate", ZRAMCTL_FAILS="1", **managed)
+        self.assertEqual(self.calls_made(), [
+            "systemctl start dev-zram0.swap",
+            "zramctl --reset /dev/zram0",
+        ])
+        self.assertTrue(self.state().exists())
+        self.assertEqual(self.initstate("zram0"), "1")
 
     def test_existing_retry_state_clears_after_manager_already_restored_swap(self):
         self.standard_swaps(zram_used=0)
