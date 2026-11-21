@@ -14,8 +14,6 @@ Verification: 18 fleet regression tests and 47 deployment tests pass, including
 cross-host capture, preserved dirty state, rejected symlink writes, failed
 reconciliation timestamps, root traversal and exact-path commits.
 
-The small `tam-nut` welcome/inspection helper (the current bud package) is assembled into development
-live media separately. It performs no disk or installation action.
 Physical second-host installation, per-device SSH setup, package delivery,
 reconciliation on both hosts and acceptance remain outside source evidence.
 No Test, Run or Release is authorized by these checks.
@@ -27,3 +25,23 @@ and records the absence of a previous generation. It does not enable graphical
 login or manufacture a recovery generation. A failed partial activation retains
 its attempt record and blocks retries until reviewed. Console-first boot and
 optional native feature packages are separate work; no login policy is changed.
+
+## Source-install fleet validation
+
+The checkout version of `tam-fleet` reads `fleet/capabilities.json`, a JSON
+array of unique capability names owned by the fleet configuration repository.
+Registration and validation check selections against that catalog. Each
+host selects capabilities through its existing `host.json` and owns its
+root manifest. Registration creates the host profile, root manifest and dossier.
+
+Live checks verify the running identity, installed host profile,
+root-file bytes and modes, and
+active source-install record. Reconciliation updates the receipt and index
+only after checks pass, and capture stays local to the named host.
+
+All 20 tests passed with a source-only fixture, including malformed catalogs,
+unknown capabilities, cross-host capture and failed reconciliation. The
+checkout checker passed registry and configuration validation against a
+source-install fleet. A live check detected a difference in a declared root
+file. Reconcile the live hosts once their declarations and installed state
+agree, then verify the packaged checker through the normal delivery process.

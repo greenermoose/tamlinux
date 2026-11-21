@@ -64,10 +64,23 @@ class Fleet:
     def __init__(self, config, registry):
         self.config = Path(config).absolute()
         self.registry = Path(registry).absolute()
-        if not (self.config / "flake.nix").is_file():
-            raise FleetError("configuration must contain flake.nix")
+        catalog = self.config / "fleet" / "capabilities.json"
+        if not catalog.is_file():
+            raise FleetError("configuration must contain fleet/capabilities.json")
+        capabilities = json.loads(catalog.read_text())
+        if not isinstance(capabilities, list) or not all(
+            isinstance(name, str) and HOST.fullmatch(name) for name in capabilities
+        ) or len(set(capabilities)) != len(capabilities):
+            raise FleetError("fleet/capabilities.json must list unique capability names")
+        self.capabilities = set(capabilities)
         if not self.registry.is_dir():
             raise FleetError("registry directory does not exist")
+
+    def check_capabilities(self, capabilities):
+        for capability in capabilities:
+            require_name(capability)
+            if capability not in self.capabilities:
+                raise FleetError(f"unknown capability: {capability}")
 
     def records(self):
         records = {}
@@ -105,10 +118,7 @@ class Fleet:
         caps = value.get("capabilities")
         if not isinstance(caps, list) or len(set(caps)) != len(caps):
             raise FleetError(f"invalid capabilities: {name}")
-        for cap in caps:
-            require_name(cap)
-            if not (self.config / "capabilities" / f"{cap}.nix").is_file():
-                raise FleetError(f"unknown capability: {cap}")
+        self.check_capabilities(caps)
         return value
 
     def table(self, records):
@@ -147,8 +157,6 @@ class Fleet:
             hardware = self.config / record["hardware_profile"]
             if not hardware.is_file() or not hardware.resolve().is_relative_to(self.config.resolve()):
                 raise FleetError(f"missing local hardware page: {name}")
-            if not (self.config / "fleet" / "hosts" / name / "home.nix").is_file():
-                raise FleetError(f"missing host module: {name}")
             self.root_files(name)
             for link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", (self.registry / f"{name}.md").read_text()):
                 target = link.split("#", 1)[0]
@@ -222,10 +230,7 @@ class Fleet:
         hardware_path = self.config / hardware
         if not hardware_path.is_file() or not hardware_path.resolve().is_relative_to(self.config.resolve()):
             raise FleetError("hardware page must exist inside the private configuration")
-        for cap in capabilities:
-            require_name(cap)
-            if not (self.config / "capabilities" / f"{cap}.nix").is_file():
-                raise FleetError(f"unknown capability: {cap}")
+        self.check_capabilities(capabilities)
         value = {"hostname": name, "username": user, "home": home or f"/home/{user}",
                  "system": system, "capabilities": sorted(set(capabilities))}
         today = dt.date.today().isoformat()
@@ -236,7 +241,6 @@ class Fleet:
             "## Configuration\n\nRegistered before installation. Hardware facts remain in the linked hardware page.\n"
             "No reconciliation has succeeded yet. Each machine needs its own GitHub SSH key.\n")
         write(directory / "host.json", dump(value))
-        write(directory / "home.nix", "# Host-only overrides; shared capabilities are selected in host.json.\n{ ... }: { }\n")
         write(directory / "system/MANIFEST", "# Host-only root files: absolute path and octal mode.\n")
         write(path, record)
         self.index()

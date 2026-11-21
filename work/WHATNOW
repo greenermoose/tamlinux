@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-21, with W17
+Updated: 2026-11-21, with W18
 
 
 STATE
@@ -23,6 +23,10 @@ STATE
   In Develop, source preflight now requires the Arch Gum package and
   its native executable for the shipped interactive commands (W17).
   The change passed 29 source-install tests and make verify.
+
+  In Develop, tam-fleet validates source-install profiles from the
+  configuration repository's capability catalog. The 20 fleet tests and
+  a configuration check against the active fleet passed (W18).
 
 
 NEXT

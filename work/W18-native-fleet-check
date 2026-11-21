@@ -1,0 +1,27 @@
+W18 VALIDATE SOURCE-INSTALL FLEET PROFILES
+
+Date: 2026-11-21
+AI harness: Codex 0.171.0
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Fix that. Update the plan. Then show me the revised plan."
+  Fred: "Approved. Proceed. You can close the micro review window."
+
+DONE
+
+  - Replaced the old flake and module validation with the native fleet
+    capability catalog. Registration creates the host JSON and manifests.
+  - All 20 command tests and the checkout's fleet configuration check
+    passed. The live check reported an expected difference in a root file.
+
+FAILED
+
+  - Live reconciliation awaits agreement between declared and installed
+    files and the selected host capabilities.
+
+HANDOFF
+
+  - Use the checkout command for live proof and carry the checker into a
+    later recorded source delivery for packaged verification.

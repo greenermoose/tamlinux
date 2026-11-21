@@ -19,9 +19,10 @@ TAMLINUX_FLEET_REGISTRY to its companion fleet/systems directory (defaults to
     tam-fleet reconcile laptop
     tam-fleet reconcile laptop --commit
 
-Registration creates a planned dossier, fleet/hosts/<hostname>/host.json, an empty
-host module and an empty root manifest. It never copies another machine's
-files. The hardware page and selected capability modules must already exist.
+Registration creates a planned dossier, fleet/hosts/<hostname>/host.json and
+an empty root manifest. It never copies another machine's files. The hardware
+page must already exist. The configuration repository declares its supported
+capabilities in fleet/capabilities.json, a JSON array of unique capability names.
 
 check validates identity, capabilities, hardware/local links, root sources and
 index freshness. check --live HOST additionally checks the running hostname,

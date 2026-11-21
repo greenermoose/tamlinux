@@ -33,7 +33,7 @@ class FleetTests(unittest.TestCase):
             git(root, "init", "-q")
             git(root, "config", "user.name", "Fixture")
             git(root, "config", "user.email", "fixture@example.invalid")
-        for path, text in {"flake.nix": "{ }", "capabilities/desktop-common.nix": "{ }",
+        for path, text in {"fleet/capabilities.json": '["desktop-common"]',
                            "hardware.md": "# Test hardware", "system/MANIFEST": "# shared\n"}.items():
             dest = self.config / path
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -62,8 +62,24 @@ class FleetTests(unittest.TestCase):
         root = self.config / "fleet/hosts/beta"
         self.assertEqual(list((root / "system").iterdir()), [root / "system/MANIFEST"])
         self.assertFalse((root / "state").exists())
-        self.assertNotIn("alpha", (root / "home.nix").read_text())
+        self.assertEqual({item.name for item in root.iterdir()}, {"host.json", "system"})
         self.fleet.check()
+
+    def test_rejects_malformed_capability_catalog(self):
+        path = self.config / "fleet/capabilities.json"
+        for value in ({"desktop-common": True}, ["desktop-common", "desktop-common"], ["../bad"], [1]):
+            with self.subTest(value=value):
+                path.write_text(json.dumps(value))
+                with self.assertRaisesRegex(fleet.FleetError, "unique capability names"):
+                    fleet.Fleet(self.config, self.registry)
+
+    def test_check_rejects_unknown_capability_in_existing_host(self):
+        path = self.config / "fleet/hosts/alpha/host.json"
+        host = json.loads(path.read_text())
+        host["capabilities"].append("unreviewed")
+        path.write_text(json.dumps(host))
+        with self.assertRaisesRegex(fleet.FleetError, "unknown capability: unreviewed"):
+            self.fleet.check()
 
     def test_repeat_registration_preserves_existing_identity(self):
         with self.assertRaisesRegex(fleet.FleetError, "already registered"):
