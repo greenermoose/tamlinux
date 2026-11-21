@@ -43,6 +43,28 @@ class RuntimePreflightTests(unittest.TestCase):
         self.release.write_text("ID=debian\n")
         self.assertIn("requires x86_64 Arch Linux", preflight.runtime_problems(self.root)[0])
 
+    def test_gum_requires_the_package_and_native_executable(self):
+        self.assertIn("gum", preflight.declared_packages())
+        local = self.root / "home/user/.local/bin"
+        local.mkdir(parents=True)
+        (local / "gum").touch(mode=0o755)
+        missing_package = "missing Arch package dependency: gum"
+        missing_executable = "missing native executable /usr/bin/gum (Arch package: gum)"
+        with patch.dict(os.environ, {"PATH": str(local)}):
+            problems = preflight.runtime_problems(self.root)
+            self.assertIn(missing_package, problems)
+            self.assertIn(missing_executable, problems)
+
+        self.add_package("gum", "2.0.2-1", ("usr/bin/gum",))
+        problems = preflight.runtime_problems(self.root)
+        self.assertNotIn(missing_package, problems)
+        self.assertIn(missing_executable, problems)
+
+        executable = self.root / "usr/bin/gum"
+        executable.parent.mkdir(parents=True)
+        executable.touch(mode=0o755)
+        self.assertFalse(any("gum" in problem for problem in preflight.runtime_problems(self.root)))
+
     def test_default_cursor_needs_a_real_theme(self):
         index = self.root / "usr/share/icons/default/index.theme"
         index.parent.mkdir(parents=True)

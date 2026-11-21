@@ -25,6 +25,7 @@ zlib
 bash
 coreutils
 glibc
+gum
 systemd
 nftables
 jq

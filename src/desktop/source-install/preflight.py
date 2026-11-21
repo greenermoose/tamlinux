@@ -24,6 +24,7 @@ BUILD_HEADERS = (
 # Source equivalents of the native prerequisites in the workstation recipe.
 RUNTIME_COMMANDS = {
     "sh": "bash", "bash": "bash", "env": "coreutils", "python3": "python>=3.12",
+    "gum": "gum",
     "Hyprland": "hyprland>=0.56", "start-hyprland": "hyprland",
     "quickshell": "quickshell>=0.3", "qs": "quickshell", "uwsm": "uwsm", "jq": "jq",
     "nft": "nftables", "mandb": "man-db", "systemctl": "systemd",

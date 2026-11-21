@@ -3,119 +3,49 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-20, with W16
+Updated: 2026-11-21, with W17
 
 
 STATE
 
-  VERSION reads 0.6.32 on branch dev. The current release is 0.5.12;
-  0.6 is the dependable-baseline minor (README, the version outlook).
+  VERSION reads 0.6.37 on dev. The current release is 0.5.12. Tamlinux
+  0.6 is the dependable Arch/Hyprland baseline.
 
-  The daily workstation runs bundle-delivered 0.6.30 at Test, with
-  0.6.29 retained as its previous bundle. The last fleet record had
-  0.6.28 at Test on all three hosts.
+  Bosgame accepted source-installed 0.6.37 for Run. Fred accepted
+  slowhp's 0.6.37 fresh-file reinstall with its storage layout intact.
+  Toughbook proved in-place source installation on 0.6.34. The 0.6.37
+  Run delivery is the rollback floor.
 
-  The working branch was renamed from develop to dev on 2026-11-20
-  under D272; no version or source pin changed (W14). All live docs/ai/
-  folders were retired the same day under D278: the root records now sit
-  in work/history/, each of the eight fred.* plugins has its own
-  work/history/, and every link was repointed (W15).
+  The repository follows the tam-idol 0.2.1 layout (W16). Source
+  installation builds pinned clones, verifies native prerequisites and
+  destination ownership, and selects the installed cultivar by digest.
 
-  W16 reorganized tamlinux into the tam-idol 0.2.1 standard layout
-  (src/, tests/, arch/, bugs/, ideas/, plans/, reviews/, work/), moved
-  the public standard to work/ai-blame-standard.md, renamed all
-  AI_PROVENANCE.md files (root and 8 plugins) to AI-BLAME.md, added
-  ROADMAP.md and all six standard README-<folder> files, and updated
-  Makefile, install-product.py, install-cultivar-layout.py,
-  source-install, and tests/. tools/idol-check ../tamlinux passes.
-
-  Since then, on dev and listed under "Unreleased" in CHANGELOG.md:
-  fred.workspaces 2.0.12, a tam-fleet README fix, journal entry points
-  that need tam-journal from tamlinux-tools, and tam-deploy's settings
-  guard, which now refuses references to tam source generations and a
-  locally built libtam instead of the retired ~/.local/dev prefix (W2).
-  The desktop no longer runs a removable-drive automounter (W3).
-  Bundle installation permits same-name commands in the user's local
-  bin directory (W4).
-
-  W5 adds a locked local-clone build and a temporary-root installer.
-  The staged build, upgrade and rollback passed. W6 adds read-only
-  native preflight. A complete stage passed prerequisite and Pacman
-  ownership checks on the daily workstation.
-  W7 supplies hi and start for a clean source installation. Both worked
-  in an isolated root, tam reported the staged cultivar, and installation
-  refused absent paths owned by Pacman. W8 proves the isolated bundle
-  migration, Make upgrade and exact bundle recovery with the retained
-  installer. It keeps the package-owned console launchers. W9 adds
-  first-launch defaults and a preserving settings handoff with desktop
-  launch checks and bundle session recovery in isolated roots.
-  W10 builds with the new tam-edit clone and binds source preparation
-  to a committed delivery, host manifest and verified rollback target.
-  W11 adds a clean Make install from an approved plan and a trusted
-  operator export. W12 corrects the 0.6.31 pilot to tam 0.61.4 and corpus
-  0.96.3. The corrected delivery passed clean and repeat installation in
-  an isolated Arch fixture. The first clean Arch pilot installed 0.6.31
-  and verified the installed files and desktop startup. W13 adds two
-  checks in Develop. Preflight now requires a real default cursor theme,
-  and the widget proof reads the actual Make version-notes output.
-  0.6.32 fixes the remaining clean-pilot regressions in Develop: forces
-  022 umask and 0755 directories in transaction.py, declares build and
-  runtime Arch prerequisites in desktop/source-install/arch-packages
-  (including adwaita-cursors, foot, and xdg-terminal-exec), fails closed
-  when CHANGELOG.md lacks a matching version section, adds make verify
-  as the regular user before desktop launch, and wires live bundle and
-  source upgrades into install_plan() with privilege-separated user
-  settings handoff in session_settings.py. The clean Arch pilot installed
-  0.6.32 from a fresh rootstock baseline and passed make verify, console
-  checks, default pointer, 0.6.32 version notes in the bar, Meta+Enter
-  launching Foot, and Chromium.
-
-  Ahead: 0.7.0 starts dogfooding four Tamlinux components (tam-pane in
-  place of Hyprland, tam-last, tam-clam, tam-edit); 1.0.0 moves to fresh
-  GitLab repositories and a proven source install
-  (plans/P2-1.0.0-gitlab-and-source-install.md).
+  In Develop, source preflight now requires the Arch Gum package and
+  its native executable for the shipped interactive commands (W17).
+  The change passed 29 source-install tests and make verify.
 
 
 NEXT
 
-  Every stage move below happens only on Fred's word: Test, Run and
-  Release are his, and a version number is not an instruction.
-
-  1. Prepare 0.6.33 on Fred's word:
-     - Replace per-file fsync/sync_dir in
-       src/desktop/source-install/transaction.py with syncfs per phase
-       plus clear progress output (0.6.32 took ~15 min on spinning disk
-       due to ~13,000 individual flushes).
-     - Add chromium to src/desktop/source-install/arch-packages and
-       verify default browser availability in preflight/verify.
-     - Update components.lock to pin tam 0.64.1 (corpus 0.100.2).
-  2. Prove the clean Arch pilot on 0.6.33, then prove the data-preserving
-     in-place 0.6.28 bundle-to-source upgrade and rollback on the upgrade
-     pilot before upgrading the daily workstation (0.6.30 bundle).
-  3. After 0.6.28 is accepted, update its plan status. Continue the
-     separate Nix and Home Manager retirement work host by host.
+  1. Include the Gum prerequisite when the next source candidate is
+     prepared. Verify its native provider on the target before install.
+  2. Begin dogfooding tam-pane, tam-clam, tam-last and tam-edit at 0.7.0,
+     keeping Hyprland available as a fallback (ROADMAP.md).
 
 
 WAITING FOR FRED
 
-  - Approval to prepare and test Tamlinux 0.6.33 on the clean Arch pilot.
-  - Approval to run the data-preserving bundle-to-source upgrade pilot.
-  - His verdict on 0.6.28 at Test for the separate fleet recovery anchor.
+  - Exact candidate instructions for Test, Run or Release.
 
 
 WATCH OUT
 
-  - The clean Make pilot uses a recorded delivery and an approved host
-    manifest. Bundle deliveries still use tam-deploy.
-  - Boot, login, disk, firmware and package-removal steps run one at a
-    time, each approved by Fred, with a rollback point recorded first.
-  - tests/check-all runs the whole suite. Warn Fred before --proofs:
-    proofs start real programs that may crash.
-  - Agents push only dev and feature branches; test, main, tags and
+  - Use the recorded source delivery and host manifest for each install.
+  - Boot, login, disk, firmware and package-removal work on protected
+    hosts needs separate approval and a recorded rollback point.
+  - Warn Fred before running tests/check-all --proofs, which launches
+    programs that may crash. Run source-install tests under umask 022.
+  - Agents push only dev and feature branches. Test, main, tags and
     releases move on Fred's words.
-  - The fred.* plugins under src/desktop/plugins/ keep their own
-    work/history/ folders: archives of the frozen standalone plugin
-    repositories, not this repository's records.
-  - Development builds use ~/.local/bin and ~/.local/lib; releases
-    install to /usr/bin and /usr/lib. Verify release commands by their
-    installed system paths.
+  - Older plugin and product records live in work/history/ or in the
+    corresponding plugin's history. Preserve them as dated records.

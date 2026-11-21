@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [Unreleased]
+
+- Declare Gum as an Arch runtime prerequisite and check for its native executable before a source install.
+
 ## [0.6.37]
 
 Changes since Tamlinux 0.6.36:

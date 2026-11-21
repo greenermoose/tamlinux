@@ -1,0 +1,29 @@
+W17 REQUIRE GUM FOR ARCH SOURCE INSTALLS
+
+Date: 2026-11-21
+AI harness: Codex 0.171.0
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Take the next work slice for tam-idol, if there is one. If there
+  is not, review the whole Tamlinux project and plan the most important
+  work to do next."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Declared Gum as an Arch runtime dependency for shipped interactive
+    commands, including tam-tui-install and tam-webapp-install.
+  - Added a regression test for missing package metadata, missing
+    native executable, and a user-local executable.
+  - Passed all 29 source-install tests and make verify on the existing
+    source installation.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Carry the Gum prerequisite into the next recorded source delivery.
