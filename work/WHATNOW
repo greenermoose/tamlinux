@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-21, with W18
+Updated: 2026-11-22, with W19
 
 
 STATE
@@ -13,26 +13,39 @@ STATE
 
   Bosgame accepted source-installed 0.6.37 for Run. Fred accepted
   slowhp's 0.6.37 fresh-file reinstall with its storage layout intact.
-  Toughbook proved in-place source installation on 0.6.34. The 0.6.37
-  Run delivery is the rollback floor.
+  Toughbook proved in-place source installation on 0.6.34 and runs
+  0.6.36. The 0.6.37 Run delivery is the rollback floor.
 
-  The repository follows the tam-idol 0.2.1 layout (W16). Source
+  The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
   destination ownership, and selects the installed cultivar by digest.
 
-  In Develop, source preflight now requires the Arch Gum package and
-  its native executable for the shipped interactive commands (W17).
-  The change passed 29 source-install tests and make verify.
+  In Develop, source preflight requires the Arch Gum package and its
+  native executable (W17), and tam-fleet validates source-install
+  profiles from the capability catalog (W18).
 
-  In Develop, tam-fleet validates source-install profiles from the
-  configuration repository's capability catalog. The 20 fleet tests and
-  a configuration check against the active fleet passed (W18).
+  In Develop (W19), the 0.6.38 product fixes are ready on dev:
+  - Fresh-login man-page lookup resolves cultivar and rootstock pages
+    via standard man-db PATH discovery and /usr/share/man integration
+    after /etc/profile unsets MANPATH.
+  - tam-update reports installed foreign/local packages (pacman -Qm),
+    lists pending AUR updates read-only (yay -Qua), and prints frozen-
+    recipe review/build instructions.
+  - tam-boot excludes intermediate kernel messages during the disk
+    passphrase prompt from slow steps, bounds kernel gap analysis to
+    startup completion, and sorts slow steps descending by duration.
+  - tam-vt-screenshot, tamlinux-vt-prtsc.map, tamlinux-vt.vtrgb,
+    kbrequest.target, tam-vt-keymap.service, and
+    tam-vt-screenshot.service are packaged in the cultivar and systemd
+    system unit layout.
 
 
 NEXT
 
-  1. Include the Gum prerequisite when the next source candidate is
-     prepared. Verify its native provider on the target before install.
+  1. On Fred's Package/Test word for 0.6.38, freeze 0.6.38, remove the
+     temporary VT screenshot host files on the idol host before install,
+     and verify Gum, man-page lookup, and VT screenshot/palette across
+     the fleet.
   2. Begin dogfooding tam-pane, tam-clam, tam-last and tam-edit at 0.7.0,
      keeping Hyprland available as a fallback (ROADMAP.md).
 

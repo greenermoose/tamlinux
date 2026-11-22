@@ -1,5 +1,8 @@
 import hashlib
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -78,6 +81,37 @@ class VerifyTests(unittest.TestCase):
         self.addCleanup(tam.chmod, 0o755)
         problems = verify_root(self.root, check_runtime=False)
         self.assertTrue(any("unreadable" in p for p in problems), problems)
+
+    @unittest.skipUnless(shutil.which("man") and Path("/etc/profile").is_file(), "requires man-db and /etc/profile")
+    def test_man_lookup_survives_login_profile_unset_manpath(self):
+        man1 = self.root / PAYLOAD_CURRENT / "share/man/man1"
+        man1.mkdir(parents=True, exist_ok=True)
+        (man1 / "tam-journal.1").write_text(".TH TAM-JOURNAL 1\n.SH NAME\ntam-journal \\- open journal\n")
+        profile = self.root / "etc/profile.d/tamlinux.sh"
+        profile.parent.mkdir(parents=True, exist_ok=True)
+        cultivar_bin = self.root / PAYLOAD_CURRENT / "bin"
+        profile.write_text(
+            f'if [ -d "{cultivar_bin}" ]; then\n'
+            f'  PATH="${{PATH:+$PATH:}}{cultivar_bin}"\n'
+            f'  export PATH\n'
+            f'fi\n'
+        )
+        self.assertEqual(verify_root(self.root, check_runtime=False), [])
+        cmd = (
+            f'. /etc/profile; . "{profile}"; unset MANPATH; '
+            'test -z "${MANPATH:-}" && '
+            'man -w tam-journal && man -w pacman && man -w 2 open'
+        )
+        res = subprocess.run(
+            ["/usr/bin/env", "-i", f"HOME={self.scratch}", "/usr/bin/bash", "-l", "-c", cmd],
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        lines = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+        self.assertEqual(len(lines), 3, lines)
+        self.assertTrue(lines[0].endswith("/share/man/man1/tam-journal.1"), lines)
+        self.assertIn("/man8/pacman.8", lines[1])
+        self.assertIn("/man2/open.2", lines[2])
 
 
 if __name__ == "__main__":

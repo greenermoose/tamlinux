@@ -1,0 +1,8 @@
+# systemd starts this target when a text console's KeyboardSignal key is
+# pressed (systemd.special(7)). PrtSc is mapped to that key by
+# tam-vt-keymap.service.
+[Unit]
+Description=Console keyboard request (PrtSc on a text VT)
+Documentation=man:systemd.special(7)
+Wants=tam-vt-screenshot.service
+StopWhenUnneeded=yes

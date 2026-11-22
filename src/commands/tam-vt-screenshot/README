@@ -1,0 +1,9 @@
+TAM-VT-SCREENSHOT
+
+tam-vt-screenshot captures the active Linux virtual console framebuffer
+(/dev/fb0) as an opaque RGB PNG and writes it to ~/Pictures/vt-<timestamp>-<tty>.png
+under the UID/GID of the active VT's owner (or the primary normal user when a
+VT is at a root-owned login prompt).
+
+Invoked by tam-vt-screenshot.service via kbrequest.target when PrtSc is pressed
+on a text console (mapped by tam-vt-keymap.service).

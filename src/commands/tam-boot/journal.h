@@ -19,7 +19,7 @@ typedef struct {
 typedef struct {
     double timestamp_s;
     double duration_s;
-    char desc[128];
+    char desc[256];
 } tam_boot_step_t;
 
 typedef struct {

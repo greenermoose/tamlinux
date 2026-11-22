@@ -39,6 +39,7 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
     for name in ("shell", "session", "skills", "browser", "assets", "plugins"):
         tree(f"src/desktop/{name}", f"share/tamlinux/{name}")
     tree("src/share/nftables", "share/tamlinux/nftables")
+    tree("src/share/console", "share/tamlinux/console")
     tree("src/desktop/user-defaults/bash", "share/tamlinux/user-defaults/bash")
     tree("src/desktop/user-defaults/gnupg", "share/tamlinux/user-defaults/gnupg")
     file("src/desktop/user-defaults/apply", "share/tamlinux/user-defaults/apply")
@@ -85,13 +86,17 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
                                 check=True, stdout=subprocess.PIPE)
         (console / name).write_bytes(result.stdout)
 
-    # The native adapter exposes this directory to the user manager. Units
-    # are installed here without enabling or restarting anything during build.
-    units = root / "share/systemd/user"
-    units.mkdir(parents=True, exist_ok=True)
-    for template in sorted((source / "src/desktop/systemd/user").glob("*")):
-        if template.is_file():
-            (units / template.name).write_text(template.read_text().replace("@PREFIX@", prefix))
+    # The native adapter exposes these directories to the systemd managers.
+    # Units are installed here without enabling or restarting anything during build.
+    for scope in ("user", "system"):
+        src_units = source / "src/desktop/systemd" / scope
+        if not src_units.is_dir():
+            continue
+        units = root / "share/systemd" / scope
+        units.mkdir(parents=True, exist_ok=True)
+        for template in sorted(src_units.glob("*")):
+            if template.is_file():
+                (units / template.name).write_text(template.read_text().replace("@PREFIX@", prefix))
 
 
 def main() -> int:

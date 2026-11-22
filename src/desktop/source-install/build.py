@@ -280,6 +280,10 @@ def build(repos, work):
         stage.mkdir()
         for tree in component_trees:
             clone_tree(tree, stage)
+        staged_man = stage / PAYLOAD_CURRENT / "share/man"
+        if staged_man.is_dir():
+            clone_tree(staged_man, stage / "usr/share/man")
+            clone_tree(staged_man, stage / PAYLOAD_CURRENT / "share/doc/man")
         receipt = {"version": version, "components": pins, "files": inventory(stage)}
         ready = build_root / "ready"
         ready.mkdir()

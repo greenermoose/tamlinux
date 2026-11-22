@@ -85,6 +85,41 @@ void tam_boot_free_list(tam_boot_list_t *list)
     }
 }
 
+static int cmp_slow_steps_desc(const void *a, const void *b)
+{
+    const tam_boot_step_t *sa = (const tam_boot_step_t *)a;
+    const tam_boot_step_t *sb = (const tam_boot_step_t *)b;
+    if (sb->duration_s > sa->duration_s) return 1;
+    if (sb->duration_s < sa->duration_s) return -1;
+    return 0;
+}
+
+static void record_slow_step(tam_boot_analysis_t *out, double timestamp_s, double duration_s,
+                             const char *prev_msg, const char *curr_msg)
+{
+    size_t slot = out->slow_step_count;
+    if (slot < 32) {
+        out->slow_step_count++;
+    } else {
+        size_t min_idx = 0;
+        for (size_t i = 1; i < 32; i++) {
+            if (out->slow_steps[i].duration_s < out->slow_steps[min_idx].duration_s) {
+                min_idx = i;
+            }
+        }
+        if (duration_s <= out->slow_steps[min_idx].duration_s) {
+            return;
+        }
+        slot = min_idx;
+    }
+    out->slow_steps[slot].timestamp_s = timestamp_s;
+    out->slow_steps[slot].duration_s = duration_s;
+    snprintf(out->slow_steps[slot].desc,
+             sizeof(out->slow_steps[slot].desc),
+             "kernel: after \"%.90s\", before \"%.90s\"",
+             prev_msg, curr_msg);
+}
+
 static void parse_startup_finished_message(const char *msg, tam_boot_analysis_t *out)
 {
     /* Format: Startup finished in 9.979s (firmware) + 1.952s (loader) + 13.625s (kernel) + 5.192s (userspace) = 30.749s. */
@@ -232,17 +267,20 @@ static void parse_journal_export_stream(const char *data, size_t len, tam_boot_a
 
             if (prev_kernel_us > 0 && src_mono_ts > prev_kernel_us) {
                 unsigned long long gap = src_mono_ts - prev_kernel_us;
-                /* If gap is > 0.3s and not the passphrase wait */
-                if (gap >= 300000) {
-                    bool is_enc_gap = (enc_start_us == prev_kernel_us);
-                    if (!is_enc_gap && out->slow_step_count < 32) {
-                        out->slow_steps[out->slow_step_count].timestamp_s = (double)src_mono_ts / 1e6;
-                        out->slow_steps[out->slow_step_count].duration_s = (double)gap / 1e6;
-                        snprintf(out->slow_steps[out->slow_step_count].desc,
-                                 sizeof(out->slow_steps[out->slow_step_count].desc),
-                                 "kernel: after \"%s\", before \"%s\"",
-                                 prev_kernel_msg, message);
-                        out->slow_step_count++;
+                double startup_end_s = out->kernel_s + out->initrd_s + out->userspace_s;
+                if (out->getty_ready_s > startup_end_s) {
+                    startup_end_s = out->getty_ready_s;
+                }
+                if (startup_end_s <= 0.0) {
+                    startup_end_s = 60.0;
+                }
+                /* If gap is > 0.3s, within startup, and outside the disk passphrase wait window */
+                if (gap >= 300000 && ((double)src_mono_ts / 1e6) <= startup_end_s) {
+                    bool is_enc_gap = (enc_start_us > 0 && prev_kernel_us >= enc_start_us &&
+                                       (enc_end_us == 0 || src_mono_ts <= enc_end_us));
+                    if (!is_enc_gap) {
+                        record_slow_step(out, (double)src_mono_ts / 1e6, (double)gap / 1e6,
+                                         prev_kernel_msg, message);
                     }
                 }
             }
@@ -274,6 +312,10 @@ static void parse_journal_export_stream(const char *data, size_t len, tam_boot_a
             out->desktop_ready_s = (double)mono_ts / 1e6;
             out->has_desktop = true;
         }
+    }
+
+    if (out->slow_step_count > 1) {
+        qsort(out->slow_steps, out->slow_step_count, sizeof(out->slow_steps[0]), cmp_slow_steps_desc);
     }
 
     if (enc_start_us > 0 && enc_end_us > enc_start_us) {
@@ -358,9 +400,13 @@ int tam_boot_analyze(int boot_index, const char *boot_id_opt, tam_boot_analysis_
     }
 
     /* 4. User session target */
+    char uid_arg[32];
+    unsigned int target_uid = (unsigned int)geteuid();
+    if (target_uid == 0) target_uid = 1000;
+    snprintf(uid_arg, sizeof(uid_arg), "_UID=%u", target_uid);
     {
         const char *const argv[] = {
-            "journalctl", "-b", boot_arg, "_UID=1000", "MESSAGE=Reached target Main User Target.", "-o", "export", "--no-pager", NULL
+            "journalctl", "-b", boot_arg, uid_arg, "MESSAGE=Reached target Main User Target.", "-o", "export", "--no-pager", NULL
         };
         tam_exec_result_t res = tam_exec(argv, 4000);
         if (res.exit_code == 0 && res.stdout_buf) {
@@ -373,7 +419,7 @@ int tam_boot_analyze(int boot_index, const char *boot_id_opt, tam_boot_analysis_
     /* 5. Graphical session target */
     {
         const char *const argv[] = {
-            "journalctl", "-b", boot_arg, "_UID=1000", "USER_UNIT=graphical-session.target", "-o", "export", "--no-pager", NULL
+            "journalctl", "-b", boot_arg, uid_arg, "USER_UNIT=graphical-session.target", "-o", "export", "--no-pager", NULL
         };
         tam_exec_result_t res = tam_exec(argv, 4000);
         if (res.exit_code == 0 && res.stdout_buf) {

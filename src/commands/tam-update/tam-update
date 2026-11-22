@@ -8,11 +8,21 @@ case "${1:---apply}" in
 esac
 (( $# <= 1 )) || exit 2
 
-# List pending AUR updates for reviewed frozen-recipe builds (D168 / K53).
-# Read-only query only; never run unattended AUR upgrade helpers from here.
+# List foreign/local packages and pending AUR updates for reviewed frozen-recipe
+# builds (D168 / K53). Read-only query only; never run unattended AUR upgrade
+# helpers from here.
 list_aur_updates() {
+  local foreign=""
+  foreign=$(/usr/bin/pacman -Qm 2>/dev/null) || true
+  if [[ -z $foreign ]]; then
+    echo "No foreign or AUR packages installed." >&2
+    return 0
+  fi
+  echo "Installed foreign/local packages (pacman -Qm):" >&2
+  printf '%s\n' "$foreign" >&2
   if ! command -v yay >/dev/null; then
     echo "AUR update listing requires the selected independent yay provider (search and fetch only)." >&2
+    echo "Review frozen recipes in ~/pkgs (git clone/fetch, inspect PKGBUILD diff, makepkg, pacman -U); never run unattended AUR upgrades." >&2
     return 0
   fi
   local aur=""
@@ -20,10 +30,12 @@ list_aur_updates() {
   # Empty output (including exit 1 on some yay versions) means none pending.
   if [[ -z $aur ]]; then
     echo "No pending AUR updates." >&2
+    echo "Review frozen recipes in ~/pkgs (git clone/fetch, inspect PKGBUILD diff, makepkg, pacman -U); never run unattended AUR upgrades." >&2
     return 0
   fi
   echo "Pending AUR updates (review frozen recipes before building; do not run unattended AUR upgrades):" >&2
   printf '%s\n' "$aur"
+  echo "Review frozen recipes in ~/pkgs (git clone/fetch, inspect PKGBUILD diff, makepkg, pacman -U); never run unattended AUR upgrades." >&2
   return 0
 }
 

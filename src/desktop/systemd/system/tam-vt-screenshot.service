@@ -1,0 +1,16 @@
+# Save a PNG of the visible text console when PrtSc is pressed on a VT.
+[Unit]
+Description=Save a screenshot of the visible text console
+Documentation=file://@PREFIX@/bin/tam-vt-screenshot
+
+[Service]
+Type=oneshot
+ExecStart=@PREFIX@/bin/tam-vt-screenshot
+NoNewPrivileges=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/home
+
+[Install]
+WantedBy=kbrequest.target

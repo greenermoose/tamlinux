@@ -57,6 +57,7 @@ int main(void)
     expect(fabs(an.signin_s - 43.734) < 0.05, "sign in monotonic ~43.73 s");
     expect(an.has_user_session, "has user session");
     expect(fabs(an.user_session_s - 43.943) < 0.05, "user session ~43.94 s");
+    expect(an.slow_step_count == 0, "passphrase gap excluded from fixture slow steps");
 
     tam_str_t human = NULL;
     tam_boot_format_human(&an, 5, &human);

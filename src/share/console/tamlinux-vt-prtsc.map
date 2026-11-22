@@ -1,0 +1,7 @@
+# Partial console keymap: PrtSc on a text VT asks systemd for kbrequest.target,
+# which runs tam-vt-screenshot.service. Loaded after vconsole setup by
+# tam-vt-keymap.service. Keycode 99 is KEY_SYSRQ (PrtSc), 210 is KEY_PRINT.
+# Only the unmodified key changes; Alt+PrtSc (Magic SysRq) is handled by the
+# kernel before the keymap and is unaffected.
+plain keycode 99 = KeyboardSignal
+plain keycode 210 = KeyboardSignal

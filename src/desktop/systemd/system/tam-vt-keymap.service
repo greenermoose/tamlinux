@@ -1,0 +1,15 @@
+# Map PrtSc on text consoles to the keyboard request that takes a screenshot
+# and apply the Tamlinux 16-color text console palette.
+[Unit]
+Description=Configure Tamlinux text console keymap and color palette
+Documentation=file://@PREFIX@/share/tamlinux/console/README
+After=systemd-vconsole-setup.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/loadkeys @PREFIX@/share/tamlinux/console/tamlinux-vt-prtsc.map
+ExecStart=/usr/bin/setvtrgb @PREFIX@/share/tamlinux/console/tamlinux-vt.vtrgb
+
+[Install]
+WantedBy=multi-user.target

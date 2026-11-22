@@ -88,6 +88,22 @@ def browser_problems(root):
     return []
 
 
+def man_problems(root):
+    profile = root / "etc/profile.d/tamlinux.sh"
+    if profile.is_file() and os.access(profile, os.R_OK):
+        text = profile.read_text()
+        if "/usr/lib/tamlinux/current/bin" not in text:
+            return [f"profile drop-in does not expose cultivar bin for man-db discovery: {profile}"]
+    staged_man = root / PAYLOAD_CURRENT / "share/man"
+    if staged_man.is_dir():
+        for page in sorted(staged_man.rglob("*")):
+            if page.is_file():
+                rel = page.relative_to(staged_man)
+                if not (page.is_file() and os.access(page, os.R_OK)):
+                    return [f"cultivar manual page is unreadable: {page}"]
+    return []
+
+
 def permission_problems(system):
     problems = []
     if system.pending.exists():
@@ -141,6 +157,7 @@ def verify_root(root, check_runtime=True):
     problems.extend(notes_problems(root))
     problems.extend(terminal_problems(root))
     problems.extend(browser_problems(root))
+    problems.extend(man_problems(root))
     if check_runtime:
         problems.extend(runtime_problems(root))
     problems.extend(session_problems(system))

@@ -9,6 +9,10 @@ as defined in [`VERSIONING.md`](VERSIONING.md).
 ## [Unreleased]
 
 - Declare Gum as an Arch runtime prerequisite and check for its native executable before a source install.
+- Fix fresh-login manual-page lookup (K61): include `/usr/lib/tamlinux/current/bin` in `PATH` (`/etc/profile.d/tamlinux.sh` and `10-tamlinux-path.conf`) so `man-db` derives `/usr/lib/tamlinux/current/share/man` after `/etc/profile` unsets `MANPATH`, and mirror staged cultivar manual pages into `/usr/share/man` and `/usr/share/doc/tamlinux/man`.
+- List installed foreign/local packages (`pacman -Qm`) and print actionable frozen-recipe review/build instructions in `tam-update` alongside read-only `yay -Qua` queries (K53).
+- Exclude intermediate kernel log lines inside the LUKS passphrase wait window from `tam-boot` slow steps, bound slow-step analysis to startup completion, sort slowest steps first, and widen step descriptions so quotes are never truncated (K60).
+- Package `tam-vt-screenshot`, `tamlinux-vt-prtsc.map`, `tamlinux-vt.vtrgb` loading (`tam-vt-keymap.service`), `tam-vt-screenshot.service`, and `kbrequest.target` so `PrtSc` captures text virtual consoles and applies the higher-contrast 16-color VT palette at boot.
 
 ## [0.6.37]
 

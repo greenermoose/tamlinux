@@ -97,8 +97,33 @@ class ProductInstall(unittest.TestCase):
                 "[Unit]\nWants=tamlinux-protocol-shadow-collect.timer\n",
             )
             self.assertTrue((stage / "etc/profile.d/tamlinux.sh").is_file())
-            self.assertIn("/usr/bin/tamlinux", (stage / "etc/profile.d/tamlinux.sh").read_text())
+            profile_text = (stage / "etc/profile.d/tamlinux.sh").read_text()
+            self.assertIn("/usr/bin/tamlinux", profile_text)
+            self.assertIn("/usr/lib/tamlinux/current/bin", profile_text)
+            self.assertNotIn("MANPATH=", profile_text)
             self.assertTrue((stage / "usr/lib/environment.d/10-tamlinux-path.conf").is_file())
+            self.assertIn("/usr/lib/tamlinux/current/bin",
+                          (stage / "usr/lib/environment.d/10-tamlinux-path.conf").read_text())
+            self.assertTrue((current / "share/tamlinux/console/tamlinux-vt.vtrgb").is_file())
+            self.assertTrue((current / "share/tamlinux/console/tamlinux-vt-prtsc.map").is_file())
+            sys_units = stage / "usr/lib/systemd/system"
+            self.assertTrue((sys_units / "kbrequest.target").is_file())
+            self.assertTrue((sys_units / "tam-vt-keymap.service").is_file())
+            self.assertTrue((sys_units / "tam-vt-screenshot.service").is_file())
+            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/console/tamlinux-vt-prtsc.map",
+                          (sys_units / "tam-vt-keymap.service").read_text())
+            self.assertIn("/usr/lib/tamlinux/current/share/tamlinux/console/tamlinux-vt.vtrgb",
+                          (sys_units / "tam-vt-keymap.service").read_text())
+            self.assertIn("/usr/lib/tamlinux/current/bin/tam-vt-screenshot",
+                          (sys_units / "tam-vt-screenshot.service").read_text())
+            self.assertEqual(
+                (sys_units / "multi-user.target.d/50-tamlinux-services.conf").read_text(),
+                "[Unit]\nWants=tam-vt-keymap.service\n",
+            )
+            self.assertEqual(
+                (sys_units / "kbrequest.target.d/50-tamlinux-services.conf").read_text(),
+                "[Unit]\nWants=tam-vt-screenshot.service\n",
+            )
             self.assertTrue((stage / "usr/share/fonts/tamlinux/TamlinuxIcons.ttf").is_file())
             self.assertTrue((stage / "usr/lib/tamlinux/browser-policy-exec").is_file())
             self.assertIn("/usr/lib/tamlinux/browser-policy-exec",

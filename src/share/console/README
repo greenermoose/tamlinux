@@ -5,8 +5,12 @@ tamlinux-vt.vtrgb is the Tamlinux 16-color palette for the Linux text console
 2.2:1 against black and dark red and dark magenta are not much better. Every
 text color here is at least 4.1:1 against the background.
 
-Planned as the default from Tamlinux 0.6.19. How it is loaded at startup is
-not decided yet; until then it is source only.
+Planned as the default from Tamlinux 0.6.19 and packaged in Tamlinux 0.6.38:
+tam-vt-keymap.service loads tamlinux-vt-prtsc.map with loadkeys(1) and applies
+tamlinux-vt.vtrgb with setvtrgb(8) after systemd-vconsole-setup.service.
+Pressing PrtSc on a text VT signals kbrequest.target, which runs
+tam-vt-screenshot.service to save a PNG of /dev/fb0 to the VT owner's
+~/Pictures.
 
 
 FORMAT

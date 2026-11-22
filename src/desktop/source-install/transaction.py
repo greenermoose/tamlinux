@@ -45,6 +45,7 @@ PLACEMENTS = (
     "usr/share/fontconfig",
     "usr/share/fonts/tamlinux",
     "usr/share/libalpm/hooks",
+    "usr/share/man",
     "usr/share/polkit-1/actions",
     PAYLOAD_CURRENT,
 )

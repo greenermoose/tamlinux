@@ -1,0 +1,45 @@
+W19 0.6.38 PRODUCT FIXES AND VT SCREENSHOT/PALETTE PACKAGING
+
+Date: 2026-11-22
+AI harness: Antigravity CLI 1.5.14
+AI model: Gemini 4 Argon (Medium)
+Continues: W18
+
+GUIDANCE
+
+  Fred: "Do the next work slice toward Tamlinux 0.6.38"
+
+DONE
+
+  - Fixed fresh-login manual-page lookup: added
+    /usr/lib/tamlinux/current/bin to /etc/profile.d/tamlinux.sh and
+    10-tamlinux-path.conf so man-db automatically maps the cultivar bin
+    path to /usr/lib/tamlinux/current/share/man after Arch's /etc/profile
+    runs unset MANPATH, and copied staged cultivar manual pages into
+    /usr/share/man and /usr/share/doc/tamlinux/man during build. Verified
+    with a fresh env -i bash -l login regression test in test_verify.py.
+  - Enhanced tam-update to report installed foreign/local packages via
+    pacman -Qm, query yay -Qua read-only when yay is present, and print
+    actionable frozen-recipe review/build instructions without running
+    unattended AUR upgrades. Added 3 behavioral --check unit tests in
+    src/commands/tam-update/tests/test_update.py (12 tests pass).
+  - Fixed tam-boot kernel slow-step reporting: excluded intermediate
+    kernel messages inside the LUKS passphrase prompt window from slow
+    steps, bounded kernel gap analysis to the startup window, sorted slow
+    steps descending by duration, and widened step descriptions to 256
+    bytes so quotes never truncate. Verified on unit tests and current
+    boot (55 ms runtime, zero background polling).
+  - Packaged tam-vt-screenshot, tamlinux-vt-prtsc.map, tamlinux-vt.vtrgb,
+    kbrequest.target, tam-vt-keymap.service, and
+    tam-vt-screenshot.service into the cultivar and systemd system
+    integration layout. Added 3 unit tests in
+    src/commands/tam-vt-screenshot/tests/test_vt_screenshot.py.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Ready for candidate 0.6.38 packaging and fleet deployment once Fred
+    gives his Package/Test word.

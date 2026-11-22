@@ -1,0 +1,82 @@
+#!/bin/bash
+# Save a PNG of the visible text console to its owner's ~/Pictures.
+# Run as root by tam-vt-screenshot.service when PrtSc is pressed on a VT.
+# Reads /dev/fb0 as root; creates the directory and file as the owner.
+# GPL-3.0-or-later.
+set -euo pipefail
+
+active_path="${TAMLINUX_VT_ACTIVE_PATH:-/sys/class/tty/tty0/active}"
+dev_dir="${TAMLINUX_VT_DEV_DIR:-/dev}"
+fb_dev="${TAMLINUX_VT_FB_DEVICE:-/dev/fb0}"
+passwd_file="${TAMLINUX_VT_PASSWD_FILE:-}"
+
+vt=$(tr -d '[:space:]' < "$active_path")
+if [[ -z $vt || $vt == */* || $vt == .* ]]; then
+  echo "tam-vt-screenshot: invalid active VT: ${vt:-<empty>}" >&2
+  exit 1
+fi
+
+lookup_passwd_uid() {
+  local target_uid="$1"
+  if [[ -n $passwd_file ]]; then
+    awk -F: -v u="$target_uid" '$3 == u { print; exit }' "$passwd_file"
+  else
+    getent passwd "$target_uid" || true
+  fi
+}
+
+lookup_fallback_passwd() {
+  local row=""
+  row=$(lookup_passwd_uid 1000)
+  if [[ -n $row ]]; then
+    printf '%s\n' "$row"
+    return 0
+  fi
+  if [[ -n $passwd_file ]]; then
+    awk -F: '$3 >= 1000 && $3 < 60000 && $6 ~ /^\/home\// { print; exit }' "$passwd_file"
+  else
+    getent passwd | awk -F: '$3 >= 1000 && $3 < 60000 && $6 ~ /^\/home\// { print; exit }'
+  fi
+}
+
+uid=$(stat -c %u "$dev_dir/$vt")
+row=""
+if (( uid >= 1000 )); then
+  row=$(lookup_passwd_uid "$uid")
+else
+  # Login prompt VT is owned by root; save for the primary normal user.
+  row=$(lookup_fallback_passwd)
+fi
+
+if [[ -z $row ]]; then
+  echo "tam-vt-screenshot: could not resolve a non-root user for $vt" >&2
+  exit 1
+fi
+
+IFS=: read -r user _ resolved_uid gid _ home _ <<< "$row"
+uid="$resolved_uid"
+if (( uid < 1000 )) || [[ -z $home || ! -d $home || -L $home ]]; then
+  echo "tam-vt-screenshot: refusing invalid home directory for uid $uid" >&2
+  exit 1
+fi
+home_owner=$(stat -c %u "$home")
+if [[ $home_owner != "$uid" ]]; then
+  echo "tam-vt-screenshot: home directory $home is owned by uid $home_owner, expected $uid" >&2
+  exit 1
+fi
+
+dir="$home/Pictures"
+out="$dir/vt-$(date +%Y%m%d-%H%M%S)-$vt.png"
+if [[ -n ${TAMLINUX_VT_TEST_AS_CURRENT_USER:-} ]]; then
+  as_user=()
+else
+  as_user=(setpriv --reuid="$uid" --regid="$gid" --clear-groups --)
+fi
+
+"${as_user[@]}" mkdir -p "$dir"
+# The framebuffer's fourth byte is padding (0), not alpha; save opaque RGB
+# or viewers show a fully transparent (blank) image.
+ffmpeg -nostdin -loglevel error -f fbdev -i "$fb_dev" -frames:v 1 \
+  -pix_fmt rgb24 -c:v png -f image2 pipe:1 |
+  "${as_user[@]}" sh -c 'umask 077; cat > "$1.part" && mv "$1.part" "$1"' sh "$out"
+echo "Saved $out for $user"

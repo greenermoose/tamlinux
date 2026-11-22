@@ -27,10 +27,19 @@ DATA_PATHS = (
 )
 
 PROFILE_SCRIPT = """# Tamlinux cultivar commands and shared data (preserves ~/.local/bin precedence).
+# Including /usr/lib/tamlinux/current/bin in PATH lets man-db discover
+# /usr/lib/tamlinux/current/share/man automatically after /etc/profile unsets MANPATH.
 if [ -d /usr/bin/tamlinux ]; then
   case ":${PATH:-}:" in
     *:/usr/bin/tamlinux:*) ;;
     *) PATH="${PATH:+$PATH:}/usr/bin/tamlinux" ;;
+  esac
+  export PATH
+fi
+if [ -d /usr/lib/tamlinux/current/bin ]; then
+  case ":${PATH:-}:" in
+    *:/usr/lib/tamlinux/current/bin:*) ;;
+    *) PATH="${PATH:+$PATH:}/usr/lib/tamlinux/current/bin" ;;
   esac
   export PATH
 fi
@@ -41,17 +50,10 @@ if [ -d /usr/lib/tamlinux/current/share ]; then
   esac
   export XDG_DATA_DIRS
 fi
-if [ -d /usr/lib/tamlinux/current/share/man ]; then
-  case ":${MANPATH:-}:" in
-    *:/usr/lib/tamlinux/current/share/man:*) ;;
-    *) MANPATH="${MANPATH:+$MANPATH:}/usr/lib/tamlinux/current/share/man:" ;;
-  esac
-  export MANPATH
-fi
 """
 
 ENVIRONMENT_D_CONF = """# Expose Tamlinux cultivar commands and shared data to systemd user sessions.
-PATH=${PATH}:/usr/bin/tamlinux
+PATH=${PATH}:/usr/bin/tamlinux:/usr/lib/tamlinux/current/bin
 XDG_DATA_DIRS=${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:/usr/lib/tamlinux/current/share
 """
 
@@ -188,6 +190,14 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
     # Move rootstock-required drop-ins out of the cultivar tree into integration locations.
     units = usr / "lib/systemd/user"
     move_tree(private / "share/systemd/user", units)
+    sys_units = usr / "lib/systemd/system"
+    sys_wants_by_target: dict[str, set[str]] = {}
+    if (private / "share/systemd/system").is_dir():
+        move_tree(private / "share/systemd/system", sys_units)
+        for unit in sorted(sys_units.iterdir()):
+            if unit.is_file():
+                for unit_target in wanted_targets(unit):
+                    sys_wants_by_target.setdefault(unit_target, set()).add(unit.name)
     (private / "share/systemd").rmdir()
     wants_by_target: dict[str, set[str]] = {}
     for unit in sorted(units.iterdir()):
@@ -221,6 +231,9 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
     copy_vendor_defaults(stage, source, wants_by_target)
     for unit_target, unit_names in sorted(wants_by_target.items()):
         dropin = units / f"{unit_target}.d/50-tamlinux-services.conf"
+        put(dropin, ("[Unit]\nWants=" + " ".join(sorted(unit_names)) + "\n").encode())
+    for unit_target, unit_names in sorted(sys_wants_by_target.items()):
+        dropin = sys_units / f"{unit_target}.d/50-tamlinux-services.conf"
         put(dropin, ("[Unit]\nWants=" + " ".join(sorted(unit_names)) + "\n").encode())
 
     # PATH / XDG_DATA_DIRS / MANPATH integration drop-ins.
