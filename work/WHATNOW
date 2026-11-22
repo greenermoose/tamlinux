@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-22, with W19
+Updated: 2026-11-22, with W20
 
 
 STATE
@@ -38,6 +38,10 @@ STATE
     kbrequest.target, tam-vt-keymap.service, and
     tam-vt-screenshot.service are packaged in the cultivar and systemd
     system unit layout.
+  - tam-fleet capture reads deployed plugin manifests and active source-
+    install manifests directly into state/bom.json, and tam-dev resolves
+    the src/commands, src/desktop, and tests repository layout and
+    /usr/lib/tamlinux/current/... runtime paths (W20).
 
 
 NEXT

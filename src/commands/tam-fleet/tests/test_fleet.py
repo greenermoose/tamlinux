@@ -153,6 +153,46 @@ class FleetTests(unittest.TestCase):
         self.assertFalse((self.config / "system/bom.json").exists())
         self.assertEqual(json.loads((self.config / "fleet/hosts/beta/state/bom.json").read_text())["hostname"], "beta")
 
+    def test_capture_reads_source_install_manifest_and_plugins_directly(self):
+        self.original_run = fleet.run
+        plugins_dir = self.root / "source-plugins"
+        (plugins_dir / "fred.clock").mkdir(parents=True)
+        (plugins_dir / "fred.clock/manifest.json").write_text(json.dumps({"id": "fred.clock", "version": "2.1.0"}))
+        (plugins_dir / "fred.keyboard").mkdir(parents=True)
+        (plugins_dir / "fred.keyboard/manifest.json").write_text(json.dumps({"id": "fred.keyboard", "version": "2.0.5"}))
+        active_file = self.root / "active.json"
+        digest = "b0c40180bca48149ea7d9c1b208242799d46f381ac91fb624100bb28148c4255"
+        active_file.write_text(json.dumps({"current": digest}))
+        manifests_dir = self.root / "manifests"
+        manifests_dir.mkdir()
+        components = {
+            "libtam": "4b10a2ef74cc1adcb32f975b83841470c6f180dc",
+            "tam": "7180c3ba44166645ded74909561c6ffbdc3b70ff",
+            "tamlinux": "947c81574f9b759f6325e8065821dd0ba28ec670",
+        }
+        (manifests_dir / f"{digest}.json").write_text(json.dumps({"components": components}))
+        version_file = self.root / "VERSION"
+        version_file.write_text("0.6.37\n")
+        env = {
+            "TAMLINUX_PLUGINS_DIR": str(plugins_dir),
+            "TAMLINUX_ACTIVE_JSON": str(active_file),
+            "TAMLINUX_MANIFESTS_DIR": str(manifests_dir),
+            "TAMLINUX_CURRENT_VERSION": str(version_file),
+        }
+        with patch.dict(os.environ, env), patch.object(fleet, "run", side_effect=self.observed), \
+             patch.object(fleet.Path, "home", return_value=self.root), self.local("alpha"):
+            self.fleet.capture("alpha")
+        bom = json.loads((self.config / "fleet/hosts/alpha/state/bom.json").read_text())
+        self.assertEqual(bom["hostname"], "alpha")
+        self.assertEqual(bom["components"]["plugins"], {"fred.clock": "2.1.0", "fred.keyboard": "2.0.5"})
+        self.assertEqual(bom["components"]["shell"], {"commit": "947c81574f9b759f6325e8065821dd0ba28ec670"})
+        self.assertEqual(bom["components"]["tamlinux"], {
+            "backend": "source-install",
+            "components": components,
+            "manifest": digest,
+            "version": "0.6.37",
+        })
+
     def test_capture_preserves_uncommitted_state(self):
         state = self.config / "fleet/hosts/alpha/state"
         state.mkdir()

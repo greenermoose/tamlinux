@@ -42,37 +42,66 @@ def state_root():
     return Path(os.environ.get('XDG_STATE_HOME', Path.home()/'.local/state'))/'tamlinux/development'
 
 
+def repo_layout(repo: Path):
+    desktop = 'src/desktop' if (repo/'src/desktop').is_dir() else 'desktop'
+    commands = 'src/commands' if (repo/'src/commands').is_dir() else 'commands'
+    tests = 'tests' if (repo/'tests').is_dir() and not (repo/desktop/'tests').is_dir() else f'{desktop}/tests'
+    widget_proof = 'tests/widget-proof' if (repo/'tests/widget-proof').is_file() else f'{desktop}/widget-proof'
+    return desktop, commands, tests, widget_proof
+
+
+def packaged_shell_dir() -> Path:
+    local_shell = Path.home()/'.local/share/tamlinux/shell'
+    if (local_shell/'shell.qml').is_file() or local_shell.is_symlink():
+        return local_shell
+    source_shell = Path('/usr/lib/tamlinux/current/share/tamlinux/shell')
+    if (source_shell/'shell.qml').is_file():
+        return source_shell
+    return local_shell
+
+
+def packaged_plugins_dir() -> Path:
+    config_plugins = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'tamlinux/plugins'
+    if list(config_plugins.glob('*/manifest.json')):
+        return config_plugins
+    source_plugins = Path('/usr/lib/tamlinux/current/share/tamlinux/plugins')
+    if list(source_plugins.glob('*/manifest.json')):
+        return source_plugins
+    return config_plugins
+
+
 def select(workspace, name):
     if name in ('tam', 'libtam', 'tamlinux-tools'):
         return workspace/name, ['.'], '.'
     repo = workspace/'tamlinux'
+    desktop, commands, tests, widget_proof = repo_layout(repo)
     if name == 'shell' or name.startswith(('plugin:', 'app:')):
         if name.startswith('plugin:'):
             plugin = name.split(':', 1)[1]
-            if not re.fullmatch(r'fred\.[a-z][a-z0-9-]*', plugin) or not (repo/'desktop/plugins'/plugin/'manifest.json').is_file():
+            if not re.fullmatch(r'fred\.[a-z][a-z0-9-]*', plugin) or not (repo/desktop/'plugins'/plugin/'manifest.json').is_file():
                 raise DevError('unknown plugin')
         elif name not in ('shell', 'app:keybindings', 'app:keyboard'):
             raise DevError('unknown app')
         metadata=['VERSION','CULTIVAR','LICENSE']
         if name.startswith('plugin:'):
-            return repo,['desktop/plugins/'+plugin,'desktop/widget-proof',*metadata],None
+            return repo,[f'{desktop}/plugins/'+plugin,widget_proof,*metadata],None
         if name=='app:keybindings':
-            return repo,['desktop/shell/services/keybindings','desktop/shell/modules','desktop/assets',
-                         'desktop/tests/test_keybindings.py','desktop/tests/fixtures/keybindings',
-                         'commands/tam-menu-keybindings','commands/tam-macro',*metadata],None
+            return repo,[f'{desktop}/shell/services/keybindings',f'{desktop}/shell/modules',f'{desktop}/assets',
+                         f'{tests}/test_keybindings.py',f'{tests}/fixtures/keybindings',
+                         f'{commands}/tam-menu-keybindings',f'{commands}/tam-macro',*metadata],None
         if name=='app:keyboard':
-            return repo,['desktop/plugins/fred.keyboard','desktop/shell/modules','desktop/assets',
-                         'desktop/widget-proof','desktop/tests/test_keyboard_render.py',*metadata],None
-        return repo, ['desktop', 'commands', *metadata], None
+            return repo,[f'{desktop}/plugins/fred.keyboard',f'{desktop}/shell/modules',f'{desktop}/assets',
+                         widget_proof,f'{tests}/test_keyboard_render.py',*metadata],None
+        return repo, [desktop, commands, tests, *metadata], None
     if name.startswith('command:'):
         command = name.split(':', 1)[1]
-        if re.fullmatch(r'tam-[a-z0-9-]+', command) and (repo/'commands'/command/'Makefile').is_file():
+        if re.fullmatch(r'tam-[a-z0-9-]+', command) and (repo/commands/command/'Makefile').is_file():
             # Some checks read sibling commands or desktop contracts. Unknown
             # closures retain the product snapshot rather than testing a partial tree.
-            makefile=(repo/'commands'/command/'Makefile').read_text()
+            makefile=(repo/commands/command/'Makefile').read_text()
             check_body=makefile.split('check:',1)[1].split('\n\n',1)[0].strip() if 'check:' in makefile else ''
             isolated=command == 'tam-dev' or (check_body.startswith('bash -n ') and '\n' not in check_body)
-            return repo, ['commands/'+command, 'LICENSE'] if isolated else ['.'], 'commands/'+command
+            return repo, [f'{commands}/'+command, 'LICENSE'] if isolated else ['.'], f'{commands}/'+command
     raise DevError('unknown component; see --help')
 
 
@@ -169,10 +198,11 @@ def build(workspace, name):
     if identity(repo, scopes)[0] != key:
         raise DevError('source changed while snapshotting; retry build')
     if name.startswith('plugin:'):
-        packaged=Path.home()/'.local/share/tamlinux/shell'
+        packaged=packaged_shell_dir()
         if not (packaged/'shell.qml').is_file():
             raise DevError('plugin trials need the installed packaged shell as their runtime')
-        shutil.copytree(packaged,source/'desktop/shell',dirs_exist_ok=True)
+        desktop, _, _, _ = repo_layout(source)
+        shutil.copytree(packaged,source/desktop/'shell',dirs_exist_ok=True)
     prefix = folder/'prefix'
     development=Path.home()/'.local'
     make_arguments=['LIBTAM_PREFIX='+str(development)] if (development/'lib/pkgconfig/libtam.pc').is_file() and name!='libtam' else []
@@ -210,8 +240,9 @@ def check(record, live=False):
             'TAM_BUILD_ID='+record['revision'][:12]+('-dirty' if record['dirty'] else ''),
             'TAM_SOURCE_REVISION='+record['revision'],'TAM_SOURCE_DIRTY='+('1' if record['dirty'] else '0'))
     elif record['component'].startswith('plugin:'):
+        desktop, _, _, widget_proof = repo_layout(source)
         plugin = record['component'].split(':', 1)[1]
-        manifest = json.loads((source/'desktop/plugins'/plugin/'manifest.json').read_text())
+        manifest = json.loads((source/desktop/'plugins'/plugin/'manifest.json').read_text())
         entries = manifest.get('entryPoints', {})
         if 'barWidget' not in entries:
             raise DevError('plugin needs an explicit interactive entry point; use shell --live')
@@ -220,15 +251,16 @@ def check(record, live=False):
             # pass them. Live try is the integration check.
             print('check: live plugin trial skips offscreen widget-proof')
         else:
-            run(sys.executable, source/'desktop/widget-proof', plugin)
+            run(sys.executable, source/widget_proof, plugin)
     else:
+        _, _, tests, _ = repo_layout(source)
         pattern = 'test_keybindings.py' if record['component'] == 'app:keybindings' else 'test_keyboard_render.py' if record['component'] == 'app:keyboard' else 'test_protocol.py'
-        run(sys.executable, '-B', '-m', 'unittest', 'discover', '-s', source/'desktop/tests', '-p', pattern, '-q', cwd=source)
+        run(sys.executable, '-B', '-m', 'unittest', 'discover', '-s', source/tests, '-p', pattern, '-q', cwd=source)
     save(Path(record['source']).parent/'checked.json', {'sourceKey': record['sourceKey'], 'dependencyKey': toolchain_key(record['component'])})
 
 
 def quickshell():
-    installed = Path.home()/'.local/share/tamlinux/shell'
+    installed = packaged_shell_dir()
     text = run('systemctl', '--user', 'show', 'tamlinux-shell.service', '-p', 'Environment', '--value', capture=True)
     env = dict(item.split('=', 1) for item in shlex.split(text) if '=' in item)
     session=run('systemctl','--user','show-environment',capture=True)
@@ -244,13 +276,14 @@ def quickshell():
 
 def gui(record, live):
     source = Path(record['source'])
+    desktop, commands, _, _ = repo_layout(source)
     name = record['component']
     binary, inherited = quickshell()
     env = {k:v for k,v in os.environ.items() if live or not k.startswith('TAMLINUX_')}
     env.update(inherited if live else {k:v for k,v in inherited.items() if k in {'WAYLAND_DISPLAY','DISPLAY','DBUS_SESSION_BUS_ADDRESS','XDG_RUNTIME_DIR','HYPRLAND_INSTANCE_SIGNATURE','XDG_SESSION_TYPE'}})
-    env['QML_IMPORT_PATH'] = str(source/'desktop/shell/modules')
-    env['TAMLINUX_PLUGINS_DIR'] = str(source/'desktop/plugins')
-    env['TAMLINUX_SHELL_DIR'] = str(source/'desktop/shell')
+    env['QML_IMPORT_PATH'] = str(source/desktop/'shell/modules')
+    env['TAMLINUX_PLUGINS_DIR'] = str(source/desktop/'plugins')
+    env['TAMLINUX_SHELL_DIR'] = str(source/desktop/'shell')
     env['TAMLINUX_SHELL_REVISION'] = 'dev-'+record['sourceKey']
     if not live:
         isolated = Path(record['source']).parent/'preview'
@@ -258,13 +291,13 @@ def gui(record, live):
         env.update(HOME=str(isolated), XDG_CONFIG_HOME=str(isolated/'config'),
                    XDG_STATE_HOME=str(isolated/'state'), XDG_DATA_HOME=str(isolated/'data'))
     if name == 'app:keybindings':
-        entry = source/'desktop/shell/services/keybindings/dev-trial.qml'
-        env['TAMLINUX_KEYBINDINGS_SCAN'] = str(source/'commands/tam-menu-keybindings/tam-menu-keybindings')
-        env['TAMLINUX_MACRO_BIN'] = str(source/'commands/tam-macro/tam-macro')
+        entry = source/desktop/'shell/services/keybindings/dev-trial.qml'
+        env['TAMLINUX_KEYBINDINGS_SCAN'] = str(source/commands/'tam-menu-keybindings/tam-menu-keybindings')
+        env['TAMLINUX_MACRO_BIN'] = str(source/commands/'tam-macro/tam-macro')
     elif name == 'app:keyboard':
-        entry = source/'desktop/plugins/fred.keyboard/dev-trial.qml'
+        entry = source/desktop/'plugins/fred.keyboard/dev-trial.qml'
     else:
-        entry = source/'desktop/shell/shell.qml'
+        entry = source/desktop/'shell/shell.qml'
         if not live:
             isolated = Path(record['source']).parent/'preview'
             isolated.mkdir(exist_ok=True)
@@ -274,13 +307,13 @@ def gui(record, live):
                        TAMLINUX_COMPOSITOR_LIVE_ACTIONS='0')
         if name.startswith('plugin:'):
             plugin = name.split(':', 1)[1]
-            manifest = json.loads((source/'desktop/plugins'/plugin/'manifest.json').read_text())
+            manifest = json.loads((source/desktop/'plugins'/plugin/'manifest.json').read_text())
             entries = manifest.get('entryPoints', {})
             if 'barWidget' not in entries:
                 raise DevError('plugin needs an explicit interactive entry point; use shell --live')
             manifest_entry=entries['barWidget']
             env['TAMLINUX_PLUGIN_IDS'] = plugin
-            env['TAMLINUX_PLUGIN_ENTRIES'] = json.dumps({plugin:str(source/'desktop/plugins'/plugin/entries['barWidget'])})
+            env['TAMLINUX_PLUGIN_ENTRIES'] = json.dumps({plugin:str(source/desktop/'plugins'/plugin/entries['barWidget'])})
     if name=='shell' or name.startswith('plugin:'):
         env['TAMLINUX_QUICKSHELL']=binary
         if name.startswith('plugin:') and not live:
@@ -289,15 +322,15 @@ def gui(record, live):
             env['TAMLINUX_BAR_LAYOUT']=str(layout)
         if name.startswith('plugin:') and live:
             # Keep all other plugins on their packaged paths during a plugin-only trial.
-            installed=Path.home()/'.config/tamlinux/plugins'
+            installed=packaged_plugins_dir()
             entries={}
             for manifest in installed.glob('*/manifest.json'):
                 value=json.loads(manifest.read_text())
                 if value.get('entryPoints',{}).get('barWidget'):
                     entries[value['id']]=str(manifest.parent/value['entryPoints']['barWidget'])
-            entries[plugin]=str(source/'desktop/plugins'/plugin/manifest_entry)
+            entries[plugin]=str(source/desktop/'plugins'/plugin/manifest_entry)
             env['TAMLINUX_PLUGIN_ENTRIES']=json.dumps(entries)
-        return [sys.executable,'-I',str(source/'desktop/shell/host/session_start.py')],env
+        return [sys.executable,'-I',str(source/desktop/'shell/host/session_start.py')],env
     return [binary, '--no-duplicate', '--path', str(entry)], env
 
 
@@ -397,8 +430,14 @@ def trial(record, live=False):
         command, env = gui(record, live)
         record.update(command=command)
         if live:
-            ipc=Path(os.environ.get('TAMLINUX_DEV_IPC',Path.home()/'.local/bin/tam-shell'))
-            if not ipc.is_file() or 'Development live routing: v1' not in run(ipc,'--help',capture=True):
+            ipc_candidates = [
+                Path(os.environ['TAMLINUX_DEV_IPC']) if os.environ.get('TAMLINUX_DEV_IPC') else None,
+                Path.home()/'.local/bin/tam-shell',
+                Path('/usr/lib/tamlinux/current/bin/tam-shell'),
+                Path(shutil.which('tam-shell')) if shutil.which('tam-shell') else None,
+            ]
+            ipc = next((c for c in ipc_candidates if c and c.is_file()), None)
+            if not ipc or 'Development live routing: v1' not in run(ipc,'--help',capture=True):
                 raise DevError('live integration needs the tam-shell live-routing capability delivered with this workflow; use an interactive preview until that package is installed')
         save(path, record)
         if live:
@@ -414,7 +453,8 @@ def trial(record, live=False):
             record.update(pid=proc.pid, processId=process_id(proc.pid))
             save(path, record)
             if live:
-                save(state_root()/'live.json',{'schema':1,'component':name,'shell':str(Path(record['source'])/'desktop/shell'),
+                desktop, _, _, _ = repo_layout(Path(record['source']))
+                save(state_root()/'live.json',{'schema':1,'component':name,'shell':str(Path(record['source'])/desktop/'shell'),
                      'pid':proc.pid,'processId':record['processId'],'boot':Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
             time.sleep(.5)
             if proc.poll() is not None:

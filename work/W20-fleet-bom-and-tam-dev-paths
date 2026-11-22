@@ -1,0 +1,39 @@
+W20 FLEET SOURCE-INSTALL BOM CAPTURE AND TAM-DEV LAYOUT RESOLUTION
+
+Date: 2026-11-22
+AI harness: Antigravity CLI 1.5.14
+AI model: Gemini 4 Argon (Medium)
+Continues: W19
+
+GUIDANCE
+
+  Fred: "/plan Do the next work slice toward Tamlinux 0.6.38"
+  Fred: "Approved. Proceed."
+
+DONE
+
+  - Updated tam-fleet capture to read deployed plugin manifests directly
+    from /usr/lib/tamlinux/current/share/tamlinux/plugins/*/manifest.json
+    (falling back to XDG_CONFIG_HOME/tamlinux/plugins for isolated test
+    fixtures) and to read active source-install metadata from
+    /var/lib/tamlinux/active.json, /var/lib/tamlinux/manifests/<digest>.json,
+    and /usr/lib/tamlinux/current/VERSION into state/bom.json
+    (components.plugins, components.shell, and components.tamlinux).
+    Added test_capture_reads_source_install_manifest_and_plugins_directly
+    in src/commands/tam-fleet/tests/test_fleet.py (21 tests pass).
+  - Updated tam-dev to resolve the src/commands, src/desktop, and tests
+    repository layout alongside legacy fixture layouts, and to resolve
+    the installed packaged shell, plugins, and tam-shell live-routing IPC
+    from /usr/lib/tamlinux/current/... on source-installed hosts. Added
+    test_src_layout_commands_and_plugins_resolve_and_build in
+    src/commands/tam-dev/tests/test_dev.py (10 tests pass).
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Ready for 3-host fleet reconciliation, laptop local-development
+    trials, interactive plugin trial, and candidate 0.6.38 packaging on
+    Fred's Package/Test word.

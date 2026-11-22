@@ -160,6 +160,34 @@ class Development(unittest.TestCase):
         self.assertNotEqual(env['HOME'],os.environ['HOME'])
         self.assertEqual(command[0],'/selected/quickshell')
 
+    def test_src_layout_commands_and_plugins_resolve_and_build(self):
+        src_repo=self.root/'src-workspace/tamlinux'
+        cmd=src_repo/'src/commands/tam-hello';cmd.mkdir(parents=True)
+        (cmd/'tam-hello').write_text('#!'+shutil.which('sh')+'\necho hello-src\n');(cmd/'tam-hello').chmod(0o755)
+        (cmd/'Makefile').write_text('install:\n\tinstall -Dm755 tam-hello $(PREFIX)/bin/tam-hello\ncheck:\n\tbash -n tam-hello\n')
+        plug=src_repo/'src/desktop/plugins/fred.demo';plug.mkdir(parents=True)
+        (plug/'manifest.json').write_text(json.dumps({'id':'fred.demo','entryPoints':{'barWidget':'BarWidget.qml'}}))
+        (plug/'BarWidget.qml').write_text('Item {}\n')
+        (src_repo/'tests').mkdir(parents=True)
+        (src_repo/'tests/widget-proof').write_text('#!'+shutil.which('sh')+'\nexit 0\n');(src_repo/'tests/widget-proof').chmod(0o755)
+        for meta in ('VERSION','CULTIVAR','LICENSE'):
+            (src_repo/meta).write_text(meta+'\n')
+        subprocess.run(['git','init','-q',str(src_repo)],check=True)
+        subprocess.run(['git','-C',str(src_repo),'config','user.name','Fixture'],check=True)
+        subprocess.run(['git','-C',str(src_repo),'config','user.email','fixture@example.invalid'],check=True)
+        subprocess.run(['git','-C',str(src_repo),'add','--','.'],check=True)
+        subprocess.run(['git','-C',str(src_repo),'commit','-qm','Initial src layout'],check=True)
+        repo,scopes,make_dir=dev.select(src_repo.parent,'command:tam-hello')
+        self.assertEqual(make_dir,'src/commands/tam-hello')
+        self.assertIn('src/commands/tam-hello',scopes)
+        rec=dev.build(src_repo.parent,'command:tam-hello')
+        dev.check(rec)
+        self.assertEqual(subprocess.check_output([str(Path(rec['prefix'])/'bin/tam-hello')],text=True),'hello-src\n')
+        _,plug_scopes,plug_make=dev.select(src_repo.parent,'plugin:fred.demo')
+        self.assertIsNone(plug_make)
+        self.assertIn('src/desktop/plugins/fred.demo',plug_scopes)
+        self.assertIn('tests/widget-proof',plug_scopes)
+
     def test_exited_supervisor_is_not_mistaken_for_running_trial(self):
         import sys,time
         process=subprocess.Popen([sys.executable,'-c','pass'])

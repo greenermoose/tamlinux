@@ -271,8 +271,10 @@ class Fleet:
         native = run("pacman", "-Qqen")
         foreign = run("pacman", "-Qqem")
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        source_plugins = Path(os.environ.get("TAMLINUX_PLUGINS_DIR", "/usr/lib/tamlinux/current/share/tamlinux/plugins"))
+        plugin_dir = source_plugins if list(source_plugins.glob("*/manifest.json")) else (config_home / "tamlinux/plugins")
         plugins = {}
-        for path in sorted((config_home / "tamlinux/plugins").glob("*/manifest.json")):
+        for path in sorted(plugin_dir.glob("*/manifest.json")):
             manifest = json.loads(path.read_text())
             plugins[manifest["id"]] = manifest["version"]
         data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
@@ -280,7 +282,30 @@ class Fleet:
         bom = json.loads((state / "bom.json").read_text()) if (state / "bom.json").exists() else {"components": {}}
         bom["hostname"] = name
         bom["components"]["plugins"] = plugins
-        if revision.is_file():
+        active_file = Path(os.environ.get("TAMLINUX_ACTIVE_JSON", "/var/lib/tamlinux/active.json"))
+        manifest_dir = Path(os.environ.get("TAMLINUX_MANIFESTS_DIR", "/var/lib/tamlinux/manifests"))
+        version_file = Path(os.environ.get("TAMLINUX_CURRENT_VERSION", "/usr/lib/tamlinux/current/VERSION"))
+        shell_commit = None
+        if active_file.is_file():
+            active_digest = json.loads(active_file.read_text()).get("current")
+            manifest_path = (manifest_dir / f"{active_digest}.json") if active_digest else None
+            if manifest_path and manifest_path.is_file():
+                manifest_data = json.loads(manifest_path.read_text())
+                components = manifest_data.get("components", {})
+                shell_commit = components.get("tamlinux")
+                tamlinux_entry = {
+                    "backend": "source-install",
+                    "components": components,
+                    "manifest": active_digest,
+                }
+                if version_file.is_file():
+                    tamlinux_entry["version"] = version_file.read_text().strip()
+                elif isinstance(bom["components"].get("tamlinux"), dict) and bom["components"]["tamlinux"].get("version"):
+                    tamlinux_entry["version"] = bom["components"]["tamlinux"]["version"]
+                bom["components"]["tamlinux"] = tamlinux_entry
+        if shell_commit:
+            bom["components"]["shell"] = {"commit": shell_commit}
+        elif revision.is_file():
             bom["components"]["shell"] = {"commit": revision.read_text().strip()}
         patches = {}
         for path in sorted((Path.home() / "pkgs").glob("*/PKGBUILD")):
