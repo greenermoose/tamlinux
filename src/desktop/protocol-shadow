@@ -109,7 +109,11 @@ def collect(db: sqlite3.Connection) -> int:
     argv = ["journalctl", "--user", "-u", "tamlinux-shell.service", "--no-pager",
             "--output=json", "--grep=" + MARKER, "--since=@" + str(int(since))]
     with tempfile.TemporaryFile() as output:
-        subprocess.run(argv, stdout=output, stderr=subprocess.PIPE, timeout=45, check=True)
+        result = subprocess.run(argv, stdout=output, stderr=subprocess.PIPE, timeout=45, check=False)
+        if result.returncode == 1 and output.tell() == 0 and not result.stderr.strip():
+            return 0
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, argv, stderr=result.stderr)
         if output.tell() > MAX_BYTES:
             raise ValueError("journal capture exceeds 64 MiB; shorten the collection interval")
         output.seek(0)

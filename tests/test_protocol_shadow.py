@@ -96,6 +96,7 @@ class ShadowEvidenceTests(unittest.TestCase):
         def journal(argv, **kwargs):
             for row in rows:
                 kwargs["stdout"].write((json.dumps(row) + "\n").encode())
+            return subprocess.CompletedProcess(argv, 0)
         with patch.object(shadow.subprocess, "run", side_effect=journal):
             self.assertEqual(shadow.collect(self.db), 2)
             self.assertEqual(shadow.collect(self.db), 0)
@@ -103,6 +104,31 @@ class ShadowEvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 shadow.collect(self.db)
         self.assertEqual(self.db.execute("SELECT count(*) FROM records").fetchone()[0], 2)
+
+    def test_collector_treats_no_match_as_empty_and_fails_on_real_errors(self):
+        def no_match(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 1, stderr=b"")
+        with patch.object(shadow.subprocess, "run", side_effect=no_match):
+            self.assertEqual(shadow.collect(self.db), 0)
+
+        def stderr_error(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 1, stderr=b"Failed to parse timestamp")
+        with patch.object(shadow.subprocess, "run", side_effect=stderr_error):
+            with self.assertRaises(subprocess.CalledProcessError):
+                shadow.collect(self.db)
+
+        def partial_output_error(argv, **kwargs):
+            kwargs["stdout"].write(b"{}\n")
+            return subprocess.CompletedProcess(argv, 1, stderr=b"")
+        with patch.object(shadow.subprocess, "run", side_effect=partial_output_error):
+            with self.assertRaises(subprocess.CalledProcessError):
+                shadow.collect(self.db)
+
+        def unexpected_exit(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 2, stderr=b"")
+        with patch.object(shadow.subprocess, "run", side_effect=unexpected_exit):
+            with self.assertRaises(subprocess.CalledProcessError):
+                shadow.collect(self.db)
 
     def test_missing_identity_invalid_counters_and_symlink_are_rejected(self):
         for field, value in (("identity", "development"), ("outputs", True), ("status", "equal")):
