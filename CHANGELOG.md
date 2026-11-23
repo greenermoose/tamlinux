@@ -6,13 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
-## [Unreleased]
+## [0.6.38]
 
+Changes since Tamlinux 0.6.37:
+- Update `tam` to 0.67.9 (corpus 0.107.0): add shell text, quoting, and IFS curriculum, internet protocol stack (IPv4/IPv6/TCP/UDP) series, and network setup and Avahi/Zeroconf curriculum; retain `tldr` pages on user-prefix installs and fall back to `/usr/share/doc/tamlinux/tldr`; remove pre-0.6.37 legacy identity/ownership fallbacks.
+- Fix hibernate zram teardown race and stuck `initstate` recovery in `tam-hibernate-swap`, and wrap `fred.tamversion` version notes at 72 characters.
 - Declare Gum as an Arch runtime prerequisite and check for its native executable before a source install.
-- Fix fresh-login manual-page lookup (K61): include `/usr/lib/tamlinux/current/bin` in `PATH` (`/etc/profile.d/tamlinux.sh` and `10-tamlinux-path.conf`) so `man-db` derives `/usr/lib/tamlinux/current/share/man` after `/etc/profile` unsets `MANPATH`, and mirror staged cultivar manual pages into `/usr/share/man` and `/usr/share/doc/tamlinux/man`.
-- List installed foreign/local packages (`pacman -Qm`) and print actionable frozen-recipe review/build instructions in `tam-update` alongside read-only `yay -Qua` queries (K53).
-- Exclude intermediate kernel log lines inside the LUKS passphrase wait window from `tam-boot` slow steps, bound slow-step analysis to startup completion, sort slowest steps first, and widen step descriptions so quotes are never truncated (K60).
+- Fix fresh-login manual-page lookup: include `/usr/lib/tamlinux/current/bin` in `PATH` (`/etc/profile.d/tamlinux.sh` and `10-tamlinux-path.conf`) so `man-db` derives `/usr/lib/tamlinux/current/share/man` after `/etc/profile` unsets `MANPATH`, and mirror staged cultivar manual pages into `/usr/share/man` and `/usr/share/doc/tamlinux/man`.
+- List installed foreign/local packages (`pacman -Qm`) and print actionable frozen-recipe review/build instructions in `tam-update` alongside read-only `yay -Qua` queries.
+- Exclude intermediate kernel log lines inside the LUKS passphrase wait window from `tam-boot` slow steps, bound slow-step analysis to startup completion, sort slowest steps first, and widen step descriptions so quotes are never truncated.
 - Package `tam-vt-screenshot`, `tamlinux-vt-prtsc.map`, `tamlinux-vt.vtrgb` loading (`tam-vt-keymap.service`), `tam-vt-screenshot.service`, and `kbrequest.target` so `PrtSc` captures text virtual consoles and applies the higher-contrast 16-color VT palette at boot.
+- Update `tam-fleet` source-install BOM capture and `tam-dev` `src/` repository layout and runtime path resolution.
 
 ## [0.6.37]
 

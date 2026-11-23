@@ -1,0 +1,29 @@
+W21 PREPARE TAMLINUX 0.6.38
+
+Date: 2026-11-23
+AI harness: Antigravity CLI 1.5.15
+AI model: Gemini 4 Argon (Medium)
+Continues: W20
+
+GUIDANCE
+
+  Fred: "Include tam version 0.67.9 (0.107.0) in Tamlinux 0.6.38"
+  Fred: "Proceed with plan 62"
+
+DONE
+
+  - Bumped VERSION to 0.6.38, updated CHANGELOG.md [0.6.38] release notes,
+    and pinned tam 0.67.9 / corpus 0.107.0
+    (14676d490276046fb99dedbe597d19f9cc306f86) in components.lock.
+  - Verified source-install unit tests and tests/check-all under umask 022.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Build the 0.6.38 source stage, run make preflight, record
+    deliveries/tamlinux-0.6.38.json in tamlinux-packages, and stage the
+    fleet text-console upgrade scripts across slowhp, toughbook, and
+    bosgame.

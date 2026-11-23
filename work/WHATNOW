@@ -3,13 +3,15 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-22, with W20
+Updated: 2026-11-23, with W21
 
 
 STATE
 
-  VERSION reads 0.6.37 on dev. The current release is 0.5.12. Tamlinux
-  0.6 is the dependable Arch/Hyprland baseline.
+  VERSION reads 0.6.38 on dev (W21), pinning tam 0.67.9 (corpus 0.107.0,
+  14676d490276046fb99dedbe597d19f9cc306f86) in components.lock alongside
+  the 0.6.38 product fixes (W17-W20). The current release is 0.5.12.
+  Tamlinux 0.6 is the dependable Arch/Hyprland baseline.
 
   Bosgame accepted source-installed 0.6.37 for Run. Fred accepted
   slowhp's 0.6.37 fresh-file reinstall with its storage layout intact.
