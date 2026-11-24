@@ -52,5 +52,23 @@ HOW DEEP THESE NOTES GO
 IN THIS REPOSITORY
 
   Tamlinux records ideas adopted from or considered against other Linux
-  desktops, shells, and compositors here. Carried third-party code and
-  upstream attributions live in UPSTREAM.md and COPYRIGHT.
+  desktops, shells, compositors, and operating systems here. Carried
+  third-party code and upstream attributions live in UPSTREAM.md and
+  COPYRIGHT.
+
+  Keybindings are a fundamental, cross-cutting aspect of Tamlinux that
+  we need to think through very carefully. Our window compositor
+  (tam-pane), terminal (tam-last), shell (tam-clam), guide (tam), and
+  sibling tools (tam-edit, tam-file, tam-view) must share one ergonomic,
+  mnemonic, internally logical keybinding standard across both text and
+  graphical surfaces. We are free to depart from traditional keybindings
+  where a cleaner internal logic wins, provided we maintain rigorous
+  consistency everywhere.
+
+  INDEX
+
+    keybindings/            survey of keybinding systems across Windows,
+                            macOS, actively maintained Linux and UNIX
+                            distributions, and influential programs. Start
+                            at keybindings/synthesis.md; feeds directly
+                            into ../arch/keybindings.md.

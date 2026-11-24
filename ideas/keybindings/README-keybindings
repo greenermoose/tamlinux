@@ -1,0 +1,53 @@
+KEYBINDINGS SURVEY
+
+This folder holds Tamlinux's survey of keybinding systems across other
+operating systems, actively maintained Linux and UNIX distributions, and
+influential programs. Keybindings are a fundamental design pillar of
+Tamlinux: tam-pane (compositor), tam-last (terminal), tam-clam (shell),
+tam (guide), and sibling tools (tam-edit, tam-file, tam-view) should
+share one ergonomic, mnemonic, internally logical system across both
+text and graphical surfaces.
+
+Start with synthesis.md. Each topic file follows the README-ideas format
+(What it is, Modifier semantics and chord grammar, Ideas worth taking
+with verdicts, Things to avoid, Where to look) and notes that it is a
+reference survey of documented designs to inform ../arch/keybindings.md.
+
+
+INDEX
+
+  synthesis.md                        start here: modifier semantics
+                                      matrix, five recurring failure
+                                      modes, distilled verdicts, and
+                                      open tensions for arch/keybindings.md
+
+  Mainstream desktop operating systems
+    windows-and-cua.md                IBM CUA (1987) and Microsoft Windows
+    macos.md                          macOS / Apple Human Interface Guidelines
+
+  Actively maintained Linux distributions and desktop environments
+    gnome-fedora-ubuntu.md            GNOME HIG, Fedora Workstation, Ubuntu
+    kde-plasma.md                     KDE Plasma (openSUSE, Fedora KDE, Kubuntu)
+    linux-mint-and-cinnamon.md        Linux Mint (Cinnamon, MATE, Xfce)
+    pop-os-cosmic.md                  Pop!_OS and System76 COSMIC
+    elementary-os-pantheon.md         elementary OS (Pantheon / Gala)
+    tiling-distros-and-compositors.md Regolith, Omarchy/Arch Hyprland
+                                      desktops, i3/Sway, Niri, Hyprland
+    linux-rootstocks-and-vt.md        Debian, Arch, Void, NixOS, Alpine,
+                                      Gentoo, openSUSE, and the Linux VT
+
+  Actively maintained UNIX systems
+    bsd-unix.md                       FreeBSD, OpenBSD (wscons, cwm, ksh),
+                                      NetBSD, DragonFly BSD
+    illumos-and-sysv-unix.md          illumos (OpenIndiana, OmniOS, SmartOS),
+                                      SVR4 termios, and Motif/CDE
+
+  Historical and alternative OS paradigms
+    lisp-machines-and-plan9.md        MIT CADR / Symbolics Genera and Plan 9
+
+  Influential programs
+    emacs-and-readline.md             GNU Emacs, Readline, Spacemacs/Doom
+    vim-kakoune-helix.md              vi, Vim, Neovim, Kakoune, Helix
+    nano-micro-vscode.md              Nano, Micro, VS Code, JetBrains
+    shells-terminals-multiplexers.md  POSIX termios, shells, terminals,
+                                      multiplexers, and pagers/TUIs
