@@ -1,0 +1,38 @@
+W22 KEYBINDING STANDARD DRAFT
+
+Date: 2026-11-23
+AI harness: agy 1.5.15
+AI model: Gemini 4 Neon (Medium)
+
+GUIDANCE
+
+  Fred: "I'd like to create a keybinding standard for Tamlinux that we
+  use for all programs including our terminal and shell. Should that
+  keybinding standard go in tam-idol?"
+  Fred: "Yes, put the Tamlinux-wide keybinding standard in
+  tamlinux/arch/keybindings.md. Let me work on that and then return to
+  this session."
+  Fred: "yes, commit. And put your initial thoughts about keybindings
+  in tamlinux/arch/keybindings.md"
+
+DONE
+
+  - Created arch/keybindings.md with initial first-principles design
+    notes for the Tamlinux-wide keybinding standard: layer ownership
+    (compositor, terminal, raw-mode apps, and termios child commands),
+    modifier tiers and TERM=linux / ASCII constraints, Fred's anchor
+    keys (Ctrl+X cut, Ctrl+C copy, Ctrl+V paste, Ctrl+Z undo, Ctrl+G
+    guidance), complete command inventory, proposed bind syntax, and
+    open questions.
+  - Listed arch/keybindings.md in arch/README-arch.
+  - Updated work/WHATNOW.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Fred is working on arch/keybindings.md to settle the Tamlinux-wide
+    keybinding standard before tam-clam drafts arch/keys.md and starts
+    0.2.0.

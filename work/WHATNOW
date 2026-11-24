@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-23, with W21
+Updated: 2026-11-23, with W22
 
 
 STATE
@@ -44,6 +44,9 @@ STATE
     install manifests directly into state/bom.json, and tam-dev resolves
     the src/commands, src/desktop, and tests repository layout and
     /usr/lib/tamlinux/current/... runtime paths (W20).
+  - Drafted arch/keybindings.md (W22) with initial first-principles notes
+    for the Tamlinux-wide keybinding standard across compositor,
+    terminal, shell, editor, and tools.
 
 
 NEXT
@@ -58,6 +61,8 @@ NEXT
 
 WAITING FOR FRED
 
+  - Reviewing and editing arch/keybindings.md to settle the Tamlinux-
+    wide keybinding standard (blocks tam-clam arch/keys.md and 0.2.0).
   - Exact candidate instructions for Test, Run or Release.
 
 
