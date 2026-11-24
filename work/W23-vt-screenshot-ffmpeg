@@ -1,0 +1,29 @@
+W23 VT SCREENSHOT FFMPEG PREREQUISITE
+
+Date: 2026-11-24
+AI harness: Codex CLI 0.172.0
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Work through the recommendations for Tamlinux 0.6.39"
+  Fred: "Implement the plan."
+
+DONE
+
+  - Declared Arch ffmpeg for text-console screenshots and added it
+    to source-install runtime preflight.
+  - Exercised missing package, missing native executable and a user
+    PATH override in the existing preflight test.
+  - Passed 30 source-install tests, three VT screenshot tests and
+    source verification.
+
+FAILED
+
+  - A packaged text-console screenshot failed on a host without
+    ffmpeg. A later press saved its PNG when ffmpeg was available.
+
+HANDOFF
+
+  - Recheck PrtSc from both a physical text VT and the graphical
+    session on the selected delivery.

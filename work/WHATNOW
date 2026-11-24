@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-23, with W22
+Updated: 2026-11-24, with W23
 
 
 STATE
@@ -15,8 +15,9 @@ STATE
 
   Bosgame accepted source-installed 0.6.37 for Run. Fred accepted
   slowhp's 0.6.37 fresh-file reinstall with its storage layout intact.
-  Toughbook proved in-place source installation on 0.6.34 and runs
-  0.6.36. The 0.6.37 Run delivery is the rollback floor.
+  Toughbook proved in-place source installation on 0.6.34. All three
+  fleet hosts are testing 0.6.38. The 0.6.37 Run delivery is the
+  rollback floor.
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
@@ -24,7 +25,8 @@ STATE
 
   In Develop, source preflight requires the Arch Gum package and its
   native executable (W17), and tam-fleet validates source-install
-  profiles from the capability catalog (W18).
+  profiles from the capability catalog (W18). W23 adds the Arch ffmpeg
+  prerequisite for text-console PrtSc capture.
 
   In Develop (W19), the 0.6.38 product fixes are ready on dev:
   - Fresh-login man-page lookup resolves cultivar and rootstock pages
@@ -51,10 +53,8 @@ STATE
 
 NEXT
 
-  1. On Fred's Package/Test word for 0.6.38, freeze 0.6.38, remove the
-     temporary VT screenshot host files on the idol host before install,
-     and verify Gum, man-page lookup, and VT screenshot/palette across
-     the fleet.
+  1. Finish the 0.6.38 physical trials. Include the ffmpeg preflight
+     check when preparing the next source delivery on Fred's word.
   2. Begin dogfooding tam-pane, tam-clam, tam-last and tam-edit at 0.7.0,
      keeping Hyprland available as a fallback (ROADMAP.md).
 
@@ -63,7 +63,7 @@ WAITING FOR FRED
 
   - Reviewing and editing arch/keybindings.md to settle the Tamlinux-
     wide keybinding standard (blocks tam-clam arch/keys.md and 0.2.0).
-  - Exact candidate instructions for Test, Run or Release.
+  - Exact candidate instructions for packaging, Test, Run or Release.
 
 
 WATCH OUT

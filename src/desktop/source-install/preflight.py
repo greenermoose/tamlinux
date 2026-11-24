@@ -29,7 +29,7 @@ RUNTIME_COMMANDS = {
     "quickshell": "quickshell>=0.3", "qs": "quickshell", "uwsm": "uwsm", "jq": "jq",
     "nft": "nftables", "mandb": "man-db", "systemctl": "systemd",
     "foot": "foot", "xdg-terminal-exec": "xdg-terminal-exec",
-    "chromium": "chromium",
+    "chromium": "chromium", "ffmpeg": "ffmpeg",
 }
 RUNTIME_FILES = {
     "usr/lib/qt6/qml/Quickshell/Wayland/qmldir": "quickshell",
