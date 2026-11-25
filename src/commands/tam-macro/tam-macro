@@ -332,7 +332,7 @@ def active_window() -> dict:
 
 def window_is_terminal(window: dict) -> bool:
     return ("terminal" in [str(t).rstrip("*") for t in window.get("tags", [])]
-            or str(window.get("class", "")).lower() in ("foot", "kitty", "alacritty", "wezterm"))
+            or str(window.get("class", "")).lower() in ("foot", "kitty", "alacritty", "wezterm", "tam-last"))
 
 
 def active_window_is_terminal() -> bool:
@@ -355,7 +355,7 @@ def inject_text(text: str, expected_address: str | None = None) -> None:
                        input=text.encode("utf-8"), check=True, timeout=3)
         if active_window().get("address") != address:
             raise ValueError("Focus changed; macro was copied but not pasted")
-        mods, key = ("SHIFT", "Insert") if window_is_terminal(target) else ("CTRL", "V")
+        mods, key = ("CTRL SHIFT", "V") if window_is_terminal(target) else ("CTRL", "V")
         def send(state):
             expression = ('hl.dsp.send_key_state({ mods = ' + lua_string(mods)
                           + ', key = ' + lua_string(key) + ', state = ' + lua_string(state)

@@ -192,11 +192,12 @@ class TamMacroTest(unittest.TestCase):
             self.assertTrue(active_window_is_terminal())
 
             # Window with terminal class
-            mock_run.return_value = SimpleNamespace(
-                returncode=0,
-                stdout=json.dumps({"tags": [], "class": "Foot"}),
-            )
-            self.assertTrue(active_window_is_terminal())
+            for cls in ("Foot", "tam-last"):
+                mock_run.return_value = SimpleNamespace(
+                    returncode=0,
+                    stdout=json.dumps({"tags": [], "class": cls}),
+                )
+                self.assertTrue(active_window_is_terminal())
 
             # GUI application window (e.g. Cursor or browser)
             mock_run.return_value = SimpleNamespace(
@@ -358,7 +359,8 @@ assert(sent == 1 and notices == 2)
             self.assertIn('"down"', dispatches[0]); self.assertIn('"up"', dispatches[1])
             for d in dispatches:
                 self.assertIn('"address:0x1"', d)
-                self.assertIn('"SHIFT"' if terminal else '"CTRL"', d)
+                self.assertIn('"CTRL SHIFT"' if terminal else '"CTRL"', d)
+                self.assertIn('"V"', d)
 
     def test_focus_change_and_clipboard_failure_do_not_paste(self):
         for options in ({"focus_change": True}, {"clipboard_error": True}, {"expected_address": "0x2"}):
