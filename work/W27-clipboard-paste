@@ -1,0 +1,15 @@
+W27 CLIPBOARD HISTORY PASTE
+
+2026-11-25, Codex CLI 0.172.0, gpt-6.2-astra.
+Transcript: Retained privately by the author.
+
+Fred reported “The Release macro worked, but the Meta + Ctrl + V paste did
+not.” After reviewing the two input paths he directed “Make it so.”
+
+The picker captures the original tam-last window before opening. Selecting
+text copies the history entry and sends Ctrl+Shift+V to that address after
+focus returns. Other applications use the existing Shift+Insert route.
+This requires the terminal modifier fix verified separately by Fred.
+
+Three clipboard helper regression cases and 19 service tests passed.
+QML parsed. The packaged desktop still needs a graphical acceptance check.

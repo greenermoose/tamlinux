@@ -58,7 +58,29 @@ Item {
   property int rowHeight: Math.max(Style.space(50), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX * 2)
   property int historyLimit: 300
 
+  property bool opening: false
+  property string pasteTarget: ""
+
   function open(payloadJson) {
+    if (root.opened || root.opening) return
+    root.opening = true
+    captureTarget.running = true
+  }
+
+  Process {
+    id: captureTarget
+    environment: Util.hostEnvironment()
+    command: [root.pasteTextScript, "--capture-target"]
+    stdout: StdioCollector { id: targetOutput; waitForEnd: true }
+    onExited: function(code) {
+      if (!root.opening) return
+      root.opening = false
+      root.pasteTarget = code === 0 ? targetOutput.text.trim() : ""
+      root.showPicker()
+    }
+  }
+
+  function showPicker() {
     root.opened = true
     root.filterText = ""
     root.selectedIndex = 0
@@ -69,12 +91,13 @@ Item {
   }
 
   function close() {
+    root.opening = false
     root.cancelClearHistory()
     root.opened = false
   }
 
   function toggle() {
-    if (root.opened) root.close()
+    if (root.opened || root.opening) root.close()
     else root.open("{}")
   }
 
@@ -258,7 +281,7 @@ Item {
     if (row.entryType === "image") {
       Quickshell.execDetached(Util.hostArgv([root.pasteFileScript, row.mime, row.path]))
     } else if (row.fullText) {
-      Quickshell.execDetached(Util.hostArgv([root.pasteTextScript, "--shift-insert", "--history-index", String(row.historyIndex)]))
+      Quickshell.execDetached(Util.hostArgv([root.pasteTextScript, "--target", root.pasteTarget, "--history-index", String(row.historyIndex)]))
     }
   }
 
