@@ -1,0 +1,31 @@
+W26 BOSGAME APP CHECKLIST
+
+Date: 2026-11-25
+AI harness: Codex CLI 0.172.0
+AI model: gpt-6.2-sol
+Commits: this record accompanies the handoff
+Continues: W25
+
+GUIDANCE
+
+  Fred: "Do the next work slice to prepare for Tamlinux 0.7.0"
+  Fred: "Implement the plan."
+
+DONE
+
+  Reconciled the 0.6.39 installed manifest, both menus, desktop
+  entries and actions, live bindings, autostart, services and
+  nine plugins. Recorded the per-workflow checks and blockers.
+  Three guarded Dell touchpad actions lack their executable on
+  bosgame. No required X11-only app was identified by inspection.
+
+FAILED
+
+  The desktop visibility helper exits 1 when its final optional
+  directory is absent. It still emitted the visibility list.
+
+HANDOFF
+
+  Stage the pinned native-Wayland build and package a session entry.
+  Use the checklist during candidate trials. Portal, focus, input,
+  lock and output integration are still pending.

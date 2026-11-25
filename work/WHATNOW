@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W25
+Updated: 2026-11-25, with W26
 
 
 STATE
@@ -56,8 +56,11 @@ NEXT
   1. Finish the 0.6.38 physical trials. For the 0.6.39 Test, verify
      fresh terminal windows, inherited working directory and the
      selected XDG terminal through the Start menu.
-  2. For 0.7.0, build the bosgame app and launcher checklist in
-     ROADMAP.md milestone 1 (W25).
+  2. For 0.7.0, start ROADMAP.md milestone 2. Pin tam-pane and
+     compatible libtam, stage a source install and add its Wayland
+     session entry. The bosgame app checklist is complete (W26).
+     Carry forward portal, focus, input, lock and output checks.
+     Native Wayland is the starting build for the app trials.
 
 
 WAITING FOR FRED
