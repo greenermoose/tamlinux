@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.42]
+
+- Prefer executable `~/.local/bin/tam-clam` and `~/.local/bin/tam-last` on `Meta + Return` (`tam-launch-terminal --tam-last`) and fall back to `/usr/bin/tamlinux/`; recognize `~/.local/bin/tam-clam` in `tam-cmd-terminal-cwd`.
+
 ## [0.6.41]
 
 - Update `tam-last` to `0.2.4` (honor depressed modifiers from `wl_keyboard.modifiers` and align `Ctrl + Shift + C/V` and `Ctrl/Shift + Insert` clipboard shortcuts).
