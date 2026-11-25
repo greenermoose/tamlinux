@@ -187,6 +187,59 @@ should be treated as optional aliases:
   solely to `tam-pane`.
 - **Optional `Caps Lock` -> `Meta` remap:** Covers pre-1995 keyboards
   (such as the IBM Model M) cleanly and matches Chromebook ergonomics.
+- **Touch Bar MacBooks (2016–2020) and Chromebooks:** Touch Bar MacBooks
+  have no physical `F1`–`F12` row (and a touch-strip `Escape`), while
+  Chromebooks have no `Caps Lock` (`Search` occupies that slot). One-handed
+  chord composing therefore never requires `F1`–`F12` and provides both
+  `Caps Lock` (primary) and solo `Right Alt` tap (secondary).
+
+## One-handed chord composing
+
+To make every desktop and application shortcut reachable with one hand,
+Tamlinux provides a sequential **Chord Composer & Command Menu** in both
+`tam-pane` (compositor-wide) and `tam-clam` (standalone on `TERM=linux` or
+other compositors). Instead of holding `Meta+1` or `Ctrl+X` simultaneously,
+the user presses a **Chord key**, presses the modifiers and primary key one
+at a time, and presses the **Chord key** again to send the chord.
+
+| Role | Default physical key | Notes |
+| --- | --- | --- |
+| **Primary Chord key** | `Caps Lock` | Three-mode state machine (see below); works on PCs, laptops, all MacBooks (including Touch Bar), and 60% boards. Configurable. |
+| **Secondary Chord key** | Solo `Right Alt` (`Option`) tap | Press and release with no intervening key. Enters Chord Builder directly (never toggles Caps Lock); covers Chromebooks and preserves `AltGr` when held with another key. Configurable. |
+| **Cancel Chord key** | `Escape` | Cancels immediately from any chord-composing state. Pressing `Backspace` when the chord is empty, or pressing `<Chord key>` when empty, also cancels. Configurable. |
+
+### Three-state `Caps Lock` machine (`tam-pane`)
+
+1. **Pluripotent** (entered on `Caps Lock` press from Idle): opens the chord
+   composer overlay showing the full command menu.
+   - Pressing a **modifier** (`Meta`, `Ctrl`, `Alt`, `Shift`) or **menu
+     navigation** (`Up`/`Down`) transitions to **Chord Builder**.
+   - Pressing **`A`–`Z`** transitions to **Regular Caps Lock**, dismisses the
+     overlay, and immediately sends that letter uppercase.
+   - Pressing **`Escape`**, **`Backspace`**, or **`Caps Lock`** again cancels
+     and returns to Idle.
+2. **Chord Builder** (entered from Pluripotent via modifier/navigation, or
+   directly from Idle via solo `Right Alt` tap):
+   - Pressing a modifier toggles it in the pending chord; pressing a primary
+     key sets the chord's key and filters the command menu to matching
+     bindings.
+   - With no modifiers latched, `Up`/`Down` + `Enter` selects and runs any
+     available command from the menu (and typing letters filters by command
+     name).
+   - Pressing `<Chord key>` ends and sends the chord: `tam-pane` checks its
+     own bindings first, and otherwise synthesizes the composed chord (both
+     modifier keycodes and `wl_keyboard.modifiers`) to the focused client.
+3. **Regular Caps Lock**: `A`–`Z` presses behave as if `Shift` were held,
+   other keys are unaffected, and pressing `Caps Lock` again turns Regular
+   Caps Lock off cleanly.
+
+### Standalone `tam-clam` (`TERM=linux` / SSH)
+
+Over a plain TTY, bare modifier presses send no bytes. Inside `tam-clam`'s
+unified chord composer and command menu (`chord-compose` / `Ctrl+E`),
+**`Tab`** cycles latched modifiers (`Ctrl+`, `Alt+`, `Shift+`, `Ctrl+Shift+`,
+`Alt+Shift+`, none) without relying on function keys, while `Up`/`Down` +
+`Enter` or substring filtering runs any named widget.
 
 ## Standard `Ctrl` map (decided 2026-11-23)
 
