@@ -3,12 +3,12 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W29
+Updated: 2026-11-25, with W31
 
 
 STATE
 
-  VERSION reads 0.6.41 on dev. Meta + Return launches a new
+  VERSION reads 0.6.42 on dev. Meta + Return launches a new
   tam-last 0.2.4 window using tam-clam 0.3.5, preferring executable
   $HOME/.local/bin/tam-last and $HOME/.local/bin/tam-clam when present
   and falling back to /usr/bin/tamlinux/ (W29). Source installs pin both
@@ -16,54 +16,37 @@ STATE
   tam-last window. The current release is 0.5.12. Tamlinux 0.6 is the
   dependable Arch/Hyprland baseline.
 
-  Bosgame accepted source-installed 0.6.37 for Run. Fred accepted
-  slowhp's 0.6.37 fresh-file reinstall with its storage layout intact.
-  Toughbook proved in-place source installation on 0.6.34. All three
-  fleet hosts are testing 0.6.38. The 0.6.37 Run delivery is the
-  rollback floor.
+  For Tamlinux 0.7.0 Northern Torch:
+  - Milestone 1 (bosgame app and launcher checklist) is complete (W26).
+  - Milestone 2 (reproducible tam-pane session and local development
+    loop) is complete on dev (W31): components.lock pins tam-pane
+    7ca46a8 (0.2.6 + one-handed chord composer) with libtam 0.9.1
+    (a3e0901); build.py stages the native-Wayland (XWAYLAND=0) build;
+    preflight.py and arch-packages check wayland, wayland-protocols,
+    wlroots0.20, and libxkbcommon; install-cultivar-layout.py stages
+    /usr/share/wayland-sessions/tam-pane.desktop, tam-pane-session, and
+    versioned tam-pane.lua defaults; tam-pane-session honors
+    TAM_PANE_BIN and PATH (~/.local/bin/tam-pane) with fallback to the
+    packaged cultivar binary; and tam-dev supports tam-pane.
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
   destination ownership, and selects the installed cultivar by digest.
 
-  In Develop, source preflight requires the Arch Gum package and its
-  native executable (W17), and tam-fleet validates source-install
-  profiles from the capability catalog (W18). W23 adds the Arch ffmpeg
-  prerequisite for text-console PrtSc capture.
-
-  In Develop (W19), the 0.6.38 product fixes are ready on dev:
-  - Fresh-login man-page lookup resolves cultivar and rootstock pages
-    via standard man-db PATH discovery and /usr/share/man integration
-    after /etc/profile unsets MANPATH.
-  - tam-update reports installed foreign/local packages (pacman -Qm),
-    lists pending AUR updates read-only (yay -Qua), and prints frozen-
-    recipe review/build instructions.
-  - tam-boot excludes intermediate kernel messages during the disk
-    passphrase prompt from slow steps, bounds kernel gap analysis to
-    startup completion, and sorts slow steps descending by duration.
-  - tam-vt-screenshot, tamlinux-vt-prtsc.map, tamlinux-vt.vtrgb,
-    kbrequest.target, tam-vt-keymap.service, and
-    tam-vt-screenshot.service are packaged in the cultivar and systemd
-    system unit layout.
-  - tam-fleet capture reads deployed plugin manifests and active source-
-    install manifests directly into state/bom.json, and tam-dev resolves
-    the src/commands, src/desktop, and tests repository layout and
-    /usr/lib/tamlinux/current/... runtime paths (W20).
-  - Drafted arch/keybindings.md (W22) with initial first-principles notes
-    for the Tamlinux-wide keybinding standard across compositor,
-    terminal, shell, editor, and tools.
-
 
 NEXT
 
-  1. Finish the 0.6.38 physical trials. For the 0.6.39 Test, verify
-     fresh terminal windows, inherited working directory and the
-     selected XDG terminal through the Start menu.
-  2. For 0.7.0, start ROADMAP.md milestone 2. Pin tam-pane and
-     compatible libtam, stage a source install and add its Wayland
-     session entry. The bosgame app checklist is complete (W26).
-     Carry forward portal, focus, input, lock and output checks.
-     Native Wayland is the starting build for the app trials.
+  1. For 0.7.0, implement ROADMAP.md milestone 3 (Provide two guarded
+     console launches): add `tam-desktop pane` for trials and
+     `tam-desktop hyprland` for recovery while keeping bare `tam-desktop`
+     for the default graphical activity in `start`. Extend local VT,
+     duplicate-session, and shutdown checks in `console.py` and
+     `wait-stopped.py` to both compositors (`Hyprland` and `tam-pane`),
+     and ensure Hyprland starts even if the tam-pane configuration is
+     unavailable.
+  2. Proceed through ROADMAP.md milestones 4-8 (UWSM session bring-up,
+     Quickshell tam-pane adapter, bosgame controls port, shell/app
+     trials, and automated desktop test battery).
 
 
 WAITING FOR FRED

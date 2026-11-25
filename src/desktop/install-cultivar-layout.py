@@ -99,7 +99,7 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
             f'Path("{share}/desktop/test-battery")',
         )
         if command.name in (
-            "tam-desktop", "tam-shell", "tam-hyprland-session", "tam-session-init",
+            "tam-desktop", "tam-shell", "tam-hyprland-session", "tam-pane-session", "tam-session-init",
         ):
             first, _, rest = content.partition("\n")
             content = first + (
@@ -108,9 +108,10 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
                 '  exit 1\n'
                 'fi\n'
             ) + rest
-        if command.name == "tam-hyprland-session":
+        if command.name in ("tam-hyprland-session", "tam-pane-session"):
             wait = '/usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?'
-            config = 'config="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/session/hyprland.lua"'
+            config_file = "hyprland.lua" if command.name == "tam-hyprland-session" else "tam-pane.lua"
+            config = f'config="${{XDG_CONFIG_HOME:-$HOME/.config}}/tamlinux/session/{config_file}"'
             if content.count(wait) != 1 or content.count(config) != 1:
                 raise ValueError("Expected the installed session launch sequence")
             content = content.replace(wait + "\n", "").replace(
@@ -227,6 +228,10 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
     session = private / "share/tamlinux/session"
     origin = source / "src/desktop/source-install/session_settings.py"
     put(session / origin.name, origin.read_bytes())
+    pane_desktop = (source / "src/desktop/session/tam-pane.desktop").read_bytes().replace(
+        b"/usr/lib/tamlinux/current", current.encode(),
+    )
+    put(usr / "share/wayland-sessions/tam-pane.desktop", pane_desktop, 0o644)
 
     copy_vendor_defaults(stage, source, wants_by_target)
     for unit_target, unit_names in sorted(wants_by_target.items()):
@@ -280,6 +285,11 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
     home = private / "defaults/home"
     put(home / ".config/tamlinux/session/hyprland.lua",
         f'dofile("{share}/session/entry.lua")\n'.encode())
+    put(home / ".config/tamlinux/session/tam-pane.lua", (
+        f'local code, err = tp.read_file("{share}/session/tam-pane.lua")\n'
+        f'assert(code, err)\n'
+        f'assert(load(code, "@{share}/session/tam-pane.lua", "t"))()\n'
+    ).encode())
     put(home / ".config/uwsm/env.d/10-tamlinux.sh", (
         f'. {share}/session/uwsm-env\n'
         'export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n'

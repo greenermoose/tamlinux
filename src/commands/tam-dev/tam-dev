@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build, check and try local Tamlinux components without assembling a candidate.
 
-Selectors: tam, libtam, tamlinux-tools, command:tam-NAME, app:keybindings,
+Selectors: tam, libtam, tamlinux-tools, tam-pane, command:tam-NAME, app:keybindings,
 app:keyboard, plugin:fred.NAME, shell. GUI trials are interactive previews;
 --live deliberately replaces the shell until stop. Nothing invokes Nix.
 """
@@ -71,7 +71,7 @@ def packaged_plugins_dir() -> Path:
 
 
 def select(workspace, name):
-    if name in ('tam', 'libtam', 'tamlinux-tools'):
+    if name in ('tam', 'libtam', 'tamlinux-tools', 'tam-pane'):
         return workspace/name, ['.'], '.'
     repo = workspace/'tamlinux'
     desktop, commands, tests, widget_proof = repo_layout(repo)
@@ -232,7 +232,7 @@ def check(record, live=False):
         return
     if record['makeDirectory'] is not None:
         directory = source/record['makeDirectory']
-        target = 'test' if record['component'] in ('tam', 'libtam', 'tamlinux-tools') else 'check'
+        target = 'test' if record['component'] in ('tam', 'libtam', 'tamlinux-tools', 'tam-pane') else 'check'
         targets=[target]
         if record['component']=='libtam' and 'test-session:' in (directory/'Makefile').read_text():
             targets += ['test-display','test-session']

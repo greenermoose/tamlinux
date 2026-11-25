@@ -59,6 +59,7 @@ def allowed(relative):
             "usr/lib/tamlinux/browser-policy-exec",
             "usr/share/terminfo/t/tam-last",
             "usr/share/terminfo/t/tam-last-direct",
+            "usr/share/wayland-sessions/tam-pane.desktop",
         }
         or any(relative.startswith(base + "/") for base in PLACEMENTS)
     )

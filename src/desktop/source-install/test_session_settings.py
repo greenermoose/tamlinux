@@ -23,6 +23,9 @@ def source_fixture(stage):
     defaults = runtime / "defaults/home/.config"
     for relative, text in zip(REQUIRED, (
         'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n',
+        'local code, err = tp.read_file("/usr/lib/tamlinux/current/share/tamlinux/session/tam-pane.lua")\n'
+        'assert(code, err)\n'
+        'assert(load(code, "@/usr/lib/tamlinux/current/share/tamlinux/session/tam-pane.lua", "t"))()\n',
         '. /usr/lib/tamlinux/current/share/tamlinux/session/uwsm-env\n',
     ), strict=True):
         path = defaults / relative

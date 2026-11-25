@@ -9,6 +9,7 @@ import subprocess
 BUILD_COMMANDS = {
     "ar": "binutils", "cc": "gcc", "file": "file", "git": "git", "make": "make",
     "pkg-config": "pkgconf", "python3": "python", "tic": "ncurses",
+    "wayland-scanner": "wayland",
 }
 BUILD_HEADERS = (
     ("dbus-1", "dbus/dbus.h", "dbus"),
@@ -18,6 +19,11 @@ BUILD_HEADERS = (
     ("libarchive", "archive.h", "libarchive"),
     ("ncursesw", "curses.h", "ncurses"),
     ("zlib", "zlib.h", "zlib"),
+    ("wayland-server", "wayland-server-core.h", "wayland"),
+    ("wayland-client", "wayland-client-core.h", "wayland"),
+    ("wayland-protocols", None, "wayland-protocols"),
+    ("wlroots-0.20", "wlr/version.h", "wlroots0.20"),
+    ("xkbcommon", "xkbcommon/xkbcommon.h", "libxkbcommon"),
     (None, "magic.h", "file"),
 )
 
@@ -41,6 +47,9 @@ RUNTIME_FILES = {
     "usr/lib/libcpuid.so.18": "libcpuid", "usr/lib/libdbus-1.so.3": "dbus",
     "usr/lib/libsystemd.so.0": "systemd-libs", "usr/lib/libz.so.1": "zlib",
     "usr/lib/libncursesw.so.6": "ncurses",
+    "usr/lib/libwayland-server.so.0": "wayland",
+    "usr/lib/libwlroots-0.20.so": "wlroots0.20",
+    "usr/lib/libxkbcommon.so.0": "libxkbcommon",
 }
 ARCH_PACKAGES = Path(__file__).resolve().with_name("arch-packages")
 
@@ -77,7 +86,7 @@ def build_problems(env):
                 problems.append(f"pkg-config:{module} (Arch package: {package})")
                 continue
             flags = shlex.split(probe.stdout)
-        if tools["cc"] and subprocess.run(
+        if header and tools["cc"] and subprocess.run(
             [tools["cc"], *flags, "-fsyntax-only", "-x", "c", "-"],
             input=f"#include <{header}>\n", text=True, env=env, capture_output=True,
         ).returncode:

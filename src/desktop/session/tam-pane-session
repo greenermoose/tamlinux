@@ -1,0 +1,27 @@
+#!/bin/sh
+# Entry point for the tam-pane/UWSM session; honors local PATH overrides (D212/D270).
+set -eu
+bin_dir="$(dirname "$(readlink -f "$0")")"
+session_dir="$(readlink -f "$bin_dir/../share/tamlinux/session")"
+if [ -n "${TAM_PANE_BIN:-}" ]; then
+  compositor="$TAM_PANE_BIN"
+elif command -v tam-pane >/dev/null 2>&1; then
+  compositor="$(command -v tam-pane)"
+else
+  compositor="$bin_dir/tam-pane"
+fi
+if [ ! -x "$compositor" ]; then
+  echo "Tamlinux tam-pane binary is not installed: $compositor" >&2
+  exit 1
+fi
+config="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/session/tam-pane.lua"
+if [ ! -f "$config" ]; then
+  echo "Tamlinux session defaults are not installed: $config" >&2
+  exit 1
+fi
+/usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?
+commands="$bin_dir"
+[ -x "$commands/tam-theme-init" ] || commands="$HOME/.local/bin"
+"${TAMLINUX_BIN:-$commands}/tam-theme-init" || exit $?
+"${TAMLINUX_BIN:-$commands}/tam-session-init" >/dev/null || exit $?
+exec /usr/bin/uwsm start -g -1 -e -D tam-pane -- "$compositor" -c "$config"

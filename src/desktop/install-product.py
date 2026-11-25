@@ -47,6 +47,7 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
     file("src/desktop/README", "share/tamlinux/README")
     file("src/desktop/menu/default.jsonc", "share/tamlinux/menu/default.jsonc")
     for src, name in (("src/desktop/session/start", "tam-hyprland-session"),
+                      ("src/desktop/session/tam-pane-session", "tam-pane-session"),
                       ("src/desktop/session/desktop", "tam-desktop"),
                       ("src/desktop/menu/tam-menu", "tam-menu"),
                       ("src/desktop/protocol-shadow", "tam-protocol-shadow")):

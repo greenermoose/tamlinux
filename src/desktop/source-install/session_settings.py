@@ -16,6 +16,7 @@ LIMIT = 1024 * 1024
 LEGACY = b"/usr/lib/tamlinux/source/current/"
 REQUIRED = (
     "tamlinux/session/hyprland.lua",
+    "tamlinux/session/tam-pane.lua",
     "uwsm/env.d/10-tamlinux.sh",
 )
 
@@ -214,6 +215,8 @@ class SessionSettings:
                                check=True, stdout=subprocess.DEVNULL)
             for relative in REQUIRED:
                 target = self.config / relative
+                if receipt is not None and not os.path.lexists(target) and (defaults / ".config" / relative).is_file():
+                    self.publish_default(target, self.default(defaults, relative))
                 value = snapshot(target)
                 data = base64.b64decode(value["bytes"]) if value["kind"] == "file" else b""
                 if not data or LEGACY in data or b"/nix/store/" in data:

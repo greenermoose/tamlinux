@@ -1,0 +1,50 @@
+W31 STAGE TAM-PANE SESSION AND SOURCE INSTALL (0.7.0 MILESTONE 2)
+
+Date: 2026-11-25
+AI harness: Antigravity CLI 1.5.17
+AI model: Gemini 4 Argon (Medium)
+Continues: W26
+
+GUIDANCE
+
+  Fred: "/plan Take the next work slice for Tamlinux 0.7.0."
+  Fred: "/plan Show me the plan in tam-view"
+  Fred: "/plan Why 5? I want to be able to develop and test tam-pane.
+  How will I do that?"
+  Fred: "/plan yes, update the plan"
+  Fred: "Approved. Proceed."
+
+DONE
+
+  - Pinned tam-pane 7ca46a8b0a2e3381ef870f3c6a29c517b989d0e1 alongside
+    compatible libtam 0.9.1 (a3e0901096b0344ff7234ae0db2bdb37e92dfb44) in
+    components.lock and added native-Wayland (XWAYLAND=0) staging to
+    src/desktop/source-install/build.py.
+  - Declared Arch build and runtime prerequisites (wayland,
+    wayland-protocols, wlroots0.20, libxkbcommon) in arch-packages and
+    preflight.py, and allowed /usr/share/wayland-sessions/tam-pane.desktop
+    in transaction.py.
+  - Added tam-pane-session, tam-pane.desktop, and tam-pane.lua under
+    src/desktop/session/ and staged them in install-product.py,
+    install-cultivar-layout.py, session_settings.py, and verify.py.
+  - Made tam-pane-session honor TAM_PANE_BIN and PATH (so a local
+    development build in ~/.local/bin/tam-pane from make install or
+    tam-dev try tam-pane runs when present and falls back to the packaged
+    cultivar binary when absent), added tam-pane to tam-dev, and updated
+    ROADMAP.md milestone 2.
+  - Verified with 30 source-install tests, 5 product-install tests, 6
+    session-launcher tests, 7 session-default tests, 10 tam-dev tests,
+    and host build/runtime preflight checks.
+
+FAILED
+
+  - Running make preflight against uncommitted components.lock failed
+    because build.revisions() reads HEAD:components.lock; verified
+    build_problems() and runtime_problems() directly before committing
+    and make preflight after committing.
+
+HANDOFF
+
+  - Proceed to 0.7.0 Milestone 3: add guarded console launches
+    (tam-desktop pane for trials and tam-desktop hyprland for recovery)
+    and extend wait-stopped.py and console.py to both compositors.

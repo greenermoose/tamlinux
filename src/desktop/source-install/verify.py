@@ -135,11 +135,14 @@ def permission_problems(system):
 
 
 def session_problems(system):
-    if system.root != Path("/"):
-        return []
-    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path(os.environ["HOME"]) / ".config")
+    runtime_pane = system.root / PAYLOAD_CURRENT / "bin/tam-pane"
     problems = []
-    for rel in ("tamlinux/session/hyprland.lua", "uwsm/env.d/10-tamlinux.sh"):
+    if runtime_pane.exists() and not (runtime_pane.is_file() and os.access(runtime_pane, os.X_OK)):
+        problems.append(f"packaged tam-pane binary is not executable: {runtime_pane}")
+    if system.root != Path("/"):
+        return problems
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path(os.environ["HOME"]) / ".config")
+    for rel in ("tamlinux/session/hyprland.lua", "tamlinux/session/tam-pane.lua", "uwsm/env.d/10-tamlinux.sh"):
         target = config / rel
         if not target.is_file() or not os.access(target, os.R_OK):
             continue

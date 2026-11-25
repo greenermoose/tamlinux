@@ -78,6 +78,7 @@ class Development(unittest.TestCase):
         (self.repo/'commands/tam-demo/escape').symlink_to(outside)
         with self.assertRaises(dev.DevError):dev.build(self.repo.parent,'command:tam-demo')
         with self.assertRaises(dev.DevError):dev.select(self.repo.parent,'command:../../etc')
+        self.assertEqual(dev.select(self.repo.parent,'tam-pane'),(self.repo.parent/'tam-pane',['.'],'.'))
 
     def test_live_launch_failure_restores_packaged_service(self):
         record={'component':'shell','makeDirectory':None,'source':str(self.root),'files':{}}

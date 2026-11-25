@@ -20,6 +20,10 @@ libcpuid
 libarchive
 ncurses
 zlib
+wayland
+wayland-protocols
+wlroots0.20
+libxkbcommon
 
 # Core runtime and desktop session
 bash

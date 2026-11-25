@@ -133,6 +133,45 @@ class SessionDefaults(unittest.TestCase):
         text = self.run_defaults(prepare)
         self.assertIn('ENV\tTOGGLE_TEST=owned', text)
 
+    def test_tam_pane_session_defaults_evaluate_in_sandbox_contract(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            share_lua = ROOT / 'tam-pane.lua'
+            user_lua = home / 'user-tam-pane.lua'
+            user_lua.write_text(
+                f'local code, err = tp.read_file({str(share_lua)!r})\n'
+                'assert(code, err)\n'
+                f'assert(load(code, "@{share_lua}", "t"))()\n'
+            )
+            harness = home / 'harness.lua'
+            harness.write_text(
+                'local real_open = io.open\n'
+                'io = nil; os = nil; package = nil; debug = nil; dofile = nil; loadfile = nil\n'
+                'local hooks = {}\n'
+                'tp = {\n'
+                '  read_file = function(path)\n'
+                '    local f, err = real_open(path, "rb")\n'
+                '    if not f then return nil, err end\n'
+                '    local data = f:read("*a"); f:close(); return data\n'
+                '  end,\n'
+                '  config = function(t) print("CONFIG\\t" .. tostring(t.terminal or "") .. "\\t" .. tostring(t.cursor_theme or "")) end,\n'
+                '  dsp = setmetatable({}, { __index = function(_, k) return function(v) return k .. ":" .. tostring(v or "") end end }),\n'
+                '  bind = function(k, a) print("BIND\\t" .. k .. "=" .. tostring(a)) end,\n'
+                '  on = function(ev, fn) hooks[ev] = fn end,\n'
+                '  spawn = function(cmd) print("SPAWN\\t" .. cmd) end,\n'
+                '}\n'
+                'local Entry, err = tp.read_file(arg[1])\n'
+                'assert(Entry, err)\n'
+                'assert(load(Entry, "@" .. arg[1], "t"))()\n'
+                'if hooks.startup then hooks.startup() end\n'
+            )
+            result = subprocess.run([LUA, str(harness), str(user_lua)],
+                                    capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('CONFIG\t/usr/bin/tamlinux/tam-launch-terminal --tam-last\tAdwaita', result.stdout)
+            self.assertIn('BIND\tMeta+Return=spawn:/usr/bin/tamlinux/tam-launch-terminal --tam-last', result.stdout)
+            self.assertIn('SPAWN\tuwsm finalize TAM_PANE_SOCKET', result.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()

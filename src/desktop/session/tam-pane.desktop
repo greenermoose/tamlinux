@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Tamlinux (tam-pane)
+Comment=Tamlinux Wayland session on tam-pane
+Exec=/usr/lib/tamlinux/current/bin/tam-pane-session
+TryExec=/usr/lib/tamlinux/current/bin/tam-pane
+Type=Application
+DesktopNames=tam-pane
+Keywords=tiling;wayland;compositor;tamlinux;

@@ -38,8 +38,9 @@ the [0.3.x session and shell work](https://github.com/greenermoose/tam-pane/blob
 2. **Deliver a reproducible session.** Pin tam-pane and compatible libtam
    in the [source delivery](plans/P21-source-install.md). Stage the Make
    install, Arch dependencies, Wayland session entry and versioned defaults.
-   Prove the installed launcher selects the pinned binary even with a local
-   development build on PATH. Start with native Wayland. Enable and test
+   Honor local development builds on PATH (via `make install` or `tam-dev try tam-pane`)
+   while falling back to the packaged cultivar binary and verifying the packaged
+   binary by its absolute cultivar path. Start with native Wayland. Enable and test
    the optional XWayland build if the checklist identifies a required X11 app.
 3. **Provide two guarded console launches.** Add `tam-desktop pane` for
    trials and `tam-desktop hyprland` for recovery. Keep the graphical

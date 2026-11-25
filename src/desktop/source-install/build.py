@@ -14,7 +14,7 @@ from preflight import build_problems
 from transaction import PAYLOAD_CURRENT, _clone_or_copy, inventory, write_json
 
 PRODUCT = Path(__file__).resolve().parents[3]
-COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data", "tam-last", "tam-clam")
+COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data", "tam-last", "tam-clam", "tam-pane")
 CACHE_SCHEMA = "v2"
 CACHE_KEEP = 2
 BUILD_ENV = {
@@ -261,6 +261,9 @@ def build(repos, work):
         ("tam-last", install_tam_last),
         ("tam-clam", lambda src, dest, env: run_make(
             src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
+        )),
+        ("tam-pane", lambda src, dest, env: run_make(
+            src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link, "XWAYLAND=0",
         )),
         ("tam-data", lambda src, dest, env: run_make(
             src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,

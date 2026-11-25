@@ -34,11 +34,13 @@ class ProductInstall(unittest.TestCase):
             self.assertTrue(os.access(commands / "tam-start", os.X_OK))
             self.assertFalse((commands / "tam-nut").exists())
             self.assertTrue((runtime / "share/tamlinux/session/session_settings.py").is_file())
-            launch = (commands / "tam-hyprland-session").read_text()
-            self.assertLess(launch.index("wait-stopped.py"), launch.index("session_settings.py"))
-            self.assertLess(launch.index("session_settings.py"), launch.index("exec /usr/bin/uwsm"))
-            self.assertIn('"/usr/bin/tamlinux/tam-session-init"', launch)
-            subprocess.run(["/usr/bin/sh", "-n", commands / "tam-hyprland-session"], check=True)
+            self.assertTrue((runtime / "share/tamlinux/session/tam-pane.lua").is_file())
+            for launcher in ("tam-hyprland-session", "tam-pane-session"):
+                launch = (commands / launcher).read_text()
+                self.assertLess(launch.index("wait-stopped.py"), launch.index("session_settings.py"))
+                self.assertLess(launch.index("session_settings.py"), launch.index("exec /usr/bin/uwsm"))
+                self.assertIn('"/usr/bin/tamlinux/tam-session-init"', launch)
+                subprocess.run(["/usr/bin/sh", "-n", commands / launcher], check=True)
 
     def test_cultivar_layout_renders_private_paths_and_integration_dropins(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -60,6 +62,16 @@ class ProductInstall(unittest.TestCase):
             defaults = current / "defaults/home"
             self.assertEqual((defaults / ".config/tamlinux/session/hyprland.lua").read_text(),
                 'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n')
+            self.assertEqual((defaults / ".config/tamlinux/session/tam-pane.lua").read_text(), (
+                'local code, err = tp.read_file("/usr/lib/tamlinux/current/share/tamlinux/session/tam-pane.lua")\n'
+                'assert(code, err)\n'
+                'assert(load(code, "@/usr/lib/tamlinux/current/share/tamlinux/session/tam-pane.lua", "t"))()\n'
+            ))
+            wayland_entry = stage / "usr/share/wayland-sessions/tam-pane.desktop"
+            self.assertTrue(wayland_entry.is_file())
+            self.assertIn("Exec=/usr/lib/tamlinux/current/bin/tam-pane-session\n", wayland_entry.read_text())
+            self.assertIn("TryExec=/usr/lib/tamlinux/current/bin/tam-pane\n", wayland_entry.read_text())
+            self.assertIn("DesktopNames=tam-pane\n", wayland_entry.read_text())
             environment = (defaults / ".config/uwsm/env.d/10-tamlinux.sh").read_text()
             self.assertIn('export TAMLINUX_QUICKSHELL=/usr/bin/quickshell\n', environment)
             self.assertNotIn('/nix/store', environment)
@@ -147,7 +159,7 @@ class ProductInstall(unittest.TestCase):
             root = stage / "usr/lib/tamlinux/current"
             self.assertFalse((stage / "etc").exists())
             self.assertFalse((stage / "home").exists())
-            for name in ("tam-menu", "tam-hyprland-session", "tam-desktop", "tam-protocol-shadow"):
+            for name in ("tam-menu", "tam-hyprland-session", "tam-pane-session", "tam-desktop", "tam-protocol-shadow"):
                 self.assertTrue(os.access(root / "bin" / name, os.X_OK), name)
             self.assertTrue((root / "share/tamlinux/shell/shell.qml").is_file())
             self.assertTrue((root / "share/tamlinux/plugins/fred.clock/manifest.json").is_file())

@@ -88,3 +88,60 @@ class SessionLauncherTests(unittest.TestCase):
             result = subprocess.run(["sh", str(wrapper), "--config", "/a path/config.lua"],
                                     capture_output=True, text=True, check=True)
             self.assertEqual(json.loads(result.stdout), ["--path", "/usr/bin/Hyprland", "--", "--config", "/a path/config.lua"])
+
+    def test_tam_pane_session_honors_path_override_and_falls_back_to_cultivar_binary(self):
+        with tempfile.TemporaryDirectory(prefix="pane launcher ") as temp:
+            root = Path(temp)
+            session = root / "package/share/tamlinux/session"
+            session.mkdir(parents=True)
+            binary = root / "package/bin"
+            binary.mkdir()
+            homebin = root / "home/.local/bin"
+            homebin.mkdir(parents=True)
+            config = root / "config with spaces/tamlinux/session/tam-pane.lua"
+            config.parent.mkdir(parents=True)
+            config.touch()
+            for name in ("tam-theme-init", "tam-session-init"):
+                path = homebin / name
+                path.write_text("#!/bin/sh\nexit 0\n")
+                path.chmod(0o755)
+            cultivar_pane = binary / "tam-pane"
+            cultivar_pane.write_text("#!/bin/sh\nexit 0\n")
+            cultivar_pane.chmod(0o755)
+            local_pane = homebin / "tam-pane"
+            local_pane.write_text("#!/bin/sh\nexit 0\n")
+            local_pane.chmod(0o755)
+            uwsm = root / "uwsm"
+            uwsm.write_text('#!/usr/bin/python3\nimport json,sys\nprint(json.dumps(sys.argv[1:]))\n')
+            uwsm.chmod(0o755)
+            start = binary / "tam-pane-session"
+            start.write_text((SOURCE / "tam-pane-session").read_text().replace("/usr/bin/uwsm", '"' + str(uwsm) + '"'))
+            start.chmod(0o755)
+            (session / "wait-stopped.py").write_text("pass\n")
+            env = {"PATH": f"{homebin}:/usr/bin:/bin", "HOME": str(root / "home"),
+                   "XDG_CONFIG_HOME": str(config.parents[2])}
+            # 1. With local development build on PATH (~/.local/bin/tam-pane), selects local build (D212/D270).
+            result = subprocess.run([str(start)], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout),
+                             ["start", "-g", "-1", "-e", "-D", "tam-pane", "--", str(local_pane), "-c", str(config)])
+            # 2. With TAM_PANE_BIN set, selects explicit override.
+            explicit_pane = root / "explicit-tam-pane"
+            explicit_pane.write_text("#!/bin/sh\nexit 0\n")
+            explicit_pane.chmod(0o755)
+            result = subprocess.run([str(start)], env={**env, "TAM_PANE_BIN": str(explicit_pane)},
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout),
+                             ["start", "-g", "-1", "-e", "-D", "tam-pane", "--", str(explicit_pane), "-c", str(config)])
+            # 3. After removing local override (make uninstall / tam-dev stop), falls back to packaged cultivar binary.
+            local_pane.unlink()
+            result = subprocess.run([str(start)], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout),
+                             ["start", "-g", "-1", "-e", "-D", "tam-pane", "--", str(cultivar_pane), "-c", str(config)])
+            # 4. If neither local nor cultivar binary is executable, fails closed.
+            cultivar_pane.unlink()
+            result = subprocess.run([str(start)], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Tamlinux tam-pane binary is not installed", result.stderr)
