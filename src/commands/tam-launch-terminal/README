@@ -9,6 +9,10 @@ providers.
   Interface: tam-launch-terminal [command...]
   Caller and behavior: Bar terminal actions and session keybindings; opens the
   focused terminal's directory
+  Interface: tam-launch-terminal --tam-last
+  Caller and behavior: Meta + Return opens a new tam-last window running
+  interactive tam-clam in the focused terminal's directory.
+
   Owned mutable interface: tam-cmd-terminal-cwd; Kitty remote socket
   $XDG_RUNTIME_DIR/tamlinux-kitty-<pid>
 

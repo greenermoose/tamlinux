@@ -1760,8 +1760,8 @@ var entries = [
     "mask": 64,
     "key": "RETURN",
     "dispatcher": "exec",
-    "arg": "tam-launch-terminal",
-    "action": "Open Terminal so you can use it.",
+    "arg": "/usr/bin/tamlinux/tam-launch-terminal --tam-last",
+    "action": "Open a new tam-last window running tam-clam.",
     "why": "The key keeps this action near related controls or uses a dedicated key.",
     "mnemonic": "Use RETURN for terminal."
   },

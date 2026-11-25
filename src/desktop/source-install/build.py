@@ -14,7 +14,7 @@ from preflight import build_problems
 from transaction import PAYLOAD_CURRENT, _clone_or_copy, inventory, write_json
 
 PRODUCT = Path(__file__).resolve().parents[3]
-COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data")
+COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data", "tam-last", "tam-clam")
 CACHE_SCHEMA = "v2"
 CACHE_KEEP = 2
 BUILD_ENV = {
@@ -238,6 +238,16 @@ def build(repos, work):
             desktop_dst.chmod(0o644)
             desktop_src.unlink()
 
+    def install_tam_last(src, dest, env):
+        run_make(src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}",
+                 "TERMINFODIR=/usr/share/terminfo", link)
+        # The cultivar inventory accepts regular files. Keep the upstream
+        # client entry point with the same behavior as its symlink.
+        client = dest / PAYLOAD_CURRENT / "bin/tam-last-client"
+        client.unlink()
+        client.write_text('#!/bin/sh\nexec "$(dirname "$0")/tam-last" --client "$@"\n')
+        client.chmod(0o755)
+
     sibling_specs = (
         ("tam", lambda src, dest, env: run_make(
             src, env, "install", "install-tldr", f"PREFIX={private}", f"DESTDIR={dest}", link,
@@ -248,6 +258,10 @@ def build(repos, work):
             src, env, "install-file-select", "install-journal", f"PREFIX={private}", f"DESTDIR={dest}", link,
         )),
         ("tam-edit", install_tam_edit),
+        ("tam-last", install_tam_last),
+        ("tam-clam", lambda src, dest, env: run_make(
+            src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
+        )),
         ("tam-data", lambda src, dest, env: run_make(
             src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
             f"TD_BUILD_ID={pins['tam-data'][:12]}",

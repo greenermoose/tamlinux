@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.39]
+
+- Open a new tam-last 0.2.3 window running tam-clam 0.3.5 with Meta + Return.
+- Update tam to 0.69.7 (corpus 0.128.4), libtam to 0.9.1, and tam-edit to 1.0.6.
+- Declare ffmpeg as a native prerequisite for text-console PrtSc capture.
+
 ## [0.6.38]
 
 Changes since Tamlinux 0.6.37:

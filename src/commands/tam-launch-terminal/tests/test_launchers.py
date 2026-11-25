@@ -46,7 +46,7 @@ class InstalledLaunchers(unittest.TestCase):
                     'XDG_STATE_HOME': str(self.state), 'XDG_RUNTIME_DIR': str(self.runtime),
                     'PATH': f'{self.prefix}/bin:{self.bin}', 'TEST_LOG': str(self.log),
                     'TEST_CWD': str(self.work), 'LANG': 'C', 'TERM': 'dumb'}
-        for name in ('bash', 'awk', 'grep', 'tail', 'readlink', 'mkdir', 'dirname',
+        for name in ('bash', 'awk', 'grep', 'tail', 'mkdir', 'dirname',
                      'cat', 'basename', 'jq', 'python3', 'mktemp', 'mv', 'rm'):
             program = shutil.which(name)
             if not program:
@@ -64,7 +64,21 @@ if name in ('setsid', 'uwsm-app'):
         if args[:2] == ['-t', 'service']: args = args[2:]
         assert args[0] == '--'
         args = args[1:]
+    if name == 'uwsm-app' and os.environ.get('TEST_RECORD_ONLY'):
+        sys.exit(0)
     os.execvp(args[0], args)
+elif name == 'pgrep':
+    print(os.environ.get('TEST_SHELL_PID', ''))
+elif name == 'readlink':
+    fixtures = {
+        '/proc/43/cwd': os.environ['TEST_CWD'],
+        '/proc/43/exe': os.environ.get('TEST_SHELL_EXE', ''),
+        '/usr/bin/tamlinux/tam-clam': '/usr/lib/tamlinux/versions/test/bin/tam-clam',
+    }
+    if os.environ.get('TEST_SHELL_PID') and args[-1] in fixtures:
+        print(fixtures[args[-1]])
+    else:
+        os.execv('/usr/bin/readlink', ['readlink', *args])
 elif name == 'xdg-terminal-exec':
     if args == ['--print-id']:
         print(os.environ.get('TEST_TERMINAL', 'foot.desktop:session'))
@@ -81,7 +95,7 @@ else:
     sys.exit(int(os.environ.get('TEST_COMMAND_STATUS', '0')))
 '''
         for name in ('setsid', 'uwsm-app', 'xdg-terminal-exec', 'hyprctl', 'kitten',
-                     'pgrep', 'busctl', 'clear', 'micro', 'nano', 'nvim', 'vim', 'code', 'capture-args'):
+                     'pgrep', 'readlink', 'busctl', 'clear', 'micro', 'nano', 'nvim', 'vim', 'code', 'capture-args'):
             path = self.bin / name
             path.write_text(source)
             path.chmod(0o755)
@@ -187,6 +201,27 @@ else:
                          ['@', '--to', 'unix:' + str(self.runtime / 'tamlinux-kitty-42'),
                           'ls', '--match', 'state:focused'])
         self.assertFalse((self.home / 'NEVER').exists())
+
+    def test_shortcut_launches_packaged_tam_clam_in_the_focused_directory(self):
+        terminal = '/usr/bin/tamlinux/tam-last'
+        shell = '/usr/bin/tamlinux/tam-clam'
+        for window, exe, directory in (
+            ('pid: 42', '/usr/lib/tamlinux/versions/test/bin/tam-clam', self.work),
+            ('pid: 42', '/usr/bin/sleep', self.home),
+            ('', '', self.home),
+        ):
+            with self.subTest(window=window, exe=exe):
+                self.log.unlink(missing_ok=True)
+                result = self.run_command(
+                    'tam-launch-terminal', '--tam-last', TEST_RECORD_ONLY='1',
+                    TEST_WINDOW=window, TEST_SHELL_EXE=exe, TEST_SHELL_PID='43',
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.calls('uwsm-app')[0]['args'], [
+                    '-t', 'service', '--', '/usr/bin/env', '-C', str(directory),
+                    f'SHELL={shell}', terminal, '-e', shell,
+                ])
+                self.assertFalse(self.calls('xdg-terminal-exec'))
 
     def test_directory_falls_back_without_shell_or_valid_window_pid(self):
         for window in ('', 'pid: 42', 'pid: invalid'):

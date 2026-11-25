@@ -55,7 +55,11 @@ def allowed(relative):
     if Path(relative).is_absolute() or ".." in Path(relative).parts:
         return False
     return (
-        relative == "usr/lib/tamlinux/browser-policy-exec"
+        relative in {
+            "usr/lib/tamlinux/browser-policy-exec",
+            "usr/share/terminfo/t/tam-last",
+            "usr/share/terminfo/t/tam-last-direct",
+        }
         or any(relative.startswith(base + "/") for base in PLACEMENTS)
     )
 

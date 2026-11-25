@@ -8,7 +8,7 @@ import subprocess
 
 BUILD_COMMANDS = {
     "ar": "binutils", "cc": "gcc", "file": "file", "git": "git", "make": "make",
-    "pkg-config": "pkgconf", "python3": "python",
+    "pkg-config": "pkgconf", "python3": "python", "tic": "ncurses",
 }
 BUILD_HEADERS = (
     ("dbus-1", "dbus/dbus.h", "dbus"),

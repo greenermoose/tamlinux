@@ -538,9 +538,9 @@ class DesktopTestRunner:
             self.telemetry.record_assertion("Phase 4", "Foot & Micro (dry-run)", True)
             return
 
-        # 1. Launch Foot terminal on Workspace 10 (Meta + Return)
+        # 1. Open Foot explicitly for the retained clipboard workflow.
         self.check_abort()
-        self.vi.chord("META + RETURN")
+        subprocess.run(["uwsm-app", "--", "foot"], check=True)
         time.sleep(self.step_pace() * 5)
 
         active = json.loads(
@@ -608,7 +608,7 @@ class DesktopTestRunner:
             self.telemetry.record_assertion("Phase 5", "Tiling & Close (dry-run)", True)
             return
 
-        # 1. Launch a second Foot window (Meta + Return) beside the first
+        # 1. Open tam-last with the default terminal shortcut beside Foot.
         self.check_abort()
         self.vi.chord("META + RETURN")
         time.sleep(self.step_pace() * 5)

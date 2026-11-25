@@ -1,0 +1,30 @@
+W24 TERMINAL SHORTCUT
+
+Date: 2026-11-25
+AI harness: Codex CLI 0.172.0
+AI model: gpt-6.2-sol
+Transcript: Retained privately by the author.
+
+GUIDANCE
+
+  Fred: "For Tamlinux 0.6.39, let's start using tam-last and tam-clam.
+  Make Meta + Return create a new tam-last terminal running tam-clam
+  as the shell."
+  Fred chose the packaged default and then said "Implement the plan."
+
+DONE
+
+  - Bound Meta + Return to a fresh tam-last window running tam-clam,
+    reusing the focused terminal's directory where possible.
+  - Added both source pins, shell completions and terminal definitions.
+    Session-default, keybinding and source-install checks passed.
+
+FAILED
+
+  - The sandbox denied the legacy Unix socket fixtures. All 23 launcher
+    tests passed with the isolated socket fixtures permitted.
+
+HANDOFF
+
+  - Verify the shortcut and the retained XDG terminal action in the
+    graphical session during the separately authorized candidate Test.

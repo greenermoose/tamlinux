@@ -45,7 +45,10 @@ else
   if [[ -n $shell_pid ]]; then
     cwd=$(readlink -f "/proc/$shell_pid/cwd" 2>/dev/null)
     shell=$(readlink -f "/proc/$shell_pid/exe" 2>/dev/null)
-    grep -Fqsx "$shell" /etc/shells || cwd=""
+    tam_clam=$(readlink -ef /usr/bin/tamlinux/tam-clam 2>/dev/null)
+    if [[ -z $tam_clam || $shell != "$tam_clam" ]] && ! grep -Fqsx "$shell" /etc/shells; then
+      cwd=""
+    fi
   fi
 fi
 

@@ -1,5 +1,5 @@
 -- Essential application bindings.
-o.bind("META + RETURN", "Terminal", { launcher = "terminal" })
+o.bind("META + RETURN", "Terminal", "/usr/bin/tamlinux/tam-launch-terminal --tam-last")
 o.bind("META + SHIFT + RETURN", "Browser", { launcher = "browser" })
 o.bind("META + F", "File manager", { launcher = "nautilus" })
 o.bind("META + D", "File manager (cwd)", { launcher = "nautilus-cwd" })
