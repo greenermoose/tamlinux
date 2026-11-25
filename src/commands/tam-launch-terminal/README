@@ -11,7 +11,9 @@ providers.
   focused terminal's directory
   Interface: tam-launch-terminal --tam-last
   Caller and behavior: Meta + Return opens a new tam-last window running
-  interactive tam-clam in the focused terminal's directory.
+  interactive tam-clam in the focused terminal's directory, preferring
+  executable $HOME/.local/bin/tam-last and $HOME/.local/bin/tam-clam when
+  present and falling back to /usr/bin/tamlinux/.
 
   Owned mutable interface: tam-cmd-terminal-cwd; Kitty remote socket
   $XDG_RUNTIME_DIR/tamlinux-kitty-<pid>

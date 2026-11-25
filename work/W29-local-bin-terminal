@@ -1,0 +1,36 @@
+W29 PREFER LOCAL BIN FOR TAM-CLAM AND TAM-LAST
+
+Date: 2026-11-25
+AI harness: Antigravity CLI 1.5.17
+AI model: Gemini 4 Hydrogen (Medium)
+Continues: W24
+
+GUIDANCE
+
+  Fred: "Make it so when I launch a new terminal window with Meta + Return,
+  I start ~/.local/bin/tam-clam if there is one, and if not, use the
+  cultivar-provided shell at /usr/bin/tamlinux/tam-clam. Same for
+  tam-last. Always use the ~/.local/bin version if there is one;
+  otherwise, fall back to the cultivar version. Those commands should get
+  picked up seamlessly when I'm developing and continue to work when I'm
+  not developing and have nothing in my ~/.local/bin/ folder."
+
+DONE
+
+  - Updated src/commands/tam-launch-terminal/tam-launch-terminal
+    (--tam-last) to prefer executable $HOME/.local/bin/tam-clam and
+    $HOME/.local/bin/tam-last and fall back to /usr/bin/tamlinux/.
+  - Updated src/commands/tam-cmd-terminal-cwd/tam-cmd-terminal-cwd to
+    recognize $HOME/.local/bin/tam-clam alongside /usr/bin/tamlinux/tam-clam
+    and /etc/shells when preserving the focused terminal's directory.
+  - Updated src/commands/tam-launch-terminal/README and added unit tests
+    in src/commands/tam-launch-terminal/tests/test_launchers.py.
+  - Verified with make check in both command directories (25/25 tests OK).
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Ready on dev for packaging in Tamlinux 0.6.42.

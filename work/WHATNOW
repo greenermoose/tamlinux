@@ -3,13 +3,15 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W28
+Updated: 2026-11-25, with W29
 
 
 STATE
 
   VERSION reads 0.6.41 on dev. Meta + Return launches a new
-  tam-last 0.2.4 window using tam-clam 0.3.5. Source installs pin both
+  tam-last 0.2.4 window using tam-clam 0.3.5, preferring executable
+  $HOME/.local/bin/tam-last and $HOME/.local/bin/tam-clam when present
+  and falling back to /usr/bin/tamlinux/ (W29). Source installs pin both
   commands, and clipboard history paste targets the originating
   tam-last window. The current release is 0.5.12. Tamlinux 0.6 is the
   dependable Arch/Hyprland baseline.

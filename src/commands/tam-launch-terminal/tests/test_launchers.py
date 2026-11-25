@@ -223,6 +223,62 @@ else:
                 ])
                 self.assertFalse(self.calls('xdg-terminal-exec'))
 
+    def install_local_bin(self, name, executable=True):
+        local_bin = self.home / '.local/bin'
+        local_bin.mkdir(parents=True, exist_ok=True)
+        path = local_bin / name
+        path.write_text('#!/bin/sh\n')
+        path.chmod(0o755 if executable else 0o644)
+        return path
+
+    def test_shortcut_prefers_local_bin_versions_when_executable(self):
+        for has_local_last, has_local_clam in (
+            (False, True),
+            (True, False),
+            (True, True),
+        ):
+            with self.subTest(has_local_last=has_local_last, has_local_clam=has_local_clam):
+                local_bin = self.home / '.local/bin'
+                shutil.rmtree(local_bin, ignore_errors=True)
+                self.log.unlink(missing_ok=True)
+                expected_terminal = (
+                    str(self.install_local_bin('tam-last'))
+                    if has_local_last else '/usr/bin/tamlinux/tam-last'
+                )
+                expected_shell = (
+                    str(self.install_local_bin('tam-clam'))
+                    if has_local_clam else '/usr/bin/tamlinux/tam-clam'
+                )
+                shell_exe = (
+                    expected_shell if has_local_clam
+                    else '/usr/lib/tamlinux/versions/test/bin/tam-clam'
+                )
+                result = self.run_command(
+                    'tam-launch-terminal', '--tam-last', TEST_RECORD_ONLY='1',
+                    TEST_WINDOW='pid: 42', TEST_SHELL_EXE=shell_exe, TEST_SHELL_PID='43',
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.calls('uwsm-app')[0]['args'], [
+                    '-t', 'service', '--', '/usr/bin/env', '-C', str(self.work),
+                    f'SHELL={expected_shell}', expected_terminal, '-e', expected_shell,
+                ])
+
+    def test_shortcut_falls_back_when_local_bin_is_not_executable_or_broken(self):
+        self.install_local_bin('tam-clam', executable=False)
+        local_bin = self.home / '.local/bin'
+        (local_bin / 'tam-last').symlink_to(local_bin / 'missing-target')
+        result = self.run_command(
+            'tam-launch-terminal', '--tam-last', TEST_RECORD_ONLY='1',
+            TEST_WINDOW='pid: 42', TEST_SHELL_EXE='/usr/lib/tamlinux/versions/test/bin/tam-clam',
+            TEST_SHELL_PID='43',
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls('uwsm-app')[0]['args'], [
+            '-t', 'service', '--', '/usr/bin/env', '-C', str(self.work),
+            'SHELL=/usr/bin/tamlinux/tam-clam', '/usr/bin/tamlinux/tam-last',
+            '-e', '/usr/bin/tamlinux/tam-clam',
+        ])
+
     def test_directory_falls_back_without_shell_or_valid_window_pid(self):
         for window in ('', 'pid: 42', 'pid: invalid'):
             with self.subTest(window=window):
