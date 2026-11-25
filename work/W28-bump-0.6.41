@@ -1,0 +1,27 @@
+W28 PIN TAM-LAST 0.2.4 AND BUMP TAMLINUX TO 0.6.41
+
+Date: 2026-11-25
+AI harness: Antigravity CLI 1.5.17
+AI model: Gemini 4 Neon (Medium)
+Continues: W27
+
+GUIDANCE
+
+  Fred: "Add the tam-last and fixed clipboard picker to Tamlinux 0.6.41, then package up and test Tamlinux 0.6.41."
+
+DONE
+
+  - Pinned tam-last ec39c8c (0.2.4: honor depressed modifiers and align
+    clipboard shortcuts) in components.lock.
+  - Bumped VERSION from 0.6.40 to 0.6.41 and documented tam-last 0.2.4
+    and the clipboard history picker paste fix (77e30a8) in CHANGELOG.md.
+  - Updated work/WHATNOW for 0.6.41.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Build, preflight, and test the 0.6.41 source-install cultivar, record
+    the delivery in tamlinux-packages, and prepare Test on bosgame-tamlinux.
