@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.6.40]
+
+- Tag `tam-last` windows as `+terminal` in Hyprland rules (macros, `hyprbars`, universal clipboard, touchpad scroll) and switch `tam-macro` terminal paste to `Ctrl + Shift + V` so macros paste CLIPBOARD reliably in `tam-last` and other terminals.
+
 ## [0.6.39]
 
 - Open a new tam-last 0.2.3 window running tam-clam 0.3.5 with Meta + Return.
