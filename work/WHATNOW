@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W31
+Updated: 2026-11-25, with W32
 
 
 STATE
@@ -33,6 +33,8 @@ STATE
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
   destination ownership, and selects the installed cultivar by digest.
+  The shared keybinding standard now lives in tam-idol under
+  keys/keybindings.md. The old arch/keybindings.md links to it (W32).
 
 
 NEXT

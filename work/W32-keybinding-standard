@@ -1,0 +1,26 @@
+W32 KEYBINDING STANDARD MOVED TO TAM-IDOL
+
+Date: 2026-11-25
+AI harness: codex 0.172.0
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Put the keybindings standard in a new folder, keys/, in the
+  tam-idol repo. See tamlinux/arch/keybindings.md. Bump the tam-idol
+  version to include keybindings as a standard for all Tamlinux programs."
+
+DONE
+
+  - Replaced the original document with a link to the standard in
+    tam-idol 1.2.0. Existing links still lead readers to the standard.
+  - Verified that the moved document preserves the binding tables
+    and command inventory.
+
+FAILED
+
+  Nothing.
+
+HANDOFF
+
+  Program-specific bindings belong in each program's arch/keys.md.
