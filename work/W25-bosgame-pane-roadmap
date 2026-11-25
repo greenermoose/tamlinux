@@ -1,0 +1,30 @@
+W25 BOSGAME TAM-PANE ROADMAP
+
+Date: 2026-11-25
+AI harness: Codex CLI 0.172.0
+AI model: gpt-6.2-astra
+Commits: this record accompanies the roadmap change
+
+GUIDANCE
+
+  Fred: "For Tamlinux 0.7.0 the goal is to run tam-pane instead of
+  hyprland. Prepare bosgame so that we can start running tam-pane instead
+  of hyprland. Think through exactly what needs to be done so that I can
+  run all Tamlinux apps under tam-pane instead of hyprland. Create a
+  complete list of milestones in the ROADMAP.md for tamlinux in the
+  tamlinux repo."
+  Fred: "Make it so. Proceed."
+
+DONE
+
+  Added ten milestones. Fred selected tam-pane as the default graphical
+  desktop on bosgame after Run, with an explicit Hyprland recovery path.
+
+FAILED
+
+  Nothing.
+
+HANDOFF
+
+  Start with the installed app and launcher checklist. Hardware trials
+  and activation belong to later, candidate-bound stages.
