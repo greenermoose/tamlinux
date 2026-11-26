@@ -2,6 +2,9 @@ PREFIX ?= /usr/local
 CC ?= cc
 PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -g -Wall -Wextra -Wpedantic -std=c11
+# libtam 0.15.0 and later set no feature macros; these sources use GNU
+# and POSIX.1-2008 interfaces.
+override CPPFLAGS += -D_GNU_SOURCE
 ifdef LIBTAM_PREFIX
 LIBTAM_CFLAGS = -I$(LIBTAM_PREFIX)/include
 LIBTAM_LIBS = -L$(LIBTAM_PREFIX)/lib -ltam

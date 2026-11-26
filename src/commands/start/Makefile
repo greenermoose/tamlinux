@@ -3,6 +3,9 @@ CC ?= cc
 PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -Wall -Wextra -Wpedantic -std=c11
 override CFLAGS += -g
+# libtam 0.15.0 and later set no feature macros; these sources use GNU
+# and POSIX.1-2008 interfaces.
+override CPPFLAGS += -D_GNU_SOURCE
 ifeq ($(TAM_SOURCE_INSTALL),1)
 CPPFLAGS += -DTAM_SOURCE_INSTALL
 endif
