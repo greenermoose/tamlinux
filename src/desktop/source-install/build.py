@@ -14,7 +14,8 @@ from preflight import build_problems
 from transaction import PAYLOAD_CURRENT, _clone_or_copy, inventory, write_json
 
 PRODUCT = Path(__file__).resolve().parents[3]
-COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data", "tam-last", "tam-clam", "tam-pane")
+COMPONENTS = ("libtam", "tam", "tamlinux-tools", "tam-edit", "tam-data", "tam-last", "tam-clam", "tam-pane",
+              "tam-view", "tam-knox", "tam-hide")
 CACHE_SCHEMA = "v2"
 CACHE_KEEP = 2
 BUILD_ENV = {
@@ -268,6 +269,18 @@ def build(repos, work):
         ("tam-data", lambda src, dest, env: run_make(
             src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
             f"TD_BUILD_ID={pins['tam-data'][:12]}",
+        )),
+        ("tam-view", lambda src, dest, env: run_make(
+            src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
+        )),
+        ("tam-knox", lambda src, dest, env: run_make(
+            src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}", link,
+        )),
+        # tam-hide finds libtam through pkg-config (PKG_CONFIG_PATH above).
+        # Its install is the locker alone: the tam-hided seat daemon and its
+        # service are not installed.
+        ("tam-hide", lambda src, dest, env: run_make(
+            src, env, "install", f"PREFIX={private}", f"DESTDIR={dest}",
         )),
     )
 

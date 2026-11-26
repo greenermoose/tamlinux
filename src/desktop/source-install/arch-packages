@@ -24,6 +24,11 @@ wayland
 wayland-protocols
 wlroots0.20
 libxkbcommon
+# tam-hide (screen locker): drawing, passcode hashing and PAM
+cairo
+pango
+argon2
+pam
 
 # Core runtime and desktop session
 bash
