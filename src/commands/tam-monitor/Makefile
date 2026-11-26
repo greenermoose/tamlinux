@@ -1,7 +1,7 @@
 PREFIX ?= /usr/local
 CC ?= cc
 PKG_CONFIG ?= pkg-config
-CFLAGS ?= -O2 -Wall -Wextra -Wpedantic
+CFLAGS ?= -O2 -Wall -Wextra -Wpedantic -std=c17
 override CFLAGS += -g
 LIBTAM_PREFIX ?= $(shell $(PKG_CONFIG) --atleast-version=0.4.1 libtam-display-session 2>/dev/null || \
 	{ test -f "$(HOME)/.local/lib/pkgconfig/libtam-display-session.pc" && printf '%s' "$(HOME)/.local"; })
