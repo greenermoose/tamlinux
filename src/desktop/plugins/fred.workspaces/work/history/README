@@ -20,6 +20,12 @@ architectural decisions for workspaces-fred-tamlinux.
 
 SESSION RECORDS
 
+  Date: 2026-11-26
+  Topic: Leave a monitor dark when the bar did not darken it (2.0.14)
+  Primary Tool: Claude Code 2.1.332
+  Model: claude-opus-5-5
+  Session Document: <2026-11-26-leave-adopted-dark-to-owner.md>
+
   Date: 2026-11-18
   Topic: Count down again after a monitor is lit from elsewhere (2.0.13)
   Primary Tool: Claude Code 2.1.327

@@ -12,7 +12,7 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.13"
+  readonly property string pluginVersion: "2.0.14"
 
   property string desktopMode: "mac"
   property string leftMonitor: ""
@@ -38,6 +38,13 @@ BarWidget {
   // dark. Until then a "lit" report predates the blank and is ignored, or
   // cursor entry would find nothing to wake.
   property bool blankUnconfirmed: false
+  // Set when the bar found its monitor already dark (probeDpmsState) rather
+  // than blanking it itself. That darkness belongs to whoever caused it,
+  // usually hypridle's session-wide DPMS off, which lights the outputs again
+  // on the next input. Waking it from here lit the toughbook's only panel on
+  // a shell restart with nobody there; hypridle, still idled and seeing no
+  // input, never blanked it again (2026-11-25 18:57).
+  property bool darkAdopted: false
   // True while this bar's helper process runs; siblings read it through
   // anyHelperRunning() before acting on a wake.
   readonly property bool helperRunning: actionProcess.running
@@ -391,7 +398,8 @@ BarWidget {
     if (unusedMonitorTimeout <= 0 || effectiveMonitorNames().length <= 1) {
       if (idleBlankTimer.running) idleBlankTimer.stop()
       if (useSettle.running) useSettle.stop()
-      if (root.isMonitorDark) {
+      // Per-monitor blanking is off here, so undo only a blank of our own.
+      if (root.isMonitorDark && !root.darkAdopted) {
         root.wakeMonitor(unusedMonitorTimeout <= 0 ? "blanking-disabled" : "single-monitor")
       }
       return
@@ -451,8 +459,23 @@ BarWidget {
         idleBlankTimer.stop()
         root.idleLog("in use (" + reason + "); blank timer stopped")
       }
-      if (root.isMonitorDark) root.wakeMonitor(reason)
+      if (!root.isMonitorDark) return
+      if (root.darkAdopted && root.allOutputsDark()) {
+        root.idleLog("in use (" + reason + ") but every output is dark; leaving it to the idle daemon")
+        return
+      }
+      root.wakeMonitor(reason)
     }
+  }
+
+  // Every output reports DPMS off: a session-wide blank, not one of ours.
+  function allOutputsDark() {
+    var outputs = root.compositorOutputs()
+    if (!outputs || outputs.length === 0) return false
+    for (var i = 0; i < outputs.length; i++) {
+      if (!outputs[i] || outputs[i].dpmsOn !== false) return false
+    }
+    return true
   }
 
   function anyHelperRunning() {
@@ -468,6 +491,7 @@ BarWidget {
     if (!barMonitor) return
     root.isMonitorDark = false
     root.blankUnconfirmed = false
+    root.darkAdopted = false
     root.idleLog("wake (" + reason + ")")
     root.runDesktopCommand(["dpms-on", String(barMonitor.name)])
   }
@@ -481,6 +505,7 @@ BarWidget {
     }
     root.isMonitorDark = true
     root.blankUnconfirmed = true
+    root.darkAdopted = false
     root.idleLog("blank after " + root.unusedMonitorTimeout + " s unused")
     root.runDesktopCommand(["dpms-off", String(barMonitor.name)])
   }
@@ -504,6 +529,7 @@ BarWidget {
     if (root.isMonitorDark) root.idleLog("dark state reset (resetIdle)")
     root.isMonitorDark = false
     root.blankUnconfirmed = false
+    root.darkAdopted = false
     Qt.callLater(root.trackMonitorIdle)
   }
 
@@ -517,6 +543,7 @@ BarWidget {
     if (dark !== root.isMonitorDark) {
       root.idleLog(dark ? "monitor already dark; adopting it" : "monitor is lit; dropping stale dark state")
       root.isMonitorDark = dark
+      root.darkAdopted = dark
       if (dark && idleBlankTimer.running) idleBlankTimer.stop()
       Qt.callLater(root.trackMonitorIdle)
     }

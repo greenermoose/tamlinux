@@ -111,3 +111,8 @@ Claude Code `2.1.292` (`claude-opus-5-5`) kept a monitor this bar blanked dark u
 
 Claude Code `2.1.327` (`claude-opus-5-5`) made a completed helper `dpms-off` confirm this bar's blank, so a monitor lit from elsewhere counts down to blank again. The Tamlinux shell gained `compositorRefresh` alongside. Not tagged or released.
 [Session record](work/history/2026-11-18-confirm-blank-on-helper-exit.md).
+
+## 2026-11-26 leave adopted darkness to its owner (2.0.14)
+
+Claude Code `2.1.332` (`claude-opus-5-5`) stopped the bar waking a monitor it found already dark on a single-monitor host, and on several monitors while every output is dark. A shell restart had lit the toughbook's panel behind hypridle's back. Not tagged or released.
+[Session record](work/history/2026-11-26-leave-adopted-dark-to-owner.md).

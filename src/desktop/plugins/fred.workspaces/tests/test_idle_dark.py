@@ -54,5 +54,25 @@ class IdleDarkTests(unittest.TestCase):
         self.assertIn('ActionQueue.finished(root, root.lastActionBusy, root.lastActionIncomplete, root.lastActionOk)',
                       QML)
 
+    def test_adopted_dark_is_marked(self):
+        probe = block(r'function probeDpmsState\(')
+        self.assertIn('root.darkAdopted = dark', probe)
+        for name in (r'function wakeMonitor\(', r'function blankMonitor\(', r'function resetIdle\('):
+            self.assertIn('root.darkAdopted = false', block(name))
+
+    def test_single_monitor_does_not_wake_adopted_dark(self):
+        # hypridle blanked the toughbook's only panel; a shell restart adopted
+        # that darkness and woke it at once, with nobody there. hypridle, still
+        # idled, never blanked it again (2026-11-25).
+        track = block(r'function trackMonitorIdle\(')
+        self.assertIn('if (root.isMonitorDark && !root.darkAdopted) {', track)
+
+    def test_session_wide_blank_is_left_to_the_idle_daemon(self):
+        settle = block(r'id: useSettle')
+        guard = 'if (root.darkAdopted && root.allOutputsDark())'
+        self.assertIn(guard, settle)
+        self.assertLess(settle.index(guard), settle.index('root.wakeMonitor(reason)'))
+        self.assertIn('outputs[i].dpmsOn !== false', block(r'function allOutputsDark\('))
+
 if __name__ == '__main__':
     unittest.main()

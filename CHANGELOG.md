@@ -85,6 +85,7 @@ Changes since Tamlinux 0.6.31:
 
 ## Unreleased
 
+- `fred.workspaces` 2.0.14: a shell restart no longer lights a monitor that hypridle blanked. On a single-monitor host the panel had stayed lit until the next input.
 - `fred.workspaces` 2.0.13: a monitor it blanked counts down to blank again after something else lights it. The shell gains `compositorRefresh` (`tam-shell tamlinux-shell compositorRefresh`) to re-read outputs after an idle daemon changes DPMS.
 - Remove `udiskie` from desktop startup. Mount and unmount removable drives manually.
 

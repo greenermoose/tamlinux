@@ -4,6 +4,19 @@ All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.works
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.
 
+## 2.0.14 - Unreleased
+
+- Leave a monitor dark when the bar did not darken it. A bar created while its
+  monitor was already dark (shell restart) adopts that state so pointer entry
+  can still wake it, but on a single-monitor host it then woke the panel at
+  once ("wake (single-monitor)"). hypridle had blanked it, was still idled,
+  and saw no input, so it never blanked the panel again: the toughbook stayed
+  lit all night after a shell restart (2026-11-25 18:57). Now a single-monitor
+  host, or one with per-monitor blanking off, wakes only a blank of the bar's
+  own. On several monitors an adopted dark monitor that reads as in use is
+  left dark while every output is dark, because that is a session-wide blank
+  the idle daemon lifts on the next input.
+
 ## 2.0.13 - Unreleased
 
 - Count a blank as confirmed when the helper's `dpms-off` completes, instead
