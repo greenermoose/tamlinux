@@ -1,7 +1,7 @@
 PREFIX ?= /usr/local
 CC ?= cc
 PKG_CONFIG ?= pkg-config
-CFLAGS ?= -O2 -g -Wall -Wextra -Wpedantic -std=c11
+CFLAGS ?= -O2 -g -Wall -Wextra -Wpedantic -std=c17
 # libtam 0.15.0 and later set no feature macros; these sources use GNU
 # and POSIX.1-2008 interfaces.
 override CPPFLAGS += -D_GNU_SOURCE
