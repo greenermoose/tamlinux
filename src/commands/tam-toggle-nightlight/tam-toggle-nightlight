@@ -36,9 +36,23 @@
 ON_TEMP=4000
 OFF_TEMP=6500
 IDENTITY_TEMP=6000
+PANE_STATE="${XDG_RUNTIME_DIR:-/tmp}/tamlinux-nightlight.json"
+
+using_tam_pane() {
+  [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]
+}
 
 current_temp() {
   local output
+
+  if using_tam_pane; then
+    if [[ -f $PANE_STATE ]] && pgrep -x hyprsunset >/dev/null 2>&1; then
+      jq -r '.temperature // empty' "$PANE_STATE" 2>/dev/null
+    else
+      echo "$OFF_TEMP"
+    fi
+    return
+  fi
 
   output=$(hyprctl hyprsunset temperature 2>/dev/null) || return
   grep -oE '[0-9]+' <<<"$output" | head -n1
@@ -60,6 +74,22 @@ status_json() {
 
 if [[ ${1:-} == "--status" ]]; then
   status_json
+  exit 0
+fi
+
+if using_tam_pane; then
+  CURRENT_TEMP=$(current_temp)
+  if [[ -z $CURRENT_TEMP || $CURRENT_TEMP == "$OFF_TEMP" ]]; then
+    TARGET_TEMP=$ON_TEMP
+    pkill -x hyprsunset 2>/dev/null || true
+    setsid uwsm-app -- /usr/bin/hyprsunset -t "$TARGET_TEMP" >/dev/null 2>&1 &
+    printf '{"enabled":true,"temperature":%d}\n' "$TARGET_TEMP" >"$PANE_STATE"
+  else
+    TARGET_TEMP=$OFF_TEMP
+    pkill -x hyprsunset 2>/dev/null || true
+    printf '{"enabled":false,"temperature":%d}\n' "$TARGET_TEMP" >"$PANE_STATE"
+  fi
+  tam-shell -q nightlight refresh || true
   exit 0
 fi
 

@@ -84,9 +84,32 @@ fi
 step="$1"
 
 if [[ $step == "off" ]]; then
+  if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+    while IFS= read -r mon; do
+      [[ -n $mon ]] && tam-pane msg dispatch dpms off "$mon" >/dev/null 2>&1
+    done < <(tam-pane msg monitors 2>/dev/null | awk -F'\t' '$1=="monitor"{for(i=2;i<=NF;i++) if(index($i,"name=")==1) print substr($i,6)}')
+    exit 0
+  fi
   hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })' >/dev/null 2>&1
   exit $?
 elif [[ $step == "on" ]]; then
+  if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+    mapfile -t off_mons < <(tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+      $1 == "monitor" {
+        name = ""; dpms = 1
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "name=") == 1) name = substr($i, 6)
+          else if ($i == "dpms=0") dpms = 0
+        }
+        if (dpms == 0 && name != "") print name
+      }
+    ')
+    (( ${#off_mons[@]} == 0 )) && exit 0
+    for mon in "${off_mons[@]}"; do
+      tam-pane msg dispatch dpms on "$mon" >/dev/null 2>&1
+    done
+    exit 0
+  fi
   # Skip the dispatch when every active display is already lit: a redundant
   # DPMS enable right after system resume forces another modeset, which blanks
   # the panel for a beat (visible flash at the unlock screen).

@@ -69,18 +69,53 @@ pkill -x slurp && exit 0
 # Software-composited cursors (Hyprland's fallback on GPUs without working
 # hardware cursors) are baked into the frames grim captures, so force
 # hardware cursors until after grim runs and restore the setting on exit.
-NO_HW_CURSORS=$(hyprctl getoption cursor:no_hardware_cursors -j | jq -er '.int | select(type == "number")') || exit 1
-[[ $NO_HW_CURSORS =~ ^[0-9]+$ ]] || exit 1
+USING_TAM_PANE=0
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  USING_TAM_PANE=1
+fi
+
+NO_HW_CURSORS=""
+if (( ! USING_TAM_PANE )); then
+  NO_HW_CURSORS=$(hyprctl getoption cursor:no_hardware_cursors -j | jq -er '.int | select(type == "number")') || exit 1
+  [[ $NO_HW_CURSORS =~ ^[0-9]+$ ]] || exit 1
+fi
 
 set_no_hw_cursors() {
+  (( USING_TAM_PANE )) && return 0
   hyprctl eval "hl.config({ cursor = { no_hardware_cursors = $1 } })" &>/dev/null ||
     hyprctl keyword cursor:no_hardware_cursors "$1" &>/dev/null
+}
+
+run_grim() {
+  local geom="$1" dest="$2"
+  if (( USING_TAM_PANE )); then
+    local stage_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+    local tmp_part tmp_ok cmd
+    tmp_part=$(mktemp "$stage_dir/tp-g-XXXXXX") || return 1
+    rm -f -- "$tmp_part"
+    tmp_ok="${tmp_part}.ok"
+    rm -f -- "$tmp_ok"
+    cmd=$(printf 'grim -g %q %q && mv -f %q %q' "$geom" "$tmp_part" "$tmp_part" "$tmp_ok")
+    tam-pane msg dispatch capture "$cmd" >/dev/null 2>&1 || { rm -f -- "$tmp_part" "$tmp_ok"; return 1; }
+    local waited=0
+    while (( waited < 100 )) && [[ ! -s $tmp_ok ]]; do
+      sleep 0.05
+      (( waited++ ))
+    done
+    if [[ -s $tmp_ok ]]; then
+      mv -f -- "$tmp_ok" "$dest"
+      return $?
+    fi
+    rm -f -- "$tmp_part" "$tmp_ok"
+    return 1
+  fi
+  grim -g "$geom" "$dest"
 }
 
 cleanup() {
   [[ -n $FREEZE_PID ]] && kill $FREEZE_PID 2>/dev/null
   [[ -n $COPY_FILE ]] && rm -f -- "$COPY_FILE"
-  set_no_hw_cursors "$NO_HW_CURSORS"
+  [[ -n $NO_HW_CURSORS ]] && set_no_hw_cursors "$NO_HW_CURSORS"
 }
 trap cleanup EXIT
 
@@ -92,11 +127,12 @@ set_no_hw_cursors 0
 FILEPATH=""
 if [[ $PROCESSING != copy ]]; then
   FILEPATH=$(mktemp "$OUTPUT_DIR/screenshot-$(date +'%Y-%m-%d_%H-%M-%S')-XXXXXX.png") || exit 1
+  rm -f -- "$FILEPATH"
 fi
 
 case "$PROCESSING" in
   slurp)
-    grim -g "$SELECTION" "$FILEPATH" || { rm -f -- "$FILEPATH"; exit 1; }
+    run_grim "$SELECTION" "$FILEPATH" || { rm -f -- "$FILEPATH" "${FILEPATH}.part"; exit 1; }
     echo "$FILEPATH"
     wl-copy --type image/png <"$FILEPATH" || exit 1
 
@@ -108,11 +144,12 @@ case "$PROCESSING" in
     ;;
   copy)
     COPY_FILE=$(mktemp "${TMPDIR:-/tmp}/tamlinux-screenshot-XXXXXX.png") || exit 1
-    grim -g "$SELECTION" "$COPY_FILE" || exit 1
+    rm -f -- "$COPY_FILE"
+    run_grim "$SELECTION" "$COPY_FILE" || exit 1
     wl-copy --type image/png <"$COPY_FILE"
     ;;
   save)
-    grim -g "$SELECTION" "$FILEPATH" || { rm -f -- "$FILEPATH"; exit 1; }
+    run_grim "$SELECTION" "$FILEPATH" || { rm -f -- "$FILEPATH" "${FILEPATH}.part"; exit 1; }
     echo "$FILEPATH"
     ;;
 esac

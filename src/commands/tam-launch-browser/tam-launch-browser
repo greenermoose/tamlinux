@@ -62,4 +62,6 @@ systemd-run --user --quiet --collect --unit="tamlinux-browser-$(date +%s%N)" \
 
 if [[ -n $url && -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   tam-hyprland-focus-app "^$(basename "$browser_exec" -stable).*$" || true
+elif [[ -n $url && -n ${TAM_PANE_SOCKET:-} ]]; then
+  tam-pane msg dispatch focus_app "$(basename "$browser_exec" -stable)" >/dev/null 2>&1 || true
 fi

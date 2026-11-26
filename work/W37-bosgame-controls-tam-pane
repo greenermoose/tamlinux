@@ -1,0 +1,42 @@
+W37: Port bosgame's controls to tam-pane (0.7.0 Milestone 6)
+
+Date: 2026-11-26
+Agent: agy (Gemini)
+Branch: dev
+
+SUMMARY
+
+  Implemented ROADMAP.md Milestone 6 for Tamlinux 0.7.0 Northern Torch:
+  - Pinned `tam-pane` 0.2.8 (`665c94c6ea7b35edb483d9932e8831fadb922423`)
+    in `components.lock` (adds `tp.monitor`, XKB/pointer settings,
+    `tp.home`/`tp.config_dir`/`tp.include`, `code:<N>` keycodes,
+    `{ release = true }` binds, `tp.mouse_bind`, directional focus,
+    `send_key`, authorized `capture` dispatch, and window `id`/`pid` +
+    monitor `phys_w`/`phys_h`/`refresh`/`transform` IPC).
+  - Replaced the stub `src/desktop/session/tam-pane.lua` with complete
+    Tamlinux defaults (vconsole XKB, chord composer, floating/PiP/webcam
+    window rules, full shortcut map, Meta+Right-click Start menu and
+    Meta+Alt+Right-drag resize mouse bindings, UWSM/portal autostart,
+    and optional `tp.include` of managed monitors, `~/.config/tam-pane/init.lua`,
+    and `~/.config/tamlinux/tam-pane/macros.lua` preserved across reloads).
+  - Made desktop commands `tam-pane`-aware (detecting `$TAM_PANE_SOCKET`
+    when `$HYPRLAND_INSTANCE_SIGNATURE` is unset, preserving Hyprland):
+    `tam-launch-or-focus`, `tam-launch-browser`, `tam-cmd-terminal-cwd`,
+    `tam-hyprland-monitor-focused`, `tam-hyprland-monitor-focused-apple`,
+    `tam-brightness-display`, `tam-hyprland-monitor-scaling`,
+    `tam-toggle-nightlight`, `tam-capture-region`, `tam-capture-screenshot`,
+    `tam-capture-screenrecording`, `tam-macro`, and `tam-system-lock`.
+  - Installed `tam-pane` 0.2.8 to `~/.local/bin/tam-pane`, created
+    bosgame's personal override `~/.config/tam-pane/init.lua`, and
+    generated `~/.config/tamlinux/tam-pane/macros.lua` via `tam-macro sync`.
+  - Added `tests/test_tam_pane_controls.py` and updated
+    `tests/test_tam_pane_adapter.py` and `tests/test_session_defaults.py`.
+
+VERIFICATION
+
+  - `tam-pane` 0.2.8 (`665c94c`): `make test` passed (test_tags 28,
+    test_dwindle 143, test_layouts 102, test_lua 599, test_ipc 150,
+    test_chord ok, smoke-headless 6/6, test_input_headless 755).
+  - `tamlinux`: `test_tam_pane_controls.py` (3/3), `test_tam_pane_adapter.py`
+    (3/3), `test_session_defaults.py` (8/8), `test_session_launcher.py` (7/7),
+    `bash -n` on all 12 modified shell scripts, and `py_compile` on `tam-macro`.

@@ -29,7 +29,17 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-terminal_pid=$(hyprctl activewindow | awk '/pid:/ {print $2}')
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  terminal_pid=$(tam-pane msg focused 2>/dev/null | awk -F'\t' '
+    $1 == "window" {
+      for (i = 2; i <= NF; i++) {
+        if (index($i, "pid=") == 1) { print substr($i, 5); exit 0 }
+      }
+    }
+  ')
+else
+  terminal_pid=$(hyprctl activewindow | awk '/pid:/ {print $2}')
+fi
 kitty_socket="${XDG_RUNTIME_DIR:-}/tamlinux-kitty-$terminal_pid"
 cwd=""
 

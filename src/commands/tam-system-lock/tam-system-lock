@@ -37,7 +37,9 @@ if ! pidof hyprlock >/dev/null; then
 fi
 
 # Set keyboard layout to default (first layout)
-hyprctl switchxkblayout all 0 > /dev/null 2>&1
+if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  hyprctl switchxkblayout all 0 > /dev/null 2>&1 || true
+fi
 
 # Ensure 1password is locked. Use timeout because `1password --lock` can
 # otherwise leave a full Electron helper tree running after each lock.

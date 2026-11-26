@@ -174,8 +174,26 @@ start_webcam_overlay() {
   # recorded sliding into its corner. Waiting for the map is what the blind
   # second was partly guessing at, so the remainder is trimmed to hold the
   # pre-capture delay where it was: starting later costs the first words spoken.
+  webcam_mapped() {
+    if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+      tam-pane msg windows 2>/dev/null | awk -F'\t' -v pid="$webcam_pid" '
+        $1 == "window" {
+          t = ""; p = ""
+          for (i = 2; i <= NF; i++) {
+            if (index($i, "title=") == 1) t = substr($i, 7)
+            else if (index($i, "pid=") == 1) p = substr($i, 5)
+          }
+          if (t == "WebcamOverlay" && p == pid) exit 0
+        }
+        END { exit 1 }
+      '
+    else
+      hyprctl clients -j | jq -e --argjson pid "$webcam_pid" 'any(.[]; .title == "WebcamOverlay" and .pid == $pid)' >/dev/null 2>&1
+    fi
+  }
+
   local waited=0
-  while ((waited < 40)) && ! hyprctl clients -j | jq -e --argjson pid "$webcam_pid" 'any(.[]; .title == "WebcamOverlay" and .pid == $pid)' >/dev/null 2>&1; do
+  while ((waited < 40)) && ! webcam_mapped; do
     owned_process "$WEBCAM_PID_FILE" >/dev/null || return 1
     sleep 0.05
     ((waited++))
@@ -199,12 +217,39 @@ cleanup_webcam() {
 }
 
 focused_monitor() {
+  if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+    tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+      $1 == "monitor" {
+        name = ""; focused = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "name=") == 1) name = substr($i, 6)
+          else if ($i == "focused=1") focused = 1
+        }
+        if (focused && name != "") { print name; exit 0 }
+      }
+    '
+    return
+  fi
   hyprctl monitors -j | jq -r '.[] | select(.focused == true).name'
 }
 
 default_resolution() {
   local width height
-  read -r width height < <(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | "\(.width) \(.height)"')
+  if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+    read -r width height < <(tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+      $1 == "monitor" {
+        w = 0; h = 0; focused = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "phys_w=") == 1) w = substr($i, 8)
+          else if (index($i, "phys_h=") == 1) h = substr($i, 8)
+          else if ($i == "focused=1") focused = 1
+        }
+        if (focused) { print w, h; exit 0 }
+      }
+    ')
+  else
+    read -r width height < <(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | "\(.width) \(.height)"')
+  fi
   if ((width > 3840 || height > 2160)); then
     echo "3840x2160"
   else

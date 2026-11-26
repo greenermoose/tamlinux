@@ -25,4 +25,18 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+    $1 == "monitor" {
+      name = ""; focused = 0
+      for (i = 2; i <= NF; i++) {
+        if (index($i, "name=") == 1) name = substr($i, 6)
+        else if ($i == "focused=1") focused = 1
+      }
+      if (focused && name != "") { print name; exit 0 }
+    }
+  '
+  exit 0
+fi
+
 hyprctl monitors -j | jq -r '.[] | select(.focused == true).name'

@@ -70,6 +70,11 @@ JQ_MONITOR_GEO='
     end;
 '
 
+USING_TAM_PANE=0
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  USING_TAM_PANE=1
+fi
+
 active_workspace() {
   hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .activeWorkspace.id'
 }
@@ -78,11 +83,42 @@ active_workspace() {
 # one rectangle: slurp cannot tell them apart, and duplicates would stall the
 # Tab cycle on the first copy.
 window_rects() {
+  if (( USING_TAM_PANE )); then
+    tam-pane msg windows 2>/dev/null | awk -F'\t' '
+      $1 == "window" {
+        x = ""; y = ""; w = ""; h = ""; sp = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "x=") == 1) x = substr($i, 3)
+          else if (index($i, "y=") == 1) y = substr($i, 3)
+          else if (index($i, "w=") == 1) w = substr($i, 3)
+          else if (index($i, "h=") == 1) h = substr($i, 3)
+          else if ($i == "scratchpad=1") sp = 1
+        }
+        if (!sp && w > 0 && h > 0) print x "," y " " w "x" h
+      }
+    ' | sort -u
+    return
+  fi
   hyprctl clients -j | jq -r --arg ws "$(active_workspace)" \
     '[.[] | select(.workspace.id == ($ws | tonumber) and .hidden != true) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"] | unique[]'
 }
 
 monitor_rects() {
+  if (( USING_TAM_PANE )); then
+    tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+      $1 == "monitor" {
+        x = 0; y = 0; w = 0; h = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "x=") == 1) x = substr($i, 3)
+          else if (index($i, "y=") == 1) y = substr($i, 3)
+          else if (index($i, "w=") == 1) w = substr($i, 3)
+          else if (index($i, "h=") == 1) h = substr($i, 3)
+        }
+        if (w > 0 && h > 0) print x "," y " " w "x" h
+      }
+    '
+    return
+  fi
   hyprctl monitors -j | jq -r --arg ws "$(active_workspace)" "${JQ_MONITOR_GEO} .[] | select(.activeWorkspace.id == (\$ws | tonumber)) | format_geo"
 }
 
@@ -92,6 +128,22 @@ get_rectangles() {
 }
 
 focused_monitor_geo() {
+  if (( USING_TAM_PANE )); then
+    tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+      $1 == "monitor" {
+        x = 0; y = 0; w = 0; h = 0; focused = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "x=") == 1) x = substr($i, 3)
+          else if (index($i, "y=") == 1) y = substr($i, 3)
+          else if (index($i, "w=") == 1) w = substr($i, 3)
+          else if (index($i, "h=") == 1) h = substr($i, 3)
+          else if ($i == "focused=1") focused = 1
+        }
+        if (focused && w > 0 && h > 0) { print x "," y " " w "x" h; exit 0 }
+      }
+    '
+    return
+  fi
   hyprctl monitors -j | jq -r "${JQ_MONITOR_GEO} .[] | select(.focused == true) | format_geo"
 }
 
@@ -153,9 +205,23 @@ warp_point_in() {
 # well as window rects, so a cursor in a gap or over the bar highlights the
 # monitor rather than any window.
 geo_at_cursor() {
-  local pos=$(hyprctl cursorpos)
-  local x=${pos%,*}
-  local y=${pos#*, }
+  local x y
+  if (( USING_TAM_PANE )); then
+    read -r x y < <(tam-pane msg cursor 2>/dev/null | awk -F'\t' '
+      $1 == "cursor" {
+        cx = 0; cy = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "x=") == 1) cx = substr($i, 3)
+          else if (index($i, "y=") == 1) cy = substr($i, 3)
+        }
+        print cx, cy; exit 0
+      }
+    ')
+  else
+    local pos=$(hyprctl cursorpos)
+    x=${pos%,*}
+    y=${pos#*, }
+  fi
 
   if resolve_rect_at "$x" "$y" < <(window_rects) || resolve_rect_at "$x" "$y" < <(monitor_rects); then
     echo "$RESOLVED_RECT"
@@ -337,6 +403,7 @@ pick() {
 
 FREEZE_PID=""
 freeze_screen() {
+  (( USING_TAM_PANE )) && return 0
   hyprpicker -r -z >/dev/null 2>&1 &
   FREEZE_PID=$!
   sleep .1
@@ -393,7 +460,23 @@ esac
 [[ -n $SELECTION ]] || exit 1
 
 if [[ $MATCH_MONITOR == true ]]; then
-  monitor=$(hyprctl monitors -j | jq -r --arg geo "$SELECTION" "${JQ_MONITOR_GEO} .[] | select(format_geo == \$geo) | .name" | head -1)
+  if (( USING_TAM_PANE )); then
+    monitor=$(tam-pane msg monitors 2>/dev/null | awk -F'\t' -v geo="$SELECTION" '
+      $1 == "monitor" {
+        name = ""; x = 0; y = 0; w = 0; h = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "name=") == 1) name = substr($i, 6)
+          else if (index($i, "x=") == 1) x = substr($i, 3)
+          else if (index($i, "y=") == 1) y = substr($i, 3)
+          else if (index($i, "w=") == 1) w = substr($i, 3)
+          else if (index($i, "h=") == 1) h = substr($i, 3)
+        }
+        if (x "," y " " w "x" h == geo && name != "") { print name; exit 0 }
+      }
+    ')
+  else
+    monitor=$(hyprctl monitors -j | jq -r --arg geo "$SELECTION" "${JQ_MONITOR_GEO} .[] | select(format_geo == \$geo) | .name" | head -1)
+  fi
   if [[ -n $monitor ]]; then
     echo "monitor:$monitor"
     exit 0

@@ -35,6 +35,29 @@ fi
 
 WINDOW_PATTERN="$1"
 LAUNCH_COMMAND="${2:-"uwsm-app -- $WINDOW_PATTERN"}"
+
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  matched=$(tam-pane msg windows 2>/dev/null | awk -F'\t' -v pat="$WINDOW_PATTERN" '
+    BEGIN { IGNORECASE = 1 }
+    $1 == "window" {
+      app = ""; title = ""
+      for (i = 2; i <= NF; i++) {
+        if (index($i, "app_id=") == 1) app = substr($i, 8)
+        else if (index($i, "title=") == 1) title = substr($i, 7)
+      }
+      if (index(tolower(app), tolower(pat)) > 0 || index(tolower(title), tolower(pat)) > 0) {
+        print (app != "" ? app : pat)
+        exit 0
+      }
+    }
+  ')
+  if [[ -n $matched ]]; then
+    tam-pane msg dispatch focus_app "$matched" >/dev/null 2>&1
+    exit $?
+  fi
+  exec setsid bash -c "exec $LAUNCH_COMMAND"
+fi
+
 WINDOW_ADDRESS=$(hyprctl clients -j | jq -r --arg p "$WINDOW_PATTERN" '.[]|select((.class|test("\\b" + $p + "\\b";"i")) or (.title|test("\\b" + $p + "\\b";"i")))|.address' | head -n1)
 
 if [[ -n $WINDOW_ADDRESS ]]; then

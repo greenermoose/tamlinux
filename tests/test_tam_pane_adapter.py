@@ -331,8 +331,11 @@ class TamPaneAdapterTests(unittest.TestCase):
         if not tam_pane:
             self.skipTest("tam-pane binary not available")
         ver = subprocess.run([tam_pane, "--version"], capture_output=True, text=True, timeout=5)
-        if "0.2.7" not in (ver.stdout + ver.stderr):
-            self.skipTest(f"tam-pane 0.2.7 required (got {(ver.stdout + ver.stderr).strip()!r})")
+        ver_text = (ver.stdout + ver.stderr).strip()
+        parts = ver_text.split()
+        ver_tuple = tuple(int(x) for x in parts[-1].split(".")) if parts and all(x.isdigit() for x in parts[-1].split(".")) else ()
+        if ver_tuple < (0, 2, 7):
+            self.skipTest(f"tam-pane >= 0.2.7 required (got {ver_text!r})")
 
         with tempfile.TemporaryDirectory(prefix="tamlinux-tampane-headless-") as directory:
             root = Path(directory)

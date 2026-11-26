@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W36
+Updated: 2026-11-26, with W37
 
 
 STATE
@@ -60,6 +60,24 @@ STATE
     layout, DPMS, focus, and pointer queries; Compositor.qml selects
     TamPaneAdapter in tam-pane sessions; verified with offscreen two-output
     mock/reconnect and real headless two-output tam-pane tests.
+  - Milestone 6 (port bosgame's controls) is complete on dev (W37):
+    components.lock pins tam-pane 0.2.8 (665c94c, adding tp.monitor
+    geometry/mode/scale/transform rules with live reload, XKB/pointer
+    config, tp.home/tp.config_dir/tp.include, code:<N> keycodes, release
+    binds, tp.mouse_bind, directional focus, send_key, authorized capture
+    dispatch, and window id/pid + monitor phys/refresh/transform IPC);
+    src/desktop/session/tam-pane.lua translates Tamlinux defaults (input,
+    window rules, shortcuts, mouse bindings including Meta+Right-click
+    Start menu, autostart, and personal override/macro includes preserved
+    across reloads); 13 desktop commands (tam-launch-or-focus,
+    tam-launch-browser, tam-cmd-terminal-cwd, tam-hyprland-monitor-focused,
+    tam-hyprland-monitor-focused-apple, tam-brightness-display,
+    tam-hyprland-monitor-scaling, tam-toggle-nightlight,
+    tam-capture-region, tam-capture-screenshot,
+    tam-capture-screenrecording, tam-macro, tam-system-lock) are now
+    tam-pane aware while keeping Hyprland intact; bosgame personal
+    overrides live in ~/.config/tam-pane/init.lua and generated macros in
+    ~/.config/tamlinux/tam-pane/macros.lua.
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
@@ -70,12 +88,11 @@ STATE
 
 NEXT
 
-  1. For 0.7.0, implement ROADMAP.md milestone 6 (Port bosgame's controls):
-     translate effective monitor geometry and scale, input settings, window
-     rules, shortcuts, mouse bindings, autostart and macros into tam-pane
-     configuration while preserving personal overrides across reloads.
-  2. Proceed through ROADMAP.md milestones 7-8 (shell/app trials and
-     automated desktop test battery).
+  1. For 0.7.0, implement ROADMAP.md milestone 7 (Prove the shell and
+     apps): exercise the bar, menus, panels, popup focus, notifications,
+     OSD, clipboard, authorization, theme changes, all nine fred.*
+     plugins, and everyday apps on tam-pane with Hyprland stopped.
+  2. Proceed to ROADMAP.md milestone 8 (Automate repeatable checks).
 
 
 WAITING FOR FRED

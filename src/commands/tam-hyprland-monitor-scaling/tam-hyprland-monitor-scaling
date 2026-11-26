@@ -40,8 +40,42 @@ usage() {
   echo "Usage: tam-hyprland-monitor-scaling [up|down|SCALE]"
 }
 
+USING_TAM_PANE=0
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  USING_TAM_PANE=1
+fi
+
+focused_monitor_json() {
+  if (( USING_TAM_PANE )); then
+    tam-pane msg monitors 2>/dev/null | python3 -c '
+import json, sys
+for line in sys.stdin:
+    if not line.startswith("monitor\t"):
+        continue
+    f = {}
+    for part in line.rstrip("\n").split("\t")[1:]:
+        if "=" in part:
+            k, v = part.split("=", 1)
+            f[k] = v
+    if f.get("focused") == "1":
+        refresh_mhz = int(f.get("refresh", "60000") or "60000")
+        print(json.dumps({
+            "name": f.get("name", ""),
+            "scale": float(f.get("scale", "1.0")),
+            "width": int(f.get("phys_w") or f.get("w") or "0"),
+            "height": int(f.get("phys_h") or f.get("h") or "0"),
+            "refreshRate": (refresh_mhz / 1000.0) if refresh_mhz > 0 else 60.0,
+        }))
+        sys.exit(0)
+sys.exit(1)
+'
+    return $?
+  fi
+  hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)'
+}
+
 focused_monitor_scale() {
-  hyprctl monitors -j | jq -er '.[] | select(.focused == true) | .scale'
+  focused_monitor_json | jq -er '.scale'
 }
 
 cmdline_for_pid() {
@@ -103,7 +137,7 @@ set_scale() {
   local requested_scale="$1"
   local requested="${2:-$requested_scale}"
   local monitor_info
-  monitor_info=$(hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)') || return 2
+  monitor_info=$(focused_monitor_json) || return 2
   local active_monitor="$(echo "$monitor_info" | jq -r '.name')"
   local current_scale="$(echo "$monitor_info" | jq -r '.scale')"
   local width="$(echo "$monitor_info" | jq -r '.width')"
@@ -123,6 +157,11 @@ set_scale() {
   awk -v refresh="$refresh_rate" -v scale="$current_scale" 'BEGIN { exit !(refresh > 0 && refresh <= 1000 && scale > 0 && scale <= 16) }' || return 2
 
   local new_scale="$(clean_scale "$requested_scale" "$width" "$height")"
+  if (( USING_TAM_PANE )); then
+    tam-pane msg dispatch monitor scale "$active_monitor" "$new_scale" >/dev/null || return 1
+    audit_scale_change "$requested" "$active_monitor" "$current_scale" "$new_scale"
+    return 0
+  fi
   local monitor_lua="${XDG_CONFIG_HOME:-$HOME/.config}/tamlinux/hypr/monitors.lua"
   [[ $monitor_lua == /* && ! -L $monitor_lua ]] || { echo "Unsafe monitor override path" >&2; return 2; }
   [[ ! -e $monitor_lua || -f $monitor_lua ]] || return 2
@@ -224,12 +263,12 @@ case "${1:-}" in
   usage
   ;;
 up)
-  monitor_info=$(hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)')
+  monitor_info=$(focused_monitor_json)
   set_scale "$(echo "$monitor_info" | jq -r '.scale' | scale_from_current next \
     "$(echo "$monitor_info" | jq -r '.width')" "$(echo "$monitor_info" | jq -r '.height')")" "up"
   ;;
 down)
-  monitor_info=$(hyprctl monitors -j | jq -e -c '.[] | select(.focused == true)')
+  monitor_info=$(focused_monitor_json)
   set_scale "$(echo "$monitor_info" | jq -r '.scale' | scale_from_current previous \
     "$(echo "$monitor_info" | jq -r '.width')" "$(echo "$monitor_info" | jq -r '.height')")" "down"
   ;;
