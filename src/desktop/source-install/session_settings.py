@@ -16,12 +16,20 @@ LIMIT = 1024 * 1024
 LEGACY = b"/usr/lib/tamlinux/source/current/"
 COMMON_REQUIRED = ("uwsm/env.d/10-tamlinux.sh",)
 SESSION_REQUIRED = {
-    "hyprland": ("tamlinux/session/hyprland.lua",),
-    "pane": ("tamlinux/session/tam-pane.lua",),
+    "hyprland": (
+        "tamlinux/session/hyprland.lua",
+        "xdg-desktop-portal/hyprland-portals.conf",
+    ),
+    "pane": (
+        "tamlinux/session/tam-pane.lua",
+        "xdg-desktop-portal/tam-pane-portals.conf",
+    ),
 }
 REQUIRED = (
     "tamlinux/session/hyprland.lua",
+    "xdg-desktop-portal/hyprland-portals.conf",
     "tamlinux/session/tam-pane.lua",
+    "xdg-desktop-portal/tam-pane-portals.conf",
     "uwsm/env.d/10-tamlinux.sh",
 )
 

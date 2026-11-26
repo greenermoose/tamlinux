@@ -23,9 +23,13 @@ def source_fixture(stage):
     defaults = runtime / "defaults/home/.config"
     for relative, text in zip(REQUIRED, (
         'dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n',
+        '[preferred]\ndefault=hyprland;gtk\norg.freedesktop.impl.portal.FileChooser=gtk\n',
         'local code, err = tp.read_file("/usr/lib/tamlinux/current/share/tamlinux/session/tam-pane.lua")\n'
         'assert(code, err)\n'
         'assert(load(code, "@/usr/lib/tamlinux/current/share/tamlinux/session/tam-pane.lua", "t"))()\n',
+        '[preferred]\ndefault=gtk\norg.freedesktop.impl.portal.ScreenCast=wlr\n'
+        'org.freedesktop.impl.portal.Screenshot=wlr\norg.freedesktop.impl.portal.FileChooser=gtk\n'
+        'org.freedesktop.impl.portal.Inhibit=none\n',
         '. /usr/lib/tamlinux/current/share/tamlinux/session/uwsm-env\n',
     ), strict=True):
         path = defaults / relative
@@ -146,10 +150,20 @@ class SourceSessionTests(unittest.TestCase):
                     # Pane session itself still fails closed when tam-pane.lua is invalid.
                     with self.assertRaisesRegex(ValueError, "tam-pane.lua"):
                         settings.ready(defaults, system.active, system.pending, session="pane")
-                    # Valid tam-pane.lua allows pane session even if hyprland.lua is empty.
+                    # Valid tam-pane.lua allows pane session even if hyprland.lua is empty,
+                    # and auto-publishes missing tam-pane-portals.conf on existing ready.json hosts.
                     pane_cfg.write_text('tp.config{}\n')
+                    pane_portals = config / "xdg-desktop-portal/tam-pane-portals.conf"
+                    pane_portals.unlink(missing_ok=True)
                     (config / "tamlinux/session/hyprland.lua").write_text("")
                     settings.ready(defaults, system.active, system.pending, session="pane")
+                    self.assertIn("org.freedesktop.impl.portal.ScreenCast=wlr", pane_portals.read_text())
+                    # Broken tam-pane-portals.conf blocks pane but does not block Hyprland recovery.
+                    pane_portals.write_text("")
+                    with self.assertRaisesRegex(ValueError, "tam-pane-portals.conf"):
+                        settings.ready(defaults, system.active, system.pending, session="pane")
+                    (config / "tamlinux/session/hyprland.lua").write_text('dofile("/usr/lib/tamlinux/current/share/tamlinux/session/entry.lua")\n')
+                    settings.ready(defaults, system.active, system.pending, session="hyprland")
                 with self.assertRaises(ValueError):
                     settings.ready(defaults, system.active, system.pending, session="sway")
 

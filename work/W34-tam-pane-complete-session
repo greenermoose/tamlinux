@@ -1,0 +1,49 @@
+W34 COMPLETE TAM-PANE UWSM SESSION BRING-UP (0.7.0 MILESTONE 4)
+
+Date: 2026-11-25
+AI harness: Antigravity CLI 1.5.17
+AI model: Gemini 4 Neon (Medium)
+Continues: W33
+
+GUIDANCE
+
+  Fred: "/plan Do the next work slice to get ready for Tamlinux 0.7.0"
+  Fred: "/plan show me your plan in tam-view"
+  Fred: "Approved. Proceed."
+
+DONE
+
+  - Updated src/desktop/session/uwsm-env to preserve XDG_CURRENT_DESKTOP
+    and XDG_SESSION_DESKTOP set by uwsm start -e -D <desktop> (keeping
+    Hyprland as fallback) and export UWSM_FINALIZE_VARNAMES and
+    UWSM_WAIT_VARNAMES with TAM_PANE_SOCKET for tam-pane sessions.
+  - Updated src/desktop/session/tam-pane.lua startup hook to launch
+    xdg-desktop-portal-wlr via tp.capture{"/usr/lib/xdg-desktop-portal-wlr"}
+    after uwsm finalize TAM_PANE_SOCKET so PipeWire ScreenCast and
+    Screenshot receive an authorized WAYLAND_SOCKET and exit cleanly on
+    compositor disconnect.
+  - Staged defaults/home/.config/xdg-desktop-portal/tam-pane-portals.conf
+    in src/desktop/install-cultivar-layout.py (FileChooser=gtk,
+    ScreenCast=wlr, Screenshot=wlr, Inhibit=none) and scoped per-session
+    portal config validation/publishing in
+    src/desktop/source-install/session_settings.py so Hyprland recovery
+    stays independent of tam-pane settings.
+  - Declared pipewire, wireplumber, xdg-desktop-portal,
+    xdg-desktop-portal-gtk, and xdg-desktop-portal-wlr in
+    src/desktop/source-install/arch-packages and added the portal runtime
+    files to src/desktop/source-install/preflight.py.
+  - Added TAM_PANE_ to SESSION_PREFIXES in tests/check-all.
+  - Verified with 15 session-defaults/launcher tests, 5 product-install
+    tests, 13 console-desktop tests, 9 check-all tests, 32 source-install
+    tests, and sh -n on uwsm-env.
+
+FAILED
+
+  - Nothing. Live hardware ScreenCast proof requires installing
+    xdg-desktop-portal-wlr on the host (awaiting Fred's approval or next
+    Test candidate).
+
+HANDOFF
+
+  - Proceed to 0.7.0 Milestone 5: connect Quickshell to tam-pane via a
+    TamPaneAdapter on the shared ProtocolState layer (P6).

@@ -303,6 +303,14 @@ def install(stage: Path, source: Path = SOURCE, current: str = CURRENT) -> None:
         b"[Desktop Entry]\nType=Application\nName=Fcitx 5\nHidden=true\n")
     put(home / ".config/xdg-desktop-portal/hyprland-portals.conf",
         b"[preferred]\ndefault=hyprland;gtk\norg.freedesktop.impl.portal.FileChooser=gtk\n")
+    put(home / ".config/xdg-desktop-portal/tam-pane-portals.conf", (
+        b"[preferred]\n"
+        b"default=gtk\n"
+        b"org.freedesktop.impl.portal.ScreenCast=wlr\n"
+        b"org.freedesktop.impl.portal.Screenshot=wlr\n"
+        b"org.freedesktop.impl.portal.FileChooser=gtk\n"
+        b"org.freedesktop.impl.portal.Inhibit=none\n"
+    ))
     put(home / ".config/tamlinux/menu/default.jsonc",
         (source / "src/desktop/menu/default.jsonc").read_bytes())
     shutil.copytree(source / "src/desktop/browser/extensions", home / ".config/tamlinux/chromium/extensions")

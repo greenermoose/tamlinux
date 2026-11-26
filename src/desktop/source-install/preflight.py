@@ -50,6 +50,9 @@ RUNTIME_FILES = {
     "usr/lib/libwayland-server.so.0": "wayland",
     "usr/lib/libwlroots-0.20.so": "wlroots0.20",
     "usr/lib/libxkbcommon.so.0": "libxkbcommon",
+    "usr/lib/xdg-desktop-portal": "xdg-desktop-portal",
+    "usr/lib/xdg-desktop-portal-gtk": "xdg-desktop-portal-gtk",
+    "usr/lib/xdg-desktop-portal-wlr": "xdg-desktop-portal-wlr",
 }
 ARCH_PACKAGES = Path(__file__).resolve().with_name("arch-packages")
 

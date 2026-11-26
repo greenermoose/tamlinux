@@ -38,6 +38,11 @@ hyprland>=0.56
 hypridle
 quickshell>=0.3
 uwsm
+pipewire
+wireplumber
+xdg-desktop-portal
+xdg-desktop-portal-gtk
+xdg-desktop-portal-wlr
 
 # Desktop defaults (pointer, fonts, terminal, browser)
 adwaita-cursors

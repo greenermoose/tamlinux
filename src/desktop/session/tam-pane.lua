@@ -18,5 +18,7 @@ tp.bind("Print", tp.dsp.spawn("tam-capture-screenshot"), { desc = "Screenshot" }
 tp.on("startup", function()
   -- Export WAYLAND_DISPLAY and TAM_PANE_SOCKET to systemd/D-Bus before session services start.
   tp.spawn("uwsm finalize TAM_PANE_SOCKET")
+  -- Grant xdg-desktop-portal-wlr an authorized WAYLAND_SOCKET for PipeWire ScreenCast/Screenshot.
+  tp.capture{"/usr/lib/xdg-desktop-portal-wlr"}
   tp.spawn("tam-powerprofiles-set autodetect")
 end)

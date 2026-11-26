@@ -162,3 +162,33 @@ class SessionLauncherTests(unittest.TestCase):
             result = subprocess.run([str(start)], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn("Tamlinux tam-pane binary is not installed", result.stderr)
+
+    def test_shell_session_environment_and_unit_contracts_for_tam_pane(self):
+        shell_start_spec = importlib.util.spec_from_file_location(
+            "session_start", SOURCE.parent / "shell/host/session_start.py")
+        shell_start = importlib.util.module_from_spec(shell_start_spec)
+        shell_start_spec.loader.exec_module(shell_start)
+        with tempfile.TemporaryDirectory() as temp:
+            env, notes = shell_start.session_environment({
+                "HOME": temp,
+                "PATH": "/usr/local/bin:/usr/bin",
+                "WAYLAND_DISPLAY": "wayland-1",
+                "XDG_CURRENT_DESKTOP": "tam-pane",
+                "XDG_SESSION_DESKTOP": "tam-pane",
+                "TAM_PANE_SOCKET": "/run/user/1000/tam-pane/wayland-1.sock",
+                "TAMLINUX_BAR": "0",
+            })
+        self.assertEqual(env["XDG_CURRENT_DESKTOP"], "tam-pane")
+        self.assertEqual(env["TAM_PANE_SOCKET"], "/run/user/1000/tam-pane/wayland-1.sock")
+        self.assertEqual(env["TAMLINUX_HYPRLAND_VERSION"], "")
+        self.assertEqual(env["TAMLINUX_HOST_PATH"], "/usr/local/bin:/usr/bin")
+        self.assertEqual(notes, [])
+        # Verify systemd user unit contracts for session bring-up and cleanup.
+        units = SOURCE.parent / "systemd/user"
+        shell_unit = (units / "tamlinux-shell.service").read_text()
+        self.assertIn("After=graphical-session.target\n", shell_unit)
+        self.assertIn("PartOf=graphical-session.target\n", shell_unit)
+        self.assertIn("ConditionEnvironment=WAYLAND_DISPLAY\n", shell_unit)
+        self.assertIn(",polkit,", shell_unit)
+        monitor_unit = (units / "tamlinux-monitor-watch.service").read_text()
+        self.assertIn("ConditionEnvironment=HYPRLAND_INSTANCE_SIGNATURE\n", monitor_unit)

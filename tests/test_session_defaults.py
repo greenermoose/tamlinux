@@ -76,6 +76,21 @@ class SessionDefaults(unittest.TestCase):
         self.assertEqual(env['XDG_CONFIG_HOME'], '/personal-config')
         self.assertEqual(env['TAMLINUX_MENU_EXTENSION'], '/personal-menu')
         self.assertEqual(env['TAMLINUX_SESSION'], '1')
+        self.assertEqual(env['XDG_CURRENT_DESKTOP'], 'Hyprland')
+        self.assertEqual(env['XDG_SESSION_DESKTOP'], 'Hyprland')
+        self.assertNotIn('TAM_PANE_SOCKET', env.get('UWSM_FINALIZE_VARNAMES', ''))
+        self.assertNotIn('TAM_PANE_SOCKET', env.get('UWSM_WAIT_VARNAMES', ''))
+
+    def test_uwsm_env_preserves_tam_pane_identity_and_wait_finalize_vars(self):
+        result = subprocess.run(['/bin/bash', '-c', '. "$1"; /usr/bin/env', 'test',
+                                 str(ROOT / 'uwsm-env')],
+            env={'HOME': '/user-home', 'PATH': '/usr/bin', 'XDG_CURRENT_DESKTOP': 'tam-pane'},
+            capture_output=True, text=True, timeout=10, check=True)
+        env = dict(line.split('=', 1) for line in result.stdout.splitlines())
+        self.assertEqual(env['XDG_CURRENT_DESKTOP'], 'tam-pane')
+        self.assertEqual(env['XDG_SESSION_DESKTOP'], 'tam-pane')
+        self.assertIn('TAM_PANE_SOCKET', env.get('UWSM_FINALIZE_VARNAMES', '').split())
+        self.assertIn('TAM_PANE_SOCKET', env.get('UWSM_WAIT_VARNAMES', '').split())
 
     def run_defaults(self, prepare=None, hyprland_version='Hyprland 0.56.2 built from branch v0.56.2'):
         with tempfile.TemporaryDirectory() as temporary:
@@ -159,6 +174,10 @@ class SessionDefaults(unittest.TestCase):
                 '  bind = function(k, a) print("BIND\\t" .. k .. "=" .. tostring(a)) end,\n'
                 '  on = function(ev, fn) hooks[ev] = fn end,\n'
                 '  spawn = function(cmd) print("SPAWN\\t" .. cmd) end,\n'
+                '  capture = function(cmd)\n'
+                '    if type(cmd) == "table" then print("CAPTURE\\t" .. table.concat(cmd, " "))\n'
+                '    else print("CAPTURE\\t" .. tostring(cmd)) end\n'
+                '  end,\n'
                 '}\n'
                 'local Entry, err = tp.read_file(arg[1])\n'
                 'assert(Entry, err)\n'
@@ -171,6 +190,11 @@ class SessionDefaults(unittest.TestCase):
             self.assertIn('CONFIG\t/usr/bin/tamlinux/tam-launch-terminal --tam-last\tAdwaita', result.stdout)
             self.assertIn('BIND\tMeta+Return=spawn:/usr/bin/tamlinux/tam-launch-terminal --tam-last', result.stdout)
             self.assertIn('SPAWN\tuwsm finalize TAM_PANE_SOCKET', result.stdout)
+            self.assertIn('CAPTURE\t/usr/lib/xdg-desktop-portal-wlr', result.stdout)
+            self.assertLess(
+                result.stdout.index('SPAWN\tuwsm finalize TAM_PANE_SOCKET'),
+                result.stdout.index('CAPTURE\t/usr/lib/xdg-desktop-portal-wlr'),
+            )
 
 
 if __name__ == '__main__':

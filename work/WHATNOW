@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W33
+Updated: 2026-11-25, with W34
 
 
 STATE
@@ -37,6 +37,16 @@ STATE
     console.py and wait-stopped.py cover both Hyprland and tam-pane, and
     session_settings.py validates each session independently (--session
     hyprland|pane) so Hyprland starts even if tam-pane.lua is unavailable.
+  - Milestone 4 (bring up the complete session) is complete on dev (W34):
+    uwsm-env preserves XDG_CURRENT_DESKTOP/XDG_SESSION_DESKTOP set by uwsm
+    start -e -D <desktop> and exports UWSM_WAIT_VARNAMES and
+    UWSM_FINALIZE_VARNAMES with TAM_PANE_SOCKET for tam-pane; tam-pane.lua
+    runs uwsm finalize TAM_PANE_SOCKET and launches xdg-desktop-portal-wlr
+    via tp.capture for PipeWire ScreenCast/Screenshot; cultivar defaults
+    and session_settings.py publish and validate tam-pane-portals.conf
+    independently of Hyprland; and arch-packages/preflight.py declare the
+    portal and PipeWire prerequisites (xdg-desktop-portal-wlr still needs
+    installation on bosgame before hardware ScreenCast proof).
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
@@ -47,16 +57,13 @@ STATE
 
 NEXT
 
-  1. For 0.7.0, implement ROADMAP.md milestone 4 (Bring up the complete
-     session): use a UWSM session target for tam-pane, publish desktop
-     identity, Wayland display, and tam-pane socket to systemd and D-Bus
-     before starting Quickshell, portals, and helpers, verify one shell
-     and polkit agent, file chooser, and PipeWire screen sharing, and
-     confirm service cleanup and Hyprland recovery with its own
-     environment and portals.
-  2. Proceed through ROADMAP.md milestones 5-8 (Quickshell tam-pane
-     adapter, bosgame controls port, shell/app trials, and automated
-     desktop test battery).
+  1. For 0.7.0, implement ROADMAP.md milestone 5 (Connect the shell to
+     tam-pane): extend the compositor facade with a TamPaneAdapter built on
+     ProtocolState for standard Wayland facts and tam-pane IPC for missing
+     state and actions (multiple visible tags per output, focus, output
+     power, pointer location, bindings, keyboard layout, and reconnection).
+  2. Proceed through ROADMAP.md milestones 6-8 (bosgame controls port,
+     shell/app trials, and automated desktop test battery).
 
 
 WAITING FOR FRED
