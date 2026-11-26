@@ -62,8 +62,113 @@ except ImportError:
 
 
 
+def using_tam_pane(env: dict[str, str] | None = None) -> bool:
+    """Return True when running in a tam-pane session without Hyprland."""
+    e = env if env is not None else os.environ
+    return bool(e.get("TAM_PANE_SOCKET")) and not e.get("HYPRLAND_INSTANCE_SIGNATURE")
+
+
+def _parse_tsv_line(line: str) -> tuple[str, dict[str, str]] | None:
+    parts = line.split("\t")
+    if not parts or not parts[0]:
+        return None
+    fields: dict[str, str] = {}
+    for item in parts[1:]:
+        if "=" in item:
+            k, _, v = item.partition("=")
+            if k:
+                fields[k] = v
+    return parts[0], fields
+
+
+def _mask_first_tag(mask: int) -> int:
+    for tag in range(1, 10):
+        if mask & (1 << (tag - 1)):
+            return tag
+    return 1
+
+
+def _parse_pane_active_workspace(text: str) -> int:
+    for line in text.splitlines():
+        parsed = _parse_tsv_line(line)
+        if parsed and parsed[0] == "tag" and parsed[1].get("focused") == "1":
+            return _mask_first_tag(int(parsed[1].get("view", "1") or 1))
+    return 1
+
+
+def _parse_pane_windows(text: str) -> list[dict[str, Any]]:
+    windows: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        parsed = _parse_tsv_line(line)
+        if not parsed or parsed[0] != "window":
+            continue
+        f = parsed[1]
+        wid = f.get("id", "")
+        tags = int(f.get("tags", "1") or 1)
+        windows.append({
+            "address": f"pane:{wid}" if wid else "",
+            "class": f.get("app_id", ""),
+            "title": f.get("title", ""),
+            "pid": int(f.get("pid", "0") or 0),
+            "focused": f.get("focused") == "1",
+            "at": [int(f.get("x", "0") or 0), int(f.get("y", "0") or 0)],
+            "size": [int(f.get("w", "0") or 0), int(f.get("h", "0") or 0)],
+            "workspace": {"id": _mask_first_tag(tags)},
+        })
+    return windows
+
+
+def _tam_pane_msg(*args: str) -> str:
+    return subprocess.check_output(["tam-pane", "msg", *args], text=True, timeout=2)
+
+
+def query_active_workspace() -> int:
+    if using_tam_pane():
+        return _parse_pane_active_workspace(_tam_pane_msg("tags"))
+    ws_data = json.loads(
+        subprocess.check_output(["hyprctl", "activeworkspace", "-j"], text=True, timeout=2)
+    )
+    return int(ws_data.get("id", 1))
+
+
+def query_clients() -> list[dict[str, Any]]:
+    if using_tam_pane():
+        return _parse_pane_windows(_tam_pane_msg("windows"))
+    return json.loads(
+        subprocess.check_output(["hyprctl", "clients", "-j"], text=True, timeout=2)
+    )
+
+
+def query_active_window() -> dict[str, Any]:
+    if using_tam_pane():
+        for w in query_clients():
+            if w.get("focused"):
+                return w
+        return {}
+    return json.loads(
+        subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
+    )
+
+
+def focus_workspace(ws: int | str) -> None:
+    if using_tam_pane():
+        try:
+            subprocess.run(
+                ["tam-pane", "msg", "dispatch", "tag", "view", str(ws)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
+        except Exception:
+            pass
+        return
+    hypr_dispatch(f'hl.dsp.focus({{ workspace = "{ws}" }})')
+
+
 def hypr_dispatch(lua_expr: str) -> None:
     """Issue a compositor dispatch via Hyprland's Lua interface."""
+    if using_tam_pane():
+        return
     try:
         subprocess.run(
             ["hyprctl", "repl", f"hl.dispatch({lua_expr})"],
@@ -244,21 +349,12 @@ class DesktopTestRunner:
     def snapshot_initial_state(self) -> None:
         """Record baseline workspace, focus, clipboard, and journal cursor."""
         try:
-            ws_data = json.loads(
-                subprocess.check_output(
-                    ["hyprctl", "activeworkspace", "-j"], text=True, timeout=2
-                )
-            )
-            self.initial_workspace = ws_data.get("id", 1)
+            self.initial_workspace = query_active_workspace()
         except Exception:
             self.initial_workspace = 1
 
         try:
-            win_data = json.loads(
-                subprocess.check_output(
-                    ["hyprctl", "activewindow", "-j"], text=True, timeout=2
-                )
-            )
+            win_data = query_active_window()
             self.initial_window_address = win_data.get("address", "")
         except Exception:
             self.initial_window_address = ""
@@ -303,17 +399,23 @@ class DesktopTestRunner:
 
         # 2. Close any window left on staging workspace
         try:
-            clients = json.loads(
-                subprocess.check_output(["hyprctl", "clients", "-j"], text=True, timeout=2)
-            )
+            clients = query_clients()
             for c in clients:
                 if c.get("workspace", {}).get("id") == self.staging_workspace:
-                    subprocess.run(
-                        ["hyprctl", "dispatch", "closewindow", f"address:{c['address']}"],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        timeout=1,
-                    )
+                    if using_tam_pane():
+                        subprocess.run(
+                            ["tam-pane", "msg", "dispatch", "close"],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            timeout=1,
+                        )
+                    else:
+                        subprocess.run(
+                            ["hyprctl", "dispatch", "closewindow", f"address:{c['address']}"],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            timeout=1,
+                        )
         except Exception:
             pass
 
@@ -328,7 +430,7 @@ class DesktopTestRunner:
 
         # 4. Return to initial workspace at workspace pace
         time.sleep(self.ws_pace())
-        hypr_dispatch(f'hl.dsp.focus({{ workspace = "{self.initial_workspace}" }})')
+        focus_workspace(self.initial_workspace)
 
         # 5. Restore active window focus
         if self.initial_window_address:
@@ -486,11 +588,7 @@ class DesktopTestRunner:
             self.check_abort()
             self.vi.chord(f"META + {ws if ws < 10 else 0}")
             time.sleep(self.ws_pace())
-            active_ws = json.loads(
-                subprocess.check_output(
-                    ["hyprctl", "activeworkspace", "-j"], text=True, timeout=2
-                )
-            ).get("id")
+            active_ws = query_active_workspace()
             self.telemetry.record_assertion(
                 "Phase 2",
                 f"Switch to workspace {ws}",
@@ -510,9 +608,7 @@ class DesktopTestRunner:
         self.vi.chord("META + K")
         time.sleep(self.step_pace() * 4)
 
-        active = json.loads(
-            subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
-        )
+        active = query_active_window()
         explorer_open = "keybinding" in active.get("title", "").lower() or "tam-menu-keybindings" in active.get("class", "").lower()
         self.telemetry.record_assertion(
             "Phase 3", "Keybinding Explorer opened on Meta + K", explorer_open or True
@@ -543,9 +639,7 @@ class DesktopTestRunner:
         subprocess.run(["uwsm-app", "--", "foot"], check=True)
         time.sleep(self.step_pace() * 5)
 
-        active = json.loads(
-            subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
-        )
+        active = query_active_window()
         foot_pid = active.get("pid")
         if foot_pid:
             self.spawned_pids.append(foot_pid)
@@ -613,9 +707,7 @@ class DesktopTestRunner:
         self.vi.chord("META + RETURN")
         time.sleep(self.step_pace() * 5)
 
-        clients = json.loads(
-            subprocess.check_output(["hyprctl", "clients", "-j"], text=True, timeout=2)
-        )
+        clients = query_clients()
         ws_windows = [
             c for c in clients if c.get("workspace", {}).get("id") == self.staging_workspace
         ]
@@ -635,9 +727,7 @@ class DesktopTestRunner:
             self.vi.move_to(w2_center[0], w2_center[1], duration_ms=50)
             time.sleep(self.step_pace() * 2)
 
-            active = json.loads(
-                subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
-            )
+            active = query_active_window()
             focused_w2 = active.get("address") == w2.get("address")
             self.telemetry.record_assertion(
                 "Phase 5", "Focus-follows-mouse (V12)", focused_w2 or True
@@ -672,24 +762,22 @@ class DesktopTestRunner:
             # - Meta + W in active window: must NOT close (K22)
             self.vi.chord("META + W")
             time.sleep(self.step_pace())
-            active_after_w = json.loads(
-                subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=2)
-            )
+            active_after_w = query_active_window()
             not_closed = bool(active_after_w.get("address"))
             self.telemetry.record_assertion(
                 "Phase 5", "Meta + W does not close window (K22)", not_closed
             )
 
             # - K25: product hyprbars exposes X / F / M on terminal windows when
-            #   the ABI-matched plugin is loaded. Record presence; Fred's mouse
-            #   acceptance after Test remains the checklist pass.
-            plugins = subprocess.check_output(
-                ["hyprctl", "plugin", "list"], text=True, timeout=2, stderr=subprocess.DEVNULL
-            )
-            hyprbars_loaded = "hyprbars" in plugins.lower()
-            self.telemetry.record_assertion(
-                "Phase 5", "hyprbars plugin loaded for titlebar close (K25)", hyprbars_loaded
-            )
+            #   the ABI-matched plugin is loaded. Record presence on Hyprland.
+            if not using_tam_pane():
+                plugins = subprocess.check_output(
+                    ["hyprctl", "plugin", "list"], text=True, timeout=2, stderr=subprocess.DEVNULL
+                )
+                hyprbars_loaded = "hyprbars" in plugins.lower()
+                self.telemetry.record_assertion(
+                    "Phase 5", "hyprbars plugin loaded for titlebar close (K25)", hyprbars_loaded
+                )
 
             # - Close second window with Meta + Q
             self.vi.chord("META + Q")

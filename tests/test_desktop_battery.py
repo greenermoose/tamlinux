@@ -75,6 +75,27 @@ class TestDesktopTestBattery(unittest.TestCase):
         summary = runner.telemetry.summary_path.read_text()
         self.assertIn("PASS", summary)
 
+    def test_tam_pane_detection_and_parsers(self):
+        self.assertTrue(tb.using_tam_pane({"TAM_PANE_SOCKET": "/tmp/pane.sock"}))
+        self.assertFalse(tb.using_tam_pane({"TAM_PANE_SOCKET": "/tmp/pane.sock", "HYPRLAND_INSTANCE_SIGNATURE": "sig"}))
+        self.assertFalse(tb.using_tam_pane({}))
+
+        tags_out = (
+            "tag\tmonitor=HEADLESS-1\tview=4\tprev_view=1\toccupied=4\tfocused=1\n"
+            "tag\tmonitor=HEADLESS-2\tview=2\tprev_view=1\toccupied=0\tfocused=0\n"
+        )
+        self.assertEqual(tb._parse_pane_active_workspace(tags_out), 3)
+
+        wins_out = (
+            "window\tid=7\tmonitor=HEADLESS-1\ttags=4\tfocused=1\tpid=1234\tx=10\ty=20\tw=800\th=600\tapp_id=tam-last\ttitle=Shell\n"
+        )
+        wins = tb._parse_pane_windows(wins_out)
+        self.assertEqual(len(wins), 1)
+        self.assertEqual(wins[0]["address"], "pane:7")
+        self.assertEqual(wins[0]["class"], "tam-last")
+        self.assertEqual(wins[0]["workspace"]["id"], 3)
+        self.assertTrue(wins[0]["focused"])
+
 
 if __name__ == "__main__":
     unittest.main()

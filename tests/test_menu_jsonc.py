@@ -164,31 +164,22 @@ ShellRoot {
                 self.skipTest("headless Wayland socket unavailable; run outside the sandbox")
             probe.unlink()
             env = {"PATH": "/usr/bin", "HOME": directory, "XDG_CONFIG_HOME": directory,
-                   "XDG_CACHE_HOME": directory, "XDG_RUNTIME_DIR": directory,
+                   "XDG_CACHE_HOME": directory, "XDG_RUNTIME_DIR": str(runtime),
                    "QML_IMPORT_PATH": str(shell / "modules"), "QT_QPA_PLATFORM": "offscreen", "QSG_RENDER_LOOP": "basic"}
-            env["XDG_RUNTIME_DIR"] = str(runtime)
-            config = root / "sway.conf"
-            config.write_text('output HEADLESS-1 resolution 1280x720\n')
-            with (root / "sway.log").open('w') as sway_log:
-                sway = subprocess.Popen(["/usr/bin/sway", "-c", str(config)],
-                                        env=dict(env, WLR_BACKENDS="headless", WLR_LIBINPUT_NO_DEVICES="1", WLR_RENDERER="pixman"),
-                                        stdout=sway_log, stderr=subprocess.STDOUT)
-                try:
-                    deadline = time.monotonic() + 5
-                    socket = None
-                    while time.monotonic() < deadline and sway.poll() is None:
-                        socket = next((p for p in runtime.glob("wayland-*") if not p.name.endswith('.lock')), None)
-                        if socket: break
-                        time.sleep(0.05)
-                    self.assertIsNotNone(socket, (root / "sway.log").read_text())
-                    env.update(WAYLAND_DISPLAY=socket.name, QT_QPA_PLATFORM="wayland")
-                    qs = quickshell_bin()
-                    env["TAMLINUX_QUICKSHELL"] = qs
-                    result = subprocess.run([qs, "--no-color", "-p", str(shell / "proof-menu.qml")],
-                                            env=env, capture_output=True, text=True, timeout=10)
-                finally:
-                    sway.terminate()
-                    sway.wait(timeout=5)
+            from headless_compositor import start_headless_compositor
+            with start_headless_compositor(
+                runtime,
+                root,
+                outputs=[{"name": "HEADLESS-1", "mode": "1280x720@60", "position": (0, 0), "scale": 1.0}],
+                base_env=env,
+            ) as comp:
+                env.update(WAYLAND_DISPLAY=comp.wayland_display, QT_QPA_PLATFORM="wayland")
+                if comp.tam_pane_socket:
+                    env["TAM_PANE_SOCKET"] = comp.tam_pane_socket
+                qs = quickshell_bin()
+                env["TAMLINUX_QUICKSHELL"] = qs
+                result = subprocess.run([qs, "--no-color", "-p", str(shell / "proof-menu.qml")],
+                                        env=env, capture_output=True, text=True, timeout=10)
         log = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, log)
         self.assertIn("MENU_MODEL_OK", log)

@@ -1,0 +1,121 @@
+#!/bin/bash
+# Opt-in isolated nested tam-pane session runner (0.7.0 Milestone 8).
+# Runs the packaged Tamlinux shell and a tam-last client together inside a
+# single nested tam-pane window with a private XDG_RUNTIME_DIR, without
+# touching the host compositor's state. Never invoked by tests/check-all.
+#
+#   tests/run-nested-tam-pane-session [--duration SECONDS]
+set -euo pipefail
+
+tests=$(cd "$(dirname "$0")" && pwd)
+repo=$(cd "$tests/.." && pwd)
+desktop="$repo/src/desktop"
+duration=0
+
+while (( $# > 0 )); do
+  case "$1" in
+    --duration)
+      duration="${2:-0}"
+      shift 2
+      ;;
+    *)
+      echo "usage: $0 [--duration SECONDS]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+tam_pane=""
+for candidate in "${TAM_PANE_BIN:-}" "$repo/../tam-pane/build/tam-pane" "$HOME/.local/bin/tam-pane" /usr/bin/tamlinux/tam-pane "$(command -v tam-pane 2>/dev/null || true)"; do
+  if [[ -n $candidate && -x $candidate ]]; then
+    tam_pane=$candidate
+    break
+  fi
+done
+if [[ -z $tam_pane ]]; then
+  echo "error: tam-pane binary not found" >&2
+  exit 1
+fi
+
+tam_last=""
+for candidate in "$HOME/.local/bin/tam-last" /usr/bin/tamlinux/tam-last "$(command -v tam-last 2>/dev/null || true)"; do
+  if [[ -n $candidate && -x $candidate ]]; then
+    tam_last=$candidate
+    break
+  fi
+done
+
+runtime=$(mktemp -d "/tmp/tam-pane-nested.XXXXXX")
+config_home="$runtime/config"
+state_home="$runtime/state"
+cache_home="$runtime/cache"
+mkdir -p "$config_home" "$state_home" "$cache_home"
+
+pane_pid=""
+shell_pid=""
+client_pid=""
+cleanup() {
+  kill "${client_pid:-}" "${shell_pid:-}" "${pane_pid:-}" 2>/dev/null || true
+  wait "${client_pid:-}" "${shell_pid:-}" "${pane_pid:-}" 2>/dev/null || true
+  rm -rf "$runtime"
+}
+trap cleanup EXIT INT TERM
+
+# Launch nested tam-pane against the host display, using our private runtime dir
+# for the child Wayland socket and IPC socket.
+if [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+  host_runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  ln -sf "$host_runtime/$WAYLAND_DISPLAY" "$runtime/$WAYLAND_DISPLAY"
+fi
+
+XDG_RUNTIME_DIR="$runtime" XDG_CONFIG_HOME="$config_home" \
+  XDG_STATE_HOME="$state_home" XDG_CACHE_HOME="$cache_home" \
+  "$tam_pane" -c "$desktop/session/tam-pane.lua" >"$runtime/tam-pane.log" 2>&1 &
+pane_pid=$!
+
+child_wl=""
+pane_sock=""
+for _ in $(seq 80); do
+  pane_sock=$(ls "$runtime/tam-pane/"wayland-*.sock 2>/dev/null | head -1 || true)
+  if [[ -n $pane_sock ]]; then
+    child_wl=$(basename "$pane_sock" .sock)
+    break
+  fi
+  sleep 0.1
+done
+if [[ -z $pane_sock ]]; then
+  echo "error: nested tam-pane did not create IPC socket" >&2
+  cat "$runtime/tam-pane.log" >&2
+  exit 1
+fi
+
+child_env=(
+  env -u HYPRLAND_INSTANCE_SIGNATURE
+  XDG_RUNTIME_DIR="$runtime"
+  XDG_CONFIG_HOME="$config_home"
+  XDG_STATE_HOME="$state_home"
+  XDG_CACHE_HOME="$cache_home"
+  XDG_CURRENT_DESKTOP="tam-pane"
+  XDG_SESSION_TYPE="wayland"
+  WAYLAND_DISPLAY="$child_wl"
+  TAM_PANE_SOCKET="$pane_sock"
+  TAMLINUX_PLUGINS_DIR="$desktop/plugins"
+  TAMLINUX_COMPOSITOR_LIVE_ACTIONS="1"
+)
+
+"${child_env[@]}" python3 -I "$desktop/shell/host/session_start.py" >"$runtime/shell.log" 2>&1 &
+shell_pid=$!
+
+if [[ -n $tam_last ]]; then
+  "${child_env[@]}" "$tam_last" >"$runtime/client.log" 2>&1 &
+  client_pid=$!
+fi
+
+echo "Nested tam-pane running (WAYLAND_DISPLAY=$child_wl, TAM_PANE_SOCKET=$pane_sock)."
+echo "Close the nested window or press Ctrl+C to exit."
+
+if (( duration > 0 )); then
+  sleep "$duration"
+else
+  wait "$pane_pid"
+fi

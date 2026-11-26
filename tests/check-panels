@@ -1,9 +1,10 @@
 #!/bin/bash
-# Load every ported panel through PanelHost in a private headless Sway and
-# report each one. No window reaches the desktop: Sway runs on the headless
-# backend with its own runtime directory, and the shell copy is temporary.
+# Load every ported panel through PanelHost in a private headless tam-pane
+# (falling back to Sway only if tam-pane is unavailable) and report each one.
+# No window reaches the desktop: the compositor runs on the headless backend
+# with its own runtime directory, and the shell copy is temporary.
 #
-#   desktop/check-panels [panel,...]
+#   tests/check-panels [panel,...]
 set -uo pipefail
 
 tests=$(cd "$(dirname "$0")" && pwd)
@@ -34,7 +35,7 @@ if [[ -d "$runtime_base" && -w "$runtime_base" ]]; then
 else
   runtime=$(mktemp -d "/tmp/tqp.XXXX")
 fi
-trap 'kill "${sway_pid:-}" 2>/dev/null; rm -rf "$work" "$runtime"' EXIT
+trap 'kill "${comp_pid:-}" 2>/dev/null; rm -rf "$work" "$runtime"' EXIT
 
 cp -r "$desktop/shell" "$work/shell"
 cat >"$work/shell/check-panels.qml" <<'QML'
@@ -57,28 +58,56 @@ ShellRoot {
   Timer { interval: 3000; running: true; onTriggered: Qt.quit() }
 }
 QML
-printf 'output HEADLESS-1 resolution 1920x1080\n' >"$work/sway.conf"
 mkdir -p "$work/home"
 
-env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin \
-  WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
-  sway -c "$work/sway.conf" >"$work/sway.log" 2>&1 &
-sway_pid=$!
+tam_pane=""
+for candidate in "${TAM_PANE_BIN:-}" "$repo/../tam-pane/build/tam-pane" "$HOME/.local/bin/tam-pane" /usr/bin/tamlinux/tam-pane "$(command -v tam-pane 2>/dev/null || true)"; do
+  if [[ -n $candidate && -x $candidate ]]; then
+    tam_pane=$candidate
+    break
+  fi
+done
+
+pane_sock=""
+if [[ -n $tam_pane ]]; then
+  printf 'tp.monitor{ output = "HEADLESS-1", mode = "1920x1080@60" }\n' >"$work/tam-pane.lua"
+  env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin \
+    WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
+    "$tam_pane" -c "$work/tam-pane.lua" >"$work/compositor.log" 2>&1 &
+  comp_pid=$!
+  comp_name="tam-pane"
+else
+  printf 'output HEADLESS-1 resolution 1920x1080\n' >"$work/sway.conf"
+  env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin \
+    WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
+    sway -c "$work/sway.conf" >"$work/compositor.log" 2>&1 &
+  comp_pid=$!
+  comp_name="Sway"
+fi
+
 socket=""
 for _ in $(seq 50); do
   socket=$(ls "$runtime" 2>/dev/null | grep -E '^wayland-[0-9]+$' | head -1)
-  [[ -n $socket ]] && break
+  if [[ -n $socket ]]; then
+    if [[ $comp_name == "tam-pane" ]]; then
+      pane_sock=$(ls "$runtime/tam-pane/"wayland-*.sock 2>/dev/null | head -1 || true)
+      [[ -n $pane_sock ]] && break
+    else
+      break
+    fi
+  fi
   sleep 0.1
 done
 if [[ -z $socket ]]; then
-  echo "FAIL: the headless Sway did not start" >&2
-  cat "$work/sway.log" >&2
+  echo "FAIL: the headless $comp_name did not start" >&2
+  cat "$work/compositor.log" >&2
   exit 1
 fi
 
 shell_env=(env -i HOME="$work/home" XDG_RUNTIME_DIR="$runtime" PATH=/usr/bin
   LANG=C.utf8 WAYLAND_DISPLAY="$socket" QT_QPA_PLATFORM=wayland
   QML_IMPORT_PATH="$work/shell/modules" TAMLINUX_PANELS="$panels")
+[[ -n $pane_sock ]] && shell_env+=(TAM_PANE_SOCKET="$pane_sock")
 "${shell_env[@]}" timeout 20 "$quickshell" -p "$work/shell/check-panels.qml" >"$work/shell.log" 2>&1 &
 shell_pid=$!
 # While the shell runs, ask the host's IPC route for a panel it does not have:

@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-26, with W38
+Updated: 2026-11-26, with W39
 
 
 STATE
@@ -91,6 +91,17 @@ STATE
     real Quickshell + all nine fred.* plugins on headless two-output
     tam-pane 0.2.8, tam-last + tam-clam, and tam-edit save with Hyprland
     stopped.
+  - Milestone 8 (automate repeatable checks) is complete on dev (W39):
+    tests/headless_compositor.py migrates the offscreen suite
+    (tests/check-panels, tests/test_menu_jsonc.py, tests/test_start_menu.py)
+    from Sway to headless tam-pane (with Sway fallback only when tam-pane is
+    unavailable); tests/test-battery is tam-pane-aware while keeping Hyprland
+    fallback; tests/test_tam_pane_battery.py automates session selection,
+    Hyprland fallback, multi-output tags/DPMS, shell IPC actions, app
+    launches, clipboard, and capture on headless tam-pane; and
+    tests/run-nested-tam-pane-session provides an opt-in isolated nested
+    session running the packaged shell and tam-last together before hardware
+    Test.
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
@@ -101,13 +112,12 @@ STATE
 
 NEXT
 
-  1. For 0.7.0, implement ROADMAP.md milestone 8 (Automate repeatable
-     checks): run the desktop test battery on headless tam-pane for session
-     selection, shell actions, app launches, clipboard, capture, and tags
-     (keeping Hyprland fallback covered), and move the offscreen suite from
-     Sway once tam-pane serves the same cases.
+  1. Optionally run tests/run-nested-tam-pane-session interactively for a
+     visual check of the packaged shell and clients inside a nested tam-pane
+     window.
   2. Proceed to ROADMAP.md milestone 9 (Prove hardware and recovery on
-     bosgame) once Fred authorizes a candidate Test.
+     bosgame) once Fred authorizes a candidate Test (including completing
+     tam-pane's renderer-loss recovery before the full-day trial).
 
 
 WAITING FOR FRED

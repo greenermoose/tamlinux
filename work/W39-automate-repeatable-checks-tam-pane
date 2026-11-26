@@ -1,0 +1,42 @@
+W39: Automate repeatable checks on headless tam-pane (0.7.0 Milestone 8)
+
+Date: 2026-11-26
+Agent: agy (Gemini)
+Branch: dev
+
+SUMMARY
+
+  Implemented ROADMAP.md Milestone 8 for Tamlinux 0.7.0 Northern Torch while
+  working around active claims in libtam, tam-view, tam-knox, and tam:
+  - Added tests/headless_compositor.py preferring headless tam-pane (with
+    tp.monitor output configuration) and falling back to Sway only if
+    tam-pane is unavailable.
+  - Migrated the offscreen suite from Sway to headless tam-pane:
+    tests/check-panels, tests/test_menu_jsonc.py, and tests/test_start_menu.py
+    (all now run cleanly inside the sandbox with zero Sway dependency).
+  - Made tests/test-battery compositor-aware (detecting TAM_PANE_SOCKET when
+    HYPRLAND_INSTANCE_SIGNATURE is unset, using tam-pane msg tags/windows/
+    dispatch while keeping the Hyprland fallback intact) and added unit tests
+    in tests/test_desktop_battery.py.
+  - Added tests/test_tam_pane_battery.py covering session selection & Hyprland
+    fallback, multi-output tags & DPMS, Quickshell + TamPaneAdapter + qs ipc
+    shell actions, app launches (tam-last + tam-clam, tam-edit PTY save),
+    clipboard (tam-pane + Hyprland fallback), and capture (tam-capture-region
+    + tam-capture-screenshot).
+  - Added opt-in isolated nested session runner
+    tests/run-nested-tam-pane-session to run the packaged shell and tam-last
+    together inside a private nested tam-pane window before Milestone 9
+    hardware Test.
+
+VERIFICATION
+
+  - tests/check-panels: 8/8 PASS (on headless tam-pane)
+  - tests/check-theme: 12/12 PASS
+  - tests/test_tam_pane_battery.py: 3/3 OK
+  - tests/test_desktop_battery.py: 4/4 OK
+  - tests/test_menu_jsonc.py: 9/9 OK (on headless tam-pane)
+  - tests/test_start_menu.py: 5/5 OK (on headless two-output tam-pane)
+  - tests/test_tam_pane_shell_proof.py: 3/3 OK
+  - tests/test_tam_pane_adapter.py: 3/3 OK
+  - tests/test_tam_pane_controls.py: 3/3 OK
+  - bash -n tests/check-panels tests/run-nested-tam-pane-session: OK

@@ -84,7 +84,10 @@ assert.deepEqual(S.placement(1280,720,320,530,{x:20,y:694,edge:'bottom'},8),{x:2
 """)
 
 
-@unittest.skipUnless(shutil.which('sway') and shutil.which('quickshell'), 'headless Sway and Quickshell required')
+from headless_compositor import compositor_available, start_headless_compositor
+
+
+@unittest.skipUnless(compositor_available() and shutil.which('quickshell'), 'headless tam-pane/Sway and Quickshell required')
 class NativeTests(unittest.TestCase):
     def test_start_layout_navigation_appearance_and_bar_input(self):
         with tempfile.TemporaryDirectory(prefix='start-menu-') as directory:
@@ -94,7 +97,7 @@ class NativeTests(unittest.TestCase):
                 tree.extractall(root,filter='data')
             shell=root/'src/desktop/shell'
             shutil.copytree(MENU,shell/'services/menu',dirs_exist_ok=True)
-            for name in ['BarApi.qml','BarWindow.qml','BarLayout.qml','Compositor.qml','HyprlandAdapter.qml']:
+            for name in ['BarApi.qml','BarWindow.qml','BarLayout.qml','Compositor.qml','HyprlandAdapter.qml','TamPaneAdapter.qml','tam_pane_model.js']:
                 shutil.copy2(DESKTOP/'shell/host'/name,shell/'host'/name)
             defaults=root/'defaults.jsonc'
             source={'start':{'label':'Start'},'quicklaunch':{'label':'Quick Launch'},'style':{},
@@ -113,22 +116,21 @@ class NativeTests(unittest.TestCase):
                  'QSG_RENDER_LOOP':'basic','TAMLINUX_BAR_EXCLUSIVE':'1'}
             if os.environ.get('START_MENU_SCREENSHOT'):
                 env['START_MENU_SCREENSHOT'] = os.environ['START_MENU_SCREENSHOT']
-            config=root/'sway.conf';config.write_text('output HEADLESS-1 resolution 1280x720 position 0 0\noutput HEADLESS-2 resolution 1920x1080 scale 1.5 position -1280 0\n')
-            with (root/'sway.log').open('w') as log:
-                sway=subprocess.Popen(['/usr/bin/sway','-c',str(config)],env=dict(env,WLR_BACKENDS='headless',WLR_HEADLESS_OUTPUTS='2',WLR_LIBINPUT_NO_DEVICES='1',WLR_RENDERER='pixman'),stdout=log,stderr=subprocess.STDOUT)
-                try:
-                    deadline=time.monotonic()+5;socket=None
-                    while time.monotonic()<deadline and sway.poll() is None:
-                        socket=next((p for p in runtime.glob('wayland-*') if not p.name.endswith('.lock')),None)
-                        if socket: break
-                        time.sleep(0.05)
-                    self.assertIsNotNone(socket,(root/'sway.log').read_text())
-                    env.update(WAYLAND_DISPLAY=socket.name,QT_QPA_PLATFORM='wayland')
-                    qs=quickshell_bin()
-                    env['TAMLINUX_QUICKSHELL']=qs
-                    result=subprocess.run([qs,'--no-color','-p',str(shell/'proof-start.qml')],env=env,capture_output=True,text=True,timeout=20)
-                finally:
-                    sway.terminate();sway.wait(timeout=5)
+            with start_headless_compositor(
+                runtime,
+                root,
+                outputs=[
+                    {'name': 'HEADLESS-1', 'mode': '1280x720@60', 'position': (0, 0), 'scale': 1.0},
+                    {'name': 'HEADLESS-2', 'mode': '1920x1080@60', 'position': (-1280, 0), 'scale': 1.5},
+                ],
+                base_env=env,
+            ) as comp:
+                env.update(WAYLAND_DISPLAY=comp.wayland_display, QT_QPA_PLATFORM='wayland')
+                if comp.tam_pane_socket:
+                    env['TAM_PANE_SOCKET'] = comp.tam_pane_socket
+                qs=quickshell_bin()
+                env['TAMLINUX_QUICKSHELL']=qs
+                result=subprocess.run([qs,'--no-color','-p',str(shell/'proof-start.qml')],env=env,capture_output=True,text=True,timeout=20)
             output=result.stdout+result.stderr
             self.assertEqual(result.returncode,0,output)
             self.assertIn('START_MENU_OK',output)
