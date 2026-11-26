@@ -240,6 +240,7 @@ WHERE THINGS ARE
   src/share/        shared console and firewall templates
   tests/            unit tests, fixtures, proofs, and check-all runner
   arch/             architecture and development documents
+  keys/             keybinding pointer (tam-idol/keys/keybindings.md)
   bugs/             defect records (B1, B2, ...)
   ideas/            ideas from other projects
   plans/            product development plans (P1, P2, ...)

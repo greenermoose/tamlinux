@@ -1,0 +1,29 @@
+W35 MOVE KEYBINDING DOCS TO KEYS/
+
+Date: 2026-11-25
+AI harness: agy 1.5.17
+AI model: Gemini 4 Hydrogen (Medium)
+Commits: the commit that adds this record
+
+GUIDANCE
+
+  Fred: "Move all keybinding docs from arch/ folders to keys/ folders for
+  tam repos. See tam-clif for an example. Make sure all keybindings abide
+  by the tam-idol/keys/keybindings.md standard."
+
+DONE
+
+  - Moved arch/keybindings.md to keys/keybindings.md and added
+    keys/README-keys.
+  - Updated arch/README-arch and listed keys/ in README under WHERE
+    THINGS ARE.
+  - Left work/WHATNOW untouched due to concurrent claim on
+    work/WHATNOW.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Continue with NEXT in work/WHATNOW.

@@ -33,6 +33,3 @@ IN THIS REPOSITORY
   system-layers.md                   separation of base OS, Tamlinux, and
                                      personal configuration
   development.md                     local development and testing notes
-  keybindings.md                     Tamlinux-wide keybinding standard
-                                     (draft) across compositor, terminal,
-                                     shell, editor, and tools
