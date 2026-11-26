@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W32
+Updated: 2026-11-25, with W33
 
 
 STATE
@@ -29,6 +29,14 @@ STATE
     versioned tam-pane.lua defaults; tam-pane-session honors
     TAM_PANE_BIN and PATH (~/.local/bin/tam-pane) with fallback to the
     packaged cultivar binary; and tam-dev supports tam-pane.
+  - Milestone 3 (two guarded console launches) is complete on dev (W33):
+    tam-desktop pane launches tam-pane trials, tam-desktop hyprland
+    launches Hyprland recovery, and bare tam-desktop (and start) stays
+    routed to the default desktop (Hyprland until Milestone 10). Local VT,
+    duplicate-session, TAM_PANE_SOCKET cleanup, and shutdown-wait checks in
+    console.py and wait-stopped.py cover both Hyprland and tam-pane, and
+    session_settings.py validates each session independently (--session
+    hyprland|pane) so Hyprland starts even if tam-pane.lua is unavailable.
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
@@ -39,17 +47,16 @@ STATE
 
 NEXT
 
-  1. For 0.7.0, implement ROADMAP.md milestone 3 (Provide two guarded
-     console launches): add `tam-desktop pane` for trials and
-     `tam-desktop hyprland` for recovery while keeping bare `tam-desktop`
-     for the default graphical activity in `start`. Extend local VT,
-     duplicate-session, and shutdown checks in `console.py` and
-     `wait-stopped.py` to both compositors (`Hyprland` and `tam-pane`),
-     and ensure Hyprland starts even if the tam-pane configuration is
-     unavailable.
-  2. Proceed through ROADMAP.md milestones 4-8 (UWSM session bring-up,
-     Quickshell tam-pane adapter, bosgame controls port, shell/app
-     trials, and automated desktop test battery).
+  1. For 0.7.0, implement ROADMAP.md milestone 4 (Bring up the complete
+     session): use a UWSM session target for tam-pane, publish desktop
+     identity, Wayland display, and tam-pane socket to systemd and D-Bus
+     before starting Quickshell, portals, and helpers, verify one shell
+     and polkit agent, file chooser, and PipeWire screen sharing, and
+     confirm service cleanup and Hyprland recovery with its own
+     environment and portals.
+  2. Proceed through ROADMAP.md milestones 5-8 (Quickshell tam-pane
+     adapter, bosgame controls port, shell/app trials, and automated
+     desktop test battery).
 
 
 WAITING FOR FRED

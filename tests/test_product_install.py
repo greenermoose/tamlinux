@@ -35,9 +35,9 @@ class ProductInstall(unittest.TestCase):
             self.assertFalse((commands / "tam-nut").exists())
             self.assertTrue((runtime / "share/tamlinux/session/session_settings.py").is_file())
             self.assertTrue((runtime / "share/tamlinux/session/tam-pane.lua").is_file())
-            for launcher in ("tam-hyprland-session", "tam-pane-session"):
+            for launcher, session_name in (("tam-hyprland-session", "hyprland"), ("tam-pane-session", "pane")):
                 launch = (commands / launcher).read_text()
-                self.assertLess(launch.index("wait-stopped.py"), launch.index("session_settings.py"))
+                self.assertLess(launch.index("wait-stopped.py"), launch.index(f"session_settings.py\" --session {session_name}"))
                 self.assertLess(launch.index("session_settings.py"), launch.index("exec /usr/bin/uwsm"))
                 self.assertIn('"/usr/bin/tamlinux/tam-session-init"', launch)
                 subprocess.run(["/usr/bin/sh", "-n", commands / launcher], check=True)

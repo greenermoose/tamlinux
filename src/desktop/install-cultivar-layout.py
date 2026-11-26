@@ -110,12 +110,14 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
             ) + rest
         if command.name in ("tam-hyprland-session", "tam-pane-session"):
             wait = '/usr/bin/python3 -I "$session_dir/wait-stopped.py" || exit $?'
-            config_file = "hyprland.lua" if command.name == "tam-hyprland-session" else "tam-pane.lua"
+            session_name = "hyprland" if command.name == "tam-hyprland-session" else "pane"
+            config_file = "hyprland.lua" if session_name == "hyprland" else "tam-pane.lua"
             config = f'config="${{XDG_CONFIG_HOME:-$HOME/.config}}/tamlinux/session/{config_file}"'
             if content.count(wait) != 1 or content.count(config) != 1:
                 raise ValueError("Expected the installed session launch sequence")
             content = content.replace(wait + "\n", "").replace(
-                config, wait + '\n/usr/bin/python3 -I -B "$session_dir/session_settings.py" || exit $?\n'
+                config,
+                wait + f'\n/usr/bin/python3 -I -B "$session_dir/session_settings.py" --session {session_name} || exit $?\n'
                 + config)
             for helper in ("tam-theme-init", "tam-session-init"):
                 content = content.replace('"${TAMLINUX_BIN:-$commands}/' + helper + '"',

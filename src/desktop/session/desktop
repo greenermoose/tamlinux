@@ -2,9 +2,14 @@
 # Public console entry; resolve through the installed immutable generation.
 set -eu
 if [ "$#" -eq 1 ] && { [ "$1" = "--help" ] || [ "$1" = "-h" ]; }; then
-  printf '%s\n' 'Usage: tam-desktop' 'Start the installed Tamlinux desktop from your local text login.'
+  printf '%s\n' \
+    'Usage: tam-desktop [hyprland|pane]' \
+    'Start the installed Tamlinux desktop from your local text login.' \
+    '  tam-desktop           Start the default desktop (Hyprland)' \
+    '  tam-desktop hyprland  Start the Hyprland recovery session' \
+    '  tam-desktop pane      Start the tam-pane trial session'
   exit 0
 fi
 bin_dir="$(dirname "$(readlink -f "$0")")"
 session_dir="$(readlink -f "$bin_dir/../share/tamlinux/session")"
-exec /usr/bin/python3 -I "$session_dir/console.py" "$bin_dir/tam-hyprland-session" "$@"
+exec /usr/bin/python3 -I "$session_dir/console.py" "$bin_dir" "$@"

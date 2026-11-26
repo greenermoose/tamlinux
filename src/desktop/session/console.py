@@ -10,6 +10,21 @@ import termios
 import time
 
 
+COMPOSITORS = ("Hyprland", "tam-pane")
+DEFAULT_SESSION = "hyprland"
+SESSION_ENDPOINTS = {
+    "hyprland": "tam-hyprland-session",
+    "pane": "tam-pane-session",
+}
+USAGE = "\n".join((
+    "Usage: tam-desktop [hyprland|pane]",
+    "Start the installed Tamlinux desktop from your local text login.",
+    "  tam-desktop           Start the default desktop (Hyprland)",
+    "  tam-desktop hyprland  Start the Hyprland recovery session",
+    "  tam-desktop pane      Start the tam-pane trial session",
+))
+
+
 def query(*args):
     result = subprocess.run(args, capture_output=True, text=True, check=True, timeout=3)
     if len(result.stdout) > 65536:
@@ -17,7 +32,29 @@ def query(*args):
     return result.stdout
 
 
-def session_environment(tty, uid, foreground, command=query):
+def compositor_running(uid=None):
+    user = str(os.getuid() if uid is None else uid)
+    for name in COMPOSITORS:
+        result = subprocess.run(["/usr/bin/pgrep", "-u", user, "-x", name],
+                                capture_output=True, timeout=3)
+        if result.returncode == 0:
+            return True
+        if result.returncode != 1:
+            raise ValueError(f"cannot inspect compositor {name}")
+    return False
+
+
+def resolve_endpoint(base, args):
+    if not args:
+        target = DEFAULT_SESSION
+    elif len(args) == 1 and args[0] in SESSION_ENDPOINTS:
+        target = args[0]
+    else:
+        raise ValueError("expected no arguments, 'hyprland', or 'pane'; use --help")
+    return Path(base) / SESSION_ENDPOINTS[target]
+
+
+def session_environment(tty, uid, foreground, command=query, compositor_probe=compositor_running):
     if uid == 0 or not re.fullmatch(r"/dev/tty[1-9][0-9]*", tty) or not foreground:
         raise ValueError("run tam-desktop as your user from a foreground text console")
     fields = ("Active", "Remote", "Type", "Class", "User", "VTNr", "Seat", "Id")
@@ -32,7 +69,9 @@ def session_environment(tty, uid, foreground, command=query):
     units = json.loads(command(
         "/usr/bin/systemctl", "--user", "list-units", "--all", "--no-pager", "--output=json",
         "graphical-session*.target", "wayland-session*.target", "wayland-wm@*.service"))
-    if not isinstance(units, list) or any(unit["active"] not in ("inactive", "failed") for unit in units):
+    if (not isinstance(units, list)
+            or any(unit["active"] not in ("inactive", "failed") for unit in units)
+            or compositor_probe(uid)):
         raise ValueError("a graphical session is active or still stopping; use its console or wait for it to exit")
     # Refresh login identity rather than forwarding stale desktop/SSH values.
     return {"XDG_SESSION_ID": session["Id"], "XDG_SEAT": session["Seat"],
@@ -45,12 +84,8 @@ def desktop_busy():
         "graphical-session*.target", "wayland-session*.target", "wayland-wm@*.service"))
     if not isinstance(units, list):
         raise ValueError("invalid graphical session status")
-    compositor = subprocess.run(["/usr/bin/pgrep", "-u", str(os.getuid()), "-x", "Hyprland"],
-                                capture_output=True, timeout=3)
-    if compositor.returncode not in (0, 1):
-        raise ValueError("cannot inspect the compositor")
     return (any(unit["active"] not in ("inactive", "failed") for unit in units)
-            or compositor.returncode == 0)
+            or compositor_running())
 
 
 def guarded_session(endpoint, env, probe=desktop_busy):
@@ -135,11 +170,9 @@ def main():
     if len(sys.argv) < 2:
         raise ValueError("installed desktop endpoint is missing")
     if sys.argv[2:] in (["--help"], ["-h"]):
-        print("Usage: tam-desktop\nStart the installed Tamlinux desktop from your local text login.")
-        return
-    if sys.argv[2:]:
-        raise ValueError("tam-desktop takes no arguments; use --help")
-    endpoint = Path(sys.argv[1])
+        print(USAGE)
+        return 0
+    endpoint = resolve_endpoint(sys.argv[1], sys.argv[2:])
     tty = os.ttyname(0)
     if not all(os.isatty(fd) and os.ttyname(fd) == tty for fd in (1, 2)):
         raise ValueError("run tam-desktop directly in the text console, without redirection")
@@ -147,7 +180,7 @@ def main():
     if not endpoint.is_file() or not os.access(endpoint, os.X_OK):
         raise ValueError("install the Tamlinux desktop generation before starting graphics")
     env = dict(os.environ)
-    for key in ("DISPLAY", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "SWAYSOCK"):
+    for key in ("DISPLAY", "WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE", "SWAYSOCK", "TAM_PANE_SOCKET"):
         env.pop(key, None)
     env.update(identity)
     return guarded_session(endpoint, env)

@@ -27,9 +27,11 @@ class ConsoleDesktop(unittest.TestCase):
         values.update(changes)
         return "\n".join(f"{key}={value}" for key, value in values.items())
 
-    def check(self, session=None, units="[]", tty="/dev/tty1", uid=1000, foreground=True):
+    def check(self, session=None, units="[]", tty="/dev/tty1", uid=1000, foreground=True,
+              compositor_running=False):
         with patch.object(console, "query", side_effect=[session or self.session(), units]) as command:
-            return console.session_environment(tty, uid, foreground, command)
+            return console.session_environment(
+                tty, uid, foreground, command, compositor_probe=lambda _uid: compositor_running)
 
     def test_foreground_text_login_supplies_actual_identity(self):
         self.assertEqual(self.check(), dict(XDG_SESSION_ID="7", XDG_SEAT="seat0",
@@ -51,7 +53,28 @@ class ConsoleDesktop(unittest.TestCase):
         for state in ("active", "activating", "deactivating", "reloading"):
             with self.subTest(state=state), self.assertRaises(ValueError):
                 self.check(units=json.dumps([dict(active=state)]))
+        with self.assertRaises(ValueError):
+            self.check(compositor_running=True)
         self.check(units='[{"active":"inactive"},{"active":"failed"}]')
+
+    def test_compositor_running_and_desktop_busy_inspect_both_compositors(self):
+        for results, expected in (
+            ([subprocess.CompletedProcess([], 0, b"")], True),
+            ([subprocess.CompletedProcess([], 1, b""), subprocess.CompletedProcess([], 0, b"")], True),
+            ([subprocess.CompletedProcess([], 1, b""), subprocess.CompletedProcess([], 1, b"")], False),
+        ):
+            with patch.object(console.subprocess, "run", side_effect=results) as run:
+                self.assertEqual(console.compositor_running(1000), expected)
+            self.assertEqual(run.call_args_list[0].args[0], ["/usr/bin/pgrep", "-u", "1000", "-x", "Hyprland"])
+            if len(results) > 1:
+                self.assertEqual(run.call_args_list[1].args[0], ["/usr/bin/pgrep", "-u", "1000", "-x", "tam-pane"])
+        with patch.object(console.subprocess, "run", return_value=subprocess.CompletedProcess([], 2, b"")):
+            with self.assertRaises(ValueError):
+                console.compositor_running(1000)
+        with patch.object(console, "query", return_value='[{"active":"inactive"}]'), \
+                patch.object(console, "compositor_running", side_effect=[True, False]):
+            self.assertTrue(console.desktop_busy())
+            self.assertFalse(console.desktop_busy())
 
     def test_unknown_bus_state_is_not_permission_to_start(self):
         for units in ("invalid", "{}", '[{}]'):
@@ -61,29 +84,47 @@ class ConsoleDesktop(unittest.TestCase):
             with self.assertRaises(subprocess.TimeoutExpired):
                 console.session_environment("/dev/tty1", 1000, True, command)
 
-    def test_dispatch_clears_stale_graphics_and_refreshes_login_identity(self):
+    def test_dispatch_clears_stale_graphics_and_selects_target_session(self):
         with tempfile.TemporaryDirectory(prefix="console home ") as temp:
-            endpoint = Path(temp) / "tam-hyprland-session"
-            endpoint.touch(mode=0o755)
+            bin_dir = Path(temp)
+            hypr = bin_dir / "tam-hyprland-session"
+            pane = bin_dir / "tam-pane-session"
+            hypr.touch(mode=0o755)
+            pane.touch(mode=0o755)
             identity = self.check()
-            with patch.object(sys, "argv", ["console.py", str(endpoint)]), \
-                    patch.object(console.os, "ttyname", return_value="/dev/tty1"), \
-                    patch.object(console.os, "isatty", return_value=True), \
-                    patch.object(console.os, "tcgetpgrp", return_value=os.getpgrp()), \
-                    patch.object(console, "session_environment", return_value=identity), \
-                    patch.dict(os.environ, {"WAYLAND_DISPLAY": "stale", "XDG_SESSION_ID": "stale"}), \
-                    patch.object(console, "guarded_session", return_value=23) as execute:
-                self.assertEqual(console.main(), 23)
-            path, env = execute.call_args.args
-            self.assertEqual(path, endpoint)
-            self.assertNotIn("WAYLAND_DISPLAY", env)
-            self.assertEqual(env["XDG_SESSION_ID"], "7")
+            for args, expected in (([], hypr), (["hyprland"], hypr), (["pane"], pane)):
+                with self.subTest(args=args), \
+                        patch.object(sys, "argv", ["console.py", str(bin_dir), *args]), \
+                        patch.object(console.os, "ttyname", return_value="/dev/tty1"), \
+                        patch.object(console.os, "isatty", return_value=True), \
+                        patch.object(console.os, "tcgetpgrp", return_value=os.getpgrp()), \
+                        patch.object(console, "session_environment", return_value=identity), \
+                        patch.dict(os.environ, {
+                            "WAYLAND_DISPLAY": "stale",
+                            "TAM_PANE_SOCKET": "/tmp/stale.sock",
+                            "TAM_PANE_BIN": "/home/user/.local/bin/tam-pane",
+                            "XDG_SESSION_ID": "stale",
+                        }), \
+                        patch.object(console, "guarded_session", return_value=23) as execute:
+                    self.assertEqual(console.main(), 23)
+                path, env = execute.call_args.args
+                self.assertEqual(path, expected)
+                self.assertNotIn("WAYLAND_DISPLAY", env)
+                self.assertNotIn("TAM_PANE_SOCKET", env)
+                self.assertEqual(env["TAM_PANE_BIN"], "/home/user/.local/bin/tam-pane")
+                self.assertEqual(env["XDG_SESSION_ID"], "7")
+            for bad in (["sway"], ["pane", "extra"]):
+                with self.subTest(bad=bad), patch.object(sys, "argv", ["console.py", str(bin_dir), *bad]):
+                    with self.assertRaises(ValueError):
+                        console.main()
 
     def test_help_does_not_require_a_tty_or_start_anything(self):
         result = subprocess.run([sys.executable, "-I", str(SOURCE / "console.py"), "/missing", "--help"],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0)
-        self.assertIn("Usage: tam-desktop", result.stdout)
+        self.assertIn("Usage: tam-desktop [hyprland|pane]", result.stdout)
+        self.assertIn("tam-desktop pane", result.stdout)
+        self.assertIn("tam-desktop hyprland", result.stdout)
 
     def test_console_is_held_through_desktop_exit_and_unknown_cleanup(self):
         # Real terminal line discipline and signals: an ordinary pipe cannot
@@ -199,8 +240,28 @@ class ConsoleDesktop(unittest.TestCase):
             os.close(master)
             os.close(slave)
 
+    def test_normal_exit_startup_failure_and_crash_wait_for_graphics_to_stop(self):
+        master, slave = pty.openpty()
+        original = termios.tcgetattr(slave)
+        try:
+            for returncode, expected in ((0, 0), (1, 1), (-signal.SIGSEGV, 128 + signal.SIGSEGV)):
+                with self.subTest(returncode=returncode):
+                    child = Mock(returncode=returncode)
+                    probe = Mock(side_effect=[True, False])
+                    with patch.object(console.termios, "tcgetattr", return_value=original), \
+                            patch.object(console.termios, "tcsetattr"), \
+                            patch.object(console.subprocess, "Popen", return_value=child), \
+                            patch.object(console.time, "sleep"):
+                        self.assertEqual(console.guarded_session(Path("/desktop"), {}, probe), expected)
+                    self.assertEqual(probe.call_count, 2)
+        finally:
+            os.close(master)
+            os.close(slave)
+
     def test_public_help_needs_no_native_providers_or_installed_session_tree(self):
         result = subprocess.run(["/bin/sh", str(SOURCE / "desktop"), "--help"],
                                 env={"PATH": "/nonexistent"}, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Usage: tam-desktop", result.stdout)
+        self.assertIn("Usage: tam-desktop [hyprland|pane]", result.stdout)
+        self.assertIn("tam-desktop pane", result.stdout)
+        self.assertIn("tam-desktop hyprland", result.stdout)

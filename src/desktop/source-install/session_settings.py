@@ -14,11 +14,24 @@ import tempfile
 
 LIMIT = 1024 * 1024
 LEGACY = b"/usr/lib/tamlinux/source/current/"
+COMMON_REQUIRED = ("uwsm/env.d/10-tamlinux.sh",)
+SESSION_REQUIRED = {
+    "hyprland": ("tamlinux/session/hyprland.lua",),
+    "pane": ("tamlinux/session/tam-pane.lua",),
+}
 REQUIRED = (
     "tamlinux/session/hyprland.lua",
     "tamlinux/session/tam-pane.lua",
     "uwsm/env.d/10-tamlinux.sh",
 )
+
+
+def required_for(session=None):
+    if session is None:
+        return REQUIRED
+    if session not in SESSION_REQUIRED:
+        raise ValueError(f"unknown session: {session}")
+    return SESSION_REQUIRED[session] + COMMON_REQUIRED
 
 
 def roots(environ):
@@ -189,7 +202,8 @@ class SessionSettings:
                 finally:
                     os.close(directory)
 
-    def ready(self, defaults, active, pending):
+    def ready(self, defaults, active, pending, session=None):
+        required = required_for(session)
         with self.locked():
             if os.path.lexists(pending):
                 raise ValueError("source installation is incomplete; recover from the console")
@@ -213,7 +227,7 @@ class SessionSettings:
                     safe(relative)
                 subprocess.run(["/usr/bin/python3", "-I", share / "user-defaults/apply"],
                                check=True, stdout=subprocess.DEVNULL)
-            for relative in REQUIRED:
+            for relative in required:
                 target = self.config / relative
                 if receipt is not None and not os.path.lexists(target) and (defaults / ".config" / relative).is_file():
                     self.publish_default(target, self.default(defaults, relative))
@@ -233,12 +247,16 @@ def run_cli(argv=None):
     if os.geteuid() == 0:
         sys.exit("Tamlinux session settings must run as your regular user")
     argv = sys.argv[1:] if argv is None else argv
-    if argv:
-        raise ValueError("session_settings.py takes no arguments")
+    session = None
+    if len(argv) == 2 and argv[0] == "--session" and argv[1] in SESSION_REQUIRED:
+        session = argv[1]
+    elif argv:
+        raise ValueError("session_settings.py accepts only optional --session hyprland|pane")
     program = Path(__file__).resolve()
     SessionSettings().ready(program.parents[3] / "defaults/home",
                             Path("/var/lib/tamlinux/active.json"),
-                            Path("/var/lib/tamlinux/pending.json"))
+                            Path("/var/lib/tamlinux/pending.json"),
+                            session=session)
 
 
 if __name__ == "__main__":

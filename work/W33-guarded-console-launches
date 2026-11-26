@@ -1,0 +1,40 @@
+W33 GUARDED CONSOLE LAUNCHES FOR TAM-PANE AND HYPRLAND (0.7.0 MILESTONE 3)
+
+Date: 2026-11-25
+AI harness: Antigravity CLI 1.5.17
+AI model: Gemini 4 Neon (Medium)
+Continues: W31
+
+GUIDANCE
+
+  Fred: "/plan Take the next work slice of preparing for Tamlinux 0.7.0"
+  Fred: "/plan yes, show plan in tam-view"
+  Fred: "Approved. Proceed."
+
+DONE
+
+  - Updated src/desktop/session/desktop and src/desktop/session/console.py
+    to support tam-desktop pane (tam-pane trial), tam-desktop hyprland
+    (Hyprland recovery), and bare tam-desktop (default Hyprland, keeping
+    start routed through bare tam-desktop).
+  - Extended duplicate-session, stale-environment (TAM_PANE_SOCKET), and
+    shutdown-wait checks in console.py and wait-stopped.py to inspect both
+    Hyprland and tam-pane while preserving TAM_PANE_BIN for local builds.
+  - Scoped src/desktop/source-install/session_settings.py per compositor
+    (--session hyprland|pane) and wired both launchers in
+    src/desktop/install-cultivar-layout.py so Hyprland starts even when
+    tam-pane.lua is missing, empty, broken, or unavailable.
+  - Verified with 13 console-desktop tests, 6 session-launcher tests, 5
+    product-install tests, 2 native-login tests, 7 session-default tests,
+    32 source-install tests, start C tests, and POSIX sh -n checks.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Proceed to 0.7.0 Milestone 4: UWSM session bring-up for tam-pane
+    (publish desktop identity, Wayland display, and tam-pane socket to
+    systemd and D-Bus before starting Quickshell, portals, and helpers;
+    verify cleanup and Hyprland recovery environment).

@@ -26,12 +26,29 @@ class SessionLauncherTests(unittest.TestCase):
         self.assertEqual(now[0], 19)
 
     def test_deactivating_unit_and_lingering_compositor_block_start(self):
-        for active, pgrep, expected in [("deactivating", 1, True), ("inactive", 0, True),
-                                         ("failed", 1, False), ("active", 1, True)]:
-            with patch.object(gate.subprocess, "run", side_effect=[
-                subprocess.CompletedProcess([], 0, json.dumps([{"active": active}])),
-                subprocess.CompletedProcess([], pgrep, b"")]):
+        for active, pgrep_codes, expected in [
+            ("deactivating", [], True),
+            ("active", [], True),
+            ("inactive", [0], True),
+            ("inactive", [1, 0], True),
+            ("failed", [1, 1], False),
+        ]:
+            side_effects = [subprocess.CompletedProcess([], 0, json.dumps([{"active": active}]))]
+            side_effects.extend(subprocess.CompletedProcess([], code, b"") for code in pgrep_codes)
+            with self.subTest(active=active, pgrep_codes=pgrep_codes), \
+                    patch.object(gate.subprocess, "run", side_effect=side_effects) as run:
                 self.assertEqual(gate.busy(), expected)
+                if len(pgrep_codes) >= 1:
+                    self.assertEqual(run.call_args_list[1].args[0][-2:], ["-x", "Hyprland"])
+                if len(pgrep_codes) >= 2:
+                    self.assertEqual(run.call_args_list[2].args[0][-2:], ["-x", "tam-pane"])
+        with patch.object(gate.subprocess, "run", side_effect=[
+            subprocess.CompletedProcess([], 0, json.dumps([{"active": "inactive"}])),
+            subprocess.CompletedProcess([], 1, b""),
+            subprocess.CompletedProcess([], 2, b""),
+        ]):
+            with self.assertRaises(RuntimeError):
+                gate.busy()
 
     def test_provider_failure_never_means_stopped(self):
         with patch.object(gate.subprocess, "run", side_effect=subprocess.TimeoutExpired("systemctl", 2)):

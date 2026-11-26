@@ -6,6 +6,9 @@ import sys
 import time
 
 
+COMPOSITORS = ("Hyprland", "tam-pane")
+
+
 def busy():
     result = subprocess.run([
         "/usr/bin/systemctl", "--user", "list-units", "--all", "--no-pager", "--output=json",
@@ -14,12 +17,17 @@ def busy():
     units = json.loads(result.stdout)
     if not isinstance(units, list):
         raise ValueError("invalid user-manager unit list")
-    active = any(unit["active"] not in ("inactive", "failed") for unit in units)
-    compositor = subprocess.run(["/usr/bin/pgrep", "-u", str(os.getuid()), "-x", "Hyprland"],
-                                capture_output=True, timeout=2)
-    if compositor.returncode not in (0, 1):
-        raise RuntimeError("cannot inspect previous compositor")
-    return active or compositor.returncode == 0
+    if any(unit["active"] not in ("inactive", "failed") for unit in units):
+        return True
+    uid = str(os.getuid())
+    for name in COMPOSITORS:
+        compositor = subprocess.run(["/usr/bin/pgrep", "-u", uid, "-x", name],
+                                    capture_output=True, timeout=2)
+        if compositor.returncode == 0:
+            return True
+        if compositor.returncode != 1:
+            raise RuntimeError(f"cannot inspect previous compositor {name}")
+    return False
 
 
 def wait(probe=busy, clock=time.monotonic, sleep=time.sleep, timeout=30):
