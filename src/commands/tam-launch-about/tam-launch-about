@@ -35,7 +35,12 @@ logo_dimensions() {
   printf '%s %s' "$(display_columns <"$LOGO_FILE")" "$(wc -l <"$LOGO_FILE")"
 }
 
+using_tam_pane() {
+  [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]
+}
+
 hypr_dispatch() {
+  using_tam_pane && return 0
   local lua="$1"
   shift
   hyprctl dispatch "$lua" >/dev/null 2>&1 || hyprctl dispatch "$@" >/dev/null
@@ -54,6 +59,7 @@ remember_fit() {
 # fit it came from. Called without one it only clears, leaving the float rule's
 # starting size — where a Hyprland without the Lua API stays too.
 apply_size_rule() {
+  using_tam_pane && return 0
   local rule=""
   (( $# == 2 )) && rule="tamlinux_about_size_rule = hl.window_rule({ match = { class = \"org.tamlinux.about\" }, size = { $1, $2 } })"
 
@@ -98,6 +104,7 @@ settle_grid() {
 }
 
 fit_window() {
+  using_tam_pane && return 0
   custom_fastfetch_config && return 0
 
   local logo_w logo_h

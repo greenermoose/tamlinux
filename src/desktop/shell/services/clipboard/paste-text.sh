@@ -11,9 +11,41 @@
 
 set -eo pipefail
 
+using_tam_pane() {
+  [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]
+}
+
+tam_pane_focused_window() {
+  timeout 1 tam-pane msg windows 2>/dev/null | awk -F'\t' '
+    $1 == "window" {
+      id = ""; app = ""; focused = "0"
+      for (i = 2; i <= NF; i++) {
+        if (index($i, "id=") == 1) id = substr($i, 4)
+        else if (index($i, "app_id=") == 1) app = substr($i, 8)
+        else if (index($i, "focused=") == 1) focused = substr($i, 9)
+      }
+      if (focused == "1") {
+        print id "\t" app
+        exit
+      }
+    }
+  '
+}
+
 # Capture before the picker takes keyboard focus. Keep the original paste
 # route for other applications. An unavailable target permits copying only.
 if [[ ${1:-} == --capture-target ]]; then
+  if using_tam_pane; then
+    IFS=$'\t' read -r win_id app_id <<<"$(tam_pane_focused_window)"
+    if [[ $app_id == "tam-last" && $win_id =~ ^[0-9]+$ ]]; then
+      printf 'pane:%s\n' "$win_id"
+      exit 0
+    elif [[ -n ${app_id:-} || -n ${win_id:-} ]]; then
+      printf 'other\n'
+      exit 0
+    fi
+    exit 1
+  fi
   timeout 1 hyprctl -j activewindow | jq -er '
     if .class == "tam-last" then .address | select(test("^0x[0-9a-fA-F]+$"))
     elif (.class // "") != "" then "other" else empty end'
@@ -57,7 +89,7 @@ copy_history_entry() {
   [[ $history_index =~ ^[0-9]+$ ]] || exit
   jq -e --argjson index "$history_index" '.[$index].type == "text" and (.[$index].text | type == "string")' "$history_path" >/dev/null || exit
   local copy_args=()
-  if [[ $target =~ ^0x[0-9a-fA-F]+$ ]]; then
+  if [[ $target =~ ^0x[0-9a-fA-F]+$ || $target =~ ^pane:[0-9]+$ ]]; then
     copy_args=(--type "text/plain;charset=utf-8")
   fi
   jq -j --argjson index "$history_index" '.[$index].text' "$history_path" | wl-copy "${copy_args[@]}"
@@ -79,6 +111,19 @@ if [[ $copy_only == "true" ]]; then
 fi
 
 if [[ $target != other ]]; then
+  if [[ $target =~ ^pane:([0-9]+)$ ]]; then
+    want_id="${BASH_REMATCH[1]}"
+    for attempt in {1..12}; do
+      IFS=$'\t' read -r active_id _ <<<"$(tam_pane_focused_window)"
+      if [[ $active_id == "$want_id" ]]; then
+        timeout 1 tam-pane msg dispatch send_key Ctrl+Shift+V >/dev/null
+        exit $?
+      fi
+      [[ -z ${active_id:-} ]] || exit 1
+      sleep 0.025
+    done
+    exit 1
+  fi
   [[ $target =~ ^0x[0-9a-fA-F]+$ && $target != 0x0 ]] || exit 1
   for attempt in {1..12}; do
     active=$(timeout 1 hyprctl -j activewindow | jq -r '.address // ""')

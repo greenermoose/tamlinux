@@ -1,0 +1,48 @@
+W38: Prove the shell and apps on tam-pane (0.7.0 Milestone 7)
+
+Date: 2026-11-26
+Agent: agy (Gemini)
+Branch: dev
+
+SUMMARY
+
+  Implemented ROADMAP.md Milestone 7 for Tamlinux 0.7.0 Northern Torch while
+  working around active claims in libtam, tam-view, tam-knox, tam-clam, tam,
+  and improvements-fred-tamlinux (leaving components.lock untouched):
+  - Added tam-pane Unix domain socket IPC support to
+    src/desktop/shell/host/hyprland_backend.py when TAM_PANE_SOCKET is set and
+    HYPRLAND_INSTANCE_SIGNATURE is unset (monitors, monitors-all, workspaces,
+    active-workspace, devices, binds, config-errors, rollinglog,
+    select-output-workspace, focus-workspace, focus-output, move-window,
+    move-workspace, dpms, batch, reload), preserving Hyprland behavior and
+    refresh-rate fallback (60 Hz when headless outputs report 0).
+  - Forwarded TAM_PANE_SOCKET in closed child environments:
+    src/desktop/shell/host/BarApi.qml,
+    src/desktop/plugins/fred.workspaces/Workspaces.qml,
+    src/desktop/plugins/fred.monitor/Panel.qml,
+    src/desktop/plugins/fred.monitor/fred-monitor-layout (spawn_guard),
+    src/desktop/plugins/fred.keyboard/BarWidget.qml, and
+    src/desktop/plugins/fred.clock/Panel.qml.
+  - Updated src/desktop/plugins/fred.monitor/fred-monitor-layout to format
+    tp.monitor(...) rules and persist atomically to
+    ~/.config/tamlinux/tam-pane/monitors.lua when running under tam-pane.
+  - Updated src/desktop/shell/services/clipboard/paste-text.sh to detect
+    focused tam-last windows via tam-pane msg windows (pane:<id>) and paste
+    via tam-pane msg dispatch send_key Ctrl+Shift+V with focus-change abort.
+  - Guarded Hyprland-only hyprctl calls in
+    src/commands/tam-launch-about/tam-launch-about under tam-pane.
+  - Extended tests/test_clipboard_paste.py with tam-pane cases and added
+    tests/test_tam_pane_shell_proof.py proving the backend, plugin helpers,
+    real Quickshell + all nine shipped fred.* plugins over native Wayland on
+    headless two-output tam-pane 0.2.8, tam-last + tam-clam, tam-edit PTY
+    save, and tam-launch-about with Hyprland stopped.
+
+VERIFICATION
+
+  - tests/test_tam_pane_shell_proof.py: 3/3 OK
+  - tests/test_clipboard_paste.py: 6/6 OK
+  - tests/test_tam_pane_adapter.py: 3/3 OK
+  - tests/test_tam_pane_controls.py: 3/3 OK
+  - tests/test_host.py, tests/test_compositor.py, tests/test_workspace_*.py (61): OK
+  - tests/check-panels: 8/8 PASS; tests/check-theme: 12/12 PASS
+  - bash -n on paste-text.sh and tam-launch-about: OK

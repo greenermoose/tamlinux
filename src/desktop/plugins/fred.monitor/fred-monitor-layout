@@ -155,9 +155,25 @@ def rule_fields(display):
     return [display["name"], mode, position, display["scale"], display["transform"]]
 
 
+def using_tam_pane():
+    return bool(os.environ.get("TAM_PANE_SOCKET")) and not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+
+
 def lua_rule(display):
     commands = load_backend().commands
     fields = rule_fields(display)
+    if using_tam_pane():
+        name = commands.require_output(fields[0])
+        if fields[1] == "disabled":
+            return f'tp.monitor({{ output = "{name}", disabled = true }})'
+        shown_mode = commands.require_mode(fields[1])
+        shown_scale = commands.format_scale(fields[3])
+        shown_transform = commands.require_transform(fields[4])
+        return (
+            f'tp.monitor({{ output = "{name}", mode = "{shown_mode}", '
+            f'position = {{ {int(display["x"])}, {int(display["y"])} }}, '
+            f'scale = {shown_scale}, transform = {shown_transform} }})'
+        )
     if fields[1] == "disabled":
         return commands.monitor_rule_text(fields[0], disabled=True)
     return commands.monitor_rule_text(
@@ -332,7 +348,13 @@ def persist_layout(layout):
         if not home or not os.path.isabs(home):
             raise LayoutError("configuration home is unavailable")
         config_home = os.path.join(home, ".config")
-    requested = Path(config_home) / "tamlinux" / "hypr" / "monitors.lua"
+    if using_tam_pane():
+        requested = Path(config_home) / "tamlinux" / "tam-pane" / "monitors.lua"
+        if not requested.exists():
+            requested.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            requested.write_text(f"{START_MARKER}\n{END_MARKER}\n", encoding="utf-8")
+    else:
+        requested = Path(config_home) / "tamlinux" / "hypr" / "monitors.lua"
     try:
         target = requested.resolve(strict=True)
         directory = target.parent
@@ -606,6 +628,7 @@ def spawn_guard(token):
         "XDG_RUNTIME_DIR",
         "WAYLAND_DISPLAY",
         "HYPRLAND_INSTANCE_SIGNATURE",
+        "TAM_PANE_SOCKET",
         "XDG_CONFIG_HOME",
         "TAMLINUX_COMPOSITOR_COMMANDS",
         "TAMLINUX_COMPOSITOR_LIVE_ACTIONS",

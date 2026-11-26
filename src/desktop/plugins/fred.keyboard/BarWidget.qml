@@ -42,13 +42,13 @@ Panel {
 
   // Closed environment: only these names reach a child process.
   readonly property var keyboardEnv: ["HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY",
-                                      "HYPRLAND_INSTANCE_SIGNATURE"]
+                                      "HYPRLAND_INSTANCE_SIGNATURE", "TAM_PANE_SOCKET"]
   // xdg-open needs enough of the session to find and start the browser.
   readonly property var xdgOpenEnv: [
     "HOME", "LANG", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "DISPLAY",
     "DBUS_SESSION_BUS_ADDRESS", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE",
     "XDG_DATA_HOME", "XDG_DATA_DIRS", "XDG_CONFIG_HOME", "XDG_CONFIG_DIRS",
-    "HYPRLAND_INSTANCE_SIGNATURE"
+    "HYPRLAND_INSTANCE_SIGNATURE", "TAM_PANE_SOCKET"
   ]
 
   property var device: null           // primary physical keyboard
