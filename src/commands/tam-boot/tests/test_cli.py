@@ -32,7 +32,7 @@ class TamBootCli(unittest.TestCase):
                 p = subprocess.run(
                     [str(BIN), flag], capture_output=True, text=True, check=True
                 )
-                self.assertEqual(p.stdout.strip(), "0.1.0")
+                self.assertEqual(p.stdout.strip(), "0.1.1")
 
     def test_explain_human(self):
         p = subprocess.run(

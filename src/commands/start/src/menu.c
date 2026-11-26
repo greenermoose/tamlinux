@@ -267,7 +267,7 @@ int start_menu_load_file(start_menu_t *menu, const char *path)
 	size_t len;
 	int rc;
 
-	data = tam_fs_read_file(path, &len);
+	data = tam_fs_read(path, 0, &len);
 	if (!data)
 		return -1;
 	rc = start_menu_load_string(menu, data);

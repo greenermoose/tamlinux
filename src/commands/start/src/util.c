@@ -40,7 +40,7 @@ static int load_version_file(const char *path)
 	size_t len;
 	size_t i;
 
-	data = tam_fs_read_file(path, &len);
+	data = tam_fs_read(path, 0, &len);
 	if (!data)
 		return -1;
 	while (len > 0 && (data[len - 1] == '\n' || data[len - 1] == '\r' ||

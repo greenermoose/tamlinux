@@ -29,7 +29,7 @@ int tam_boot_get_list(tam_boot_list_t *out)
 
     const char *list_file = getenv("TAM_BOOT_LIST_FILE");
     if (list_file) {
-        data = tam_fs_read_file(list_file, &len);
+        data = tam_fs_read(list_file, 0, &len);
     } else {
         const char *const argv[] = { "journalctl", "--list-boots", "--no-pager", NULL };
         tam_exec_result_t res = tam_exec(argv, 5000);
@@ -343,7 +343,7 @@ int tam_boot_analyze(int boot_index, const char *boot_id_opt, tam_boot_analysis_
     const char *fix_file = getenv("TAM_BOOT_JOURNAL_FILE");
     if (fix_file) {
         size_t len = 0;
-        char *data = tam_fs_read_file(fix_file, &len);
+        char *data = tam_fs_read(fix_file, 0, &len);
         if (!data) return -1;
         parse_journal_export_stream(data, len, out);
         free(data);
