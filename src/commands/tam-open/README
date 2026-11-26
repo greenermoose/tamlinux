@@ -5,3 +5,7 @@ Inspect and open a file, directory, or URL.
 tam-open detects the target type and launches an appropriate viewer. GUI tools
 detach; terminal tools run in the foreground. It does not require XDG for its
 built-in handlers.
+
+A file:// URL is percent-decoded and must name this machine (no host, or
+localhost). A tool that cannot start is reported with exit status 127.
+Program lookup and launching come from libtam.

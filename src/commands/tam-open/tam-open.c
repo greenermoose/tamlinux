@@ -1,4 +1,11 @@
-#define _POSIX_C_SOURCE 200809L
+#include <tam.h>
+#include <tam_pager.h>
+#include <tam_uni.h>
+
+/* tam_which, tam_run_foreground and tam_spawn_detached: libtam 0.11.0. */
+#if TAM_VERSION_MAJOR == 0 && TAM_VERSION_MINOR < 11
+#error "tam-open needs libtam 0.11.0 or later"
+#endif
 
 #include "version.h"
 
@@ -31,38 +38,16 @@ static void failf(const char *fmt, ...)
 	fputc('\n', stderr);
 }
 
+/* Whether execvp would find `name` (libtam's lookup, which matches it). */
 static int tool_exists(const char *name)
 {
 	char *path;
-	char *copy;
-	char *dir;
-	size_t len;
 
 	if (!name || !*name)
 		return 0;
-	if (strchr(name, '/'))
-		return access(name, X_OK) == 0;
-
-	path = getenv("PATH");
-	if (!path || !*path)
-		path = "/usr/local/bin:/usr/bin:/bin";
-	copy = strdup(path);
-	if (!copy)
-		return 0;
-	for (dir = strtok(copy, ":"); dir; dir = strtok(NULL, ":")) {
-		char candidate[PATH_MAX];
-		if (!*dir)
-			continue;
-		len = snprintf(candidate, sizeof(candidate), "%s/%s", dir, name);
-		if (len >= sizeof(candidate))
-			continue;
-		if (access(candidate, X_OK) == 0) {
-			free(copy);
-			return 1;
-		}
-	}
-	free(copy);
-	return 0;
+	path = tam_which(name);
+	free(path);
+	return path != NULL;
 }
 
 static char *lower_copy(const char *s)
@@ -104,35 +89,48 @@ static int is_url(const char *s)
 	return s[i] == ':';
 }
 
-static char *strip_file_url(const char *s)
+/* The local path a file:// URL names, percent-decoded (localhost or no
+ * host only), or NULL with errno set. */
+static char *file_url_path(const char *url)
 {
-	const char *p = s;
-	if (!strncasecmp(s, "file://", 7)) {
-		p = s + 7;
-		if (!strncasecmp(p, "localhost/", 10))
-			p += 9;
+	char path[PATH_MAX];
+
+	if (tam_uri_resolve_local(NULL, url, path, sizeof(path), NULL, 0) != 0)
+		return NULL;
+	if (path[0] != '/') {
+		errno = EINVAL;
+		return NULL;
 	}
-	return strdup(p);
+	return strdup(path);
 }
 
+/* Run a terminal tool on our terminal and wait: libtam gives it default
+ * signals and keeps Ctrl+C for the tool alone. 127 when it cannot start. */
 static int run_foreground(char *const argv[])
 {
-	pid_t pid = fork();
-	int status;
+	int code;
 
-	if (pid < 0) {
+	if (tam_run_foreground((const char *const *)argv, &code) < 0) {
 		failf("could not start %s: %s", argv[0], strerror(errno));
 		return 127;
 	}
-	if (pid == 0) {
-		execvp(argv[0], argv);
-		fprintf(stderr, "tam-open: %s: %s\n", argv[0], strerror(errno));
+	return code;
+}
+
+/* A pipeline child: default signals, then exec; 127 when that fails. */
+static void pipeline_child(char *const argv[], int from, int to)
+{
+	signal(SIGINT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	if (dup2(from, to) < 0)
 		_exit(127);
-	}
-	if (waitpid(pid, &status, 0) < 0) {
-		failf("could not wait for %s: %s", argv[0], strerror(errno));
-		return 127;
-	}
+	execvp(argv[0], argv);
+	fprintf(stderr, "tam-open: %s: %s\n", argv[0], strerror(errno));
+	_exit(127);
+}
+
+static int exit_code(int status)
+{
 	if (WIFEXITED(status))
 		return WEXITSTATUS(status);
 	if (WIFSIGNALED(status))
@@ -140,84 +138,67 @@ static int run_foreground(char *const argv[])
 	return 1;
 }
 
+/* first | second on our terminal, as run_foreground does for one tool:
+ * Ctrl+C reaches the pipeline, not tam-open. */
 static int run_pipeline(char *const first[], char *const second[])
 {
 	int fd[2];
 	pid_t p1, p2;
 	int status1 = 0, status2 = 0;
+	struct sigaction ignore, old_int, old_quit;
 
 	if (!second || !second[0])
 		return run_foreground(first);
 
-	if (pipe(fd) < 0) {
+	if (pipe2(fd, O_CLOEXEC) < 0) {
 		failf("could not create pipe: %s", strerror(errno));
 		return 127;
 	}
+	memset(&ignore, 0, sizeof(ignore));
+	ignore.sa_handler = SIG_IGN;
+	sigemptyset(&ignore.sa_mask);
+	sigaction(SIGINT, &ignore, &old_int);
+	sigaction(SIGQUIT, &ignore, &old_quit);
+
 	p1 = fork();
+	if (p1 == 0)
+		pipeline_child(first, fd[1], STDOUT_FILENO);
 	if (p1 < 0) {
 		failf("could not start %s: %s", first[0], strerror(errno));
 		close(fd[0]);
 		close(fd[1]);
+		sigaction(SIGINT, &old_int, NULL);
+		sigaction(SIGQUIT, &old_quit, NULL);
 		return 127;
-	}
-	if (p1 == 0) {
-		close(fd[0]);
-		if (dup2(fd[1], STDOUT_FILENO) < 0)
-			_exit(127);
-		close(fd[1]);
-		execvp(first[0], first);
-		fprintf(stderr, "tam-open: %s: %s\n", first[0], strerror(errno));
-		_exit(127);
 	}
 	p2 = fork();
-	if (p2 < 0) {
-		failf("could not start %s: %s", second[0], strerror(errno));
-		close(fd[0]);
-		close(fd[1]);
-		waitpid(p1, NULL, 0);
-		return 127;
-	}
-	if (p2 == 0) {
-		close(fd[1]);
-		if (dup2(fd[0], STDIN_FILENO) < 0)
-			_exit(127);
-		close(fd[0]);
-		execvp(second[0], second);
-		fprintf(stderr, "tam-open: %s: %s\n", second[0], strerror(errno));
-		_exit(127);
-	}
+	if (p2 == 0)
+		pipeline_child(second, fd[0], STDIN_FILENO);
 	close(fd[0]);
 	close(fd[1]);
-	waitpid(p1, &status1, 0);
-	waitpid(p2, &status2, 0);
-	if (WIFEXITED(status1) && WEXITSTATUS(status1) != 0)
-		return WEXITSTATUS(status1);
-	if (WIFEXITED(status2))
-		return WEXITSTATUS(status2);
-	return 1;
+	if (p2 < 0)
+		failf("could not start %s: %s", second[0], strerror(errno));
+	while (waitpid(p1, &status1, 0) < 0 && errno == EINTR)
+		;
+	if (p2 > 0)
+		while (waitpid(p2, &status2, 0) < 0 && errno == EINTR)
+			;
+	sigaction(SIGINT, &old_int, NULL);
+	sigaction(SIGQUIT, &old_quit, NULL);
+	if (p2 < 0)
+		return 127;
+	if (exit_code(status1) != 0)
+		return exit_code(status1);
+	return exit_code(status2);
 }
 
+/* Start a graphical tool detached (its own session, /dev/null streams,
+ * none of our descriptors). A tool that cannot start is reported. */
 static int detach_spawn(char *const argv[])
 {
-	pid_t pid = fork();
-
-	if (pid < 0) {
+	if (tam_spawn_detached((const char *const *)argv) < 0) {
 		failf("could not start %s: %s", argv[0], strerror(errno));
-		return -1;
-	}
-	if (pid == 0) {
-		int dev;
-		setsid();
-		dev = open("/dev/null", O_RDWR);
-		if (dev >= 0) {
-			dup2(dev, STDIN_FILENO);
-			dup2(dev, STDOUT_FILENO);
-			dup2(dev, STDERR_FILENO);
-			if (dev > 2)
-				close(dev);
-		}
-		execvp(argv[0], argv);
-		_exit(127);
+		return 127;
 	}
 	return 0;
 }
@@ -255,51 +236,32 @@ static int run_editor(const char *target)
 	return run_foreground(argv);
 }
 
-static int is_text_bytes(const unsigned char *buf, size_t n)
+/* Text: no NUL, no control bytes other than tab, newline, CR and form
+ * feed, and valid UTF-8. When the sample filled the buffer, a character
+ * cut by its end is not counted against the file. */
+static int is_text_bytes(const unsigned char *buf, size_t n, int truncated)
 {
 	size_t i;
-	int saw_nul = 0;
 
 	for (i = 0; i < n; i++) {
-		if (buf[i] == 0) {
-			saw_nul = 1;
-			break;
-		}
-	}
-	if (saw_nul)
-		return 0;
-
-	/* Strict-ish UTF-8 validation. */
-	i = 0;
-	while (i < n) {
 		unsigned char c = buf[i];
-		size_t len = 0;
-		size_t j;
-		if (c < 0x80) {
-			if (c == '\t' || c == '\n' || c == '\r' || c == '\f' || c >= 0x20)
-				len = 1;
-			else
-				return 0;
-		} else if ((c & 0xE0) == 0xC0) {
-			len = 2;
-		} else if ((c & 0xF0) == 0xE0) {
-			len = 3;
-		} else if ((c & 0xF8) == 0xF0) {
-			len = 4;
-		} else {
+		if (c < 0x20 && c != '\t' && c != '\n' && c != '\r' && c != '\f')
 			return 0;
-		}
-		if (len > 1) {
-			if (i + len > n)
-				return 0;
-			for (j = 1; j < len; j++) {
-				if ((buf[i + j] & 0xC0) != 0x80)
-					return 0;
-			}
-		}
-		i += len ? len : 1;
 	}
-	return 1;
+	if (truncated) {
+		/* Back up over at most three continuation bytes to the lead
+		 * byte; drop the character if it does not end in the buffer. */
+		size_t k = n;
+		while (k > 0 && n - k < 3 && (buf[k - 1] & 0xC0) == 0x80)
+			k--;
+		if (k > 0 && buf[k - 1] >= 0xC0) {
+			unsigned char lead = buf[k - 1];
+			size_t want = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : 2;
+			if (n - (k - 1) < want)
+				n = k - 1;
+		}
+	}
+	return tam_utf8_valid((const char *)buf, n);
 }
 
 static int file_is_text(const char *path, const char *mime)
@@ -322,7 +284,7 @@ static int file_is_text(const char *path, const char *mime)
 	fclose(f);
 	if (n == 0)
 		return 1;
-	return is_text_bytes(buf, n);
+	return is_text_bytes(buf, n, n == sizeof(buf));
 }
 
 static char *file_mime(const char *path)
@@ -692,10 +654,6 @@ static int handle_target(const char *target, int graphical)
 	mime = file_mime(target);
 	ext = lower_ext(target);
 
-	if (is_url(target)) {
-		/* Already converted from file:// before reaching here. */
-	}
-
 	if (!strncasecmp(mime ? mime : "", "application/pdf", 15) || !strcmp(ext, "pdf")) {
 		rc = open_pdf(target, graphical);
 	} else if (!strncasecmp(mime ? mime : "", "image/", 6)) {
@@ -792,9 +750,9 @@ int main(int argc, char **argv)
 	graphical = is_graphical();
 
 	if (is_url(target) && strncasecmp(target, "file://", 7) == 0) {
-		char *path = strip_file_url(target);
+		char *path = file_url_path(target);
 		if (!path) {
-			failf("out of memory");
+			failf("not a local file URL: %s", target);
 			return 1;
 		}
 		int rc = handle_target(path, graphical);

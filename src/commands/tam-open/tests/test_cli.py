@@ -57,7 +57,7 @@ class TamOpenCli(unittest.TestCase):
     def test_version(self):
         p = self.run_cmd("--version")
         self.assertEqual(p.returncode, 0)
-        self.assertEqual(p.stdout.strip(), "0.1.0")
+        self.assertEqual(p.stdout.strip(), "0.2.0")
 
     def test_unknown_option(self):
         p = self.run_cmd("--bogus")
@@ -219,6 +219,43 @@ class TamOpenCli(unittest.TestCase):
         p = self.run_cmd("file://" + str(f))
         self.assertEqual(p.returncode, 0)
         self.assertTrue(self.marker.exists())
+
+    def test_file_url_is_percent_decoded(self):
+        make_tool(self.bindir, "tam-edit", f'printf "%s\\n" "$@" > "{self.marker}"')
+        f = self.tmp / "my notes+1.txt"
+        f.write_text("hello")
+        url = "file://localhost" + str(f).replace(" ", "%20")
+        p = self.run_cmd(url)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.marker.read_text().strip(), str(f))
+
+    def test_file_url_on_another_host_is_refused(self):
+        p = self.run_cmd("file://elsewhere/etc/hostname")
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("not a local file URL", p.stderr)
+
+    def test_graphical_tool_that_cannot_start_is_reported(self):
+        tool = self.bindir / "zathura"
+        tool.write_text("#!/nonexistent/interpreter\n")
+        tool.chmod(0o755)
+        env = dict(self.env, WAYLAND_DISPLAY="wayland-1")
+        f = self.tmp / "doc.pdf"
+        f.write_bytes(b"%PDF-1.4\n")
+        p = self.run_cmd(str(f), env=env)
+        self.assertEqual(p.returncode, 127)
+        self.assertIn("could not start zathura", p.stderr)
+
+    def test_character_cut_by_the_sample_is_still_text(self):
+        # Without libmagic's answer tam-open reads the first 64 KiB itself;
+        # a UTF-8 character across that boundary must not make it binary.
+        make_tool(self.bindir, "tam-edit", f'printf "%s\\n" "$@" > "{self.marker}"')
+        make_tool(self.bindir, "hexyl", 'exit 99')
+        f = self.tmp / "long.txt"
+        f.write_bytes(b"a" * 65535 + "\u00e9 tail\n".encode())
+        env = dict(self.env, MAGIC=str(self.tmp / "no-such-magic"))
+        p = self.run_cmd(str(f), env=env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn(str(f), self.marker.read_text())
 
 
 if __name__ == "__main__":
