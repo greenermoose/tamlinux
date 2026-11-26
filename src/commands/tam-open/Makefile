@@ -1,7 +1,7 @@
 PREFIX ?= /usr/local
 CC ?= cc
 PKG_CONFIG ?= pkg-config
-CFLAGS ?= -O2 -Wall -Wextra -Wpedantic -std=c11
+CFLAGS ?= -O2 -Wall -Wextra -Wpedantic -std=c17
 override CFLAGS += -g
 
 MAGIC_CFLAGS = $(shell $(PKG_CONFIG) --cflags libmagic)
