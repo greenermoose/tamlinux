@@ -4,6 +4,11 @@
 
 #include <stdio.h>
 #include <tam.h>
+
+/* tam_install_guard and the JSON, process and key helpers: libtam 0.11.0. */
+#if TAM_VERSION_MAJOR == 0 && TAM_VERSION_MINOR < 11
+#error "this command needs libtam 0.11.0 or later"
+#endif
 #include <string.h>
 
 static void usage(FILE *out)
@@ -16,10 +21,8 @@ static void usage(FILE *out)
 
 int main(int argc, char **argv)
 {
-	if (tam_install_pending(NULL)) {
-		fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
+	if (tam_install_guard("tam-hardware") != 0)
 		return 1;
-	}
 	struct tam_hardware_report report;
 	int want_json = 0;
 	int i;

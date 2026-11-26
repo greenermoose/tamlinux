@@ -27,10 +27,8 @@ static void print_usage(FILE *f)
 
 int main(int argc, char **argv)
 {
-    if (tam_install_pending(NULL)) {
-        fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
+    if (tam_install_guard("tam-boot") != 0)
         return 1;
-    }
     if (argc >= 2) {
         if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0) {
             printf("%s\n", TAM_BOOT_VERSION);

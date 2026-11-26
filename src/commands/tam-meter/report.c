@@ -98,9 +98,15 @@ void tam_meter_format_json(const tam_meter_report_data_t *data, tam_str_t *out)
     *out = tam_str_cat(*out, "\",\n");
     *out = tam_str_cat_printf(*out, "  \"settle_seconds\": %d,\n", data->settle_seconds);
     *out = tam_str_cat_printf(*out, "  \"duration_minutes\": %g,\n", data->minutes);
-    *out = tam_str_cat_printf(*out, "  \"boot_id\": \"%s\",\n", data->boot_id);
-    *out = tam_str_cat_printf(*out, "  \"tamlinux_version\": \"%s\",\n", data->tamlinux_version);
-    *out = tam_str_cat_printf(*out, "  \"kernel\": \"%s\",\n", data->kernel_release);
+    *out = tam_str_cat(*out, "  \"boot_id\": ");
+    *out = tam_str_cat_json_str(*out, data->boot_id);
+    *out = tam_str_cat(*out, ",\n");
+    *out = tam_str_cat(*out, "  \"tamlinux_version\": ");
+    *out = tam_str_cat_json_str(*out, data->tamlinux_version);
+    *out = tam_str_cat(*out, ",\n");
+    *out = tam_str_cat(*out, "  \"kernel\": ");
+    *out = tam_str_cat_json_str(*out, data->kernel_release);
+    *out = tam_str_cat(*out, ",\n");
 
     /* Power */
     if (data->has_power) {
@@ -108,7 +114,9 @@ void tam_meter_format_json(const tam_meter_report_data_t *data, tam_str_t *out)
             ? data->power_source : "amdgpu PPT";
         *out = tam_str_cat(*out, "  \"power\": {\n");
         *out = tam_str_cat(*out, "    \"available\": true,\n");
-        *out = tam_str_cat_printf(*out, "    \"sensor\": \"%s\",\n", psrc);
+        *out = tam_str_cat(*out, "    \"sensor\": ");
+        *out = tam_str_cat_json_str(*out, psrc);
+        *out = tam_str_cat(*out, ",\n");
         *out = tam_str_cat_printf(*out, "    \"mean_w\": %.2f,\n", data->power_stats.mean);
         *out = tam_str_cat_printf(*out, "    \"median_w\": %.2f,\n", data->power_stats.median);
         *out = tam_str_cat_printf(*out, "    \"min_w\": %.2f,\n", data->power_stats.min);
@@ -125,7 +133,9 @@ void tam_meter_format_json(const tam_meter_report_data_t *data, tam_str_t *out)
     if (data->has_temp) {
         const char *tsrc = (data->temp_source[0] && strcmp(data->temp_source, "k10temp Tctl") != 0)
             ? data->temp_source : "k10temp Tctl";
-        *out = tam_str_cat_printf(*out, "    \"sensor\": \"%s\",\n", tsrc);
+        *out = tam_str_cat(*out, "    \"sensor\": ");
+        *out = tam_str_cat_json_str(*out, tsrc);
+        *out = tam_str_cat(*out, ",\n");
         *out = tam_str_cat_printf(*out, "    \"mean_c\": %.2f,\n", data->temp_stats.mean);
         *out = tam_str_cat_printf(*out, "    \"min_c\": %.2f,\n", data->temp_stats.min);
         *out = tam_str_cat_printf(*out, "    \"max_c\": %.2f\n", data->temp_stats.max);

@@ -89,8 +89,12 @@ void tam_boot_format_json(const tam_boot_analysis_t *d, size_t top_k, tam_str_t 
     *out = tam_str_new("{\n");
     *out = tam_str_cat(*out, "  \"schema\": 1,\n");
     *out = tam_str_cat_printf(*out, "  \"tool\": \"tam-boot %s\",\n", TAM_BOOT_VERSION);
-    *out = tam_str_cat_printf(*out, "  \"boot_id\": \"%s\",\n", d->boot_id);
-    *out = tam_str_cat_printf(*out, "  \"kernel\": \"%s\",\n", d->kernel_release);
+    *out = tam_str_cat(*out, "  \"boot_id\": ");
+    *out = tam_str_cat_json_str(*out, d->boot_id);
+    *out = tam_str_cat(*out, ",\n");
+    *out = tam_str_cat(*out, "  \"kernel\": ");
+    *out = tam_str_cat_json_str(*out, d->kernel_release);
+    *out = tam_str_cat(*out, ",\n");
 
     *out = tam_str_cat(*out, "  \"totals\": {\n");
     *out = tam_str_cat_printf(*out, "    \"firmware_s\": %.3f,\n", d->firmware_s);
@@ -151,12 +155,12 @@ void tam_boot_format_list_json(const tam_boot_list_t *list, tam_str_t *out)
     *out = tam_str_cat_printf(*out, "  \"tool\": \"tam-boot %s\",\n", TAM_BOOT_VERSION);
     *out = tam_str_cat(*out, "  \"boots\": [\n");
     for (size_t i = 0; i < list->count; i++) {
-        *out = tam_str_cat_printf(*out,
-            "    {\"index\": %d, \"boot_id\": \"%s\", \"date\": \"%s\"}%s\n",
-            list->entries[i].index,
-            list->entries[i].boot_id,
-            list->entries[i].date_str,
-            (i + 1 < list->count) ? "," : "");
+        *out = tam_str_cat_printf(*out, "    {\"index\": %d, \"boot_id\": ",
+            list->entries[i].index);
+        *out = tam_str_cat_json_str(*out, list->entries[i].boot_id);
+        *out = tam_str_cat(*out, ", \"date\": ");
+        *out = tam_str_cat_json_str(*out, list->entries[i].date_str);
+        *out = tam_str_cat(*out, (i + 1 < list->count) ? "},\n" : "}\n");
     }
     *out = tam_str_cat(*out, "  ]\n}\n");
 }

@@ -4,6 +4,7 @@
 
 #include <tam.h>
 
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,57 +14,21 @@
 
 static char *which_path(const char *cmd)
 {
-	const char *path;
-	char *copy;
-	char *save;
-	char *tok;
-	char *full;
-
-	if (!cmd || !*cmd)
-		return NULL;
-	if (strchr(cmd, '/'))
-		return access(cmd, X_OK) == 0 ? strdup(cmd) : NULL;
-	path = getenv("PATH");
-	if (!path || !*path)
-		path = "/usr/bin:/bin";
-	copy = strdup(path);
-	if (!copy)
-		return NULL;
-	for (tok = strtok_r(copy, ":", &save); tok; tok = strtok_r(NULL, ":", &save)) {
-		full = tam_path_join(tok, cmd);
-		if (full && access(full, X_OK) == 0) {
-			free(copy);
-			return full;
-		}
-		free(full);
-	}
-	free(copy);
-	return NULL;
+	return tam_which(cmd);
 }
 
 static int run_argv(char *const argv[])
 {
-	pid_t pid;
-	int status;
-
-	pid = fork();
-	if (pid < 0) {
-		perror("start: fork");
+	/* start ignores Ctrl+C and Ctrl+\ while the activity runs, so they
+	 * reach only the activity. */
+	int code = 1;
+	if (tam_run_foreground((const char *const *)argv, &code) < 0) {
+		if (errno == ENOENT)
+			return 127;
+		perror("start: run");
 		return 1;
 	}
-	if (pid == 0) {
-		execvp(argv[0], argv);
-		_exit(127);
-	}
-	if (waitpid(pid, &status, 0) < 0) {
-		perror("start: waitpid");
-		return 1;
-	}
-	if (WIFEXITED(status))
-		return WEXITSTATUS(status);
-	if (WIFSIGNALED(status))
-		return 128 + WTERMSIG(status);
-	return 1;
+	return code;
 }
 
 static int resolve_and_run(const start_activity_t *item)

@@ -33,7 +33,7 @@ class TamMeterCli(unittest.TestCase):
                 p = subprocess.run(
                     [str(BIN), flag], capture_output=True, text=True, check=True
                 )
-                self.assertEqual(p.stdout.strip(), "0.1.0")
+                self.assertEqual(p.stdout.strip(), "0.1.1")
 
     def test_unknown_command(self):
         p = subprocess.run(

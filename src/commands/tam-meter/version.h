@@ -1,6 +1,6 @@
 #ifndef TAM_METER_VERSION_H
 #define TAM_METER_VERSION_H
 
-#define TAM_METER_VERSION "0.1.0"
+#define TAM_METER_VERSION "0.1.1"
 
 #endif

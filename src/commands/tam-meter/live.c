@@ -3,6 +3,9 @@
 #include "live.h"
 #include "version.h"
 
+#include <tam_key.h>
+#include <stdbool.h>
+
 #include <errno.h>
 #include <poll.h>
 #include <signal.h>
@@ -107,6 +110,8 @@ int tam_meter_run_top(const tam_meter_sensors_t *sensors, double interval_second
 
     tam_meter_stat_t prev_stat;
     tam_meter_ticks_t prev_ticks = {0, 0, 0};
+    tam_key_parser_t keys;
+    tam_key_init(&keys);
     tam_meter_read_stat(sensors, &prev_stat);
     tam_meter_read_ticks(sensors, &prev_ticks);
 
@@ -236,28 +241,46 @@ int tam_meter_run_top(const tam_meter_sensors_t *sensors, double interval_second
         tam_meter_free_ticks(&prev_ticks);
         prev_ticks = curr_ticks;
 
-        /* Non-blocking input loop with poll */
+        /* Wait for the next sample, handling keys. tam_key decodes whole
+         * escape sequences, so an arrow key no longer reads as Esc; a lone
+         * Esc still quits once its timeout passes. */
         struct pollfd pfd = { STDIN_FILENO, POLLIN, 0 };
         int ms_left = (int)(interval_seconds * 1000.0);
-        while (ms_left > 0 && !g_stop) {
+        bool changed = false;
+        while (ms_left > 0 && !g_stop && !changed) {
             int chunk = (ms_left > 100) ? 100 : ms_left;
-            int ret = poll(&pfd, 1, chunk);
-            if (ret > 0 && (pfd.revents & POLLIN)) {
-                char c = 0;
-                if (read(STDIN_FILENO, &c, 1) > 0) {
-                    if (c == 'q' || c == 'Q' || c == 27) { /* 27 is ESC */
-                        g_stop = 1;
+            int ret = poll(&pfd, 1, tam_key_pending(&keys) > 0 ? 50 : chunk);
+            tam_key_event_t ev;
+            if (ret > 0 && (pfd.revents & (POLLIN | POLLHUP | POLLERR))) {
+                unsigned char in[64];
+                ssize_t n = read(STDIN_FILENO, in, sizeof(in));
+                if (n == 0 || (n < 0 && errno != EINTR && errno != EAGAIN)) {
+                    g_stop = 1; /* the terminal went away */
+                    break;
+                }
+                for (ssize_t off = 0; n > 0 && off < n;) {
+                    int took = tam_key_feed(&keys, in + off, (size_t)(n - off));
+                    if (took < 0)
                         break;
-                    } else if (c == '+' || c == '=') {
-                        interval_seconds -= 0.5;
-                        if (interval_seconds < 0.5) interval_seconds = 0.5;
-                        break;
-                    } else if (c == '-' || c == '_') {
-                        interval_seconds += 0.5;
-                        if (interval_seconds > 10.0) interval_seconds = 10.0;
-                        break;
+                    off += took;
+                    while (tam_key_next(&keys, &ev) == 1) {
+                        if (ev.type == TAM_KEY_CHAR && (ev.codepoint == 'q' || ev.codepoint == 'Q')) {
+                            g_stop = 1;
+                        } else if (ev.type == TAM_KEY_CHAR && (ev.codepoint == '+' || ev.codepoint == '=')) {
+                            interval_seconds -= 0.5;
+                            if (interval_seconds < 0.5) interval_seconds = 0.5;
+                            changed = true;
+                        } else if (ev.type == TAM_KEY_CHAR && (ev.codepoint == '-' || ev.codepoint == '_')) {
+                            interval_seconds += 0.5;
+                            if (interval_seconds > 10.0) interval_seconds = 10.0;
+                            changed = true;
+                        } else if (ev.type == TAM_KEY_ESC) {
+                            g_stop = 1;
+                        }
                     }
                 }
+            } else if (tam_key_timeout(&keys, &ev) == 1 && ev.type == TAM_KEY_ESC) {
+                g_stop = 1;
             }
             ms_left -= chunk;
         }

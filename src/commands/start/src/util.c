@@ -182,34 +182,9 @@ char *start_find_data_file(const char *name)
 
 bool start_command_on_path(const char *cmd)
 {
-	const char *path;
-	char *copy;
-	char *save;
-	char *tok;
-	char *full;
-	bool found = false;
-
-	if (!cmd || !*cmd)
-		return false;
-	if (strchr(cmd, '/'))
-		return access(cmd, X_OK) == 0;
-
-	path = getenv("PATH");
-	if (!path || !*path)
-		path = "/usr/bin:/bin";
-	copy = strdup(path);
-	if (!copy)
-		return false;
-	for (tok = strtok_r(copy, ":", &save); tok; tok = strtok_r(NULL, ":", &save)) {
-		full = tam_path_join(tok, cmd);
-		if (full && access(full, X_OK) == 0) {
-			found = true;
-			free(full);
-			break;
-		}
-		free(full);
-	}
-	free(copy);
+	char *full = tam_which(cmd);
+	bool found = full != NULL;
+	free(full);
 	return found;
 }
 

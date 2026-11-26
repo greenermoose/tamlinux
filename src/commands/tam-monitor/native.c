@@ -8,6 +8,11 @@
 #include "version.h"
 #include <errno.h>
 #include <tam.h>
+
+/* tam_install_guard and the JSON, process and key helpers: libtam 0.11.0. */
+#if TAM_VERSION_MAJOR == 0 && TAM_VERSION_MINOR < 11
+#error "this command needs libtam 0.11.0 or later"
+#endif
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,14 +41,11 @@ int tam_monitor_run_tool(const char *const *argv,
 
 static void quoted(const char *s)
 {
-    putchar('"');
-    for (; s && *s; ++s) {
-        unsigned char c = (unsigned char)*s;
-        if (c == '"' || c == '\\') { putchar('\\'); putchar(c); }
-        else if (c < 32 || c > 126) printf("\\u%04x", c);
-        else putchar(c);
-    }
-    putchar('"');
+    /* libtam's escaper keeps UTF-8 as it is; the old loop wrote each byte
+     * above 126 as \u00XX, which corrupted any non-ASCII text. */
+    tam_str_t q = tam_str_cat_json_str(tam_str_new(""), s ? s : "");
+    fputs(q ? q : "\"\"", stdout);
+    tam_str_free(q);
 }
 
 static int failure(bool json, int code, int syserr, const char *message)
@@ -189,10 +191,8 @@ int main(int argc, char **argv)
     if (argc >= 2 && !strcmp(argv[1], "__guard"))
         return tam_monitor_guard_entry(argc - 2, argv + 2);
 
-    if (tam_install_pending(NULL)) {
-        fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
+    if (tam_install_guard("tam-monitor") != 0)
         return 1;
-    }
 
     bool json = false;
     for (int i = 1; i < argc; ++i)

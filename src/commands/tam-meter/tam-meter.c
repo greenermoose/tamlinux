@@ -313,10 +313,8 @@ static int do_now(const tam_meter_sensors_t *sensors, bool json)
 
 int main(int argc, char **argv)
 {
-    if (tam_install_pending(NULL)) {
-        fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
+    if (tam_install_guard("tam-meter") != 0)
         return 1;
-    }
     if (argc < 2) {
         print_usage(stderr);
         return 1;

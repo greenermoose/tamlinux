@@ -7,6 +7,11 @@
 
 #include <tam.h>
 
+/* tam_install_guard and the JSON, process and key helpers: libtam 0.11.0. */
+#if TAM_VERSION_MAJOR == 0 && TAM_VERSION_MINOR < 11
+#error "this command needs libtam 0.11.0 or later"
+#endif
+
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
@@ -19,10 +24,8 @@
 
 static int check_install_ready(void)
 {
-	if (tam_install_pending(NULL)) {
-		fputs("Tamlinux has an interrupted update pending; finish recovery from the console.\n", stderr);
+	if (tam_install_guard("start") != 0)
 		return 1;
-	}
 	return 0;
 }
 

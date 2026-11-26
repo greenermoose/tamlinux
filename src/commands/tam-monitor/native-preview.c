@@ -3,6 +3,7 @@
 #include "native-console.h"
 #include "native-events.h"
 #include "native-hw.h"
+#include <tam.h>
 #include <tam_display.h>
 #include <tam_display_session.h>
 #include <tam_vt.h>
@@ -33,14 +34,11 @@ struct report { int ready, code, syserr; char message[160]; };
 
 static void quoted_json(const char *s)
 {
-    putchar('"');
-    for (; s && *s; ++s) {
-        unsigned char c = (unsigned char)*s;
-        if (c == '"' || c == '\\') { putchar('\\'); putchar(c); }
-        else if (c < 32 || c > 126) printf("\\u%04x", c);
-        else putchar(c);
-    }
-    putchar('"');
+    /* libtam's escaper keeps UTF-8 as it is; the old loop wrote each byte
+     * above 126 as \u00XX, which corrupted any non-ASCII text. */
+    tam_str_t q = tam_str_cat_json_str(tam_str_new(""), s ? s : "");
+    fputs(q ? q : "\"\"", stdout);
+    tam_str_free(q);
 }
 
 static bool send_report(int fd, int ready, const struct tam_display_error *e)

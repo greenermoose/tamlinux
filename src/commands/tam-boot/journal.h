@@ -5,6 +5,11 @@
 #include <stddef.h>
 #include <tam.h>
 
+/* tam_install_guard and tam_str_cat_json_str: libtam 0.11.0. */
+#if TAM_VERSION_MAJOR == 0 && TAM_VERSION_MINOR < 11
+#error "this command needs libtam 0.11.0 or later"
+#endif
+
 typedef struct {
     char boot_id[33];
     char date_str[64];

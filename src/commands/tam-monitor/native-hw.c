@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "native-hw.h"
+#include <tam.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -113,132 +114,46 @@ void tam_monitor_edid_identity(const char *path, char *out, size_t cap)
     tam_monitor_clean(combined, out, cap);
 }
 
-static long long monotonic_ms(void)
-{
-    struct timespec ts = {0};
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (long long)ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
-}
-
 int tam_monitor_run_tool_timeout(const char *const *argv, int timeout_ms,
     char *out, size_t out_cap, char *err, size_t err_cap)
 {
     if (out && out_cap) out[0] = 0;
     if (err && err_cap) err[0] = 0;
     if (!argv || !argv[0]) return -1;
-    int out_pipe[2] = {-1, -1}, err_pipe[2] = {-1, -1};
-    if (pipe2(out_pipe, O_CLOEXEC | O_NONBLOCK) < 0 ||
-        pipe2(err_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
-        if (out_pipe[0] >= 0) { close(out_pipe[0]); close(out_pipe[1]); }
-        if (err && err_cap) snprintf(err, err_cap, "%s unavailable: %s", argv[0], strerror(errno));
-        return -1;
-    }
-    pid_t pid = fork();
-    if (pid < 0) {
-        int saved = errno;
-        close(out_pipe[0]); close(out_pipe[1]);
-        close(err_pipe[0]); close(err_pipe[1]);
-        if (err && err_cap) snprintf(err, err_cap, "%s unavailable: %s", argv[0], strerror(saved));
-        return -1;
-    }
-    if (pid == 0) {
-        setsid();
-        int devnull = open("/dev/null", O_RDONLY);
-        if (devnull >= 0) { dup2(devnull, STDIN_FILENO); close(devnull); }
-        dup2(out_pipe[1], STDOUT_FILENO);
-        dup2(err_pipe[1], STDERR_FILENO);
-        close(out_pipe[0]); close(out_pipe[1]);
-        close(err_pipe[0]); close(err_pipe[1]);
-        execvp(argv[0], (char *const *)argv);
-        dprintf(STDERR_FILENO, "%s unavailable: %s\n", argv[0], strerror(errno));
-        _exit(127);
-    }
-    close(out_pipe[1]);
-    close(err_pipe[1]);
-    size_t out_len = 0, err_len = 0;
-    char out_buf[4096] = {0}, err_buf[4096] = {0};
-    long long deadline = monotonic_ms() + (timeout_ms > 0 ? timeout_ms : TAM_MONITOR_CALL_TIMEOUT_MS);
-    bool timed_out = false;
-    int wait_error = 0;
-    while (out_pipe[0] >= 0 || err_pipe[0] >= 0) {
-        long long remaining = deadline - monotonic_ms();
-        if (remaining <= 0) {
-            timed_out = true;
-            break;
-        }
-        struct pollfd fds[2] = {
-            {.fd = out_pipe[0], .events = POLLIN},
-            {.fd = err_pipe[0], .events = POLLIN}
-        };
-        int n = poll(fds, 2, (int)remaining);
-        if (n < 0) {
-            if (errno == EINTR) continue;
-            wait_error = errno;
-            break;
-        }
-        if (n == 0) {
-            timed_out = true;
-            break;
-        }
-        for (int i = 0; i < 2; ++i) {
-            int *pfd = (i == 0) ? &out_pipe[0] : &err_pipe[0];
-            char *buf = (i == 0) ? out_buf : err_buf;
-            size_t *len = (i == 0) ? &out_len : &err_len;
-            size_t cap = sizeof(out_buf) - 1;
-            if (*pfd < 0 || !fds[i].revents) continue;
-            char chunk[512];
-            ssize_t got = read(*pfd, chunk, sizeof(chunk));
-            if (got > 0) {
-                size_t copy = (size_t)got;
-                if (*len + copy > cap) copy = cap - *len;
-                if (copy > 0) {
-                    memcpy(buf + *len, chunk, copy);
-                    *len += copy;
-                    buf[*len] = 0;
-                }
-            } else if (got == 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
-                close(*pfd);
-                *pfd = -1;
+    /* tam_exec kills the whole process group at the deadline and reports
+     * oversized output instead of cutting it short. */
+    tam_exec_opts_t opts = {
+        .timeout_ms = timeout_ms > 0 ? timeout_ms : TAM_MONITOR_CALL_TIMEOUT_MS,
+        .max_output = 64 * 1024,
+    };
+    tam_exec_result_t r = tam_exec_opts(argv, &opts);
+    int rc = -1;
+    if (r.error != 0 && r.exit_code == 127) {
+        if (err && err_cap) snprintf(err, err_cap, "%s unavailable: %s", argv[0], strerror(r.error));
+    } else if (r.timed_out) {
+        if (err && err_cap) snprintf(err, err_cap, "%s timed out", argv[0]);
+    } else if (r.truncated) {
+        if (err && err_cap) snprintf(err, err_cap, "%s output too large", argv[0]);
+    } else if (r.error != 0 || !r.stdout_buf) {
+        if (err && err_cap) snprintf(err, err_cap, "%s unavailable: %s", argv[0],
+                                     strerror(r.error ? r.error : EIO));
+    } else {
+        trim_inplace(r.stdout_buf);
+        if (r.stderr_buf) trim_inplace(r.stderr_buf);
+        if (r.exit_code != 0) {
+            if (err && err_cap) {
+                if (r.stderr_buf && *r.stderr_buf) tam_monitor_clean(r.stderr_buf, err, err_cap);
+                else snprintf(err, err_cap, "%s failed (device permission or hardware unavailable)", argv[0]);
             }
+        } else if (out && out_cap && strlen(r.stdout_buf) >= out_cap) {
+            if (err && err_cap) snprintf(err, err_cap, "%s output too large", argv[0]);
+        } else {
+            if (out && out_cap) snprintf(out, out_cap, "%s", r.stdout_buf);
+            rc = 0;
         }
     }
-    if (out_pipe[0] >= 0) close(out_pipe[0]);
-    if (err_pipe[0] >= 0) close(err_pipe[0]);
-    int status = 0;
-    while (!timed_out && !wait_error) {
-        pid_t done = waitpid(pid, &status, WNOHANG);
-        if (done == pid) break;
-        if (done < 0) {
-            if (errno == EINTR) continue;
-            wait_error = errno;
-            break;
-        }
-        long long remaining = deadline - monotonic_ms();
-        if (remaining <= 0) { timed_out = true; break; }
-        /* Both pipes may be closed while the child is still alive. */
-        int n = poll(NULL, 0, remaining < 50 ? (int)remaining : 50);
-        if (n < 0 && errno != EINTR) { wait_error = errno; break; }
-    }
-    if (timed_out || wait_error) {
-        kill(-pid, SIGKILL);
-        while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
-        if (err && err_cap) {
-            if (timed_out) snprintf(err, err_cap, "%s timed out", argv[0]);
-            else snprintf(err, err_cap, "%s wait failed: %s", argv[0], strerror(wait_error));
-        }
-        return -1;
-    }
-    trim_inplace(out_buf);
-    trim_inplace(err_buf);
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        if (err && err_cap) {
-            if (*err_buf) tam_monitor_clean(err_buf, err, err_cap);
-            else snprintf(err, err_cap, "%s failed (device permission or hardware unavailable)", argv[0]);
-        }
-        return -1;
-    }
-    if (out && out_cap) snprintf(out, out_cap, "%s", out_buf);
-    return 0;
+    tam_exec_result_free(&r);
+    return rc;
 }
 
 static bool valid_connector_dir_name(const char *name, unsigned *card_out, char *conn_out, size_t conn_cap)

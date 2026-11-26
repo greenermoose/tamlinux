@@ -29,7 +29,7 @@ class TamHardwareCli(unittest.TestCase):
                 p = subprocess.run(
                     [str(BIN), flag], capture_output=True, text=True, check=True
                 )
-                self.assertEqual(p.stdout.strip(), "0.1.0")
+                self.assertEqual(p.stdout.strip(), "0.1.1")
                 self.assertEqual(p.stderr, "")
 
     def test_unknown_option(self):

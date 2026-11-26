@@ -2,6 +2,11 @@
  * Copyright (c) 2026 Fred Horch. Typed, detached journal terminal launcher.
  */
 #include <tam.h>
+
+/* tam_install_guard and the JSON, process and key helpers: libtam 0.11.0. */
+#if TAM_VERSION_MAJOR == 0 && TAM_VERSION_MINOR < 11
+#error "this command needs libtam 0.11.0 or later"
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -29,7 +34,7 @@ int main(int argc, char **argv) {
             date = 1;
         } else return 2;
     }
-    if (tam_install_pending(NULL)) return 1;
+    if (tam_install_guard("tam-launch-journal") != 0) return 1;
     const char *bin = getenv("TAMLINUX_BIN"), *home = getenv("HOME");
     char *fallback = home ? program(home, ".local/bin") : NULL;
     if (!bin || !*bin) bin = fallback;
@@ -41,26 +46,11 @@ int main(int argc, char **argv) {
     }
     char *args[9] = {launcher, "--app-id=org.tamlinux.journal", journal};
     for (int i = 1; i < argc; ++i) args[i+2] = argv[i];
-    int pipefd[2];
-    if (pipe2(pipefd, O_CLOEXEC)) return 1;
-    pid_t child = fork();
-    if (child < 0) { close(pipefd[0]); close(pipefd[1]); return 1; }
-    if (!child) {
-        close(pipefd[0]);
-        int error = 0;
-        if (setsid() < 0) error = errno;
-        int nullfd = open("/dev/null", O_RDWR);
-        if (nullfd < 0) error = errno;
-        if (!error) {
-            for (int i = 0; i < 3; ++i) if (dup2(nullfd, i) < 0) error = errno;
-            if (nullfd > 2) close(nullfd);
-        }
-        if (!error) { execv(launcher, args); error = errno; }
-        (void)write(pipefd[1], &error, sizeof error); _exit(127);
-    }
-    close(pipefd[1]); int error = 0; ssize_t n;
-    do { n = read(pipefd[0], &error, sizeof error); } while (n < 0 && errno == EINTR);
-    close(pipefd[0]); free(fallback); free(launcher); free(journal);
-    if (n != 0) { fprintf(stderr, "tam-launch-journal: launch failed: %s\n", strerror(error ? error : EIO)); return 1; }
+    /* Detached in its own session, with none of our descriptors, reaped by
+     * init; an exec failure comes back as errno. */
+    int rc = tam_spawn_detached((const char *const *)args);
+    int error = errno;
+    free(fallback); free(launcher); free(journal);
+    if (rc < 0) { fprintf(stderr, "tam-launch-journal: launch failed: %s\n", strerror(error)); return 1; }
     return 0;
 }
