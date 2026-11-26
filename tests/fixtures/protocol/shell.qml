@@ -131,6 +131,34 @@ ShellRoot {
         check(++pollWaits < 40, "poll timer publishes without explicit refresh")
         return
       }
+      // Verify opt-in per-output multi-active tag mode (tam-pane).
+      var tag1a = { name: "1", active: true, urgent: false, canActivate: true, canDeactivate: true, projection: group }
+      var tag3a = { name: "3", active: true, urgent: false, canActivate: true, canDeactivate: true, projection: group }
+      var tag1b = { name: "1", active: true, urgent: true, canActivate: true, canDeactivate: true, projection: otherGroup }
+      group.screens = [one]
+      otherGroup.screens = [two]
+      var perOut = Model.snapshot([tag1a, tag3a, tag1b], [one, two], { perOutput: true, allowMultipleActive: true })
+      check(perOut.ready && perOut.workspaces.length === 3, "per-output tags ready")
+      check(perOut.outputs[0].activeWorkspaceId === 1 && perOut.outputs[0].activeWorkspaceIds.length === 2
+            && perOut.outputs[0].activeWorkspaceIds[1] === 3, "multiple visible tags per output")
+      check(perOut.outputs[1].activeWorkspaceId === 1 && perOut.outputs[1].activeWorkspaceIds.length === 1, "second output tag 1")
+      var ipcMulti = {
+        outputs: [
+          { name: "DP-1", x: 0, y: 0, dpmsOn: false, focused: true, activeWorkspaceIds: [1, 3], tagMask: 5 },
+          { name: "HDMI-A-1", x: 1920, y: 0, dpmsOn: true, focused: false, activeWorkspaceIds: [1], tagMask: 1 }
+        ],
+        workspaces: [
+          { id: 1, output: "DP-1", occupied: true, windows: [{ className: "foot", title: "multi" }] },
+          { id: 3, output: "DP-1", occupied: true, windows: [{ className: "foot", title: "multi" }] },
+          { id: 1, output: "HDMI-A-1", occupied: false, windows: [] }
+        ],
+        focusedOutputName: "DP-1", focusedWorkspaceId: 1, bindingsText: "[]", activeKeymap: "English (US)"
+      }
+      var combinedMulti = Model.combine(perOut, ipcMulti, { perOutput: true })
+      check(combinedMulti.outputs[0].dpmsOn === false && combinedMulti.outputs[0].tagMask === 5, "per-output combine outputs")
+      check(combinedMulti.workspaces[0].occupied && combinedMulti.workspaces[1].occupied
+            && combinedMulti.workspaces[1].active && !combinedMulti.workspaces[2].occupied
+            && combinedMulti.workspaces[2].urgent, "per-output combine workspaces")
       console.log("PROTOCOL_FIXTURE_OK polled snapshots, capabilities, merge, comparison and bounds")
       Qt.quit()
     }

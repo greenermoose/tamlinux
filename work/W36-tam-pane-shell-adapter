@@ -1,0 +1,45 @@
+W36: Connect the shell compositor facade to tam-pane (0.7.0 Milestone 5)
+
+Date: 2026-11-25
+Agent: agy (Gemini)
+Branch: dev
+
+SUMMARY
+
+  Implemented ROADMAP.md Milestone 5 for Tamlinux 0.7.0 Northern Torch:
+  - Extended `src/desktop/shell/host/protocol_model.js` and
+    `ProtocolState.qml` with opt-in `perOutput` and `allowMultipleActive`
+    modes (default false, preserving Hyprland and ProtocolShadow
+    behaviour), per-output `activeWorkspaceIds`, and output-targeted
+    `activate(number, outputName)` / `deactivate(number, outputName)`.
+    Guarded `ProtocolState.currentSets()` under `QT_QPA_PLATFORM=offscreen`.
+  - Added pure parser/model `src/desktop/shell/host/tam_pane_model.js`
+    and native Unix-socket adapter `src/desktop/shell/host/TamPaneAdapter.qml`
+    using `ProtocolState` for standard Wayland facts and `Quickshell.Io.Socket`
+    connections to `$TAM_PANE_SOCKET` for IPC queries, event streaming,
+    actions, multi-tag visibility, windows spanning multiple tags,
+    `KeybindingsModel`-compatible JSON binds, keyboard layout tracking,
+    on-demand pointer queries, and automatic reconnection with bounded
+    backoff.
+  - Extended `src/desktop/shell/host/Compositor.qml` to select
+    `TamPaneAdapter.qml` when `TAMLINUX_COMPOSITOR_BACKEND=tam-pane`,
+    `TAM_PANE_SOCKET` is set, or `XDG_CURRENT_DESKTOP` contains
+    `tam-pane` (defaulting to `HyprlandAdapter.qml`), and forwarded
+    optional output targeting plus `toggleWorkspace(id, outputName)`.
+  - Pinned `tam-pane` 0.2.7 (`418bd62de05a3af119064523f81d277913e0711f`)
+    in `components.lock`.
+  - Added per-output multi-active protocol fixture tests in
+    `tests/fixtures/protocol/shell.qml` and the two-output mock (with
+    forced disconnect/reconnect) and real headless `tam-pane` test suite
+    in `tests/test_tam_pane_adapter.py` and
+    `tests/fixtures/tam-pane-adapter/shell.qml`.
+
+VERIFICATION
+
+  - `tam-pane` 0.2.7 (`418bd62`): `make test` passed (test_tags 28,
+    test_dwindle 143, test_layouts 102, test_lua 561, test_ipc 139,
+    test_chord ok, smoke-headless 6/6, test_input_headless 755).
+  - `tamlinux`: `test_protocol.py` (3/3), `test_protocol_shadow.py`
+    (12/12), `test_compositor.py` (24/24), `test_keybindings.py` (49/49),
+    `test_tam_pane_adapter.py` (3/3 including mock two-output reconnect
+    and real headless two-output `tam-pane` 0.2.7), and `test_host.py`.

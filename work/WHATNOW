@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-25, with W34
+Updated: 2026-11-25, with W36
 
 
 STATE
@@ -47,6 +47,19 @@ STATE
     independently of Hyprland; and arch-packages/preflight.py declare the
     portal and PipeWire prerequisites (xdg-desktop-portal-wlr still needs
     installation on bosgame before hardware ScreenCast proof).
+  - Milestone 5 (connect the shell to tam-pane) is complete on dev (W36):
+    components.lock pins tam-pane 0.2.7 (418bd62, adding monitors dpms and
+    description, keyboards query, dispatch dpms/focus_app/keyboard next,
+    per-monitor tag targeting, and monitor.focus/output.power/
+    keyboard.layout/config.reload events); ProtocolState and
+    protocol_model.js add opt-in perOutput/allowMultipleActive support
+    without changing Hyprland or ProtocolShadow behaviour; TamPaneAdapter
+    and tam_pane_model.js connect to $TAM_PANE_SOCKET via native
+    Quickshell.Io.Socket with automatic reconnection, multiple visible
+    tags per output, windows spanning multiple tags, JSON binds, keyboard
+    layout, DPMS, focus, and pointer queries; Compositor.qml selects
+    TamPaneAdapter in tam-pane sessions; verified with offscreen two-output
+    mock/reconnect and real headless two-output tam-pane tests.
 
   The repository follows the tam-idol 1.1.0 layout (W16). Source
   installation builds pinned clones, verifies native prerequisites and
@@ -57,13 +70,12 @@ STATE
 
 NEXT
 
-  1. For 0.7.0, implement ROADMAP.md milestone 5 (Connect the shell to
-     tam-pane): extend the compositor facade with a TamPaneAdapter built on
-     ProtocolState for standard Wayland facts and tam-pane IPC for missing
-     state and actions (multiple visible tags per output, focus, output
-     power, pointer location, bindings, keyboard layout, and reconnection).
-  2. Proceed through ROADMAP.md milestones 6-8 (bosgame controls port,
-     shell/app trials, and automated desktop test battery).
+  1. For 0.7.0, implement ROADMAP.md milestone 6 (Port bosgame's controls):
+     translate effective monitor geometry and scale, input settings, window
+     rules, shortcuts, mouse bindings, autostart and macros into tam-pane
+     configuration while preserving personal overrides across reloads.
+  2. Proceed through ROADMAP.md milestones 7-8 (shell/app trials and
+     automated desktop test battery).
 
 
 WAITING FOR FRED

@@ -13,33 +13,68 @@ QtObject {
   // Fixtures assign lists here; null reads the live compositor models.
   property var windowsets: null
   property var screens: null
+  property bool perOutput: false
+  property bool allowMultipleActive: false
   property int pollInterval: 250
-  property var snapshot: Model.snapshot([], [])
+  property var snapshot: Model.snapshot([], [], { perOutput: perOutput, allowMultipleActive: allowMultipleActive })
   property string snapshotKey: ""
 
-  function currentSets() { return windowsets !== null ? windowsets : WindowManager.windowsets }
+  function currentSets() {
+    if (windowsets !== null) return windowsets
+    if (Quickshell.env("QT_QPA_PLATFORM") === "offscreen") return []
+    return WindowManager.windowsets
+  }
   function currentScreens() { return screens !== null ? screens : Quickshell.screens }
 
   // Publish only real changes so snapshotChanged keeps meaning "facts moved".
   function refresh() {
-    var next = Model.snapshot(currentSets(), currentScreens())
+    var next = Model.snapshot(currentSets(), currentScreens(), {
+      perOutput: perOutput,
+      allowMultipleActive: allowMultipleActive
+    })
     var key = JSON.stringify(next)
     if (key === snapshotKey) return
     snapshotKey = key
     snapshot = next
   }
 
-  function activate(number) {
+  function matchesOutput(set, outputName) {
+    if (!outputName) return true
+    var projected = set && set.projection ? set.projection.screens : []
+    if (!projected || projected.length !== 1 || !projected[0]) return false
+    return String(projected[0].name || "") === outputName
+  }
+
+  function activate(number, outputName) {
     var id = Model.workspaceNumber(number)
     if (!id) return false
+    if (outputName !== undefined && outputName !== null && outputName !== "" && !Model.validName(outputName)) return false
     var sets = currentSets() || []
     for (var i = 0; i < sets.length && i < Model.listLimit; i++) {
       var set = sets[i]
       if (!set || Model.workspaceNumber(set.name) !== id) continue
+      if (!matchesOutput(set, outputName)) continue
       // Active workspaces commonly cannot activate; that is already success.
       if (set.active) return true
       if (!set.canActivate) return false
       set.activate()
+      return true
+    }
+    return false
+  }
+
+  function deactivate(number, outputName) {
+    var id = Model.workspaceNumber(number)
+    if (!id) return false
+    if (outputName !== undefined && outputName !== null && outputName !== "" && !Model.validName(outputName)) return false
+    var sets = currentSets() || []
+    for (var i = 0; i < sets.length && i < Model.listLimit; i++) {
+      var set = sets[i]
+      if (!set || Model.workspaceNumber(set.name) !== id) continue
+      if (!matchesOutput(set, outputName)) continue
+      if (!set.active) return true
+      if (!set.canDeactivate) return false
+      set.deactivate()
       return true
     }
     return false

@@ -19,9 +19,12 @@ function label(value) {
   return String(value || "").replace(/[\r\n]/g, " ").substring(0, 128);
 }
 
-function snapshot(sets, screens) {
+function snapshot(sets, screens, options) {
   sets = sets || [];
   screens = screens || [];
+  options = options || {};
+  var perOutput = options.perOutput === true;
+  var allowMultipleActive = options.allowMultipleActive === true;
   var outputs = [];
   var names = {};
   var problems = [];
@@ -35,6 +38,7 @@ function snapshot(sets, screens) {
     var output = { name: screen.name, x: position(screen.x), y: position(screen.y),
       width: position(screen.width), height: position(screen.height),
       description: label(screen.model), activeWorkspaceId: 0 };
+    if (perOutput) output.activeWorkspaceIds = [];
     outputs.push(output);
     names["$" + screen.name] = output;
   }
@@ -46,49 +50,95 @@ function snapshot(sets, screens) {
     // ext-workspace ids are opaque. Numeric user-facing names come first.
     var number = workspaceNumber(set.name);
     if (!number) continue;
-    if (ids["$" + number]) {
-      problems.push("duplicate-workspace");
-      continue;
-    }
-    ids["$" + number] = true;
     var projected = set.projection ? set.projection.screens : [];
     projected = projected || [];
     // A facade workspace has one owner. Never invent one for a shared group.
     var owner = projected.length === 1 && projected[0] && validName(projected[0].name)
       && names["$" + projected[0].name] ? projected[0].name : "";
     if (!owner) problems.push("workspace-projection");
+    var key = perOutput && owner ? (owner + ":" + number) : String(number);
+    if (ids["$" + key]) {
+      problems.push("duplicate-workspace");
+      continue;
+    }
+    ids["$" + key] = true;
     var active = set.active === true;
     if (active && owner) {
-      if (names["$" + owner].activeWorkspaceId) problems.push("multiple-active-workspaces");
-      else names["$" + owner].activeWorkspaceId = number;
+      if (allowMultipleActive) {
+        var list = names["$" + owner].activeWorkspaceIds || [];
+        if (list.indexOf(number) === -1) {
+          list.push(number);
+          list.sort(function(a, b) { return a - b; });
+        }
+        names["$" + owner].activeWorkspaceIds = list;
+        names["$" + owner].activeWorkspaceId = list[0] || 0;
+      } else if (names["$" + owner].activeWorkspaceId) {
+        problems.push("multiple-active-workspaces");
+      } else {
+        names["$" + owner].activeWorkspaceId = number;
+      }
     }
     spaces.push({ id: number, output: owner, active: active, urgent: set.urgent === true,
-      canActivate: set.canActivate === true, canSetProjection: set.canSetProjection === true });
+      canActivate: set.canActivate === true, canDeactivate: set.canDeactivate === true,
+      canSetProjection: set.canSetProjection === true });
   }
   outputs.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
-  spaces.sort(function(a, b) { return a.id - b.id; });
+  spaces.sort(function(a, b) {
+    if (perOutput && a.output !== b.output) return a.output < b.output ? -1 : 1;
+    return a.id - b.id;
+  });
   return { outputs: outputs, workspaces: spaces, ready: outputs.length > 0 && spaces.length > 0
     && problems.length === 0, problems: problems.slice(0, listLimit) };
 }
 
 // Add only IPC-only fields. The protocol does not report global focus, DPMS,
 // special workspaces, window membership, or keyboard/binding information.
-function combine(protocol, ipc) {
+function combine(protocol, ipc, options) {
   if (!protocol || !protocol.ready) return ipc;
+  options = options || {};
+  var perOutput = options.perOutput === true;
   var outputs = protocol.outputs.map(function(output) {
     var gap = (ipc.outputs || []).filter(function(item) { return item.name === output.name; })[0] || {};
-    return { name: output.name, x: output.x, y: output.y,
-      description: output.description, activeWorkspaceId: output.activeWorkspaceId,
+    var merged = { name: output.name, x: output.x, y: output.y,
+      description: output.description || gap.description || "",
+      activeWorkspaceId: output.activeWorkspaceId,
       focused: output.name === ipc.focusedOutputName, dpmsOn: gap.dpmsOn !== false,
       special: gap.special === true };
+    if (perOutput) {
+      merged.activeWorkspaceIds = output.activeWorkspaceIds ? output.activeWorkspaceIds.slice()
+        : (gap.activeWorkspaceIds ? gap.activeWorkspaceIds.slice() : []);
+      var mask = 0;
+      for (var i = 0; i < merged.activeWorkspaceIds.length; i++) {
+        var tag = merged.activeWorkspaceIds[i];
+        if (tag >= 1 && tag <= 9) mask |= (1 << (tag - 1));
+      }
+      merged.tagMask = mask;
+    }
+    return merged;
   });
   var workspaces = protocol.workspaces.map(function(space) {
-    var gap = (ipc.workspaces || []).filter(function(item) { return item.id === space.id; })[0] || {};
-    return { id: space.id, output: space.output, occupied: gap.occupied === true,
+    var gap = (ipc.workspaces || []).filter(function(item) {
+      return perOutput ? (item.output === space.output && item.id === space.id) : (item.id === space.id);
+    })[0] || {};
+    var entry = { id: space.id, output: space.output, occupied: gap.occupied === true,
       windows: gap.windows || [] };
+    if (perOutput) {
+      entry.active = space.active === true;
+      entry.urgent = space.urgent === true;
+    }
+    return entry;
   });
+  var focusedWorkspaceId = ipc.focusedWorkspaceId;
+  if (perOutput && ipc.focusedOutputName) {
+    for (var o = 0; o < outputs.length; o++) {
+      if (outputs[o].name === ipc.focusedOutputName) {
+        focusedWorkspaceId = outputs[o].activeWorkspaceId || 0;
+        break;
+      }
+    }
+  }
   return { outputs: outputs, workspaces: workspaces, focusedOutputName: ipc.focusedOutputName,
-    focusedWorkspaceId: ipc.focusedWorkspaceId, bindingsText: ipc.bindingsText,
+    focusedWorkspaceId: focusedWorkspaceId, bindingsText: ipc.bindingsText,
     activeKeymap: ipc.activeKeymap };
 }
 

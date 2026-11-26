@@ -32,7 +32,11 @@ QtObject {
   readonly property var focusGrab: backend && backend.focusGrab ? backend.focusGrab : null
 
   readonly property string backendName: {
-    // Hyprland is the only adapter until tam-pane's arrives (D263).
+    var forced = String(Quickshell.env("TAMLINUX_COMPOSITOR_BACKEND") || "").toLowerCase()
+    if (forced === "tam-pane" || forced === "hyprland") return forced
+    if (String(Quickshell.env("TAM_PANE_SOCKET") || "") !== "") return "tam-pane"
+    var desktop = ":" + String(Quickshell.env("XDG_CURRENT_DESKTOP") || "") + ":"
+    if (desktop.indexOf(":tam-pane:") !== -1) return "tam-pane"
     return "hyprland"
   }
 
@@ -45,8 +49,12 @@ QtObject {
     return ""
   }
 
-  function focusWorkspace(id) {
-    if (backend) backend.focusWorkspace(id)
+  function focusWorkspace(id, outputName) {
+    if (backend) backend.focusWorkspace(id, outputName)
+  }
+
+  function toggleWorkspace(id, outputName) {
+    if (backend && backend.toggleWorkspace) backend.toggleWorkspace(id, outputName)
   }
 
   function focusOutput(name) {
@@ -106,7 +114,7 @@ QtObject {
   }
 
   function loadBackend() {
-    var file = "HyprlandAdapter.qml"
+    var file = backendName === "tam-pane" ? "TamPaneAdapter.qml" : "HyprlandAdapter.qml"
     var component = Qt.createComponent(Qt.resolvedUrl(file))
     if (component.status === Component.Ready) {
       finishBackend(component)
