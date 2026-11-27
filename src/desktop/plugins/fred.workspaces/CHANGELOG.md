@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.15
+
+- Show and select tam-pane tags independently on each display.
+
 All notable changes to `fred.workspaces` in `tamlinux/desktop/plugins/fred.workspaces` are documented here.
 
 The 2.x line ships with Tamlinux. Headings identify the containing product release or candidate; inclusion dates do not imply standalone plugin releases. The 1.x entries below are historical Omarchy releases.

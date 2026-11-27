@@ -10,7 +10,8 @@ USAGE
     tam-session-bench now [--json]
     tam-session-bench sample [--seconds 30 | --minutes M] [--interval 2]
                              [--settle 0] [--label NAME] [--save] [--json]
-    tam-session-bench compare [--boots N | --all-boots] [--json]
+    tam-session-bench compare [--boots N | --all-boots]
+                              [--since ISO-TIMESTAMP] [--label NAME] [--json]
 
 
 DESCRIPTION
@@ -30,3 +31,19 @@ DESCRIPTION
   journal session history and saved timed samples.
 
 Python 3 stdlib only. No root required.
+
+MATCHED COMPARISON
+
+Use the same machine, candidate, monitors, and idle workload. Alternate
+launches with tam-desktop hyprland and tam-desktop tam-pane. Record the
+UTC start time of the trial. In each desktop, collect an idle sample:
+
+    tam-session-bench sample --settle 30 --seconds 30 --label idle --save
+
+Run compare with --since set to the trial's ISO 8601 start time (including
+timezone) and --label idle. By default startup rows use the current boot.
+Use --boots if the trial crosses a reboot. Total startup runs from the
+UWSM session envelope to the shell's IPC-ready marker. Idle PSS attributes
+shared memory proportionally and is reported separately for the compositor
+and shell. The table gives the median, observed range, and sample count
+for startup timings and timed samples.

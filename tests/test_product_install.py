@@ -40,7 +40,21 @@ class ProductInstall(unittest.TestCase):
                 self.assertLess(launch.index("wait-stopped.py"), launch.index(f"session_settings.py\" --session {session_name}"))
                 self.assertLess(launch.index("session_settings.py"), launch.index("exec /usr/bin/uwsm"))
                 self.assertIn('"/usr/bin/tamlinux/tam-session-init"', launch)
+                if session_name == "pane":
+                    self.assertIn('"/usr/bin/tamlinux/tam-macro" sync --pane-only', launch)
                 subprocess.run(["/usr/bin/sh", "-n", commands / launcher], check=True)
+
+    def test_benchmark_installs_in_the_cultivar_bin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([
+                "make", "-s", "-C", SOURCE / "src/commands/tam-session-bench",
+                "install", f"PREFIX={cultivar_layout.CURRENT}", f"DESTDIR={tmp}",
+            ], check=True)
+            command = Path(tmp) / cultivar_layout.CURRENT.lstrip("/") / "bin/tam-session-bench"
+            result = subprocess.run([command, "compare", "--help"], check=True,
+                                    capture_output=True, text=True)
+            self.assertIn("--since", result.stdout)
+            self.assertIn("--label", result.stdout)
 
     def test_cultivar_layout_renders_private_paths_and_integration_dropins(self):
         with tempfile.TemporaryDirectory() as tmp:

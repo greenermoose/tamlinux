@@ -1,0 +1,31 @@
+W42 COMPARE COMPOSITORS AND FIX TAMLINUX 0.7.1 DESKTOP INPUT
+
+Date: 2026-11-26
+AI harness: Codex 0.172.0
+AI model: gpt-6.2-sol
+Transcript: Retained privately by the author.
+
+GUIDANCE
+
+  Fred: "Implement the plan."
+
+DONE
+
+  - Added the tam-pane launcher spelling, benchmark trial filters, and
+    verified the staged launcher and benchmark paths.
+  - Enabled focus-follows-mouse, green borders, and Meta+right-drag.
+    The same chord still opens Start on the background.
+  - Prepared saved macros at tam-pane launch and guarded paste targets.
+  - Switched fred.workspaces to per-display tags on tam-pane.
+  - Focused product, adapter, desktop battery, and widget checks passed.
+
+FAILED
+
+  - Private headless sockets required execution outside the sandbox.
+    An isolated configuration was used for the product tests.
+
+HANDOFF
+
+  - Prepare the source delivery on the packaging request. Physical Test
+    must verify both compositors and collect matched startup and idle
+    memory samples.

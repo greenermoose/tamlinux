@@ -92,7 +92,7 @@ class ConsoleDesktop(unittest.TestCase):
             hypr.touch(mode=0o755)
             pane.touch(mode=0o755)
             identity = self.check()
-            for args, expected in (([], hypr), (["hyprland"], hypr), (["pane"], pane)):
+            for args, expected in (([], hypr), (["hyprland"], hypr), (["tam-pane"], pane), (["pane"], pane)):
                 with self.subTest(args=args), \
                         patch.object(sys, "argv", ["console.py", str(bin_dir), *args]), \
                         patch.object(console.os, "ttyname", return_value="/dev/tty1"), \
@@ -122,8 +122,8 @@ class ConsoleDesktop(unittest.TestCase):
         result = subprocess.run([sys.executable, "-I", str(SOURCE / "console.py"), "/missing", "--help"],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0)
-        self.assertIn("Usage: tam-desktop [hyprland|pane]", result.stdout)
-        self.assertIn("tam-desktop pane", result.stdout)
+        self.assertIn("Usage: tam-desktop [hyprland|tam-pane]", result.stdout)
+        self.assertIn("tam-desktop tam-pane", result.stdout)
         self.assertIn("tam-desktop hyprland", result.stdout)
 
     def test_console_is_held_through_desktop_exit_and_unknown_cleanup(self):
@@ -262,6 +262,6 @@ class ConsoleDesktop(unittest.TestCase):
         result = subprocess.run(["/bin/sh", str(SOURCE / "desktop"), "--help"],
                                 env={"PATH": "/nonexistent"}, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Usage: tam-desktop [hyprland|pane]", result.stdout)
-        self.assertIn("tam-desktop pane", result.stdout)
+        self.assertIn("Usage: tam-desktop [hyprland|tam-pane]", result.stdout)
+        self.assertIn("tam-desktop tam-pane", result.stdout)
         self.assertIn("tam-desktop hyprland", result.stdout)

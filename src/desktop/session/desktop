@@ -3,11 +3,11 @@
 set -eu
 if [ "$#" -eq 1 ] && { [ "$1" = "--help" ] || [ "$1" = "-h" ]; }; then
   printf '%s\n' \
-    'Usage: tam-desktop [hyprland|pane]' \
+    'Usage: tam-desktop [hyprland|tam-pane]' \
     'Start the installed Tamlinux desktop from your local text login.' \
     '  tam-desktop           Start the default desktop (Hyprland)' \
     '  tam-desktop hyprland  Start the Hyprland recovery session' \
-    '  tam-desktop pane      Start the tam-pane trial session'
+    '  tam-desktop tam-pane  Start the tam-pane trial session (alias: pane)'
   exit 0
 fi
 bin_dir="$(dirname "$(readlink -f "$0")")"

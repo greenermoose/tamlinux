@@ -11,8 +11,12 @@ Workspaces with Desktop Mode <assets/screenshot.png>
 
 OVERVIEW
 
-fred.workspaces is the Tamlinux workspace bar widget, with a desktop mode
-switcher for multi-monitor and single-monitor workflows:
+On tam-pane, each bar shows its output’s nine tags. All tags in the
+current view are highlighted, and a click selects one tag on that output.
+Window lists and occupancy belong to the output shown by the bar.
+
+On Hyprland, the bar has a desktop mode switcher for multi-monitor and
+single-monitor workflows:
 
   Mode: Mac Desktop Mode
   Indicator: M

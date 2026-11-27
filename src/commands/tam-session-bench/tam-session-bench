@@ -612,8 +612,8 @@ def parse_journal_sessions(entries: list[dict[str, Any]]) -> list[dict[str, Any]
         if "session_ready" in ts and "shell_ready" in ts and ts["shell_ready"] >= ts["session_ready"]:
             stages["shell_ready_ms"] = round((ts["shell_ready"] - ts["session_ready"]) / 1000.0, 1)
 
-        origin = ts.get("envelope") or ts.get("wm_start")
-        finish = ts.get("shell_ready") or ts.get("session_ready") or ts.get("wm_ready")
+        origin = ts.get("envelope")
+        finish = ts.get("shell_ready")
         if origin and finish and finish >= origin:
             stages["total_ms"] = round((finish - origin) / 1000.0, 1)
         sess["stages_ms"] = stages
@@ -1174,12 +1174,15 @@ def format_sample_human(rec: dict[str, Any], saved_path: Path | None = None) -> 
 
 def format_compare_human(agg: dict[str, Any]) -> str:
     comps = agg.get("compositors") or {}
-    if not comps:
+    saved = agg.get("saved_samples") or {}
+    if not comps and not saved:
         return "No completed or active graphical sessions found to compare.\n"
 
-    names = sorted(comps.keys(), key=lambda x: (x != "Hyprland", x != "tam-pane", x))
-    c_left = "Hyprland" if "Hyprland" in comps else names[0]
-    c_right = "tam-pane" if "tam-pane" in comps else (names[1] if len(names) > 1 else None)
+    names = sorted(comps.keys() | saved.keys(), key=lambda x: (x != "Hyprland", x != "tam-pane", x))
+    c_left = "Hyprland"
+    c_right = "tam-pane"
+    if not any(name in names for name in (c_left, c_right)):
+        c_left, c_right = names[0], names[1] if len(names) > 1 else None
 
     def cell(comp_name: str | None, metric_key: str, unit: str) -> str:
         if not comp_name or comp_name not in comps:
@@ -1188,7 +1191,7 @@ def format_compare_human(agg: dict[str, Any]) -> str:
         if not m:
             return "-"
         if unit == "ms":
-            return f"{m['median']:.0f} ms (n={m['n']})"
+            return f"{m['median']:.0f} ms [{m['min']:.0f}–{m['max']:.0f}] n={m['n']}"
         if unit == "MiB":
             return f"{m['median']:.1f} MiB (n={m['n']})"
         if unit == "%":
@@ -1228,7 +1231,6 @@ def format_compare_human(agg: dict[str, Any]) -> str:
             f"{_fmt_delta(med(c_left, key), med(c_right, key), unit):>26}"
         )
 
-    saved = agg.get("saved_samples") or {}
     if saved:
         lines.append("")
         lines.append(f"Saved Timed Samples (median across {agg.get('saved_sample_count', 0)} runs)")
@@ -1248,14 +1250,35 @@ def format_compare_human(agg: dict[str, Any]) -> str:
         for label, key, unit in s_rows:
             lv = (saved.get(c_left) or {}).get(key)
             rv = (saved.get(c_right) or {}).get(key) if c_right else None
-            ltxt = f"{lv['median']:.2f} {unit} (n={lv['n']})" if lv else "-"
-            rtxt = f"{rv['median']:.2f} {unit} (n={rv['n']})" if rv else "-"
+            def sample_cell(metric):
+                if not metric:
+                    return "-"
+                return (f"{metric['median']:.2f} {unit} "
+                        f"[{metric['min']:.2f}–{metric['max']:.2f}] n={metric['n']}")
+            ltxt, rtxt = sample_cell(lv), sample_cell(rv)
             lines.append(
                 f"{label:<26} {ltxt:>18} {rtxt:>18} "
                 f"{_fmt_delta(lv['median'] if lv else None, rv['median'] if rv else None, unit):>26}"
             )
 
     return "\n".join(lines) + "\n"
+
+
+def comparison_time(value: str) -> datetime:
+    try:
+        result = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected an ISO 8601 timestamp with timezone") from exc
+    if result.tzinfo is None:
+        raise argparse.ArgumentTypeError("expected an ISO 8601 timestamp with timezone")
+    return result
+
+
+def at_or_after(value: str, since: datetime) -> bool:
+    try:
+        return comparison_time(value) >= since
+    except (argparse.ArgumentTypeError, TypeError):
+        return False
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1289,6 +1312,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_cmp.add_argument("--boots", type=int, default=None, help="Compare across the last N boots")
     p_cmp.add_argument("--all-boots", action="store_true", help="Compare across all boots in the user journal")
     p_cmp.add_argument("--samples", action="store_true", help="Include saved timed sample runs even if no journal sessions exist")
+    p_cmp.add_argument("--since", type=comparison_time, help="Include records from this ISO 8601 timestamp")
+    p_cmp.add_argument("--label", help="Include only saved samples with this exact label")
     p_cmp.add_argument("--json", action="store_true", help="Output structured JSON")
 
     return parser
@@ -1336,6 +1361,11 @@ def main(argv: list[str] | None = None) -> int:
         sessions = parse_journal_sessions(entries)
         merge_active_session_resources(sessions, collect_live_snapshot())
         saved = load_saved_samples()
+        if args.since is not None:
+            sessions = [s for s in sessions if at_or_after(s.get("started_utc", ""), args.since)]
+            saved = [s for s in saved if at_or_after(s.get("timestamp_utc", ""), args.since)]
+        if args.label is not None:
+            saved = [s for s in saved if s.get("label") == args.label]
         agg = aggregate_comparison(sessions, saved_samples=saved)
         if args.json:
             print(json.dumps(agg, indent=2, sort_keys=True))

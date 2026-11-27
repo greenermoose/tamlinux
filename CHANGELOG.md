@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [Unreleased]
+
+- Launch either compositor from a text console with `tam-desktop hyprland`
+  or `tam-desktop tam-pane`. Compare startup and idle memory with
+  `tam-session-bench`.
+- Enable pointer focus and the green border on tam-pane. Use
+  Meta+right-drag to move a window between displays or Meta+right-click
+  on the empty desktop to open Start.
+- Prepare saved macros for tam-pane startup and guard paste against
+  a change of focus.
+- Show and select native per-display tags in `fred.workspaces`.
+
 ## [0.7.0]
 
 - Prepare **Tamlinux 0.7.0 Northern Torch** for daily `tam-pane` compositor trials while retaining Hyprland as an independent recovery session:

@@ -282,7 +282,7 @@ def generated_pane_lua(macros: list[dict]) -> str:
         description = "Macro: " + (m["description"] or m["key"])
         lines.append(
             f'tp.bind({lua_string("Meta+Alt+" + key)}, '
-            f'tp.dsp.spawn({lua_string(command)}), '
+            f'tp.dsp.spawn({lua_string(command)}, true), '
             f'{{ release = true, desc = {lua_string(description)} }})'
         )
     return "\n".join(lines) + "\n"
@@ -357,9 +357,16 @@ def commit_macros(macros: list[dict], *, save: bool = True) -> None:
         raise
 
 
-def run_sync() -> None:
+def run_sync(pane_only: bool = False) -> None:
     with locked(get_macros_file().with_suffix(".lock")):
-        commit_macros(load_macros(get_macros_file()), save=False)
+        macros = load_macros(get_macros_file())
+        if not pane_only:
+            commit_macros(macros, save=False)
+            return
+        path = get_pane_macros_file()
+        content = generated_pane_lua(macros)
+        if not path.exists() or path.read_text(encoding="utf-8") != content:
+            atomic_write(path, content)
 
 
 def parse_pane_focused(output: str) -> dict:
@@ -418,7 +425,7 @@ def inject_text(text: str, expected_address: str | None = None) -> None:
             raise ValueError("Focus changed; macro was copied but not pasted")
         if using_tam_pane():
             chord = "Ctrl+Shift+v" if window_is_terminal(target) else "Ctrl+v"
-            checked_pane("dispatch", "send_key", chord)
+            checked_pane("dispatch", "send_key_if_focused", address, chord)
             time.sleep(0.2)
             return
         mods, key = ("CTRL SHIFT", "V") if window_is_terminal(target) else ("CTRL", "V")
@@ -461,7 +468,9 @@ def main():
 
     subparsers.add_parser("replace", help="Read {macros, expected} JSON from stdin and save atomically")
 
-    subparsers.add_parser("sync", help="Generate Hyprland macros.lua and reload config")
+    sync_parser = subparsers.add_parser("sync", help="Regenerate macro bindings")
+    sync_parser.add_argument("--pane-only", action="store_true",
+                             help="Prepare tam-pane bindings before session startup")
 
     list_parser = subparsers.add_parser("list", help="List macros")
     list_parser.add_argument("--json", action="store_true", help="Output JSON format")
@@ -499,7 +508,7 @@ def main():
         print(json.dumps(load_macros(macros_file), ensure_ascii=False))
 
     elif args.subcommand == "sync":
-        run_sync()
+        run_sync(args.pane_only)
 
     elif args.subcommand == "list":
         macros = load_macros(macros_file)

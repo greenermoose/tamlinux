@@ -21,6 +21,24 @@ class ReconcileOwnerTests(unittest.TestCase):
     def owners(self, previous, current):
         return [bar for bar in current if self.owner(previous, current, bar)]
 
+    def test_same_tag_number_on_separate_outputs(self):
+        script = """
+            const {workspaceForId} = require(process.argv[1]);
+            const tags = [{id: 2, output: "Dell", occupied: true},
+                          {id: 2, output: "MSI", occupied: false}];
+            process.stdout.write(JSON.stringify([
+                workspaceForId(tags, 2, "MSI"),
+                workspaceForId(tags, 2, "absent"),
+                workspaceForId(tags, 2)
+            ]));
+        """
+        result = subprocess.run(["node", "-e", script, str(MODEL)], check=True,
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(json.loads(result.stdout), [
+            {"id": 2, "output": "MSI", "occupied": False}, None,
+            {"id": 2, "output": "Dell", "occupied": True},
+        ])
+
     def test_exactly_one_bar_owns_each_change(self):
         three = ["DP-1", "DP-2", "HDMI-A-1"]
         # The HP drops out (VT switch) and comes back: the Dell's bar owns both.

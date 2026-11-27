@@ -14,14 +14,15 @@ COMPOSITORS = ("Hyprland", "tam-pane")
 DEFAULT_SESSION = "hyprland"
 SESSION_ENDPOINTS = {
     "hyprland": "tam-hyprland-session",
+    "tam-pane": "tam-pane-session",
     "pane": "tam-pane-session",
 }
 USAGE = "\n".join((
-    "Usage: tam-desktop [hyprland|pane]",
+    "Usage: tam-desktop [hyprland|tam-pane]",
     "Start the installed Tamlinux desktop from your local text login.",
     "  tam-desktop           Start the default desktop (Hyprland)",
     "  tam-desktop hyprland  Start the Hyprland recovery session",
-    "  tam-desktop pane      Start the tam-pane trial session",
+    "  tam-desktop tam-pane  Start the tam-pane trial session (alias: pane)",
 ))
 
 
@@ -50,7 +51,7 @@ def resolve_endpoint(base, args):
     elif len(args) == 1 and args[0] in SESSION_ENDPOINTS:
         target = args[0]
     else:
-        raise ValueError("expected no arguments, 'hyprland', or 'pane'; use --help")
+        raise ValueError("expected no arguments, 'hyprland', or 'tam-pane'; use --help")
     return Path(base) / SESSION_ENDPOINTS[target]
 
 

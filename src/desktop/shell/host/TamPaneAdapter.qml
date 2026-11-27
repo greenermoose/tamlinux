@@ -300,7 +300,7 @@ QtObject {
     if (!ev || ev.kind !== "event") return
     var kind = ev.eventKind
     if (kind === "tag.change" || kind === "window.open" || kind === "window.close" ||
-        kind === "window.focus" || kind === "monitor.add" || kind === "monitor.remove" ||
+        kind === "window.focus" || kind === "window.change" || kind === "monitor.add" || kind === "monitor.remove" ||
         kind === "monitor.focus") {
       enqueueRead("monitors")
       enqueueRead("tags")

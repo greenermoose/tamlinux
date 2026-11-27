@@ -21,10 +21,12 @@ class TamMacroTest(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.macros_file = Path(self.temp_dir.name) / "macros.json"
         self.hypr_file = Path(self.temp_dir.name) / "macros.lua"
+        self.pane_file = Path(self.temp_dir.name) / "pane.lua"
         self.env = {
             **os.environ,
             "TAMLINUX_MACROS_FILE": str(self.macros_file),
             "TAMLINUX_HYPR_MACROS_FILE": str(self.hypr_file),
+            "TAMLINUX_PANE_MACROS_FILE": str(self.pane_file),
             "TAMLINUX_MACRO_SKIP_RELOAD": "1",
             "XDG_RUNTIME_DIR": self.temp_dir.name,
         }
@@ -39,6 +41,17 @@ class TamMacroTest(unittest.TestCase):
             text=True,
             env=self.env,
         )
+
+    def test_startup_sync_regenerates_only_pane_bindings(self):
+        self.macros_file.write_text(json.dumps([{
+            "key": "m", "text": "hello", "description": "Greeting",
+        }]))
+        self.hypr_file.write_text("existing Hyprland bindings")
+        result = self.run_cmd("sync", "--pane-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Meta+Alt+m', self.pane_file.read_text())
+        self.assertIn(', true)', self.pane_file.read_text())
+        self.assertEqual(self.hypr_file.read_text(), "existing Hyprland bindings")
 
     def test_version(self):
         res = self.run_cmd("--version")

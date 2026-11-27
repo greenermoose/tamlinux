@@ -19,8 +19,18 @@ function reconcileOwner(previousNames, currentNames, barName) {
   return pool.length > 0 && pool[0] === name
 }
 
+function workspaceForId(workspaces, id, output) {
+  for (var i = 0; i < workspaces.length; i++) {
+    var workspace = workspaces[i]
+    if (workspace && workspace.id === id
+        && (output === undefined || workspace.output === output)) return workspace
+  }
+  return null
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
-    reconcileOwner: reconcileOwner
+    reconcileOwner: reconcileOwner,
+    workspaceForId: workspaceForId
   }
 }

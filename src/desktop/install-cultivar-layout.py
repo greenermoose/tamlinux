@@ -119,7 +119,7 @@ def render_commands(directory: Path, current: str = CURRENT) -> None:
                 config,
                 wait + f'\n/usr/bin/python3 -I -B "$session_dir/session_settings.py" --session {session_name} || exit $?\n'
                 + config)
-            for helper in ("tam-theme-init", "tam-session-init"):
+            for helper in ("tam-theme-init", "tam-session-init", "tam-macro"):
                 content = content.replace('"${TAMLINUX_BIN:-$commands}/' + helper + '"',
                                           f'"{BIN_LINK}/{helper}"')
             content = content.replace('commands="$bin_dir"\n'

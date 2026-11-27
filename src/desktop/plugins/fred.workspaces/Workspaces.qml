@@ -12,9 +12,12 @@ BarWidget {
   id: root
   moduleName: "fred.workspaces"
 
-  readonly property string pluginVersion: "2.0.14"
+  readonly property string pluginVersion: "2.0.15"
 
-  property string desktopMode: "mac"
+  readonly property var compositor: root.bar ? root.bar.compositor : null
+  readonly property bool nativeTags: compositor !== null && compositor.backendName === "tam-pane"
+  readonly property string desktopMode: nativeTags ? "tags" : savedDesktopMode
+  property string savedDesktopMode: "mac"
   property string leftMonitor: ""
   property string rightMonitor: ""
   property var monitorNames: []
@@ -114,6 +117,7 @@ BarWidget {
       dpmsOn: item.dpmsOn !== false,
       focused: item.focused === true,
       special: item.special === true,
+      activeWorkspaceIds: item.activeWorkspaceIds || [],
       activeWorkspace: id > 0 ? { id: id } : null
     }
   }
@@ -141,10 +145,8 @@ BarWidget {
   function workspaceById(id) {
     var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
     var values = comp && comp.workspaces ? comp.workspaces : []
-    for (var i = 0; i < values.length; i++) {
-      if (values[i] && values[i].id === id) return values[i]
-    }
-    return null
+    if (nativeTags && !barMonitor) return null
+    return Model.workspaceForId(values, id, nativeTags ? barMonitor.name : undefined)
   }
 
   function quickshellMonitorNames() {
@@ -236,6 +238,7 @@ BarWidget {
   }
 
   function workspaceIds() {
+    if (nativeTags) return [1, 2, 3, 4, 5, 6, 7, 8, 9]
     var _rev = root.windowsRevision
     if (desktopMode === "mac" && barMonitor !== null) {
       if (effectiveSetSize() === 1) {
@@ -368,6 +371,7 @@ BarWidget {
 
   function monitorHasWindows() {
     if (!barMonitor) return false
+    if (nativeTags) return barMonitor.activeWorkspaceIds.some(function(id) { return root.workspaceOccupied(id) })
     if (barMonitor.special) return true
     if (!barMonitor.activeWorkspace) return false
     var ws = workspaceById(barMonitor.activeWorkspace.id)
@@ -628,6 +632,7 @@ BarWidget {
     Qt.callLater(root.trackAlignment)
     Qt.callLater(root.trackMonitorIdle)
     Qt.callLater(root.probeDpmsState)
+    if (nativeTags) return
     var outputs = root.compositorOutputs()
     var names = []
     var comp = root.bar && root.bar.compositor ? root.bar.compositor : null
@@ -841,11 +846,12 @@ BarWidget {
           tip = macLines.join("\n")
         }
       } else {
+        var label = (nativeTags ? "Tag " : "Workspace ") + displayId + headerSuffix
         var tamlinuxWindows = workspaceWindowSummaries(displayId)
         if (tamlinuxWindows.length === 0) {
-          tip = "Workspace " + displayId + headerSuffix + "\n(Empty)"
+          tip = label + "\n(Empty)"
         } else {
-          var oLines = ["Workspace " + displayId + headerSuffix]
+          var oLines = [label]
           for (var o = 0; o < Math.min(tamlinuxWindows.length, 6); o++) {
             oLines.push(tamlinuxWindows[o])
           }
@@ -879,6 +885,8 @@ BarWidget {
 
   function workspaceFocused(displayId) {
     var _rev = root.windowsRevision
+    if (nativeTags)
+      return barMonitor !== null && barMonitor.activeWorkspaceIds.indexOf(displayId) !== -1
     if (desktopMode === "windows") {
       var names = effectiveMonitorNames()
       if (names.length === 0) {
@@ -1018,6 +1026,11 @@ BarWidget {
 
   function focusWorkspace(id) {
     var num = parseInt(id, 10)
+    if (nativeTags) {
+      if (barMonitor && num >= 1 && num <= 9)
+        compositor.focusWorkspace(num, barMonitor.name)
+      return
+    }
     if (!isNaN(num) && num >= 1 && num <= 10) {
       runDesktopCommand(["switch", String(num)])
     }
@@ -1026,7 +1039,7 @@ BarWidget {
   function loadDesktopMode(raw) {
     var mode = String(raw || "").trim()
     if (mode.length > 16) return
-    root.desktopMode = mode === "tamlinux" || mode === "windows" ? mode : "mac"
+    root.savedDesktopMode = mode === "tamlinux" || mode === "windows" ? mode : "mac"
   }
 
   function loadMonitors(raw) {
@@ -1198,7 +1211,7 @@ BarWidget {
     id: grid
     anchors.fill: parent
     anchors.rightMargin: root.trailingGap
-    columns: root.vertical ? 1 : root.workspaceIds().length + 1
+    columns: root.vertical ? 1 : root.workspaceIds().length + (root.nativeTags ? 0 : 1)
     columnSpacing: root.vertical ? 0 : Style.space(1)
     rowSpacing: root.vertical ? Style.space(2) : 0
 
@@ -1230,6 +1243,7 @@ BarWidget {
 
     WidgetButton {
       bar: root.bar
+      visible: !root.nativeTags
       // F: this display followed a window focus off the set's desktop.
       text: root.barDeviated ? "F" : root.desktopModeLetter()
       tooltipText: {
@@ -1264,7 +1278,7 @@ BarWidget {
         }
         // Show the next mode at once. The helper's exit re-reads the file;
         // a status check started now could read the old mode and undo this.
-        root.desktopMode = root.nextDesktopMode()
+        root.savedDesktopMode = root.nextDesktopMode()
         root.runDesktopCommand(["toggle"])
       }
     }

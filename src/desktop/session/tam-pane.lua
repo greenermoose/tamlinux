@@ -39,6 +39,7 @@ end
 tp.config{
   gaps = 8,
   border_width = 3,
+  focus_follows_mouse = true,
   locker = "/usr/bin/tamlinux/tam-hide",
   cursor_theme = "Adwaita",
   cursor_size = 24,
@@ -254,9 +255,9 @@ tp.bind("Meta+Ctrl+x", tp.dsp.spawn("voxtype record toggle"), { desc = "Toggle d
 tp.bind("F9", tp.dsp.spawn("voxtype record start"), { desc = "Start dictation (push-to-talk)" })
 tp.bind("F9", tp.dsp.spawn("voxtype record stop"), { release = true, desc = "Stop dictation (push-to-talk)" })
 
--- Mouse bindings: Meta+Right-click opens Start menu; Meta+Alt+Right-drag resizes.
+-- Meta+right-drag moves a window. On the background it opens Start.
 tp.mouse_bind("Meta+mouse:272", tp.dsp.mouse_move(), { desc = "Move window" })
-tp.mouse_bind("Meta+mouse:273", tp.dsp.spawn("tam-menu toggle start"), { desc = "Start menu" })
+tp.mouse_bind("Meta+mouse:273", tp.dsp.mouse_move("tam-menu toggle start"), { desc = "Move window / Start menu" })
 tp.mouse_bind("Meta+Alt+mouse:273", tp.dsp.mouse_resize(), { desc = "Resize window" })
 tp.mouse_bind("Meta+mouse_up", tp.dsp.tag("back"), { desc = "Previous tag" })
 tp.mouse_bind("Meta+mouse_down", tp.dsp.tag("back"), { desc = "Previous tag" })

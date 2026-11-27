@@ -264,5 +264,26 @@ class SessionBenchParsingTests(unittest.TestCase):
             self.assertEqual(agg["saved_samples"]["tam-pane"]["power_w"]["median"], 3.1)
 
 
+class TrialFilteringTest(unittest.TestCase):
+    def test_wm_ready_without_shell_ready_does_not_count_as_total(self):
+        entries = [
+            {"MESSAGE_ID": mod.MSG_UNIT_STARTED, "USER_UNIT": "wayland-session-envelope@Hyprland.target",
+             "__MONOTONIC_TIMESTAMP": "1000"},
+            {"MESSAGE_ID": mod.MSG_UNIT_STARTING, "USER_UNIT": "wayland-wm@Hyprland.service",
+             "__MONOTONIC_TIMESTAMP": "2000"},
+            {"MESSAGE_ID": mod.MSG_UNIT_STARTED, "USER_UNIT": "wayland-wm@Hyprland.service",
+             "__MONOTONIC_TIMESTAMP": "3000"},
+        ]
+        result = mod.aggregate_comparison(mod.parse_journal_sessions(entries))
+        self.assertEqual(result["compositors"]["Hyprland"]["compositor_ms"]["n"], 1)
+        self.assertIsNone(result["compositors"]["Hyprland"]["total_ms"])
+
+    def test_comparison_time_uses_record_offsets(self):
+        since = mod.comparison_time("2026-11-26T15:00:00-05:00")
+        self.assertTrue(mod.at_or_after("2026-11-26T20:00:00Z", since))
+        self.assertFalse(mod.at_or_after("2026-11-26T19:59:59Z", since))
+        self.assertFalse(mod.at_or_after("", since))
+
+
 if __name__ == "__main__":
     unittest.main()
