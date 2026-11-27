@@ -3,7 +3,7 @@
 `tamlinux` is the Tamlinux workstation environment and desktop product
 repository, developed in public on branch `dev`.
 
-- **Current version:** `0.7.5` on `dev` · Run baseline `0.6.42` · latest release `0.6.42`
+- **Current version:** `0.7.5` on `dev` and `test` (staged) · Run baseline `0.6.42` · latest release `0.6.42`
 - **Progress:** 2 of 5 phases done. KBN WB (`0.6.42`) is released and Northern Torch is in progress.
 - **Versioning:** Cultivars name minor workstation releases. Phase IDs
   follow milestone order and plan IDs are independent. See [VERSIONING.md](VERSIONING.md).
@@ -38,10 +38,12 @@ repository, developed in public on branch `dev`.
 
 | Version | Milestone | Status |
 | --- | --- | --- |
-| **0.7.0–0.7.2** | Stage 1, M1–M8. Bring up the reproducible `tam-pane` session, shell and C17 apps. Development and headless checks passed. | In progress |
-| **0.7.x** | Stage 1, M9–M10. Prove hardware, locking, and recovery. Accept daily use and switch the default desktop. | In progress |
-| **0.7.3 onward** | Stage 2, M11–M14. Lock and idle, gamma and color picking, fleet commands, and themes are wired in development. Prove the replacement workflows on physical fleet hardware. | In progress |
-| **0.7.x** | Stage 3, M15–M17. Remove Hyprland code and packages, then verify clean builds and fleet-wide daily use on `tam-pane` alone. | Planned |
+| **0.7.0–0.7.2** | Bring up the reproducible `tam-pane` session, Quickshell adapter, all nine `fred.*` plugins, C17 app suite, and headless test battery with Hyprland recovery intact (M1–M8). | Done (2026-11-26) |
+| **0.7.3** | Wire Hyprland-helper replacements onto `tam-pane 0.3.0` and `tam-hide 0.3.1`: lock/idle polling, native gamma/freeze/pixel capture, fleet laptop/window IPC commands, and live-reloaded theme borders (M11–M14 wiring). | Done (2026-11-27) |
+| **0.7.4** | Fix Northern Torch cultivar metadata and console banner with a build-time `VERSION`/`CULTIVAR` consistency guard. | Done (2026-11-27) |
+| **0.7.5** | Package `tam-pane 0.4.1` with pointer focus, release-bound macro-key repeat fix, centered Dwindle placement, and optional Mesa GLES2 rounded corners and drop shadows (staged for Test). | In progress |
+| **0.7.x** | Physical and fleet acceptance: prove hardware, locking, recovery, and M11–M14 replacement workflows across the workstation and fleet laptops; accept daily use and switch the default desktop to `tam-pane` (M9–M10). | In progress |
+| **0.7.x** | Remove all Hyprland code, configs, `hypr*`/`aquamarine` packages, and superseded dependencies; verify clean builds and fleet-wide daily use on `tam-pane` alone, then release Northern Torch (M15–M17). | Planned |
 
 ### Phase PH04: Fresh install and GitLab (1.0.0) — [P02-1.0.0-gitlab-and-source-install.md](plans/P02-1.0.0-gitlab-and-source-install.md)
 

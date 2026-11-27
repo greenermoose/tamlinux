@@ -3,10 +3,17 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-27, with W47
+Updated: 2026-11-27, with W48
 
 
 STATE
+
+  Updated the Northern Torch (PH03) section of ROADMAP.md and
+  plans/P33-northern-torch.md for 0.7.5 (W48): recorded 0.7.0-0.7.2
+  (M1-M8), 0.7.3 (M11-M14 wiring), and 0.7.4 (cultivar guard) as done,
+  gave 0.7.4 and 0.7.5 separate rows, and aligned the remaining stages
+  (Stage 3 physical/fleet acceptance and default switch, Stage 4 complete
+  Hyprland removal).
 
   Prepared the Northern Torch 0.7.5 source selection with tam-pane 0.4.1
   (W47). It preserves pointer focus, fixes repeating macro keys, and
@@ -36,10 +43,10 @@ STATE
   `test_tam_pane_milestones_11_14.py` (5/5), `test_tam_pane_controls.py` (3/3),
   `test_tam_pane_adapter.py` (3/3), and `test_tam_pane_battery.py` (3/3).
 
-  ROADMAP.md lists PH01 through PH05 in milestone order (W46).
+  ROADMAP.md lists PH01 through PH05 in milestone order (W46, W48).
   Northern Torch is PH03. Its 17 milestones are in P33-northern-torch.md
-  and retain three stages. KBN WB is PH02. Whole-checklist Test passed
-  on 0.6.39 and 0.6.42 advanced to Run. Final closeout remains open.
+  across four chronological stages. KBN WB is PH02; 0.6.42 is released as
+  the final KBN WB baseline (2026-11-27).
 
   VERSION reads 0.7.2 on dev (superseding unshipped 0.7.1 after fixing
   the retired tam-bundle packaging-suite error in tamlinux-packages).
