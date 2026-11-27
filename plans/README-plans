@@ -42,7 +42,10 @@ KEEPING PLANS CURRENT
 
 IN THIS REPOSITORY
 
-  P1 through P31 hold the open product plans migrated from docs/plans/.
+  P1 through P31 hold the product and feature plans migrated from
+  docs/plans/ (including P1 for 0.6.x, P2 for 1.0.0, P3 for 1.1-1.3).
+  P32-early-releases.md covers 0.4.8-0.5.12; P33-northern-torch.md
+  covers the 0.7.x Northern Torch phases and 17-milestone breakdown.
   Historical Gate A / 0.4.x filing cards sit read-only in work/history/.
   Product behavior and generic defaults belong here; exact assemblies
   belong in tamlinux-packages; personal selections belong in user config.

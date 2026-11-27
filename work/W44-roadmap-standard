@@ -1,0 +1,27 @@
+W44 ROADMAP STANDARD (TAM-IDOL 1.3.0)
+
+Date: 2026-11-26
+AI harness: agy 1.5.18
+AI model: Gemini 4 Neon (Medium)
+Commits: the commit that adds this record
+
+GUIDANCE
+
+  Fred approved the tam-idol 1.3.0 ROADMAP.md standard and rollout across
+  all Tamlinux repositories.
+
+DONE
+
+  - Added plans/P32-early-releases.md (0.4.8-0.5.12) and
+    plans/P33-northern-torch.md (0.7.x 17-milestone breakdown) so every
+    roadmap phase links to a plan.
+  - Updated ROADMAP.md to the tam-idol 1.3.0 standard and updated
+    plans/README-plans and README (tam-idol 1.3.0).
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Continue Northern Torch Stage 1 Milestones 9-10 on Fred's Test/Run word.

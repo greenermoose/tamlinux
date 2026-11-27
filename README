@@ -24,7 +24,7 @@ Wayland, River, Hyprland, Quickshell, and Omarchy.
   In-repo src/desktop/plugins/ <src/desktop/plugins/README> (fred.* 2.x)
 
   Standard
-  Follows the tam-idol 0.2.1 standard.
+  Follows the tam-idol 1.3.0 standard.
 
   Status
   Developed in public and used daily. Gate A complete (0.4.8), Blue
