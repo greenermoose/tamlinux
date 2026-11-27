@@ -3,12 +3,18 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-27, with 0.7.3 candidate prep
+Updated: 2026-11-27, with 0.7.4 candidate prep
 
 
 STATE
 
-  VERSION reads 0.7.3 on dev. components.lock pins tam-pane 0.3.0 (2de3b52),
+  VERSION reads 0.7.4 and CULTIVAR reads Northern Torch on dev (all eleven
+  component pins in components.lock unchanged from 0.7.3). Fixed the stale
+  KBN WB cultivar name shown before the console login prompt and in
+  installed cultivar metadata, and added a build-time VERSION/CULTIVAR
+  consistency check in src/desktop/install-product.py.
+
+  VERSION read 0.7.3 on dev. components.lock pins tam-pane 0.3.0 (2de3b52),
   tam-hide 0.3.1 (9d4fe8b), and tam-last (673777d) while keeping the other
   eight component pins unchanged from 0.7.2.
 

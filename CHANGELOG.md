@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.7.4]
+
+- Fix the cultivar name displayed before the console login prompt (`/usr/lib/issue.d/70-tamlinux.issue`) and in installed cultivar metadata (`/usr/lib/tamlinux/current/share/tamlinux/cultivar`) by updating `CULTIVAR` from `KBN WB` to `Northern Torch`.
+- Add a build-time `VERSION`/`CULTIVAR` consistency guard in `src/desktop/install-product.py` (with unit tests in `tests/test_product_install.py`) so mismatched or stale cultivar names fail the build immediately.
+
 ## [0.7.3]
 
 - Wire Northern Torch Stage 2 (Milestones 11–14) onto `tam-pane` while retaining Hyprland fallback until Stage 3: `tam-system-sleep-lock` polls `tam-pane msg lock_state`, `tam-toggle-nightlight` uses native gamma IPC, capture scripts and `Meta+Print` color picker use native `freeze`/`capture`/`pixel` IPC, ten laptop/clamshell/input/window commands speak `tam-pane` IPC, and `tam-pane.lua.tpl` + `tam-restart-hyprctl` apply and live-reload theme borders.
