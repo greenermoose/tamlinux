@@ -1,7 +1,7 @@
 # P33: Northern Torch — tam-pane everywhere and complete Hyprland removal
 
 - **Phase:** PH03
-- **Status:** In progress. At 0.7.4 on `dev`, M1–M8 are verified in
+- **Status:** In progress. At 0.7.5 on `dev`, M1–M8 are verified in
   development and M11–M14 are wired. Physical and daily-use acceptance
   for M9–M10 and fleet proof for M11–M14 remain open.
 - **Versions:** 0.7.0 to 0.7.x

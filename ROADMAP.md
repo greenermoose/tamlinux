@@ -3,7 +3,7 @@
 `tamlinux` is the Tamlinux workstation environment and desktop product
 repository, developed in public on branch `dev`.
 
-- **Current version:** `0.7.4` on `dev` · Run baseline `0.6.42` · latest release `0.5.12`
+- **Current version:** `0.7.5` on `dev` · Run baseline `0.6.42` · latest release `0.5.12`
 - **Progress:** 1 of 5 phases done. KBN WB is in closeout and Northern Torch is in progress.
 - **Versioning:** Cultivars name minor workstation releases. Phase IDs
   follow milestone order and plan IDs are independent. See [VERSIONING.md](VERSIONING.md).

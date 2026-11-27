@@ -1,0 +1,25 @@
+W47 SELECT TAMLINUX 0.7.5 SOURCES
+
+Date: 2026-11-27
+AI harness: Codex CLI 0.172.0
+AI model: gpt-6.2-sol
+Transcript: Retained privately by the author.
+
+GUIDANCE
+
+  Fred: "Package up and test Tamlinux 0.7.5."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Pinned tam-pane 0.4.1 for focus, macro repeat, and centered Dwindle
+    placement. Carried forward the other ten component pins.
+  - Updated product version and release notes for the source build.
+
+FAILED
+
+  - Nothing at source selection.
+
+HANDOFF
+
+  - Build and verify the exact delivery before live Test.

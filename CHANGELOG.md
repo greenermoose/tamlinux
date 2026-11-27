@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.7.5]
+
+- Package tam-pane 0.4.1. Keep focus-follows-mouse enabled and prevent
+  slash and other release-bound macro keys from repeating in applications.
+- Open new default Dwindle windows to the right or below within 8 logical
+  pixels of the tile midpoint on the split axis.
+- Include optional rounded corners and drop shadows, off by default.
+
 ## [0.7.4]
 
 - Fix the cultivar name displayed before the console login prompt (`/usr/lib/issue.d/70-tamlinux.issue`) and in installed cultivar metadata (`/usr/lib/tamlinux/current/share/tamlinux/cultivar`) by updating `CULTIVAR` from `KBN WB` to `Northern Torch`.
