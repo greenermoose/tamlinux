@@ -3,13 +3,16 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-26, with W39
+Updated: 2026-11-26, with W40
 
 
 STATE
 
-  VERSION reads 0.6.42 on dev (724b78a, check-all passed; recorded in
-  tamlinux-packages 9e41c33 for bosgame Test). Meta + Return launches a new
+  VERSION reads 0.7.0 on dev (Northern Torch candidate prepared with
+  tam-pane 0.2.10, tam-knox 1.1.2, tam 0.72.0 / 0.139.1, libtam 0.15.1,
+  tam-clam 0.3.10, tam-data 1.0.3, tam-edit 1.2.0, tam-last 0.2.5,
+  tamlinux-tools 0.1.2, tam-view 0.4.6, and tam-hide). Previous Run on
+  bosgame is 0.6.42 (724b78a / 9e41c33). Meta + Return launches a new
   tam-last 0.2.4 window using tam-clam 0.3.5, preferring executable
   $HOME/.local/bin/tam-last and $HOME/.local/bin/tam-clam when present
   and falling back to /usr/bin/tamlinux/ (W29). Source installs pin both

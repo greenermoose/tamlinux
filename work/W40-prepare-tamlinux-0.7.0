@@ -1,0 +1,21 @@
+W40: Prepare Tamlinux 0.7.0 Northern Torch candidate
+
+Date: 2026-11-26
+Agent: agy (Gemini)
+Branch: dev
+
+SUMMARY
+
+  Prepared Tamlinux 0.7.0 Northern Torch on dev per Fred's approval:
+  - Bumped VERSION from 0.6.42 to 0.7.0.
+  - Updated components.lock pins:
+    - tam-pane -> 24fe6f867f24f2c0d93c0c5e73400fc8eb0d26a3 (0.2.10, GPU renderer-loss recovery)
+    - tam-knox -> f3a6fcdd2d6500a28aee478eee68a42a25f2f540 (1.1.2)
+    - tam -> 0e52587bbf1ffdc5309a1b6d7d6b02907ed598fe (0.72.0 / corpus 0.139.1)
+    - Kept libtam 0.15.1 (5c0ee6f), tam-clam 0.3.10 (95057fe), tam-data 1.0.3
+      (a58c191), tam-edit 1.2.0 (6ce497e), tam-last 0.2.5 (7901326),
+      tamlinux-tools 0.1.2 (915ab9c), tam-view 0.4.6 (2056434), and
+      tam-hide (386ab89).
+  - Pre-change rollback recorded on bosgame: active 0.6.42 source stage
+    (1919529c...) + Snapper root snapshot #61; installed
+    xdg-desktop-portal-wlr 0.8.4-1.
