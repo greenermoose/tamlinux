@@ -20,7 +20,9 @@ STATE
   verifying sustained daily use on tam-pane alone, milestones 15-17)
   (W43).
 
-  VERSION reads 0.7.1 on dev. The 0.7.1 desktop work is implemented in
+  VERSION reads 0.7.2 on dev (superseding unshipped 0.7.1 after fixing
+  the retired tam-bundle packaging-suite error in tamlinux-packages).
+  The 0.7.1 desktop work is implemented in
   dev (W42). Both launch
   spellings, the benchmark, macro targeting, pointer focus, right-drag,
   and per-display tags passed focused checks. The new compositor pin

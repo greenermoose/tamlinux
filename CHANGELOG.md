@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.7.2]
+
+- Supersede the unshipped 0.7.1 candidate after retiring the dead
+  `tam-bundle` backend and test in `tamlinux-packages`, carrying forward
+  all 0.7.1 desktop and `tam-pane` changes below.
+
 ## [0.7.1]
 
 - Launch either compositor from a text console with `tam-desktop hyprland`
