@@ -39,6 +39,16 @@ if [[ -n $INTERNAL && ! $INTERNAL =~ ^[A-Za-z0-9._-]+$ ]]; then
   exit 1
 fi
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  [[ -n $INTERNAL ]] || exit 0
+  if tam-hw-clamshell && tam-hyprland-monitor-external-active; then
+    tam-pane msg dispatch monitor disable "$INTERNAL" >/dev/null 2>&1 || true
+  else
+    tam-pane msg dispatch monitor enable "$INTERNAL" >/dev/null 2>&1 || true
+  fi
+  exit 0
+fi
+
 valid_scale() {
   [[ $1 =~ ^[0-9]+([.][0-9]+)?$ ]]
 }

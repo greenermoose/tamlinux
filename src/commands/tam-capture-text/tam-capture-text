@@ -28,21 +28,53 @@ set -o pipefail
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# Keep hyprpicker alive until after grim captures so the screenshot sees the
+USING_TAM_PANE=0
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  USING_TAM_PANE=1
+fi
+
+# Keep the screen frozen until after grim captures so the screenshot sees the
 # frozen overlay rather than live content shifting during teardown.
+PID=""
 cleanup_freeze() {
-  [[ -n $PID ]] && kill $PID 2>/dev/null
+  if (( USING_TAM_PANE )); then
+    tam-pane msg dispatch freeze off >/dev/null 2>&1 || true
+  elif [[ -n $PID ]]; then
+    kill "$PID" 2>/dev/null
+  fi
 }
 trap cleanup_freeze EXIT
 
-hyprpicker -r -z >/dev/null 2>&1 &
-PID=$!
-sleep .1
+if (( USING_TAM_PANE )); then
+  tam-pane msg dispatch freeze on >/dev/null 2>&1 || true
+else
+  hyprpicker -r -z >/dev/null 2>&1 &
+  PID=$!
+  sleep .1
+fi
 SELECTION=$(slurp 2>/dev/null)
 
 [[ -z $SELECTION ]] && exit 0
 
-TEXT=$(grim -g "$SELECTION" - | tesseract stdin stdout --oem 1 --psm 6 -l "${TAMLINUX_OCR_LANGS:-eng}" --dpi 300 -c preserve_interword_spaces=1 2>/dev/null) || exit 1
+if (( USING_TAM_PANE )); then
+  stage_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+  tmp_img=$(mktemp "$stage_dir/tp-ocr-XXXXXX") || exit 1
+  rm -f -- "$tmp_img"
+  tmp_ok="${tmp_img}.ok"
+  rm -f -- "$tmp_ok"
+  cmd=$(printf 'grim -g %q %q && mv -f %q %q' "$SELECTION" "$tmp_img" "$tmp_img" "$tmp_ok")
+  tam-pane msg dispatch capture "$cmd" >/dev/null 2>&1 || { rm -f -- "$tmp_img" "$tmp_ok"; exit 1; }
+  waited=0
+  while (( waited < 100 )) && [[ ! -s $tmp_ok ]]; do
+    sleep 0.05
+    (( waited++ ))
+  done
+  [[ -s $tmp_ok ]] || { rm -f -- "$tmp_img" "$tmp_ok"; exit 1; }
+  TEXT=$(tesseract "$tmp_ok" stdout --oem 1 --psm 6 -l "${TAMLINUX_OCR_LANGS:-eng}" --dpi 300 -c preserve_interword_spaces=1 2>/dev/null) || { rm -f -- "$tmp_ok"; exit 1; }
+  rm -f -- "$tmp_ok"
+else
+  TEXT=$(grim -g "$SELECTION" - | tesseract stdin stdout --oem 1 --psm 6 -l "${TAMLINUX_OCR_LANGS:-eng}" --dpi 300 -c preserve_interword_spaces=1 2>/dev/null) || exit 1
+fi
 
 [[ -z $TEXT ]] && exit 1
 

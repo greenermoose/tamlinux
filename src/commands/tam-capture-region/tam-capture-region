@@ -403,7 +403,12 @@ pick() {
 
 FREEZE_PID=""
 freeze_screen() {
-  (( USING_TAM_PANE )) && return 0
+  if (( USING_TAM_PANE )); then
+    if tam-pane msg dispatch freeze on >/dev/null 2>&1; then
+      FREEZE_PID="tam-pane-freeze"
+    fi
+    return 0
+  fi
   hyprpicker -r -z >/dev/null 2>&1 &
   FREEZE_PID=$!
   sleep .1
@@ -411,7 +416,11 @@ freeze_screen() {
 
 cleanup_freeze() {
   [[ $KEEP_FREEZE == true && -n $SELECTION ]] && return
-  [[ -n $FREEZE_PID ]] && kill $FREEZE_PID 2>/dev/null
+  if [[ $FREEZE_PID == "tam-pane-freeze" ]]; then
+    tam-pane msg dispatch freeze off >/dev/null 2>&1 || true
+  elif [[ -n $FREEZE_PID ]]; then
+    kill "$FREEZE_PID" 2>/dev/null
+  fi
 }
 trap cleanup_freeze EXIT
 

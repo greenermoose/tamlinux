@@ -26,6 +26,24 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  tam-pane msg windows 2>/dev/null | awk -F'\t' '
+    $1 == "window" {
+      for (i = 2; i <= NF; i++) {
+        if (index($i, "id=") == 1) {
+          print substr($i, 4)
+          break
+        }
+      }
+    }
+  ' | while read -r wid; do
+    [[ $wid =~ ^0x[0-9a-fA-F]+$ ]] || continue
+    tam-pane msg dispatch close "$wid" >/dev/null 2>&1 || true
+  done
+  tam-pane msg dispatch tag view 1 >/dev/null 2>&1 || true
+  exit 0
+fi
+
 hyprctl clients -j | \
   jq -r ".[].address" | \
   while read -r addr; do

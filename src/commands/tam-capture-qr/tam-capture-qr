@@ -27,23 +27,59 @@ set -o pipefail
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# Keep hyprpicker alive until after grim captures so the screenshot sees the
+USING_TAM_PANE=0
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  USING_TAM_PANE=1
+fi
+
+# Keep the screen frozen until after grim captures so the screenshot sees the
 # frozen overlay rather than live content shifting during teardown.
+PID=""
 cleanup_freeze() {
-  [[ -n $PID ]] && kill $PID 2>/dev/null
+  if (( USING_TAM_PANE )); then
+    tam-pane msg dispatch freeze off >/dev/null 2>&1 || true
+  elif [[ -n $PID ]]; then
+    kill "$PID" 2>/dev/null
+  fi
 }
 trap cleanup_freeze EXIT
 
-hyprpicker -r -z >/dev/null 2>&1 &
-PID=$!
-sleep .1
+if (( USING_TAM_PANE )); then
+  tam-pane msg dispatch freeze on >/dev/null 2>&1 || true
+else
+  hyprpicker -r -z >/dev/null 2>&1 &
+  PID=$!
+  sleep .1
+fi
 SELECTION=$(slurp 2>/dev/null)
 
 [[ -z $SELECTION ]] && exit 0
 
 # Decode QR codes only. Leaving the other symbologies enabled lets dense screen
 # content false-positive as an EAN or Code 39 barcode and take over the clipboard.
-RESULT=$(grim -g "$SELECTION" - | zbarimg -q --raw -Sdisable -Sqrcode.enable - 2>/dev/null) || RESULT=""
+if (( USING_TAM_PANE )); then
+  stage_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+  tmp_img=$(mktemp "$stage_dir/tp-qr-XXXXXX") || exit 1
+  rm -f -- "$tmp_img"
+  tmp_ok="${tmp_img}.ok"
+  rm -f -- "$tmp_ok"
+  cmd=$(printf 'grim -g %q %q && mv -f %q %q' "$SELECTION" "$tmp_img" "$tmp_img" "$tmp_ok")
+  tam-pane msg dispatch capture "$cmd" >/dev/null 2>&1 || { rm -f -- "$tmp_img" "$tmp_ok"; exit 1; }
+  waited=0
+  while (( waited < 100 )) && [[ ! -s $tmp_ok ]]; do
+    sleep 0.05
+    (( waited++ ))
+  done
+  if [[ -s $tmp_ok ]]; then
+    RESULT=$(zbarimg -q --raw -Sdisable -Sqrcode.enable "$tmp_ok" 2>/dev/null) || RESULT=""
+    rm -f -- "$tmp_ok"
+  else
+    rm -f -- "$tmp_img" "$tmp_ok"
+    RESULT=""
+  fi
+else
+  RESULT=$(grim -g "$SELECTION" - | zbarimg -q --raw -Sdisable -Sqrcode.enable - 2>/dev/null) || RESULT=""
+fi
 
 if [[ -z $RESULT ]]; then
   tam-notification-send -g 󰐲 -u critical "No QR code found" "Select a region containing a QR code"

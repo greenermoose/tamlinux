@@ -29,6 +29,55 @@ MIRROR_TOGGLE="internal-monitor-mirror"
 
 INTERNAL=$(tam-hyprland-monitor-laptop)
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  pane_internal_enabled() {
+    [[ -n $INTERNAL ]] || return 1
+    tam-pane msg monitors 2>/dev/null | awk -F'\t' -v target="$INTERNAL" '
+      $1 == "monitor" {
+        name = ""; en = 1
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "name=") == 1) name = substr($i, 6)
+          else if (index($i, "enabled=") == 1) en = substr($i, 9) + 0
+        }
+        if (name == target) { exit(en == 1 ? 0 : 1) }
+      }
+      END { exit 1 }
+    '
+  }
+  case "${1:-}" in
+    on)
+      [[ -n $INTERNAL ]] || { tam-notification-send -g 󰍹 "No laptop display found"; exit 1; }
+      tam-pane msg dispatch monitor enable "$INTERNAL" >/dev/null || exit 1
+      tam-notification-send -g 󰍹 "Laptop display enabled" || true
+      ;;
+    off)
+      [[ -n $INTERNAL ]] || { tam-notification-send -g 󰍹 "No laptop display found"; exit 1; }
+      if ! tam-hyprland-monitor-external-active; then
+        tam-notification-send -g 󰍹 "Can't disable the only active display"
+        exit 1
+      fi
+      tam-pane msg dispatch monitor disable "$INTERNAL" >/dev/null || exit 1
+      tam-notification-send -g 󰍹 "Laptop display disabled" || true
+      ;;
+    toggle)
+      if pane_internal_enabled; then
+        exec "$0" off
+      else
+        exec "$0" on
+      fi
+      ;;
+    recover)
+      tam-hyprland-monitor-external-active && exit 0
+      [[ -n $INTERNAL ]] && ! pane_internal_enabled && tam-pane msg dispatch monitor enable "$INTERNAL" >/dev/null 2>&1 || true
+      ;;
+    *)
+      echo "Usage: $(basename "$0") {on|off|toggle|recover}" >&2
+      exit 1
+      ;;
+  esac
+  exit 0
+fi
+
 wake() {
   hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })' >/dev/null 2>&1 || true
 }

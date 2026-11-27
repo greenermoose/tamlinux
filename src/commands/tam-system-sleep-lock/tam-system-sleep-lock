@@ -84,19 +84,52 @@ bounded() {
   timeout --kill-after=0.1s "$seconds" "$@"
 }
 
+USING_TAM_PANE=0
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  USING_TAM_PANE=1
+fi
+
 # hyprlock has no PAM stack without /etc/pam.d/hyprlock, so it could never
-# unlock; refuse rather than lock the session for good.
+# unlock; refuse rather than lock the session for good. Under tam-pane,
+# tam-hide is launched by the compositor via `tam-pane msg lock`.
 request_lock() {
-  [[ -f ${TAMLINUX_HYPRLOCK_PAM:-/etc/pam.d/hyprlock} ]] ||
-    report_unsecured "no lock screen is configured"
+  if (( ! USING_TAM_PANE )); then
+    [[ -f ${TAMLINUX_HYPRLOCK_PAM:-/etc/pam.d/hyprlock} ]] ||
+      report_unsecured "no lock screen is configured"
+  fi
   bounded "$lock_timeout_ms" tam-system-lock >/dev/null 2>&1 || true
 }
 
-# hyprlock has no status query, unlike the Omarchy shell's locker. A running
-# hyprlock holds the ext-session-lock (one that cannot take it exits), and
-# Hyprland blanks every output as soon as the lock is granted, so a live
-# process is the best available "secure". Anything else means ask again.
+# Under tam-pane, query `tam-pane msg lock_state` directly: secure once locked
+# with every enabled output covered (or zero enabled outputs), locking while the
+# locker is starting, else idle. Under Hyprland, a live hyprlock process is the
+# best available "secure".
 lock_state() {
+  if (( USING_TAM_PANE )); then
+    local out
+    out=$(bounded "$status_timeout_ms" tam-pane msg lock_state 2>/dev/null) || {
+      echo idle
+      return
+    }
+    awk -F'\t' '
+      $1 == "lock" {
+        locked = 0; active = 0; running = 0; surfaces = 0; outputs = 0
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "locked=") == 1) locked = substr($i, 8) + 0
+          else if (index($i, "active=") == 1) active = substr($i, 8) + 0
+          else if (index($i, "locker_running=") == 1) running = substr($i, 16) + 0
+          else if (index($i, "surfaces=") == 1) surfaces = substr($i, 10) + 0
+          else if (index($i, "outputs=") == 1) outputs = substr($i, 9) + 0
+        }
+        if (locked && (outputs == 0 || surfaces >= outputs)) { print "secure"; exit 0 }
+        if (locked || active || running) { print "locking"; exit 0 }
+        print "idle"; exit 0
+      }
+      END { print "idle" }
+    ' <<<"$out" | head -n 1
+    return
+  fi
+
   if bounded "$status_timeout_ms" pidof hyprlock >/dev/null; then
     echo secure
   else
@@ -142,4 +175,8 @@ while (( $(remaining_ms) > 0 )); do
   sleep "$poll_interval"
 done
 
-report_unsecured "hyprlock did not start within ${budget_ms}ms"
+if (( USING_TAM_PANE )); then
+  report_unsecured "tam-hide did not secure the session within ${budget_ms}ms"
+else
+  report_unsecured "hyprlock did not start within ${budget_ms}ms"
+fi

@@ -23,4 +23,17 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+    $1 == "monitor" {
+      name = substr($2, 6)
+      if (name ~ /^(eDP|LVDS|DSI)-/) {
+        print name
+        exit 0
+      }
+    }
+  '
+  exit 0
+fi
+
 hyprctl monitors all -j | jq -r '.[] | select(.name | test("^(eDP|LVDS|DSI)-")).name' | head -n 1

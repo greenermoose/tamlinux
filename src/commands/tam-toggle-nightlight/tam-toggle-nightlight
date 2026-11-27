@@ -46,11 +46,17 @@ current_temp() {
   local output
 
   if using_tam_pane; then
-    if [[ -f $PANE_STATE ]] && pgrep -x hyprsunset >/dev/null 2>&1; then
-      jq -r '.temperature // empty' "$PANE_STATE" 2>/dev/null
-    else
-      echo "$OFF_TEMP"
-    fi
+    output=$(tam-pane msg gamma 2>/dev/null) || { echo "$OFF_TEMP"; return; }
+    awk -F'\t' '
+      $1 == "gamma" {
+        for (i = 2; i <= NF; i++) {
+          if (index($i, "temperature=") == 1) {
+            print substr($i, 13)
+            exit 0
+          }
+        }
+      }
+    ' <<<"$output"
     return
   fi
 
@@ -80,14 +86,9 @@ fi
 if using_tam_pane; then
   CURRENT_TEMP=$(current_temp)
   if [[ -z $CURRENT_TEMP || $CURRENT_TEMP == "$OFF_TEMP" ]]; then
-    TARGET_TEMP=$ON_TEMP
-    pkill -x hyprsunset 2>/dev/null || true
-    setsid uwsm-app -- /usr/bin/hyprsunset -t "$TARGET_TEMP" >/dev/null 2>&1 &
-    printf '{"enabled":true,"temperature":%d}\n' "$TARGET_TEMP" >"$PANE_STATE"
+    tam-pane msg dispatch gamma "$ON_TEMP" >/dev/null 2>&1 || exit 1
   else
-    TARGET_TEMP=$OFF_TEMP
-    pkill -x hyprsunset 2>/dev/null || true
-    printf '{"enabled":false,"temperature":%d}\n' "$TARGET_TEMP" >"$PANE_STATE"
+    tam-pane msg dispatch gamma reset >/dev/null 2>&1 || exit 1
   fi
   tam-shell -q nightlight refresh || true
   exit 0

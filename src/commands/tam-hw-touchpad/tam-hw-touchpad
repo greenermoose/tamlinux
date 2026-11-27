@@ -26,5 +26,17 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-device=$(hyprctl devices -j | jq -r '[.mice[] | .name | select(test("touchpad|trackpad"; "i"))] | first // empty')
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  device=$(tam-pane msg devices 2>/dev/null | awk -F'\t' '
+    $1 == "device" && $2 == "type=pointer" {
+      name = substr($3, 6)
+      if (tolower(name) ~ /touchpad|trackpad/) {
+        print name
+        exit 0
+      }
+    }
+  ')
+else
+  device=$(hyprctl devices -j | jq -r '[.mice[] | .name | select(test("touchpad|trackpad"; "i"))] | first // empty')
+fi
 [[ -n $device ]] && echo "$device"

@@ -113,7 +113,11 @@ run_grim() {
 }
 
 cleanup() {
-  [[ -n $FREEZE_PID ]] && kill $FREEZE_PID 2>/dev/null
+  if [[ $FREEZE_PID == "tam-pane-freeze" ]]; then
+    tam-pane msg dispatch freeze off >/dev/null 2>&1 || true
+  elif [[ -n $FREEZE_PID ]]; then
+    kill "$FREEZE_PID" 2>/dev/null
+  fi
   [[ -n $COPY_FILE ]] && rm -f -- "$COPY_FILE"
   [[ -n $NO_HW_CURSORS ]] && set_no_hw_cursors "$NO_HW_CURSORS"
 }

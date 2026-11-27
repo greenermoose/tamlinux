@@ -3,6 +3,10 @@
 # Maintained by Tamlinux; see LICENSE for historical attribution.
 
 
-# tamlinux:summary=Reload hyprland configuration (used by the Tamlinux theme switching).
+# tamlinux:summary=Reload compositor configuration (used by Tamlinux theme switching).
 
-hyprctl reload >/dev/null
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  tam-pane msg reload >/dev/null
+else
+  hyprctl reload >/dev/null
+fi

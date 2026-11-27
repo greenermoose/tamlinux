@@ -1,0 +1,52 @@
+W45 WIRE MILESTONES 11-14 ONTO TAM-PANE 0.2.17
+
+Date: 2026-11-27
+AI harness: agy 1.5.18
+AI model: gemini-4-neon-medium
+
+GUIDANCE
+
+  Fred: "wire the tamlinux side of Milestones 11 to 14."
+
+DONE
+
+  - Pinned `tam-pane 0.2.17` (`7859658663a6f997af76bd4a00236ebfc14529b8`) in
+    `components.lock`.
+  - Milestone 11 (locking & sleep/wake): updated `tam-system-sleep-lock` to
+    skip `/etc/pam.d/hyprlock` and poll `tam-pane msg lock_state` under
+    `tam-pane` (secure once `locked=1` and all enabled outputs have mapped
+    lock surfaces).
+  - Milestone 12 (replace `hyprsunset` & `hyprpicker` under `tam-pane`):
+    - Updated `tam-toggle-nightlight` to query `tam-pane msg gamma` and toggle
+      via `tam-pane msg dispatch gamma 4000|reset` (no `hyprsunset` process).
+    - Updated `tam-capture-region`, `tam-capture-screenshot`, `tam-capture-text`,
+      and `tam-capture-qr` to use native `tam-pane msg dispatch freeze on|off`
+      and authorized `dispatch capture` under `tam-pane`.
+    - Replaced `Meta+Print` in `src/desktop/session/tam-pane.lua` with native
+      freeze + `slurp -p` + `tam-pane msg pixel` color picker.
+  - Milestone 13 (port laptop, clamshell, input, and window commands off
+    `hyprctl` under `tam-pane`): updated `tam-hw-touchpad`,
+    `tam-hw-touchscreen`, `tam-hyprland-monitor-laptop`,
+    `tam-hyprland-monitor-external-active`, `tam-hyprland-monitor-clamshell`,
+    `tam-hyprland-monitor-internal`, `tam-hyprland-focus-app`,
+    `tam-hyprland-window-close-all`, `tam-hyprland-window-pop`, and
+    `tam-hyprland-workspace-layout-toggle` (keeping Hyprland fallback intact
+    until Milestone 15).
+  - Milestone 14 (decouple themes for `tam-pane`): added
+    `src/desktop/assets/templates/tam-pane.lua.tpl`, included
+    `~/.local/state/tamlinux/current/theme/tam-pane.lua` in
+    `src/desktop/session/tam-pane.lua`, and updated `tam-restart-hyprctl` to
+    run `tam-pane msg reload` under `tam-pane`.
+  - Added `tests/test_tam_pane_milestones_11_14.py` (5/5) and verified
+    `bash -n` on all 17 modified scripts plus `tests/test_tam_pane_controls.py`
+    (3/3), `tests/test_tam_pane_adapter.py` (3/3), and
+    `tests/test_tam_pane_battery.py` (3/3) against `tam-pane 0.2.17`.
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Ready for Milestone 9 hardware Test and Stage 3 (Milestones 15-17: purge
+    Hyprland code and packages) once Fred authorizes.

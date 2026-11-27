@@ -3,10 +3,24 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-26, with W44
+Updated: 2026-11-27, with W45
 
 
 STATE
+
+  Milestones 11-14 (Northern Torch Stage 2) are now wired on `dev` against
+  `tam-pane 0.2.17` (`7859658`) in `components.lock` while keeping Hyprland
+  fallback intact until Stage 3 (W45): `tam-system-sleep-lock` polls
+  `tam-pane msg lock_state`; `tam-toggle-nightlight` uses native `gamma` IPC;
+  `tam-capture-region`/`screenshot`/`text`/`qr` and `Meta+Print` color picker
+  use native `freeze` and `pixel` IPC; laptop/clamshell/input/window commands
+  (`tam-hw-touchpad`, `tam-hw-touchscreen`, `tam-hyprland-monitor-*`,
+  `tam-hyprland-focus-app`, `tam-hyprland-window-close-all`,
+  `tam-hyprland-window-pop`, `tam-hyprland-workspace-layout-toggle`) speak
+  `tam-pane` IPC; and `tam-pane.lua.tpl` + `tam-restart-hyprctl` style and
+  live-reload `tam-pane` borders on theme switches. Verified with
+  `test_tam_pane_milestones_11_14.py` (5/5), `test_tam_pane_controls.py` (3/3),
+  `test_tam_pane_adapter.py` (3/3), and `test_tam_pane_battery.py` (3/3).
 
   ROADMAP.md now defines the 17-milestone 0.7.x Northern Torch cultivar
   series across three phases: Phase 1 (bosgame bring-up and default

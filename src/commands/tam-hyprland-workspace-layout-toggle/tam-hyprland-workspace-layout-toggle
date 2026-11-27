@@ -29,6 +29,26 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  CURRENT_LAYOUT=$(tam-pane msg monitors 2>/dev/null | awk -F'\t' '
+    $1 == "monitor" {
+      foc = 0; lay = ""
+      for (i = 2; i <= NF; i++) {
+        if ($i == "focused=1") foc = 1
+        else if (index($i, "layout=") == 1) lay = substr($i, 8)
+      }
+      if (foc && lay != "") { print lay; exit 0 }
+    }
+  ')
+  case "$CURRENT_LAYOUT" in
+    dwindle) NEW_LAYOUT=scroller ;;
+    *) NEW_LAYOUT=dwindle ;;
+  esac
+  tam-pane msg dispatch layout set "$NEW_LAYOUT" >/dev/null || exit 1
+  tam-notification-send -g 󱂬 "Workspace layout set to $NEW_LAYOUT" || true
+  exit 0
+fi
+
 ACTIVE_WORKSPACE=$(hyprctl activeworkspace -j | jq -r '.id')
 [[ $ACTIVE_WORKSPACE =~ ^-?[0-9]+$ ]] || exit 1
 CURRENT_LAYOUT=$(hyprctl activeworkspace -j | jq -r '.tiledLayout')

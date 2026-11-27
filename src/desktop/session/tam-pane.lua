@@ -197,7 +197,9 @@ tp.bind("Meta+Shift+j", tp.dsp.spawn("tam-launch-journal add"), { desc = "Quick 
 
 tp.bind("Print", tp.dsp.spawn("tam-capture-screenshot"), { desc = "Screenshot" })
 tp.bind("Alt+Print", tp.dsp.spawn("tam-capture-screenrecording --stop-recording || tam-menu toggle trigger.capture.screenrecord"), { desc = "Screenrecording" })
-tp.bind("Meta+Print", tp.dsp.spawn("pkill hyprpicker || hyprpicker -a"), { desc = "Color picker" })
+tp.bind("Meta+Print", function()
+  tp.spawn("tam-pane msg dispatch freeze on >/dev/null 2>&1; trap 'tam-pane msg dispatch freeze off >/dev/null 2>&1' EXIT; pos=$(slurp -p 2>/dev/null) || exit 0; xy=${pos%% *}; hex=$(tam-pane msg pixel \"${xy%,*}\" \"${xy#*,}\" 2>/dev/null | sed -n 's/.*hex=\\(#[0-9a-fA-F]*\\).*/\\1/p'); [ -n \"$hex\" ] && printf '%s' \"$hex\" | wl-copy && tam-notification-send 'Color copied' \"$hex\"")
+end, { desc = "Color picker" })
 tp.bind("Meta+Ctrl+Print", tp.dsp.spawn("tam-capture-text"), { desc = "Extract text (OCR) from screenshot" })
 
 tp.bind("Meta+Ctrl+s", tp.dsp.spawn("tam-menu toggle share"), { desc = "Share" })
@@ -271,8 +273,12 @@ tp.on("startup", function()
   tp.spawn("tam-powerprofiles-set autodetect")
 end)
 
--- Load managed monitor overrides, personal ~/.config/tam-pane/init.lua,
--- and tam-macro generated bindings. All three re-run cleanly on every reload.
+-- Load active theme border colors, managed monitor overrides, personal
+-- ~/.config/tam-pane/init.lua, and tam-macro generated bindings. All re-run
+-- cleanly on every live reload.
+if tp.home and tp.home ~= "" then
+  tp.include(tp.home .. "/.local/state/tamlinux/current/theme/tam-pane.lua", true)
+end
 if tp.config_dir and tp.config_dir ~= "" then
   tp.include(tp.config_dir .. "/tamlinux/tam-pane/monitors.lua", true)
   tp.include(tp.config_dir .. "/tam-pane/init.lua", true)

@@ -40,6 +40,35 @@ if [[ -n $x || -n $y ]]; then
   [[ $x =~ ^-?[0-9]+$ && $y =~ ^-?[0-9]+$ && ${#x} -le 7 && ${#y} -le 7 ]] || exit 2
 fi
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  read -r wid pinned < <(tam-pane msg focused 2>/dev/null | awk -F'\t' '
+    $1 == "window" {
+      id = ""; p = 0
+      for (i = 2; i <= NF; i++) {
+        if (index($i, "id=") == 1) id = substr($i, 4)
+        else if (index($i, "pinned=") == 1) p = substr($i, 8) + 0
+      }
+      if (id != "") { print id, p; exit 0 }
+    }
+  ')
+  [[ $wid =~ ^0x[0-9a-fA-F]+$ ]] || exit 1
+  if [[ $pinned == "1" ]]; then
+    tam-pane msg dispatch pin off "$wid" >/dev/null
+    tam-pane msg dispatch float off "$wid" >/dev/null
+  else
+    tam-pane msg dispatch float on "$wid" >/dev/null
+    tam-pane msg dispatch resize_exact "$width" "$height" "$wid" >/dev/null
+    if [[ -n $x && -n $y ]]; then
+      tam-pane msg dispatch move_exact "$x" "$y" "$wid" >/dev/null
+    else
+      tam-pane msg dispatch center "$wid" >/dev/null
+    fi
+    tam-pane msg dispatch pin on "$wid" >/dev/null
+    tam-pane msg dispatch raise "$wid" >/dev/null
+  fi
+  exit 0
+fi
+
 active=$(hyprctl activewindow -j)
 pinned=$(echo "$active" | jq ".pinned")
 addr=$(echo "$active" | jq -r ".address")

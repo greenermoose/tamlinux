@@ -37,6 +37,11 @@ usage() {
 app=${1:-}
 [[ -n $app ]] || usage
 
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  tam-pane msg dispatch focus_app "$app" >/dev/null
+  exit $?
+fi
+
 # Agent terminals notify as kitty/foot/etc. while their shared window class is
 # org.tamlinux.agent,
 # leaving the terminal name only in initialTitle. So match by class first, then
