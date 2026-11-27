@@ -23,6 +23,8 @@ FAILED
 
   - Private headless sockets required execution outside the sandbox.
     An isolated configuration was used for the product tests.
+  - The shell proof exposed missing tag state before the first snapshot.
+    The placeholder output now starts with an empty tag list.
 
 HANDOFF
 

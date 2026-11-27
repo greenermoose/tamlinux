@@ -136,7 +136,8 @@ BarWidget {
     if (wanted && /^[A-Za-z0-9._-]{1,64}$/.test(wanted)) {
       return {
         name: wanted, x: 0, y: 0, description: "", dpmsOn: true,
-        focused: false, special: false, activeWorkspace: null
+        focused: false, special: false, activeWorkspaceIds: [],
+        activeWorkspace: null
       }
     }
     return null
