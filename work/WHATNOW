@@ -3,12 +3,25 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-26, with W42
+Updated: 2026-11-26, with W43
 
 
 STATE
 
-  The 0.7.1 desktop work is implemented in dev (W42). Both launch
+  ROADMAP.md now defines the 17-milestone 0.7.x Northern Torch cultivar
+  series across three phases: Phase 1 (bosgame bring-up and default
+  switch, milestones 1-10), Phase 2 (replacing hyprlock/hypridle with
+  tam-hide, replacing hyprsunset/hyprpicker with native tam-pane gamma
+  and capture, porting laptop/display/input/window commands off hyprctl,
+  and decoupling themes, menus, and Tensaku, milestones 11-14), and
+  Phase 3 (deleting all Hyprland code, configs, adapters, hooks,
+  patches, and tam-hyprland-* commands, removing the hypr*/aquamarine
+  package tree and superseded dependencies across the fleet, and
+  verifying sustained daily use on tam-pane alone, milestones 15-17)
+  (W43).
+
+  VERSION reads 0.7.1 on dev. The 0.7.1 desktop work is implemented in
+  dev (W42). Both launch
   spellings, the benchmark, macro targeting, pointer focus, right-drag,
   and per-display tags passed focused checks. The new compositor pin
   is staged for the next candidate. Physical comparison awaits Test.
@@ -18,7 +31,7 @@ STATE
   border and routes manual Lock to tam-hide. The headless compositor
   and desktop suites pass. Physical focus and unlock await Test.
 
-  VERSION reads 0.7.0 on dev (Northern Torch candidate prepared with
+  Tamlinux 0.7.0 Northern Torch was prepared with
   tam-pane 0.2.10, tam-knox 1.1.2, tam 0.72.0 / 0.139.1, libtam 0.15.1,
   tam-clam 0.3.10, tam-data 1.0.3, tam-edit 1.2.0, tam-last 0.2.5,
   tamlinux-tools 0.1.2, tam-view 0.4.6, and tam-hide). Previous Run on
@@ -93,13 +106,13 @@ STATE
     ~/.config/tamlinux/tam-pane/macros.lua.
   - Milestone 7 (prove the shell and apps) is complete on dev (W38):
     src/desktop/shell/host/hyprland_backend.py speaks tam-pane Unix socket
-    IPC when TAM_PANE_SOCKET is set and HYPRLAND_INSTANCE_SIGNATURE is unset;
-    BarApi.qml and fred.* plugin closed environments (fred.workspaces,
-    fred.monitor, fred.keyboard, fred.clock) forward TAM_PANE_SOCKET;
-    fred-monitor-layout persists tp.monitor(...) rules to
-    ~/.config/tamlinux/tam-pane/monitors.lua; clipboard paste-text.sh targets
-    focused tam-last windows via tam-pane msg windows and dispatch send_key
-    Ctrl+Shift+V; tam-launch-about skips hyprctl on tam-pane; and
+    IPC when TAM_PANE_SOCKET is set and HYPRLAND_INSTANCE_SIGNATURE is
+    unset; BarApi.qml and fred.* plugin closed environments
+    (fred.workspaces, fred.monitor, fred.keyboard, fred.clock) forward
+    TAM_PANE_SOCKET; fred-monitor-layout persists tp.monitor(...) rules to
+    ~/.config/tamlinux/tam-pane/monitors.lua; clipboard paste-text.sh
+    targets focused tam-last windows via tam-pane msg windows and dispatch
+    send_key Ctrl+Shift+V; tam-launch-about skips hyprctl on tam-pane; and
     tests/test_tam_pane_shell_proof.py proves the backend, plugin helpers,
     real Quickshell + all nine fred.* plugins on headless two-output
     tam-pane 0.2.8, tam-last + tam-clam, and tam-edit save with Hyprland
@@ -108,10 +121,10 @@ STATE
     tests/headless_compositor.py migrates the offscreen suite
     (tests/check-panels, tests/test_menu_jsonc.py, tests/test_start_menu.py)
     from Sway to headless tam-pane (with Sway fallback only when tam-pane is
-    unavailable); tests/test-battery is tam-pane-aware while keeping Hyprland
-    fallback; tests/test_tam_pane_battery.py automates session selection,
-    Hyprland fallback, multi-output tags/DPMS, shell IPC actions, app
-    launches, clipboard, and capture on headless tam-pane; and
+    unavailable); tests/test-battery is tam-pane-aware while keeping the
+    Hyprland fallback; tests/test_tam_pane_battery.py automates session
+    selection, Hyprland fallback, multi-output tags/DPMS, shell IPC actions,
+    app launches, clipboard, and capture on headless tam-pane; and
     tests/run-nested-tam-pane-session provides an opt-in isolated nested
     session running the packaged shell and tam-last together before hardware
     Test.
@@ -128,9 +141,14 @@ NEXT
   1. Optionally run tests/run-nested-tam-pane-session interactively for a
      visual check of the packaged shell and clients inside a nested tam-pane
      window.
-  2. Proceed to ROADMAP.md milestone 9 (Prove hardware and recovery on
-     bosgame) once Fred authorizes a candidate Test (including completing
-     tam-pane's renderer-loss recovery before the full-day trial).
+  2. Proceed to ROADMAP.md milestone 9 (Prove hardware, locking and
+     recovery on bosgame) and milestone 10 (Accept daily use and make
+     tam-pane the default) once Fred authorizes a candidate Test/Run.
+  3. Work through Phase 2 (milestones 11-14: replace hyprlock/hypridle,
+     hyprsunset/hyprpicker, port laptop/display/window commands off
+     hyprctl, and decouple themes, menus, and Tensaku) and Phase 3
+     (milestones 15-17: delete all Hyprland code and remove Hyprland and
+     superseded dependencies across the fleet).
 
 
 WAITING FOR FRED

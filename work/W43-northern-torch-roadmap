@@ -1,0 +1,43 @@
+W43 NORTHERN TORCH 0.7.X SERIES MILESTONES
+
+Date: 2026-11-26
+AI harness: agy 1.5.18
+AI model: gemini-4-argon-medium
+Commits: this record accompanies the roadmap update
+Continues: W25
+
+GUIDANCE
+
+  Fred: "/plan Create milestones for the Tamlinx 0.7.x Northern Torch
+  cultivar series. Update the public tamlinux/ROADMAP.md. The goal for
+  the 0.7.x series is to remove all Hyprland code and have everything
+  run well on tam-pane. The more dependencies we can remove, the better.
+  Northern Torch is done when we feel we can count on tam-pane as our
+  compositor and have completely removed hyprland."
+  Fred: "/plan show me your plan in tam-view"
+  Fred: "Approved. Proceed."
+
+DONE
+
+  - Expanded ROADMAP.md from the initial 0.7.0 bosgame trial into the
+    17-milestone 0.7.x Northern Torch series across three phases:
+    Phase 1 (bosgame desktop bring-up and default switch, milestones
+    1-10), Phase 2 (replacing hyprlock/hypridle with tam-hide,
+    replacing hyprsunset/hyprpicker with native tam-pane gamma and
+    capture, porting laptop/display/input/window commands off hyprctl,
+    and decoupling themes, menus, and Tensaku, milestones 11-14), and
+    Phase 3 (deleting all Hyprland code, configs, adapters, hooks,
+    patches, and tam-hyprland-* commands, removing the hypr*/aquamarine
+    package tree and superseded fallback dependencies across the fleet,
+    and verifying clean builds and sustained daily operation on
+    tam-pane alone, milestones 15-17).
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - Proceed with physical Test of Tamlinux 0.7.1 on bosgame (milestone 9)
+    and default switch (milestone 10), then execute Phase 2 and Phase 3
+    milestones to remove all Hyprland code and dependencies.
