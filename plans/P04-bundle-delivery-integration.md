@@ -1,5 +1,7 @@
 # First bundle delivery and return to Home Manager
 
+**Historical plan.** Current Arch delivery follows the [locked source-install plan](P21-source-install.md).
+
 **Status, 2026-11-17:** tam-bundle is Tamlinux's delivery. The development
 workstation moved from Nix to bundles with 0.6.27 and installed 0.6.28 as a
 bundle update; both used this bridge. Home Manager still owns some personal

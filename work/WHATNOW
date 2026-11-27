@@ -3,7 +3,7 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-27, with 0.7.4 candidate prep
+Updated: 2026-11-27, with W46
 
 
 STATE
@@ -32,17 +32,10 @@ STATE
   `test_tam_pane_milestones_11_14.py` (5/5), `test_tam_pane_controls.py` (3/3),
   `test_tam_pane_adapter.py` (3/3), and `test_tam_pane_battery.py` (3/3).
 
-  ROADMAP.md now defines the 17-milestone 0.7.x Northern Torch cultivar
-  series across three phases: Phase 1 (bosgame bring-up and default
-  switch, milestones 1-10), Phase 2 (replacing hyprlock/hypridle with
-  tam-hide, replacing hyprsunset/hyprpicker with native tam-pane gamma
-  and capture, porting laptop/display/input/window commands off hyprctl,
-  and decoupling themes, menus, and Tensaku, milestones 11-14), and
-  Phase 3 (deleting all Hyprland code, configs, adapters, hooks,
-  patches, and tam-hyprland-* commands, removing the hypr*/aquamarine
-  package tree and superseded dependencies across the fleet, and
-  verifying sustained daily use on tam-pane alone, milestones 15-17)
-  (W43).
+  ROADMAP.md lists PH01 through PH05 in milestone order (W46).
+  Northern Torch is PH03. Its 17 milestones are in P33-northern-torch.md
+  and retain three stages. KBN WB is PH02. Whole-checklist Test passed
+  on 0.6.39 and 0.6.42 advanced to Run. Final closeout remains open.
 
   VERSION reads 0.7.2 on dev (superseding unshipped 0.7.1 after fixing
   the retired tam-bundle packaging-suite error in tamlinux-packages).
@@ -167,14 +160,12 @@ NEXT
   1. Optionally run tests/run-nested-tam-pane-session interactively for a
      visual check of the packaged shell and clients inside a nested tam-pane
      window.
-  2. Proceed to ROADMAP.md milestone 9 (Prove hardware, locking and
-     recovery on bosgame) and milestone 10 (Accept daily use and make
-     tam-pane the default) once Fred authorizes a candidate Test/Run.
-  3. Work through Phase 2 (milestones 11-14: replace hyprlock/hypridle,
-     hyprsunset/hyprpicker, port laptop/display/window commands off
-     hyprctl, and decouple themes, menus, and Tensaku) and Phase 3
-     (milestones 15-17: delete all Hyprland code and remove Hyprland and
-     superseded dependencies across the fleet).
+  2. Record PH03 M9 hardware, lock and recovery checks for the exact
+     Test candidate. With Fred's Run instruction and daily-use acceptance,
+     switch the default desktop for M10.
+  3. Verify the M11-M14 replacement workflows on the fleet. Retire the
+     Hyprland code and packages in M15-M17 after the switch and fleet
+     acceptance.
 
 
 WAITING FOR FRED

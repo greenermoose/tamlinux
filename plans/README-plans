@@ -1,19 +1,15 @@
 PLANS
 
-This folder holds one plan per work phase of this repository's project.
-A phase covers a range of versions; ROADMAP.md lists the milestones and
-their version numbers, and each plan says how to reach them.
+This folder holds phase plans and supporting plans. ROADMAP.md lists
+ordered phases, their milestones, and the plan for each phase.
 
 
 NAMING
 
-  P<n>-<name>.md, numbered in the order the phases run, for example
-  P1-foundation.md for 0.0.x. IN THIS REPOSITORY, below, lists the
-  plans with their version ranges.
-
-  Numbers are never reused. A new phase gets the next number, even when
-  it runs between two existing ones; its version range says where it
-  fits.
+  Roadmap phases use PH01, PH02, and so on in milestone order. Plan
+  files use P01-<name>.md, P02-<name>.md, and so on. Use at least two
+  digits in both identifiers. A plan keeps its number when the roadmap
+  order changes. Assign new plans the next unused number.
 
 
 WHAT A PLAN HOLDS
@@ -42,10 +38,15 @@ KEEPING PLANS CURRENT
 
 IN THIS REPOSITORY
 
-  P1 through P31 hold the product and feature plans migrated from
-  docs/plans/ (including P1 for 0.6.x, P2 for 1.0.0, P3 for 1.1-1.3).
-  P32-early-releases.md covers 0.4.8-0.5.12; P33-northern-torch.md
-  covers the 0.7.x Northern Torch phases and 17-milestone breakdown.
-  Historical Gate A / 0.4.x filing cards sit read-only in work/history/.
-  Product behavior and generic defaults belong here; exact assemblies
-  belong in tamlinux-packages; personal selections belong in user config.
+  PH01  0.4.8–0.5.12  P32-early-releases.md
+  PH02  0.6.x         P01-kbn-wb-baseline.md
+  PH03  0.7.x         P33-northern-torch.md
+  PH04  1.0.0         P02-1.0.0-gitlab-and-source-install.md
+  PH05  1.1–1.3       P03-base-operating-system.md
+
+  P04 through P31 are supporting plans for individual changes. The phase
+  plans link to the relevant supporting work. Earlier Gate A filing cards
+  are in work/history/.
+
+  Product behavior and generic defaults belong here. Exact assemblies
+  belong in tamlinux-packages. Personal selections belong in user config.

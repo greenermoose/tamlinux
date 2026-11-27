@@ -1,6 +1,12 @@
 # Install and upgrade Tamlinux from local Git clones
 
-**Develop status.** The locked-source build staged 3,280 files in a test
+**Status.** PH02 proved locked source delivery on Arch, including
+fresh-file and bare-rootstock installation, preserving upgrades, and a
+source rollback round-trip. See [PH02's plan](P01-kbn-wb-baseline.md)
+for baseline closeout. [PH04](P02-1.0.0-gitlab-and-source-install.md)
+covers the later four-repository GitLab bootstrap.
+
+**Development checkpoint before fleet rollout.** The locked-source build staged 3,280 files in a test
 checkout. Installation, upgrade, and rollback passed in a temporary root
 with administrator and user-local software present. Read-only native
 preflight passed on an Arch workstation with a complete source stage.

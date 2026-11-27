@@ -7,8 +7,8 @@ Branch: dev
 SUMMARY
 
   Implemented ROADMAP.md Milestone 7 for Tamlinux 0.7.0 Northern Torch while
-  working around active claims in libtam, tam-view, tam-knox, tam-clam, tam,
-  and improvements-fred-tamlinux (leaving components.lock untouched):
+  working around active claims in related repositories and leaving
+  components.lock untouched:
   - Added tam-pane Unix domain socket IPC support to
     src/desktop/shell/host/hyprland_backend.py when TAM_PANE_SOCKET is set and
     HYPRLAND_INSTANCE_SIGNATURE is unset (monitors, monitors-all, workspaces,

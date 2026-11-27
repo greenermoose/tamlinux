@@ -13,7 +13,7 @@ Tamlinux to adopting a project's code or design without deliberate review.
 
 Current target: **Void Linux with runit and Btrfs**. If Void presents a
 showstopper, try **antiX Linux Core with runit**. See the
-[base operating system plan](plans/P3-base-operating-system.md). Historical
+[base operating system plan](plans/P03-base-operating-system.md). Historical
 surveys describe the target in scope when they were conducted.
 
 For a Fred-requested survey that spans the distribution, start here and in

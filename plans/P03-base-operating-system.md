@@ -1,10 +1,14 @@
-# Target base operating system
+# P03 · Target base operating system
+
+- **Phase:** PH05
+- **Versions:** 1.1–1.3
+- **Status:** Planned, after the 1.0 source-install proof.
 
 **Project scope (2026-10-06):** Tamlinux is an independent, continuing Linux
 workstation environment aimed at the best possible user experience on any
 hardware. The workstation package remains `tamlinux`; the terminal command is `tam`
 (named 2026-10-07). Existing-distribution
-bundle delivery and native Void packaging are Tamlinux engineering work. Hardware
+source delivery and native Void packaging are Tamlinux engineering work. Hardware
 profiles are capability-based; circa-2006 machines are validation examples,
 not a universal age cutoff.
 
@@ -15,11 +19,25 @@ not a universal age cutoff.
 We will try **Void Linux** as the base distribution, using **runit** for init
 and service supervision and **Btrfs** as the preferred pilot filesystem.
 If Void presents a showstopper, we will try **antiX Linux Core with runit**.
-The Arch workstation remains the working development system. First accept
-Tamlinux on Hyprland without Omarchy (0.6), then start tam-pane dogfooding in 0.7.0,
-then a second distribution (1.1). The Void pilot follows on secondary hardware
-(1.2). Hardware selection can proceed earlier; pilot implementation does not
-become the current desktop focus.
+The Arch workstation remains the working development system. Build on
+the [Postus fresh-install path](P02-1.0.0-gitlab-and-source-install.md).
+The second systemd distribution comes first, followed by the Void pilot
+on secondary hardware. Hardware selection can begin earlier.
+
+## Milestones
+
+1. **1.1 · Bear Swamp.** Install and run the source-delivered workstation
+   on a second systemd distribution. Verify native dependency ownership,
+   the console and graphical profiles, and upgrade and rollback.
+2. **1.2 · Craftsbury Flats.** Pilot Void with runit, seatd, Btrfs, and
+   native `xbps-src` packages. Compare glibc and musl, prove update and
+   recovery, and return to plain Void with user documents intact.
+3. **1.3 · Girard Dwarf.** Repeat live-media base installation and prove
+   one-command Tamlinux activation. Validate a terminal-only profile on
+   constrained hardware, including the planned older and 32-bit targets.
+
+
+## Why try Void first
 
 Void is the first implementation target, not a demonstrated hardware winner.
 A showstopper means an essential hardware, application, installation, update,
@@ -27,8 +45,6 @@ or recovery requirement cannot be met at acceptable maintenance cost. Investigat
 configuration and supported kernel/firmware choices before attributing a failure
 to the distribution. A musl-only incompatibility calls for testing Void glibc
 before switching the base to antiX.
-
-## Why try Void first
 
 Void's independent minimal base and native runit design may fit the project
 better than a Debian-derived base adapted to exclude systemd. XBPS and
@@ -65,9 +81,7 @@ templates in the packaging evaluation.
 tam-pane, Tamlinux's own compositor, is the selected compositor (D263), with
 seatd and an independent Quickshell host. On Void, the workstation package is
 built as native `xbps-src` packages; on existing distributions, the same
-sources are delivered as a recorded tam-bundle assembly (D261), replacing the
-2026-10-03 Nix flake route. The workstation does not
-need Nix on the Void base. No base migration is implied for the current
+sources use the locked Make-based installation with native dependencies. No base migration is implied for the current
 workstation, which stays on Arch.
 [Void Wayland support](https://docs.voidlinux.org/config/graphical-session/wayland.html).
 
@@ -97,12 +111,11 @@ and do not replace an external backup. Bound retention and measure free space
 across repeated upgrades.
 [Btrfs snapshots](https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html).
 
-XBPS 0.60.7 has no transaction hooks; a hooks proposal
-([xbps#666](https://github.com/void-linux/xbps/pull/666)) is unmerged. Pre-update
-checkpoints therefore come from Tamlinux's update command, and running
-`xbps-install` directly skips them. The pilot must show how such an
-unrecorded transaction is detected and recovered from. Recheck XBPS
-releases before the pilot; a released hook would close this gap.
+XBPS 0.60.7 had no transaction hooks. Check
+[the hooks proposal](https://github.com/void-linux/xbps/pull/666) and the
+selected XBPS release before the pilot. If there are no hooks, have the
+Tamlinux update command create pre-update checkpoints and prove detection
+and recovery when a direct `xbps-install` transaction bypasses that command.
 
 The pilot also proves the **route back to plain Void**: Tamlinux packages
 uninstall to a working stock Void system, with the user's documents intact.
@@ -113,7 +126,5 @@ failed kernel/userspace update. Test older BIOS hardware from the circa-2006
 validation cohort and modern UEFI hardware. Measure terminal-only and graphical profiles.
 The fallback decision follows this evidence, not a first configuration error.
 
-Bundle delivery ([bundle delivery integration](bundle-delivery-integration.md))
-and the [desktop decoupling plan](https://github.com/greenermoose/tamlinux/blob/139b060a717573fb2740c0f5e3b5deb599a6aeff/docs/plans/desktop-decoupling.md) carry the
-implementation order. Installation on existing distributions comes first,
-through tam-bundle; native Void packaging serves the Void base.
+Use the [locked source-install plan](P21-source-install.md) for the
+existing-distribution path. Native Void packaging serves the pilot base.

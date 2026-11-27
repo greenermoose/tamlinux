@@ -27,7 +27,7 @@ CONSOLE-FIRST STARTUP
 Tamlinux boots through visible text progress to a text login. The optional
 desktop starts when the signed-in user runs tam-desktop on a local foreground
 console. There is no graphical login manager. See console-first-startup.md
-<../../plans/P7-console-first-startup.md>.
+<../../plans/P07-console-first-startup.md>.
 
 
 NAMES

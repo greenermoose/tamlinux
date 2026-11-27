@@ -1,0 +1,27 @@
+W46 SEQUENCE THE TAMLINUX ROADMAP
+
+Date: 2026-11-27
+AI harness: Codex CLI 0.172.0
+AI model: gpt-6.2-sol
+
+GUIDANCE
+
+  Fred: "Use PHxx for phases and Pxx for plans, e.g. PH01 is phase 1,
+  P01 is plan 1."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Ordered the five product phases and kept all 33 plan numbers.
+  - Reconciled the 0.6 baseline, 0.7 development and release statuses.
+    Distinguished physical acceptance from development and headless proof.
+  - Checked phase order, active plan links, M1–M17, and idol-check.
+
+FAILED
+
+  - Nothing outstanding.
+
+HANDOFF
+
+  - Complete KBN WB closeout and record Northern Torch physical and
+    daily-use acceptance before the default switch and Hyprland removal.
