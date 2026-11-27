@@ -25,20 +25,24 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-data_dir="$(dirname "$(readlink -f "$0")")/../share/tamlinux"
-[[ -f ${TAMLINUX_HYPRLOCK_PAM:-/etc/pam.d/hyprlock} ]] || { echo "No native hyprlock PAM stack" >&2; exit 1; }
-command -v hyprlock >/dev/null || { echo "Native hyprlock unavailable" >&2; exit 1; }
-lock_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprlock.conf"
-[[ -f $lock_config ]] || lock_config="$data_dir/lock/hyprlock.conf"
+if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  tam-pane msg lock || exit $?
+else
+  data_dir="$(dirname "$(readlink -f "$0")")/../share/tamlinux"
+  [[ -f ${TAMLINUX_HYPRLOCK_PAM:-/etc/pam.d/hyprlock} ]] || { echo "No native hyprlock PAM stack" >&2; exit 1; }
+  command -v hyprlock >/dev/null || { echo "Native hyprlock unavailable" >&2; exit 1; }
+  lock_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprlock.conf"
+  [[ -f $lock_config ]] || lock_config="$data_dir/lock/hyprlock.conf"
 
-# One locker only; a second hyprlock would fail to take the session lock.
-if ! pidof hyprlock >/dev/null; then
-  setsid -f hyprlock --config "$lock_config" >/dev/null 2>&1 || exit 1
-fi
+  # One locker only; a second hyprlock would fail to take the session lock.
+  if ! pidof hyprlock >/dev/null; then
+    setsid -f hyprlock --config "$lock_config" >/dev/null 2>&1 || exit 1
+  fi
 
-# Set keyboard layout to default (first layout)
-if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
-  hyprctl switchxkblayout all 0 > /dev/null 2>&1 || true
+  # Set keyboard layout to default (first layout)
+  if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+    hyprctl switchxkblayout all 0 > /dev/null 2>&1 || true
+  fi
 fi
 
 # Ensure 1password is locked. Use timeout because `1password --lock` can

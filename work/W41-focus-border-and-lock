@@ -1,0 +1,30 @@
+W41 ENABLE THE FOCUS BORDER AND TAM-HIDE LOCK
+
+Date: 2026-11-26
+AI harness: Codex 0.172.0
+AI model: gpt-6.2-sol
+Commits: this record accompanies the implementation
+
+GUIDANCE
+
+  Fred: "Make the focus border three logical pixels instead of just two.
+  I'd like a more obvious border. Make sure the green is bright."
+  Fred: "Implement the plan."
+
+DONE
+
+  - Pinned tam-pane 0.2.11 and enabled its three-logical-pixel green
+    focused-window border in the Tamlinux session.
+  - Routed the existing menu and keyboard Lock command to the configured
+    tam-hide locker through tam-pane's authorized launch path.
+  - Source verification and all three headless desktop battery tests
+    passed. The actual lock command locked a two-output headless session.
+
+FAILED
+
+  - Nothing in the final automated checks.
+
+HANDOFF
+
+  - Test the packaged compositor on physical displays, authenticate
+    unlock, and complete the recovery and working-day checks.

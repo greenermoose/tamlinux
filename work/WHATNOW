@@ -3,10 +3,15 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-26, with W40
+Updated: 2026-11-26, with W41
 
 
 STATE
+
+  The next Northern Torch candidate pins tam-pane 0.2.11 (W41).
+  The packaged session sets a three-logical-pixel bright green focus
+  border and routes manual Lock to tam-hide. The headless compositor
+  and desktop suites pass. Physical focus and unlock await Test.
 
   VERSION reads 0.7.0 on dev (Northern Torch candidate prepared with
   tam-pane 0.2.10, tam-knox 1.1.2, tam 0.72.0 / 0.139.1, libtam 0.15.1,

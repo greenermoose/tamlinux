@@ -38,6 +38,8 @@ end
 
 tp.config{
   gaps = 8,
+  border_width = 3,
+  locker = "/usr/bin/tamlinux/tam-hide",
   cursor_theme = "Adwaita",
   cursor_size = 24,
   repeat_rate = 40,
