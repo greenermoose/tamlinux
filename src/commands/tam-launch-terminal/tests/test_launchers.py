@@ -42,10 +42,13 @@ class InstalledLaunchers(unittest.TestCase):
         self.work = self.root / 'work with spaces'
         self.work.mkdir()
         self.log = self.root / 'calls.jsonl'
+        self.shells = self.root / 'shells'
+        self.shells.write_text('/bin/sh\n/usr/bin/bash\n/usr/bin/tamlinux/tam-clam\n')
         self.env = {'HOME': str(self.home), 'XDG_CONFIG_HOME': str(self.config),
                     'XDG_STATE_HOME': str(self.state), 'XDG_RUNTIME_DIR': str(self.runtime),
                     'PATH': f'{self.prefix}/bin:{self.bin}', 'TEST_LOG': str(self.log),
-                    'TEST_CWD': str(self.work), 'LANG': 'C', 'TERM': 'dumb'}
+                    'TEST_CWD': str(self.work), 'TAM_SHELLS_FILE': str(self.shells),
+                    'LANG': 'C', 'TERM': 'dumb'}
         for name in ('bash', 'awk', 'grep', 'tail', 'mkdir', 'dirname',
                      'cat', 'basename', 'jq', 'python3', 'mktemp', 'mv', 'rm'):
             program = shutil.which(name)
@@ -260,7 +263,28 @@ else:
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(self.calls('uwsm-app')[0]['args'], [
                     '-t', 'service', '--', '/usr/bin/env', '-C', str(self.work),
-                    f'SHELL={expected_shell}', expected_terminal, '-e', expected_shell,
+                    'SHELL=/usr/bin/tamlinux/tam-clam', expected_terminal, '-e', expected_shell,
+                ])
+
+    def test_shortcut_keeps_valid_login_shell_when_tam_clam_not_in_etc_shells(self):
+        self.shells.write_text('/bin/sh\n/usr/bin/bash\n')
+        for inherited, expected_env_shell in (
+            ('/usr/bin/bash', '/usr/bin/bash'),
+            ('/home/fred/.local/bin/tam-clam', '/usr/bin/bash'),
+        ):
+            with self.subTest(inherited=inherited):
+                self.log.unlink(missing_ok=True)
+                result = self.run_command(
+                    'tam-launch-terminal', '--tam-last', TEST_RECORD_ONLY='1',
+                    SHELL=inherited, TEST_WINDOW='pid: 42',
+                    TEST_SHELL_EXE='/usr/lib/tamlinux/versions/test/bin/tam-clam',
+                    TEST_SHELL_PID='43',
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.calls('uwsm-app')[0]['args'], [
+                    '-t', 'service', '--', '/usr/bin/env', '-C', str(self.work),
+                    f'SHELL={expected_env_shell}', '/usr/bin/tamlinux/tam-last',
+                    '-e', '/usr/bin/tamlinux/tam-clam',
                 ])
 
     def test_shortcut_falls_back_when_local_bin_is_not_executable_or_broken(self):

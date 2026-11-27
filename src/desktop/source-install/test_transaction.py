@@ -171,6 +171,26 @@ class TransactionTests(unittest.TestCase):
             mode = stat.S_IMODE(path.stat().st_mode)
             self.assertEqual(mode, 0o755, f"{path} had mode {oct(mode)}")
 
+    def test_etc_shells_registration_and_uninstall(self):
+        shells = self.root / "etc/shells"
+        shells.parent.mkdir(parents=True, exist_ok=True)
+        shells.write_text("/bin/sh\n/usr/bin/bash\n")
+        shells.chmod(0o644)
+        with self.system.locked():
+            first, second = self.install_pair()
+            self.assertEqual(
+                shells.read_text().splitlines(),
+                ["/bin/sh", "/usr/bin/bash", transaction.PACKAGED_SHELL],
+            )
+            self.system.start(first, second)
+            self.assertEqual(
+                shells.read_text().splitlines(),
+                ["/bin/sh", "/usr/bin/bash", transaction.PACKAGED_SHELL],
+            )
+            self.system.uninstall()
+        self.assertEqual(shells.read_text(), "/bin/sh\n/usr/bin/bash\n")
+        self.assertEqual(stat.S_IMODE(shells.stat().st_mode), 0o644)
+
 
 if __name__ == "__main__":
     unittest.main()

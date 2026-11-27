@@ -42,11 +42,28 @@ resolve_tam_bin() {
   printf '/usr/bin/tamlinux/%s\n' "$name"
 }
 
+shell_listed() {
+  local candidate=$1 shells_file=${TAM_SHELLS_FILE:-/etc/shells}
+  [[ -n $candidate && -r $shells_file ]] && grep -Fqsx "$candidate" "$shells_file"
+}
+
+resolve_env_shell() {
+  local packaged="/usr/bin/tamlinux/tam-clam"
+  if shell_listed "$packaged"; then
+    printf '%s\n' "$packaged"
+  elif shell_listed "${SHELL:-}"; then
+    printf '%s\n' "$SHELL"
+  else
+    printf '/usr/bin/bash\n'
+  fi
+}
+
 if [[ $# == 1 && $1 == --tam-last ]]; then
   shell=$(resolve_tam_bin tam-clam)
+  env_shell=$(resolve_env_shell)
   terminal=$(resolve_tam_bin tam-last)
   exec setsid uwsm-app -t service -- /usr/bin/env -C "$(tam-cmd-terminal-cwd)" \
-    "SHELL=$shell" "$terminal" -e "$shell"
+    "SHELL=$env_shell" "$terminal" -e "$shell"
 fi
 
 exec setsid uwsm-app -t service -- xdg-terminal-exec --dir="$(tam-cmd-terminal-cwd)" "$@"

@@ -33,6 +33,8 @@ CULTIVAR_LINKS = (
     ("usr/share/doc/tamlinux", "/usr/lib/tamlinux/current/share/doc"),
 )
 
+PACKAGED_SHELL = "/usr/bin/tamlinux/tam-clam"
+
 PLACEMENTS = (
     "etc/profile.d",
     "usr/lib/issue.d",
@@ -244,6 +246,23 @@ def secure_directory(root, relative, create=False, *, sync=True):
             break
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != expected_uid or info.st_mode & 0o022:
             raise ValueError(f"unsafe system directory: {current}")
+
+
+def sync_etc_shells(root, *, present):
+    shells = root / "etc/shells"
+    if shells.is_symlink() or not shells.is_file():
+        return
+    mode = stat.S_IMODE(shells.stat().st_mode)
+    lines = shells.read_text(encoding="utf-8").splitlines()
+    has_entry = PACKAGED_SHELL in lines
+    if present and not has_entry:
+        updated = "\n".join([*lines, PACKAGED_SHELL]) + "\n"
+    elif not present and has_entry:
+        kept = [line for line in lines if line != PACKAGED_SHELL]
+        updated = ("\n".join(kept) + "\n") if kept else ""
+    else:
+        return
+    write_file(shells, mode, lambda handle: handle.write(updated.encode("utf-8")))
 
 
 def atomic_symlink(path, target):
@@ -530,6 +549,7 @@ class Installation:
             sync_target = self.root / "usr"
             sync_fs(sync_target if sync_target.is_dir() else self.root)
         self.select_runtime(self.runtime_id(new))
+        sync_etc_shells(self.root, present=(new is not None))
 
     def prune(self, active):
         keep = {active.get("current"), active.get("previous")} - {None}
