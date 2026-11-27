@@ -1,10 +1,10 @@
 # P01 · KBN WB dependable Arch baseline
 
 - **Phase:** PH02
-- **Status:** In progress. Whole-checklist Test accepted on 0.6.39. The
-  0.6.42 candidate advanced to Run. Final daily-use acceptance and Release
-  remain open.
-- **Versions:** 0.6.x
+- **Status:** Done (2026-11-27). Whole-checklist Test accepted on 0.6.39; 0.6.42
+  advanced to Run, accepted in daily use, and released as the final KBN WB
+  baseline (`0.6.42`, `v0.6.42`, `0.6`, `v0.6`).
+- **Versions:** 0.6.42
 
 ## Goal
 

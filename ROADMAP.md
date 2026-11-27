@@ -3,8 +3,8 @@
 `tamlinux` is the Tamlinux workstation environment and desktop product
 repository, developed in public on branch `dev`.
 
-- **Current version:** `0.7.5` on `dev` · Run baseline `0.6.42` · latest release `0.5.12`
-- **Progress:** 1 of 5 phases done. KBN WB is in closeout and Northern Torch is in progress.
+- **Current version:** `0.7.5` on `dev` · Run baseline `0.6.42` · latest release `0.6.42`
+- **Progress:** 2 of 5 phases done. KBN WB (`0.6.42`) is released and Northern Torch is in progress.
 - **Versioning:** Cultivars name minor workstation releases. Phase IDs
   follow milestone order and plan IDs are independent. See [VERSIONING.md](VERSIONING.md).
 
@@ -13,7 +13,7 @@ repository, developed in public on branch `dev`.
 | Phase | Versions | Goal | Plan | Status |
 | --- | --- | --- | --- | --- |
 | **PH01** | 0.4.8–0.5.12 | Standalone Tamlinux and the Blue Sparkler input and appearance baseline | [P32-early-releases.md](plans/P32-early-releases.md) | Done (2026-11-01) |
-| **PH02** | 0.6.x | KBN WB dependable Arch/Hyprland baseline and locked source installs across the fleet | [P01-kbn-wb-baseline.md](plans/P01-kbn-wb-baseline.md) | In progress |
+| **PH02** | 0.6.42 | KBN WB dependable Arch/Hyprland baseline and locked source installs across the fleet | [P01-kbn-wb-baseline.md](plans/P01-kbn-wb-baseline.md) | Done (2026-11-27) |
 | **PH03** | 0.7.x | Northern Torch adoption of `tam-pane` and the C17 app suite, followed by Hyprland removal | [P33-northern-torch.md](plans/P33-northern-torch.md) | In progress |
 | **PH04** | 1.0.0 | Postus fresh-install proof and transition to four GitLab repositories | [P02-1.0.0-gitlab-and-source-install.md](plans/P02-1.0.0-gitlab-and-source-install.md) | Planned |
 | **PH05** | 1.1–1.3 | Support another systemd distribution, pilot Void/runit, and prove a repeatable minimal base | [P03-base-operating-system.md](plans/P03-base-operating-system.md) | Planned |
@@ -27,12 +27,12 @@ repository, developed in public on branch `dev`.
 | **0.4.8** | Gate A removes Omarchy packages and paths. Tamlinux stands alone on Arch, Hyprland, and Quickshell. | Done (2026-10-22) |
 | **0.5.12** | Blue Sparkler delivers console-first startup, improved input, start menu, monitor control, and Tokyo Night defaults. | Done (2026-11-01) |
 
-### Phase PH02: KBN WB dependable baseline (0.6.x) — [P01-kbn-wb-baseline.md](plans/P01-kbn-wb-baseline.md)
+### Phase PH02: KBN WB dependable baseline (0.6.42) — [P01-kbn-wb-baseline.md](plans/P01-kbn-wb-baseline.md)
 
 | Version | Milestone | Status |
 | --- | --- | --- |
-| **0.6.x** | Prove reliability mitigations, retained workflows, and locked source installs and rollback across the fleet. Whole-checklist Test accepted on 0.6.39. | Done (2026-11-25) |
-| **0.6.x** | Complete daily-use acceptance of the baseline and release it. 0.6.42 advanced to Run and final closeout is open. | In progress |
+| **0.6.39** | Prove reliability mitigations, retained workflows, and locked source installs and rollback across the fleet. Whole-checklist Test accepted on 0.6.39. | Done (2026-11-25) |
+| **0.6.42** | Complete daily-use acceptance of the baseline and release it. Final KBN WB release tagged and published on 0.6.42. | Done (2026-11-27) |
 
 ### Phase PH03: Northern Torch compositor transition (0.7.x) — [P33-northern-torch.md](plans/P33-northern-torch.md)
 
