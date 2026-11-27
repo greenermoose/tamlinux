@@ -17,6 +17,40 @@ import sys
 
 SOURCE = Path(__file__).resolve().parents[2]
 
+CULTIVARS = {
+    "0.4": "Incipiens",
+    "0.5": "Blue Sparkler",
+    "0.6": "KBN WB",
+    "0.7": "Northern Torch",
+    "0.8": "Nash Pendula",
+    "1.0": "Postus",
+    "1.1": "Bear Swamp",
+    "1.2": "Craftsbury Flats",
+    "1.3": "Girard Dwarf",
+}
+
+
+def validate_cultivar(version: str, cultivar: str) -> None:
+    parts = version.split(".")
+    if len(parts) < 2 or not all(p.isdigit() for p in parts[:2]):
+        raise ValueError(f"invalid VERSION format: {version!r}")
+    if not cultivar:
+        raise ValueError("CULTIVAR must not be empty")
+    minor = f"{parts[0]}.{parts[1]}"
+    expected = CULTIVARS.get(minor)
+    if expected is not None:
+        if cultivar != expected:
+            raise ValueError(
+                f"CULTIVAR {cultivar!r} does not match VERSION {version!r} "
+                f"(expected {expected!r} for {minor})"
+            )
+    else:
+        for other_minor, other_name in CULTIVARS.items():
+            if cultivar == other_name:
+                raise ValueError(
+                    f"CULTIVAR {cultivar!r} belongs to {other_minor}, not {minor} ({version!r})"
+                )
+
 
 def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
     prefix_path = Path(prefix)
@@ -53,6 +87,9 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
                       ("src/desktop/protocol-shadow", "tam-protocol-shadow")):
         file(src, f"bin/{name}", 0o755)
     (data / "session/Hyprland").chmod(0o755)
+    version = (source / "VERSION").read_text().strip()
+    cultivar = (source / "CULTIVAR").read_text().strip()
+    validate_cultivar(version, cultivar)
     for name, src in (("version", "VERSION"), ("cultivar", "CULTIVAR"),
                       ("assets/version", "VERSION")):
         file(src, f"share/tamlinux/{name}")
@@ -81,8 +118,8 @@ def install(prefix: str, destdir: str, source: Path = SOURCE) -> None:
     console = data / "console"
     console.mkdir(exist_ok=True)
     for name, args in (("welcome-generic.issue", []),
-                       ("welcome.issue", ["--version", (source / "VERSION").read_text().strip(),
-                                          "--cultivar", (source / "CULTIVAR").read_text().strip()])):
+                       ("welcome.issue", ["--version", version,
+                                          "--cultivar", cultivar])):
         result = subprocess.run([sys.executable, str(source / "src/desktop/session/console-welcome.py"), *args],
                                 check=True, stdout=subprocess.PIPE)
         (console / name).write_bytes(result.stdout)

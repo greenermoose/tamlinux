@@ -216,6 +216,37 @@ class ProductInstall(unittest.TestCase):
             with self.assertRaises(ValueError):
                 installer.install(prefix, "/unused")
 
+    def test_cultivar_identity_and_console_welcome(self):
+        version = (SOURCE / "VERSION").read_text().strip()
+        cultivar = (SOURCE / "CULTIVAR").read_text().strip()
+        self.assertEqual(cultivar, "Northern Torch")
+        with tempfile.TemporaryDirectory() as tmp:
+            stage = Path(tmp)
+            installer.install(cultivar_layout.CURRENT, tmp)
+            runtime = stage / cultivar_layout.CURRENT.lstrip("/")
+            commands = runtime / "bin"
+            for name in ("hi", "start"):
+                (commands / name).write_text("#!/bin/sh\n")
+                (commands / name).chmod(0o755)
+            cultivar_layout.install(stage)
+            self.assertEqual((runtime / "share/tamlinux/cultivar").read_text().strip(), cultivar)
+            issue = (stage / "usr/lib/issue.d/70-tamlinux.issue").read_text()
+            self.assertIn(f"Welcome to Tamlinux {version}!", issue)
+            self.assertIn(f"Cultivar:  {cultivar}\n", issue)
+
+    def test_validate_cultivar(self):
+        for ver, name in (("0.7.3", "Northern Torch"), ("0.6.42", "KBN WB"), ("1.4.0", "Deborah Waxman")):
+            installer.validate_cultivar(ver, name)
+        for ver, name in (
+            ("0.7.3", "KBN WB"),
+            ("0.8.0", "Northern Torch"),
+            ("1.4.0", "Northern Torch"),
+            ("0.7.3", ""),
+            ("invalid", "Northern Torch"),
+        ):
+            with self.subTest(ver=ver, name=name), self.assertRaises(ValueError):
+                installer.validate_cultivar(ver, name)
+
 
 if __name__ == "__main__":
     unittest.main()
