@@ -10,14 +10,15 @@ STATE
 
   Updated the Northern Torch (PH03) section of ROADMAP.md and
   plans/P33-northern-torch.md for 0.7.5 (W48): recorded 0.7.0-0.7.2
-  (M1-M8), 0.7.3 (M11-M14 wiring), and 0.7.4 (cultivar guard) as done,
-  gave 0.7.4 and 0.7.5 separate rows, and aligned the remaining stages
-  (Stage 3 physical/fleet acceptance and default switch, Stage 4 complete
-  Hyprland removal).
+  (M1-M8), 0.7.3 (M11-M14 wiring), 0.7.4 (cultivar guard), and 0.7.5
+  (Test accepted 2026-11-27) as done, gave 0.7.4 and 0.7.5 separate rows,
+  and aligned the remaining stages (Stage 3 physical/fleet acceptance and
+  default switch, Stage 4 complete Hyprland removal).
 
-  Prepared the Northern Torch 0.7.5 source selection with tam-pane 0.4.1
-  (W47). It preserves pointer focus, fixes repeating macro keys, and
-  adjusts centered Dwindle placement. Physical Test is pending.
+  Prepared and tested the Northern Torch 0.7.5 source selection with
+  tam-pane 0.4.1 (W47). It preserves pointer focus, fixes repeating macro
+  keys, and adjusts centered Dwindle placement. Fred accepted 0.7.5 Test
+  on 2026-11-27.
 
   VERSION reads 0.7.4 and CULTIVAR reads Northern Torch on dev (all eleven
   component pins in components.lock unchanged from 0.7.3). Fixed the stale

@@ -3,7 +3,7 @@
 `tamlinux` is the Tamlinux workstation environment and desktop product
 repository, developed in public on branch `dev`.
 
-- **Current version:** `0.7.5` on `dev` and `test` (staged) · Run baseline `0.6.42` · latest release `0.6.42`
+- **Current version:** `0.7.5` on `dev` and `test` (Test accepted) · Run baseline `0.6.42` · latest release `0.6.42`
 - **Progress:** 2 of 5 phases done. KBN WB (`0.6.42`) is released and Northern Torch is in progress.
 - **Versioning:** Cultivars name minor workstation releases. Phase IDs
   follow milestone order and plan IDs are independent. See [VERSIONING.md](VERSIONING.md).
@@ -41,7 +41,7 @@ repository, developed in public on branch `dev`.
 | **0.7.0–0.7.2** | Bring up the reproducible `tam-pane` session, Quickshell adapter, all nine `fred.*` plugins, C17 app suite, and headless test battery with Hyprland recovery intact (M1–M8). | Done (2026-11-26) |
 | **0.7.3** | Wire Hyprland-helper replacements onto `tam-pane 0.3.0` and `tam-hide 0.3.1`: lock/idle polling, native gamma/freeze/pixel capture, fleet laptop/window IPC commands, and live-reloaded theme borders (M11–M14 wiring). | Done (2026-11-27) |
 | **0.7.4** | Fix Northern Torch cultivar metadata and console banner with a build-time `VERSION`/`CULTIVAR` consistency guard. | Done (2026-11-27) |
-| **0.7.5** | Package `tam-pane 0.4.1` with pointer focus, release-bound macro-key repeat fix, centered Dwindle placement, and optional Mesa GLES2 rounded corners and drop shadows (staged for Test). | In progress |
+| **0.7.5** | Package `tam-pane 0.4.1` with pointer focus, release-bound macro-key repeat fix, centered Dwindle placement, and optional Mesa GLES2 rounded corners and drop shadows. | Done (2026-11-27) |
 | **0.7.x** | Physical and fleet acceptance: prove hardware, locking, recovery, and M11–M14 replacement workflows across the workstation and fleet laptops; accept daily use and switch the default desktop to `tam-pane` (M9–M10). | In progress |
 | **0.7.x** | Remove all Hyprland code, configs, `hypr*`/`aquamarine` packages, and superseded dependencies; verify clean builds and fleet-wide daily use on `tam-pane` alone, then release Northern Torch (M15–M17). | Planned |
 

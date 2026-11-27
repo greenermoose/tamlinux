@@ -1,12 +1,12 @@
 # P33: Northern Torch — tam-pane everywhere and complete Hyprland removal
 
 - **Phase:** PH03
-- **Status:** In progress. At `0.7.5` (staged for Test; `0.7.4` live in Test;
-  `0.6.42` released as the KBN WB recovery anchor), Stage 1 bring-up (M1–M8),
-  Stage 2 helper-replacement wiring (M11–M14 in `0.7.3`), and the `0.7.4`
-  cultivar guard are done. Physical and fleet acceptance (M9 and M11–M14
-  hardware proof), daily-use default switch (M10), and complete Hyprland
-  removal (M15–M17) remain open.
+- **Status:** In progress. At `0.7.5` (Test accepted 2026-11-27; `0.6.42`
+  released as the KBN WB recovery anchor), Stage 1 bring-up (M1–M8) and
+  Stage 2 helper-replacement wiring and dogfood polish (`0.7.3–0.7.5`)
+  are done. Fleet-wide physical acceptance (M9 and M11–M14 hardware
+  proof), daily-use default switch (M10), and complete Hyprland removal
+  (M15–M17) remain open.
 - **Versions:** 0.7.0 to 0.7.x
 
 ## Goal
@@ -54,7 +54,7 @@ passing and Hyprland kept as an independent recovery session.
    `tam-pane` and added `tam-session-bench` for startup and resource
    comparison.
 
-### Stage 2 — Helper-replacement wiring and dogfood polish (0.7.3–0.7.5, In progress)
+### Stage 2 — Helper-replacement wiring and dogfood polish (0.7.3–0.7.5, Done 2026-11-27)
 
 Replacement workflows were wired in `0.7.3` ahead of the default switch,
 followed by cultivar metadata hardening in `0.7.4` and `tam-pane 0.4.1`
@@ -79,7 +79,7 @@ of these workflows runs in Stage 3 before Hyprland fallback is retired.
   Updated `CULTIVAR` to `Northern Torch` so the pre-login console banner
   and installed cultivar metadata match, and added a build-time
   `VERSION`/`CULTIVAR` consistency guard in `src/desktop/install-product.py`.
-- **0.7.5 (In progress, staged for Test, W47) — `tam-pane 0.4.1` dogfood polish and visuals:**
+- **0.7.5 (Done 2026-11-27, Test accepted, W47) — `tam-pane 0.4.1` dogfood polish and visuals:**
   Packaged `tam-pane 0.4.1`, preserving focus-follows-mouse, preventing
   release-bound macro keys from repeating in clients, opening default
   Dwindle windows to the right or below within 8 logical pixels of the
@@ -136,8 +136,7 @@ UWSM.
 
 ## Open points
 
-- Physical Test completion for `0.7.5` and any follow-up `0.7.x` dogfood
-  fixes.
-- Fleet laptop proof of M11–M14 replacement workflows.
+- Fleet laptop proof of M11–M14 replacement workflows and remaining
+  Stage 3 hardware/recovery checks.
 - Exact candidate authorization for the M10 default switch and Stage 4
   Hyprland package removal.
