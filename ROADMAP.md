@@ -3,7 +3,7 @@
 `tamlinux` is the Tamlinux workstation environment and desktop product
 repository, developed in public on branch `dev`.
 
-- **Current version:** `0.7.2` (branch `dev`; latest released cultivar `0.5.12`)
+- **Current version:** `0.7.3` (branch `dev`; latest released cultivar `0.5.12`)
 - **Progress:** 3 of 6 phases done (P32 and P1 complete/in closeout; P33 Northern Torch in progress; P2–P3 planned)
 - **Versioning:** Cultivar names identify minor workstation releases
   (`VERSIONING.md`); `test`, `main`, tags, and releases move only on
@@ -40,7 +40,7 @@ repository, developed in public on branch `dev`.
 | --- | --- | --- |
 | **0.7.0–0.7.1** | Stage 1 (M1–M8): app checklist, reproducible `tam-pane` session, guarded launches, UWSM/portals, `TamPaneAdapter`, controls, shell/plugin proof, headless test battery | Done (2026-11-26) |
 | **0.7.1–0.7.2** | Stage 1 (M9–M10): physical hardware/lock/recovery proof on bosgame and switch default desktop to `tam-pane` (awaits Test/Run) | In progress |
-| **0.7.x** | Stage 2 (M11–M14): move lock/idle to `tam-hide`, replace `hyprsunset`/`hyprpicker`, port fleet commands off `hyprctl`, decouple themes/menus/Tensaku | Planned |
+| **0.7.3** | Stage 2 (M11–M14): move lock/idle to `tam-hide`, replace `hyprsunset`/`hyprpicker`, port fleet commands off `hyprctl`, decouple themes/menus/Tensaku | In progress |
 | **0.7.x** | Stage 3 (M15–M17): delete all Hyprland code/configs/adapters, remove `hypr*`/`aquamarine` packages across fleet, close Northern Torch | Planned |
 
 ### Phase P2: Fresh install and GitLab (1.0.0) — [P2-1.0.0-gitlab-and-source-install.md](plans/P2-1.0.0-gitlab-and-source-install.md)

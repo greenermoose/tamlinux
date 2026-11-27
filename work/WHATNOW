@@ -3,12 +3,16 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-27, with W45
+Updated: 2026-11-27, with 0.7.3 candidate prep
 
 
 STATE
 
-  Milestones 11-14 (Northern Torch Stage 2) are now wired on `dev` against
+  VERSION reads 0.7.3 on dev. components.lock pins tam-pane 0.3.0 (2de3b52),
+  tam-hide 0.3.1 (9d4fe8b), and tam-last (673777d) while keeping the other
+  eight component pins unchanged from 0.7.2.
+
+  Milestones 11-14 (Northern Torch Stage 2) are wired on `dev` against
   `tam-pane 0.2.17` (`7859658`) in `components.lock` while keeping Hyprland
   fallback intact until Stage 3 (W45): `tam-system-sleep-lock` polls
   `tam-pane msg lock_state`; `tam-toggle-nightlight` uses native `gamma` IPC;
