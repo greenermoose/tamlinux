@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 as defined in [`VERSIONING.md`](VERSIONING.md).
 
+## [0.7.0]
+
+- Prepare **Tamlinux 0.7.0 Northern Torch** for daily `tam-pane` compositor trials while retaining Hyprland as an independent recovery session:
+  - Stage the `tam-pane` `0.2.10` native-Wayland source build (including GPU renderer-loss recovery), Wayland session entry, UWSM environment/portal wiring (`tam-pane-portals.conf`), and guarded `tam-desktop pane` / `tam-desktop hyprland` console launches.
+  - Connect the Quickshell compositor facade (`TamPaneAdapter`), plugin backend (`hyprland_backend.py`), all nine `fred.*` plugins, clipboard history paste, and 13 desktop commands to `tam-pane` while keeping Hyprland intact.
+  - Migrate the offscreen shell/panel/menu test suite from Sway to headless `tam-pane` and add repeatable headless `tam-pane` battery checks.
+- Upgrade the C17 component suite onto `libtam` `0.15.1` (`tam` `0.72.0` / corpus `0.139.1`, `tam-clam` `0.3.10`, `tam-data` `1.0.3`, `tam-edit` `1.2.0`, `tam-last` `0.2.5`, `tamlinux-tools` `0.1.2`, `tam-pane` `0.2.10`) and add `tam-view` `0.4.6`, `tam-knox` `1.1.2`, and `tam-hide` to the source install.
+- Fix `fred.workspaces` `2.0.14` to leave a monitor dark when the bar did not darken it.
+
 ## [0.6.42]
 
 - Prefer executable `~/.local/bin/tam-clam` and `~/.local/bin/tam-last` on `Meta + Return` (`tam-launch-terminal --tam-last`) and fall back to `/usr/bin/tamlinux/`; recognize `~/.local/bin/tam-clam` in `tam-cmd-terminal-cwd`.
