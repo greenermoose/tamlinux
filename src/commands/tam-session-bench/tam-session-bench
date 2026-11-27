@@ -1,0 +1,1350 @@
+#!/usr/bin/env python3
+"""tam-session-bench — Measure and compare graphical session startup and resource use.
+
+Compares Hyprland and tam-pane (or any UWSM-managed Wayland compositor) using:
+  - systemd --user journal lifecycle & unit resource records
+  - live cgroup v2 metrics (systemctl --user show)
+  - /proc/<pid> memory (smaps_rollup PSS/RSS), context switches, and DRM fdinfo
+  - optional tam-meter system power and wakeup samples
+
+No root privileges and no external Python dependencies required.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+VERSION = "0.1.0"
+
+# systemd well-known journal MESSAGE_IDs
+MSG_UNIT_STARTING = "7d4958e842da4a758f6c1cdc7b36dcc5"
+MSG_UNIT_STARTED = "39f53479d3a045ac8e11786248231fbf"
+MSG_UNIT_STOPPED = "9d1aaa27d60140bd96365438aad20286"
+MSG_UNIT_RESOURCES = "ae8f7b866b0347b9af31fe1c80b127c0"
+
+WM_UNIT_RE = re.compile(r"^wayland-wm@(.+)\.service$")
+ENVELOPE_UNIT_RE = re.compile(r"^wayland-session-envelope@(.+)\.target$")
+TAMPANE_STARTUP_RE = re.compile(
+    r"tam-pane startup:\s*lua=([0-9.]+)ms\s+init=([0-9.]+)ms\s+start=([0-9.]+)ms\s+total=([0-9.]+)ms"
+)
+SIZE_UNIT_RE = re.compile(r"^([0-9]+(?:\.[0-9]+)?)\s*(B|KiB|MiB|GiB|kB|MB|GB)?$")
+TIME_UNIT_RE = re.compile(r"^([0-9]+(?:\.[0-9]+)?)\s*(ns|us|ms|s)?$")
+
+
+def unescape_systemd_instance(raw: str) -> str:
+    """Decode systemd unit-instance hex escapes such as \\x2d -> '-'."""
+    return re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), raw)
+
+
+def escape_systemd_instance(name: str) -> str:
+    """Encode a compositor name for systemd unit instance lookup."""
+    return name.replace("-", r"\x2d")
+
+
+def parse_size_bytes(text: str) -> int:
+    """Parse a procfs/drm size string like '205168 KiB', '2 MiB', or '0' into bytes."""
+    m = SIZE_UNIT_RE.match(text.strip())
+    if not m:
+        return 0
+    val = float(m.group(1))
+    unit = m.group(2) or "B"
+    scale = {
+        "B": 1,
+        "KiB": 1024,
+        "kB": 1024,
+        "MiB": 1024 ** 2,
+        "MB": 1024 ** 2,
+        "GiB": 1024 ** 3,
+        "GB": 1024 ** 3,
+    }.get(unit, 1)
+    return int(round(val * scale))
+
+
+def parse_time_ns(text: str) -> int:
+    """Parse a DRM engine time string like '12688467793 ns' into nanoseconds."""
+    m = TIME_UNIT_RE.match(text.strip())
+    if not m:
+        return 0
+    val = float(m.group(1))
+    unit = m.group(2) or "ns"
+    scale = {
+        "ns": 1,
+        "us": 1_000,
+        "ms": 1_000_000,
+        "s": 1_000_000_000,
+    }.get(unit, 1)
+    return int(round(val * scale))
+
+
+def parse_smaps_rollup(text: str) -> dict[str, int]:
+    """Parse /proc/<pid>/smaps_rollup content into byte counts."""
+    wanted = {
+        "Rss": "rss_bytes",
+        "Pss": "pss_bytes",
+        "Pss_Anon": "pss_anon_bytes",
+        "Pss_Shmem": "pss_shmem_bytes",
+        "Private_Dirty": "private_dirty_bytes",
+    }
+    out: dict[str, int] = {}
+    for line in text.splitlines():
+        if ":" not in line:
+            continue
+        key, rest = line.split(":", 1)
+        field = wanted.get(key.strip())
+        if field:
+            out[field] = parse_size_bytes(rest)
+    return out
+
+
+def parse_proc_status(text: str) -> dict[str, int]:
+    """Parse selected fields from /proc/<pid>/status."""
+    out: dict[str, int] = {}
+    for line in text.splitlines():
+        if ":" not in line:
+            continue
+        key, rest = line.split(":", 1)
+        key = key.strip()
+        val = rest.strip()
+        if key == "Threads":
+            try:
+                out["threads"] = int(val)
+            except ValueError:
+                pass
+        elif key == "VmHWM":
+            out["vm_hwm_bytes"] = parse_size_bytes(val)
+        elif key == "voluntary_ctxt_switches":
+            try:
+                out["voluntary_ctxt_switches"] = int(val)
+            except ValueError:
+                pass
+        elif key == "nonvoluntary_ctxt_switches":
+            try:
+                out["nonvoluntary_ctxt_switches"] = int(val)
+            except ValueError:
+                pass
+    return out
+
+
+def parse_drm_fdinfo_entries(entries: list[str]) -> dict[str, int]:
+    """Aggregate DRM memory and engine time across fdinfo texts, deduplicating by drm-client-id."""
+    clients: dict[str, dict[str, int]] = {}
+    anon_idx = 0
+    for text in entries:
+        if "drm-driver:" not in text and "drm-memory-" not in text and "drm-resident-" not in text:
+            continue
+        client_id = None
+        record: dict[str, int] = {}
+        for line in text.splitlines():
+            if ":" not in line:
+                continue
+            key, rest = line.split(":", 1)
+            key = key.strip()
+            val = rest.strip()
+            if key == "drm-client-id":
+                client_id = val
+            elif key in ("drm-resident-vram", "drm-memory-vram"):
+                # Prefer drm-resident-vram when both appear; keep max if duplicate key.
+                parsed = parse_size_bytes(val)
+                if key == "drm-resident-vram" or "vram_bytes" not in record:
+                    record["vram_bytes"] = parsed
+            elif key == "drm-shared-vram":
+                record["shared_vram_bytes"] = parse_size_bytes(val)
+            elif key in ("drm-resident-gtt", "drm-memory-gtt"):
+                parsed = parse_size_bytes(val)
+                if key == "drm-resident-gtt" or "gtt_bytes" not in record:
+                    record["gtt_bytes"] = parsed
+            elif key == "drm-engine-gfx":
+                record["gfx_ns"] = parse_time_ns(val)
+            elif key == "drm-engine-compute":
+                record["compute_ns"] = parse_time_ns(val)
+        if not record:
+            continue
+        if client_id is None:
+            anon_idx += 1
+            client_id = f"_anon_{anon_idx}"
+        # Keep the richest record per drm-client-id (duplicate fds report identical totals).
+        prev = clients.get(client_id)
+        if prev is None:
+            clients[client_id] = record
+        else:
+            for k, v in record.items():
+                if v > prev.get(k, 0):
+                    prev[k] = v
+
+    totals = {
+        "drm_clients": len(clients),
+        "vram_bytes": 0,
+        "shared_vram_bytes": 0,
+        "gtt_bytes": 0,
+        "gfx_ns": 0,
+        "compute_ns": 0,
+    }
+    for rec in clients.values():
+        totals["vram_bytes"] += rec.get("vram_bytes", 0)
+        totals["shared_vram_bytes"] += rec.get("shared_vram_bytes", 0)
+        totals["gtt_bytes"] += rec.get("gtt_bytes", 0)
+        totals["gfx_ns"] += rec.get("gfx_ns", 0)
+        totals["compute_ns"] += rec.get("compute_ns", 0)
+    return totals
+
+
+def read_proc_metrics(pid: int) -> dict[str, Any]:
+    """Read /proc/<pid> memory, thread, context-switch, FD, and DRM GPU stats."""
+    if pid <= 0:
+        return {}
+    proc = Path("/proc") / str(pid)
+    if not proc.is_dir():
+        return {}
+
+    data: dict[str, Any] = {"pid": pid}
+    try:
+        data.update(parse_smaps_rollup((proc / "smaps_rollup").read_text()))
+    except OSError:
+        pass
+    try:
+        data.update(parse_proc_status((proc / "status").read_text()))
+    except OSError:
+        pass
+    try:
+        data["open_fds"] = sum(1 for _ in (proc / "fd").iterdir())
+    except OSError:
+        pass
+
+    fdinfo_texts: list[str] = []
+    try:
+        for entry in (proc / "fdinfo").iterdir():
+            try:
+                fdinfo_texts.append(entry.read_text())
+            except OSError:
+                continue
+    except OSError:
+        pass
+    if fdinfo_texts:
+        drm = parse_drm_fdinfo_entries(fdinfo_texts)
+        if drm["drm_clients"] > 0:
+            data["drm"] = drm
+    return data
+
+
+def parse_systemctl_show(text: str) -> dict[str, Any]:
+    """Parse `systemctl --user show` Key=Value lines."""
+    raw: dict[str, str] = {}
+    for line in text.splitlines():
+        if "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        raw[k.strip()] = v.strip()
+
+    def parse_int(key: str) -> int | None:
+        v = raw.get(key)
+        if not v or v in ("[not set]", "infinity", "18446744073709551615"):
+            return None
+        try:
+            return int(v)
+        except ValueError:
+            return None
+
+    return {
+        "unit": raw.get("Id", ""),
+        "active_state": raw.get("ActiveState", ""),
+        "sub_state": raw.get("SubState", ""),
+        "main_pid": parse_int("MainPID") or 0,
+        "memory_current_bytes": parse_int("MemoryCurrent"),
+        "memory_peak_bytes": parse_int("MemoryPeak"),
+        "memory_swap_bytes": parse_int("MemorySwapCurrent"),
+        "cpu_usage_nsec": parse_int("CPUUsageNSec"),
+        "tasks_current": parse_int("TasksCurrent"),
+        "active_enter_mono_us": parse_int("ActiveEnterTimestampMonotonic"),
+        "exec_start_mono_us": parse_int("ExecMainStartTimestampMonotonic"),
+    }
+
+
+def query_unit_live(unit: str) -> dict[str, Any] | None:
+    """Query live systemd user unit properties and process metrics."""
+    props = [
+        "Id",
+        "ActiveState",
+        "SubState",
+        "MainPID",
+        "MemoryCurrent",
+        "MemoryPeak",
+        "MemorySwapCurrent",
+        "CPUUsageNSec",
+        "TasksCurrent",
+        "ActiveEnterTimestampMonotonic",
+        "ExecMainStartTimestampMonotonic",
+    ]
+    cmd = ["systemctl", "--user", "show", unit]
+    for p in props:
+        cmd.extend(["-p", p])
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)
+    except OSError:
+        return None
+    if res.returncode != 0 or not res.stdout.strip():
+        return None
+    info = parse_systemctl_show(res.stdout)
+    if info["active_state"] != "active":
+        return None
+
+    now_mono_us = int(time.monotonic() * 1_000_000)
+    start_us = info.get("exec_start_mono_us") or info.get("active_enter_mono_us") or 0
+    if start_us > 0 and now_mono_us >= start_us:
+        uptime_s = (now_mono_us - start_us) / 1_000_000.0
+        info["uptime_s"] = round(uptime_s, 3)
+        cpu_ns = info.get("cpu_usage_nsec")
+        if cpu_ns is not None and uptime_s > 0:
+            info["avg_cpu_pct"] = round((cpu_ns / 1e9) / uptime_s * 100.0, 2)
+    if info["main_pid"] > 0:
+        info["proc"] = read_proc_metrics(info["main_pid"])
+    return info
+
+
+def detect_active_wm_unit() -> tuple[str | None, str | None]:
+    """Return (unit_name, compositor_name) for the active wayland-wm@*.service unit."""
+    try:
+        res = subprocess.run(
+            [
+                "systemctl",
+                "--user",
+                "list-units",
+                "--type=service",
+                "--state=active",
+                "--plain",
+                "--no-legend",
+                "wayland-wm@*.service",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        for line in res.stdout.splitlines():
+            parts = line.split()
+            if not parts:
+                continue
+            unit = parts[0]
+            m = WM_UNIT_RE.match(unit)
+            if m:
+                return unit, unescape_systemd_instance(m.group(1))
+    except OSError:
+        pass
+
+    # Fallback to environment variables
+    desktop = os.environ.get("XDG_SESSION_DESKTOP") or os.environ.get("XDG_CURRENT_DESKTOP")
+    if desktop:
+        return f"wayland-wm@{escape_systemd_instance(desktop)}.service", desktop
+    if os.environ.get("TAM_PANE_SOCKET"):
+        return r"wayland-wm@tam\x2dpane.service", "tam-pane"
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return "wayland-wm@Hyprland.service", "Hyprland"
+    return None, None
+
+
+def query_tam_meter_now() -> dict[str, Any] | None:
+    """Query `tam-meter now --json` if available."""
+    exe = shutil.which("tam-meter")
+    if not exe:
+        return None
+    try:
+        res = subprocess.run([exe, "now", "--json"], capture_output=True, text=True, timeout=6, check=False)
+        if res.returncode != 0 or not res.stdout.strip():
+            return None
+        return json.loads(res.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+def collect_live_snapshot() -> dict[str, Any]:
+    """Collect a live resource snapshot of compositor, shell, portals, and system power."""
+    wm_unit, compositor = detect_active_wm_unit()
+    components: dict[str, Any] = {}
+
+    if wm_unit:
+        wm_info = query_unit_live(wm_unit)
+        if wm_info:
+            components["compositor"] = wm_info
+
+    shell_info = query_unit_live("tamlinux-shell.service")
+    if shell_info:
+        components["shell"] = shell_info
+
+    portal_units = [
+        "xdg-desktop-portal.service",
+        "xdg-desktop-portal-gtk.service",
+        "xdg-desktop-portal-hyprland.service",
+        "xdg-desktop-portal-wlr.service",
+    ]
+    portals: list[dict[str, Any]] = []
+    for punit in portal_units:
+        pinfo = query_unit_live(punit)
+        if pinfo:
+            portals.append(pinfo)
+    if portals:
+        components["portals"] = portals
+
+    # Combined totals across compositor + shell + portals
+    all_units = []
+    if "compositor" in components:
+        all_units.append(components["compositor"])
+    if "shell" in components:
+        all_units.append(components["shell"])
+    all_units.extend(portals)
+
+    combined = {
+        "memory_current_bytes": sum(u.get("memory_current_bytes") or 0 for u in all_units),
+        "memory_peak_bytes": sum(u.get("memory_peak_bytes") or 0 for u in all_units),
+        "memory_swap_bytes": sum(u.get("memory_swap_bytes") or 0 for u in all_units),
+        "pss_bytes": sum((u.get("proc") or {}).get("pss_bytes") or 0 for u in all_units),
+        "rss_bytes": sum((u.get("proc") or {}).get("rss_bytes") or 0 for u in all_units),
+        "vram_bytes": sum(((u.get("proc") or {}).get("drm") or {}).get("vram_bytes") or 0 for u in all_units),
+        "gtt_bytes": sum(((u.get("proc") or {}).get("drm") or {}).get("gtt_bytes") or 0 for u in all_units),
+        "tasks_current": sum(u.get("tasks_current") or 0 for u in all_units),
+        "avg_cpu_pct": round(sum(u.get("avg_cpu_pct") or 0.0 for u in all_units), 2),
+    }
+
+    snap: dict[str, Any] = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "compositor": compositor or "unknown",
+        "wm_unit": wm_unit,
+        "components": components,
+        "combined": combined,
+    }
+    meter = query_tam_meter_now()
+    if meter is not None:
+        snap["system_meter"] = meter
+    return snap
+
+
+def _decode_journal_message(value: Any) -> str:
+    """Decode journalctl JSON MESSAGE (string or list of raw byte ints when ANSI codes are present)."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        try:
+            return bytes(int(b) & 0xFF for b in value).decode("utf-8", errors="replace")
+        except (ValueError, TypeError):
+            return ""
+    return str(value) if value is not None else ""
+
+
+def parse_journal_sessions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Reconstruct graphical session startup stages and resource summaries from journal JSON records."""
+    sessions: list[dict[str, Any]] = []
+    current_by_boot: dict[str, dict[str, Any]] = {}
+
+    for rec in entries:
+        boot_id = str(rec.get("_BOOT_ID") or "unknown")
+        msg_id = str(rec.get("MESSAGE_ID") or "")
+        user_unit = str(rec.get("USER_UNIT") or "")
+        sys_user_unit = str(rec.get("_SYSTEMD_USER_UNIT") or "")
+        message = _decode_journal_message(rec.get("MESSAGE"))
+        try:
+            mono_us = int(rec.get("__MONOTONIC_TIMESTAMP") or 0)
+        except ValueError:
+            mono_us = 0
+        try:
+            real_us = int(rec.get("__REALTIME_TIMESTAMP") or 0)
+        except ValueError:
+            real_us = 0
+
+        # 1. Session envelope reached -> starts a new session record
+        m_env = ENVELOPE_UNIT_RE.match(user_unit)
+        if m_env and msg_id == MSG_UNIT_STARTED:
+            comp = unescape_systemd_instance(m_env.group(1))
+            sess: dict[str, Any] = {
+                "boot_id": boot_id,
+                "compositor": comp,
+                "wm_unit": f"wayland-wm@{m_env.group(1)}.service",
+                "started_utc": (
+                    datetime.fromtimestamp(real_us / 1_000_000.0, tz=timezone.utc).isoformat(timespec="seconds")
+                    if real_us > 0
+                    else ""
+                ),
+                "timestamps_us": {"envelope": mono_us},
+                "stages_ms": {},
+                "tam_pane_phases_ms": None,
+                "resources": {},
+                "completed": False,
+                "failed": False,
+            }
+            sessions.append(sess)
+            current_by_boot[boot_id] = sess
+            continue
+
+        # 2. wayland-wm@<wm>.service transitions
+        m_wm = WM_UNIT_RE.match(user_unit)
+        if m_wm:
+            comp = unescape_systemd_instance(m_wm.group(1))
+            sess = current_by_boot.get(boot_id)
+            if msg_id == MSG_UNIT_STARTING:
+                # Create session if envelope wasn't captured in this log slice
+                if (
+                    sess is None
+                    or sess["compositor"] != comp
+                    or "wm_start" in sess["timestamps_us"]
+                ):
+                    sess = {
+                        "boot_id": boot_id,
+                        "compositor": comp,
+                        "wm_unit": user_unit,
+                        "started_utc": (
+                            datetime.fromtimestamp(real_us / 1_000_000.0, tz=timezone.utc).isoformat(timespec="seconds")
+                            if real_us > 0
+                            else ""
+                        ),
+                        "timestamps_us": {},
+                        "stages_ms": {},
+                        "tam_pane_phases_ms": None,
+                        "resources": {},
+                        "completed": False,
+                        "failed": False,
+                    }
+                    sessions.append(sess)
+                    current_by_boot[boot_id] = sess
+                sess["timestamps_us"]["wm_start"] = mono_us
+                continue
+
+            if sess is not None and sess["compositor"] == comp:
+                if msg_id == MSG_UNIT_STARTED and "wm_ready" not in sess["timestamps_us"]:
+                    sess["timestamps_us"]["wm_ready"] = mono_us
+                elif msg_id == MSG_UNIT_STOPPED:
+                    sess["timestamps_us"]["wm_stop"] = mono_us
+                    sess["completed"] = True
+                elif msg_id == MSG_UNIT_RESOURCES:
+                    cpu_ns = _safe_int(rec.get("CPU_USAGE_NSEC"))
+                    mem_peak = _safe_int(rec.get("MEMORY_PEAK"))
+                    swap_peak = _safe_int(rec.get("MEMORY_SWAP_PEAK"))
+                    start_t = sess["timestamps_us"].get("wm_start") or sess["timestamps_us"].get("envelope")
+                    stop_t = sess["timestamps_us"].get("wm_stop") or mono_us
+                    wall_s = (stop_t - start_t) / 1_000_000.0 if start_t and stop_t > start_t else None
+                    avg_cpu = (
+                        round((cpu_ns / 1e9) / wall_s * 100.0, 2)
+                        if cpu_ns is not None and wall_s and wall_s > 0
+                        else None
+                    )
+                    sess["resources"]["compositor"] = {
+                        "cpu_usage_nsec": cpu_ns,
+                        "memory_peak_bytes": mem_peak,
+                        "memory_swap_peak_bytes": swap_peak,
+                        "wall_s": round(wall_s, 3) if wall_s is not None else None,
+                        "avg_cpu_pct": avg_cpu,
+                    }
+                    sess["completed"] = True
+                elif "Failed with result" in message:
+                    sess["failed"] = True
+            continue
+
+        sess = current_by_boot.get(boot_id)
+        if sess is None:
+            continue
+
+        # 3. graphical-session.target reached
+        if user_unit == "graphical-session.target" and msg_id == MSG_UNIT_STARTED:
+            if "wm_ready" in sess["timestamps_us"] and "session_ready" not in sess["timestamps_us"]:
+                sess["timestamps_us"]["session_ready"] = mono_us
+            continue
+
+        # 4. tamlinux-shell.service transitions & resources
+        if user_unit == "tamlinux-shell.service":
+            if msg_id == MSG_UNIT_STARTED and "shell_start" not in sess["timestamps_us"]:
+                sess["timestamps_us"]["shell_start"] = mono_us
+            elif msg_id == MSG_UNIT_RESOURCES:
+                cpu_ns = _safe_int(rec.get("CPU_USAGE_NSEC"))
+                mem_peak = _safe_int(rec.get("MEMORY_PEAK"))
+                swap_peak = _safe_int(rec.get("MEMORY_SWAP_PEAK"))
+                start_t = sess["timestamps_us"].get("shell_start") or sess["timestamps_us"].get("session_ready")
+                wall_s = (mono_us - start_t) / 1_000_000.0 if start_t and mono_us > start_t else None
+                avg_cpu = (
+                    round((cpu_ns / 1e9) / wall_s * 100.0, 2)
+                    if cpu_ns is not None and wall_s and wall_s > 0
+                    else None
+                )
+                sess["resources"]["shell"] = {
+                    "cpu_usage_nsec": cpu_ns,
+                    "memory_peak_bytes": mem_peak,
+                    "memory_swap_peak_bytes": swap_peak,
+                    "wall_s": round(wall_s, 3) if wall_s is not None else None,
+                    "avg_cpu_pct": avg_cpu,
+                }
+            continue
+
+        # 5. tamlinux-shell ready marker
+        if sys_user_unit == "tamlinux-shell.service" and "TAMLINUX_EVIDENCE ipc-owner tamlinux-shell" in message:
+            shell_start = sess["timestamps_us"].get("shell_start") or sess["timestamps_us"].get("session_ready")
+            if shell_start and "shell_ready" not in sess["timestamps_us"] and 0 <= (mono_us - shell_start) <= 60_000_000:
+                sess["timestamps_us"]["shell_ready"] = mono_us
+            continue
+
+        # 6. tam-pane internal startup phase breakdown log
+        if "tam-pane startup:" in message:
+            m_tp = TAMPANE_STARTUP_RE.search(message)
+            if m_tp and sess["compositor"] == "tam-pane" and sess["tam_pane_phases_ms"] is None:
+                sess["tam_pane_phases_ms"] = {
+                    "lua_ms": float(m_tp.group(1)),
+                    "init_ms": float(m_tp.group(2)),
+                    "start_ms": float(m_tp.group(3)),
+                    "total_ms": float(m_tp.group(4)),
+                }
+
+    # Finalize computed stage durations
+    for sess in sessions:
+        ts = sess["timestamps_us"]
+        stages: dict[str, float] = {}
+        if "envelope" in ts and "wm_start" in ts and ts["wm_start"] >= ts["envelope"]:
+            stages["env_preload_ms"] = round((ts["wm_start"] - ts["envelope"]) / 1000.0, 1)
+        if "wm_start" in ts and "wm_ready" in ts and ts["wm_ready"] >= ts["wm_start"]:
+            stages["compositor_ms"] = round((ts["wm_ready"] - ts["wm_start"]) / 1000.0, 1)
+        if "wm_ready" in ts and "session_ready" in ts and ts["session_ready"] >= ts["wm_ready"]:
+            stages["session_target_ms"] = round((ts["session_ready"] - ts["wm_ready"]) / 1000.0, 1)
+        if "session_ready" in ts and "shell_ready" in ts and ts["shell_ready"] >= ts["session_ready"]:
+            stages["shell_ready_ms"] = round((ts["shell_ready"] - ts["session_ready"]) / 1000.0, 1)
+
+        origin = ts.get("envelope") or ts.get("wm_start")
+        finish = ts.get("shell_ready") or ts.get("session_ready") or ts.get("wm_ready")
+        if origin and finish and finish >= origin:
+            stages["total_ms"] = round((finish - origin) / 1000.0, 1)
+        sess["stages_ms"] = stages
+
+    return sessions
+
+
+def _safe_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def list_journal_boot_ids() -> list[str]:
+    """Return boot IDs from oldest to newest using `journalctl --user --list-boots`."""
+    try:
+        res = subprocess.run(
+            ["journalctl", "--user", "--list-boots", "-o", "json", "--no-pager"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if res.returncode == 0 and res.stdout.strip().startswith("["):
+            boots = json.loads(res.stdout)
+            return [b["boot_id"] for b in boots if "boot_id" in b]
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+
+    # Fallback: plain text parsing
+    try:
+        res = subprocess.run(
+            ["journalctl", "--user", "--list-boots", "--no-pager"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        ids: list[str] = []
+        for line in res.stdout.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and re.fullmatch(r"[0-9a-f]{32}", parts[1]):
+                ids.append(parts[1])
+        return ids
+    except OSError:
+        return []
+
+
+def fetch_journal_entries(boot: str | None = "0", boots_count: int | None = None, all_boots: bool = False) -> list[dict[str, Any]]:
+    """Fetch relevant systemd user journal entries as parsed JSON dicts."""
+    boot_args_list: list[list[str]] = []
+    if all_boots:
+        boot_args_list.append([])
+    elif boots_count is not None and boots_count > 1:
+        boot_ids = list_journal_boot_ids()
+        selected = boot_ids[-boots_count:] if boot_ids else []
+        if selected:
+            for bid in selected:
+                boot_args_list.append(["-b", bid])
+        else:
+            boot_args_list.append(["-b", "0"])
+    else:
+        boot_args_list.append(["-b", boot or "0"])
+
+    records: list[dict[str, Any]] = []
+    for b_args in boot_args_list:
+        cmd = [
+            "journalctl",
+            "--user",
+            "-o",
+            "json",
+            "--no-pager",
+            *b_args,
+            "_COMM=systemd",
+            "+",
+            "_SYSTEMD_USER_UNIT=tamlinux-shell.service",
+            "+",
+            r"_SYSTEMD_USER_UNIT=wayland-wm@tam\x2dpane.service",
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=20, check=False)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if not line or not line.startswith("{"):
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            # Quick filter to keep memory small: only keep relevant records
+            u = rec.get("USER_UNIT") or ""
+            su = rec.get("_SYSTEMD_USER_UNIT") or ""
+            msg = _decode_journal_message(rec.get("MESSAGE"))
+            if (
+                u.startswith("wayland-")
+                or u in ("graphical-session.target", "tamlinux-shell.service")
+                or (su == "tamlinux-shell.service" and "TAMLINUX_EVIDENCE ipc-owner tamlinux-shell" in msg)
+                or "tam-pane startup:" in msg
+            ):
+                records.append(rec)
+    return records
+
+
+def merge_active_session_resources(sessions: list[dict[str, Any]], live: dict[str, Any] | None) -> None:
+    """Attach live cgroup resource stats to the active incomplete session in `sessions`."""
+    if not live or not sessions:
+        return
+    active_comp = live.get("compositor")
+    for sess in reversed(sessions):
+        if sess["compositor"] == active_comp and not sess["completed"] and not sess["failed"]:
+            sess["active"] = True
+            comps = live.get("components") or {}
+            wm = comps.get("compositor")
+            if wm and "compositor" not in sess["resources"]:
+                sess["resources"]["compositor"] = {
+                    "cpu_usage_nsec": wm.get("cpu_usage_nsec"),
+                    "memory_peak_bytes": wm.get("memory_peak_bytes"),
+                    "memory_current_bytes": wm.get("memory_current_bytes"),
+                    "memory_swap_peak_bytes": wm.get("memory_swap_bytes"),
+                    "wall_s": wm.get("uptime_s"),
+                    "avg_cpu_pct": wm.get("avg_cpu_pct"),
+                }
+            sh = comps.get("shell")
+            if sh and "shell" not in sess["resources"]:
+                sess["resources"]["shell"] = {
+                    "cpu_usage_nsec": sh.get("cpu_usage_nsec"),
+                    "memory_peak_bytes": sh.get("memory_peak_bytes"),
+                    "memory_current_bytes": sh.get("memory_current_bytes"),
+                    "memory_swap_peak_bytes": sh.get("memory_swap_bytes"),
+                    "wall_s": sh.get("uptime_s"),
+                    "avg_cpu_pct": sh.get("avg_cpu_pct"),
+                }
+            break
+
+
+def state_dir() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(base) / "tamlinux" / "session-bench"
+
+
+def save_sample_record(record: dict[str, Any], directory: Path | None = None) -> Path:
+    """Atomically save a timed sample JSON record."""
+    target_dir = directory or state_dir()
+    target_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_comp = re.sub(r"[^A-Za-z0-9._-]+", "_", str(record.get("compositor") or "unknown"))
+    dest = target_dir / f"{stamp}-{safe_comp}.json"
+    fd, tmp_path = tempfile.mkstemp(prefix=".sample-", suffix=".json", dir=target_dir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(record, fh, indent=2, sort_keys=True)
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, dest)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+    return dest
+
+
+def load_saved_samples(directory: Path | None = None) -> list[dict[str, Any]]:
+    """Load saved timed sample JSON records."""
+    target_dir = directory or state_dir()
+    if not target_dir.is_dir():
+        return []
+    out: list[dict[str, Any]] = []
+    for path in sorted(target_dir.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and data.get("kind") == "sample":
+                data["_file"] = path.name
+                out.append(data)
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def summarize_metric(values: list[float]) -> dict[str, float | int] | None:
+    if not values:
+        return None
+    return {
+        "n": len(values),
+        "median": round(statistics.median(values), 2),
+        "min": round(min(values), 2),
+        "max": round(max(values), 2),
+    }
+
+
+def aggregate_comparison(
+    sessions: list[dict[str, Any]],
+    saved_samples: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Aggregate startup stages, session resource metrics, and saved samples by compositor."""
+    by_comp: dict[str, dict[str, list[float]]] = {}
+    stage_keys = ("env_preload_ms", "compositor_ms", "session_target_ms", "shell_ready_ms", "total_ms")
+
+    for sess in sessions:
+        if sess.get("failed"):
+            continue
+        comp = sess["compositor"]
+        bucket = by_comp.setdefault(
+            comp,
+            {
+                **{k: [] for k in stage_keys},
+                "wm_mem_peak_mib": [],
+                "wm_swap_peak_mib": [],
+                "wm_avg_cpu_pct": [],
+                "shell_mem_peak_mib": [],
+                "shell_avg_cpu_pct": [],
+            },
+        )
+        stages = sess.get("stages_ms") or {}
+        for k in stage_keys:
+            if k in stages:
+                bucket[k].append(float(stages[k]))
+
+        res = sess.get("resources") or {}
+        wm = res.get("compositor") or {}
+        if wm.get("memory_peak_bytes") is not None:
+            bucket["wm_mem_peak_mib"].append(wm["memory_peak_bytes"] / (1024 ** 2))
+        if wm.get("memory_swap_peak_bytes") is not None:
+            bucket["wm_swap_peak_mib"].append(wm["memory_swap_peak_bytes"] / (1024 ** 2))
+        if wm.get("avg_cpu_pct") is not None:
+            bucket["wm_avg_cpu_pct"].append(float(wm["avg_cpu_pct"]))
+
+        sh = res.get("shell") or {}
+        if sh.get("memory_peak_bytes") is not None:
+            bucket["shell_mem_peak_mib"].append(sh["memory_peak_bytes"] / (1024 ** 2))
+        if sh.get("avg_cpu_pct") is not None:
+            bucket["shell_avg_cpu_pct"].append(float(sh["avg_cpu_pct"]))
+
+    summary: dict[str, dict[str, Any]] = {}
+    for comp, metrics in by_comp.items():
+        summary[comp] = {k: summarize_metric(v) for k, v in metrics.items()}
+
+    sample_summary: dict[str, dict[str, Any]] = {}
+    if saved_samples:
+        s_by_comp: dict[str, dict[str, list[float]]] = {}
+        for rec in saved_samples:
+            comp = str(rec.get("compositor") or "unknown")
+            sb = s_by_comp.setdefault(
+                comp,
+                {
+                    "wm_cpu_pct": [],
+                    "wm_gpu_gfx_pct": [],
+                    "wm_pss_mib": [],
+                    "wm_vram_mib": [],
+                    "shell_cpu_pct": [],
+                    "shell_pss_mib": [],
+                    "power_w": [],
+                },
+            )
+            wm = (rec.get("components") or {}).get("compositor") or {}
+            sh = (rec.get("components") or {}).get("shell") or {}
+            if wm.get("delta_cpu_pct") is not None:
+                sb["wm_cpu_pct"].append(float(wm["delta_cpu_pct"]))
+            if wm.get("delta_gpu_gfx_pct") is not None:
+                sb["wm_gpu_gfx_pct"].append(float(wm["delta_gpu_gfx_pct"]))
+            if (wm.get("pss_mib") or {}).get("median") is not None:
+                sb["wm_pss_mib"].append(float(wm["pss_mib"]["median"]))
+            if (wm.get("vram_mib") or {}).get("median") is not None:
+                sb["wm_vram_mib"].append(float(wm["vram_mib"]["median"]))
+            if sh.get("delta_cpu_pct") is not None:
+                sb["shell_cpu_pct"].append(float(sh["delta_cpu_pct"]))
+            if (sh.get("pss_mib") or {}).get("median") is not None:
+                sb["shell_pss_mib"].append(float(sh["pss_mib"]["median"]))
+            pwr = (rec.get("system_power_w") or {}).get("median")
+            if pwr is not None:
+                sb["power_w"].append(float(pwr))
+        for comp, metrics in s_by_comp.items():
+            sample_summary[comp] = {k: summarize_metric(v) for k, v in metrics.items()}
+
+    return {
+        "compositors": summary,
+        "saved_samples": sample_summary,
+        "session_count": len(sessions),
+        "saved_sample_count": len(saved_samples or []),
+    }
+
+
+def _extract_counters(unit_info: dict[str, Any] | None) -> dict[str, int]:
+    if not unit_info:
+        return {}
+    proc = unit_info.get("proc") or {}
+    drm = proc.get("drm") or {}
+    return {
+        "cpu_ns": unit_info.get("cpu_usage_nsec") or 0,
+        "gfx_ns": drm.get("gfx_ns") or 0,
+        "ctxt": (proc.get("voluntary_ctxt_switches") or 0) + (proc.get("nonvoluntary_ctxt_switches") or 0),
+    }
+
+
+def run_timed_sample(
+    duration_s: float,
+    interval_s: float,
+    settle_s: float = 0.0,
+    label: str = "",
+) -> dict[str, Any]:
+    """Sample compositor, shell, and optional system power over a controlled time window."""
+    if settle_s > 0:
+        time.sleep(settle_s)
+
+    start_snap = collect_live_snapshot()
+    t0 = time.monotonic()
+    c0_wm = _extract_counters((start_snap.get("components") or {}).get("compositor"))
+    c0_sh = _extract_counters((start_snap.get("components") or {}).get("shell"))
+
+    series: dict[str, dict[str, list[float]]] = {
+        "compositor": {"pss_mib": [], "rss_mib": [], "cgroup_mib": [], "vram_mib": [], "gtt_mib": []},
+        "shell": {"pss_mib": [], "rss_mib": [], "cgroup_mib": [], "vram_mib": [], "gtt_mib": []},
+    }
+    power_samples: list[float] = []
+    temp_samples: list[float] = []
+
+    def record_point(snap: dict[str, Any]) -> None:
+        comps = snap.get("components") or {}
+        for key in ("compositor", "shell"):
+            u = comps.get(key)
+            if not u:
+                continue
+            proc = u.get("proc") or {}
+            drm = proc.get("drm") or {}
+            if proc.get("pss_bytes") is not None:
+                series[key]["pss_mib"].append(proc["pss_bytes"] / (1024 ** 2))
+            if proc.get("rss_bytes") is not None:
+                series[key]["rss_mib"].append(proc["rss_bytes"] / (1024 ** 2))
+            if u.get("memory_current_bytes") is not None:
+                series[key]["cgroup_mib"].append(u["memory_current_bytes"] / (1024 ** 2))
+            if drm.get("vram_bytes") is not None:
+                series[key]["vram_mib"].append(drm["vram_bytes"] / (1024 ** 2))
+            if drm.get("gtt_bytes") is not None:
+                series[key]["gtt_mib"].append(drm["gtt_bytes"] / (1024 ** 2))
+        meter = snap.get("system_meter") or {}
+        if isinstance(meter.get("power_w"), (int, float)):
+            power_samples.append(float(meter["power_w"]))
+        if isinstance(meter.get("temp_c"), (int, float)):
+            temp_samples.append(float(meter["temp_c"]))
+
+    record_point(start_snap)
+    end_snap = start_snap
+    deadline = t0 + duration_s
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(interval_s, remaining))
+        end_snap = collect_live_snapshot()
+        record_point(end_snap)
+
+    elapsed_s = max(time.monotonic() - t0, 1e-6)
+    elapsed_ns = elapsed_s * 1e9
+    c1_wm = _extract_counters((end_snap.get("components") or {}).get("compositor"))
+    c1_sh = _extract_counters((end_snap.get("components") or {}).get("shell"))
+
+    def build_comp_result(key: str, c0: dict[str, int], c1: dict[str, int]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if c0 and c1:
+            d_cpu = max(0, c1["cpu_ns"] - c0["cpu_ns"])
+            d_gfx = max(0, c1["gfx_ns"] - c0["gfx_ns"])
+            d_ctxt = max(0, c1["ctxt"] - c0["ctxt"])
+            out["delta_cpu_pct"] = round((d_cpu / elapsed_ns) * 100.0, 2)
+            out["delta_gpu_gfx_pct"] = round((d_gfx / elapsed_ns) * 100.0, 2)
+            out["ctxt_switches_per_s"] = round(d_ctxt / elapsed_s, 1)
+        for mname, vals in series[key].items():
+            if vals:
+                out[mname] = summarize_metric(vals)
+        return out
+
+    result: dict[str, Any] = {
+        "kind": "sample",
+        "version": VERSION,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "compositor": start_snap.get("compositor", "unknown"),
+        "label": label,
+        "duration_s": round(elapsed_s, 2),
+        "interval_s": interval_s,
+        "settle_s": settle_s,
+        "components": {
+            "compositor": build_comp_result("compositor", c0_wm, c1_wm),
+            "shell": build_comp_result("shell", c0_sh, c1_sh),
+        },
+    }
+    if power_samples:
+        result["system_power_w"] = summarize_metric(power_samples)
+    if temp_samples:
+        result["system_temp_c"] = summarize_metric(temp_samples)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Human-readable formatters
+# ---------------------------------------------------------------------------
+
+def _fmt_mib(val_bytes: int | None) -> str:
+    if val_bytes is None:
+        return "-"
+    return f"{val_bytes / (1024 ** 2):.1f} MiB"
+
+
+def _fmt_ms(val: float | None) -> str:
+    if val is None:
+        return "-"
+    return f"{val:.0f} ms"
+
+
+def _fmt_pct(val: float | None) -> str:
+    if val is None:
+        return "-"
+    return f"{val:.2f}%"
+
+
+def _fmt_delta(base: float | None, cand: float | None, unit: str) -> str:
+    if base is None or cand is None or base == 0:
+        return "-"
+    diff = cand - base
+    pct = (diff / base) * 100.0
+    sign = "+" if diff > 0 else ""
+    if unit == "ms":
+        return f"{sign}{diff:.0f} ms ({sign}{pct:.1f}%)"
+    if unit == "MiB":
+        return f"{sign}{diff:.1f} MiB ({sign}{pct:.1f}%)"
+    if unit == "%":
+        return f"{sign}{diff:.2f} pp ({sign}{pct:.1f}%)"
+    return f"{sign}{diff:.2f} {unit} ({sign}{pct:.1f}%)"
+
+
+def format_startup_human(sessions: list[dict[str, Any]]) -> str:
+    if not sessions:
+        return "No graphical sessions found in the selected user journal range.\n"
+    lines = [
+        f"{'Started (UTC)':<21} {'Compositor':<11} {'Env':>8} {'WM Ready':>9} {'Target':>8} {'Shell':>8} {'Total':>9}  State",
+        "-" * 88,
+    ]
+    for s in sessions:
+        st = s.get("stages_ms") or {}
+        state = "FAILED" if s.get("failed") else ("ACTIVE" if s.get("active") else ("done" if s.get("completed") else "?"))
+        lines.append(
+            f"{s.get('started_utc', '')[:19]:<21} "
+            f"{s.get('compositor', ''):<11} "
+            f"{_fmt_ms(st.get('env_preload_ms')):>8} "
+            f"{_fmt_ms(st.get('compositor_ms')):>9} "
+            f"{_fmt_ms(st.get('session_target_ms')):>8} "
+            f"{_fmt_ms(st.get('shell_ready_ms')):>8} "
+            f"{_fmt_ms(st.get('total_ms')):>9}  {state}"
+        )
+        tp = s.get("tam_pane_phases_ms")
+        if tp:
+            lines.append(
+                f"  -> tam-pane internal: lua={tp['lua_ms']:.1f}ms  init={tp['init_ms']:.1f}ms  "
+                f"start={tp['start_ms']:.1f}ms  total={tp['total_ms']:.1f}ms"
+            )
+    return "\n".join(lines) + "\n"
+
+
+def format_now_human(snap: dict[str, Any]) -> str:
+    lines = [
+        f"Active session: {snap.get('compositor', 'unknown')}  ({snap.get('timestamp_utc', '')})",
+        "",
+        f"{'Component':<28} {'PSS':>10} {'RSS':>10} {'Cgroup':>10} {'Peak':>10} {'VRAM':>10} {'AvgCPU':>8} {'Tasks':>6}",
+        "-" * 100,
+    ]
+    comps = snap.get("components") or {}
+
+    def add_row(label: str, u: dict[str, Any]) -> None:
+        proc = u.get("proc") or {}
+        drm = proc.get("drm") or {}
+        lines.append(
+            f"{label:<28} "
+            f"{_fmt_mib(proc.get('pss_bytes')):>10} "
+            f"{_fmt_mib(proc.get('rss_bytes')):>10} "
+            f"{_fmt_mib(u.get('memory_current_bytes')):>10} "
+            f"{_fmt_mib(u.get('memory_peak_bytes')):>10} "
+            f"{_fmt_mib(drm.get('vram_bytes')):>10} "
+            f"{_fmt_pct(u.get('avg_cpu_pct')):>8} "
+            f"{str(u.get('tasks_current') or '-'):>6}"
+        )
+
+    if "compositor" in comps:
+        add_row(f"compositor ({snap['compositor']})", comps["compositor"])
+    if "shell" in comps:
+        add_row("shell (tamlinux-shell)", comps["shell"])
+    for p in comps.get("portals") or []:
+        short = p.get("unit", "portal").replace(".service", "")
+        add_row(short[:28], p)
+
+    comb = snap.get("combined") or {}
+    lines.append("-" * 100)
+    lines.append(
+        f"{'TOTAL':<28} "
+        f"{_fmt_mib(comb.get('pss_bytes')):>10} "
+        f"{_fmt_mib(comb.get('rss_bytes')):>10} "
+        f"{_fmt_mib(comb.get('memory_current_bytes')):>10} "
+        f"{_fmt_mib(comb.get('memory_peak_bytes')):>10} "
+        f"{_fmt_mib(comb.get('vram_bytes')):>10} "
+        f"{_fmt_pct(comb.get('avg_cpu_pct')):>8} "
+        f"{str(comb.get('tasks_current') or '-'):>6}"
+    )
+
+    meter = snap.get("system_meter")
+    if isinstance(meter, dict):
+        pw = meter.get("power_w")
+        tc = meter.get("temp_c")
+        busy = meter.get("cpu_busy_pct")
+        lines.append("")
+        parts = []
+        if pw is not None:
+            parts.append(f"APU power: {pw:.1f} W")
+        if tc is not None:
+            parts.append(f"CPU temp: {tc:.1f} °C")
+        if busy is not None:
+            parts.append(f"CPU busy: {busy:.1f}%")
+        if parts:
+            lines.append("System: " + " | ".join(parts))
+
+    return "\n".join(lines) + "\n"
+
+
+def format_sample_human(rec: dict[str, Any], saved_path: Path | None = None) -> str:
+    label_part = f" [{rec['label']}]" if rec.get("label") else ""
+    lines = [
+        f"Timed sample: {rec.get('compositor', 'unknown')}{label_part}  "
+        f"({rec.get('duration_s', 0)}s @ {rec.get('interval_s', 0)}s interval)",
+        "",
+        f"{'Component':<14} {'Delta CPU':>10} {'GPU GFX':>9} {'Ctxt/s':>9} {'PSS med':>10} {'VRAM med':>10}",
+        "-" * 68,
+    ]
+    for key in ("compositor", "shell"):
+        c = (rec.get("components") or {}).get(key) or {}
+        if not c:
+            continue
+        pss_m = (c.get("pss_mib") or {}).get("median")
+        vram_m = (c.get("vram_mib") or {}).get("median")
+        ctxt_s = c.get("ctxt_switches_per_s")
+        ctxt_str = f"{ctxt_s:.1f}" if ctxt_s is not None else "-"
+        pss_str = f"{pss_m:.1f} MiB" if pss_m is not None else "-"
+        vram_str = f"{vram_m:.1f} MiB" if vram_m is not None else "-"
+        lines.append(
+            f"{key:<14} "
+            f"{_fmt_pct(c.get('delta_cpu_pct')):>10} "
+            f"{_fmt_pct(c.get('delta_gpu_gfx_pct')):>9} "
+            f"{ctxt_str:>9} "
+            f"{pss_str:>10} "
+            f"{vram_str:>10}"
+        )
+    if rec.get("system_power_w"):
+        pw = rec["system_power_w"]
+        lines.append(f"\nAPU Power: median {pw['median']:.2f} W (min {pw['min']:.2f} W, max {pw['max']:.2f} W)")
+    if saved_path:
+        lines.append(f"Saved: {saved_path}")
+    return "\n".join(lines) + "\n"
+
+
+def format_compare_human(agg: dict[str, Any]) -> str:
+    comps = agg.get("compositors") or {}
+    if not comps:
+        return "No completed or active graphical sessions found to compare.\n"
+
+    names = sorted(comps.keys(), key=lambda x: (x != "Hyprland", x != "tam-pane", x))
+    c_left = "Hyprland" if "Hyprland" in comps else names[0]
+    c_right = "tam-pane" if "tam-pane" in comps else (names[1] if len(names) > 1 else None)
+
+    def cell(comp_name: str | None, metric_key: str, unit: str) -> str:
+        if not comp_name or comp_name not in comps:
+            return "-"
+        m = comps[comp_name].get(metric_key)
+        if not m:
+            return "-"
+        if unit == "ms":
+            return f"{m['median']:.0f} ms (n={m['n']})"
+        if unit == "MiB":
+            return f"{m['median']:.1f} MiB (n={m['n']})"
+        if unit == "%":
+            return f"{m['median']:.2f}% (n={m['n']})"
+        return f"{m['median']:.2f} (n={m['n']})"
+
+    def med(comp_name: str | None, metric_key: str) -> float | None:
+        if not comp_name or comp_name not in comps:
+            return None
+        m = comps[comp_name].get(metric_key)
+        return float(m["median"]) if m else None
+
+    right_hdr = c_right or "(none)"
+    lines = [
+        f"Session Comparison (median across {agg.get('session_count', 0)} sessions)",
+        "",
+        f"{'Metric':<26} {c_left:>18} {right_hdr:>18} {'Delta (' + right_hdr + ' vs ' + c_left + ')':>26}",
+        "-" * 92,
+    ]
+    rows = [
+        ("Startup: Env Preload", "env_preload_ms", "ms"),
+        ("Startup: Compositor Ready", "compositor_ms", "ms"),
+        ("Startup: Session Target", "session_target_ms", "ms"),
+        ("Startup: Shell Ready", "shell_ready_ms", "ms"),
+        ("Startup: Total to Desktop", "total_ms", "ms"),
+        ("Compositor: Memory Peak", "wm_mem_peak_mib", "MiB"),
+        ("Compositor: Swap Peak", "wm_swap_peak_mib", "MiB"),
+        ("Compositor: Avg CPU", "wm_avg_cpu_pct", "%"),
+        ("Shell: Memory Peak", "shell_mem_peak_mib", "MiB"),
+        ("Shell: Avg CPU", "shell_avg_cpu_pct", "%"),
+    ]
+    for label, key, unit in rows:
+        lines.append(
+            f"{label:<26} "
+            f"{cell(c_left, key, unit):>18} "
+            f"{cell(c_right, key, unit):>18} "
+            f"{_fmt_delta(med(c_left, key), med(c_right, key), unit):>26}"
+        )
+
+    saved = agg.get("saved_samples") or {}
+    if saved:
+        lines.append("")
+        lines.append(f"Saved Timed Samples (median across {agg.get('saved_sample_count', 0)} runs)")
+        lines.append(
+            f"{'Metric':<26} {c_left:>18} {right_hdr:>18} {'Delta (' + right_hdr + ' vs ' + c_left + ')':>26}"
+        )
+        lines.append("-" * 92)
+        s_rows = [
+            ("Compositor: Delta CPU", "wm_cpu_pct", "%"),
+            ("Compositor: GPU GFX", "wm_gpu_gfx_pct", "%"),
+            ("Compositor: PSS", "wm_pss_mib", "MiB"),
+            ("Compositor: VRAM", "wm_vram_mib", "MiB"),
+            ("Shell: Delta CPU", "shell_cpu_pct", "%"),
+            ("Shell: PSS", "shell_pss_mib", "MiB"),
+            ("System: APU Power", "power_w", "W"),
+        ]
+        for label, key, unit in s_rows:
+            lv = (saved.get(c_left) or {}).get(key)
+            rv = (saved.get(c_right) or {}).get(key) if c_right else None
+            ltxt = f"{lv['median']:.2f} {unit} (n={lv['n']})" if lv else "-"
+            rtxt = f"{rv['median']:.2f} {unit} (n={rv['n']})" if rv else "-"
+            lines.append(
+                f"{label:<26} {ltxt:>18} {rtxt:>18} "
+                f"{_fmt_delta(lv['median'] if lv else None, rv['median'] if rv else None, unit):>26}"
+            )
+
+    return "\n".join(lines) + "\n"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="tam-session-bench",
+        description="Measure and compare graphical session startup time and resource usage (Hyprland vs tam-pane).",
+    )
+    parser.add_argument("-v", "--version", action="version", version=f"tam-session-bench {VERSION}")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_start = sub.add_parser("startup", help="Show startup stage timings from the user journal")
+    p_start.add_argument("--boot", default="0", help="Boot selector passed to journalctl -b (default: 0)")
+    p_start.add_argument("--boots", type=int, default=None, help="Inspect the last N boots")
+    p_start.add_argument("--all-boots", action="store_true", help="Inspect all boots in the user journal")
+    p_start.add_argument("--json", action="store_true", help="Output structured JSON")
+
+    p_now = sub.add_parser("now", help="Show live resource snapshot of the active graphical session")
+    p_now.add_argument("--json", action="store_true", help="Output structured JSON")
+
+    p_samp = sub.add_parser("sample", help="Sample compositor, shell, and system power over a timed window")
+    p_samp.add_argument("--seconds", type=float, default=30.0, help="Measurement window in seconds (default: 30)")
+    p_samp.add_argument("--minutes", type=float, default=None, help="Measurement window in minutes (overrides --seconds)")
+    p_samp.add_argument("--interval", type=float, default=2.0, help="Sample interval in seconds (default: 2)")
+    p_samp.add_argument("--settle", type=float, default=0.0, help="Settle delay before sampling in seconds (default: 0)")
+    p_samp.add_argument("--label", default="", help="Optional label (e.g. idle, coding, browser)")
+    p_samp.add_argument("--save", action="store_true", help="Save sample JSON under ~/.local/state/tamlinux/session-bench/")
+    p_samp.add_argument("--json", action="store_true", help="Output structured JSON")
+
+    p_cmp = sub.add_parser("compare", help="Compare Hyprland vs tam-pane startup and resource usage side-by-side")
+    p_cmp.add_argument("--boot", default="0", help="Boot selector (default: 0)")
+    p_cmp.add_argument("--boots", type=int, default=None, help="Compare across the last N boots")
+    p_cmp.add_argument("--all-boots", action="store_true", help="Compare across all boots in the user journal")
+    p_cmp.add_argument("--samples", action="store_true", help="Include saved timed sample runs even if no journal sessions exist")
+    p_cmp.add_argument("--json", action="store_true", help="Output structured JSON")
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "now":
+        snap = collect_live_snapshot()
+        if args.json:
+            print(json.dumps(snap, indent=2, sort_keys=True))
+        else:
+            sys.stdout.write(format_now_human(snap))
+        return 0
+
+    if args.command == "startup":
+        entries = fetch_journal_entries(boot=args.boot, boots_count=args.boots, all_boots=args.all_boots)
+        sessions = parse_journal_sessions(entries)
+        merge_active_session_resources(sessions, collect_live_snapshot())
+        if args.json:
+            print(json.dumps({"sessions": sessions}, indent=2, sort_keys=True))
+        else:
+            sys.stdout.write(format_startup_human(sessions))
+        return 0
+
+    if args.command == "sample":
+        duration_s = args.minutes * 60.0 if args.minutes is not None else args.seconds
+        if duration_s <= 0 or args.interval <= 0 or args.settle < 0:
+            print("tam-session-bench: duration and interval must be positive; settle must be >= 0", file=sys.stderr)
+            return 2
+        rec = run_timed_sample(duration_s=duration_s, interval_s=args.interval, settle_s=args.settle, label=args.label)
+        saved_path = save_sample_record(rec) if args.save else None
+        if args.json:
+            if saved_path:
+                rec["saved_path"] = str(saved_path)
+            print(json.dumps(rec, indent=2, sort_keys=True))
+        else:
+            sys.stdout.write(format_sample_human(rec, saved_path=saved_path))
+        return 0
+
+    if args.command == "compare":
+        entries = fetch_journal_entries(boot=args.boot, boots_count=args.boots, all_boots=args.all_boots)
+        sessions = parse_journal_sessions(entries)
+        merge_active_session_resources(sessions, collect_live_snapshot())
+        saved = load_saved_samples()
+        agg = aggregate_comparison(sessions, saved_samples=saved)
+        if args.json:
+            print(json.dumps(agg, indent=2, sort_keys=True))
+        else:
+            sys.stdout.write(format_compare_human(agg))
+        return 0
+
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,32 @@
+TAM-SESSION-BENCH
+
+Graphical session startup and resource benchmark tool for comparing
+Hyprland and tam-pane on Tamlinux.
+
+
+USAGE
+
+    tam-session-bench startup [--boot 0 | --boots N | --all-boots] [--json]
+    tam-session-bench now [--json]
+    tam-session-bench sample [--seconds 30 | --minutes M] [--interval 2]
+                             [--settle 0] [--label NAME] [--save] [--json]
+    tam-session-bench compare [--boots N | --all-boots] [--json]
+
+
+DESCRIPTION
+
+- startup: Reconstructs per-stage graphical session startup timings
+  (UWSM env preload, compositor ready, session target, shell ready, and
+  tam-pane internal lua/init/start phases when logged) from the systemd
+  user journal.
+- now: Live resource snapshot of the active compositor, tamlinux-shell,
+  and portals (cgroup memory/peak/swap, PSS/RSS, CPU average, DRM GPU
+  VRAM/GTT deduplicated by drm-client-id, plus optional tam-meter power).
+- sample: Timed measurement window reporting delta CPU %, delta GPU GFX %,
+  context switches/s, PSS/VRAM medians, and optional APU power. Use --save
+  to record runs under ~/.local/state/tamlinux/session-bench/ for cross-
+  session comparison.
+- compare: Side-by-side comparison table across Hyprland and tam-pane from
+  journal session history and saved timed samples.
+
+Python 3 stdlib only. No root required.
