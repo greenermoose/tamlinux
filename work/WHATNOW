@@ -3,10 +3,15 @@ WHATNOW
 What tamlinux is doing now and what comes next. Read this first; revise
 it at the end of every session (work/README-work).
 
-Updated: 2026-11-27, with W48
+Updated: 2026-11-27, with W49
 
 
 STATE
+
+  Wired tam-menu-keybindings and src/desktop/session/tam-pane.lua to
+  launch the new EFL Keybinding Explorer (tam-keys) centered as a
+  1040x720 floating window on Meta + K when running under tam-pane,
+  while preserving the Quickshell fallback under Hyprland (W49).
 
   Updated the Northern Torch (PH03) section of ROADMAP.md and
   plans/P33-northern-torch.md for 0.7.5 (W48): recorded 0.7.0-0.7.2

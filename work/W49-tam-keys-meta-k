@@ -1,0 +1,36 @@
+W49 LAUNCH EFL TAM-KEYS ON META+K IN TAM-PANE
+
+Date: 2026-11-27
+AI harness: agy 1.5.18
+AI model: gemini-4-argon-medium
+Commits: pending
+Continues: W48
+
+GUIDANCE
+
+  Fred: "Use EFL instead of Quickshell to create a version of our
+  Keybinding Explorer. Create a new repo called tam-keys for it. Build
+  it and let me launch it when I'm running tam-pane bound to Meta + K.
+  Start by replicating the functionality of the Quickshell version of
+  the Keybinding Explorer. Prepare a ROADMAP and complete repo based on
+  the tam-idol standard."
+
+DONE
+
+  - Added centered floating window rules (1040x720) for
+    org.tamlinux.keys and tam-keys in src/desktop/session/tam-pane.lua.
+  - Updated src/commands/tam-menu-keybindings/tam-menu-keybindings to
+    exec tam-keys when running under tam-pane (TAM_PANE_SOCKET set and
+    HYPRLAND_INSTANCE_SIGNATURE unset) or when TAM_KEYS_EFL=1, while
+    keeping the Quickshell fallback for Hyprland and --scan/--print.
+  - Verified test_keybindings.py (49/49), test_keybinding_defaults.py
+    (6/6), and test_tam_pane_controls.py (3/3).
+
+FAILED
+
+  - Nothing.
+
+HANDOFF
+
+  - tam-keys 0.1.0 launches on Meta + K under tam-pane. Continue PH03
+    Stage 3 hardware checks per WHATNOW.

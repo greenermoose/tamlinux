@@ -221,6 +221,13 @@ fi
 commands=$(scan_commands)
 
 if [[ $1 != "--print" && $1 != "-p" ]]; then
+  if [[ -n ${TAM_PANE_SOCKET:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || [[ ${TAM_KEYS_EFL:-} == "1" ]]; then
+    if [[ -x $HOME/.local/bin/tam-keys ]]; then
+      exec "$HOME/.local/bin/tam-keys" "$@"
+    elif command -v tam-keys >/dev/null 2>&1; then
+      exec tam-keys "$@"
+    fi
+  fi
   exec tam-shell keybindings open "$commands"
 fi
 

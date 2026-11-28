@@ -80,6 +80,8 @@ for _, pat in ipairs(floating_apps) do
 end
 
 tp.rule{ match = { app_id = "^org%.tamlinux%.about$" }, floating = true, size = { 920, 480 }, position = "center" }
+tp.rule{ match = { app_id = "^org%.tamlinux%.keys$" }, floating = true, size = { 1040, 720 }, position = "center" }
+tp.rule{ match = { app_id = "^tam%-keys$" }, floating = true, size = { 1040, 720 }, position = "center" }
 tp.rule{ match = { app_id = "^dev%.tensaku%.Tensaku$" }, floating = true, position = "center" }
 tp.rule{ match = { app_id = "^qalculate%-gtk$" }, floating = true, position = "center" }
 tp.rule{ match = { app_id = "^localsend$" }, floating = true, size = { 1100, 700 }, position = "center" }
